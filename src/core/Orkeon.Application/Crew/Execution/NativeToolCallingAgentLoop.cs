@@ -64,8 +64,7 @@ internal sealed class NativeToolCallingAgentLoop
         var nativeConfig = BuildNativeLlmConfig(invocation.SystemPrompt, availableTools, baseConfigForCascade);
         var config = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
             baseConfig: nativeConfig,
-            taskOverride: task.LlmOverride,
-            callOverride: null);
+            taskOverride: task.LlmOverride);
         var messages = new List<Domain.SharedKernel.ValueObjects.LlmMessage>
         {
             Domain.SharedKernel.ValueObjects.LlmMessage.System(invocation.SystemPrompt),

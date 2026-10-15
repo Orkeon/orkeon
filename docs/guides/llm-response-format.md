@@ -32,10 +32,10 @@ For Orkeon, this matters most for:
 `Type` is an open string: any other value is forwarded as-is (the YAML mapper logs a warning,
 event id `101`), so a new vendor value works without a framework release.
 
-## Cascade — three layers, five surfaces
+## Cascade — two layers, four surfaces
 
-The fusion is done **once** in `LlmConfigResolver.Resolve(baseConfig, taskOverride, callOverride)`.
-Priority highest-first: call override → task override → base config. Each field is resolved
+The base config and the task override are merged **once** per turn: by `ChatOptionsComposer` on the chat-client loop, by `LlmConfigResolver.Resolve(baseConfig, taskOverride)` on the fallback loops.
+Priority highest-first: task override → base config. Each field is resolved
 independently (`Profile`, `ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`, `Thinking`, `Cache`), and a
 `null` field on an override never erases an inherited value.
 
@@ -45,7 +45,8 @@ independently (`Profile`, `ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`, 
 | 2. Agent | base config | agent YAML `llm:`, `agentBuilder().withResponseFormat(...)` / `.withResponseSchema(...)`, the agent's `LlmConfig` in C# |
 | 3. Task | task override (`LlmConfigOverride`) | task YAML `llm_override:`, `taskBuilder().withResponseFormat(...)` / `.withResponseSchema(...)`, `CrewTaskBuilder.WithResponseFormat(...)` / `.WithLlmOverride(...)` |
 | 4. Script-time | base config | `llmConfig.with({ responseFormat })` on the config handed to `agentBuilder().llm(...)` |
-| 5. Call-time | call override | `ctx.llm.complete/chat/stream(..., { responseFormat })` in a script, `LlmProviderExtensions.GenerateAsync/ChatAsync(..., LlmConfigOverride, baseConfig)` in C# |
+
+A call, from C# or from a script (`ctx.llm.complete/chat/stream(..., { responseFormat })`), passes its own `LlmConfig`, outside the cascade.
 
 ## YAML surfaces
 
@@ -131,7 +132,7 @@ const task = taskBuilder()
     })
     .build();
 
-// Call-time override (most surgical — wins over everything else)
+// A call passes its own LlmConfig, outside the cascade
 const res = await ctx.llm.complete(
     "Return the answer as a json object",
     { responseFormat: "json_object" }
@@ -154,12 +155,13 @@ var task = new CrewTaskBuilder()
     .WithResponseFormat(LlmResponseFormat.JsonSchema("invoice", invoiceSchemaJson))
     .Build();
 
-// Call-time override via extension method
-await provider.GenerateAsync(
-    prompt,
-    LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject()),
-    agent.LlmConfig,
-    ct);
+// A call passes its own LlmConfig, outside the cascade. Start from the provider's own
+// configuration: built empty, it would reset the provider's penalties.
+var config = (provider.BaseConfig ?? LlmConfig.OnProfile()) with
+{
+    ResponseFormat = LlmResponseFormat.JsonObject(),
+};
+await provider.GenerateAsync(prompt, config, ct);
 ```
 
 `WithResponseFormat` also accepts a string (`"json_object"`); `WithLlmOverride(LlmConfigOverride)`
@@ -235,7 +237,7 @@ before writing the file.
 
 ## How it travels through the orchestrator
 
-The cascade is fused exactly once per turn by `LlmConfigResolver.Resolve`. On the chat-client path, `ChatOptionsComposer` calls it on the agent's configuration and the task's override, then translates the merged configuration onto the `ChatOptions` field by field: it merges nothing itself, and each field reaches the provider as written. The other call sites have no chat client and call it as they are: `LegacyTextAgentLoop` and `OutputValidationCoordinator` (base: the agent's configuration), `NativeToolCallingAgentLoop` (base: `BuildNativeLlmConfig`, the agent's configuration plus the system prompt and the tools) and the call-time extensions of `LlmProviderExtensions` (no task override, a call override). `ExecutionOrchestrator` drives them:
+The cascade is fused exactly once per turn by `LlmConfigResolver.Resolve`. On the chat-client path, `ChatOptionsComposer` calls it on the agent's configuration and the task's override, then translates the merged configuration onto the `ChatOptions` field by field: it merges nothing itself, and each field reaches the provider as written. The other call sites have no chat client and call it as they are: `LegacyTextAgentLoop` and `OutputValidationCoordinator` (base: the agent's configuration), and `NativeToolCallingAgentLoop` (base: `BuildNativeLlmConfig`, the agent's configuration plus the system prompt and the tools). `ExecutionOrchestrator` drives them:
 
 1. Legacy text-based `[TOOL_CALL]` loop — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
 2. Native tool-calling loop — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` seeds from `agent.LlmConfig`, so the model name and Thinking config survive the entry to the native path; an agent without one gets a configuration that names no model (`LlmConfig.OnProfile()`), and the provider runs the call on its own.
@@ -252,6 +254,5 @@ The 6 process strategies (Sequential, Hierarchical, Autonomous, Graph, Parallel,
 - Fusion: `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
 - Wire translation: `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtual — Qwen, OpenRouter and Together AI override it and call the base for `response_format`); `AnthropicLlmProvider` and `OllamaLlmProvider` for their own dialects
 - YAML mapping: `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper.MapResponseFormat`
-- Call-time extensions: `Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions`
 - Plan / spec: the maintainers' archive (LLM-RESPONSE-FORMAT plan)
 - DeepSeek API doc: https://api-docs.deepseek.com/api/create-chat-completion

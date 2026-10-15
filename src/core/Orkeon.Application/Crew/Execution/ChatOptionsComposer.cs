@@ -85,7 +85,7 @@ internal sealed class ChatOptionsComposer
 
         // The task's llm_override is merged once, by the resolver, over the agent's configuration.
         ApplyLlmConfig(options, LlmConfigResolver.Resolve(
-            agent.LlmConfig ?? LlmConfig.OnProfile(), task.LlmOverride, callOverride: null));
+            agent.LlmConfig ?? LlmConfig.OnProfile(), task.LlmOverride));
 
         return (options, availableTools);
     }

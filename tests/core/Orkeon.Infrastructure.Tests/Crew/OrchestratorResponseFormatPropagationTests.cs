@@ -15,6 +15,7 @@ namespace Orkeon.Infrastructure.Tests.Crew;
 public class OrchestratorResponseFormatPropagationTests
 {
     [Fact]
+    [Trait("BR", "CH-08")]
     public void TaskOverride_JsonObject_TakesPrecedenceOverAgentText()
     {
         // Arrange — agent says text, task says json_object (extraction case)
@@ -31,8 +32,7 @@ public class OrchestratorResponseFormatPropagationTests
         // Act — same fusion the orchestrator performs before each ChatAsync
         var effective = LlmConfigResolver.Resolve(
             baseConfig: agentConfig,
-            taskOverride: task.LlmOverride,
-            callOverride: null);
+            taskOverride: task.LlmOverride);
 
         // Assert — task override wins
         Assert.NotNull(effective.ResponseFormat);
@@ -40,6 +40,7 @@ public class OrchestratorResponseFormatPropagationTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void NoTaskOverride_AgentResponseFormatStays()
     {
         var agentConfig = LlmConfig.Create("deepseek-chat") with
@@ -51,12 +52,13 @@ public class OrchestratorResponseFormatPropagationTests
             .ExpectedOutput("text")
             .Build();
 
-        var effective = LlmConfigResolver.Resolve(agentConfig, task.LlmOverride, null);
+        var effective = LlmConfigResolver.Resolve(agentConfig, task.LlmOverride);
 
         Assert.Equal("json_object", effective.ResponseFormat!.Type);
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void NeitherSet_EffectiveResponseFormatIsNull()
     {
         var agentConfig = LlmConfig.Create("deepseek-chat");
@@ -65,7 +67,7 @@ public class OrchestratorResponseFormatPropagationTests
             .ExpectedOutput("o")
             .Build();
 
-        var effective = LlmConfigResolver.Resolve(agentConfig, task.LlmOverride, null);
+        var effective = LlmConfigResolver.Resolve(agentConfig, task.LlmOverride);
 
         Assert.Null(effective.ResponseFormat);
     }

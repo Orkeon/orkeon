@@ -55,6 +55,12 @@ Types and members with no caller left in the framework, the REPL or the examples
 - **Training subsystem** (decision 9): `AddOrkeonTraining`, `TrainingExtensions` and the Application,
   Infrastructure and Domain `Training/` folders. Migration: remove any call to `AddOrkeonTraining`; Evaluation
   (`IEvaluationSuite`, the evaluators, the `Evaluation` section, `IBenchmarkRunner`) stays.
+- **Call override of the LLM cascade** (decision 10): the cascade stops at the task. `LlmProviderExtensions`
+  (`GenerateAsync` / `ChatAsync` with a `LlmConfigOverride`), `LlmConfigOverride.ForResponseFormat` and the
+  `callOverride` parameter are removed; `LlmConfigResolver.Resolve` takes two arguments. Migration: a call passes
+  its own `LlmConfig`, starting from `provider.BaseConfig`
+  (`(provider.BaseConfig ?? LlmConfig.OnProfile()) with { ResponseFormat = ... }`); `Resolve(baseConfig, taskOverride)`;
+  `new LlmConfigOverride { ResponseFormat = ... }` instead of `ForResponseFormat(...)`.
 - **`TaskStatus.Blocked`**: the value no transition reached. Migration: use `Pending` for a task that waits on its
   dependencies.
 

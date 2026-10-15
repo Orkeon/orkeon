@@ -22,10 +22,11 @@ public class CrewTaskLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void SetLlmOverride_AssignsValue_WhenCalledBeforeStart()
     {
         var task = MinimalTask().Build();
-        var ov = LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject());
+        var ov = new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject() };
 
         task.SetLlmOverride(ov);
 
@@ -34,10 +35,11 @@ public class CrewTaskLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public void SetLlmOverride_AcceptsNull_ToClear()
     {
         var task = MinimalTask().Build();
-        task.SetLlmOverride(LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject()));
+        task.SetLlmOverride(new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject() });
         task.SetLlmOverride(null);
         Assert.Null(task.LlmOverride);
     }

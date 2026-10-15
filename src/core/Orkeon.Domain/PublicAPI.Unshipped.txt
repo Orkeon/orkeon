@@ -1303,3 +1303,6 @@ const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> double
 *REMOVED*virtual Orkeon.Domain.Training.TrainingTask.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Domain.Training.TrainingTask.Equals(Orkeon.Domain.Training.TrainingTask? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Training.TrainingTask.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.ForResponseFormat(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat! fmt) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride!
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! baseConfig, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? taskOverride, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? callOverride) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! baseConfig, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? taskOverride) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!

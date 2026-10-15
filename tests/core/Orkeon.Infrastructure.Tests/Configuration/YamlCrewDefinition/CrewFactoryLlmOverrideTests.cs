@@ -82,11 +82,12 @@ public class CrewFactoryLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
     public async Task TaskLlmOverride_ResponseFormat_PropagatesToCrewTask()
     {
         var (factory, taskRepo) = BuildFactory();
         var config = BuildConfigWithTaskOverride(
-            LlmConfigOverride.ForResponseFormat(LlmResponseFormat.JsonObject()));
+            new LlmConfigOverride { ResponseFormat = LlmResponseFormat.JsonObject() });
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
