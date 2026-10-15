@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — System.Security.Cryptography.Pkcs pinned to 10.0.13
+
+Two .NET denial-of-service advisories published on 2026-10-13, GHSA-846f-f764-76mx (high,
+NU1903) and GHSA-2fmv-rv2c-59x7 (moderate, NU1902), cover System.Security.Cryptography.Pkcs
+up to 10.0.12 and 9.0.20. Orkeon took it transitively, 10.0.0 through MimeKit and 9.0.18
+through Microsoft.Data.SqlClient, so every package and installer carrying the e-mail or
+data tools shipped a vulnerable version. It is now pinned to 10.0.13 in
+`Directory.Packages.props`, through a direct reference in `Orkeon.Tools.Data`,
+`Orkeon.Tools.Email` and the `Orkeon.Tools` package.
+
 ### Removed — public surfaces nothing called, third pass **[breaking]**
 
 Types and members with no caller left in the framework, the REPL or the examples (GAP-47).

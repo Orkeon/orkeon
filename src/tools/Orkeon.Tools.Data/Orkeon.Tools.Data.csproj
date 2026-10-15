@@ -31,6 +31,8 @@
     <!-- Security pin (NU1903 / CVE-2025-6965): force the patched native SQLite 3.50.3. See Directory.Packages.props. -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
+    <!-- Security pin (NU1903 / GHSA-846f-f764-76mx): SqlClient asks for a vulnerable Pkcs. See Directory.Packages.props. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="MySqlConnector" />
     <PackageReference Include="MongoDB.Driver" />
