@@ -124,7 +124,8 @@ public class OpenTelemetryIntegrationTests
         });
         _fixture.WithMockProviders(services);
         using var exporter = new CollectingExporter();
-        services.ConfigureOpenTelemetryMeterProvider(b => b.AddReader(new BaseExportingMetricReader(exporter)));
+        using var reader = new BaseExportingMetricReader(exporter);
+        services.ConfigureOpenTelemetryMeterProvider(b => b.AddReader(reader));
 
         var infrastructure = OpenTelemetryIntegrationTestsFixture.CreateServicesWithInfrastructure();
 

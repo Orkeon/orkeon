@@ -9,7 +9,8 @@ namespace Orkeon.Application.Telemetry;
 /// Spans of a crew run: one <c>crew.run</c> and one <c>task.run</c> per task. The run's scope is
 /// ambient (one per nested run, given back to the caller on dispose) and holds the run span and the
 /// task spans. A task span is started without being current; only <see cref="EnterTask"/> makes it
-/// current, for the flow that works on the task. Outside a run, or with no listener, nothing is done.
+/// current, for the flow that works on the task. Outside a run nothing is done; with no listener no span is
+/// started, but the crew and its tasks are still counted on the <c>Orkeon</c> meter.
 /// </summary>
 public static class CrewRunTracing
 {

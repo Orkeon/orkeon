@@ -12,6 +12,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Telemetry;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 
 namespace Orkeon.Infrastructure.Tests.Orchestration;
@@ -57,7 +58,7 @@ public sealed class RunMetricsKickoffTests
     public async Task ShouldCountTheCrewOnceAndEachTask_WhenACrewOfTwoTasksCompletes()
     {
         var name = NewName();
-        using var capture = new Capture(name);
+        using var capture = Capture(name);
         await using var container = Host(Vendor());
         await using var scope = container.CreateAsyncScope();
 
@@ -92,7 +93,7 @@ public sealed class RunMetricsKickoffTests
     public async Task ShouldCountFailed_WhenATaskFails()
     {
         var name = NewName();
-        using var capture = new Capture(name);
+        using var capture = Capture(name);
         await using var container = Host(FailingReviewVendor());
         await using var scope = container.CreateAsyncScope();
 
@@ -108,7 +109,7 @@ public sealed class RunMetricsKickoffTests
     public async Task ShouldCountCancelled_WhenADependencyFailed()
     {
         var name = NewName();
-        using var capture = new Capture(name);
+        using var capture = Capture(name);
         await using var container = Host(FailingReviewVendor());
         await using var scope = container.CreateAsyncScope();
 
@@ -125,7 +126,7 @@ public sealed class RunMetricsKickoffTests
     {
         var okName = NewName();
         var koName = NewName();
-        using var capture = new Capture(okName, koName);
+        using var capture = Capture(okName, koName);
         await using var container = Host(FailingReviewVendor());
         await using var scope = container.CreateAsyncScope();
 
@@ -147,7 +148,7 @@ public sealed class RunMetricsKickoffTests
     public async Task ShouldCountTheCrewAndItsTasks_WhenNoActivityListenerIsPresent()
     {
         var name = NewName();
-        using var capture = new Capture(name);
+        using var capture = Capture(name);
         Assert.False(OrkeonActivitySources.Crew.HasListeners());
         Assert.False(OrkeonActivitySources.Task.HasListeners());
         await using var container = Host(Vendor());
@@ -167,7 +168,7 @@ public sealed class RunMetricsKickoffTests
     public async Task ShouldCountCancelledAndBringActiveBackToZero_WhenTheRunIsCancelledByItsToken()
     {
         var name = NewName();
-        using var capture = new Capture(name);
+        using var capture = Capture(name);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         var vendor = new MockLlmProvider { Name = "vendor" };
         vendor.SetChatFunc((_, _) =>
@@ -234,60 +235,6 @@ public sealed class RunMetricsKickoffTests
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
     }
 
-    private sealed record Sample(string Instrument, double Value, IReadOnlyDictionary<string, string?> Tags)
-    {
-        public string? Tag(string key) => Tags.TryGetValue(key, out var v) ? v : null;
-    }
-
-    /// <summary>Listens to the Orkeon meter and keeps what carries one of the crew names.</summary>
-    private sealed class Capture : IDisposable
-    {
-        private readonly MeterListener _listener = new();
-        private readonly Lock _gate = new();
-        private readonly List<Sample> _all = [];
-        private readonly Dictionary<string, string?> _units = [];
-        private readonly HashSet<string> _names;
-
-        public Capture(params string[] crewNames)
-        {
-            _names = [.. crewNames];
-            _listener.InstrumentPublished = (instrument, l) =>
-            {
-                if (instrument.Meter.Name != OrkeonMeter.Name)
-                    return;
-                lock (_gate)
-                    _units[instrument.Name] = instrument.Unit;
-                l.EnableMeasurementEvents(instrument);
-            };
-            _listener.SetMeasurementEventCallback<long>((i, v, t, _) => Add(i, v, t));
-            _listener.SetMeasurementEventCallback<double>((i, v, t, _) => Add(i, v, t));
-            _listener.Start();
-        }
-
-        public IReadOnlyList<Sample> All
-        {
-            get { lock (_gate) return [.. _all]; }
-        }
-
-        public List<Sample> Of(string instrument) => [.. All.Where(m => m.Instrument == instrument)];
-
-        public string? UnitOf(string instrument)
-        {
-            lock (_gate)
-                return _units.GetValueOrDefault(instrument);
-        }
-
-        private void Add(Instrument instrument, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-        {
-            var map = new Dictionary<string, string?>();
-            foreach (var tag in tags)
-                map[tag.Key] = tag.Value?.ToString();
-            if (!map.TryGetValue("orkeon.crew.name", out var crew) || crew is null || !_names.Contains(crew))
-                return;
-            lock (_gate)
-                _all.Add(new Sample(instrument.Name, value, map));
-        }
-
-        public void Dispose() => _listener.Dispose();
-    }
+    private static MeterRecorder Capture(params string[] crewNames) =>
+        new(OrkeonMeter.Name, "orkeon.crew.name", crewNames);
 }

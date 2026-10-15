@@ -128,7 +128,7 @@ public class CrewPlannerTests
 
         await CrewPlanner.Create(llm, s_parser).CreatePlanAsync(TwoTasks().Context, Ct);
 
-        Assert.Equal(0.3,Assert.Single(llm.Configs)!.Temperature);
+        Assert.Equal(0.3, Assert.Single(llm.Configs)!.Temperature);
     }
 
     [Fact]

@@ -7,7 +7,6 @@ public class BenchmarkRunnerTests
     private readonly BenchmarkRunnerTestsFixture _fixture = new();
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldRunMultipleTimes_WhenRunsPerCaseIsSet()
     {
@@ -25,7 +24,6 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldCalculateMeanAndStdDev_WhenScoresVary()
     {
@@ -55,7 +53,6 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldProducePerCaseResults_WhenMultipleCasesExist()
     {
@@ -76,7 +73,6 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldContainOverallStats_WhenAccessingSummary()
     {
@@ -92,7 +88,6 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldIncludeLlmEvaluators_WhenNoClientIsAvailable()
     {
@@ -109,7 +104,6 @@ public class BenchmarkRunnerTests
     }
 
     [Fact]
-
     [Trait("BR", "CH-08")]
     public async Task ShouldProduceEmptyReport_WhenDatasetIsEmpty()
     {

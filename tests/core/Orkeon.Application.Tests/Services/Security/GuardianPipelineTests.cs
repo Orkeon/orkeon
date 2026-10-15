@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Services.Security;
+using Orkeon.Application.Telemetry;
 using Orkeon.Application.Tests.Telemetry;
+using Orkeon.Tests.Shared.Telemetry;
 using Orkeon.Domain.Security;
 
 namespace Orkeon.Application.Tests.Services.Security;
@@ -225,10 +227,10 @@ public class GuardianPipelineTests
 
     // -- CH-02: a block or a warning counts a security event, with no audit logger --
 
-    private static async System.Threading.Tasks.Task<(OrkeonMeterRecorder.Measurement Event, GuardResult Result)> RunUnaudited(
+    private static async System.Threading.Tasks.Task<(MeterRecorder.Measurement Event, GuardResult Result)> RunUnaudited(
         Func<GuardContext, GuardResult> check, string tool)
     {
-        using var recorder = new OrkeonMeterRecorder();
+        using var recorder = new MeterRecorder(OrkeonMeter.Name);
         var pipeline = BuildPipeline();
         pipeline.AddGuard(GuardPhase.ToolExecution, new ScriptedGuardian(check));
 
@@ -236,7 +238,7 @@ public class GuardianPipelineTests
             new GuardContext { Phase = GuardPhase.ToolExecution, CrewId = "crew-1", ToolName = tool },
             TestContext.Current.CancellationToken);
 
-        return (Assert.Single(recorder.For("orkeon.security.events", tool)), result);
+        return (Assert.Single(recorder.For("orkeon.security.events", "orkeon.tool.name", tool)), result);
     }
 
     [Fact]

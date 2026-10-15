@@ -114,7 +114,7 @@ dotnet_diagnostic.CA5394.severity = none
 
 # CA2201 (do not raise reserved exception types): error-handling tests deliberately
 # construct/throw the base Exception / SystemException types because the code under
-# test (ErrorClassifier, PatternMatchingErrorHandler, etc.) classifies arbitrary
+# test (PatternMatchingErrorHandler, etc.) classifies arbitrary
 # exceptions INCLUDING the base types — narrowing the type would change what the
 # test exercises. Reserved-exception use is the test subject here, not a smell.
 dotnet_diagnostic.CA2201.severity = none
