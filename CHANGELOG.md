@@ -134,6 +134,14 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Added — a version directive `tsc` accepts: `// @orkeon-script 1.0`
+
+The only directive form, `/// <reference orkeon-script="1.0" />`, is a TS1084 error for `tsc`,
+which then skips its semantic pass: every project that type-checks its `.ork.ts` scripts had to
+strip the line first. The runtime also reads `// @orkeon-script 1.0`, a plain line comment, with
+the same validation; when a script carries both, the reference form wins. `orkeon forge` generates
+the new form. Existing scripts keep working unchanged.
+
 ### Added — `SessionStateKeys.DefaultPermissionMode`, the session key the console shares with scripted commands
 
 The console read and cycled the permission mode under a private constant, and a product's `/mode`

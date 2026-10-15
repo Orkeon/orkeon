@@ -42,7 +42,7 @@ src/
     │   ├── Exceptions/           ← les exceptions typées du runtime (StateMutationOutsideWithException, …)
     │   ├── Internal/             ← JsHostError, fabriques de trampolines JS
     │   ├── Configuration/        ← ScriptingLimitsOptions, ScriptingToolchainOptions
-    │   ├── Versioning/           ← la directive `/// <reference orkeon-script="1.0" />`
+    │   ├── Versioning/           ← la directive `/// <reference orkeon-script="1.0" />` ou `// @orkeon-script 1.0`
     │   ├── Telemetry/            ← ScriptingActivitySource
     │   ├── Testing/              ← doublures LLM / outil (non exposées aux scripts)
     │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
@@ -106,7 +106,7 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 | Formes littérales `stateMachine` / `stateGraph` | `fsm.d.ts`, `graph.d.ts` |
 | `onError`, `ErrorAction`, codes d'erreur | `agent.d.ts`, `errors.d.ts` |
 | Les globales échangées entre le runner et le script (`crew`, `inputs`, `result`) | `globals.d.ts` |
-| La directive de version `/// <reference orkeon-script="1.0" />` | `orkeon-script.d.ts` |
+| La directive de version `/// <reference orkeon-script="1.0" />` ou `// @orkeon-script 1.0` | `orkeon-script.d.ts` |
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
 | Namespace intégré `tools.X(...)` | `tools.d.ts` |
@@ -237,9 +237,13 @@ esbuild présent sur la machine — `npm install -g esbuild` (il arrive sur le `
 binaire désigné par `ORKEON_ESBUILD_PATH` ou `EsbuildPath`. Rien n'est téléchargé au premier
 lancement. Les crews YAML n'en ont jamais besoin.
 
-Un script peut commencer par `/// <reference orkeon-script="1.0" />`. La directive est
-facultative ; présente, une version que le runtime ne prend pas en charge (seule `1.0`
-aujourd'hui) fait échouer le run avec `ScriptVersionMismatchError` avant toute exécution.
+Un script peut commencer par `/// <reference orkeon-script="1.0" />`, ou par
+`// @orkeon-script 1.0`, la forme que `tsc` accepte : il rejette la forme référence (TS1084) puis
+saute sa passe sémantique, si bien qu'un projet qui vérifie les types de ses scripts emploie le
+commentaire de ligne, que génère `orkeon forge`. La directive est facultative ; présente, une
+version que le runtime ne prend pas en charge (seule `1.0` aujourd'hui) fait échouer le run avec
+`ScriptVersionMismatchError` avant toute exécution. Un script qui porte les deux formes est lu par
+sa forme référence.
 
 ## Limites V1
 
