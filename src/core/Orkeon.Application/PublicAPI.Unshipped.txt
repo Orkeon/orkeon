@@ -2316,3 +2316,6 @@ static Orkeon.Application.Telemetry.OrkeonMeter.RecordSecurityEvent(string! kind
 *REMOVED*virtual Orkeon.Application.Training.TrainingTask.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Application.Training.TrainingTask.Equals(Orkeon.Application.Training.TrainingTask? other) -> bool
 *REMOVED*virtual Orkeon.Application.Training.TrainingTask.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.Execution.NativeToolCallTranscript
+static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.AssistantTurn(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Text.Json.JsonElement responseBody) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!
+static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.TruncateResult(string! result, string! toolName) -> string!

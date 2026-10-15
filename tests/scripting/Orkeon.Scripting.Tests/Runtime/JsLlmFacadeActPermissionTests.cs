@@ -26,6 +26,38 @@ public sealed class JsLlmFacadeActPermissionTests
     private static Jint.Native.JsValue EvalOptions(Engine engine, string js) => engine.Evaluate(js);
 
     [Fact]
+    public async Task Deny_of_one_call_answers_it_in_the_tool_role_and_still_runs_the_allowed_one()
+    {
+        using var engine = new Engine();
+        var write = new RecordingTool("file_write");
+        var read = new RecordingTool("file_read");
+        var body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
+                   "{\"id\":\"w1\",\"type\":\"function\",\"function\":{\"name\":\"file_write\",\"arguments\":\"{}\"}}," +
+                   "{\"id\":\"r1\",\"type\":\"function\",\"function\":{\"name\":\"file_read\",\"arguments\":\"{}\"}}]}}]}";
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = body },
+            new LlmResponse { Content = "read only", RawResponseBody = null },
+        });
+        var gate = new ScriptedGate((toolName, mode) => toolName == "file_write"
+            ? PermissionVerdict.Deny($"tool '{toolName}' is not permitted in mode '{mode}'.")
+            : PermissionVerdict.Allow());
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { write, read }, new JsLlmActGuards { PermissionGate = gate });
+
+        var result = await facade.ActAsync(engine, "write then read", null);
+
+        Assert.Equal("read only", result.Get("output").AsString());
+        Assert.Equal(0, write.CallCount);
+        Assert.Equal(1, read.CallCount);
+        var tools = provider.MessagesPerCall[1].Where(m => m.Role == "tool").ToList();
+        Assert.Equal("w1,r1", string.Join(",", tools.Select(m => m.ToolCallId)));
+        Assert.StartsWith("DENIED:", tools[0].Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("DENIED:", tools[1].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Deny_skips_the_tool_and_feeds_a_DENIED_result_back_to_the_model()
     {
         using var engine = new Engine();
@@ -48,7 +80,7 @@ public sealed class JsLlmFacadeActPermissionTests
         Assert.Equal("default", gate.LastMode); // no permissionMode option → "default"
         // The refusal came back to the model as the tool result of turn 2.
         var turn2 = provider.MessagesPerCall[1];
-        Assert.Contains(turn2, m => m.Role == "user" && m.Content.Contains("DENIED:", StringComparison.Ordinal));
+        Assert.Contains(turn2, m => m.Role == "tool" && m.Content.Contains("DENIED:", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -135,7 +167,7 @@ public sealed class JsLlmFacadeActPermissionTests
         Assert.Equal(ToolAccess.Unspecified, gate.LastDeclaredAccess);
         // The gate allowed it, but the tool does not exist: the loop feeds an ERROR back.
         var turn2 = provider.MessagesPerCall[1];
-        Assert.Contains(turn2, m => m.Role == "user" && m.Content.Contains("ERROR:", StringComparison.Ordinal));
+        Assert.Contains(turn2, m => m.Role == "tool" && m.Content.Contains("ERROR:", StringComparison.Ordinal));
     }
 
     [Fact]

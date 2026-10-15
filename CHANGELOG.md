@@ -134,6 +134,24 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Fixed — `ctx.llm.act` calls tools on every provider, all the calls of a turn
+
+`act` read tool calls in the OpenAI shape only, ran the first call of a turn and sent its result
+back as a user turn cut at 4 000 characters. With the Anthropic provider no call was ever found,
+so the model's first answer was the final one; the other calls of a turn were dropped without a
+word; and a `file_read` result lost all but 4 000 of its 32 000 characters.
+
+- The calls are read with the framework's parsers, from the Anthropic Messages body or the
+  OpenAI body, buffered or rebuilt after a stream; a call the parser cannot read is the final
+  answer, where a call without its `function` used to throw.
+- Every call runs, in order, each through the permission gate and the tool-call budget, and the
+  turn is replayed in the provider's tool protocol: the assistant turn with its calls, then one
+  `tool` message per call.
+- A result is cut once, at `AgentDefaults.ResolveMaxToolResultLength`, with the framework's
+  notice; a failed provider turn resolves `output` to `<undefined-llm:<error>>`, as `complete`.
+- `NativeToolCallTranscript` (Application) holds the assistant turn and the bound, shared by the
+  C# agent loop and `act`.
+
 ### Fixed — *Verify what you install* is measured on `v1.0.0-rc.5` and says who signs what
 
 The guide printed `v1.0.0-rc.3` outputs and said GitHub's Sigstore instance signs the build

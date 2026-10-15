@@ -322,8 +322,10 @@ public sealed class DslTypingsRuntimeAlignmentTests
         Assert.Contains("word_count", provider.OfferedTools);
         var output = result.tasks[0].output!.ToString()!;
         Assert.StartsWith("final: ", output, StringComparison.Ordinal);
-        Assert.Contains("[tool:word_count]", output, StringComparison.Ordinal);
         Assert.Contains("\"words\":3", output, StringComparison.Ordinal);
+        var resultTurn = provider.Turns[1][^1];
+        Assert.Equal("tool", resultTurn.Role);
+        Assert.Equal("c1", resultTurn.ToolCallId);
     }
 
     [Fact]
