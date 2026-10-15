@@ -68,6 +68,7 @@ a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REP
 | `--strict-commands`               | Équivalent à `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).        |
 | `--settings <chemin>`             | Chemin d'appsettings explicite (répétable — les fichiers suivants surchargent les précédents). |
 | `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. |
+| `--allow-external-mounts`         | Un `--mount` hors du répertoire de travail est lisible (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), comme pour `orkeon run` ; sans elle, un tel montage est refusé à l'accès. Les dossiers de `--commands-dir` et `--crews-dir` sont lisibles où qu'ils soient. |
 | `--crews-dir <chemin>`            | Ajoute un répertoire de résolution de crews (répétable ; monté en lecture seule comme `/crews`, `/crews-1`, …) — ce qui rend `script-host` / `runCrewAsync("nom")` résoluble. |
 
 Chaque option à valeur accepte `--option valeur` et `--option=valeur`. `orkeon-repl` prend aussi

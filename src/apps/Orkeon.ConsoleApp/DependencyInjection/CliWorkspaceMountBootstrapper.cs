@@ -25,10 +25,18 @@ internal static class CliWorkspaceMountBootstrapper
     /// Registers a PostConfigure callback that appends each <paramref name="mountSpecs"/> entry to
     /// <see cref="FileSystemOptions.Mounts"/>. Safe to call with an empty list (no-op).
     /// </summary>
+    /// <param name="services">The REPL's services.</param>
+    /// <param name="mountSpecs">The <c>--mount</c> specs.</param>
+    /// <param name="allowExternalMounts">
+    /// <c>--allow-external-mounts</c> or <c>ORKEON_ALLOW_EXTERNAL_MOUNTS</c>: the folders of the
+    /// specs are readable outside the working directory, as for a runner (GAP-49, decision 3).
+    /// Without it such a mount stays mounted and is refused at access.
+    /// </param>
     [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: the physical segment of a user-supplied --mount spec is resolved to absolute before being handed to the VFS mount parser. It is registered as a mount root, not used for direct framework I/O.")]
     public static IServiceCollection AddCliWorkspaceMounts(
         this IServiceCollection services,
-        IReadOnlyList<string> mountSpecs)
+        IReadOnlyList<string> mountSpecs,
+        bool allowExternalMounts = false)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(mountSpecs);
@@ -46,6 +54,19 @@ internal static class CliWorkspaceMountBootstrapper
                     opts.Mounts.Add(entry);
             }
         });
+
+        if (allowExternalMounts)
+        {
+            var bases = resolved.Select(FileSystemMount.TryGetBasePath).OfType<string>().ToArray();
+            services.PostConfigure<PathSecurityOptions>(opts =>
+            {
+                foreach (var basePath in bases)
+                {
+                    if (!opts.AdditionalAllowedDirectories.Contains(basePath))
+                        opts.AdditionalAllowedDirectories.Add(basePath);
+                }
+            });
+        }
 
         return services;
     }

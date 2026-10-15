@@ -66,6 +66,7 @@ TUI hides at startup.
 | `--strict-commands`               | Equivalent to `FailFastOnInvalidScript=true + ContinueOnConflict=false` (CI).       |
 | `--settings <path>`               | Explicit appsettings path (repeatable — later files override earlier ones).         |
 | `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable.         |
+| `--allow-external-mounts`         | A `--mount` outside the working directory is readable (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), as for `orkeon run`; without it, such a mount is refused at access. The `--commands-dir` and `--crews-dir` folders are readable wherever they are. |
 | `--crews-dir <path>`              | Add a crew-resolution directory (repeatable; mounted read-only as `/crews`, `/crews-1`, …) — what makes `script-host` / `runCrewAsync("name")` resolvable. |
 
 Every value flag accepts `--flag value` and `--flag=value`. `orkeon-repl` also takes `--ui` and

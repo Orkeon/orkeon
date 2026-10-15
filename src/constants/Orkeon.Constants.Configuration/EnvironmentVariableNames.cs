@@ -94,8 +94,8 @@ public static class EnvironmentVariableNames
     /// </summary>
     public static IReadOnlyList<EnvironmentVariableEntry> ReadByName { get; } =
     [
-        new(AllowExternalMounts, [Cli], "`1`, `true` or `yes`",
-            "Stands for `--allow-external-mounts` on every `orkeon run` and `orkeon rag`: a `--mount` may point outside " +
+        new(AllowExternalMounts, [Cli, Repl], "`1`, `true` or `yes`",
+            "Stands for `--allow-external-mounts` on every `orkeon run`, `orkeon rag` and `orkeon-repl`: a `--mount` may point outside " +
             "the working directory. A sandboxed deployment sets it once, its own boundary being the isolation."),
         new(Debug, [Cli], "`1`, `true` or `yes`",
             "An unexpected error prints its exception — the chain of types and the stack — instead of one line."),

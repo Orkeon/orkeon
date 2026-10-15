@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.ConsoleApp.Tests.DependencyInjection;
 
@@ -27,6 +29,37 @@ public sealed class CliWorkspaceMountBootstrapperTests
 
     [Fact]
     public void Empty_list_is_a_no_op() => Assert.Empty(Resolve());
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void An_external_mount_is_readable_under_the_flag_only(bool allowExternalMounts)
+    {
+        // GAP-49, decision 3: a --mount outside the working directory, as for a runner — readable
+        // under --allow-external-mounts, mounted and refused at access without it.
+        var external = Path.Combine(Path.GetTempPath(), "orkeon-ext-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(external);
+        try
+        {
+            File.WriteAllText(Path.Combine(external, "a.txt"), "a");
+            var services = new ServiceCollection();
+            services.AddOptions<FileSystemOptions>();
+            services.AddOptions<PathSecurityOptions>();
+            services.AddCliWorkspaceMounts([$"{external}:/workspace:rw"], allowExternalMounts);
+            using var provider = services.BuildServiceProvider();
+            var security = provider.GetRequiredService<IOptions<PathSecurityOptions>>();
+
+            Assert.Single(provider.GetRequiredService<IOptions<FileSystemOptions>>().Value.Mounts);
+            Assert.Equal(allowExternalMounts, security.Value.AdditionalAllowedDirectories.Contains(Path.GetFullPath(external)));
+            var validation = new PathValidator(security, NullLogger<PathValidator>.Instance)
+                .ValidatePath(Path.Combine(external, "a.txt"));
+            Assert.Equal(allowExternalMounts, validation.IsAllowed);
+        }
+        finally
+        {
+            try { Directory.Delete(external, true); } catch { /* best effort */ }
+        }
+    }
 
     [Fact]
     public void A_windows_spec_keeps_its_drive_letter()

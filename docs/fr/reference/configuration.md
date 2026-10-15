@@ -1909,7 +1909,7 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 
 | Variable | Lue par | Valeur | Effet |
 |---|---|---|---|
-| `ORKEON_ALLOW_EXTERNAL_MOUNTS` | `orkeon` | `1`, `true` ou `yes` | Vaut `--allow-external-mounts` pour chaque `orkeon run` et chaque `orkeon rag` : un `--mount` peut désigner un dossier hors du répertoire courant. Un déploiement en bac à sable la pose une fois, sa propre frontière tenant lieu d'isolation. |
+| `ORKEON_ALLOW_EXTERNAL_MOUNTS` | `orkeon`, `orkeon-repl` | `1`, `true` ou `yes` | Vaut `--allow-external-mounts` pour chaque `orkeon run`, chaque `orkeon rag` et `orkeon-repl` : un `--mount` peut désigner un dossier hors du répertoire courant. Un déploiement en bac à sable la pose une fois, sa propre frontière tenant lieu d'isolation. |
 | `ORKEON_DEBUG` | `orkeon` | `1`, `true` ou `yes` | Une erreur inattendue imprime son exception — la chaîne des types et la pile — au lieu d'une ligne. |
 | `ORKEON_MCP_SERVE` | `orkeon` | posée par `orkeon mcp serve`, jamais à la main | Marque chaque processus que lance `orkeon mcp serve`. Sous elle, `orkeon mcp serve` refuse de démarrer : des réglages qui le rangent parmi leurs propres serveurs MCP ne peuvent pas le lancer en boucle. |
 | `ORKEON_ESBUILD_PATH` | `orkeon`, `orkeon-host`, `orkeon-repl` | le chemin d'un exécutable esbuild | Où un script `.ork.ts` trouve esbuild, après `Orkeon:Scripting:Toolchain:EsbuildPath` et avant la copie livrée à côté du binaire. Les lanceurs d'une installation la posent sur l'esbuild qu'ils livrent quand elle est absente. |

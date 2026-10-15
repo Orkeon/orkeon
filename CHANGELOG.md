@@ -134,6 +134,22 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Added — `orkeon-repl` reads mounts outside its working directory (GAP-49, decision 3, in part)
+
+`orkeon-repl` mounted a `--mount`, `--commands-dir` or `--crews-dir` folder outside its working
+directory, then refused every access to it ("Path is outside the allowed workspace directory"):
+a product whose commands live in their own checkout had to start the REPL from a common parent.
+The REPL now follows the runners:
+
+- `--allow-external-mounts` (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`) makes a `--mount` outside the
+  working directory readable; without it, such a mount stays mounted and refused at access, as for
+  `orkeon run`.
+- The `--commands-dir` and `--crews-dir` folders are entries of the REPL, like the script of
+  `orkeon run`: readable wherever they are.
+
+The rest of GAP-49's decision 3 (one placement and the runners' guards for the REPL's mounts,
+declared entries in force included) is not part of this change.
+
 ### Changed — scripted commands load up to 200 files by default
 
 `Orkeon:Cli:ScriptCommands:MaxScripts` defaulted to 50: a commands folder past it lost its last
