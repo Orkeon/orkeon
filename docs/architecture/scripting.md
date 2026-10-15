@@ -186,7 +186,8 @@ pin it:
   promise timeout remains in the runtime: a root pump drains until its promise settles or its
   token fires. The sandbox's `ExecutionTimeout` (wall-clock, `Orkeon:Scripting:Limits`) bounds
   the evaluation itself and now spans a whole CLR-driven run, as it already spanned a whole
-  script (so does `MemoryLimitBytes`). A cancelled `RunAsync` leaves the loop a short grace to
+  script (so does `MemoryLimitBytes`). Its clock stops while the permission gate decides on a
+  `ctx.llm.act` tool call, since an approval channel may wait for an operator. A cancelled `RunAsync` leaves the loop a short grace to
   unwind — its `finally` blocks, `onCrewError` — before it abandons the run and releases what
   the CLR owns. A run a body opens without a `signal` of its own — `crew.runAgent`, a
   sub-crew's `run` — is a child of the run that opened it: cancelled with it, unwound inside
@@ -203,7 +204,7 @@ The sandbox limits are read from `Orkeon:Scripting:Limits` (`ScriptingLimitsOpti
 |---|---|---|
 | `MemoryLimitBytes` | `104857600` (100 MB) | Jint memory ceiling. `orkeon run --memory-limit-mb` overrides it for a procedural script; `0` or less disables it. |
 | `RecursionLimit` | `64` | Maximum JavaScript call depth. |
-| `ExecutionTimeout` | `00:00:30` | Wall-clock bound of one evaluation — a whole script, or a whole CLR-driven crew run. |
+| `ExecutionTimeout` | `00:00:30` | Wall-clock bound of one evaluation — a whole script, or a whole CLR-driven crew run; the permission gate's decisions are not counted. |
 
 The `*.cmd.ts` commands of the REPL use their own profile, `Orkeon:Cli:ScriptCommands:Limits`
 ([CLI TypeScript commands](./cli-ts-commands.md#appsettingsjson)).

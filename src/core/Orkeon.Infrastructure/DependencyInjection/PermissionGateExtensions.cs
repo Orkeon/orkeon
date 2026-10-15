@@ -21,9 +21,10 @@ public static class PermissionGateExtensions
 
     /// <summary>
     /// Registers <see cref="ModePermissionGate"/> as the <see cref="IPermissionGate"/> when
-    /// the <c>Orkeon:Security:PermissionGate</c> section enables it. <c>Interactive</c>
-    /// (default <c>false</c>) declares whether an approval channel exists; the interactive
-    /// Ask flow itself is a v2 follow-up, so hosts should leave it <c>false</c> for now.
+    /// the <c>Orkeon:Security:PermissionGate</c> section enables it. When the host registers an
+    /// <see cref="IToolApprovalChannel"/> (the REPL does), the gate puts every <c>ask</c> to it;
+    /// otherwise <c>Interactive</c> (default <c>false</c>) declares whether the caller resolves
+    /// <c>ask</c> itself, and left <c>false</c> an <c>ask</c> is a refusal.
     /// Idempotent (<c>TryAddSingleton</c> — a host-supplied gate wins).
     /// </summary>
     public static IServiceCollection AddOrkeonPermissionGate(
@@ -41,7 +42,9 @@ public static class PermissionGateExtensions
             return services;
 
         var interactive = section.GetValue("Interactive", defaults.Interactive);
-        services.TryAddSingleton<IPermissionGate>(_ => new ModePermissionGate(interactive));
+        services.TryAddSingleton<IPermissionGate>(sp => sp.GetService<IToolApprovalChannel>() is { } channel
+            ? new ModePermissionGate(channel)
+            : new ModePermissionGate(interactive));
         return services;
     }
 }
@@ -57,9 +60,9 @@ internal sealed class PermissionGateSettingsShape
     public bool Enabled { get; set; }
 
     /// <summary>
-    /// Whether an approval channel exists to ask an operator. No shipped host has one: left
-    /// <c>false</c>, a call that needs an approval is refused, and the model reads the reason as the
-    /// tool's result.
+    /// Whether the host resolves an approval itself, without an approval channel. A host that registers a
+    /// channel (orkeon-repl does) asks the operator whatever this says. Left <c>false</c> without a channel,
+    /// a call that needs an approval is refused, and the model reads the reason as the tool's result.
     /// </summary>
     public bool Interactive { get; set; }
 }

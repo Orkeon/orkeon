@@ -101,10 +101,11 @@ The permission gate is a first-class DI service, `IPermissionGate`
 (`bypassPermissions`, `plan`, `acceptEdits`, `default`, `dontAsk`), read/write classification from the
 tool's own `IBaseTool.Access` declaration (with a curated read-tool table and
 `codebase_`/`symbol_`/`index_` prefixes as fallback), fail-closed on unknown tools and unknown
-modes. There is no interactive approval yet: a call the mode does not allow is denied, and the
-model reads `DENIED: …` as the tool's answer; `Interactive` (default `false`) only changes that
-message, the approval flow itself being a follow-up. All of it sits behind
-`Orkeon:Security:PermissionGate:Enabled` (default `false`) / `:Interactive`, wired by the REPL
+modes. In `orkeon-repl`, a call the mode asks about is put to the operator (`y` once, `s` for the
+session, `n` no) through the REPL's approval channel; a call the mode refuses, or one the
+operator refuses, comes back to the model as `DENIED: …`, its answer from the tool. A host
+without a channel refuses the asks. All of it sits behind
+`Orkeon:Security:PermissionGate:Enabled` (default `false`), wired by the REPL
 and `RunnerHost` (`AddOrkeonPermissionGate`), no-op when disabled. In the TUI, Shift+Tab cycles
 the session's default mode. See [opt-in subsystems](../reference/opt-in-subsystems.md).
 

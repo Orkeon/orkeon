@@ -192,7 +192,8 @@ désormais une règle, que les reproducteurs de
   que sa promesse se règle ou que son jeton se déclenche. L'`ExecutionTimeout` du bac à sable
   (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même et couvre désormais un
   run entier piloté par le CLR, comme il couvrait déjà un script entier (`MemoryLimitBytes`
-  aussi). Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
+  aussi). Son horloge s'arrête pendant que le contrôle des permissions décide d'un appel d'outil
+  de `ctx.llm.act`, car un canal d'approbation peut attendre un opérateur. Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
   ses blocs `finally`, `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR
   possède. Un run qu'un corps ouvre sans `signal` propre — `crew.runAgent`, le `run` d'une
   sous-crew — est l'enfant du run qui l'a ouvert : annulé avec lui, déroulé dans son
@@ -209,7 +210,7 @@ par la voie script d'`orkeon run`, le runner partagé et la forge :
 |---|---|---|
 | `MemoryLimitBytes` | `104857600` (100 Mo) | Plafond mémoire de Jint. `orkeon run --memory-limit-mb` le surcharge pour un script procédural ; `0` ou moins le désactive. |
 | `RecursionLimit` | `64` | Profondeur d'appel JavaScript maximale. |
-| `ExecutionTimeout` | `00:00:30` | Borne d'horloge d'une évaluation — un script entier, ou tout un run de crew piloté par le CLR. |
+| `ExecutionTimeout` | `00:00:30` | Borne d'horloge d'une évaluation — un script entier, ou tout un run de crew piloté par le CLR ; les décisions du contrôle des permissions ne comptent pas. |
 
 Les commandes `*.cmd.ts` du REPL ont leur propre profil, `Orkeon:Cli:ScriptCommands:Limits`
 ([Commandes CLI en TypeScript](./cli-ts-commands.md#appsettingsjson)).

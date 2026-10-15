@@ -64,17 +64,20 @@ public sealed record ScriptingLimitsOptions
 
     /// <summary>
     /// Maximum wall-clock time the engine is allowed to run, in total — the time spent
-    /// waiting for a tool or a model counts. Default: <strong>30 seconds</strong>, a ceiling
-    /// for scripts of unknown provenance; a trusted long run raises it.
+    /// waiting for a tool or a model counts; the time the permission gate takes to decide,
+    /// an operator answering a tool-call approval, does not. Default: <strong>30 seconds</strong>,
+    /// a ceiling for scripts of unknown provenance; a trusted long run raises it.
     /// </summary>
     /// <remarks>
     /// Strict <c>Untrusted</c> profile (see R2.6 / SEC-009).
     ///
-    /// IMPORTANT: this configures Jint's <c>TimeoutInterval</c>, which is
-    /// <strong>wall-clock</strong>, not JS-bytecode CPU time. Time spent
+    /// IMPORTANT: this limit is <strong>wall-clock</strong>, not JS-bytecode CPU time,
+    /// measured the way Jint's <c>TimeoutInterval</c> measures it. Time spent
     /// awaiting a C# Task from JS (e.g. <c>await Tools.indexCodebase(...)</c>)
-    /// IS counted — the engine's internal Stopwatch keeps ticking while the
-    /// host runs async work.
+    /// IS counted — the clock keeps ticking while the host runs async work. The one
+    /// exception is the permission gate: <c>ctx.llm.act</c> stops the clock while the gate
+    /// decides, since an approval channel may hold the call until an operator answers. The
+    /// clock belongs to the engine, so that pause holds for every agent the engine runs.
     ///
     /// This is a security ceiling that bounds how long a hostile script can pin
     /// a thread. Trusted long-running design-spec runs must <strong>opt in</strong>

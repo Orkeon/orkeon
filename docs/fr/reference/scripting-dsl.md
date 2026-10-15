@@ -214,7 +214,10 @@ de l'échec de chargement que la forme déclarative obtient pour le même nom ; 
 `onError` la lit comme `validation`. `ActOptions.system` sème un vrai message `role:"system"` qui persiste à chaque
 itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMode`
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
-permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une — déclarez
+permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une : un appel pour
+lequel le mode demande attend l'opérateur quand l'hôte a un canal d'approbation (`orkeon-repl` en
+a un), et il est refusé sinon ; le temps que la porte met à décider ne compte pas dans
+`ExecutionTimeout` — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
 streamé de chaque tour de l'assistant.
 

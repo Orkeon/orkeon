@@ -1247,7 +1247,7 @@ by `RunnerHost` — is a no-op unless `Enabled = true`.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Enabled` | boolean | `false` | Whether the gate is registered. Left `false`, no tool call is gated. |
-| `Interactive` | boolean | `false` | Whether an approval channel exists to ask an operator. No shipped host has one: left `false`, a call that needs an approval is refused, and the model reads the reason as the tool's result. |
+| `Interactive` | boolean | `false` | Whether the host resolves an approval itself, without an approval channel. A host that registers a channel (orkeon-repl does) asks the operator whatever this says. Left `false` without a channel, a call that needs an approval is refused, and the model reads the reason as the tool's result. |
 <!-- /settings -->
 
 ### `Orkeon:Dlp`
@@ -1536,7 +1536,7 @@ depth of 64 and 30 s by default.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `ExecutionTimeout` | duration | `"00:00:30"` | Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it. |
+| `ExecutionTimeout` | duration | `"00:00:30"` | Maximum wall-clock time the engine is allowed to run, in total — the time spent waiting for a tool or a model counts; the time the permission gate takes to decide, an operator answering a tool-call approval, does not. Default: 30 seconds, a ceiling for scripts of unknown provenance; a trusted long run raises it. |
 | `MemoryLimitBytes` | integer | `104857600` | Maximum cumulative memory the engine is allowed to allocate, in bytes — counted since the engine was created, not at its peak. Default: 100 MB, a ceiling for scripts of unknown provenance; a trusted run that needs more raises it. |
 | `RecursionLimit` | integer | `64` | Maximum recursion depth before the engine throws. Default: 64: it catches runaway recursion well before the .NET stack overflows and leaves room for legitimately nested script logic. A trusted script may raise it. |
 <!-- /settings -->

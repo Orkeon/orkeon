@@ -210,6 +210,9 @@ static class Program
         // Per-tool-call permission gate — config opt-in
         // (Orkeon:Security:PermissionGate:Enabled = true).
         services.AddOrkeonPermissionGate(context.Configuration);
+        // Its approval channel: a call the gate asks about is put to the operator, whose
+        // next line answers it (the read loop hands the line over).
+        services.AddConsoleToolApproval();
         // Native incremental rendering of streamed act() output — config
         // opt-in (Orkeon:Cli:ConsoleStreaming:Enabled = true). Registered here (after the
         // IConsoleAdapter choice below is declared later in this method, resolution is

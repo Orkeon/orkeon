@@ -1000,16 +1000,22 @@ public sealed partial class JsLlmFacade
         // (IBaseTool.Access) informs the verdict; unresolved tools stay
         // Unspecified and the gate classifies them fail-closed.
         var tool = session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
-        var verdict = _permissionGate is null
-            ? null
-            : await _permissionGate.CheckAsync(
+        Orkeon.Application.Interfaces.Security.PermissionVerdict? verdict = null;
+        if (_permissionGate is not null)
+        {
+            // The gate may hold the call while an operator answers an approval: that time is not
+            // the script's, so the engine's wall-clock limit stops while the gate decides.
+            using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
+            verdict = await _permissionGate.CheckAsync(
                 toolName, toolArgs, permissionMode,
                 tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
+        }
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
-            // Deny (and Ask without an interactive channel, already downgraded by the
-            // gate) becomes a motivated refusal fed back as the tool result — no
-            // exception, the model can adapt. Denied calls consume no tool-call budget.
+            // Deny (an operator's refusal included, when an approval channel answered) and an
+            // Ask the gate let through undecided become a motivated refusal fed back as the
+            // tool result — no exception, the model can adapt. Denied calls consume no
+            // tool-call budget.
             activity?.SetTag("orkeon.llm.act.permission", "denied");
             return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
         }

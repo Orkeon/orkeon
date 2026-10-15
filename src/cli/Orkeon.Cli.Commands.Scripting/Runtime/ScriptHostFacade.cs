@@ -131,7 +131,7 @@ public sealed partial class ScriptHostFacade
     /// <summary>
     /// Observes a timed-out run so a late fault never surfaces as an unobserved task exception.
     /// (Pure-JS busy loops that ignore the cooperative cancellation are eventually reaped by the
-    /// Jint sandbox's own <c>TimeoutInterval</c> — see <c>ScriptingLimitsOptions.ExecutionTimeout</c>.)
+    /// sandbox's own wall-clock limit — see <c>ScriptingLimitsOptions.ExecutionTimeout</c>.)
     /// </summary>
     private static void ObserveAbandonedRun(Task<CrewRunOutput> run)
         => _ = run.ContinueWith(

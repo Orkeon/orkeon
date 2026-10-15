@@ -14,6 +14,7 @@ using Orkeon.Infrastructure.Evaluation;
 using Orkeon.Infrastructure.MultiModal;
 using Orkeon.Infrastructure.Security.Dlp;
 using Orkeon.Infrastructure.Security.Encryption;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Infrastructure.Tests.DependencyInjection;
@@ -359,6 +360,70 @@ public class OptInSubsystemsRegistrationTests
         Assert.NotNull(provider.GetRequiredService<ITokenBudgetTracker>());
         Assert.NotNull(provider.GetRequiredService<IToolRateLimiter>());
         Assert.NotNull(provider.GetRequiredService<IKeyRotationService>());
+    }
+
+    // -------------------------------------------------------------------------
+    // Permission gate: an approval channel the host registers decides its asks
+    // -------------------------------------------------------------------------
+
+    private static IConfiguration PermissionGateConfiguration(bool enabled) => new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Orkeon:Security:PermissionGate:Enabled"] = enabled ? "true" : "false",
+        })
+        .Build();
+
+    [Fact]
+    public async Task ShouldAskTheRegisteredChannel_WhenThePermissionGateAsks()
+    {
+        // Arrange
+        var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.AllowOnce };
+        var services = NewServices();
+        services.AddSingleton<IToolApprovalChannel>(channel);
+
+        // Act
+        services.AddOrkeonPermissionGate(PermissionGateConfiguration(enabled: true));
+        using var provider = services.BuildServiceProvider();
+        var verdict = await provider.GetRequiredService<IPermissionGate>().CheckAsync(
+            "shell_command", new Dictionary<string, object?>(), "default",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+        Assert.Equal("shell_command", Assert.Single(channel.Requests).ToolName);
+    }
+
+    [Fact]
+    public async Task ShouldDenyAnAsk_WhenNoChannelIsRegistered()
+    {
+        // Arrange
+        var services = NewServices();
+
+        // Act
+        services.AddOrkeonPermissionGate(PermissionGateConfiguration(enabled: true));
+        using var provider = services.BuildServiceProvider();
+        var verdict = await provider.GetRequiredService<IPermissionGate>().CheckAsync(
+            "shell_command", new Dictionary<string, object?>(), "default",
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Contains("No interactive approval channel", verdict.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRegisterNoGate_WhenThePermissionGateIsDisabledEvenWithAChannel()
+    {
+        // Arrange
+        var services = NewServices();
+        services.AddSingleton<IToolApprovalChannel>(new StubToolApprovalChannel());
+
+        // Act
+        services.AddOrkeonPermissionGate(PermissionGateConfiguration(enabled: false));
+        using var provider = services.BuildServiceProvider();
+
+        // Assert
+        Assert.Null(provider.GetService<IPermissionGate>());
     }
 
     [Fact]

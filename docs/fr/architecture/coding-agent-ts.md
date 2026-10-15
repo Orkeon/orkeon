@@ -104,11 +104,11 @@ Le garde de permissions est un service DI de premier rang, `IPermissionGate`
 modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`, `dontAsk`), classification
 lecture/écriture depuis la déclaration `IBaseTool.Access` de l'outil lui-même (avec une table
 d'outils de lecture curée et les préfixes `codebase_`/`symbol_`/`index_` en repli), fermeture
-par défaut sur un outil inconnu et sur un mode inconnu. Il n'y a pas encore d'approbation
-interactive : un appel que le mode n'autorise pas est refusé, et le modèle lit `DENIED: …`
-comme réponse de l'outil ; `Interactive` (défaut `false`) ne change que ce message, le flux
-d'approbation lui-même étant pour plus tard. Le tout est derrière
-`Orkeon:Security:PermissionGate:Enabled` (défaut `false`) / `:Interactive`, câblé par le REPL
+par défaut sur un outil inconnu et sur un mode inconnu. Dans `orkeon-repl`, un appel pour lequel
+le mode demande est soumis à l'opérateur (`y` une fois, `s` pour la session, `n` non) par le canal
+d'approbation du REPL ; un appel que le mode refuse, ou que l'opérateur refuse, revient au modèle
+en `DENIED: …`, réponse de l'outil. Un hôte sans canal refuse les demandes. Le tout est derrière
+`Orkeon:Security:PermissionGate:Enabled` (défaut `false`), câblé par le REPL
 et `RunnerHost` (`AddOrkeonPermissionGate`), sans effet quand c'est désactivé. Dans la TUI,
 Maj+Tab fait tourner le mode par défaut de la session. Voir
 [les sous-systèmes opt-in](../reference/opt-in-subsystems.md).

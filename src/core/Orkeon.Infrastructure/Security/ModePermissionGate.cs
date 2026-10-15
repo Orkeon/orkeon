@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Tools;
 
@@ -14,8 +15,9 @@ namespace Orkeon.Infrastructure.Security;
 /// prompts for reads); <c>dontAsk</c> allows reads and denies everything else, never
 /// asking, whether or not an approval channel exists. Unknown modes
 /// fall back to <c>default</c>; unknown tools are classified as writes (fail-closed).
-/// In non-interactive sessions every <c>ask</c> degrades to a motivated deny — the model
-/// receives the refusal as the tool result and can adapt.
+/// With an approval channel (<see cref="IToolApprovalChannel"/>), every <c>ask</c> is put to the
+/// operator and comes back allowed or denied. In non-interactive sessions every <c>ask</c>
+/// degrades to a motivated deny — the model receives the refusal as the tool result and can adapt.
 /// </summary>
 public sealed class ModePermissionGate : IPermissionGate
 {
@@ -46,13 +48,27 @@ public sealed class ModePermissionGate : IPermissionGate
     };
 
     private readonly bool _isInteractive;
+    private readonly IToolApprovalChannel? _approvalChannel;
 
     /// <summary>
-    /// Creates the gate. <paramref name="isInteractive"/> declares whether an interactive
-    /// approval channel exists; headless hosts (crew runner, SDK) pass <c>false</c> so
-    /// <c>ask</c> verdicts degrade to motivated denies, aligned with the source behaviour.
+    /// Creates the gate. <paramref name="isInteractive"/> declares whether the caller resolves
+    /// <c>ask</c> verdicts itself, which then leave the gate as they are; headless hosts (crew
+    /// runner, SDK) pass <c>false</c> so <c>ask</c> verdicts degrade to motivated denies,
+    /// aligned with the source behaviour.
     /// </summary>
     public ModePermissionGate(bool isInteractive = false) => _isInteractive = isInteractive;
+
+    /// <summary>
+    /// Creates a gate that puts every <c>ask</c> to <paramref name="approvalChannel"/> and waits
+    /// for the operator: the verdict it returns is then <c>allow</c> or <c>deny</c>, never <c>ask</c>.
+    /// </summary>
+    /// <param name="approvalChannel">The channel an operator answers through.</param>
+    public ModePermissionGate(IToolApprovalChannel approvalChannel)
+    {
+        ArgumentNullException.ThrowIfNull(approvalChannel);
+        _approvalChannel = approvalChannel;
+        _isInteractive = true;
+    }
 
     /// <inheritdoc />
     public Task<PermissionVerdict> CheckAsync(
@@ -72,7 +88,8 @@ public sealed class ModePermissionGate : IPermissionGate
         var isEdit = declaredAccess == ToolAccess.Edit ||
                      (declaredAccess == ToolAccess.Unspecified && EditTools.Contains(toolName));
 
-        var verdict = Normalize(mode) switch
+        var effectiveMode = Normalize(mode);
+        var verdict = effectiveMode switch
         {
             "bypassPermissions" => PermissionVerdict.Allow(),
             "plan" => isRead
@@ -89,6 +106,9 @@ public sealed class ModePermissionGate : IPermissionGate
                 : PermissionVerdict.Ask($"tool '{toolName}' requires approval (mode 'default')."),
         };
 
+        if (verdict.Action == PermissionAction.Ask && _approvalChannel is not null)
+            return AskOperatorAsync(_approvalChannel, toolName, arguments, effectiveMode, verdict.Message!, cancellationToken);
+
         if (verdict.Action == PermissionAction.Ask && !_isInteractive)
         {
             verdict = PermissionVerdict.Deny(
@@ -96,6 +116,25 @@ public sealed class ModePermissionGate : IPermissionGate
         }
 
         return Task.FromResult(verdict);
+    }
+
+    private static async Task<PermissionVerdict> AskOperatorAsync(
+        IToolApprovalChannel channel, string toolName, IReadOnlyDictionary<string, object?> arguments,
+        string mode, string reason, CancellationToken cancellationToken)
+    {
+        var decision = await channel.RequestAsync(
+            new ToolApprovalRequest
+            {
+                ToolName = toolName,
+                Arguments = arguments.ToImmutableDictionary(),
+                Mode = mode,
+                Reason = reason,
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return decision is ToolApprovalDecision.AllowOnce or ToolApprovalDecision.AllowForSession
+            ? PermissionVerdict.Allow()
+            : PermissionVerdict.Deny($"{reason} The operator denied the call.");
     }
 
     private static bool IsReadTool(string toolName)
