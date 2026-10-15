@@ -1628,7 +1628,7 @@ profil de sandbox plus strict que celui des scripts.
 | `Limits:ExecutionTimeout` | durée | `"00:05:00"` | Délai strict d'une invocation de commande. Défaut : 5 minutes. |
 | `Limits:MemoryLimitBytes` | entier | `67108864` | Plafond de mémoire en octets. Défaut : 64 Mo (profil CLI, spec §8.1). |
 | `Limits:RecursionLimit` | entier | `100` | Plafond de profondeur de récursion. Défaut : 100 (hérité de la spec §8.1 — le même que le plafond global). |
-| `MaxScripts` | entier | `50` | Plafond strict du nombre de moteurs gardés en cache. |
+| `MaxScripts` | entier | `200` | Plafond strict du nombre de fichiers `*.cmd.ts` que le chargeur garde ; au-delà, les fichiers suivants, dans l'ordre des chemins, sont ignorés avec un avertissement. 200 par défaut : au-dessus d'un vrai jeu de commandes. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptHost`

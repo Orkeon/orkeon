@@ -86,7 +86,7 @@ Les mêmes options sous `Orkeon:Cli:ScriptCommands` :
         "Directories": ["/cli-commands"],
         "FailFastOnInvalidScript": false,
         "EsbuildTranspile": true,
-        "MaxScripts": 50,
+        "MaxScripts": 200,
         "ContinueOnConflict": true,
         "FallbackCommandName": "assistant",
         "Limits": {

@@ -26,8 +26,11 @@ public sealed record ScriptCommandLoaderOptions
     /// <summary>Glob applied to <see cref="Orkeon.Domain.FileSystem.VirtualEnumerationOptions.SearchPattern"/>.</summary>
     public string SearchPattern { get; init; } = "*.cmd.ts";
 
-    /// <summary>Hard cap on the number of engines kept in cache (spec §6.4 / §15).</summary>
-    public int MaxScripts { get; init; } = 50;
+    /// <summary>
+    /// Hard cap on the number of <c>*.cmd.ts</c> files the loader keeps; past it, the remaining
+    /// files, in path order, are dropped with a warning. Default 200: above a real command set.
+    /// </summary>
+    public int MaxScripts { get; init; } = 200;
 
     /// <summary>When true, the first invalid script aborts loader startup (CI pipelines).</summary>
     public bool FailFastOnInvalidScript { get; init; }

@@ -1575,7 +1575,7 @@ profile tighter than the scripts' own.
 | `Limits:ExecutionTimeout` | duration | `"00:05:00"` | Hard timeout for a single command invocation. Default: 5 minutes. |
 | `Limits:MemoryLimitBytes` | integer | `67108864` | Memory cap in bytes. Default: 64 MB (spec §8.1 CLI profile). |
 | `Limits:RecursionLimit` | integer | `100` | Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global). |
-| `MaxScripts` | integer | `50` | Hard cap on the number of engines kept in cache. |
+| `MaxScripts` | integer | `200` | Hard cap on the number of `*.cmd.ts` files the loader keeps; past it, the remaining files, in path order, are dropped with a warning. Default 200: above a real command set. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:ScriptHost`

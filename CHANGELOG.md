@@ -134,6 +134,13 @@ for that task; the task's cache is exported and read back. A cache-only override
 without base configuration, and the MAF bridge warns about the cache only when it requests a
 breakpoint (GAP-48).
 
+### Changed — scripted commands load up to 200 files by default
+
+`Orkeon:Cli:ScriptCommands:MaxScripts` defaulted to 50: a commands folder past it lost its last
+files, in path order, with one warning in the start-up log, and the user found out when a command
+was unknown. The default is now 200, above a real command set; the description says what the cap
+does (the files the loader keeps), not engines kept in cache.
+
 ### Fixed — `ctx.llm.act` calls tools on every provider, all the calls of a turn
 
 `act` read tool calls in the OpenAI shape only, ran the first call of a turn and sent its result
