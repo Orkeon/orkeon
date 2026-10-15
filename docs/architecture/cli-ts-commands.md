@@ -222,10 +222,11 @@ if (ctx.services.has("llm")) { /* … */ }
 ```
 
 The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus the
-optional `llm`, `logger`, `commands` (the dispatch façade — see below) and `script-host`
+optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
 (crew launching from a command — see
-[Driving crews from the REPL](./coding-agent-ts.md)); the typings return `CommandsFacade` and
-`ScriptHostFacade` for those two without a type argument. `configuration` is deliberately
+[Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
+session's tool-call rules, below); the typings return `CommandsFacade`, `ScriptHostFacade` and
+`PermissionRulesFacade` for those three without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -439,11 +440,27 @@ state (`ISessionBufferService`, which a command reaches with `session_store`'s `
 console shows its choice: the key is a contract and keeps its name.
 
 **Tool-call approvals.** With the permission gate on, `orkeon-repl` registers an approval channel
-(`AddConsoleToolApproval`): a call the mode asks about, from a crew the command launched with
-`runCrewAsync`, is put to the operator, whose next line answers it — the read loop hands that line
-over (`IReplLineInterceptor`) before resolving any command. A command passes the session's mode to
-`act` as `permissionMode`; it does not handle the question itself. See
+(`AddConsoleToolApproval`): a call the mode asks about is put to the operator, whose next line
+answers it. From a crew launched with `runCrewAsync`, the read loop hands that line over
+(`IReplLineInterceptor`) before resolving any command; from a crew launched with `runCrew`, which
+holds the loop, the waiting call reads the answer itself, and the time taken to answer does not
+count in `RunCrewTimeout`. A command passes the session's mode to `act` as `permissionMode`; it
+does not handle the question itself. See
 [the CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console).
+
+**Session rules.** The gate reads the session's allow and deny rules before the mode
+(`IToolPermissionRules`, kept by the REPL). A command sets them through
+`ctx.services.get("permissions")`: `allow(tool, argument?, pattern?)`, `deny(...)`, `clear()`,
+`list()`. A rule covers every call of a tool, or the calls whose argument matches a pattern whole,
+`*` standing for any run of characters. A deny rule refuses a call in every mode; an allow rule lets
+it run without asking in every mode but `plan`, which stays read-only, so `dontAsk` runs what a rule
+allows and refuses the rest. The rules last until the REPL exits.
+
+```typescript
+const permissions = ctx.services.get("permissions");
+permissions.allow("shell_command", "command", "npm test*");
+permissions.deny("shell_command", "command", "git push*");
+```
 
 ## TypeScript support matrix (esbuild → Jint)
 

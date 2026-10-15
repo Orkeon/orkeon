@@ -38,9 +38,10 @@ public static class ScriptingCliServiceCollectionExtensions
     /// <summary>
     /// Registers the REPL's tool-call approval channel: one instance, both the <see cref="IToolApprovalChannel"/> the
     /// permission gate asks (<c>AddOrkeonPermissionGate</c> builds the gate with it) and the
-    /// <see cref="IReplLineInterceptor"/> through which the read loop hands it the operator's answers. Effective only
-    /// once the gate is enabled (<c>Orkeon:Security:PermissionGate:Enabled</c>); the console is resolved at the first
-    /// question. Idempotent.
+    /// <see cref="IReplLineInterceptor"/> through which the read loop hands it the operator's answers; and the session's
+    /// <see cref="IToolPermissionRules"/>, which the gate reads before the mode and commands set through
+    /// <c>ctx.services.get("permissions")</c>. Effective only once the gate is enabled
+    /// (<c>Orkeon:Security:PermissionGate:Enabled</c>); the console is resolved at the first question. Idempotent.
     /// </summary>
     public static IServiceCollection AddConsoleToolApproval(this IServiceCollection services)
     {
@@ -48,6 +49,9 @@ public static class ScriptingCliServiceCollectionExtensions
         services.TryAddSingleton(sp => new ConsoleToolApprovalChannel(() => sp.GetRequiredService<IConsoleAdapter>()));
         services.TryAddSingleton<IToolApprovalChannel>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
         services.TryAddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
+        // The session's rules, read by the gate before the mode and set by commands (ctx.services.get("permissions")).
+        services.TryAddSingleton<SessionToolPermissionRules>();
+        services.TryAddSingleton<IToolPermissionRules>(sp => sp.GetRequiredService<SessionToolPermissionRules>());
         return services;
     }
 
@@ -248,7 +252,11 @@ public static class ScriptingCliServiceCollectionExtensions
             sp.GetRequiredService<IFileSystemService>(),
             sp.GetRequiredService<IOptions<ScriptHostFacadeOptions>>(),
             sp.GetService<CommandDispatchService>(),
-            sp.GetService<ILoggerFactory>()?.CreateLogger<ScriptHostFacade>()));
+            sp.GetService<ILoggerFactory>()?.CreateLogger<ScriptHostFacade>())
+        {
+            // A runCrew holds the read loop: with the REPL's approval channel, its wait answers the crew's questions.
+            Approvals = sp.GetService<ConsoleToolApprovalChannel>(),
+        });
 
         return services;
     }

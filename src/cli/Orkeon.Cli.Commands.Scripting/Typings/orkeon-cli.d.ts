@@ -188,13 +188,15 @@ export interface ServiceLocator {
    * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[];
    * - present only when the host wired them (check with `has`): `"llm"` → ILlmProvider,
    *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
-   *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name).
+   *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
+   *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
    */
   get(name: "commands"): CommandsFacade;
   get(name: "script-host"): ScriptHostFacade;
+  get(name: "permissions"): PermissionRulesFacade;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -208,7 +210,10 @@ export interface ScriptHostFacade {
   /**
    * Run the crew and wait for its output (short crews; call from a sync handler). The call
    * blocks and returns the output itself, not a promise: `.then(...)` on it throws a
-   * `TypeError`. `await` on it is harmless (it resolves to the same value).
+   * `TypeError`. `await` on it is harmless (it resolves to the same value). In `orkeon-repl`
+   * with the permission gate on, a tool call of the crew that needs an approval is asked here,
+   * while the call waits, and the time the operator takes to answer does not count in
+   * `RunCrewTimeout`.
    */
   runCrew(name: string, input?: Record<string, unknown>): CrewRunOutput;
   /**
@@ -219,6 +224,24 @@ export interface ScriptHostFacade {
   runCrewAsync(name: string, input?: Record<string, unknown>): string;
   /** The discovered crew names. */
   listCrews(): readonly string[];
+}
+
+/**
+ * The session's tool-call rules — `ctx.services.get("permissions")`, in `orkeon-repl`. The permission
+ * gate reads them before the mode: a deny rule refuses a call in every mode, an allow rule lets it run
+ * without asking in every mode but `plan`. A rule covers every call of a tool, or the calls whose
+ * argument matches a pattern whole, `*` standing for any run of characters. They last until the REPL
+ * exits.
+ */
+export interface PermissionRulesFacade {
+  /** Lets the calls run without asking: `allow("shell_command", "command", "npm test*")`. */
+  allow(tool: string, argument?: string, pattern?: string): void;
+  /** Refuses the calls in every mode: `deny("shell_command", "command", "git push*")`. */
+  deny(tool: string, argument?: string, pattern?: string): void;
+  /** Removes every rule. */
+  clear(): void;
+  /** The rules in force, one line each: `allow shell_command command=npm test*`. */
+  list(): readonly string[];
 }
 
 /** Result of a crew run launched via {@link ScriptHostFacade}. */

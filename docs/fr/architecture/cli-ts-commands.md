@@ -224,9 +224,10 @@ if (ctx.services.has("llm")) { /* … */ }
 
 La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs` et
 `tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
-plus bas) et `script-host` (lancement de crews depuis une commande — voir
-[Piloter des crews depuis le REPL](./coding-agent-ts.md)) ; pour ces deux-là, les typings
-rendent `CommandsFacade` et `ScriptHostFacade` sans argument de type. `configuration` n'est
+plus bas), `script-host` (lancement de crews depuis une commande — voir
+[Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
+(les règles d'appels d'outils de la session, plus bas) ; pour ces trois-là, les typings rendent
+`CommandsFacade`, `ScriptHostFacade` et `PermissionRulesFacade` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -447,12 +448,28 @@ session (`ISessionBufferService`, qu'une commande atteint par `get_state` et `se
 cette clé, et la console affiche son choix : la clé est un contrat et garde son nom.
 
 **Approbations des appels d'outils.** Avec le contrôle des permissions activé, `orkeon-repl`
-enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour lequel le mode demande,
-venu d'un crew que la commande a lancé par `runCrewAsync`, est soumis à l'opérateur, dont la ligne
-suivante y répond — la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de
-résoudre une commande. Une commande passe le mode de la session à `act` dans `permissionMode` ; elle
-ne gère pas la question elle-même. Voir
+enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour lequel le mode demande
+est soumis à l'opérateur, dont la ligne suivante y répond. Venu d'un crew lancé par `runCrewAsync`,
+la boucle de lecture lui remet cette ligne (`IReplLineInterceptor`) avant de résoudre une commande ;
+venu d'un crew lancé par `runCrew`, qui tient la boucle, l'appel en attente lit lui-même la réponse,
+et le temps mis à répondre ne compte pas dans `RunCrewTimeout`. Une commande passe le mode de la
+session à `act` dans `permissionMode` ; elle ne gère pas la question elle-même. Voir
 [la référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée).
+
+**Règles de session.** Le contrôle lit les règles d'autorisation et de refus de la session avant le
+mode (`IToolPermissionRules`, tenues par le REPL). Une commande les pose par
+`ctx.services.get("permissions")` : `allow(tool, argument?, pattern?)`, `deny(...)`, `clear()`,
+`list()`. Une règle couvre tous les appels d'un outil, ou ceux dont l'argument correspond en entier
+à un motif, `*` valant n'importe quelle suite de caractères. Une règle de refus refuse l'appel dans
+tous les modes ; une règle d'autorisation le laisse passer sans demander dans tous les modes sauf
+`plan`, qui reste en lecture seule : `dontAsk` lance donc ce qu'une règle autorise et refuse le
+reste. Les règles durent jusqu'à la sortie du REPL.
+
+```typescript
+const permissions = ctx.services.get("permissions");
+permissions.allow("shell_command", "command", "npm test*");
+permissions.deny("shell_command", "command", "git push*");
+```
 
 ## Matrice de support TypeScript (esbuild → Jint)
 

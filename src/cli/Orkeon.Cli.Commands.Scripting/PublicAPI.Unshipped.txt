@@ -1,2 +1,8 @@
 #nullable enable
 static Orkeon.Cli.Commands.Scripting.DependencyInjection.ScriptingCliServiceCollectionExtensions.AddConsoleToolApproval(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.allow(string! tool, string? argument = null, string? pattern = null) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.clear() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.deny(string! tool, string? argument = null, string? pattern = null) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.list() -> string![]!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Permissions = "permissions" -> string!

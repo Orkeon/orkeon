@@ -33,6 +33,10 @@ public static class DefaultScriptServiceWhitelist
             .AddOptional(ScriptServiceKeys.Logger, sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("script"))
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
             .AddOptional(ScriptServiceKeys.Commands, sp => sp.GetService<CommandDispatchService>())
+            // Optional: the session's tool-call rules — present when the host keeps them (AddConsoleToolApproval).
+            .AddOptional(ScriptServiceKeys.Permissions, sp => sp.GetService<SessionToolPermissionRules>() is { } rules
+                ? new PermissionRulesFacade(rules)
+                : null)
             // Optional: the crew-launching facade — present when AddScriptCommands ran.
             .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>());
     }

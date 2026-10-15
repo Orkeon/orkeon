@@ -23,6 +23,12 @@ public static class ScriptServiceKeys
     public const string Commands = "commands";
 
     /// <summary>
+    /// Optional: the session's tool-call rules — <c>ctx.services.get("permissions")</c>
+    /// (<see cref="PermissionRulesFacade"/>). Present in the REPL, which keeps them.
+    /// </summary>
+    public const string Permissions = "permissions";
+
+    /// <summary>
     /// Optional: the crew-launching facade — <c>ctx.services.get("script-host")</c>. Lets a
     /// <c>*.cmd.ts</c> run a <c>crew.ork.ts</c> by name (sync or async) and pass it an input.
     /// The host-side engine the control plane calls for long work.

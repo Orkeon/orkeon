@@ -18,6 +18,9 @@ namespace Orkeon.Infrastructure.Security;
 /// With an approval channel (<see cref="IToolApprovalChannel"/>), every <c>ask</c> is put to the
 /// operator and comes back allowed or denied. In non-interactive sessions every <c>ask</c>
 /// degrades to a motivated deny — the model receives the refusal as the tool result and can adapt.
+/// With session rules (<see cref="Rules"/>), a deny rule refuses a call in every mode, and an allow
+/// rule lets it run without asking in every mode but <c>plan</c>; a call no rule covers is decided
+/// by the mode.
 /// </summary>
 public sealed class ModePermissionGate : IPermissionGate
 {
@@ -49,6 +52,12 @@ public sealed class ModePermissionGate : IPermissionGate
 
     private readonly bool _isInteractive;
     private readonly IToolApprovalChannel? _approvalChannel;
+
+    /// <summary>
+    /// The session's allow and deny rules, read at each call before the mode; null when the host keeps
+    /// none, and the mode alone decides.
+    /// </summary>
+    public IToolPermissionRules? Rules { get; init; }
 
     /// <summary>
     /// Creates the gate. <paramref name="isInteractive"/> declares whether the caller resolves
@@ -89,6 +98,16 @@ public sealed class ModePermissionGate : IPermissionGate
                      (declaredAccess == ToolAccess.Unspecified && EditTools.Contains(toolName));
 
         var effectiveMode = Normalize(mode);
+
+        // Session rules come first: a deny rule refuses whatever the mode, an allow rule spares the
+        // question in every mode but plan, which promises a turn that changes nothing.
+        var rules = Rules?.Current ?? [];
+        if (rules.FirstOrDefault(r => r.Effect == ToolPermissionEffect.Deny && r.Matches(toolName, arguments)) is { } deny)
+            return Task.FromResult(PermissionVerdict.Deny($"tool '{toolName}' is denied by the session rule '{deny}'."));
+        if (effectiveMode != "plan"
+            && rules.Any(r => r.Effect == ToolPermissionEffect.Allow && r.Matches(toolName, arguments)))
+            return Task.FromResult(PermissionVerdict.Allow());
+
         var verdict = effectiveMode switch
         {
             "bypassPermissions" => PermissionVerdict.Allow(),

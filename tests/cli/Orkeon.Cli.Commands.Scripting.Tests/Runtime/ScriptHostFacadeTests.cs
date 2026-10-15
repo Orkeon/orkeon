@@ -31,6 +31,8 @@ public sealed class ScriptHostFacadeTests : IDisposable
     public void Dispose()
     {
         _engine.Dispose();
+        foreach (var owned in _owned)
+            owned.Dispose();
         try { Directory.Delete(_tempDir, recursive: true); } catch { /* best effort */ }
     }
 
@@ -199,5 +201,72 @@ public sealed class ScriptHostFacadeTests : IDisposable
         var view = instance.Snapshot();
         Assert.Equal("done", view.state);
         Assert.Equal("echoed:async", view.result?.payload);
+    }
+
+    // ── runCrew holds the read loop: its wait answers the crew's questions ──
+
+    private static Orkeon.Application.Interfaces.Security.ToolApprovalRequest Question() => new()
+    {
+        ToolName = "file_write",
+        Arguments = ImmutableDictionary<string, object?>.Empty,
+        Mode = "default",
+        Reason = "tool 'file_write' requires approval (mode 'default').",
+    };
+
+    private readonly List<IDisposable> _owned = [];
+
+    // Disposed with the class: a channel outlives the crew run that captured it.
+    private T Owned<T>(T disposable) where T : IDisposable
+    {
+        _owned.Add(disposable);
+        return disposable;
+    }
+
+    /// <summary>A crew run that asks one question and finishes with the operator's decision.</summary>
+    private static Task<string> RunAsking(ConsoleToolApprovalChannel channel) => Task.Run(async () =>
+        (await channel.RequestAsync(Question(), CancellationToken.None)).ToString());
+
+    [Fact]
+    public void RunCrew_wait_answers_the_question_of_its_crew_from_the_console()
+    {
+        var console = new Fixtures.ScriptedTestConsole();
+        var channel = Owned(new ConsoleToolApprovalChannel(() => console));
+        console.EnqueueLine("y");
+
+        var result = ScriptHostFacade.WaitAnsweringApprovals(RunAsking(channel), TimeSpan.FromMinutes(1), channel);
+
+        Assert.Equal("AllowOnce", result);
+        Assert.Contains("approve file_write?", console.Output, StringComparison.Ordinal);
+        Assert.Contains("file_write allowed once", console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunCrew_wait_does_not_count_the_time_the_operator_takes_to_answer()
+    {
+        var console = new Fixtures.ScriptedTestConsole();
+        var channel = Owned(new ConsoleToolApprovalChannel(() => console));
+        var answer = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            console.EnqueueLine("n");
+        }, TestContext.Current.CancellationToken);
+
+        // One second of budget, two seconds to answer: only the crew's own time counts.
+        var result = ScriptHostFacade.WaitAnsweringApprovals(RunAsking(channel), TimeSpan.FromSeconds(1), channel);
+
+        Assert.Equal("Deny", result);
+        await answer;
+    }
+
+    [Fact]
+    public void RunCrew_wait_still_times_out_when_the_crew_outlives_its_budget_without_asking()
+    {
+        var console = new Fixtures.ScriptedTestConsole();
+        var channel = Owned(new ConsoleToolApprovalChannel(() => console));
+        var never = new TaskCompletionSource<string>();
+
+        Assert.Throws<TimeoutException>(() =>
+            ScriptHostFacade.WaitAnsweringApprovals(never.Task, TimeSpan.FromMilliseconds(200), channel));
+        Assert.Equal("", console.Output);
     }
 }

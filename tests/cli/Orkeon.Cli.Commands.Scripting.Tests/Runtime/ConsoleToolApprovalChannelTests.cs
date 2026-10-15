@@ -165,6 +165,74 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.Null(_channel.PromptOverride);
     }
 
+    // ── a command holds the loop (runCrew): it reads the answer itself ──────
+
+    private static int Occurrences(string text, string value)
+        => (text.Length - text.Replace(value, "", StringComparison.Ordinal).Length) / value.Length;
+
+    [Fact]
+    public async Task ShouldReadTheAnswerFromTheConsole_WhenACommandHoldsTheLoop()
+    {
+        var decision = _channel.RequestAsync(Request(), Ct);
+        _console.EnqueueLine("y");
+
+        Assert.True(_channel.AnswerFromConsole());
+
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
+        Assert.Equal(1, Occurrences(_console.Output, "approve shell_command?"));
+        Assert.False(_channel.HasQuestion);
+    }
+
+    [Fact]
+    public async Task ShouldWriteThePrompt_WhenTheNextQuestionCameInWithoutOne()
+    {
+        var first = _channel.RequestAsync(Request(), Ct);
+        var second = _channel.RequestAsync(Request(tool: "file_write"), Ct);
+        _console.EnqueueLine("n");
+        _console.EnqueueLine("s");
+
+        _channel.AnswerFromConsole();
+        _channel.AnswerFromConsole();
+
+        Assert.Equal(ToolApprovalDecision.Deny, await first);
+        Assert.Equal(ToolApprovalDecision.AllowForSession, await second);
+        Assert.Equal(1, Occurrences(_console.Output, "approve file_write?"));
+    }
+
+    [Fact]
+    public async Task ShouldAskAgain_WhenTheLineReadIsACommand()
+    {
+        var decision = _channel.RequestAsync(Request(), Ct);
+        _console.EnqueueLine("/help");
+        _console.EnqueueLine("y");
+
+        _channel.AnswerFromConsole();
+        Assert.False(decision.IsCompleted);
+        Assert.Contains("a command cannot run while this one waits for its crew", _console.Output, StringComparison.Ordinal);
+        _channel.AnswerFromConsole();
+
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
+        Assert.Equal(2, Occurrences(_console.Output, "approve shell_command?"));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheQuestion_WhenTheInputEnds()
+    {
+        var decision = _channel.RequestAsync(Request(), Ct);
+        _console.CompleteInput();
+
+        _channel.AnswerFromConsole();
+
+        Assert.Equal(ToolApprovalDecision.Deny, await decision);
+    }
+
+    [Fact]
+    public void ShouldReadNothing_WhenNoQuestionWaits()
+    {
+        Assert.False(_channel.AnswerFromConsole());
+        Assert.Equal("", _console.Output);
+    }
+
     [Fact]
     public void ShouldCutTheArguments_WhenTheyAreLong()
     {

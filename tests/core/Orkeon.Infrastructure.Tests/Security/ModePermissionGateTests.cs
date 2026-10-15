@@ -196,6 +196,113 @@ public class ModePermissionGateTests
         Assert.Empty(channel.Requests);
     }
 
+    // ── session rules (IToolPermissionRules) ─────────────────────────────────
+
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    private static Dictionary<string, object?> Command(string command) => new() { ["command"] = command };
+
+    [Fact]
+    public async Task An_allow_rule_runs_the_call_without_asking()
+    {
+        var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.Deny };
+        var gate = new ModePermissionGate(channel) { Rules = new StubToolPermissionRules().Allow("file_write") };
+
+        var verdict = await gate.CheckAsync("file_write", NoArgs, "default", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+        Assert.Empty(channel.Requests);
+    }
+
+    [Fact]
+    public async Task An_allow_rule_on_an_argument_covers_only_the_calls_it_matches()
+    {
+        var channel = new StubToolApprovalChannel { Decision = ToolApprovalDecision.Deny };
+        var gate = new ModePermissionGate(channel)
+        {
+            Rules = new StubToolPermissionRules().Allow("shell_command", "command", "npm test*"),
+        };
+
+        var matching = await gate.CheckAsync("shell_command", Command("npm test --watch=false"), "default", cancellationToken: Ct);
+        var other = await gate.CheckAsync("shell_command", Command("npm run build"), "default", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Allow, matching.Action);
+        Assert.Equal(PermissionAction.Deny, other.Action);
+        Assert.Equal("npm run build", Assert.Single(channel.Requests).Arguments["command"]);
+    }
+
+    [Theory]
+    [InlineData("default")]
+    [InlineData("acceptEdits")]
+    [InlineData("bypassPermissions")]
+    [InlineData("dontAsk")]
+    [InlineData("plan")]
+    public async Task A_deny_rule_refuses_the_call_in_every_mode_without_asking(string mode)
+    {
+        var channel = new StubToolApprovalChannel();
+        var gate = new ModePermissionGate(channel)
+        {
+            Rules = new StubToolPermissionRules().Deny("shell_command", "command", "rm *"),
+        };
+
+        var verdict = await gate.CheckAsync("shell_command", Command("rm -r build"), mode, cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Equal("tool 'shell_command' is denied by the session rule 'deny shell_command command=rm *'.", verdict.Message);
+        Assert.Empty(channel.Requests);
+    }
+
+    [Fact]
+    public async Task A_deny_rule_wins_over_an_allow_rule()
+    {
+        var gate = new ModePermissionGate(new StubToolApprovalChannel())
+        {
+            Rules = new StubToolPermissionRules().Allow("shell_command").Deny("shell_command", "command", "git push*"),
+        };
+
+        var verdict = await gate.CheckAsync("shell_command", Command("git push origin main"), "default", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+    }
+
+    [Fact]
+    public async Task An_allow_rule_does_not_widen_plan_mode()
+    {
+        var gate = new ModePermissionGate(new StubToolApprovalChannel())
+        {
+            Rules = new StubToolPermissionRules().Allow("file_write"),
+        };
+
+        var verdict = await gate.CheckAsync("file_write", NoArgs, "plan", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Contains("plan mode", verdict.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DontAsk_runs_what_a_rule_allows_and_denies_the_rest_without_asking()
+    {
+        var channel = new StubToolApprovalChannel();
+        var gate = new ModePermissionGate(channel) { Rules = new StubToolPermissionRules().Allow("file_write") };
+
+        var allowed = await gate.CheckAsync("file_write", NoArgs, "dontAsk", cancellationToken: Ct);
+        var denied = await gate.CheckAsync("shell_command", Command("npm test"), "dontAsk", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Allow, allowed.Action);
+        Assert.Equal(PermissionAction.Deny, denied.Action);
+        Assert.Empty(channel.Requests);
+    }
+
+    [Fact]
+    public async Task An_allow_rule_runs_the_call_in_a_headless_session()
+    {
+        var gate = new ModePermissionGate(isInteractive: false) { Rules = new StubToolPermissionRules().Allow("shell_command") };
+
+        var verdict = await gate.CheckAsync("shell_command", Command("npm test"), "default", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+    }
+
     [Fact]
     public async Task Plan_deny_message_names_the_mode()
     {
