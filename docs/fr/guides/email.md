@@ -697,9 +697,9 @@ changement, ou supprimez l'ancien fichier. `orkeon-repl` enregistre les outils m
 aucun magasin de jetons : les comptes à mot de passe y fonctionnent, les comptes OAuth y sont
 refusés avec un message qui le dit — un compte connecté depuis Orkeon Studio sert aux runs
 `orkeon`, pas au REPL. Un montage utilisateur qui revendique `/credentials` est
-refusé quels que soient les comptes — par chaque commande `orkeon` et par `orkeon-host` avant
-leur démarrage (pas par `orkeon-repl`, qui ne monte aucun `/credentials`), et par Orkeon Studio
-dans son éditeur de montages.
+refusé quels que soient les comptes — par chaque commande `orkeon`, par `orkeon-host` et par
+`orkeon-repl` avant leur démarrage (le REPL ne monte aucun `/credentials`, et refuse la racine
+tout de même, comme toute commande), et par Orkeon Studio dans son éditeur de montages.
 
 ## Dans un hôte à vous
 

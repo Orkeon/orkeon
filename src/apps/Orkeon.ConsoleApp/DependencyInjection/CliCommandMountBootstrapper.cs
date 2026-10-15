@@ -48,21 +48,17 @@ internal static class CliCommandMountBootstrapper
         if (physicalPaths.Count == 0)
             return services;
 
-        var resolved = physicalPaths
-            .Select((p, i) => new ResolvedMount(
-                Index: i,
-                PhysicalPath: Path.GetFullPath(p),
-                VirtualPath: i == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{i}"))
-            .ToArray();
+        var resolved = Resolve(physicalPaths);
 
         // 1. Append the mount strings to FileSystemOptions.Mounts BEFORE the registry is built.
+        //    Their roots are the REPL's own: the start guard reserves them, so no declared entry
+        //    and no --mount claims one (GAP-49, decision 3).
         services.PostConfigure<FileSystemOptions>(opts =>
         {
             foreach (var m in resolved)
             {
-                var entry = $"{FileSystemMount.Quote(m.PhysicalPath)}:{m.VirtualPath}:ro";
-                if (!opts.Mounts.Contains(entry, StringComparer.Ordinal))
-                    opts.Mounts.Add(entry);
+                if (!opts.Mounts.Contains(m.Spec, StringComparer.Ordinal))
+                    opts.Mounts.Add(m.Spec);
             }
         });
 
@@ -91,5 +87,29 @@ internal static class CliCommandMountBootstrapper
         return services;
     }
 
-    private sealed record ResolvedMount(int Index, string PhysicalPath, string VirtualPath);
+    /// <summary>
+    /// The mounts <see cref="AddScriptCommandMounts"/> registers for <paramref name="physicalPaths"/>,
+    /// as mount strings: the start guard reserves their roots and probes their folders, as it does
+    /// a <c>--mount</c>'s (GAP-49, decision 3).
+    /// </summary>
+    /// <param name="physicalPaths">The <c>--commands-dir</c> values, as typed.</param>
+    public static IReadOnlyList<string> Mounts(IReadOnlyList<string> physicalPaths)
+    {
+        ArgumentNullException.ThrowIfNull(physicalPaths);
+        return [.. Resolve(physicalPaths).Select(m => m.Spec)];
+    }
+
+    [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: user-supplied --commands-dir paths are resolved to absolute before being handed to the VFS mount parser. The path is registered as a mount root, not used for direct I/O.")]
+    private static ResolvedMount[] Resolve(IReadOnlyList<string> physicalPaths) =>
+        physicalPaths
+            .Select((p, i) => new ResolvedMount(
+                PhysicalPath: Path.GetFullPath(p),
+                VirtualPath: i == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{i}"))
+            .ToArray();
+
+    private sealed record ResolvedMount(string PhysicalPath, string VirtualPath)
+    {
+        /// <summary>The read-only mount string of the folder.</summary>
+        public string Spec => $"{FileSystemMount.Quote(PhysicalPath)}:{VirtualPath}:ro";
+    }
 }

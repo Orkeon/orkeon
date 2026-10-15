@@ -47,7 +47,14 @@ un `Llm__Model` nu est lu aussi, sous chacune des couches qui suivent :
    `--mount-id <ulid>`, sinon le bloc `mounts:` de la crew, sélectionne l'entrée que le run
    garde, et toute autre entrée de cette racine est **retirée** — sa clé est écrite à `null`
    à son propre index, son chemin de base n'est pas mis en liste blanche et son dossier
-   n'est pas sondé.
+   n'est pas sondé. `orkeon-repl` place ses arguments `--mount` de la même façon, sur ses
+   propres couches — sa ligne de commande (`--Orkeon:FileSystem:Mounts:<n>=…`) parmi elles,
+   jugée comme le fichier (GAP-49).
+
+Les contrôles qu'une commande mène **avant son hôte** — une racine réservée, une racine déclarée
+deux fois, une sélection sans réponse, un dossier de montage absent — lisent ces mêmes couches
+(`RunnerSettings.ReadDeclaredMounts`, sur `RunnerSettings.ReadConfiguration`) : un montage déclaré
+par une variable, préfixée `ORKEON_` ou non, est jugé comme la même ligne du fichier (GAP-49).
 
 **Rien d'autre n'est lu.** L'hôte .NET par défaut posait aussi, sous le fichier résolu,
 l'`appsettings.json` et l'`appsettings.{Environment}.json` du **répertoire courant** — depuis .NET 10,

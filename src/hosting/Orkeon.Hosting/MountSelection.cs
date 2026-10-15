@@ -22,6 +22,32 @@ public enum MountSelector
     CrewMounts,
 }
 
+/// <summary>
+/// What a command offers its operator to choose between the settings entries of one virtual root
+/// (GAP-49, decision 3): the line refusing a root declared several times with nothing selecting one
+/// names these and nothing else. A crew YAML offers all three; a script and <c>--list-tools</c>,
+/// <c>--mount-id</c> and <c>--mount</c>; <c>orkeon rag</c> and <c>orkeon-repl</c>, <c>--mount</c>;
+/// <c>forge</c> and <c>mcp serve</c>, none.
+/// </summary>
+[Flags]
+internal enum OfferedMountSelectors
+{
+    /// <summary>Nothing to choose with: one entry of the root has to go from the settings.</summary>
+    None = 0,
+
+    /// <summary>The <c>--mount-id</c> option.</summary>
+    MountIdOption = 1,
+
+    /// <summary>The <c>mounts:</c> block of a crew definition.</summary>
+    CrewMounts = 2,
+
+    /// <summary>A <c>--mount</c> on the root, which replaces every entry of it.</summary>
+    MountOption = 4,
+
+    /// <summary>All three: a crew YAML, and the line of the public forms and of the host's own net.</summary>
+    All = MountIdOption | CrewMounts | MountOption,
+}
+
 /// <summary>A settings entry the run keeps because something selected it.</summary>
 /// <param name="Index">Its configuration index.</param>
 /// <param name="VirtualRoot">The root it claims, without a trailing slash.</param>
@@ -45,7 +71,7 @@ public sealed record SelectedMountEntry(
 public sealed record WithdrawnMountEntry(int Index, string VirtualRoot, MountId? Id);
 
 /// <summary>
-/// The outcome of <see cref="MountSelection.Resolve"/>: which declared entries stay, which are
+/// The outcome of <see cref="MountSelection.Resolve(IReadOnlyList{DeclaredMountEntry}, IReadOnlyList{string}, IReadOnlyList{MountId}, IReadOnlyList{MountReference}, string?)"/>: which declared entries stay, which are
 /// withdrawn, and what to say about it. <see cref="Errors"/> non-empty means the run must not
 /// start — the guards print them, the host throws them.
 /// </summary>
@@ -154,7 +180,28 @@ public static class MountSelection
         IReadOnlyList<string> cliMounts,
         IReadOnlyList<MountId> selectedIds,
         IReadOnlyList<MountReference> crewReferences,
-        string? settingsPath)
+        string? settingsPath) =>
+        Resolve(declared, cliMounts, selectedIds, crewReferences, settingsPath, OfferedMountSelectors.All);
+
+    /// <summary>
+    /// <see cref="Resolve(IReadOnlyList{DeclaredMountEntry}, IReadOnlyList{string}, IReadOnlyList{MountId}, IReadOnlyList{MountReference}, string?)"/>
+    /// for a command that offers <paramref name="offered"/> to choose between the entries of a root:
+    /// the line of a root declared several times with nothing selecting one (D-04) names those ways
+    /// only, as the reserved-root line names the roots of its command (GAP-49, decision 3).
+    /// </summary>
+    /// <param name="declared">The agent-facing entries, as declared.</param>
+    /// <param name="cliMounts">The run's own mount strings (<c>--mount</c>), which replace by root.</param>
+    /// <param name="selectedIds">The <c>--mount-id</c> values, already parsed.</param>
+    /// <param name="crewReferences">The crew's <c>mounts:</c> block, already parsed.</param>
+    /// <param name="settingsLabel">What the messages name the entries' source by: the file, or the files separated by a comma; null for the configuration alone.</param>
+    /// <param name="offered">What the command offers to choose with.</param>
+    internal static MountSelectionPlan Resolve(
+        IReadOnlyList<DeclaredMountEntry> declared,
+        IReadOnlyList<string> cliMounts,
+        IReadOnlyList<MountId> selectedIds,
+        IReadOnlyList<MountReference> crewReferences,
+        string? settingsLabel,
+        OfferedMountSelectors offered)
     {
         ArgumentNullException.ThrowIfNull(declared);
         ArgumentNullException.ThrowIfNull(cliMounts);
@@ -164,8 +211,9 @@ public static class MountSelection
         var entries = Parse(declared);
         var resolution = new Resolution
         {
-            SettingsLabel = Where(settingsPath),
-            Errors = new List<string>(ValidateDeclared(declared, settingsPath)),
+            Offered = offered,
+            SettingsLabel = Where(settingsLabel),
+            Errors = new List<string>(ValidateDeclared(declared, settingsLabel)),
             ById = entries
                 .Where(entry => entry.Id is not null)
                 .GroupBy(entry => entry.Id!)
@@ -204,6 +252,9 @@ public static class MountSelection
     {
         /// <summary>The settings file, as the messages name it.</summary>
         public required string SettingsLabel { get; init; }
+
+        /// <summary>What the command offers to choose between the entries of one root.</summary>
+        public required OfferedMountSelectors Offered { get; init; }
 
         public required List<string> Errors { get; init; }
 
@@ -347,14 +398,13 @@ public static class MountSelection
         {
             // D-04: several entries, all with ids (else ValidateDeclared already refused),
             // and no one said which. The message names every candidate so the operator can
-            // pick without opening the file.
+            // pick without opening the file, and the ways THIS command offers to pick one.
             if (group.Count > 1 && group.All(entry => entry.Id is not null))
             {
                 resolution.Errors.Add(
                     $"'{root}' is declared {Times(group.Count)} in {resolution.SettingsLabel} "
                     + $"({string.Join(", ", group.Select(entry => $"{entry.Id}: {entry.BasePath}"))}) and nothing selects one. "
-                    + $"Pass --mount-id <id>, list '<id>|{root}' under mounts: in the crew, "
-                    + $"or pass --mount <folder>:{root}:rw to replace them all.");
+                    + HowToSelect(root, resolution.Offered, resolution.SettingsLabel));
             }
 
             return;
@@ -400,6 +450,32 @@ public static class MountSelection
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// The second sentence of the D-04 refusal: the ways <paramref name="offered"/> names, in the
+    /// order of their precedence, or - a command that offers none - the one remedy left.
+    /// </summary>
+    private static string HowToSelect(string root, OfferedMountSelectors offered, string settingsLabel)
+    {
+        var ways = new List<string>();
+        if (offered.HasFlag(OfferedMountSelectors.MountIdOption))
+            ways.Add("pass --mount-id <id>");
+        if (offered.HasFlag(OfferedMountSelectors.CrewMounts))
+            ways.Add($"list '<id>|{root}' under mounts: in the crew");
+        if (offered.HasFlag(OfferedMountSelectors.MountOption))
+            ways.Add($"pass --mount <folder>:{root}:rw to replace them all");
+
+        if (ways.Count == 0)
+            return $"Keep one of them in {settingsLabel}.";
+
+        var sentence = ways.Count switch
+        {
+            1 => ways[0],
+            2 => $"{ways[0]} or {ways[1]}",
+            _ => string.Join(", ", ways.Take(ways.Count - 1)) + ", or " + ways[^1],
+        };
+        return char.ToUpperInvariant(sentence[0]) + sentence[1..] + ".";
     }
 
     private static string NormalizeRoot(string virtualPath) =>

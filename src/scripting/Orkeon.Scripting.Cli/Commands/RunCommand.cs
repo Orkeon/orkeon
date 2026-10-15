@@ -847,9 +847,11 @@ internal static partial class RunCommand
         }
 
         // A script has no mounts: block (VFS-90, D-11): only --mount-id and --mount decide
-        // between two settings entries of one root, and the guard says so in one line.
+        // between two settings entries of one root, and the guard says so in one line, naming
+        // those two and not the crew's block (GAP-49, decision 3).
         if (!RunnerExecution.EnsureMountSelectionIsResolvable(
-                cliMounts, options.MountIds, CrewMountDeclarations.None, settingsPath, out var selection))
+                cliMounts, options.MountIds, CrewMountDeclarations.None, settingsPath,
+                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption, out var selection))
         {
             return null;
         }

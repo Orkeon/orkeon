@@ -660,9 +660,9 @@ somewhere it was not issued for. Run `orkeon email logout` before such a change,
 the old file. `orkeon-repl` registers the tools but keeps no token store: there, password
 accounts work and OAuth accounts are refused with a message that says so — an account signed
 in from Orkeon Studio serves the `orkeon` runs, not the REPL. A user mount that
-claims `/credentials` is refused whatever the accounts — by every `orkeon` command and by
-`orkeon-host` before they start (not by `orkeon-repl`, which mounts no `/credentials`), and by
-Orkeon Studio in its mount editor.
+claims `/credentials` is refused whatever the accounts — by every `orkeon` command, by
+`orkeon-host` and by `orkeon-repl` before they start (the REPL mounts no `/credentials`, and
+refuses the root all the same, as every command does), and by Orkeon Studio in its mount editor.
 
 ## In a host of your own
 

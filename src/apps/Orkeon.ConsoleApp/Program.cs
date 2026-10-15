@@ -138,8 +138,44 @@ static class Program
     /// <c>bin</c>, <c>node_modules</c>), registering the watches blocked the boot before the banner.
     /// No source of the composition watches its file.
     /// </para>
+    /// <para>
+    /// <b>The mounts.</b> Over those layers, the <c>--mount</c> arguments are placed as a runner places
+    /// its own (GAP-49, decision 3, <see cref="Orkeon.Hosting.RunnerHost.ConfigureMounts"/>): a
+    /// <c>--mount</c> on a declared root takes the place of its entries for the session, one on a new
+    /// root is appended after the last; the declared entries in force are readable outside the working
+    /// directory, a <c>--mount</c> under <c>--allow-external-mounts</c>. What the placement decided is
+    /// logged once the host exists.
+    /// </para>
     /// </remarks>
     internal static void ConfigureAppConfiguration(
+        IConfigurationBuilder builder,
+        ScriptedCommandsCliOptions scriptedOpts,
+        string? globalSettingsPath,
+        Orkeon.Hosting.RunnerHost.MountDecisions? decisions = null)
+    {
+        ComposeSettingsLayers(builder, scriptedOpts, globalSettingsPath);
+
+        Orkeon.Hosting.RunnerHost.ConfigureMounts(
+            builder,
+            new Orkeon.Hosting.RunnerMountPlan
+            {
+                CliMounts = CliWorkspaceMountBootstrapper.ResolvePhysicalSegments(scriptedOpts.Mounts),
+                AllowExternalMounts = scriptedOpts.EffectiveAllowExternalMounts,
+            },
+            SettingsLabel(scriptedOpts, globalSettingsPath),
+            decisions ?? new Orkeon.Hosting.RunnerHost.MountDecisions());
+    }
+
+    /// <summary>
+    /// The REPL's settings layers, without its mounts: the environment without a prefix, the
+    /// <c>--settings</c> files or the global file, the <c>ORKEON_</c> environment, then the command line
+    /// the builder already holds, kept last. What the start guards read, and what the host's
+    /// configuration places the <c>--mount</c> arguments over.
+    /// </summary>
+    /// <param name="builder">A configuration builder holding the command line, if any.</param>
+    /// <param name="scriptedOpts">The REPL's options.</param>
+    /// <param name="globalSettingsPath">The global file <c>orkeon init</c> writes, or null.</param>
+    internal static IConfigurationBuilder ComposeSettingsLayers(
         IConfigurationBuilder builder,
         ScriptedCommandsCliOptions scriptedOpts,
         string? globalSettingsPath)
@@ -154,6 +190,23 @@ static class Program
 
         foreach (var source in commandLine)
             builder.Add(source);
+        return builder;
+    }
+
+    /// <summary>
+    /// What a mount refusal names the REPL's settings by: its <c>--settings</c> files, separated by a
+    /// comma, else the global file when it exists; null when only the environment and the command
+    /// line declare anything.
+    /// </summary>
+    /// <param name="scriptedOpts">The REPL's options.</param>
+    /// <param name="globalSettingsPath">The global file <c>orkeon init</c> writes, or null.</param>
+    [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: names the settings files the REPL reads, before any VFS mount exists.")]
+    internal static string? SettingsLabel(ScriptedCommandsCliOptions scriptedOpts, string? globalSettingsPath)
+    {
+        if (scriptedOpts.SettingsFiles.Count > 0)
+            return string.Join(", ", scriptedOpts.SettingsFiles.Select(Path.GetFullPath));
+
+        return globalSettingsPath is not null && File.Exists(globalSettingsPath) ? globalSettingsPath : null;
     }
 
     /// <summary>
@@ -188,10 +241,9 @@ static class Program
         // configured provider here means the crew runtime actually reaches the model.
         services.AddConfiguredLlmProvider(context.Configuration);
         services.AddOrkeonInfrastructure();
+        // The --mount specs (e.g. the agent's /workspace) are in the configuration already, placed by
+        // root over the declared entries as a runner places them (ConfigureAppConfiguration).
         services.AddOrkeonFileSystem(context.Configuration);
-        // Append any --mount specs (e.g. the agent's /workspace) on top of the configured mounts;
-        // outside the working directory they are readable under --allow-external-mounts only.
-        services.AddCliWorkspaceMounts(scriptedOpts.Mounts, scriptedOpts.EffectiveAllowExternalMounts);
 
         services.AddOrkeonFileSystemTools();
         services.AddOrkeonDataTools();

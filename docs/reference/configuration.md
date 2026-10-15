@@ -43,7 +43,14 @@ reaches the OpenTelemetry exporter through them ([telemetry](./hosting.md#teleme
    declare one root when each carries one: `--mount-id <ulid>`, else the crew's `mounts:`
    block, selects the entry the run keeps, and every other entry of that root is
    **withdrawn** — its key is written to `null` at its own index, its base path is not
-   whitelisted and its folder is not probed.
+   whitelisted and its folder is not probed. `orkeon-repl` places its `--mount` arguments the
+   same way, over its own layers — its command line (`--Orkeon:FileSystem:Mounts:<n>=…`) among
+   them, judged as the file is (GAP-49).
+
+The checks a command runs **before its host** — a reserved root, a root declared twice, a
+selection with no answer, a mount folder that does not exist — read these same layers
+(`RunnerSettings.ReadDeclaredMounts`, over `RunnerSettings.ReadConfiguration`): a mount declared
+by a variable, `ORKEON_`-prefixed or not, is judged as the same line of the file (GAP-49).
 
 **Nothing else is read.** The default .NET host also laid, under the resolved file, the
 `appsettings.json` and `appsettings.{Environment}.json` of the **current directory** — since .NET 10,

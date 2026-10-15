@@ -388,6 +388,50 @@ public sealed class MountOverrideByNameTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// GAP-49, decision 2: a mount declared by a variable, prefixed or not, is judged as the same
+    /// line of the file - the guards read the layers the host reads. Each case was accepted, the
+    /// host then mounting what the guard never saw: the crew mount replaced in silence, or
+    /// "Duplicate virtual paths" at the first use of the file system, or the factory's exception.
+    /// </summary>
+    [Theory]
+    [InlineData("ORKEON_Orkeon__FileSystem__Mounts__0", "/crew", "ro", true, "'/crew' is a virtual root reserved by the runner")]
+    [InlineData("Orkeon__FileSystem__InternalMounts__0", "/sandbox", "rw", true, "'/sandbox' is a virtual root reserved by the runner")]
+    [InlineData("Orkeon__FileSystem__Mounts__0", "/data", "ro", false, "mount source directory does not exist")]
+    public void A_mount_an_environment_variable_declares_meets_the_guards_of_the_file(
+        string variable, string virtualPath, string rights, bool folderExists, string refusal)
+    {
+        var crewDir = SubDir("crew");
+        var configPath = Path.Combine(crewDir, "config.yaml");
+        File.WriteAllText(configPath, MinimalCrewYaml);
+        var settingsPath = WriteSettings([]);
+        var folder = folderExists ? SubDir("declared") : Path.Combine(_root, "absent");
+        var opts = new TestOptions { ConfigPath = configPath, SettingsPath = settingsPath, AllowExternalMounts = true };
+
+        Environment.SetEnvironmentVariable(variable, Spec(folder, virtualPath, rights));
+        var origErr = Console.Error;
+        using var stderr = new StringWriter(new StringBuilder());
+        Console.SetError(stderr);
+        bool built;
+        int errorCode;
+        RunnerExecution.HostBootstrap? bootstrap;
+        try
+        {
+            built = RunnerExecution.TryBuildHost(opts, "Orkeon.Hosting.Tests", null, out bootstrap, out errorCode);
+        }
+        finally
+        {
+            Console.SetError(origErr);
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+
+        using var host = bootstrap?.Host;
+        Assert.False(built);
+        Assert.Equal(1, errorCode);
+        Assert.Contains(refusal, stderr.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Using settings", stderr.ToString(), StringComparison.Ordinal);
+    }
+
     private sealed class TestOptions : RunnerOptionsBase { }
 
     private const string MinimalCrewYaml = """

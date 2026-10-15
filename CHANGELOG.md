@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a mount a variable declares meets the guards of a mount the file declares **[breaking]**
+
+Before any host, every runner refuses in one line (exit 1, 78 for `orkeon-host`) a root it keeps for
+itself, a root declared twice, a selection with no answer and a missing folder. The guards read the
+settings file, and the `ORKEON_` variables for some of them, never the variables without a prefix
+that the host lays under the file since GAP-36; the reserved-root guard read the file alone. A mount
+declared by a variable, an Aspire AppHost's `WithOrkeonSetting("Orkeon:FileSystem:Mounts:0", …)` for
+instance, passed them and the host mounted it: `/sandbox` failed the load on "Duplicate virtual
+paths" (exit 2; `orkeon-host` started), `/crew` or `/script` was replaced by the runner's own mount
+without a word, `orkeon rag` mounted its own `/workspace` or `/output` over a declared one, and a
+missing folder fell on the registry's exception. The guards now read the layers the host reads,
+through `RunnerSettings.ReadConfiguration` — the environment without a prefix, the file, the
+`ORKEON_` environment — and the host and the guards read one list of entries (GAP-49, decision 2).
+`RunnerSettings.ReadDeclaredMounts`, `ReadDeclaredAgentFacingMounts` and `ReadDeclaredInternalMounts`
+keep their signatures; their JSON reader of the file is gone. A file they cannot read gives no
+mounts, as before, and the host build then refuses it, naming it. The `runner-settings` check of
+`orkeon doctor` reads the same layers.
+
+- **Breaking**: a `/crew` or `/script` declared by a variable, silently replaced until now, is
+  refused before any host; so is a reserved root, a duplicate or a missing folder declared by a
+  variable without a prefix.
+- **Migration**: give the mount another virtual root, or remove the variable.
+
+### Fixed — `orkeon-repl` places and guards its mounts as the runners do **[breaking]**
+
+`orkeon-repl` appended each `--mount` after the declared mounts, with no guard and no placement by
+root: a `--mount` on a declared root (`/workspace`, `/output`), a mount on `/sandbox` or on the root
+of a `--commands-dir` or `--crews-dir`, two `--mount` on one root, two entries of one root in the
+global file (Studio writes one per team) killed the console at its start on "Duplicate virtual
+paths", stack included; a missing folder fell on the registry's exception; `/credentials` passed;
+a declared folder outside the working directory was mounted and refused at every access. The REPL
+now follows `orkeon run` (GAP-49, decision 3):
+
+- Its `--mount` arguments are placed by `RunnerHost`'s own rule, over its layers (the environment,
+  its settings files, its command line): a `--mount` on a declared root replaces every entry of that
+  root for the session, and the log says `mount /x: --mount replaces the settings entry`; on a new
+  root it is appended after the last entry.
+- Before any host, the guards of `orkeon run`, in its order, read those layers and refuse with its
+  lines, exit 1, without opening the console: a root claimed twice on the command line; a root kept by
+  the REPL (`/sandbox`, the roots of its `--commands-dir` and `--crews-dir`) or `/credentials`; a root
+  declared several times with nothing to choose one; a missing folder, those of `--commands-dir` and
+  `--crews-dir` included. Without `--commands-dir`, `--mount <folder>:/cli-commands:ro` is accepted.
+- A declared entry in force is readable outside the working directory, as for a runner.
+- **Breaking**: a mount on `/credentials`, and the same `--mount` twice (appended once until now), are
+  refused at the start.
+- **Migration**: mount the folder under another name; pass one `--mount`.
+
+### Changed — the line of a root declared twice names only what the command offers
+
+The refusal of a root declared several times with nothing selecting one offered every command
+`--mount-id`, the crew's `mounts:` and `--mount`; only a crew YAML has the three. The line now names
+what the command offers (GAP-49, decision 3): a script and `--list-tools`, `--mount-id` and `--mount`;
+`orkeon rag` and `orkeon-repl`, `--mount`; `orkeon forge` and `orkeon mcp serve`, nothing —
+`Keep one of them in <settings>.` A crew YAML's line is unchanged, word for word.
+
 ### Added — `orkeon-repl` asks the operator about a tool call
 
 With the permission gate on, a tool call the session's mode asked about was refused in the REPL:
@@ -205,7 +260,8 @@ The REPL now follows the runners:
   `orkeon run`: readable wherever they are.
 
 The rest of GAP-49's decision 3 (one placement and the runners' guards for the REPL's mounts,
-declared entries in force included) is not part of this change.
+declared entries in force included) is the entry "`orkeon-repl` places and guards its mounts as the
+runners do", above.
 
 ### Changed — scripted commands load up to 200 files by default
 

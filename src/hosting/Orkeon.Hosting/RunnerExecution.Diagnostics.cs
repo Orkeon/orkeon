@@ -140,6 +140,7 @@ public static partial class RunnerExecution
                 opts.Mounts.ToList(),
                 opts.MountIds,
                 opts.EffectiveAllowExternalMounts,
+                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption,
                 (ctx, services) =>
                 {
                     // Mirror the crew-execution path (TryBuildHost registers the human_input
@@ -195,19 +196,25 @@ public static partial class RunnerExecution
         IReadOnlyList<string> cliMounts,
         IEnumerable<string> mountIds,
         bool allowExternalMounts,
+        OfferedMountSelectors offered,
         Action<HostBuilderContext, IServiceCollection>? configureServices,
         CancellationToken ct)
     {
-        if (!EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
-            || !EnsureMountSelectionIsResolvable(cliMounts, mountIds, CrewMountDeclarations.None, settingsPath, out var selection)
-            || !EnsureMountSourcesExist(cliMounts, settingsPath, selection))
+        // One reading of the layers the host composes for every guard (GAP-49, decision 2); the
+        // selection line names what the command offers: --mount-id and --mount for --list-tools,
+        // nothing for mcp serve (decision 3).
+        var layers = RunnerSettings.ReadMountConfiguration(settingsPath);
+        var error = Console.Error;
+        if (!EnsureReservedRootsAreFree(cliMounts, layers, error, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
+            || !EnsureMountSelectionIsResolvable(
+                cliMounts, mountIds, CrewMountDeclarations.None, layers, settingsPath, offered, error, out var selection)
+            || !EnsureMountSourcesExist(cliMounts, layers, selection, error))
         {
             return null;
         }
 
         var hasFileSystem = cliMounts.Count > 0
-            || RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath).Count > 0
-            || RunnerSettings.ReadDeclaredInternalMounts(settingsPath).Count > 0;
+            || RunnerSettings.ReadDeclaredMounts(layers).Count > 0;
         string[] internalMounts = hasFileSystem
             ? []
             : [$"{FileSystemMount.Quote(workingDirectory)}:{RunnerVirtualRoots.Crew}:ro"];

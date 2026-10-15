@@ -441,6 +441,33 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.DoesNotContain("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-49, decision 3: the forge offers no way to choose between two entries of a root it does
+    /// not mount itself - no <c>--mount-id</c>, no crew, no <c>--mount</c> -, so the line says the one
+    /// thing left: keep one of them in the settings.
+    /// </summary>
+    [Fact]
+    public async Task A_root_declared_twice_is_refused_with_the_one_remedy_the_forge_has()
+    {
+        var a = Directory.CreateDirectory(Path.Combine(_workspace, "a")).FullName;
+        var b = Directory.CreateDirectory(Path.Combine(_workspace, "b")).FullName;
+        var idA = Orkeon.Domain.Common.MountId.Create();
+        var idB = Orkeon.Domain.Common.MountId.Create();
+        var settings = WriteSettings($"{idA}|{a}:/data:ro", $"{idB}|{b}:/data:ro");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            $"ERROR: '/data' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
+            + $"Keep one of them in {settings}.",
+            console.Stderr,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("--mount", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+    }
+
     /// <summary>A settings file declaring <paramref name="mounts"/> and no LLM, under the workspace.</summary>
     private string WriteSettings(params string[] mounts)
     {
