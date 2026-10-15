@@ -438,6 +438,13 @@ state (`ISessionBufferService`, which a command reaches with `session_store`'s `
 `acceptEdits` → `plan` → `bypassPermissions`). A product's `/mode` command writes that key, so the
 console shows its choice: the key is a contract and keeps its name.
 
+**Tool-call approvals.** With the permission gate on, `orkeon-repl` registers an approval channel
+(`AddConsoleToolApproval`): a call the mode asks about, from a crew the command launched with
+`runCrewAsync`, is put to the operator, whose next line answers it — the read loop hands that line
+over (`IReplLineInterceptor`) before resolving any command. A command passes the session's mode to
+`act` as `permissionMode`; it does not handle the question itself. See
+[the CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console).
+
 ## TypeScript support matrix (esbuild → Jint)
 
 | Feature                                         | Support |

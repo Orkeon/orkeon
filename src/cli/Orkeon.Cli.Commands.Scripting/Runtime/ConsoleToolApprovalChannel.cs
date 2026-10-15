@@ -1,0 +1,220 @@
+using System.Text.Json;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Runners;
+
+namespace Orkeon.Cli.Commands.Scripting.Runtime;
+
+/// <summary>
+/// The REPL's <see cref="IToolApprovalChannel"/>. A tool call the permission gate asks about, from a crew running in
+/// the background, is written to the console, and the operator's next line answers it: the read loop hands that line
+/// over through <see cref="IReplLineInterceptor"/>, so the loop stays the console's only reader. One question is shown
+/// at a time, the others wait their turn. <c>y</c> allows the call, <c>s</c> allows the tool for the rest of the
+/// session, <c>n</c> refuses; a line starting with <c>/</c> is left to the loop (a command runs, the question waits),
+/// any other line asks again. Cancelling the crew withdraws its question; disposing the channel, at the REPL's end,
+/// refuses every question still waiting.
+/// </summary>
+internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLineInterceptor, IDisposable
+{
+    private const int MaxArgumentsLength = 300;
+
+    private readonly Func<IConsoleAdapter> _console;
+    private readonly Lock _gate = new();
+    private readonly LinkedList<PendingApproval> _queue = new();
+    private readonly HashSet<string> _allowedForSession = new(StringComparer.OrdinalIgnoreCase);
+    private bool _disposed;
+
+    /// <summary>Creates the channel.</summary>
+    /// <param name="console">
+    /// The REPL's console, resolved at the first question: the TUI's adapter initialises the terminal when it is resolved.
+    /// </param>
+    public ConsoleToolApprovalChannel(Func<IConsoleAdapter> console)
+    {
+        ArgumentNullException.ThrowIfNull(console);
+        _console = console;
+    }
+
+    /// <inheritdoc />
+    public string? PromptOverride
+    {
+        get
+        {
+            lock (_gate)
+                return _queue.First is { } head ? PromptFor(head.Value.Request) : null;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<ToolApprovalDecision> RequestAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<ToolApprovalDecision>(cancellationToken);
+
+        var pending = new PendingApproval(request);
+        lock (_gate)
+        {
+            if (_disposed)
+                return Task.FromResult(ToolApprovalDecision.Deny);
+            if (_allowedForSession.Contains(request.ToolName))
+                return Task.FromResult(ToolApprovalDecision.AllowForSession);
+
+            pending.Node = _queue.AddLast(pending);
+            if (_queue.Count == 1)
+                Ask(request, withPrompt: true);
+        }
+
+        pending.Registration = cancellationToken.Register(() => Withdraw(pending, cancellationToken));
+        return pending.Completion.Task;
+    }
+
+    /// <inheritdoc />
+    public bool TryConsume(string line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        var answered = new List<PendingApproval>();
+        ToolApprovalDecision decision;
+        lock (_gate)
+        {
+            if (_queue.First is not { } head)
+                return false;
+
+            var answer = line.Trim();
+            if (answer.StartsWith('/'))
+                return false;
+
+            var parsed = ParseAnswer(answer);
+            if (parsed is null)
+            {
+                Console.WriteLine("  answer y (allow once), s (allow for this session) or n (deny)");
+                return true;
+            }
+
+            decision = parsed.Value;
+            var toolName = head.Value.Request.ToolName;
+            _queue.RemoveFirst();
+            answered.Add(head.Value);
+            if (decision == ToolApprovalDecision.AllowForSession)
+            {
+                // The other questions about the same tool are answered by the same approval.
+                _allowedForSession.Add(toolName);
+                for (var node = _queue.First; node is not null;)
+                {
+                    var next = node.Next;
+                    if (string.Equals(node.Value.Request.ToolName, toolName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _queue.Remove(node);
+                        answered.Add(node.Value);
+                    }
+
+                    node = next;
+                }
+            }
+
+            Console.WriteLine(Outcome(toolName, decision));
+            if (_queue.First is { } nextQuestion)
+                Ask(nextQuestion.Value.Request, withPrompt: false);
+        }
+
+        foreach (var pending in answered)
+            pending.Settle(decision);
+        return true;
+    }
+
+    /// <summary>Refuses every question still waiting; later requests are refused at once.</summary>
+    public void Dispose()
+    {
+        List<PendingApproval> waiting;
+        lock (_gate)
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            waiting = [.. _queue];
+            _queue.Clear();
+        }
+
+        foreach (var pending in waiting)
+            pending.Settle(ToolApprovalDecision.Deny);
+    }
+
+    private IConsoleAdapter Console => _console();
+
+    private void Withdraw(PendingApproval pending, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (pending.Node?.List is null)
+                return;
+
+            var wasShown = _queue.First == pending.Node;
+            _queue.Remove(pending.Node);
+            Console.WriteLine($"  approval for {pending.Request.ToolName} withdrawn: its run was cancelled");
+            if (wasShown && _queue.First is { } next)
+                Ask(next.Value.Request, withPrompt: true);
+        }
+
+        pending.Completion.TrySetCanceled(cancellationToken);
+    }
+
+    // Called under the lock: the question and its prompt reach the console in one piece.
+    private void Ask(ToolApprovalRequest request, bool withPrompt)
+    {
+        Console.WriteLine("");
+        Console.WriteLine($"  ? {request.Reason}");
+        Console.WriteLine($"    {request.ToolName} {FormatArguments(request)}");
+        if (withPrompt)
+            Console.Write(PromptFor(request));
+    }
+
+    private static string PromptFor(ToolApprovalRequest request)
+        => $"approve {request.ToolName}? [y] once / [s] session / [n] no > ";
+
+    private static string Outcome(string toolName, ToolApprovalDecision decision) => decision switch
+    {
+        ToolApprovalDecision.AllowOnce => $"  ✓ {toolName} allowed once",
+        ToolApprovalDecision.AllowForSession => $"  ✓ {toolName} allowed for this session",
+        _ => $"  ✗ {toolName} denied",
+    };
+
+    private static ToolApprovalDecision? ParseAnswer(string answer) => answer.ToUpperInvariant() switch
+    {
+        "Y" or "YES" or "O" or "OUI" => ToolApprovalDecision.AllowOnce,
+        "S" or "SESSION" => ToolApprovalDecision.AllowForSession,
+        "N" or "NO" or "NON" => ToolApprovalDecision.Deny,
+        _ => null,
+    };
+
+    private static string FormatArguments(ToolApprovalRequest request)
+    {
+        string text;
+        try
+        {
+            text = JsonSerializer.Serialize(request.Arguments);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or JsonException or InvalidOperationException)
+        {
+            text = "{" + string.Join(", ", request.Arguments.Select(a => $"{a.Key}: {a.Value}")) + "}";
+        }
+
+        return text.Length <= MaxArgumentsLength ? text : string.Concat(text.AsSpan(0, MaxArgumentsLength), "…");
+    }
+
+    private sealed class PendingApproval(ToolApprovalRequest request)
+    {
+        public ToolApprovalRequest Request { get; } = request;
+
+        public TaskCompletionSource<ToolApprovalDecision> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public LinkedListNode<PendingApproval>? Node { get; set; }
+
+        public CancellationTokenRegistration Registration { get; set; }
+
+        public void Settle(ToolApprovalDecision decision)
+        {
+            Registration.Dispose();
+            Completion.TrySetResult(decision);
+        }
+    }
+}

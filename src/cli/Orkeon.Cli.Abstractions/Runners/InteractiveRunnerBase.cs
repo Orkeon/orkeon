@@ -28,6 +28,9 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
     private volatile string? _currentCommandName;
     private long _currentCommandStartedAtUtcTicks;
 
+    private IReplLineInterceptor? _lineInterceptor;
+    private bool _lineInterceptorResolved;
+
     /// <inheritdoc />
     public bool IsCommandRunning => _currentCommandCts is not null;
 
@@ -194,7 +197,8 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
     {
         using var scope = Services.CreateScope();
 
-        Console.Write(Prompt);
+        var interceptor = ResolveLineInterceptor();
+        Console.Write(interceptor?.PromptOverride ?? Prompt);
         string? line;
         try
         {
@@ -207,6 +211,10 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
 
         if (line is null)
             return (IterationAction.Break, null);
+
+        // A question asked from another thread (a tool-call approval) takes the line before any command does.
+        if (interceptor is not null && interceptor.TryConsume(line))
+            return (IterationAction.Continue, null);
 
         var trimmed = line.Trim();
         if (trimmed.Length == 0)
@@ -228,6 +236,18 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         };
 
         return await ExecuteCommandAsync(resolved.Command, ctx, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The <see cref="IReplLineInterceptor"/> the runner's services hold, resolved once; null when none.</summary>
+    private IReplLineInterceptor? ResolveLineInterceptor()
+    {
+        if (!_lineInterceptorResolved)
+        {
+            _lineInterceptor = Services.GetService<IReplLineInterceptor>();
+            _lineInterceptorResolved = true;
+        }
+
+        return _lineInterceptor;
     }
 
     /// <summary>Resolves the input to a command (matched or fallback). Returns null when no command applies.</summary>

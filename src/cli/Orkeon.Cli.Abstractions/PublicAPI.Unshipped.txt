@@ -1,1 +1,4 @@
 #nullable enable
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor.PromptOverride.get -> string?
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor.TryConsume(string! line) -> bool
