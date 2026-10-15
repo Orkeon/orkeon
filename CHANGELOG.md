@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the script's time limit stops while the permission gate decides
+
+`ExecutionTimeout`, the engine's wall-clock limit, counted the time a tool call spent in the
+permission gate. An approval channel can hold a call until an operator answers, and that wait
+would have spent the script's limit. `ctx.llm.act` now stops the engine's clock while the gate
+decides. Otherwise the limit is measured as Jint's `TimeoutInterval` measured it: one window per
+reset, no limit when it is zero or infinite, and the same `TimeoutException`. The clock belongs to
+the engine, so a pause holds for every agent the engine runs.
+
 ### Security — System.Security.Cryptography.Pkcs pinned to 10.0.13
 
 Two .NET denial-of-service advisories published on 2026-10-13, GHSA-846f-f764-76mx (high,

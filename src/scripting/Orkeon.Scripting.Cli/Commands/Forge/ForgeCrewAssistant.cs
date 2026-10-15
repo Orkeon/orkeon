@@ -154,7 +154,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     /// <para>
     /// This used to be omitted entirely, which silently discarded
     /// <c>Orkeon:Scripting:Limits</c> and pinned every turn to the 30 s untrusted-script
-    /// default. Jint's TimeoutInterval is WALL CLOCK, not JS CPU time: the stopwatch keeps
+    /// default. The engine's time limit is WALL CLOCK, not JS CPU time: the clock keeps
     /// running while the host awaits the LLM. So a single slow model reply, or one wasted
     /// round trip on a refused tool call, killed the session mid-interview with a bare
     /// "The operation has timed out." — and the pack's own 600 s budget was unreachable.

@@ -58,6 +58,35 @@ public sealed class JsLlmFacadeActPermissionTests
     }
 
     [Fact]
+    public async Task The_engine_clock_stops_while_the_gate_decides_and_runs_again_after()
+    {
+        var clock = new PausableTimeConstraint(TimeSpan.FromMinutes(5));
+        using var engine = new Engine(o => o.Constraint(clock));
+        var tool = new RecordingTool("file_write");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("file_write", "{\"path\":\"/x\"}") },
+            new LlmResponse { Content = "written", RawResponseBody = null },
+        });
+        bool? pausedWhileDeciding = null;
+        var gate = new ScriptedGate((_, _) =>
+        {
+            pausedWhileDeciding = clock.IsPaused;
+            return PermissionVerdict.Allow();
+        });
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { PermissionGate = gate });
+
+        var result = await facade.ActAsync(engine, "write something", null);
+
+        Assert.Equal("written", result.Get("output").AsString());
+        Assert.True(pausedWhileDeciding);
+        Assert.False(clock.IsPaused);
+        Assert.Equal(1, tool.CallCount);
+    }
+
+    [Fact]
     public async Task Deny_skips_the_tool_and_feeds_a_DENIED_result_back_to_the_model()
     {
         using var engine = new Engine();

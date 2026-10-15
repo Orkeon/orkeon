@@ -1,5 +1,6 @@
 using Jint.Runtime;
 using Orkeon.Scripting.Configuration;
+using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Tests;
 
@@ -15,6 +16,34 @@ public sealed class JintSandboxTests
         var engine = factory.Create();
 
         Assert.Throws<TimeoutException>(() => engine.Evaluate("while (true) { }"));
+    }
+
+    [Fact]
+    public void Engine_time_limit_is_the_constraint_act_pauses_while_the_gate_decides()
+    {
+        var factory = new JsEngineFactory(new ScriptingLimitsOptions
+        {
+            ExecutionTimeout = TimeSpan.FromMinutes(5),
+        });
+        var engine = factory.Create();
+
+        Assert.NotNull(engine.Constraints.Find<PausableTimeConstraint>());
+    }
+
+    [Theory]
+    [InlineData(0L)]
+    [InlineData(-10_000L)]
+    [InlineData(long.MaxValue)]
+    public void Engine_has_no_time_limit_when_it_is_zero_or_infinite_as_with_Jint(long ticks)
+    {
+        var factory = new JsEngineFactory(new ScriptingLimitsOptions
+        {
+            ExecutionTimeout = TimeSpan.FromTicks(ticks),
+        });
+        var engine = factory.Create();
+
+        Assert.Null(engine.Constraints.Find<PausableTimeConstraint>());
+        Assert.Equal(3d, engine.Evaluate("1 + 2").ToObject());
     }
 
     [Fact]
