@@ -42,6 +42,8 @@ MANIFESTS=("$@")
 
 # The asset globs of release.yml's publication step, manifests excluded. Keep the
 # two lists in step: an asset uploaded but not matched here would escape the check.
+# '*.tar.gz' covers the editor typings (orkeon-typings-<version>.tar.gz) as well as the
+# archives, and '*.sbom.cdx.json' the SBOM.
 PUBLISH_GLOBS=('*.tar.gz' '*.zip' '*.deb' 'orkeon*.msi' '*.sbom.cdx.json')
 
 problems=()

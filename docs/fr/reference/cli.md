@@ -296,6 +296,8 @@ orkeon typings --out crews/.orkeon
 
 Écrit les typings TypeScript que porte ce build de l'outil, pour votre éditeur : `orkeon.d.ts` (le [DSL de scripting](./scripting-dsl.md#réglage-de-léditeur) `.ork.ts`) et `orkeon-cli.d.ts` (les [commandes `*.cmd.ts`](../architecture/cli-ts-commands.md) du REPL). Les deux sont embarqués dans l'outil : un `dotnet tool install` suffit — ni clone, ni build. `-o`/`--out <dossier>` choisit le dossier (`./.orkeon` par défaut, créé s'il manque) ; les fichiers existants sont écrasés, relancez donc la commande après une mise à jour de l'outil. Un script commence alors par `/// <reference path="./.orkeon/orkeon.d.ts" />`, chemin relatif au script. Hors ligne. Codes de sortie : `0` écrit, `1` un argument inconnu ou `--out` sans dossier.
 
+Les deux mêmes fichiers sont joints à chaque Release GitHub sous le nom `orkeon-typings-<version>.tar.gz` (un dossier de ce nom contenant `orkeon.d.ts` et `orkeon-cli.d.ts`), produits par cette commande à partir du build de la release, listés dans `SHA256SUMS` et attestés. Un projet qui fige les typings d'une release, ou en compare deux, télécharge cette archive plutôt que d'exécuter l'outil installé : voir [Réglage de l'éditeur](./scripting-dsl.md#réglage-de-léditeur).
+
 ## `orkeon mcp`
 
 ```bash

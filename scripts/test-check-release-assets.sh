@@ -25,6 +25,7 @@ fresh() {
     echo deb > orkeon_1.0.0-rc.5_amd64.deb
     echo arm > orkeon_1.0.0-rc.5_arm64.deb
     echo tgz > orkeon-1.0.0-rc.5-linux-x64.tar.gz
+    echo typings > orkeon-typings-1.0.0-rc.5.tar.gz
     echo zip > orkeon-cli-1.0.0-rc.5-win-x64.zip
     echo sbom > orkeon-1.0.0-rc.5.sbom.cdx.json
     echo msi > orkeon-1.0.0-rc.5-win-x64.msi
@@ -40,7 +41,14 @@ run() { # <guard arguments...>
 
 fresh; run "$work/d" SHA256SUMS SHA256SUMS.msi
 check "a consistent set passes" exits 0
-check "  and counts its six assets" says "OK: 6 asset(s)"
+check "  and counts its seven assets" says "OK: 7 asset(s)"
+
+# The editor typings are a .tar.gz: the publish globs already cover them, so a typings archive
+# its manifest forgot is stopped like any other asset.
+fresh; (cd "$work/d" && sed -i '/orkeon-typings-1.0.0-rc.5.tar.gz/d' SHA256SUMS)
+run "$work/d" SHA256SUMS SHA256SUMS.msi
+check "a typings archive no manifest line covers fails" exits 1
+check "  naming it" says "asset 'orkeon-typings-1.0.0-rc.5.tar.gz' is listed by no manifest"
 
 fresh; run "$work/d" SHA256SUMS
 check "an MSI without its manifest fails" exits 1

@@ -293,6 +293,8 @@ orkeon typings --out crews/.orkeon
 
 Writes the TypeScript typings this build of the tool carries, for your editor: `orkeon.d.ts` (the `.ork.ts` [scripting DSL](./scripting-dsl.md#editor-setup)) and `orkeon-cli.d.ts` (the REPL's [`*.cmd.ts` commands](../architecture/cli-ts-commands.md)). Both are embedded in the tool, so a `dotnet tool install` is enough — no clone, no build. `-o`/`--out <dir>` picks the folder (default `./.orkeon`, created when missing); existing files are overwritten, so run the verb again after updating the tool. A script then opens with `/// <reference path="./.orkeon/orkeon.d.ts" />`, the path relative to the script. Offline. Exit codes: `0` written, `1` an unknown argument or `--out` without a folder.
 
+The same two files are attached to every GitHub Release as `orkeon-typings-<version>.tar.gz` (a folder of that name holding `orkeon.d.ts` and `orkeon-cli.d.ts`), produced by this verb from the release's own build, listed in `SHA256SUMS` and attested. A project that pins the typings of a release, or diffs two of them, downloads that archive instead of running whichever tool is installed: see [Editor setup](./scripting-dsl.md#editor-setup).
+
 ## `orkeon mcp`
 
 ```bash

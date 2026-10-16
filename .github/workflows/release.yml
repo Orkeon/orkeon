@@ -221,6 +221,34 @@ jobs:
           .tools/dotnet-CycloneDX Orkeon.sln -o artifacts/installers -fn "orkeon-$ver.sbom.cdx.json" -F Json -t -sn Orkeon -sv "$ver"
           (cd artifacts/installers && sha256sum "orkeon-$ver.sbom.cdx.json" >> SHA256SUMS && sort -k2 -o SHA256SUMS SHA256SUMS)
 
+      # The editor typings of this build as one release asset, orkeon-typings-<version>.tar.gz:
+      # orkeon.d.ts (the .ork.ts DSL) and orkeon-cli.d.ts (the *.cmd.ts commands) under a folder of
+      # the same name. They are what `orkeon typings` writes, taken from the `orkeon` the linux-x64
+      # staging tree holds rather than rebuilt from the sources, so the asset is the tool's own output
+      # and a script project can pin it and diff two versions instead of vendoring a copy that
+      # drifts. The archive is byte-reproducible (sorted names, the commit date as mtime, no gzip
+      # header), joins SHA256SUMS like the SBOM, and is attested with the other *.tar.gz by the
+      # release job; check-release-assets.sh sees it through its *.tar.gz glob.
+      - name: Package the editor typings
+        run: |
+          ver="$(basename artifacts/installers/orkeon-cli-*-win-x64.zip)"; ver="${ver#orkeon-cli-}"; ver="${ver%-win-x64.zip}"
+          tool="artifacts/installers/_stage/orkeon-$ver-linux-x64/libexec/orkeon/orkeon"
+          [[ -x "$tool" ]] || { echo "::error::$tool is missing: the linux-x64 staging tree is the source of the typings"; exit 1; }
+          name="orkeon-typings-$ver"
+          rm -rf "$RUNNER_TEMP/typings"
+          mkdir -p "$RUNNER_TEMP/typings"
+          "$tool" typings --out "$RUNNER_TEMP/typings/$name"
+          for f in orkeon.d.ts orkeon-cli.d.ts; do
+            [[ -s "$RUNNER_TEMP/typings/$name/$f" ]] || { echo "::error::orkeon typings wrote no $f"; exit 1; }
+          done
+          chmod 0755 "$RUNNER_TEMP/typings/$name"
+          chmod 0644 "$RUNNER_TEMP/typings/$name"/*.d.ts
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$SOURCE_DATE_EPOCH" \
+              -C "$RUNNER_TEMP/typings" -cf - "$name" | gzip -9n > "artifacts/installers/$name.tar.gz"
+          (cd artifacts/installers && sha256sum "$name.tar.gz" >> SHA256SUMS && sort -k2 -o SHA256SUMS SHA256SUMS)
+          tar -tzf "artifacts/installers/$name.tar.gz"
+
       # Every asset name must survive the upload unchanged and appear in
       # SHA256SUMS exactly once: GitHub rewrites any character outside
       # [A-Za-z0-9._-] (a `~` becomes `.`), and a manifest line naming a file the

@@ -72,6 +72,20 @@ writes `Using settings: <file>` on stderr, as the CLI does: started from the rep
 finds `examples/appsettings/appsettings.json` (Docker Model Runner). The text it has summarised
 counts sixteen LLM providers, not fourteen (GAP-49, decision 1).
 
+### Added — each GitHub Release attaches the script typings
+
+A script project vendors `orkeon.d.ts` and `orkeon-cli.d.ts`, and its copy drifts from what
+`orkeon typings` writes: nothing named the typings of a release, so nothing could pin or diff them.
+`release.yml` now attaches `orkeon-typings-<version>.tar.gz`, a folder of that name holding the
+two files, to every Release. They are the output of `orkeon typings`, run on the `orkeon` of the
+`linux-x64` staging tree, so the asset is the tool's own embedded copy and not a second build of the
+sources. The archive is byte-reproducible (sorted names, the commit date as modification time, no
+gzip header), has its line in `SHA256SUMS` like the SBOM, and is attested with the other
+`*.tar.gz` by the release job; `check-release-assets.sh` already sees it through its `*.tar.gz`
+glob, and its test now has a typings archive in the set. The editor-setup sections of the
+scripting reference and the guide, the `orkeon typings` reference and the publication matrix say
+where the typings come from and how to pin them, EN and FR.
+
 ### Added — `orkeon-repl` asks the operator about a tool call
 
 With the permission gate on, a tool call the session's mode asked about was refused in the REPL:

@@ -273,7 +273,9 @@ attempt, agent }`; branch on `err.code` (`rate_limit`, `network`, `timeout`, `va
 
 Run `orkeon typings` in your project: it writes `orkeon.d.ts` into `./.orkeon/`, and your
 script opens with `/// <reference path="./.orkeon/orkeon.d.ts" />`. The file comes from the
-tool, so it matches the runtime — run the verb again after updating. In a clone, building
+tool, so it matches the runtime — run the verb again after updating. To pin or diff the
+typings of a release, each GitHub Release attaches them as `orkeon-typings-<version>.tar.gz`
+([Editor setup](../reference/scripting-dsl.md#editor-setup)). In a clone, building
 `Orkeon.Scripting` also writes it under that project's `bin/<configuration>/net10.0/dist/`
 from `src/scripting/Orkeon.Scripting/Typings/*.d.ts`. Then copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).
