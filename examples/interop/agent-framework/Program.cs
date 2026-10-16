@@ -39,7 +39,7 @@ internal static class Program
         // examples/appsettings/appsettings.json, which the repository root would never find.
         var settings = RunnerSettings.ResolveSettingsPath(explicitSettings, AppContext.BaseDirectory);
         if (settings is not null)
-            Console.Error.WriteLine($"Using settings: {settings}");
+            await Console.Error.WriteLineAsync($"Using settings: {settings}");
         var output = Directory.CreateTempSubdirectory("orkeon-maf-").FullName;
 
         using var host = RunnerHost.Build(
