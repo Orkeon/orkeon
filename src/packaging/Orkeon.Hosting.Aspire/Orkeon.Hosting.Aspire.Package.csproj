@@ -26,6 +26,8 @@
   <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting" />
+    <!-- Security pin over Aspire.Hosting's transitive 2.5.302 (Directory.Packages.props). -->
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
 
   <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">

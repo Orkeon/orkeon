@@ -21,6 +21,8 @@
        the constants satellite naming the virtual mount roots (ADR-009). -->
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting" />
+    <!-- Security pin over Aspire.Hosting's transitive 2.5.302 (Directory.Packages.props). -->
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
 
   <ItemGroup>
