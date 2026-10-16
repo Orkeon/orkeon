@@ -3,6 +3,8 @@
   "reads": [
     "Llm",
     "Logging",
+    "MCP",
+    "MCP:Server",
     "Memory",
     "Orkeon:ChromaDb",
     "Orkeon:Cli:ConsoleStreaming",
@@ -35,6 +37,7 @@
     "Orkeon:Tools:Email",
     "Orkeon:Tools:Shell",
     "PathSecurity",
+    "Plugins",
     "RateLimiting",
     "Secrets",
     "Security:Audit",

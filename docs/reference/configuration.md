@@ -194,7 +194,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 358 keys. Read by no shipped binary, only by a host written in C# (11): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+67 sections, 358 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1373,7 +1373,7 @@ loads (STUDIO-21), by `orkeon-host` once at startup, before its first message (G
 [MCP integration](../architecture/mcp.md).
 
 <!-- settings:MCP -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
@@ -1391,7 +1391,7 @@ How the server of `orkeon mcp serve` introduces itself (it exposes tools only). 
 `AddOrkeonMcpServer`, which `orkeon mcp serve` calls.
 
 <!-- settings:MCP:Server -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -1453,11 +1453,11 @@ Vision and content validation — no image is resized. Opt-in:
 
 ### `Plugins`
 
-Plugin directory discovery. Opt-in: `AddOrkeonPlugins(fileSystem, configuration)` — see
-[Plugins](../architecture/plugins.md).
+Plugin directory discovery. `orkeon-repl` loads the plugins when the section is present; another
+host calls `AddOrkeonPlugins(fileSystem, configuration)` — see [Plugins](../architecture/plugins.md).
 
 <!-- settings:Plugins -->
-**Read by**: a host written in C# only, through `AddOrkeonPlugins()` — no shipped binary reads this section.
+**Read by**: `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|

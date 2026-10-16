@@ -39,13 +39,17 @@ internal sealed class ScriptedCommandsRunner : InteractiveRunnerBase
     }
 
     /// <summary>
-    /// Awaits the deferred script load (R10.3 / ANT-002) before the first prompt: resolving
-    /// <see cref="ScriptCommandRegistry"/> from DI is pure wiring, so the discovery →
-    /// transpile → evaluate pipeline runs here, on the runner's own async path. Load errors
-    /// surface at REPL start — where the old resolution-time failure used to appear.
+    /// Connects the declared MCP servers, then awaits the deferred script load (R10.3 / ANT-002)
+    /// before the first prompt: resolving <see cref="ScriptCommandRegistry"/> from DI is pure
+    /// wiring, so the discovery → transpile → evaluate pipeline runs here, on the runner's own async
+    /// path. Load errors surface at REPL start — where the old resolution-time failure used to
+    /// appear. The servers come first so that their tools are in the registry when the command
+    /// engines build their <c>tools</c> namespace; a server that fails costs one error line, as
+    /// under <c>orkeon run</c>, and the REPL starts.
     /// </summary>
     protected override async System.Threading.Tasks.Task OnStartAsync(CancellationToken ct)
     {
+        await Orkeon.Hosting.McpStartup.ConnectConfiguredServersAsync(Services, ct).ConfigureAwait(false);
         await _scripts.EnsureLoadedAsync(ct).ConfigureAwait(false);
     }
 

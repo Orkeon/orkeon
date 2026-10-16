@@ -243,6 +243,9 @@ static class Program
         services.AddOrkeonInfrastructure();
         // The --mount specs (e.g. the agent's /workspace) are in the configuration already, placed by
         // root over the declared entries as a runner places them (ConfigureAppConfiguration).
+        // MCP:Servers, as the runners read it: registered when servers are declared, connected by the
+        // runner before it loads the commands (ScriptedCommandsRunner.OnStartAsync).
+        Orkeon.Hosting.RunnerHost.RegisterMcp(context, services);
         services.AddOrkeonFileSystem(context.Configuration);
 
         services.AddOrkeonFileSystemTools();
@@ -259,6 +262,9 @@ static class Program
         // configuration is passed so the session metadata carries `Llm:AvailableModels` —
         // what a scripted /model can offer as a choice.
         services.AddOrkeonSessionTools(context.Configuration);
+        // The plugins of the Plugins section: a plugin tool reaches the scripts like a built-in one,
+        // and one named like a built-in tool refuses the start (the tool registry names both).
+        services.AddReplPlugins(context.Configuration);
         // Per-tool-call permission gate — config opt-in
         // (Orkeon:Security:PermissionGate:Enabled = true).
         services.AddOrkeonPermissionGate(context.Configuration);

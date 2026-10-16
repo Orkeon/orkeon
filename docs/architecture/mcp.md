@@ -158,6 +158,14 @@ registers no MCP at all; there, and in any embedding host, MCP stays a library s
 the host calls `AddOrkeonMcp(configuration)` (or the config overload) and connects the
 servers itself.
 
+**`orkeon-repl`, and the scripts.** `orkeon-repl` registers the section the same way and connects the
+servers before it loads its commands; a server that fails costs the same one line, and the REPL starts. The
+tools a server brings enter the tool registry, and the scripts' catalogue reads it beside the container's
+tools (`ScriptToolCatalogue`): a command's `tools` namespace, an agent's `.tools([...])` in a `.ork.ts` crew
+and `ctx.llm.act` reach an MCP server's tools — in the REPL, and under `orkeon run`, where a procedural
+script's servers are now connected before it runs too. Until then only a declarative crew, which resolves
+its tools through the registry, could.
+
 The library ships **no hosted service** for this: an embedding host resolves
 `McpToolProvider` and calls `ConnectServerAsync(serverId, config)` for each configured
 server, explicitly — which is exactly what the runner host's startup step does, and what

@@ -1534,7 +1534,9 @@ public static partial class RunnerExecution
         var fileSystem = sp.GetRequiredService<IFileSystemService>();
         var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
         var configuration = sp.GetRequiredService<IConfiguration>();
-        var tools = sp.GetServices<IBaseTool>().ToList();
+        // The registry holds the MCP servers' tools, connected before the load: a .ork.ts crew
+        // reaches them in .tools([...]), its body and act, as a declarative crew does.
+        var tools = new ScriptToolCatalogue(sp.GetServices<IBaseTool>(), sp.GetService<IToolRegistry>()).ToList();
         var llmProvider = sp.GetService<ILlmProvider>();
 
         // Bind the configured limits rather than letting the all-optional overload apply

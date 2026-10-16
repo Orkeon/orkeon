@@ -86,9 +86,17 @@ Un auteur de plugin construit donc **depuis les sources** : cloner
 </PropertyGroup>
 ```
 
-Côté hôte, même contrainte : aucun binaire livré par Orkeon n'appelle `AddOrkeonPlugins(...)`
-— aucun projet sous `src/` ne référence `Orkeon.Plugins`. Le système de plugins est activé par un
-hôte que vous construisez vous-même, in-tree ou contre votre propre clone.
+Côté hôte, `orkeon-repl` est le seul binaire livré qui charge des plugins : quand ses réglages
+portent une section `Plugins`, il appelle `AddOrkeonPlugins(fileSystem, configuration)` pendant
+qu'il compose son conteneur, et les outils d'un plugin atteignent ses commandes et les crews
+qu'elles lancent comme les outils intégrés (un outil de plugin nommé comme un outil intégré refuse
+le démarrage : le registre d'outils nomme les deux). La découverte lit un système de fichiers à
+elle, construit depuis les montages déclarés (`Orkeon:FileSystem:Mounts`, et `:InternalMounts`
+pour un dossier que les agents ne doivent pas voir) : les contrôles du registre tiennent — le
+montage, ses droits, aucun chemin qui en sorte — mais pas le validateur de chemins des agents,
+qui refuse tout `.dll` quel que soit le montage. `orkeon run` et `orkeon-host` ne chargent aucun
+plugin ; un autre hôte appelle lui-même `AddOrkeonPlugins(...)`, in-tree ou contre votre propre
+clone.
 
 ## Découverte (VFS)
 

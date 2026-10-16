@@ -4,6 +4,7 @@ using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting;
 
 namespace Orkeon.Cli.Commands.Scripting.Runtime;
 
@@ -42,7 +43,8 @@ public static class DefaultScriptServiceWhitelist
     }
 
     /// <summary>
-    /// Resolver behind the <c>tools</c> entry — cached once: transient IDisposable tools must
+    /// Resolver behind the <c>tools</c> entry: the container's tools, cached once, then the tools the
+    /// registry holds besides them (an MCP server's), read at each get. Cached: transient IDisposable tools must
     /// not be re-materialized per get (ANT-005). Tools are registered transient and
     /// <c>ToolBase</c> is <see cref="IDisposable"/>, so each <c>GetServices&lt;IBaseTool&gt;()</c>
     /// materializes a fresh set that the root container retains until shutdown — over a long
@@ -54,7 +56,7 @@ public static class DefaultScriptServiceWhitelist
     private sealed class CachedToolsResolver
     {
         private readonly object _gate = new();
-        private volatile IBaseTool[]? _tools;
+        private volatile ScriptToolCatalogue? _tools;
 
         public IBaseTool[] Resolve(IServiceProvider sp)
         {
@@ -63,11 +65,11 @@ public static class DefaultScriptServiceWhitelist
             {
                 lock (_gate)
                 {
-                    tools = _tools ??= sp.GetServices<IBaseTool>().ToArray();
+                    tools = _tools ??= new ScriptToolCatalogue(sp.GetServices<IBaseTool>(), sp.GetService<IToolRegistry>());
                 }
             }
             // Fresh array shell per get, same cached instances inside.
-            return tools[..];
+            return [.. tools];
         }
     }
 }

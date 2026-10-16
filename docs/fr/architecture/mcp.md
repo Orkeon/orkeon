@@ -163,6 +163,15 @@ sans paramètre et n'enregistre aucun MCP ; là, et dans tout hôte qui embarque
 surface bibliothèque — l'hôte appelle lui-même `AddOrkeonMcp(configuration)` (ou la
 surcharge config) et connecte lui-même les serveurs.
 
+**`orkeon-repl`, et les scripts.** `orkeon-repl` enregistre la section de la même façon et connecte
+les serveurs avant de charger ses commandes ; un serveur qui échoue coûte la même ligne, et le REPL
+démarre. Les outils qu'apporte un serveur entrent dans le registre d'outils, et le catalogue des
+scripts le lit à côté des outils du conteneur (`ScriptToolCatalogue`) : l'espace de noms `tools`
+d'une commande, le `.tools([...])` d'un agent dans une crew `.ork.ts` et `ctx.llm.act` atteignent les
+outils d'un serveur MCP — dans le REPL, et sous `orkeon run`, où les serveurs d'un script procédural
+sont désormais connectés avant qu'il tourne lui aussi. Jusque-là, seule une crew déclarative, qui
+résout ses outils par le registre, le pouvait.
+
 La bibliothèque ne livre **pas de hosted service** pour cela : un hôte qui embarque résout
 `McpToolProvider` et appelle explicitement `ConnectServerAsync(serverId, config)` pour
 chaque serveur configuré — exactement ce que fait le pas de démarrage de l'hôte des runners,

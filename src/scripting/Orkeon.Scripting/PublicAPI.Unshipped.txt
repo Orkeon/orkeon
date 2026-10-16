@@ -1,2 +1,5 @@
 #nullable enable
 Orkeon.Scripting.Builders.JsAgentBuilder.maxExecutionTime(double seconds) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.ScriptToolCatalogue
+Orkeon.Scripting.ScriptToolCatalogue.GetEnumerator() -> System.Collections.Generic.IEnumerator<Orkeon.Domain.Tools.IBaseTool!>!
+Orkeon.Scripting.ScriptToolCatalogue.ScriptToolCatalogue(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! containerTools, Orkeon.Domain.Tools.IToolRegistry? registry) -> void
