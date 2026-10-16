@@ -142,6 +142,14 @@ inside() {
     smoke_fail "version" "installed '$installed', orkeon --version '$line'; expected $deb_version and 'orkeon $EXPECTED'"
   fi
   smoke_step_studio_present /usr/bin
+  # apt-health.yml replays this script against the newest package a channel offers, which
+  # may be one built before the REPL joined the package: the step runs when the installed
+  # package lists the launcher. run-smoke-deb.sh, the gate of every build, requires it.
+  if dpkg -L orkeon 2>/dev/null | grep -qx '/usr/bin/orkeon-repl'; then
+    smoke_step_repl_present /usr/bin
+  else
+    smoke_skip "repl-launcher" "the installed orkeon package ships no /usr/bin/orkeon-repl"
+  fi
 
   smoke_log "Integrity"
   if [[ ! -f /var/lib/dpkg/info/orkeon.md5sums ]]; then

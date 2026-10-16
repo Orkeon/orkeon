@@ -12,7 +12,7 @@ The repository serves two packages:
 
 | Package | Contents |
 |---|---|
-| `orkeon` | the `orkeon` CLI at `/usr/bin/orkeon` and the two **Orkeon Studio** terminal apps (`orkeon-studio-config`, `orkeon-studio-run`) — self-contained, it never pulls a `dotnet-runtime` package or a Microsoft repository |
+| `orkeon` | the `orkeon` CLI at `/usr/bin/orkeon`, the interactive console `orkeon-repl` at `/usr/bin/orkeon-repl` (the one that runs the `*.cmd.ts` scripted commands) and the two **Orkeon Studio** terminal apps (`orkeon-studio-config`, `orkeon-studio-run`) — self-contained, it never pulls a `dotnet-runtime` package or a Microsoft repository |
 | `orkeon-archive-keyring` | the public key apt checks the repository with, at `/usr/share/keyrings/orkeon-archive-keyring.gpg` — so a new signing key reaches you through `apt upgrade` |
 
 It is built for **Debian 12 and 13** and **Ubuntu 22.04, 24.04 and 26.04**, on **amd64** and

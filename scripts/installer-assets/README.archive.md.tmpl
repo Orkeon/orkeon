@@ -5,13 +5,13 @@ Command-line executables for the [Orkeon](https://github.com/Orkeon/orkeon) AI a
 ## Prerequisite
 
 **If this is the CLI archive** (`bin/` holds `orkeon` and, on Windows and Linux, the
-Orkeon Studio apps): no .NET. Everything in it is self-contained — the .NET runtime
-ships inside.
+Orkeon Studio apps, and on Linux `orkeon-repl`): no .NET. Everything in it is
+self-contained — the .NET runtime ships inside.
 
-**If `bin/` holds every launcher** (the multi-app archive): `orkeon`,
+**If `bin/` holds every launcher** (the multi-app archive): `orkeon`, `orkeon-repl`,
 `orkeon-host` and the Orkeon Studio apps are self-contained;
-`orkeon-slim` and `orkeon-repl` are **framework-dependent** and
-require the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
+`orkeon-slim` is **framework-dependent** and
+requires the **.NET 10 runtime** (`Microsoft.NETCore.App 10.x`). Install it from
 <https://dotnet.microsoft.com/download/dotnet/10.0>, then verify with
 `dotnet --list-runtimes`. The installers below check for it: `install.sh` prints
 the install commands for your platform if it is missing, `install.ps1` prints a
@@ -80,14 +80,14 @@ default, by category: a file to read, or to copy — as it is, it changes nothin
 The CLI archive (`orkeon-cli-{{VERSION}}-{{RID}}`) ships `bin/orkeon` — the first row
 below — and the Orkeon Studio apps of its platform: `orkeon-studio` (the desktop app) on
 Windows, `orkeon-studio-config` and `orkeon-studio-run` (the terminal apps) on Linux,
-none on macOS. The multi-app archive ships every command in this table, and the Studio
-apps too.
+none on macOS; on Linux it also ships `orkeon-repl`. The multi-app archive ships every
+command in this table, and the Studio apps too.
 
 | Command | Description |
 |---|---|
 | `orkeon` | **The entry point** — runs everything the retired `orkeon-examples` did and more. `orkeon run crew.yaml` executes the YAML crews under `examples/`; `orkeon run script.ork.ts` runs the `.ork.ts` scripting DSL. Self-contained (no .NET runtime needed). |
 | `orkeon-slim` | Same CLI as `orkeon`, framework-dependent (smaller; requires the .NET 10 runtime). Pick this if you already have .NET 10. |
-| `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) |
+| `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings), and the only place the `*.cmd.ts` scripted commands run. Self-contained. |
 | `orkeon-host` | The crew service host daemon. Register it with your service manager rather than running it from a shell — see `deploy/` in this archive and `docs/architecture/service-host.md` (the `bin` wrapper exists for terminal diagnostics only). Self-contained. |
 
 ## Layout & esbuild

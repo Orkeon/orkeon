@@ -21,6 +21,10 @@
 #  2b. the two Orkeon Studio TUIs shipped too — /usr/bin/orkeon-studio-config and
 #      /usr/bin/orkeon-studio-run are installed and answer `--version` with no
 #      terminal at all (STUDIO-08, spec §8.4);
+#  2c. the REPL shipped too — /usr/bin/orkeon-repl is installed and starts: with a
+#      closed stdin and no terminal it opens its plain console, prints its banner
+#      and leaves at the end of input with exit code 0 (the payload is
+#      self-contained, so apt resolved no dotnet-runtime-* package for it);
 #   3. `orkeon init --provider none --force` writes the per-user config (WIN-02);
 #   4. `orkeon doctor --json` reports no ❌, and the three payload-backed checks
 #      are green, not merely non-failing (that is what makes a missing esbuild /
@@ -69,7 +73,7 @@ while [[ $# -gt 0 ]]; do
     --orkeon)   ORKEON_BIN="$2"; shift 2 ;;
     --work-dir) WORK_DIR="$2"; shift 2 ;;
     --keep)     KEEP=true; shift ;;
-    -h|--help)  sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)  sed -n '2,48p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -181,7 +185,7 @@ smoke_assert_payload "$PAYLOAD_ROOT" "$PAYLOAD_ROOT/esbuild-bin/esbuild"
 # to expect are read from those applications (GAP-52). Nothing to assert on a bare
 # binary: --orkeon installs no package.
 if [[ -n "$DEB_PATH" ]]; then
-  smoke_assert_notices /usr/share/doc/orkeon copyright /usr/lib/orkeon /usr/lib/orkeon-studio-*
+  smoke_assert_notices /usr/share/doc/orkeon copyright /usr/lib/orkeon /usr/lib/orkeon-repl /usr/lib/orkeon-studio-*
 else
   smoke_skip "notices" "--orkeon given"
 fi
@@ -198,6 +202,19 @@ if [[ "$STUDIO_INSTALLED" == true ]]; then
 else
   smoke_skip "studio-launchers" "--orkeon given: nothing was installed"
   smoke_skip "studio-version" "--orkeon given"
+fi
+
+# --------------------------------------------------------------------------- #
+# 2c. The REPL
+# --------------------------------------------------------------------------- #
+# /usr/bin/orkeon-repl execs the self-contained payload under /usr/lib/orkeon-repl
+# (package-deb.sh §1c/§2) and borrows the esbuild of /usr/lib/orkeon. Nothing else in
+# this smoke would notice its absence or a payload that does not start.
+if [[ "$STUDIO_INSTALLED" == true ]]; then
+  smoke_step_repl_present "$(dirname "$INSTALLED_BIN")"
+else
+  smoke_skip "repl-launcher" "--orkeon given: nothing was installed"
+  smoke_skip "repl-start" "--orkeon given"
 fi
 
 # --------------------------------------------------------------------------- #
@@ -232,6 +249,10 @@ if [[ -n "$DEB_PATH" ]]; then
       [[ -n "$(find "/usr/lib/$studio_app" -maxdepth 1 -type f 2>/dev/null | head -n1)" ]] \
         && leftovers="$leftovers /usr/lib/$studio_app payload still present;"
     done
+    # And the REPL.
+    [[ -e "/usr/bin/orkeon-repl" ]] && leftovers="$leftovers /usr/bin/orkeon-repl still present;"
+    [[ -n "$(find "/usr/lib/orkeon-repl" -maxdepth 1 -type f 2>/dev/null | head -n1)" ]] \
+      && leftovers="$leftovers /usr/lib/orkeon-repl payload still present;"
     if [[ -z "$leftovers" ]]; then
       smoke_pass "apt-remove" "$INSTALLED_BIN and the payload are gone"
     else

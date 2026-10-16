@@ -134,12 +134,25 @@ echo "# the Debian package"
 tree="$work/deb"
 notices "$tree/usr/share/doc/orkeon" copyright "$NETCORE.Runtime.linux-arm64"
 app "$tree/usr/lib/orkeon" orkeon linux-arm64 "$NETCORE"
+app "$tree/usr/lib/orkeon-repl" Orkeon.ConsoleApp linux-arm64 "$NETCORE"
 app "$tree/usr/lib/orkeon-studio-config" Orkeon.Studio.Config linux-arm64 "$NETCORE"
 app "$tree/usr/lib/orkeon-studio-run" Orkeon.Studio.Run linux-arm64 "$NETCORE"
-assert_notices "$tree/usr/share/doc/orkeon" copyright "$tree/usr/lib/orkeon" "$tree"/usr/lib/orkeon-studio-*
+assert_notices "$tree/usr/share/doc/orkeon" copyright "$tree/usr/lib/orkeon" "$tree/usr/lib/orkeon-repl" "$tree"/usr/lib/orkeon-studio-*
 check "passes on copyright" passes
 check "names the license file of the layout" says "copyright, THIRD-PARTY-NOTICES.md"
 check "names the runtime's folder" says "licenses/$NETCORE.Runtime.linux-arm64/"
+
+# The REPL joined the package self-contained: the runtime it bundles must have its notices
+# there too. A REPL published for another architecture than the notices were copied for is
+# the loss to catch, and the failure names the application.
+tree="$work/deb-repl-gap"
+notices "$tree/usr/share/doc/orkeon" copyright "$NETCORE.Runtime.linux-arm64"
+app "$tree/usr/lib/orkeon" orkeon linux-arm64 "$NETCORE"
+app "$tree/usr/lib/orkeon-repl" Orkeon.ConsoleApp linux-x64 "$NETCORE"
+assert_notices "$tree/usr/share/doc/orkeon" copyright "$tree/usr/lib/orkeon" "$tree/usr/lib/orkeon-repl"
+check "a REPL whose runtime has no notices: fails" refuses
+check "... and names the runtime and the REPL" says "licenses/$NETCORE.Runtime.linux-x64/ is missing"
+check "... as the one the REPL bundles" says "orkeon-repl"
 
 echo "# nothing to read is never a pass"
 tree="$work/empty"

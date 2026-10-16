@@ -86,6 +86,26 @@ glob, and its test now has a typings archive in the set. The editor-setup sectio
 scripting reference and the guide, the `orkeon typings` reference and the publication matrix say
 where the typings come from and how to pin them, EN and FR.
 
+### Added — the `orkeon` Debian package ships `orkeon-repl`
+
+The `*.cmd.ts` commands run only in `orkeon-repl`, and `apt install orkeon` did not give it: the
+package was built from the `cli` app set, the `orkeon` CLI and the two Studio TUIs. It now installs
+`/usr/bin/orkeon-repl`, which execs a self-contained payload under `/usr/lib/orkeon-repl` and points
+the scripting toolchain at the esbuild under `/usr/lib/orkeon`, so the package still holds one copy
+of the binary and still depends on no `dotnet-runtime-*` package. `cli_set_includes` admits
+`orkeon-repl` on `linux-*` only (the MSI and the Homebrew formula keep their trees), and
+`package-deb.sh` refuses a staging tree whose REPL is framework-dependent rather than package a
+launcher that would fail at its first run. `run-smoke-deb.sh` reads the REPL's runtime in the
+notices check, looks for its leftovers after `apt-get remove`, and starts it: `orkeon-repl --ui plain`
+with stdin closed prints its banner and exits 0. `verify-apt-repo.sh` runs the same start on the
+package apt installs, when that package ships the launcher.
+
+To give the deb a self-contained REPL from the one staging tree `release.yml` and `apt-dev.yml` both
+package from, the `orkeon-repl` row of `package-installers.{sh,ps1}` is now self-contained: in the
+multi-app archives too, the REPL no longer needs the .NET 10 runtime. `orkeon-slim` is the one
+framework-dependent launcher left. The `.zip` carries one more copy of the runtime, the tarballs
+share it by hard links. A Linux `install-from-source.sh` installs the REPL with the CLI.
+
 ### Added — `orkeon-repl` asks the operator about a tool call
 
 With the permission gate on, a tool call the session's mode asked about was refused in the REPL:
