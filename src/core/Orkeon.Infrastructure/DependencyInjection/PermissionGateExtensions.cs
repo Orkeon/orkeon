@@ -21,7 +21,8 @@ public static class PermissionGateExtensions
 
     /// <summary>
     /// Registers <see cref="ModePermissionGate"/> as the <see cref="IPermissionGate"/> when
-    /// the <c>Orkeon:Security:PermissionGate</c> section enables it. When the host registers an
+    /// the <c>Orkeon:Security:PermissionGate</c> section enables it. It reads the session rules the
+    /// host registers as <see cref="IToolPermissionRules"/> (the REPL does) before the mode. When the host registers an
     /// <see cref="IToolApprovalChannel"/> (the REPL does), the gate puts every <c>ask</c> to it;
     /// otherwise <c>Interactive</c> (default <c>false</c>) declares whether the caller resolves
     /// <c>ask</c> itself, and left <c>false</c> an <c>ask</c> is a refusal.
@@ -43,8 +44,8 @@ public static class PermissionGateExtensions
 
         var interactive = section.GetValue("Interactive", defaults.Interactive);
         services.TryAddSingleton<IPermissionGate>(sp => sp.GetService<IToolApprovalChannel>() is { } channel
-            ? new ModePermissionGate(channel)
-            : new ModePermissionGate(interactive));
+            ? new ModePermissionGate(channel) { Rules = sp.GetService<IToolPermissionRules>() }
+            : new ModePermissionGate(interactive) { Rules = sp.GetService<IToolPermissionRules>() });
         return services;
     }
 }

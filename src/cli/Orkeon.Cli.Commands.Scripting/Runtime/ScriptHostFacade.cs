@@ -82,7 +82,7 @@ public sealed partial class ScriptHostFacade
         var run = Task.Run(() => RunCrewCoreAsync(name, inputsJson, cts.Token), CancellationToken.None);
         try
         {
-            return run.WaitAsync(timeout).GetAwaiter().GetResult();
+            return WaitAnsweringApprovals(run, timeout, Approvals);
         }
         catch (TimeoutException) when (!run.IsCompleted)
         {
@@ -95,6 +95,55 @@ public sealed partial class ScriptHostFacade
                 "use runCrewAsync (ticket + completed callback) for long workflows, or raise the timeout.");
         }
     }
+
+    /// <summary>
+    /// The REPL's approval channel, when the host registered one: while <see cref="runCrew"/> waits, the read loop
+    /// is held by the command, so the wait answers the crew's questions itself.
+    /// </summary>
+    internal ConsoleToolApprovalChannel? Approvals { get; init; }
+
+    /// <summary>
+    /// Waits for <paramref name="run"/> within <paramref name="timeout"/>, answering from the console every question
+    /// <paramref name="approvals"/> holds meanwhile. The time the operator takes to answer does not count: a crew is
+    /// not cut short because someone read its question.
+    /// </summary>
+    /// <exception cref="TimeoutException">The run outlived the timeout, answers set aside.</exception>
+    internal static T WaitAnsweringApprovals<T>(Task<T> run, TimeSpan timeout, ConsoleToolApprovalChannel? approvals)
+    {
+        if (approvals is null)
+            return run.WaitAsync(timeout).GetAwaiter().GetResult();
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var answering = TimeSpan.Zero;
+        var waitHandle = ((IAsyncResult)run).AsyncWaitHandle;
+        while (!run.IsCompleted)
+        {
+            if (approvals.HasQuestion)
+            {
+                var asked = clock.Elapsed;
+                approvals.AnswerFromConsole();
+                answering += clock.Elapsed - asked;
+                continue;
+            }
+
+            var slice = s_approvalPollInterval;
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                var remaining = timeout - (clock.Elapsed - answering);
+                if (remaining <= TimeSpan.Zero)
+                    throw new TimeoutException();
+                if (remaining < slice)
+                    slice = remaining;
+            }
+
+            waitHandle.WaitOne(slice);
+        }
+
+        return run.GetAwaiter().GetResult();
+    }
+
+    // How often a waiting runCrew looks for a question: short enough that a question shows at once.
+    private static readonly TimeSpan s_approvalPollInterval = TimeSpan.FromMilliseconds(50);
 
     /// <summary>
     /// Posts <c>crews/&lt;name&gt;/crew.ork.ts</c> on a pool thread and returns a ticket immediately.

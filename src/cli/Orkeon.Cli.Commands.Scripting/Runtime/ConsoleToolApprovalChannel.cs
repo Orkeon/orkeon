@@ -12,7 +12,9 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// at a time, the others wait their turn. <c>y</c> allows the call, <c>s</c> allows the tool for the rest of the
 /// session, <c>n</c> refuses; a line starting with <c>/</c> is left to the loop (a command runs, the question waits),
 /// any other line asks again. Cancelling the crew withdraws its question; disposing the channel, at the REPL's end,
-/// refuses every question still waiting.
+/// refuses every question still waiting. While a command holds the loop waiting for a crew (<c>runCrew</c>), that
+/// command reads the answers itself (<see cref="AnswerFromConsole"/>): the loop is not reading, so the console still
+/// has one reader.
 /// </summary>
 internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLineInterceptor, IDisposable
 {
@@ -23,6 +25,10 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     private readonly LinkedList<PendingApproval> _queue = new();
     private readonly HashSet<string> _allowedForSession = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+
+    // Whether the head question's prompt is on the console. The read loop writes its own prompt from
+    // PromptOverride; AnswerFromConsole, which has no loop, writes it when the question came in without one.
+    private bool _promptShown;
 
     /// <summary>Creates the channel.</summary>
     /// <param name="console">
@@ -87,6 +93,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
             if (parsed is null)
             {
                 Console.WriteLine("  answer y (allow once), s (allow for this session) or n (deny)");
+                _promptShown = false;
                 return true;
             }
 
@@ -118,6 +125,51 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
         foreach (var pending in answered)
             pending.Settle(decision);
+        return true;
+    }
+
+    /// <summary>Whether a question waits for the operator.</summary>
+    public bool HasQuestion
+    {
+        get
+        {
+            lock (_gate)
+                return _queue.First is not null;
+        }
+    }
+
+    /// <summary>
+    /// Reads one line from the console and answers the question waiting with it, for a command that holds the read
+    /// loop while a crew runs (<c>runCrew</c>). Nothing happens when no question waits. A line starting with <c>/</c>
+    /// cannot run as a command here: the question is asked again. The end of the input refuses the question.
+    /// </summary>
+    /// <returns>True when a line was read.</returns>
+    public bool AnswerFromConsole()
+    {
+        lock (_gate)
+        {
+            if (_queue.First is not { } head)
+                return false;
+            if (!_promptShown)
+            {
+                Console.Write(PromptFor(head.Value.Request));
+                _promptShown = true;
+            }
+        }
+
+        // Outside the lock: the read blocks until the operator answers, and a crew may ask meanwhile.
+        var line = Console.ReadLine() ?? "n";
+        if (!TryConsume(line))
+        {
+            lock (_gate)
+            {
+                if (_queue.First is null)
+                    return true;
+                Console.WriteLine("  a command cannot run while this one waits for its crew: answer y, s or n");
+                _promptShown = false;
+            }
+        }
+
         return true;
     }
 
@@ -165,6 +217,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         Console.WriteLine($"    {request.ToolName} {FormatArguments(request)}");
         if (withPrompt)
             Console.Write(PromptFor(request));
+        _promptShown = withPrompt;
     }
 
     private static string PromptFor(ToolApprovalRequest request)

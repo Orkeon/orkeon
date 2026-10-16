@@ -100,6 +100,21 @@ offers each line to an `IReplLineInterceptor` (Cli.Abstractions) before resolvin
 shows its prompt while a question waits. A crew launched with `runCrew` (synchronous) cannot be
 asked; see `limitations.md`.
 
+### Added — the permission gate reads the session's rules, and `runCrew` asks the operator
+
+`ModePermissionGate` decided from the tool, its access class and the mode only, so a product's own
+rules ("allow `shell_command` for `npm test`") could narrow a crew's catalogue but never spare a
+question. `IToolPermissionRules` (Application) is the port a host's session rules come through;
+the gate reads it before the mode. A deny rule refuses a call in every mode; an allow rule lets it
+run without asking in every mode but `plan`, which stays read-only, so `dontAsk` runs what a rule
+allows and refuses the rest. A rule names a tool, and optionally an argument and a pattern the
+argument must match whole (`*` for any run of characters). `orkeon-repl` keeps the rules of its
+session, and a command sets them through `ctx.services.get("permissions")`: `allow`, `deny`,
+`clear`, `list` (typings: `PermissionRulesFacade`). A crew launched with `runCrew` (synchronous)
+held the read loop, so its question was never answered until `RunCrewTimeout` cancelled it: the
+waiting call now reads the answer from the console itself, and the time taken to answer does not
+count in the timeout.
+
 ### Added — an approval channel decides the permission gate's asks
 
 `ModePermissionGate` answered an ask with a refusal, and nothing in the framework could put the

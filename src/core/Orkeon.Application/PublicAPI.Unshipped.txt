@@ -2342,3 +2342,26 @@ override Orkeon.Application.Interfaces.Security.ToolApprovalRequest.GetHashCode(
 override Orkeon.Application.Interfaces.Security.ToolApprovalRequest.ToString() -> string!
 static Orkeon.Application.Interfaces.Security.ToolApprovalRequest.operator !=(Orkeon.Application.Interfaces.Security.ToolApprovalRequest? left, Orkeon.Application.Interfaces.Security.ToolApprovalRequest? right) -> bool
 static Orkeon.Application.Interfaces.Security.ToolApprovalRequest.operator ==(Orkeon.Application.Interfaces.Security.ToolApprovalRequest? left, Orkeon.Application.Interfaces.Security.ToolApprovalRequest? right) -> bool
+Orkeon.Application.Interfaces.Security.IToolPermissionRules
+Orkeon.Application.Interfaces.Security.IToolPermissionRules.Current.get -> System.Collections.Immutable.ImmutableList<Orkeon.Application.Interfaces.Security.ToolPermissionRule!>!
+Orkeon.Application.Interfaces.Security.ToolPermissionEffect
+Orkeon.Application.Interfaces.Security.ToolPermissionEffect.Allow = 0 -> Orkeon.Application.Interfaces.Security.ToolPermissionEffect
+Orkeon.Application.Interfaces.Security.ToolPermissionEffect.Deny = 1 -> Orkeon.Application.Interfaces.Security.ToolPermissionEffect
+Orkeon.Application.Interfaces.Security.ToolPermissionRule
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolPermissionRule!
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Argument.get -> string?
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Argument.init -> void
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Effect.get -> Orkeon.Application.Interfaces.Security.ToolPermissionEffect
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Effect.init -> void
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Equals(Orkeon.Application.Interfaces.Security.ToolPermissionRule? other) -> bool
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Matches(string! toolName, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> bool
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Pattern.get -> string?
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.Pattern.init -> void
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.ToolName.get -> string!
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.ToolName.init -> void
+Orkeon.Application.Interfaces.Security.ToolPermissionRule.ToolPermissionRule() -> void
+override Orkeon.Application.Interfaces.Security.ToolPermissionRule.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolPermissionRule.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolPermissionRule.ToString() -> string!
+static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator !=(Orkeon.Application.Interfaces.Security.ToolPermissionRule? left, Orkeon.Application.Interfaces.Security.ToolPermissionRule? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator ==(Orkeon.Application.Interfaces.Security.ToolPermissionRule? left, Orkeon.Application.Interfaces.Security.ToolPermissionRule? right) -> bool
