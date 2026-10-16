@@ -137,7 +137,7 @@ jobs:
       - name: Typecheck the scripting examples against the shipped typings
         run: bash scripts/check-scripting-typings.sh
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        with: { dotnet-version: '10.0.x' }
+        with: { global-json-file: global.json }
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The restore fills packages/ (RestorePackagesPath, Directory.Build.props), not
@@ -233,7 +233,7 @@ jobs:
       # one expected: it is cleared once checked, because the runner ends a PowerShell
       # step on the last $LASTEXITCODE.
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        with: { dotnet-version: '10.0.x' }
+        with: { global-json-file: global.json }
       - name: The source installer asks for PowerShell 7 by name (Windows PowerShell 5.1)
         shell: powershell
         run: |
