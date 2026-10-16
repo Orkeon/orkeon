@@ -2365,3 +2365,5 @@ override Orkeon.Application.Interfaces.Security.ToolPermissionRule.GetHashCode()
 override Orkeon.Application.Interfaces.Security.ToolPermissionRule.ToString() -> string!
 static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator !=(Orkeon.Application.Interfaces.Security.ToolPermissionRule? left, Orkeon.Application.Interfaces.Security.ToolPermissionRule? right) -> bool
 static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator ==(Orkeon.Application.Interfaces.Security.ToolPermissionRule? left, Orkeon.Application.Interfaces.Security.ToolPermissionRule? right) -> bool
+Orkeon.Application.Configuration.ClosestName
+static Orkeon.Application.Configuration.ClosestName.Of(string! written, System.Collections.Generic.IEnumerable<string!>! known) -> string?

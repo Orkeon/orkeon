@@ -69,6 +69,7 @@ public partial class YamlCrewExportRoundTripTests
 
     [Theory]
     [MemberData(nameof(CorpusCrews))]
+    [Trait("BR", "CH-03")]
     public async Task Every_crew_of_the_corpus_comes_back_the_same(string crew)
     {
         var loaded = await LoadCorpusCrewAsync(crew);

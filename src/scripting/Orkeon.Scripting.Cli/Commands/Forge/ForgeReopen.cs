@@ -253,7 +253,7 @@ internal static class ForgeTeamReader
         var crew = Read<CrewYamlConfig>(serializer, settingsPath, problems) ?? new CrewYamlConfig();
 
         // Inline entries first (single-file layout), then one file per entity; an entity
-        // spelled in both places keeps the inline one — the loader reads them the same way.
+        // spelled in both places keeps the inline one. An agents: in a folder's settings is refused by the loader.
         var agents = new Dictionary<string, AgentYamlConfig>(StringComparer.Ordinal);
         foreach (var (key, agent) in crew.Agents ?? [])
             agents[key] = agent;
