@@ -393,10 +393,15 @@ public static partial class RunnerHost
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
     /// <c>--mount</c> took the place of, an entry selected by id, an entry withdrawn for the
     /// run. The run's own intent won over the machine's default, and the log says so by root
-    /// name and id — the same words for every runner, the daemon included.
+    /// name and id — the same words for every runner, the daemon and <c>orkeon-repl</c> included.
     /// </summary>
-    private static void LogMountDecisions(IHost host, MountDecisions decisions)
+    /// <param name="host">The host built over the configuration the decisions were taken on.</param>
+    /// <param name="decisions">What <see cref="ConfigureMounts"/> or a runner host's configuration decided.</param>
+    internal static void LogMountDecisions(IHost host, MountDecisions decisions)
     {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(decisions);
+
         var plan = decisions.Plan;
         if (decisions.ReplacedRoots.Count == 0 && plan.Selected.Count == 0 && plan.Withdrawn.Count == 0 && plan.Warnings.Count == 0)
             return;
@@ -434,8 +439,8 @@ public static partial class RunnerHost
         _ => selector.ToString(),
     };
 
-    /// <summary>What <see cref="ConfigureAppConfiguration"/> decided, for the log once a logger exists.</summary>
-    private sealed class MountDecisions
+    /// <summary>What <see cref="ConfigureAppConfiguration"/> or <see cref="ConfigureMounts"/> decided, for the log once a logger exists.</summary>
+    internal sealed class MountDecisions
     {
         public List<string> ReplacedRoots { get; } = [];
 
@@ -705,7 +710,8 @@ public static partial class RunnerHost
     /// </para>
     /// <para>
     /// Since VFS-90 the declared array may hold several entries of one root, told apart by
-    /// their ids. <see cref="MountSelection.Resolve"/> decides here, on the same snapshot,
+    /// their ids. <see cref="MountSelection.Resolve(IReadOnlyList{DeclaredMountEntry}, IReadOnlyList{string}, IReadOnlyList{MountId}, IReadOnlyList{MountReference}, string?)"/>
+    /// decides here, on the same snapshot,
     /// which of them this run keeps: a <c>--mount</c> on the root replaces them all, else
     /// <see cref="RunnerMountPlan.SelectedMountIds"/>, else
     /// <see cref="RunnerMountPlan.CrewMountReferences"/>. Every other entry of that root is
@@ -713,6 +719,11 @@ public static partial class RunnerHost
     /// a null element there, and the registration leaves a null or blank entry out) and its
     /// base path is not whitelisted. A selection that cannot be resolved is thrown, with the same text the
     /// runners' guards print — this is the closed net for the hosts built without them.
+    /// </para>
+    /// <para>
+    /// That mounts half is <see cref="PlaceMounts"/>, which <c>orkeon-repl</c> applies to its own
+    /// layers through <see cref="ConfigureMounts"/> (GAP-49, decision 3). The runner adds what only a
+    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail accounts.
     /// </para>
     /// </summary>
     /// <param name="builder">The host's configuration builder.</param>
@@ -736,6 +747,80 @@ public static partial class RunnerHost
 
         ElectLlmProfile(overrides, declared, llmProfile, decisions);
 
+        var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
+
+        // The runner's own Internal mount, after the others: the token store of the OAuth e-mail
+        // accounts (ADR-012). Planning it refuses any mount claiming /credentials, whatever its layer.
+        var credentialsDirectory = PlanEmailCredentials(
+            declared, placement.DeclaredMounts, placement.DeclaredInternal, mounts.CliMounts, settingsPath, decisions);
+        if (credentialsDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{placement.NextInternalIndex}"] =
+                $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
+            overrides[$"{PathSecurityWhitelistSection}:{placement.NextWhitelistIndex}"] = credentialsDirectory;
+        }
+
+        if (overrides.Count > 0)
+            builder.AddInMemoryCollection(overrides);
+    }
+
+    /// <summary>
+    /// The mounts half of a runner host's configuration, over layers the caller composed (GAP-49,
+    /// decision 3): <c>orkeon-repl</c> lays its environment, settings files and command line, then
+    /// calls this with its <c>--mount</c> arguments, made absolute. A <c>--mount</c> takes the place of
+    /// the declared entries of its root — every entry, the first index rewritten and the others
+    /// withdrawn — or is appended after the last; the declared entries still in force are
+    /// whitelisted for <c>PathValidator</c>, the <c>--mount</c> folders under
+    /// <see cref="RunnerMountPlan.AllowExternalMounts"/> only. Exactly what a runner host does
+    /// (<see cref="ConfigureAppConfiguration"/>), <c>/credentials</c> aside: only a runner host keeps
+    /// a token store, and the REPL's guard refuses the root.
+    /// </summary>
+    /// <param name="builder">The configuration builder, its layers laid; an in-memory source is added last.</param>
+    /// <param name="mounts">The mounts the host adds and the selection inputs.</param>
+    /// <param name="settingsLabel">What a refusal names the declarations by: the file, or the files separated by a comma; null for the configuration alone.</param>
+    /// <param name="decisions">Receives what was decided, for <see cref="LogMountDecisions"/> once the host exists.</param>
+    /// <exception cref="RunnerSettingsException">A settings file cannot be read, or the selection cannot be resolved.</exception>
+    internal static void ConfigureMounts(
+        IConfigurationBuilder builder,
+        RunnerMountPlan mounts,
+        string? settingsLabel,
+        MountDecisions decisions)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(mounts);
+        ArgumentNullException.ThrowIfNull(decisions);
+
+        var overrides = new Dictionary<string, string?>();
+        using (var declared = DeclaredConfiguration.Snapshot(builder))
+            PlaceMounts(overrides, declared, mounts, settingsLabel, decisions);
+
+        if (overrides.Count > 0)
+            builder.AddInMemoryCollection(overrides);
+    }
+
+    /// <summary>What <see cref="PlaceMounts"/> read and where the next entries of its sections go.</summary>
+    /// <param name="DeclaredMounts">The declared agent-facing entries, by index.</param>
+    /// <param name="DeclaredInternal">The declared Internal entries, by index.</param>
+    /// <param name="NextInternalIndex">The index the next Internal mount lands on.</param>
+    /// <param name="NextWhitelistIndex">The index the next whitelisted directory lands on.</param>
+    private sealed record MountPlacement(
+        List<(int Index, string? Value)> DeclaredMounts,
+        List<(int Index, string? Value)> DeclaredInternal,
+        int NextInternalIndex,
+        int NextWhitelistIndex);
+
+    /// <summary>
+    /// The selection, its withdrawals, the <c>--mount</c> arguments by root, the Internal mounts and
+    /// the whitelist, written to <paramref name="overrides"/> against what <paramref name="declared"/>
+    /// holds — see <see cref="ConfigureAppConfiguration"/> for the rules.
+    /// </summary>
+    private static MountPlacement PlaceMounts(
+        Dictionary<string, string?> overrides,
+        DeclaredConfiguration declared,
+        RunnerMountPlan mounts,
+        string? settingsLabel,
+        MountDecisions decisions)
+    {
         var declaredMounts = declared.Entries(ConfigurationKeys.FileSystemMounts);
         var plan = MountSelection.Resolve(
             declaredMounts
@@ -745,7 +830,7 @@ public static partial class RunnerHost
             mounts.CliMounts,
             mounts.SelectedMountIds,
             mounts.CrewMountReferences,
-            settingsPath);
+            settingsLabel);
         if (plan.Errors.Count > 0)
             throw new RunnerSettingsException(string.Join(Environment.NewLine, plan.Errors));
 
@@ -761,13 +846,6 @@ public static partial class RunnerHost
         foreach (var mount in mounts.InternalMounts)
             overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
 
-        var credentialsDirectory = PlanEmailCredentials(declared, declaredMounts, declaredInternal, mounts.CliMounts, settingsPath, decisions);
-        if (credentialsDirectory is not null)
-        {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex}"] =
-                $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
-        }
-
         // The whitelist "additionally" extends what the settings declare (the flag's own
         // documented wording), so every entry continues AFTER the declared ones: starting the
         // count at 0 silently replaced the operator's first allowed directory instead of
@@ -781,17 +859,14 @@ public static partial class RunnerHost
             .Select(entry => entry.Value);
         nextWhitelistIndex = WhitelistBases(overrides, inForce, nextWhitelistIndex);
         nextWhitelistIndex = WhitelistBases(overrides, declaredInternal.Select(entry => entry.Value), nextWhitelistIndex);
-        if (credentialsDirectory is not null)
-            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = credentialsDirectory;
 
         // --allow-external-mounts: the --mount arguments (and the runner's own internal
         // mounts) may point outside the working directory. Unchanged: a folder named on the
         // command line is still gated behind the explicit opt-in.
         if (mounts.AllowExternalMounts)
-            WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
+            nextWhitelistIndex = WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
 
-        if (overrides.Count > 0)
-            builder.AddInMemoryCollection(overrides);
+        return new MountPlacement(declaredMounts, declaredInternal, nextInternalIndex, nextWhitelistIndex);
     }
 
     /// <summary>
@@ -1053,22 +1128,13 @@ public static partial class RunnerHost
         /// <summary>The declared section at <paramref name="key"/>, or null when nothing could be read.</summary>
         public IConfigurationSection? Section(string key) => _snapshot?.GetSection(key);
 
-        /// <summary>The numerically-keyed children of <paramref name="section"/>, by ascending index.</summary>
-        public List<(int Index, string? Value)> Entries(string section)
-        {
-            if (_snapshot is null)
-                return [];
-
-            var entries = new List<(int Index, string? Value)>();
-            foreach (var child in _snapshot.GetSection(section).GetChildren())
-            {
-                if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index))
-                    entries.Add((index, child.Value));
-            }
-
-            entries.Sort((a, b) => a.Index.CompareTo(b.Index));
-            return entries;
-        }
+        /// <summary>
+        /// The numerically-keyed children of <paramref name="section"/>, by ascending index — read by
+        /// <see cref="RunnerSettings.IndexedEntries"/>, the reading the guards make of the same
+        /// layers (GAP-49, decision 2): the host and the guards never read two lists.
+        /// </summary>
+        public List<(int Index, string? Value)> Entries(string section) =>
+            _snapshot is null ? [] : RunnerSettings.IndexedEntries(_snapshot, section);
     }
 
     private static void ConfigureRunnerServices(

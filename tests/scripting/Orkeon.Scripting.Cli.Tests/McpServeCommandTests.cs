@@ -129,6 +129,39 @@ public sealed class McpServeCommandTests
         Assert.Contains("hello from the mount", text, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-49, decision 3: the server takes no <c>--mount-id</c>, no crew and no <c>--mount</c>, so
+    /// the line of a root declared twice says the one thing left: keep one of them in the settings.
+    /// </summary>
+    [Fact]
+    public async Task A_root_declared_twice_is_refused_with_the_one_remedy_the_server_has()
+    {
+        using var scratch = new ScriptScratch();
+        var a = Directory.CreateDirectory(Path.Combine(scratch.Root, "a")).FullName;
+        var b = Directory.CreateDirectory(Path.Combine(scratch.Root, "b")).FullName;
+        var idA = Orkeon.Domain.Common.MountId.Create();
+        var idB = Orkeon.Domain.Common.MountId.Create();
+        var settings = scratch.WriteFile("appsettings.json",
+            "{ \"RaggableTree\": { \"Enabled\": false }, \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + JsonSerializer.Serialize($"{idA}|{a}:/data:ro") + ", "
+            + JsonSerializer.Serialize($"{idB}|{b}:/data:ro") + " ] } } }");
+        using var console = new TestConsole(stdin: ListTools + "\n");
+
+        var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
+        {
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+        });
+
+        Assert.NotEqual(Program.ExitOk, exit);
+        Assert.Contains(
+            $"ERROR: '/data' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
+            + $"Keep one of them in {settings}.",
+            console.Stderr,
+            StringComparison.Ordinal);
+        Assert.Empty(console.Stdout);
+    }
+
     [Fact]
     public async Task A_settings_file_that_still_enables_the_server_is_refused_naming_the_verb()
     {

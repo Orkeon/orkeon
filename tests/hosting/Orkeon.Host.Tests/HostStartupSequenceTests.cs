@@ -181,6 +181,34 @@ public sealed class HostStartupSequenceTests : IDisposable
         Assert.Equal(["local"], host.Services.GetRequiredService<ILlmProfileRegistry>().Names);
     }
 
+    /// <summary>
+    /// GAP-49, decision 2: the start guard reads the layers the host reads. A <c>/sandbox</c> the
+    /// <c>ORKEON_</c> environment declares - an Aspire AppHost's <c>WithOrkeonSetting</c>, say -
+    /// was invisible to it, and the daemon started over a duplicate root.
+    /// </summary>
+    [Fact]
+    public void A_reserved_root_an_ORKEON_variable_declares_is_refused_with_the_guards_line_and_exits_78()
+    {
+        const string variable = "ORKEON_Orkeon__FileSystem__Mounts__0";
+        var folder = Directory.CreateDirectory(Path.Combine(_scratch, "bac")).FullName;
+        Environment.SetEnvironmentVariable(variable, $"{folder}:/sandbox:rw");
+        HostLaunch launch;
+        try
+        {
+            launch = Prepare(Settings());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+
+        using var host = launch.Host;
+        Assert.Null(launch.Host);
+        Assert.Equal(78, launch.ExitCode);
+        var reported = Assert.Single(_failures.Reported);
+        Assert.Contains("'/sandbox' is a virtual root reserved by the runner", reported, StringComparison.Ordinal);
+    }
+
     private void AssertRefused(HostLaunch launch, string named)
     {
         Assert.Null(launch.Host);

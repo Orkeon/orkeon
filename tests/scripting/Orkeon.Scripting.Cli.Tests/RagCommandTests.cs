@@ -59,6 +59,83 @@ public sealed class RagCommandTests
         Assert.Contains("2 added", console.Stdout, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-49, decision 2: a <c>/workspace</c> the <c>ORKEON_</c> environment declares is a
+    /// declared root, and the verb yields to it as it yields to one of the file. It mounted its own
+    /// <c>/workspace</c> over it, and read the working directory's documents instead.
+    /// </summary>
+    [Fact]
+    public async Task Ingest_ReadsTheWorkspaceAnEnvironmentVariableDeclares()
+    {
+        using var scratch = new ScriptScratch();
+        using var declared = new ScriptScratch();
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
+        Directory.CreateDirectory(Path.Combine(declared.Root, "docs"));
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "from-the-working-directory.md"), "cwd", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(declared.Root, "docs", "from-the-declared-folder.md"), "declared", TestContext.Current.CancellationToken);
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+        var pipeline = new FakeIngestionPipeline();
+        using var console = new TestConsole();
+        const string variable = "ORKEON_Orkeon__FileSystem__Mounts__0";
+        Environment.SetEnvironmentVariable(variable, $"{declared.Root}:/workspace:ro");
+        int exit;
+        try
+        {
+            exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+            {
+                Collection = "docs",
+                Sources = ["./docs/**/*.md"],
+                SettingsPath = settings,
+                WorkingDirectoryOverride = scratch.Root,
+                ConfigureTestServices = (_, s) => s.AddSingleton<IIngestionPipeline>(pipeline),
+            });
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Equal(["/workspace/docs/from-the-declared-folder.md"], pipeline.LastRequest!.Sources.Select(s => s.Location));
+    }
+
+    /// <summary>
+    /// GAP-49, decision 3: the verb takes neither <c>--mount-id</c> nor a crew, so the line of a
+    /// root declared twice names <c>--mount</c> alone.
+    /// </summary>
+    [Fact]
+    public async Task Ingest_ARootDeclaredTwice_NamesTheMountOptionAlone()
+    {
+        using var scratch = new ScriptScratch();
+        var a = Directory.CreateDirectory(Path.Combine(scratch.Root, "a")).FullName;
+        var b = Directory.CreateDirectory(Path.Combine(scratch.Root, "b")).FullName;
+        var idA = Orkeon.Domain.Common.MountId.Create();
+        var idB = Orkeon.Domain.Common.MountId.Create();
+        var settings = scratch.WriteFile("appsettings.json",
+            "{ \"RaggableTree\": { \"Enabled\": false }, \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{idA}|{a}:/data:ro") + ", "
+            + System.Text.Json.JsonSerializer.Serialize($"{idB}|{b}:/data:ro") + " ] } } }");
+        var pipeline = new FakeIngestionPipeline();
+        using var console = new TestConsole();
+
+        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        {
+            Collection = "docs",
+            Sources = ["./docs/**/*.md"],
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) => s.AddSingleton<IIngestionPipeline>(pipeline),
+        });
+
+        Assert.NotEqual(Program.ExitOk, exit);
+        Assert.Contains(
+            $"ERROR: '/data' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
+            + "Pass --mount <folder>:/data:rw to replace them all.",
+            console.Stderr,
+            StringComparison.Ordinal);
+        Assert.Null(pipeline.LastRequest);
+    }
+
     [Fact]
     public async Task Ingest_PropagatesChunkingStrategy_AndReindex()
     {

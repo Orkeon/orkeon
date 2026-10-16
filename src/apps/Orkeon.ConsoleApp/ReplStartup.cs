@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Commands.Scripting.Configuration;
 using Orkeon.Cli.TerminalGui.Hosting;
+using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.Hosting;
 
 namespace Orkeon.ConsoleApp;
@@ -25,6 +27,11 @@ internal sealed record ReplLaunch(IHost? Host, int ExitCode, ScriptedCommandsCli
 /// and the exit code 1, before the console opens: the REPL used to open on a file <c>orkeon run</c>
 /// refuses, and its first command failed on it. A section the settings write that no shipped binary
 /// reads is one line too, <c>orkeon-repl: warning: …</c>, and the console opens.
+/// <para>
+/// Before any host, the mounts meet the guards of <c>orkeon run</c> (GAP-49, decision 3): a mount
+/// the REPL cannot honour is refused with the lines <c>orkeon run</c> writes, <c>ERROR: …</c>, and the
+/// exit code 1, where the console used to die at its start on "Duplicate virtual paths".
+/// </para>
 /// </summary>
 internal static class ReplStartup
 {
@@ -36,7 +43,16 @@ internal static class ReplStartup
     /// <param name="effectiveUi">The UI mode the flags resolved.</param>
     /// <param name="replWordWrap">The <c>--repl-wrap</c> choice.</param>
     /// <param name="report">Where a refusal or a notice is written: stderr, or a test's sink.</param>
-    public static ReplLaunch Prepare(string[] args, UiMode effectiveUi, bool replWordWrap, Action<string> report)
+    /// <param name="configureLogging">
+    /// Added to the REPL's own logging, as <c>RunnerHost.Build</c> takes one for a runner: a test's
+    /// recording provider. Null in the REPL.
+    /// </param>
+    public static ReplLaunch Prepare(
+        string[] args,
+        UiMode effectiveUi,
+        bool replWordWrap,
+        Action<string> report,
+        Action<ILoggingBuilder>? configureLogging = null)
     {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(report);
@@ -44,13 +60,24 @@ internal static class ReplStartup
         var scriptedOpts = ScriptedCommandsCliOptions.Parse(args);
         var globalSettingsPath = Program.GlobalSettingsPathOrNull();
 
+        if (!MountsAreHonoured(args, scriptedOpts, globalSettingsPath, report, out var unreadable))
+            return unreadable is null
+                ? new ReplLaunch(null, RefusedExitCode, scriptedOpts)
+                : Refused(report, unreadable, scriptedOpts);
+
+        var decisions = new RunnerHost.MountDecisions();
         IHost host;
         try
         {
             host = Host.CreateDefaultBuilder(args)
-                .ConfigureAppConfiguration((_, builder) => Program.ConfigureAppConfiguration(builder, scriptedOpts, globalSettingsPath))
+                .ConfigureAppConfiguration((_, builder) =>
+                    Program.ConfigureAppConfiguration(builder, scriptedOpts, globalSettingsPath, decisions))
                 .ConfigureServices((context, services) =>
-                    ConfigureServicesUnderBarrier(context, services, effectiveUi, scriptedOpts, replWordWrap))
+                {
+                    ConfigureServicesUnderBarrier(context, services, effectiveUi, scriptedOpts, replWordWrap);
+                    if (configureLogging is not null)
+                        services.AddLogging(configureLogging);
+                })
                 .Build();
         }
         catch (RunnerSettingsException ex)
@@ -69,6 +96,10 @@ internal static class ReplStartup
             host.Dispose();
             return Refused(report, refusal, scriptedOpts);
         }
+
+        // A --mount that took the place of a declared entry, or of every entry of its root: said
+        // on the log, in the runners' words.
+        RunnerHost.LogMountDecisions(host, decisions);
 
         // What the settings write and no component of the REPL reads: said before the console
         // opens, as a runner says it, and the REPL starts.
@@ -98,6 +129,66 @@ internal static class ReplStartup
         {
             throw new RunnerSettingsException(ex.Message, ex);
         }
+    }
+
+    /// <summary>
+    /// The guards of <c>orkeon run</c> on the REPL's mounts, in its order, before any host (GAP-49,
+    /// decision 3): a root claimed twice on the command line or declared twice without ids; a root
+    /// the REPL keeps — <c>/sandbox</c>, those of its <c>--commands-dir</c> and <c>--crews-dir</c>, and
+    /// <c>/credentials</c>, which the guard adds —; a root declared several times with nothing to
+    /// choose one, the line naming <c>--mount</c>, the REPL's one way; a folder that is not there,
+    /// those of <c>--commands-dir</c> and <c>--crews-dir</c> included. They read the REPL's layers —
+    /// the environment, its settings files, its command line — without its <c>--mount</c>, which are
+    /// the user mounts they judge. Their lines are reported as <c>orkeon run</c> writes them.
+    /// </summary>
+    /// <param name="args">The process arguments.</param>
+    /// <param name="scriptedOpts">The REPL's options.</param>
+    /// <param name="globalSettingsPath">The global file <c>orkeon init</c> writes, or null.</param>
+    /// <param name="report">Where the guards' lines are written.</param>
+    /// <param name="unreadable">Why a settings file cannot be read, when that is the refusal; null otherwise.</param>
+    /// <returns>True when the REPL may build its host.</returns>
+    private static bool MountsAreHonoured(
+        string[] args,
+        ScriptedCommandsCliOptions scriptedOpts,
+        string? globalSettingsPath,
+        Action<string> report,
+        out string? unreadable)
+    {
+        unreadable = null;
+        IConfiguration layers;
+        try
+        {
+            layers = Program.ComposeSettingsLayers(new ConfigurationBuilder().AddCommandLine(args), scriptedOpts, globalSettingsPath)
+                .Build();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException or UnauthorizedAccessException)
+        {
+            // A --settings file that is not JSON, or that is not there: named, with the line and the
+            // position of what its JSON gets wrong — as the runners name it (GAP-35).
+            unreadable = RunnerSettings.DescribeUnreadableSettings(ex);
+            return false;
+        }
+
+        var label = Program.SettingsLabel(scriptedOpts, globalSettingsPath);
+        var ownMounts = CliCommandMountBootstrapper.Mounts(scriptedOpts.CommandDirs)
+            .Concat(CliCrewMountBootstrapper.Mounts(scriptedOpts.CrewDirs))
+            .ToList();
+        string[] reserved =
+        [
+            Orkeon.Constants.FileSystem.RunnerVirtualRoots.Sandbox,
+            .. ownMounts.Select(MountSelection.TryGetVirtualRoot).OfType<string>(),
+        ];
+
+        using var lines = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
+        var honoured = RunnerExecution.EnsureVirtualRootsAreUnique(scriptedOpts.Mounts, layers, label, lines)
+            && RunnerExecution.EnsureReservedRootsAreFree(scriptedOpts.Mounts, layers, lines, reserved)
+            && RunnerExecution.EnsureMountSelectionIsResolvable(
+                scriptedOpts.Mounts, [], CrewMountDeclarations.None, layers, label, OfferedMountSelectors.MountOption, lines, out var selection)
+            && RunnerExecution.EnsureMountSourcesExist([.. scriptedOpts.Mounts, .. ownMounts], layers, selection, lines);
+
+        foreach (var line in lines.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            report(line.TrimEnd('\r'));
+        return honoured;
     }
 
     private static ReplLaunch Refused(Action<string> report, string refusal, ScriptedCommandsCliOptions scriptedOpts)

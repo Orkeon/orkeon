@@ -134,6 +134,8 @@ internal static class McpCommand
             cliMounts: [],
             mountIds: [],
             allowExternalMounts: false,
+            // No --mount, no --mount-id, no crew: a root declared twice has one remedy, in the settings.
+            offered: OfferedMountSelectors.None,
             (context, services) =>
             {
                 services.AddSemanticSearchTool();

@@ -288,213 +288,123 @@ public static class RunnerSettings
         catch (InvalidOperationException) { return null; }
     }
 
+
     /// <summary>
-    /// The mount strings a settings file declares under <c>Orkeon:FileSystem:Mounts</c> and
-    /// <c>Orkeon:FileSystem:InternalMounts</c>.
+    /// The mount strings the configuration of a run declares under <c>Orkeon:FileSystem:Mounts</c>
+    /// and <c>Orkeon:FileSystem:InternalMounts</c>: the agent-facing entries, then the Internal ones,
+    /// each by ascending index.
     /// <para>
     /// The reserved-root guard used to see only the <c>--mount</c> arguments, so the same
     /// collision written in <c>appsettings.json</c> reached <c>FileSystemRegistry</c> and came
     /// back as "Duplicate virtual paths" out of a DI factory. A mount claims a root the same
-    /// way whichever of the two it was written in, so the guard has to be shown both. Both
+    /// way wherever it was declared, so the guard has to be shown every declaration. Both
     /// SECTIONS too: the registry's duplicate check spans them, so a root claimed under
     /// InternalMounts collides exactly as loudly.
     /// </para>
     /// <para>
-    /// Read with the JSON reader rather than a configuration builder on purpose: this runs
-    /// before the host exists, it must not apply environment or command-line overlays, and a
-    /// malformed file is not this method's business to report - the host build says it better,
-    /// with the path and the parse position. Anything it cannot read is no mounts, never a
-    /// throw.
-    /// </para>
-    /// <para>
-    /// The reader is deliberately configured to accept what
-    /// <c>JsonConfigurationFileParser</c> accepts - comments and trailing commas - and to match
-    /// property names the way the binder does, case-insensitively. This method shadows that
-    /// binder: every dialect difference between them is a file whose mounts the host will
-    /// register and this guard will not see, which fails OPEN. That is the failure direction a
-    /// guard must not have.
+    /// Read from <see cref="ReadConfiguration"/>, the layers the host composes (GAP-49, decision 2):
+    /// the environment without a prefix, the settings file, the <c>ORKEON_</c> environment. The
+    /// method used to shadow the configuration binder with a JSON reader of its own, which read the
+    /// file alone: every layer and dialect difference between them was a mount the host registers
+    /// and the guard does not see, which fails OPEN - the direction a guard must not have. A file
+    /// the configuration cannot read is no mounts, never a throw: the host build refuses it next,
+    /// naming the file and the place (GAP-35).
     /// </para>
     /// </summary>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
-    /// <returns>The declared mount strings, in file order; empty when there are none.</returns>
+    /// <returns>The declared mount strings; empty when there are none.</returns>
     public static IReadOnlyList<string> ReadDeclaredMounts(string? settingsPath) =>
-        ReadFileSystemSection<IReadOnlyList<string>>(
-            settingsPath,
-            fileSystem =>
-            [
-                .. ReadMountArray(fileSystem, "Mounts"),
-                .. ReadMountArray(fileSystem, "InternalMounts"),
-            ],
-            empty: []);
+        ReadDeclaredMounts(ReadMountConfiguration(settingsPath));
 
     /// <summary>
-    /// The agent-facing mounts a settings file declares (<c>Orkeon:FileSystem:Mounts</c> only),
-    /// each at the array position the configuration binder will key it under. The position is
-    /// what the mount selection withdraws an entry by (VFS-90), so an element that is not a
-    /// mount string — <c>null</c>, an empty string — is skipped but still counted: the entries
-    /// after it keep the indices the host will see.
+    /// <see cref="ReadDeclaredMounts(string?)"/> over a configuration the caller composed: the
+    /// REPL's layers, its command line included.
+    /// </summary>
+    /// <param name="configuration">The configuration the host is built over, before its own mounts.</param>
+    internal static IReadOnlyList<string> ReadDeclaredMounts(IConfiguration configuration) =>
+    [
+        .. ReadDeclaredAgentFacingMounts(configuration).Select(entry => entry.Spec),
+        .. ReadDeclaredInternalMounts(configuration),
+    ];
+
+    /// <summary>
+    /// The agent-facing mounts the configuration of a run declares (<c>Orkeon:FileSystem:Mounts</c>
+    /// only), each at the index the configuration keys it under. The index is what the mount
+    /// selection withdraws an entry by (VFS-90), so an entry that is not a mount string — written
+    /// <c>null</c> or empty, or emptied by an <c>ORKEON_</c> variable — is skipped but keeps its
+    /// place: the entries after it keep the indices the host will see.
     /// <para>
-    /// Same dialect and same failure stance as <see cref="ReadDeclaredMounts"/>.
+    /// Same layers and same failure stance as <see cref="ReadDeclaredMounts(string?)"/>.
     /// </para>
     /// </summary>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
     public static IReadOnlyList<DeclaredMountEntry> ReadDeclaredAgentFacingMounts(string? settingsPath) =>
-        WithEnvironmentEntries(
-            ReadFileSystemSection<IReadOnlyList<DeclaredMountEntry>>(
-                settingsPath,
-                fileSystem => ReadMountEntries(fileSystem, "Mounts"),
-                empty: []),
-            "Mounts");
+        ReadDeclaredAgentFacingMounts(ReadMountConfiguration(settingsPath));
+
+    /// <summary><see cref="ReadDeclaredAgentFacingMounts(string?)"/> over a configuration the caller composed.</summary>
+    /// <param name="configuration">The configuration the host is built over, before its own mounts.</param>
+    internal static IReadOnlyList<DeclaredMountEntry> ReadDeclaredAgentFacingMounts(IConfiguration configuration) =>
+        DeclaredEntries(configuration, ConfigurationKeys.FileSystemMounts);
 
     /// <summary>
-    /// The Internal mounts a settings file declares (<c>Orkeon:FileSystem:InternalMounts</c>
-    /// only), the <c>ORKEON_</c> environment included. Same dialect and same failure stance as
-    /// <see cref="ReadDeclaredMounts"/>.
+    /// The Internal mounts the configuration of a run declares
+    /// (<c>Orkeon:FileSystem:InternalMounts</c> only), by ascending index. Same layers and same
+    /// failure stance as <see cref="ReadDeclaredMounts(string?)"/>.
     /// </summary>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
-    public static IReadOnlyList<string> ReadDeclaredInternalMounts(string? settingsPath)
-    {
-        var fromFile = ReadFileSystemSection(settingsPath, fileSystem => ReadMountArray(fileSystem, "InternalMounts"), empty: []);
-        var withIndices = fromFile.Select((spec, index) => new DeclaredMountEntry(index, spec)).ToList();
-        return WithEnvironmentEntries(withIndices, "InternalMounts").Select(entry => entry.Spec).ToList();
-    }
+    public static IReadOnlyList<string> ReadDeclaredInternalMounts(string? settingsPath) =>
+        ReadDeclaredInternalMounts(ReadMountConfiguration(settingsPath));
+
+    /// <summary><see cref="ReadDeclaredInternalMounts(string?)"/> over a configuration the caller composed.</summary>
+    /// <param name="configuration">The configuration the host is built over, before its own mounts.</param>
+    internal static IReadOnlyList<string> ReadDeclaredInternalMounts(IConfiguration configuration) =>
+        [.. DeclaredEntries(configuration, ConfigurationKeys.FileSystemInternalMounts).Select(entry => entry.Spec)];
 
     /// <summary>
-    /// The file's entries with the <c>ORKEON_Orkeon__FileSystem__{array}__{i}</c> variables
-    /// laid over them, index by index — the environment wins on an index it names, exactly as
-    /// the host's configuration does. An entry the environment alone declares is a declared
-    /// entry too: a second <c>/output</c> arriving through a variable must meet the same
-    /// one-line refusal as one written in the file, not the host's exception a moment later.
+    /// The configuration the mount readers of <paramref name="settingsPath"/> read: <see cref="ReadConfiguration"/>,
+    /// or an empty one when a settings file cannot be read — no mounts, never a throw, since the
+    /// host build refuses that file next, naming it and the place in it (GAP-35).
     /// </summary>
-    private static List<DeclaredMountEntry> WithEnvironmentEntries(IReadOnlyList<DeclaredMountEntry> fromFile, string arrayName)
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    internal static IConfiguration ReadMountConfiguration(string? settingsPath)
     {
-        var prefix = $"ORKEON_Orkeon__FileSystem__{arrayName}__";
-        var merged = fromFile.ToDictionary(entry => entry.Index, entry => entry.Spec);
-        foreach (System.Collections.DictionaryEntry variable in Environment.GetEnvironmentVariables())
-        {
-            if (variable.Key is not string name
-                || !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                || !int.TryParse(name.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
-            {
-                continue;
-            }
-
-            if (variable.Value is string { Length: > 0 } spec)
-                merged[index] = spec;
-            else
-                merged.Remove(index);
-        }
-
-        return merged.OrderBy(pair => pair.Key).Select(pair => new DeclaredMountEntry(pair.Key, pair.Value)).ToList();
-    }
-
-    private static T ReadFileSystemSection<T>(string? settingsPath, Func<System.Text.Json.JsonElement, T> read, T empty)
-    {
-        if (settingsPath is not { Length: > 0 } || !File.Exists(settingsPath))
-            return empty;
-
         try
         {
-            using var document = System.Text.Json.JsonDocument.Parse(
-                File.ReadAllText(settingsPath),
-                new System.Text.Json.JsonDocumentOptions
-                {
-                    AllowTrailingCommas = true,
-                    CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
-                });
-
-            if (!TryGetSection(document.RootElement, "Orkeon", out var orkeon)
-                || !TryGetSection(orkeon, "FileSystem", out var fileSystem))
-            {
-                return empty;
-            }
-
-            return read(fileSystem);
+            return ReadConfiguration(settingsPath);
         }
-        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException or UnauthorizedAccessException)
         {
-            return empty;
+            return new ConfigurationBuilder().Build();
         }
     }
 
     /// <summary>
-    /// A child object by name, case-insensitively, and only when both it and its parent really
-    /// are objects.
-    /// <para>
-    /// <c>JsonElement.TryGetProperty</c> THROWS <see cref="InvalidOperationException"/> on an
-    /// element that is not an object - it does not return false. So <c>{"Orkeon": null}</c>, a
-    /// file the configuration binder accepts without complaint, used to take the whole process
-    /// down with a raw stack trace from a method documented as "never a throw", at a call site
-    /// outside any try.
-    /// </para>
+    /// The numbered children of <paramref name="section"/>, by ascending index, each with its value:
+    /// null or blank for an entry written <c>null</c>, emptied, or withdrawn. The one reading of an
+    /// indexed section for the host — what it places its own entries against — and for the guards,
+    /// so the two never read two lists.
     /// </summary>
-    private static bool TryGetSection(System.Text.Json.JsonElement parent, string name, out System.Text.Json.JsonElement section)
+    /// <param name="configuration">The configuration to read.</param>
+    /// <param name="section">The section path, e.g. <c>Orkeon:FileSystem:Mounts</c>.</param>
+    internal static List<(int Index, string? Value)> IndexedEntries(IConfiguration configuration, string section)
     {
-        section = default;
-        if (parent.ValueKind != System.Text.Json.JsonValueKind.Object)
-            return false;
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        foreach (var property in parent.EnumerateObject())
+        var entries = new List<(int Index, string? Value)>();
+        foreach (var child in configuration.GetSection(section).GetChildren())
         {
-            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Object)
-                return false;
-            section = property.Value;
-            return true;
+            if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index))
+                entries.Add((index, child.Value));
         }
 
-        return false;
+        entries.Sort((a, b) => a.Index.CompareTo(b.Index));
+        return entries;
     }
 
-    /// <summary>
-    /// The non-empty strings in a named array property, case-insensitively, each with its
-    /// array position.
-    /// </summary>
-    private static List<DeclaredMountEntry> ReadMountEntries(System.Text.Json.JsonElement parent, string name)
-    {
-        foreach (var property in parent.EnumerateObject())
-        {
-            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Array)
-                return [];
-
-            var entries = new List<DeclaredMountEntry>();
-            var index = 0;
-            foreach (var element in property.Value.EnumerateArray())
-            {
-                if (element.ValueKind == System.Text.Json.JsonValueKind.String
-                    && element.GetString() is { Length: > 0 } spec)
-                {
-                    entries.Add(new DeclaredMountEntry(index, spec));
-                }
-
-                index++;
-            }
-
-            return entries;
-        }
-
-        return [];
-    }
-
-    /// <summary>The non-empty strings in a named array property, case-insensitively.</summary>
-    private static IReadOnlyList<string> ReadMountArray(System.Text.Json.JsonElement parent, string name)
-    {
-        foreach (var property in parent.EnumerateObject())
-        {
-            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Array)
-                return [];
-
-            return [.. property.Value.EnumerateArray()
-                .Where(e => e.ValueKind == System.Text.Json.JsonValueKind.String)
-                .Select(e => e.GetString()!)
-                .Where(s => s.Length > 0)];
-        }
-
-        return [];
-    }
+    /// <summary>The entries of <paramref name="section"/> that hold a mount string, at their own index.</summary>
+    private static List<DeclaredMountEntry> DeclaredEntries(IConfiguration configuration, string section) =>
+        IndexedEntries(configuration, section)
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
+            .Select(entry => new DeclaredMountEntry(entry.Index, entry.Value!))
+            .ToList();
 }

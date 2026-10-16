@@ -23,14 +23,23 @@ namespace Orkeon.Examples.AgentFrameworkInterop;
 //   3. MAF -> Orkeon   the same MAF agent answers for another Orkeon agent: it is that agent's
 //                      model (WithAgentFrameworkAgent), and every turn of its task is a MAF run.
 //
-// The model is whatever the settings chain resolves (examples/appsettings/appsettings.json
-// by default -- Docker Model Runner -- or --settings <file>, or `orkeon init`); without one
-// the echo provider answers and the shape of the run is still visible.
+// The model is whatever the runners' settings chain resolves, anchored at this binary's folder:
+// --settings <file> when given; else an appsettings.json next to the binary, then
+// examples/appsettings/appsettings.json found by walking up from it (Docker Model Runner: a
+// runner that is not started fails the first call); else the file `orkeon init` writes; else
+// the environment alone, with the chain's warning. The file is named on stderr, as the CLI
+// names it. Without a model the echo provider answers and the shape of the run is still visible.
 internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        var settings = args.Length >= 2 && args[0] == "--settings" ? args[1] : null;
+        var explicitSettings = args.Length >= 2 && args[0] == "--settings" ? args[1] : null;
+        // Anchored at the binary, not the current directory: started with `dotnet run --project`
+        // from the repository root, the walk up from bin/<config>/net10.0/ reaches
+        // examples/appsettings/appsettings.json, which the repository root would never find.
+        var settings = RunnerSettings.ResolveSettingsPath(explicitSettings, AppContext.BaseDirectory);
+        if (settings is not null)
+            await Console.Error.WriteLineAsync($"Using settings: {settings}");
         var output = Directory.CreateTempSubdirectory("orkeon-maf-").FullName;
 
         using var host = RunnerHost.Build(
@@ -68,7 +77,7 @@ internal static class Program
             "Orkeon puts a boundary in front of the model: agents only see virtual paths, " +
             "each one a declared mount with declared rights, and a path outside a mount is " +
             "refused before any byte lands on disk. Around that boundary sits a complete " +
-            "agent-team framework with six orchestration strategies and fourteen LLM providers.");
+            "agent-team framework with six orchestration strategies and sixteen LLM providers.");
         Console.WriteLine(mafSide.Text);
         Console.WriteLine($"   [agent {mafSide.AgentId}, {mafSide.Usage?.TotalTokenCount.ToString() ?? "unmetered"} tokens]");
         Console.WriteLine();

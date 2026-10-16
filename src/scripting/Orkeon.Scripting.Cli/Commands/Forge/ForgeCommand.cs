@@ -752,8 +752,11 @@ internal static class ForgeCommand
         string workspace, string? readRoot, ForgeSession session, string? settingsPath, out RunnerMountPlan mountPlan)
     {
         mountPlan = BuildMountPlan(workspace, readRoot, session);
+        // The forge takes no --mount, no --mount-id, no crew: a root declared twice has one remedy
+        // left, in the settings, and the line says that one (GAP-49, decision 3).
         return RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
-            && RunnerExecution.EnsureMountSelectionIsResolvable(mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, out _);
+            && RunnerExecution.EnsureMountSelectionIsResolvable(
+                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out _);
     }
 
     /// <summary>

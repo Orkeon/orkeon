@@ -18,15 +18,16 @@ public sealed class ReplRagProfilesTests
     public void The_repl_resolves_the_onnx_reranker_the_balanced_and_quality_profiles_name()
     {
         // The reranker reads its model through the VFS, so the container needs one mount —
-        // given the way an operator gives it, with --mount.
+        // given the way an operator gives it, with --mount, which the REPL's configuration places
+        // (GAP-49, decision 3).
         var workspace = Directory.CreateTempSubdirectory("orkeon-repl-rag-").FullName;
         try
         {
+            var options = ScriptedCommandsCliOptions.Parse(["--mount", $"{workspace}:/workspace:ro"]);
             using var host = Host.CreateDefaultBuilder([])
+                .ConfigureAppConfiguration((_, builder) => Program.ConfigureAppConfiguration(builder, options, globalSettingsPath: null))
                 .ConfigureServices((context, services) => Program.ConfigureServices(
-                    context, services, UiMode.Plain,
-                    ScriptedCommandsCliOptions.Parse(["--mount", $"{workspace}:/workspace:ro"]),
-                    replWordWrap: false))
+                    context, services, UiMode.Plain, options, replWordWrap: false))
                 .Build();
 
             var rerankers = host.Services.GetRequiredService<RerankerFactory>();

@@ -460,11 +460,12 @@ internal static class RagCommand
 
         var cliMounts = options.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
 
-        // The settings file declares mounts too, and RunnerHost appends ours after them: a
-        // declared /workspace or /output met an injected twin and the host died on
-        // "Duplicate virtual paths" out of a DI factory. Yielding to whoever already claimed
-        // the root is this command's existing policy for --mount; it just never saw the other
-        // half of the list it was reasoning about.
+        // The settings declare mounts too - the file and the environment, prefixed or not (GAP-49,
+        // decision 2) - and RunnerHost places ours against them by root: a declared /workspace or
+        // /output met an injected twin and the host died on "Duplicate virtual paths", or, declared
+        // by a variable, was silently replaced by it. Yielding to whoever already claimed the root
+        // is this command's existing policy for --mount; it just never saw the other half of the
+        // list it was reasoning about.
         var claimed = cliMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)).ToList();
 
         // /workspace and /output are YIELDED, not reserved: this command injects them only when
@@ -477,9 +478,13 @@ internal static class RagCommand
 
         // Two settings entries of one root (VFS-90) have no crew here to pick one and this verb
         // takes no --mount-id: a --mount on the root replaces them both, otherwise the guard
-        // refuses in one line instead of the host throwing out of its configuration.
-        if (!RunnerExecution.EnsureMountSelectionIsResolvable(cliMounts, [], CrewMountDeclarations.None, settingsPath, out _))
+        // refuses in one line - naming --mount, the one way this verb has (GAP-49, decision 3) -
+        // instead of the host throwing out of its configuration.
+        if (!RunnerExecution.EnsureMountSelectionIsResolvable(
+                cliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.MountOption, out _))
+        {
             return null;
+        }
 
         if (!claimed.Any(m => ClaimsVirtualRoot(m, "/workspace")))
             cliMounts.Insert(0, $"{FileSystemMount.Quote(cwd)}:/workspace:ro");

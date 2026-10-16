@@ -129,6 +129,32 @@ public sealed class MountSelectionGuardTests : IDisposable
         Assert.DoesNotContain("Using settings", stderr, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// GAP-49, decision 3: a script has no <c>mounts:</c> block (VFS-90, D-11), so the line names
+    /// the two ways it has - <c>--mount-id</c> and <c>--mount</c> - and not the crew's.
+    /// </summary>
+    [Fact]
+    public async Task For_a_script_the_selection_line_names_the_mount_id_and_the_mount_only()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings($"{idA}|{a}:/output:rw", $"{idB}|{b}:/output:rw");
+        var script = Path.Combine(SubDir("script"), "main.ork.ts");
+        await File.WriteAllTextAsync(script, "export default {};", TestContext.Current.CancellationToken);
+        var opts = new TestOptions { ConfigPath = script, SettingsPath = settingsPath, AllowExternalMounts = true };
+
+        var (exit, _, stderr) = await RunAsync(opts);
+
+        Assert.Equal(1, exit);
+        var line = Assert.Single(Lines(stderr));
+        Assert.Equal(
+            $"ERROR: '/output' is declared twice in {settingsPath} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
+            + "Pass --mount-id <id> or pass --mount <folder>:/output:rw to replace them all.",
+            line);
+    }
+
     [Fact]
     public async Task A_mount_id_resolves_the_selection_and_the_run_goes_ahead()
     {
