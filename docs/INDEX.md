@@ -87,6 +87,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |
 | [Verify what you install](./guides/verify-what-you-install.md) | What the provenance chain proves and does not (OIDC Trusted Publishing, SLSA attestations, immutable Releases, `SHA256SUMS`, SBOM), the exact `gh attestation verify` / `dotnet nuget verify` commands, the token-free API query, and why a nuget.org package must be un-signed before its digest matches |
 | [Install with apt](./guides/install-with-apt.md) | Debian / Ubuntu (amd64, arm64): add the signed Orkeon apt source once, then `apt install` / `apt upgrade`; the `stable`, `rc` and `dev` channels, going back to a version, removal, Docker builds, troubleshooting |
+| [Whisper through MCP](./guides/whisper-mcp.md) | Transcribe audio from `orkeon-repl`, `orkeon run` or `orkeon-host`: a local faster-whisper behind an MCP server, its `MCP:Servers` and mount settings, the agent side, and the Orkeon limits the server is written around (paths, text-only results, the 4000-character cap, the 30 s handshake) |
 
 ### Reference
 

@@ -100,6 +100,8 @@
       href: guides/verify-what-you-install.md
     - name: Install with apt
       href: guides/install-with-apt.md
+    - name: Whisper through MCP
+      href: guides/whisper-mcp.md
 - name: Reference
   items:
     - name: Scripting DSL reference

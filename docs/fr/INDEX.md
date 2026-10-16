@@ -87,6 +87,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Modèles locaux](./guides/local-models.md) | Tout exécuter sur sa machine : Docker Model Runner (pull/configure/inspect, contextes 128K), Ollama, variante d'image `local-llm` embarquée, changement de modèle, dépannage |
 | [Vérifier ce que vous installez](./guides/verify-what-you-install.md) | Ce que la chaîne de provenance prouve et ne prouve pas (Trusted Publishing OIDC, attestations SLSA, Releases immuables, `SHA256SUMS`, SBOM), les commandes exactes `gh attestation verify` / `dotnet nuget verify`, la requête à l'API sans token, et pourquoi un paquet nuget.org doit être dé-signé avant que son digest corresponde |
 | [Installer avec apt](./guides/install-with-apt.md) | Debian / Ubuntu (amd64, arm64) : ajouter une fois la source apt signée d'Orkeon, puis `apt install` / `apt upgrade` ; les canaux `stable`, `rc` et `dev`, le retour à une version, la désinstallation, les builds Docker, le dépannage |
+| [Whisper par MCP](./guides/whisper-mcp.md) | Transcrire de l'audio depuis `orkeon-repl`, `orkeon run` ou `orkeon-host` : un faster-whisper local derrière un serveur MCP, ses réglages `MCP:Servers` et de montage, le côté agent, et les limites d'Orkeon autour desquelles le serveur est écrit (chemins, résultats texte seul, plafond de 4000 caractères, handshake de 30 s) |
 
 ### Référence
 

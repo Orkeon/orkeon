@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation — transcribing audio with Whisper through an MCP server
+
+Orkeon ships no speech-to-text tool; since `orkeon-repl` connects the servers of `MCP:Servers`
+(#107), an MCP server is the way to one.
+
+- **`docs/guides/whisper-mcp.md`** (and its French mirror) wires a local faster-whisper behind a
+  `transcribe_audio` tool: the `MCP:Servers` and mount settings, a minimal server, the agent side,
+  and why the server is written as it is — it maps the agents' virtual paths onto its own folders,
+  returns text only, writes a transcript longer than the 4000-character cap of a tool result to a
+  file `file_read` reads, and loads its model on the first call rather than inside the 30 s
+  handshake. Variants (the OpenAI API, a plugin) and troubleshooting close it.
+- **`docs/architecture/mcp.md`** no longer says the REPL registers no MCP: the sentence predated
+  #107 and contradicted the paragraph after it.
+
 ### Fixed — a mount a variable declares meets the guards of a mount the file declares **[breaking]**
 
 Before any host, every runner refuses in one line (exit 1, 78 for `orkeon-host`) a root it keeps for

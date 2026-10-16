@@ -153,8 +153,7 @@ it reads the same section and runs the same step once, from its first hosted ser
 the daemon starts — before the chat channel can deliver a message that loads a crew — and
 disconnects the servers when it stops, after the drain. The same settings give `orkeon run`
 and `orkeon-host` the same tools; an unreachable server costs the same error line and the
-daemon starts without it. The REPL calls the parameterless `AddOrkeonInfrastructure()` and
-registers no MCP at all; there, and in any embedding host, MCP stays a library surface —
+daemon starts without it. In any other embedding host, MCP stays a library surface —
 the host calls `AddOrkeonMcp(configuration)` (or the config overload) and connects the
 servers itself.
 
@@ -164,7 +163,8 @@ tools a server brings enter the tool registry, and the scripts' catalogue reads 
 tools (`ScriptToolCatalogue`): a command's `tools` namespace, an agent's `.tools([...])` in a `.ork.ts` crew
 and `ctx.llm.act` reach an MCP server's tools — in the REPL, and under `orkeon run`, where a procedural
 script's servers are now connected before it runs too. Until then only a declarative crew, which resolves
-its tools through the registry, could.
+its tools through the registry, could. [Whisper through MCP](../guides/whisper-mcp.md) wires a
+speech-to-text server this way.
 
 The library ships **no hosted service** for this: an embedding host resolves
 `McpToolProvider` and calls `ConnectServerAsync(serverId, config)` for each configured
