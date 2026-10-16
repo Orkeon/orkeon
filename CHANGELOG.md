@@ -115,6 +115,21 @@ data tools shipped a vulnerable version. It is now pinned to 10.0.13 in
 `Directory.Packages.props`, through a direct reference in `Orkeon.Tools.Data`,
 `Orkeon.Tools.Email` and the `Orkeon.Tools` package.
 
+### Added — `shell_command` can run its process in a view built from the VFS
+
+Once `shell_command` ran an interpreter or a shell, the VFS stopped at the command line: the
+process worked on physical paths, read and wrote wherever the host's user could, read-only mounts
+included, and reached the network. `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap` (off by
+default) now runs it under `bwrap` on Linux: every namespace unshared, each agent-facing mount
+bound at its virtual path (read-only when it lacks Write, a sub path without rights covered), the
+system directories and `Confinement:ReadOnlyPaths` read-only, a fresh `/proc`, `/dev` and `/tmp`,
+nothing else of the host, and the network off unless `Confinement:AllowNetwork`. The process sees
+the virtual paths, so `bash /workspace/build.sh` finds `/workspace` and its `echo x > /docs/f`
+gets a read-only file system error. When `bwrap` is absent or cannot create its namespaces
+(another OS, an unprivileged container), the call fails with the reason and the command does not
+run. The nightly integration run installs bubblewrap and runs the confinement suite. Limits are
+in `limitations.md`.
+
 ### Removed — public surfaces nothing called, third pass **[breaking]**
 
 Types and members with no caller left in the framework, the REPL or the examples (GAP-47).

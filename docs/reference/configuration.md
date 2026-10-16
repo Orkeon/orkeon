@@ -188,13 +188,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 30 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 54 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 57 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 21 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 355 keys. Read by no shipped binary, only by a host written in C# (11): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+67 sections, 358 keys. Read by no shipped binary, only by a host written in C# (11): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Plugins`](#plugins), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1280,16 +1280,21 @@ What the tools of an agent may do, and which servers and indexes they reach.
 What `ShellCommandTool` may run, configuration only (`AddOrkeonCodeTools()`):
 `AllowInterpreters` allows the interpreters and mutating git (**RCE-equivalent**, a warning is
 emitted); `ExtraAllowedCommands` adds to the allowlist and `AllowedCommands` replaces it whole —
-the replacement cancels `AllowInterpreters`.
+the replacement cancels `AllowInterpreters`. `Confinement:Mode = Bubblewrap` runs the process
+under `bwrap` (Linux) in a view built from the VFS; a call fails, with the reason, when `bwrap`
+cannot confine it ([limits](./limitations.md)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
-| Key | Type | Default | Meaning |
-|---|---|---|---|
-| `AllowedCommands` | list of string | `[]` | A full replacement of the default allowlist, verbatim; it cancels `AllowInterpreters` and re-enables the git read-only restriction. Empty keeps the default allowlist. |
-| `AllowInterpreters` | boolean | `false` | Enables the interpreters (`node`, `dotnet`, `npm`, `find`) and the mutating git subcommands — RCE-equivalent on the host, for trusted coding-agent hosts only. Default false. |
-| `ExtraAllowedCommands` | list of string | `[]` | Commands added on top of the default (or replacement) allowlist, such as `make`. |
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `AllowedCommands` | list of string | `[]` |  | A full replacement of the default allowlist, verbatim; it cancels `AllowInterpreters` and re-enables the git read-only restriction. Empty keeps the default allowlist. |
+| `AllowInterpreters` | boolean | `false` |  | Enables the interpreters (`node`, `dotnet`, `npm`, `find`) and the mutating git subcommands — RCE-equivalent on the host, for trusted coding-agent hosts only. Default false. |
+| `Confinement:AllowNetwork` | boolean | `false` |  | Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only. |
+| `Confinement:Mode` | enum | `"None"` | `None`, `Bubblewrap` | How the process is confined. `None` (default) runs it on the host, as the user of the host. `Bubblewrap` runs it under `bwrap` (Linux): each mount bound at its virtual path, read-only when it lacks Write, the system directories read-only, nothing else of the host, the network off. When it is unavailable (another OS, no `bwrap`, namespaces refused) the call fails with the reason and the command does not run. |
+| `Confinement:ReadOnlyPaths` | list of string | `[]` |  | Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. |
+| `ExtraAllowedCommands` | list of string | `[]` |  | Commands added on top of the default (or replacement) allowlist, such as `make`. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Email`

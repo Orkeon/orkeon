@@ -3,6 +3,7 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Code.Confinement;
 using Orkeon.Tools.Code.Constants.Shell;
 using Microsoft.Extensions.Logging;
 
@@ -99,6 +100,15 @@ public sealed record ShellCommandResponse
 /// untrusted interpreter code, route it through an isolating
 /// <c>ICodeSandbox</c> (Docker <c>--network=none</c>) instead.
 /// </para>
+/// <para>
+/// <b>Confinement (opt-in, Linux).</b> With <see cref="Confinement"/> set to
+/// <see cref="ShellConfinementMode.Bubblewrap"/>, the process runs under <c>bwrap</c> in a view built from
+/// the VFS: each agent-facing mount bound at its virtual path (read-only when it lacks Write, a sub path
+/// without rights covered), the system directories read-only, nothing else of the host, the network off
+/// unless allowed. The process then works on virtual paths, so the arguments are checked but not
+/// rewritten, and the kernel enforces a read-only mount on whatever the process reaches by itself. When
+/// bubblewrap is unavailable the call fails with the reason; it never runs unconfined.
+/// </para>
 /// </remarks>
 [ToolContract("shell_command",
     Name = "shell_command",
@@ -108,6 +118,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 {
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Execute;
+
+    /// <summary>
+    /// How the process is confined: <see cref="ShellConfinementMode.None"/> (default) runs it on the
+    /// host; <see cref="ShellConfinementMode.Bubblewrap"/> runs it in a view built from the VFS.
+    /// </summary>
+    public ShellConfinementOptions Confinement { get; init; } = new();
+
+    /// <summary>Whether bubblewrap works here; probed once per process. Replaced by the tests.</summary>
+    internal Func<BubblewrapAvailability> Bubblewrap { get; init; } = BubblewrapProbe.Current;
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
@@ -382,6 +401,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (blockedPattern is not null)
             return $"Command contains blocked pattern: '{blockedPattern}'";
 
+        // A confinement that cannot be built fails the call: the command never runs unconfined.
+        var confinementError = ValidateConfinement();
+        if (confinementError is not null)
+            return confinementError;
+
         // VFS inbound check: an argument naming a mount-prefixed virtual path the file
         // system refuses must fail the call (redacted reason) — never reach the process.
         var (_, argumentDenial) = RewriteInboundArguments(ParseCommand(request.Command).Arguments);
@@ -407,9 +431,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
         var (executable, arguments) = ParseCommand(request.Command);
+        var confined = Confinement.Mode == ShellConfinementMode.Bubblewrap;
 
-        // Virtual→physical: the child process only understands physical paths. Validation
-        // already vetoed denials; this re-run is belt-and-braces against a scope swap.
+        // Virtual→physical: the child process only understands physical paths, unless it is
+        // confined and sees the virtual ones. Validation already vetoed denials; this re-run is
+        // belt-and-braces against a scope swap, and the check a confined call keeps.
         var (rewrittenArguments, argumentDenial) = RewriteInboundArguments(arguments);
         if (argumentDenial is not null)
             return new ShellCommandResponse
@@ -419,7 +445,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 Stderr = $"Argument denied: {argumentDenial}",
                 Completed = false
             };
-        arguments = rewrittenArguments;
+        if (!confined)
+            arguments = rewrittenArguments;
 
         var (workingDirectory, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory);
         if (workingDirectoryDenial is not null)
@@ -442,13 +469,29 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         ConfigureRestrictedEnvironment(startInfo);
 
-        // On Windows, shell built-in commands (echo, dir, etc.) are not standalone
-        // executables. Route them through cmd.exe /c to make them functional.
-        // Security is preserved: forbidden operators were already rejected in
-        // ValidateTypedRequest, and arguments are passed individually through
-        // ArgumentList (no shell interpretation of special characters).
-        if (OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable))
+        if (confined)
         {
+            // Validation proved bubblewrap works; the command runs in the view it builds.
+            var bubblewrap = Bubblewrap();
+            if (!bubblewrap.IsAvailable)
+                return ConfinementUnavailable(bubblewrap.Reason);
+
+            startInfo.FileName = bubblewrap.ExecutablePath!;
+            var virtualWorkingDirectory = workingDirectory.Length == 0
+                ? "/"
+                : _fileSystem.ToVirtualPath(workingDirectory) ?? "/";
+            foreach (var argument in BubblewrapCommandLine.Build(
+                         BuildConfinedPaths(), Confinement.ReadOnlyPaths, Confinement.AllowNetwork, virtualWorkingDirectory))
+                startInfo.ArgumentList.Add(argument);
+            startInfo.ArgumentList.Add(executable);
+        }
+        else if (OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable))
+        {
+            // On Windows, shell built-in commands (echo, dir, etc.) are not standalone
+            // executables. Route them through cmd.exe /c to make them functional.
+            // Security is preserved: forbidden operators were already rejected in
+            // ValidateTypedRequest, and arguments are passed individually through
+            // ArgumentList (no shell interpretation of special characters).
             startInfo.FileName = ShellDefaults.WindowsShell; // NOSONAR — cmd.exe is a Windows system binary resolved via SystemRoot
             startInfo.ArgumentList.Add(ShellDefaults.WindowsCommandSwitch);
             startInfo.ArgumentList.Add(executable);
@@ -539,6 +582,86 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 Completed = false
             };
         }
+    }
+
+    // ── Confinement ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Null when the call may run: no confinement, or bubblewrap works and the extra read-only paths
+    /// are absolute. Otherwise the reason the call fails.
+    /// </summary>
+    private string? ValidateConfinement()
+    {
+        if (Confinement.Mode != ShellConfinementMode.Bubblewrap)
+            return null;
+
+        var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
+        if (relative is not null)
+            return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
+                + "which is not an absolute path. The command did not run.";
+
+        var bubblewrap = Bubblewrap();
+        if (bubblewrap.IsAvailable)
+            return null;
+
+        LogConfinementUnavailable(bubblewrap.Reason ?? "");
+        return ConfinementUnavailable(bubblewrap.Reason).Stderr;
+    }
+
+    private static ShellCommandResponse ConfinementUnavailable(string? reason) => new()
+    {
+        ExitCode = -1,
+        Stdout = "",
+        Stderr = $"Confinement unavailable: {ShellToolOptions.SectionName}:Confinement:Mode is Bubblewrap, "
+            + $"but {reason}. The command did not run.",
+        Completed = false
+    };
+
+    /// <summary>
+    /// The mounts the process sees under bubblewrap, each at its virtual path: the agent-facing mounts
+    /// with their default rights, then their sub-path overrides. A mount that grants neither Read nor
+    /// Write is left out; a sub path that grants neither is covered when it exists. Built per call, like
+    /// the outbound table: mounts can be swapped per async flow (IFileSystemScope).
+    /// </summary>
+    private List<ConfinedPath> BuildConfinedPaths()
+    {
+        var paths = new List<ConfinedPath>();
+        foreach (var mount in _fileSystem.GetAvailableMounts())
+        {
+            var virtualRoot = mount.VirtualPath.TrimEnd('/');
+            if (virtualRoot.Length == 0)
+                continue;
+
+            // Asking for no right resolves the root whatever it grants: the rights are applied below.
+            var root = _fileSystem.ResolveAndValidate(virtualRoot, FileAccessRights.None);
+            if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
+                continue;
+
+            if (Granted(mount.DefaultRights) is { } access)
+                paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
+
+            foreach (var subPath in mount.Overrides)
+            {
+                var relative = subPath.RelativePath.Trim('/');
+                if (relative.Length == 0)
+                    continue;
+
+                var source = Path.Combine(root.ResolvedPath, relative);
+                var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
+                if (granted is { } subAccess)
+                    paths.Add(new ConfinedPath(source, $"{virtualRoot}/{relative}", subAccess));
+            }
+        }
+
+        return paths;
+    }
+
+    /// <summary>How a path with <paramref name="rights"/> is bound, or null when it grants neither Read nor Write.</summary>
+    private static ConfinedAccess? Granted(FileAccessRights rights)
+    {
+        if (rights.HasFlag(FileAccessRights.Write))
+            return ConfinedAccess.ReadWrite;
+        return rights.HasFlag(FileAccessRights.Read) ? ConfinedAccess.ReadOnly : null;
     }
 
     /// <summary>
@@ -1020,6 +1143,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Shell command timed out: {Command} (timeout: {TimeoutSeconds}s)")]
     private partial void LogCommandTimedOut(string command, int timeoutSeconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Shell command refused: the configured confinement is unavailable ({Reason})")]
+    private partial void LogConfinementUnavailable(string reason);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "SECURITY: ShellCommandTool interpreter opt-in enabled (node/dotnet/npm/find). This is RCE-equivalent: commands run on the host with NO OS confinement. Do not expose this tool to untrusted (LLM-produced) input in this mode.")]
     private partial void LogInterpretersEnabled();

@@ -28,4 +28,7 @@ public sealed class ShellToolOptions
 
     /// <summary>Commands added on top of the default (or replacement) allowlist, such as <c>make</c>.</summary>
     public Collection<string> ExtraAllowedCommands { get; } = [];
+
+    /// <summary>How the process is confined; none by default.</summary>
+    public ShellConfinementOptions Confinement { get; } = new();
 }

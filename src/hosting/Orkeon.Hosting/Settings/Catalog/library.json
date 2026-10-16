@@ -2237,6 +2237,31 @@
       "description": "Enables the interpreters (`node`, `dotnet`, `npm`, `find`) and the mutating git subcommands — RCE-equivalent on the host, for trusted coding-agent hosts only. Default false."
     },
     {
+      "path": "Orkeon:Tools:Shell:Confinement:AllowNetwork",
+      "section": "Orkeon:Tools:Shell",
+      "type": "boolean",
+      "default": false,
+      "description": "Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:Confinement:Mode",
+      "section": "Orkeon:Tools:Shell",
+      "type": "enum",
+      "default": "None",
+      "values": [
+        "None",
+        "Bubblewrap"
+      ],
+      "description": "How the process is confined. `None` (default) runs it on the host, as the user of the host. `Bubblewrap` runs it under `bwrap` (Linux): each mount bound at its virtual path, read-only when it lacks Write, the system directories read-only, nothing else of the host, the network off. When it is unavailable (another OS, no `bwrap`, namespaces refused) the call fails with the reason and the command does not run."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:Confinement:ReadOnlyPaths",
+      "section": "Orkeon:Tools:Shell",
+      "type": "list of string",
+      "default": [],
+      "description": "Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder."
+    },
+    {
       "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
