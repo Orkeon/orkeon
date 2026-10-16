@@ -92,8 +92,7 @@ public static class OrkeonResourceBuilderExtensions
                 context.Args.Add("--allow-external-mounts");
                 if (!string.IsNullOrWhiteSpace(settingsPath))
                 {
-                    context.Args.Add("--settings");
-                    context.Args.Add(settingsPath);
+                    context.Args.Add($"--settings={settingsPath}");
                 }
             })
             .WithOtlpExporter();
