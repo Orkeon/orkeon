@@ -158,8 +158,7 @@ section et exécute le même pas, une fois, depuis son premier service hébergé
 du démon — avant que le canal de chat puisse livrer un message qui charge une crew — et
 déconnecte les serveurs à l'arrêt, après le drainage. Les mêmes réglages donnent à
 `orkeon run` et à `orkeon-host` les mêmes outils ; un serveur injoignable coûte la même
-ligne d'erreur et le démon démarre sans lui. Le REPL appelle `AddOrkeonInfrastructure()`
-sans paramètre et n'enregistre aucun MCP ; là, et dans tout hôte qui embarque, MCP reste une
+ligne d'erreur et le démon démarre sans lui. Dans tout autre hôte qui embarque, MCP reste une
 surface bibliothèque — l'hôte appelle lui-même `AddOrkeonMcp(configuration)` (ou la
 surcharge config) et connecte lui-même les serveurs.
 
@@ -170,7 +169,8 @@ scripts le lit à côté des outils du conteneur (`ScriptToolCatalogue`) : l'esp
 d'une commande, le `.tools([...])` d'un agent dans une crew `.ork.ts` et `ctx.llm.act` atteignent les
 outils d'un serveur MCP — dans le REPL, et sous `orkeon run`, où les serveurs d'un script procédural
 sont désormais connectés avant qu'il tourne lui aussi. Jusque-là, seule une crew déclarative, qui
-résout ses outils par le registre, le pouvait.
+résout ses outils par le registre, le pouvait. [Whisper par MCP](../guides/whisper-mcp.md) branche
+ainsi un serveur de transcription.
 
 La bibliothèque ne livre **pas de hosted service** pour cela : un hôte qui embarque résout
 `McpToolProvider` et appelle explicitement `ConnectServerAsync(serverId, config)` pour
