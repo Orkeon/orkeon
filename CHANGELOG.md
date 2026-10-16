@@ -119,6 +119,20 @@ decides. Otherwise the limit is measured as Jint's `TimeoutInterval` measured it
 reset, no limit when it is zero or infinite, and the same `TimeoutException`. The clock belongs to
 the engine, so a pause holds for every agent the engine runs.
 
+### Security — `shell_command` asks every right of the paths a writing command names
+
+`ShellCommandTool` checked a virtual path on the command line, and the working directory, for
+read access only, whatever the process would do with it. With interpreters allowed, or a command
+added to the allowlist, a read-only mount passed the check and the process wrote there:
+`find /docs -name '*.tmp' -delete` deleted files of a read-only `/docs`. A command of the
+read-only default list (`git` while its restriction holds) still needs Read. Any other command
+(an interpreter, an extra or custom command, `git` once interpreters lift its restriction) now
+needs every right (read, write, create, delete) on the paths it names and on its working
+directory, which defaults to the first mount that grants them. The refusal says why and that the
+mount stays readable through the file tools. Migration: run such a command where it may write;
+read a read-only mount with `file_read` or `cat`. A path the process reaches by itself, inside a
+script, is still outside the VFS.
+
 ### Security — System.Security.Cryptography.Pkcs pinned to 10.0.13
 
 Two .NET denial-of-service advisories published on 2026-10-13, GHSA-846f-f764-76mx (high,

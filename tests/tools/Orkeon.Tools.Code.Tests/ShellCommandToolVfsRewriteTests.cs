@@ -1,7 +1,10 @@
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Domain.Tools.Security;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Tools.Code.Tests;
@@ -354,6 +357,127 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         Assert.True(ShellCommandTool.MatchesMountPrefix("/workspace/x", "/workspace/"));
         Assert.False(ShellCommandTool.MatchesMountPrefix("/workspaces/x", "/workspace"));
         Assert.False(ShellCommandTool.MatchesMountPrefix("/work", "/workspace"));
+    }
+
+    // ── rights: a command that can write ────────────────────────────────────
+
+    [Fact]
+    public async Task ShouldRefuseAWritingCommand_WhenAPathArgumentIsInAReadOnlyMount()
+    {
+        var doomed = WriteDocsFile("a.tmp");
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+
+        var result = await tool.CallAsync(
+            Request("find /docs -name *.tmp -delete", workingDirectory: "/ws"),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("denied", result.Error!, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("'find' can write", result.Error!, StringComparison.Ordinal);
+        Assert.DoesNotContain(_tempDir, result.Error!, StringComparison.Ordinal);
+        Assert.True(File.Exists(doomed));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAWritingCommand_WhenAnEmbeddedPathArgumentIsInAReadOnlyMount()
+    {
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]);
+
+        var result = await tool.CallAsync(
+            Request("make --directory=/docs", workingDirectory: "/ws"), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("'make' can write", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRunAReadOnlyCommand_WhenItsPathArgumentIsInAReadOnlyMount()
+    {
+        WriteDocsFile("a.txt", "from the docs");
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+
+        var command = s_isWindows ? "type /docs/a.txt" : "cat /docs/a.txt";
+        var dict = Unpack(await tool.CallAsync(
+            Request(command, workingDirectory: "/docs"), TestContext.Current.CancellationToken));
+
+        Assert.Equal(0, (int)dict["exit_code"]!);
+        Assert.Contains("from the docs", dict["stdout"]!.ToString());
+    }
+
+    [Fact]
+    public async Task ShouldRefuseGit_WhenInterpretersLiftItsRestrictionAndAPathIsReadOnly()
+    {
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+
+        var result = await tool.CallAsync(
+            Request("git checkout -- /docs", workingDirectory: "/ws"), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("'git' can write", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAWritingCommand_WhenItsWorkingDirectoryIsReadOnly()
+    {
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]);
+
+        var dict = Unpack(await tool.CallAsync(
+            Request("make --version", workingDirectory: "/docs"), TestContext.Current.CancellationToken));
+
+        Assert.False((bool)dict["completed"]!);
+        Assert.Contains("WorkingDirectory denied", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("'make' can write", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRunAWritingCommandInTheFirstWritableMount_WhenNoWorkingDirectoryIsNamed()
+    {
+        Assert.SkipWhen(s_isWindows, "env runs a command in the working directory on POSIX only.");
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["env"]);
+
+        var dict = Unpack(await tool.CallAsync(
+            Request("env pwd", workingDirectory: ""), TestContext.Current.CancellationToken));
+
+        Assert.Equal(0, (int)dict["exit_code"]!);
+        Assert.Equal("/ws", dict["stdout"]!.ToString()!.Trim());
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAWritingCommand_WhenNoMountIsWritable()
+    {
+        using var tool = new ShellCommandTool(BuildMountedService(writable: false), extraAllowedCommands: ["make"]);
+
+        var dict = Unpack(await tool.CallAsync(
+            Request("make --version", workingDirectory: ""), TestContext.Current.CancellationToken));
+
+        Assert.False((bool)dict["completed"]!);
+        Assert.Contains("no mount grants every right", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A real file system over two folders of the temp directory: <c>/docs</c> read-only, listed
+    /// first so that it is the default working directory of a read-only command, and <c>/ws</c>
+    /// with every right unless <paramref name="writable"/> is false.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the duration of the test.")]
+    private FileSystemService BuildMountedService(bool writable = true)
+    {
+        var docs = Directory.CreateDirectory(Path.Combine(_tempDir, "docs")).FullName;
+        var ws = Directory.CreateDirectory(Path.Combine(_tempDir, "ws")).FullName;
+        var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(docs, "/docs", FileAccessRights.ReadOnly),
+            new FileSystemMount(ws, "/ws", writable ? FileAccessRights.ReadWrite : FileAccessRights.ReadOnly),
+        ]);
+        return new FileSystemService(
+            registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+    }
+
+    private string WriteDocsFile(string name, string content = "x")
+    {
+        var path = Path.Combine(Directory.CreateDirectory(Path.Combine(_tempDir, "docs")).FullName, name);
+        File.WriteAllText(path, content);
+        return path;
     }
 
     // ── hand-written double ─────────────────────────────────────────────────
