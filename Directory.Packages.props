@@ -67,6 +67,12 @@
     <!-- .NET Aspire (A-16): the AppHost integration Orkeon.Hosting.Aspire builds on. -->
     <PackageVersion Include="Aspire.Hosting" Version="13.5.4" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.5.3" />
+    <!-- 2026-10: security pin (NU1902 GHSA-qhrr-8q5h-9q3h, MessagePack nested arrays past buffer
+         limits, fixed in 2.5.303). Transitive only: Aspire.Hosting reaches it through StreamJsonRpc
+         at 2.5.302. Central management pins no transitive version, so it is forced through a direct
+         PackageReference in Orkeon.Hosting.Aspire (which the Aspire tests and the AppHost example
+         reference) and in its NuGet package. -->
+    <PackageVersion Include="MessagePack" Version="2.5.303" />
   </ItemGroup>
   <ItemGroup Label="Data">
     <!-- Arrow IPC encode/decode for the LanceDB Cloud/Enterprise REST protocol (R4.11).

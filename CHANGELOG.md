@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — MessagePack is pinned to 2.5.303 (GHSA-qhrr-8q5h-9q3h)
+
+An advisory published on 2026-10-15 (moderate: nested arrays can blow past buffer length limits) flags
+MessagePack below 2.5.303. Aspire.Hosting reaches it through StreamJsonRpc at 2.5.302, so the restore audit
+(`NU1902`) failed every `-warnaserror` build that touches the Aspire integration: `Orkeon.Hosting.Aspire`, its
+NuGet package, its tests and the AppHost example — CI on `main` included. Central package management pins no
+transitive version, so `Directory.Packages.props` declares 2.5.303 and both `Orkeon.Hosting.Aspire` and its
+package reference it directly, the pattern of the `System.Security.Cryptography.Pkcs` pin. The tests and the
+example get it through their reference to `Orkeon.Hosting.Aspire`. No API change; the shipped applications do
+not redistribute MessagePack, so the third-party notices are unchanged.
+
 ### Documentation — transcribing audio with Whisper through an MCP server
 
 Orkeon ships no speech-to-text tool; since `orkeon-repl` connects the servers of `MCP:Servers`
