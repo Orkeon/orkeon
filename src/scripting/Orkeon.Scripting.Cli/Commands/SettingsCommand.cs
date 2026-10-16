@@ -57,6 +57,9 @@ internal sealed record SettingsCommandOptions
                 case "--json":
                     options = options with { Json = true };
                     continue;
+                case "--":
+                    words.AddRange(args[(i + 1)..]);
+                    return Named(options, words);
                 case HostOption when i + 1 < args.Length && !args[i + 1].StartsWith('-'):
                     options = WithHost(options, args[++i]);
                     break;

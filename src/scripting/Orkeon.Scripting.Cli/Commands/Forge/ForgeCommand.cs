@@ -189,13 +189,20 @@ internal sealed record ForgeCommandOptions
 
         for (var i = 0; i < args.Length; i++)
         {
+            // `--` ends the options: everything after it is the need, whatever it looks like.
+            if (args[i] == "--")
+            {
+                needWords.AddRange(args.Skip(i + 1));
+                break;
+            }
+
             // A verb is positional: only the first argument can be one, anything later with
             // the same spelling is part of the need.
             options = i == 0 && IsVerb(args[0])
                 ? ParseVerb(args, ref i, options)
                 : ParseOption(args, ref i, options, needWords);
 
-            // `list` takes no argument and an error stops the parse where it happened.
+            // An error stops the parse where it happened; `list` reads nothing after it.
             if (options.Error is not null || options.List)
                 return options;
         }
@@ -214,7 +221,11 @@ internal sealed record ForgeCommandOptions
     {
         var verb = args[i];
         if (verb == "list")
-            return options with { List = true };
+        {
+            return i + 1 < args.Length
+                ? options with { Error = "list takes no argument." }
+                : options with { List = true };
+        }
 
         // The words that follow are the request to rewrite, collected like a need.
         if (verb == "rephrase")
@@ -259,6 +270,9 @@ internal sealed record ForgeCommandOptions
     {
         var arg = args[i];
 
+        if (arg.StartsWith("--", StringComparison.Ordinal) && arg.IndexOf('=', StringComparison.Ordinal) is var eq and > 0)
+            return ParseAttached(arg[..eq], arg[(eq + 1)..], arg, options);
+
         if (arg == "--events")
         {
             // The only stream format is jsonl, and the value is optional: it is consumed only
@@ -284,6 +298,27 @@ internal sealed record ForgeCommandOptions
 
         needWords.Add(arg);
         return options;
+    }
+
+    /// <summary>One <c>--option=value</c>, cut at the first <c>=</c>: the same options as the spaced form.</summary>
+    private static ForgeCommandOptions ParseAttached(string name, string value, string arg, ForgeCommandOptions options)
+    {
+        if (name == "--events")
+        {
+            return string.Equals(value, EventsFormat, StringComparison.OrdinalIgnoreCase)
+                ? options with { Events = true }
+                : options with { Error = $"--events takes only the value {EventsFormat}." };
+        }
+
+        if (ApplyFlag(name, options) is not null)
+            return options with { Error = $"{name} takes no value." };
+
+        if (!ValueOptionErrors.TryGetValue(name, out var missing))
+            return options with { Error = $"Unknown option '{arg}'." };
+
+        return value.Length > 0
+            ? ApplyValue(options, name, value, missing)
+            : options with { Error = missing };
     }
 
     /// <summary>The valueless switches; <see langword="null"/> when the argument is not one.</summary>
@@ -355,6 +390,8 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     private static readonly (Func<ForgeCommandOptions, int, bool> Broken, string Error)[] ReconcileRules =
     [
+        ((o, needWords) => (o.PromoteSlug is not null || o.ResumeSlug is not null) && needWords > 0,
+            "promote and resume take the session slug only: no other word."),
         ((o, _) => o.PromoteSlug is not null && o.Destination is null,
             "promote needs --to <directory>."),
         ((o, _) => o.RenameDirectory is not null && o.TeamName is null,

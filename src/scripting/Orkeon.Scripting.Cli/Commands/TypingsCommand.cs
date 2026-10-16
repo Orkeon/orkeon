@@ -77,6 +77,11 @@ internal static class TypingsCommand
                     break;
                 case "--out" or "-o":
                     return new TypingsArguments(Error: "--out needs a directory.");
+                case var attached when attached.StartsWith("--out=", StringComparison.Ordinal):
+                    if (attached.Length == "--out=".Length)
+                        return new TypingsArguments(Error: "--out needs a directory.");
+                    outDirectory = attached["--out=".Length..];
+                    break;
                 default:
                     return new TypingsArguments(Error: $"unknown argument '{args[i]}'; run `orkeon typings --help`.");
             }

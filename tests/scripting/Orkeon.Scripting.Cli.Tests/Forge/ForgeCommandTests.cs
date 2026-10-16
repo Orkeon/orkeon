@@ -295,6 +295,71 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal("veille des prix", need.Need);
     }
 
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldReadTheDestination_WhenToIsAttachedWithEquals()
+    {
+        var options = ForgeCommandOptions.Parse(
+            ["promote", "s", "--to=out/dir", "--name=- Veille -", "--settings=cfg.json", "--max-iterations=2", "--events=jsonl"]);
+
+        Assert.Null(options.Error);
+        Assert.Equal("out/dir", options.Destination);
+        Assert.Equal("- Veille -", options.TeamName);
+        Assert.Equal("cfg.json", options.SettingsPath);
+        Assert.Equal(2, options.MaxIterations);
+        Assert.True(options.Events);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldRefuseAnEmptyValue_WhenToIsAttachedEmpty()
+    {
+        var options = ForgeCommandOptions.Parse(["promote", "s", "--to="]);
+
+        Assert.Equal("--to needs a destination directory.", options.Error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldRefuse_WhenAFlagOrAnUnknownEventsValueIsAttached()
+    {
+        Assert.NotNull(ForgeCommandOptions.Parse(["un", "besoin", "--dry=1"]).Error);
+        var events = ForgeCommandOptions.Parse(["un", "besoin", "--events=xml"]);
+        Assert.NotNull(events.Error);
+        Assert.Contains("jsonl", events.Error, StringComparison.Ordinal);   // names the one real value
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldTakeEverythingAfterADoubleDashAsTheNeed_WhenItStartsWithADash()
+    {
+        var options = ForgeCommandOptions.Parse(["--events", "jsonl", "--", "- veille\n- résumé"]);
+
+        Assert.Null(options.Error);
+        Assert.True(options.Events);
+        Assert.Equal("- veille\n- résumé", options.Need);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldReadAVerbWordAsTheNeed_WhenItFollowsADoubleDash()
+    {
+        var options = ForgeCommandOptions.Parse(["--", "list"]);
+
+        Assert.Null(options.Error);
+        Assert.False(options.List);
+        Assert.Equal("list", options.Need);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldRefuseAnExtraWord_WhenListPromoteOrResumeIsGivenOne()
+    {
+        Assert.NotNull(ForgeCommandOptions.Parse(["list", "--x"]).Error);
+        Assert.NotNull(ForgeCommandOptions.Parse(["promote", "s", "--to", "d", "mot"]).Error);
+        Assert.NotNull(ForgeCommandOptions.Parse(["resume", "s", "mot"]).Error);
+    }
+
     /// <summary>
     /// GAP-35: a setting the engine host refuses is a refusal like the others — one line naming
     /// it, exit 1 — not the "unexpected error" exit 2 it fell into.

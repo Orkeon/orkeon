@@ -193,10 +193,6 @@ public static class ForgeArgumentsBuilder
             arguments.Add("resume");
             arguments.Add(request.ResumeSlug);
         }
-        else if (!string.IsNullOrWhiteSpace(request.Need))
-        {
-            arguments.Add(request.Need);
-        }
 
         arguments.Add("--events");
         arguments.Add("jsonl");
@@ -233,6 +229,13 @@ public static class ForgeArgumentsBuilder
 
         if (request.Adopt)
             arguments.Add("--adopt");
+
+        // The need last, after `--`: a bulleted need or one equal to a verb is never read as an option.
+        if (string.IsNullOrWhiteSpace(request.ResumeSlug) && !string.IsNullOrWhiteSpace(request.Need))
+        {
+            arguments.Add("--");
+            arguments.Add(request.Need);
+        }
 
         return arguments;
     }
