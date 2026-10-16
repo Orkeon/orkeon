@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — CI installs the .NET SDK that `global.json` pins
+
+The workflows asked `actions/setup-dotnet` for `10.0.x`, a version written in thirteen places beside the one
+`global.json` already pins for every local build (`10.0.300`, `rollForward: latestFeature`). Each of them now reads
+`global.json` (`global-json-file: global.json`): the SDK band is written once, and CI, the developers' machines
+and Orkeon Code — whose own `global.json` carries the same pin — follow it together. With `latestFeature` the
+action installs the newest 10.0 SDK, as `10.0.x` did, so the builds are unchanged. The .NET 11 preview job keeps
+its own `11.0.x`.
+
 ### Fixed — MessagePack is pinned to 2.5.303 (GHSA-qhrr-8q5h-9q3h)
 
 An advisory published on 2026-10-15 (moderate: nested arrays can blow past buffer length limits) flags
