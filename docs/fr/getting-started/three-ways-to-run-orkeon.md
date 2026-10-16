@@ -423,6 +423,11 @@ publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut**, emba
 requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
 `deploy/Dockerfile.host` (voir [l'hôte de service](../architecture/service-host.md)).
 
+L'image publiée est multi-plateforme : un seul tag, `linux/amd64` et `linux/arm64`, et Docker
+tire celle de votre machine. Sur Apple Silicon, ou tout hôte arm64, elle tourne en
+natif, sans émulation. `docker manifest inspect ghcr.io/orkeon/orkeon-runners:<version>`
+liste les deux.
+
 Chaque image garde la licence et les notices de ce qu'elle redistribue sous
 `/usr/share/doc/orkeon/` (`LICENSE.md`, `THIRD-PARTY-NOTICES.md`), le chemin du paquet
 Debian ; le runtime .NET est celui de l'image de base de Microsoft, qui porte les siennes.
@@ -540,7 +545,9 @@ orkeon run /app/examples/scripting/01-hello-world.ork.ts
 Construisez une variante qui n'exige **ni serveur de modèle côté hôte, ni clé
 d'API** — le `llama-server` de llama.cpp plus un GGUF sont embarqués et servis
 dans le conteneur sur la même forme d'URL que celle qu'utilisent déjà les
-settings par défaut :
+settings par défaut. Cette variante est `linux/amd64` seulement — le llama.cpp
+embarqué est un build x64 — : sur une machine arm64, ajoutez `--platform linux/amd64`
+au `docker build` (elle tourne alors sous émulation, lentement) :
 
 ```bash
 # Granite 4.0 h-tiny (Apache 2.0, ~4,2 Go de poids → image ~6 Go)

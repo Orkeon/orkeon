@@ -198,7 +198,8 @@ tarball), and only then attaches everything to the GitHub Release. The pipeline 
 `installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
 release → {verify-published, apt-publish → verify-apt}` (the last two are described in
 [The apt repository](#the-apt-repository)); behind those same five jobs, `runners-image` pushes the `orkeon-runners`
-container image to GHCR in parallel with `release`, so a red smoke moves neither the
+container image to GHCR (one multi-platform tag, `linux/amd64` and `linux/arm64`, checked
+once pushed) in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
 the same thing minus the publication (no tag, no Release to attach to). A tag carrying a
 pre-release segment (`v1.0.0-rc.4`) is published **as a prerelease**, so it never becomes the
