@@ -225,8 +225,9 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     public async Task ShouldHideAFolderTheVfsGrantsNoRightOn()
     {
         SkipUnlessBubblewrapWorks();
-        await File.WriteAllTextAsync(Path.Combine(_workspace, "secrets", "key.txt"), "secret", Ct);
+        // Confined() builds the file system, which creates the secrets folder the file goes in.
         using var tool = Confined();
+        await File.WriteAllTextAsync(Path.Combine(_workspace, "secrets", "key.txt"), "secret", Ct);
 
         // Named, /workspace/secrets is refused by the VFS before the process starts; a recursive
         // listing of its parent reaches it by itself.
