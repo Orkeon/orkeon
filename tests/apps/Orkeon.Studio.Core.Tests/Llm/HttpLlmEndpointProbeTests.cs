@@ -533,4 +533,41 @@ public sealed class HttpLlmEndpointProbeTests
         Assert.DoesNotContain(ZaiKey, result.Detail ?? "", StringComparison.Ordinal);
         Assert.DoesNotContain(ZaiKey, result.Url ?? "", StringComparison.Ordinal);
     }
+
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [InlineData("http://gpu-box:11434/v1", "http://gpu-box:11434/api/tags")]
+    [InlineData("http://gpu-box:11434/ollama/v1", "http://gpu-box:11434/ollama/api/tags")]
+    public async Task ShouldProbeOllamaAtItsRoot_WhenTheAddressEndsWithV1(string baseUrl, string expected)
+    {
+        using var handler = new StubHttpMessageHandler { Body = """{ "models": [ { "name": "llama3.2" } ] }""" };
+
+        var result = await ProbeAsync(handler, baseUrl);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(new Uri(expected), handler.LastRequest.Uri);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("https://api.deepseek.com/anthropic")]
+    [InlineData("https://api.z.ai/api/anthropic")]
+    public async Task ShouldFailWithoutARequest_WhenTheReadingRefusesTheAddress(string baseUrl)
+    {
+        using var handler = new StubHttpMessageHandler();
+
+        var result = await ProbeAsync(handler, baseUrl, "sk-test");
+
+        Assert.False(result.Succeeded);
+        Assert.Empty(handler.Requests);
+        Assert.Equal(LlmProbeFailure.AddressRefused, result.Failure);
+
+        var vendor = Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(baseUrl, null, null).ProviderKey;
+        var expected = Orkeon.Constants.Configuration.OperatorMessages.LlmVendorAnthropicPathRefused("BaseUrl", baseUrl, vendor);
+        var text = LlmProbeText.Describe(
+            result, Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Contains(expected, text, StringComparison.Ordinal);
+        Assert.DoesNotContain("is not an http", text, StringComparison.OrdinalIgnoreCase);
+    }
 }

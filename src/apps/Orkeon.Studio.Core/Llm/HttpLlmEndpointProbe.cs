@@ -1,3 +1,5 @@
+using Orkeon.Constants.Llm;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -10,7 +12,7 @@ namespace Orkeon.Studio.Core.Llm;
 /// <summary>
 /// Reaches the endpoint over HTTP and asks it for its model catalogue — the lightest request
 /// that proves the host answers and accepts the key. The dialect follows the provider inferred
-/// from the URL by <see cref="LlmProviderDetector"/>: <c>GET {baseUrl}/models</c> with a bearer
+/// from the URL by <see cref="LlmEndpointReading"/>: <c>GET {baseUrl}/models</c> with a bearer
 /// token for the OpenAI-compatible majority, <c>GET {root}/api/tags</c> for Ollama, and
 /// Anthropic's <c>x-api-key</c> header for Anthropic.
 /// <para>
@@ -84,8 +86,15 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
             return Refused(LlmProbeFailure.NotHttpUrl, Redact(request.BaseUrl, request.ApiKey));
         }
 
-        var provider = LlmProviderDetector.Detect(request.BaseUrl);
-        if (string.Equals(provider, LlmProviderDetector.AzureOpenAI, StringComparison.Ordinal))
+        var reading = LlmEndpointReading.Of(request.BaseUrl, null, null);
+        if (reading.Notice == LlmEndpointNotice.Refused)
+        {
+            return Refused(LlmProbeFailure.AddressRefused, Redact(request.BaseUrl, request.ApiKey))
+                with { Vendor = reading.ProviderKey };
+        }
+
+        var provider = reading.ProviderKey;
+        if (string.Equals(provider, LlmProviderKeys.AzureOpenAI, StringComparison.Ordinal))
             return Refused(LlmProbeFailure.NoCatalogue, null);
 
         // The probe owns its deadline rather than the client's, so a shared HttpClient (and the
@@ -97,7 +106,7 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
         var context = new StepContext(request, started);
 
         var catalogue = await RunStepAsync(
-            LlmProbeStage.Models, () => BuildRequest(provider, baseUri, request.ApiKey), context, linked.Token, cancellationToken)
+            LlmProbeStage.Models, () => BuildRequest(reading, baseUri, request.ApiKey), context, linked.Token, cancellationToken)
             .ConfigureAwait(false);
         if (!catalogue.Succeeded)
             return catalogue.Result!;
@@ -231,19 +240,14 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
         string.IsNullOrWhiteSpace(apiKey) ? text : text.Replace(apiKey.Trim(), RedactedKey, StringComparison.Ordinal);
 
     /// <summary>Builds the catalogue request in the dialect the detected provider speaks.</summary>
-    private static HttpRequestMessage BuildRequest(string provider, Uri baseUri, string? apiKey)
+    private static HttpRequestMessage BuildRequest(LlmEndpointReading reading, Uri baseUri, string? apiKey)
     {
         var baseUrl = baseUri.AbsoluteUri.TrimEnd('/');
 
-        if (string.Equals(provider, LlmProviderDetector.Ollama, StringComparison.Ordinal))
-        {
-            // Ollama's catalogue hangs off the server root, not off an OpenAI-style
-            // /v1 base — so a base URL carrying a path must have it dropped.
-            var root = baseUri.GetLeftPart(UriPartial.Authority);
+        if (reading.OllamaRoot is { } root)
             return new HttpRequestMessage(HttpMethod.Get, $"{root}/api/tags");
-        }
 
-        if (string.Equals(provider, AnthropicProvider, StringComparison.Ordinal))
+        if (string.Equals(reading.ProviderKey, AnthropicProvider, StringComparison.Ordinal))
         {
             var anthropic = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/v1/models");
             anthropic.Headers.Add("x-api-key", apiKey ?? "");
@@ -271,7 +275,7 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
         try
         {
             using var document = JsonDocument.Parse(body);
-            var ollama = string.Equals(provider, LlmProviderDetector.Ollama, StringComparison.Ordinal);
+            var ollama = string.Equals(provider, LlmProviderKeys.Ollama, StringComparison.Ordinal);
             var arrayName = ollama ? "models" : "data";   // Ollama: models[].name; OpenAI-compatible: data[].id
             var keyName = ollama ? "name" : "id";
 
@@ -314,7 +318,7 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
             : string.Concat(text.AsSpan(0, MaxQuotedBodyLength), "…");
     }
 
-    /// <summary>Provider key <see cref="LlmProviderDetector"/> reports for the Anthropic host.</summary>
+    /// <summary>Provider key <see cref="LlmEndpointReading"/> reports for the Anthropic host.</summary>
     private const string AnthropicProvider = "anthropic";
 
 

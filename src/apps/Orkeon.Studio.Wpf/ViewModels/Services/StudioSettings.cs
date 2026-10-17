@@ -32,7 +32,7 @@ public sealed record StudioSettings
     public int? BalanceRefreshMinutes { get; init; }
 
     /// <summary>
-    /// The alert thresholds, by provider (the key <c>LlmProviderDetector</c> reports), each in the
+    /// The alert thresholds, by provider (the key the endpoint reading reports), each in the
     /// currency that provider returns — nothing is converted. A balance under its provider's
     /// threshold takes the warning tone (STUDIO-35 D-03); a provider absent here never does.
     /// </summary>

@@ -60,7 +60,7 @@ public sealed class FakeProviderBalanceProbe : IProviderBalanceProbe
 
     private static ProviderBalanceResult Result(LlmProbeRequest request, ProviderBalanceStatus status, string detail) => new()
     {
-        Provider = LlmProviderDetector.Detect(request.BaseUrl),
+        Provider = Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(request.BaseUrl, null, null).ProviderKey,
         Status = status,
         CheckedAt = ReadAt,
         Detail = detail,

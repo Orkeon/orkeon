@@ -8,7 +8,7 @@ namespace Orkeon.Studio.Core.Configuration;
 /// <summary>
 /// Typed view over the <c>Llm</c> section of an <see cref="AppSettingsDocument"/>.
 /// There is deliberately no <c>Provider</c> key: the runtime infers the dialect from
-/// the endpoint, so Studio exposes <see cref="DetectedProvider"/> read-only.
+/// the endpoint, so Studio shows how the endpoint is read (<see cref="Orkeon.Studio.Core.Llm.StudioEndpointReading"/>) and writes no provider.
 /// </summary>
 public sealed partial class LlmSection
 {
@@ -183,12 +183,6 @@ public sealed partial class LlmSection
 
     [GeneratedRegex(@"^\$\{(?<name>[^{}]*)\}$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
     private static partial Regex PlaceholderPattern();
-
-    /// <summary>
-    /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written
-    /// to the file. See <see cref="LlmProviderDetector"/>.
-    /// </summary>
-    public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
 
     /// <summary>
     /// Writes what a model setting pins into the default section, field by field (STUDIO-49,

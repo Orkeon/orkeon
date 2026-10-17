@@ -2,7 +2,9 @@ using Orkeon.Constants.Configuration;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Core.Validation;
@@ -384,6 +386,26 @@ public sealed class AppSettingsValidator
                 ValidationCodes.InvalidFieldType,
                 string.Create(CultureInfo.InvariantCulture, $"'{baseUrl}' is not an absolute http(s) URL."),
                 $"{sectionPath}:BaseUrl"));
+        }
+
+        if (Child(section, "BaseUrl") is JsonValue addressNode
+            && AppSettingsDocument.ReadString(addressNode) is { } address
+            && LlmSection.IsAbsoluteHttpUrl(address)
+            && StudioEndpointReading.Of(address) is { } reading)
+        {
+            var path = $"{sectionPath}:BaseUrl";
+            if (reading.Notice == LlmEndpointNotice.Refused)
+            {
+                messages.Add(ValidationMessage.Error(
+                    ValidationCodes.LlmEndpoint,
+                    OperatorMessages.LlmVendorAnthropicPathRefused(path, address, reading.ProviderKey),
+                    path));
+            }
+            else if (reading.Notice == LlmEndpointNotice.Silent)
+            {
+                messages.Add(ValidationMessage.Information(
+                    ValidationCodes.LlmEndpoint, OperatorMessages.LlmBaseUrlSilent(path, address), path));
+            }
         }
 
         if (Child(section, ConfigurationKeys.LlmApiKeyEnvVar) is JsonValue referenceNode

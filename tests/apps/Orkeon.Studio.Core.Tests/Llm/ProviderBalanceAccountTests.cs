@@ -163,4 +163,14 @@ public sealed class ProviderBalanceAccountTests
             [LlmProviderKeys.DeepSeek, LlmProviderKeys.Kimi, LlmProviderKeys.OpenRouter],
             HttpProviderBalanceProbe.ReadableProviders);
     }
+
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [InlineData("http://gpu-box:11434")]
+    [InlineData("http://gpu-box:11434/v1")]
+    [InlineData(LlmProviderEndpoints.DockerModelRunner)]
+    [InlineData("http://localhost:8080/v1")]
+    [InlineData("https://api.deepseek.com/anthropic")]
+    public void ShouldHaveNoAccount_WhenTheReadingSaysOllamaLocalOrRefused(string baseUrl) =>
+        Assert.False(ProviderBalanceAccount.HasAccount(baseUrl));
 }

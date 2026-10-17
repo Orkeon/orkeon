@@ -246,6 +246,9 @@
   <data name="Studio.Settings.CustomShortDesc" xml:space="preserve"><value>any endpoint: type the URL and the model</value></data>
   <data name="Studio.Settings.NoneShortDesc" xml:space="preserve"><value>test the install, no model</value></data>
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve"><value>The custom preset requires both a base URL and a model.</value></data>
+  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve"><value>The '{0}' preset contradicts the base URL, which a run reads as '{1}'. Choose the preset that matches the address, or change the address.</value></data>
+  <data name="Studio.Settings.EndpointReadAs" xml:space="preserve"><value>Read as: {0}</value></data>
+  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve"><value>This address is read as {0}, not as Ollama: a run would not talk to Ollama here. Use the Ollama port 11434, or pick another card.</value></data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve"><value>Unknown preset '{0}'. Supported: {1}.</value></data>
   <data name="Studio.Settings.GuidanceNone" xml:space="preserve"><value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value></data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>API key: kept out of the file — set it in your environment: export {0}=&lt;your-key&gt;</value></data>
@@ -562,6 +565,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT" xml:space="preserve"><value>An added folder line is empty.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve"><value>Two conflicting input sources are set — keep one.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve"><value>The API key is written ${NAME}, which the engine never replaces: name its variable in ApiKeyEnvVar.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve"><value>A model address is refused or left silent: an address under another vendor's /anthropic path is refused, and one with no path is read as an OpenAI-compatible server at its root.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve"><value>A model profile is named 'default', the Llm section's own name: the engine refuses to start. Rename it.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve"><value>Two folders carry the same identifier: an identifier names one folder.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve"><value>Several entries share one internal name: a team picks one per run, and the same folder twice is one too many.</value></data>

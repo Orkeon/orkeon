@@ -122,7 +122,7 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var provider = LlmProviderDetector.Detect(request.BaseUrl);
+        var provider = StudioEndpointReading.ProviderOf(request.BaseUrl);
         var reading = await ReadAsync(provider, request, cancellationToken).ConfigureAwait(false);
 
         return new ProviderBalanceResult
@@ -330,8 +330,7 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
 
     /// <summary>An endpoint on this machine or its Docker host: no account behind it.</summary>
     private static bool IsLocal(string? baseUrl) =>
-        Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var uri)
-        && (uri.IsLoopback || string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase));
+        StudioEndpointReading.Of(baseUrl)?.IsLocal == true;
 
     /// <summary>The status line of an answer: the code and its standard name, never the server's text.</summary>
     private static string StatusLine(HttpResponseMessage response) =>

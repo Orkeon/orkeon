@@ -382,4 +382,57 @@ public sealed class LlmPresetsTests
             remove { }
         }
     }
+
+    [Fact]
+    [Trait("BR", "CH-09")]
+    public void ShouldRefuseThePlan_WhenOllamaIsChosenForANonOllamaAddress()
+    {
+        var created = LlmPresets.TryCreatePlan(
+            LlmPresets.Ollama, new LlmPresetOverrides { BaseUrl = "http://localhost:8080" }, out var plan, out var error);
+
+        Assert.False(created);
+        Assert.Null(plan);
+        Assert.False(string.IsNullOrWhiteSpace(error));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-09")]
+    public void ShouldRefuseThePlan_WhenAPresetOtherThanOllamaOrCustomIsChosenForAnOllamaAddress()
+    {
+        var created = LlmPresets.TryCreatePlan(
+            LlmPresets.OpenAI, new LlmPresetOverrides { BaseUrl = "http://localhost:11434" }, out var plan, out var error);
+        Assert.False(created);
+        Assert.Null(plan);
+        Assert.False(string.IsNullOrWhiteSpace(error));
+
+        Assert.True(LlmPresets.TryCreatePlan(
+            LlmPresets.Custom,
+            new LlmPresetOverrides { BaseUrl = "http://localhost:11434", Model = "m" },
+            out var custom,
+            out _));
+        Assert.NotNull(custom);
+
+        // An address the reading refuses skips the agreement check: the existing behaviour holds.
+        Assert.True(LlmPresets.TryCreatePlan(
+            LlmPresets.OpenAI, new LlmPresetOverrides { BaseUrl = "not an address" }, out var unread, out _));
+        Assert.NotNull(unread);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void ShouldNotRequireAKey_WhenARemoteOllamaListensOn11434() =>
+        Assert.False(LlmPresets.NeedsApiKey("http://gpu-box:11434"));
+
+    // Characterisation: green at its first run is expected, a blank address deduces no provider today.
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void ShouldDeduceNoProvider_WhenTheAddressIsBlank(string? baseUrl)
+    {
+        Assert.Equal(LlmPresets.None, LlmPresets.CardOf(Setting(null, baseUrl)));
+        Assert.Equal(LlmPresets.Custom, LlmPresets.CardOf(Setting(null, baseUrl, "m")));
+        Assert.False(LlmPresets.NeedsApiKey(baseUrl));
+    }
 }

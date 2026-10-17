@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Studio.Core.Configuration;
 
 namespace Orkeon.Studio.Core.Llm;
@@ -80,7 +81,7 @@ public sealed record ProviderBalanceAmount(
 /// </summary>
 public sealed record ProviderBalanceResult
 {
-    /// <summary>The provider inferred from the base URL, as <see cref="LlmProviderDetector"/> reports it.</summary>
+    /// <summary>The provider inferred from the base URL, as <see cref="LlmEndpointReading"/> reads it.</summary>
     public required string Provider { get; init; }
 
     /// <summary>What the probe learned.</summary>

@@ -652,6 +652,15 @@
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve">
     <value>Das benutzerdefinierte Preset verlangt sowohl eine Basis-URL als auch ein Modell.</value>
   </data>
+  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve">
+    <value>Das Preset „{0}“ widerspricht der Basis-URL, die ein Lauf als „{1}“ liest. Wählen Sie das Preset, das zur Adresse passt, oder ändern Sie die Adresse.</value>
+  </data>
+  <data name="Studio.Settings.EndpointReadAs" xml:space="preserve">
+    <value>Gelesen als: {0}</value>
+  </data>
+  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve">
+    <value>Diese Adresse wird als {0} gelesen, nicht als Ollama: Ein Lauf würde hier nicht mit Ollama sprechen. Verwenden Sie den Ollama-Port 11434 oder wählen Sie eine andere Karte.</value>
+  </data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve">
     <value>Unbekanntes Preset «{0}». Unterstützt: {1}.</value>
   </data>
@@ -1589,6 +1598,9 @@
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>Der API-Schlüssel ist als ${NAME} geschrieben, was die Engine nie ersetzt: Nennen Sie seine Variable in ApiKeyEnvVar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
+    <value>Eine Modelladresse wird abgelehnt oder bleibt stumm: Eine Adresse unter dem Pfad /anthropic eines anderen Anbieters wird abgelehnt, und eine Adresse ohne Pfad wird als OpenAI-kompatibler Server an seiner Wurzel gelesen.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
     <value>Ein Modellprofil heißt „default“, der eigene Name des Abschnitts Llm: Die Engine verweigert den Start. Benennen Sie es um.</value>

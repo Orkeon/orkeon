@@ -68,6 +68,9 @@ public static class ValidationCodes
     /// </summary>
     public const string LlmApiKeyPlaceholder = "STUDIO-LLM-APIKEY-PLACEHOLDER";
 
+    /// <summary>A model address the run refuses (a vendor's <c>/anthropic</c> path) or reads silently (a custom address with no path).</summary>
+    public const string LlmEndpoint = "STUDIO-LLM-ENDPOINT";
+
     /// <summary>
     /// An entry of <c>Llm:Profiles</c> named <c>default</c> (or blank) — the <c>Llm</c> section's own
     /// name, which the run refuses at start (STUDIO-55).

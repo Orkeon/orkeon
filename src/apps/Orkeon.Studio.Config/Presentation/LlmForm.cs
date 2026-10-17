@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Orkeon.Constants.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
@@ -8,7 +10,7 @@ namespace Orkeon.Studio.Config.Presentation;
 
 /// <summary>
 /// The <c>Llm</c> section as text fields. There is no provider field to edit: the runtime
-/// infers the dialect from the endpoint, so <see cref="DetectedProvider"/> is shown
+/// infers the dialect from the endpoint, so the reading (<see cref="ReadAsLine"/>) is shown
 /// read-only next to the base URL. The named profiles of <c>Llm:Profiles</c> and the one the
 /// RAG calls are shown read-only too (STUDIO-48): Studio's model settings write the first, its
 /// model screen chooses the second, and this form writes neither — applying it touches the
@@ -56,8 +58,23 @@ internal sealed class LlmForm : ISettingsForm
     /// </summary>
     public string ThinkingEnabled { get; set; } = "";
 
-    /// <summary>Provider inferred from <see cref="BaseUrl"/>; never written to the file.</summary>
-    public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
+    /// <summary>The "Read as: ..." line naming the provider a run reads the address as; never written to the file.</summary>
+    public string ReadAsLine =>
+        string.Create(CultureInfo.InvariantCulture, $"Read as: {StudioEndpointReading.ProviderOf(BaseUrl)}  (read-only — the same reading a run makes of the base URL)");
+
+    /// <summary>The reading's notice (a silent address, a refused one), or null when it has none.</summary>
+    public string? NoticeLine => StudioEndpointReading.Of(BaseUrl) is { } reading
+        ? reading.Notice switch
+        {
+            LlmEndpointNotice.Silent => OperatorMessages.LlmBaseUrlSilent(BaseUrlPath, BaseUrl.Trim()),
+            LlmEndpointNotice.Refused when LlmSection.IsAbsoluteHttpUrl(BaseUrl) =>
+                OperatorMessages.LlmVendorAnthropicPathRefused(BaseUrlPath, BaseUrl.Trim(), reading.ProviderKey),
+            LlmEndpointNotice.Refused => string.Create(CultureInfo.InvariantCulture, $"'{BaseUrl.Trim()}' is not an absolute http(s) URL."),
+            _ => null,
+        }
+        : null;
+
+    private const string BaseUrlPath = "Llm:BaseUrl";
 
     /// <summary>
     /// The named profiles of <c>Llm:Profiles</c>, one line each — <c>profile: &lt;id&gt; — model ·

@@ -119,10 +119,24 @@ public class LlmFormTests
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
+    [Trait("BR", "CH-09")]
+    public void ShouldShowTheReadingAndItsNotice_WhenTheTuiShowsTheLlmSection()
+    {
+        var remote = new LlmForm { BaseUrl = "http://gpu-box:11434", ApiKey = "" };
+        Assert.StartsWith("Read as:", remote.ReadAsLine, StringComparison.Ordinal);
+        Assert.Contains("ollama", remote.ReadAsLine, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(remote.NoticeLine);
+
+        var silent = new LlmForm { BaseUrl = "http://localhost:8080" };
+        Assert.False(string.IsNullOrWhiteSpace(silent.NoticeLine));
+    }
+
+    [Fact]
     public void Provider_is_detected_from_the_base_url_and_never_written()
     {
         var form = new LlmForm { BaseUrl = "http://localhost:11434" };
-        Assert.Equal("ollama", form.DetectedProvider);
+        Assert.Contains("ollama", form.ReadAsLine, StringComparison.OrdinalIgnoreCase);
 
         var document = AppSettingsDocument.CreateEmpty();
         Assert.Empty(form.ApplyTo(document));

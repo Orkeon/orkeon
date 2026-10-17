@@ -171,6 +171,47 @@ public sealed class AppSettingsValidatorTests
         Assert.Equal("Llm:BaseUrl", message.Path);
     }
 
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("Llm", "Llm:BaseUrl", """{ "Llm": { "Model": "m", "BaseUrl": "https://api.deepseek.com/anthropic" } }""")]
+    [InlineData("Llm:Profiles:ds", "Llm:Profiles:ds:BaseUrl", """{ "Llm": { "Model": "m", "BaseUrl": "http://localhost:11434", "Profiles": { "ds": { "Model": "m", "BaseUrl": "https://api.deepseek.com/anthropic" } } } }""")]
+    public void ShouldReportAnError_WhenTheAddressIsAVendorAnthropicPath(string sectionPath, string path, string json)
+    {
+        const string baseUrl = "https://api.deepseek.com/anthropic";
+        var reading = Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(baseUrl, "m", null);
+        var expected = Orkeon.Constants.Configuration.OperatorMessages.LlmVendorAnthropicPathRefused(
+            $"{sectionPath}:BaseUrl", baseUrl, reading.ProviderKey);
+
+        var messages = Validator().Validate(AppSettingsDocument.Parse(json));
+
+        var message = Assert.Single(messages, m => m.Path == path);
+        Assert.Equal(ValidationSeverity.Error, message.Severity);
+        Assert.Equal(expected, message.Text);
+
+        // A non-http(s) address keeps its single STUDIO-TYPE message: the new rule adds none.
+        var notHttp = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "m", "BaseUrl": "localhost:11434" } }""");
+        var single = Assert.Single(Validator().Validate(notHttp), m => m.Path == "Llm:BaseUrl");
+        Assert.Equal(ValidationCodes.InvalidFieldType, single.Code);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("Llm", """{ "Llm": { "Model": "m", "BaseUrl": "http://localhost:8080" } }""")]
+    [InlineData("Llm:Profiles:local", """{ "Llm": { "Model": "m", "Profiles": { "local": { "Model": "m", "BaseUrl": "http://localhost:8080" } } } }""")]
+    public void ShouldReportAnInformation_WhenACustomAddressHasNoPath(string sectionPath, string json)
+    {
+        const string baseUrl = "http://localhost:8080";
+
+        var messages = Validator().Validate(AppSettingsDocument.Parse(json), ValidationScope.Saving);
+
+        var message = Assert.Single(messages, m => m.Code == "STUDIO-LLM-ENDPOINT");
+        Assert.Equal(ValidationSeverity.Information, message.Severity);
+        Assert.Equal($"{sectionPath}:BaseUrl", message.Path);
+        Assert.Equal(Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent($"{sectionPath}:BaseUrl", baseUrl), message.Text);
+        Assert.DoesNotContain(messages, m => m.Severity == ValidationSeverity.Error);
+    }
+
     [Fact]
     public void An_unknown_rag_profile_is_an_error_listing_the_known_ones()
     {

@@ -108,7 +108,7 @@ public sealed class ConfigEditorModelTests : IDisposable
         var reopened = CreateModel();
         Assert.Null(await reopened.OpenAsync(path, TestContext.Current.CancellationToken));
 
-        Assert.Equal(LlmPresets.OpenAI, reopened.Llm.DetectedProvider);
+        Assert.Equal(LlmPresets.OpenAI, Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(reopened.Llm.BaseUrl, null, null).ProviderKey);
         Assert.Equal("", reopened.Llm.ApiKey);
         Assert.DoesNotContain(reopened.Preflight().Messages, message => message.Severity == ValidationSeverity.Error);
     }
@@ -208,7 +208,7 @@ public sealed class ConfigEditorModelTests : IDisposable
         Assert.NotNull(plan);
         model.ApplyPreset(plan);
 
-        Assert.Equal("ollama", model.Llm.DetectedProvider);
+        Assert.Equal("ollama", Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(model.Llm.BaseUrl, null, null).ProviderKey);
         Assert.Equal("42", model.RateLimiting.QueueLimit);
         Assert.Single(model.Mounts.RawEntries);
     }

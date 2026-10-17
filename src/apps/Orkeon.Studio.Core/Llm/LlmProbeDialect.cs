@@ -32,7 +32,7 @@ public static class LlmProbeDialect
 
     /// <summary>
     /// What each provider declares in <see cref="LlmProviderCapabilities.Thinking"/>, keyed by
-    /// the key <see cref="LlmProviderDetector"/> reports. Custom and Docker Model Runner
+    /// the key <see cref="LlmEndpointReading"/> reports. Custom and Docker Model Runner
     /// endpoints are driven as OpenAI by the runtime, so they read OpenAI's level.
     /// </summary>
     private static readonly Dictionary<string, ThinkingSupport> Thinking = new(StringComparer.Ordinal)
@@ -70,7 +70,7 @@ public static class LlmProbeDialect
         if (string.Equals(provider, LlmProviderKeys.Ollama, StringComparison.Ordinal))
         {
             // Ollama's native chat hangs off the server root, like its catalogue.
-            url = $"{baseUri.GetLeftPart(UriPartial.Authority)}/api/chat";
+            url = $"{LlmEndpointReading.NativeOllamaRoot(baseUri.AbsoluteUri)}/api/chat";
             payload["stream"] = false;
             payload["options"] = new Dictionary<string, object> { ["num_predict"] = CompletionMaxTokens };
             if (thinkingEnabled is { } think)

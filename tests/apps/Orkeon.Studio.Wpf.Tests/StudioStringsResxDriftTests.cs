@@ -31,6 +31,7 @@ public sealed partial class StudioStringsResxDriftTests
     }
 
     [Fact]
+    [Trait("BR", "CH-09")]
     public void Should_CarryEveryRegistryKey_WithTheExactEnglishText()
     {
         var resx = ReadEnglishResx();
