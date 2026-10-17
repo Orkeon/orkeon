@@ -20,8 +20,8 @@ déplace, renomme, supprime et partage — dans les limites de ce qu'autorise l'
 - **Le partage est fermé par défaut** : une liste `Share:AllowedRecipients` vide n'autorise
   personne, et les liens publics restent désactivés tant que `Share:AllowPublicLinks` ne vaut pas
   `true`.
-- **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login`), et les outils
-  rafraîchissent eux-mêmes le jeton d'accès.
+- **Chaque compte se connecte une fois en OAuth2** (`orkeon drive login` dans un terminal, ou
+  « Se connecter » dans Orkeon Studio), et les outils rafraîchissent eux-mêmes le jeton d'accès.
 
 > **Pas encore campagné.** La famille est couverte par des tests hors ligne contre des API Google
 > et Microsoft scriptées. Elle n'a pas encore été exécutée contre un vrai Google Drive ou un vrai
@@ -82,8 +82,16 @@ Sous `Orkeon:Tools:Drive:Accounts` :
 ```
 
 `Auth:Tenant` vaut par défaut `consumers`, le tenant des comptes personnels ; pour un OneDrive
-professionnel ou scolaire, mettez `"Tenant": "organizations"` ou l'id de votre tenant. Puis, dans
-un terminal :
+professionnel ou scolaire, mettez `"Tenant": "organizations"` ou l'id de votre tenant.
+
+**Depuis Orkeon Studio**, c'est un formulaire : **Réglages › Stockage cloud** — « Ajouter un
+compte », un nom et OneDrive, puis l'ID client dans l'onglet Connexion, les droits dans l'onglet
+Droits et le dossier dans l'onglet Compte (le tenant est un champ expert). Studio écrit la section
+ci-dessus dans le fichier de réglages qu'il édite, et l'onglet dit ce que le moteur fait de chaque
+compte. « Se connecter » lance le login ci-dessous et affiche l'adresse de Microsoft et le code,
+avec son compte à rebours ; « Tester la connexion » lance la vérification.
+
+Dans un terminal :
 
 ```bash
 orkeon drive login pro
@@ -107,7 +115,9 @@ page de consentement de Google, à ouvrir, et reçoit la réponse sur une adress
    lire), et votre propre adresse comme **utilisateur test**.
 3. Créez un **ID client OAuth** de type **Application de bureau** (*Desktop app*). Copiez son ID
    client, et mettez son secret client dans une variable d'environnement
-   (`GOOGLE_DRIVE_CLIENT_SECRET` ci-dessous).
+   (`GOOGLE_DRIVE_CLIENT_SECRET` ci-dessous) — dans Orkeon Studio, saisissez-le dans l'onglet
+   Connexion du compte : Studio le garde dans une variable d'environnement utilisateur
+   (`DRIVE_<COMPTE>_CLIENT_SECRET`) et n'écrit que ce nom dans le fichier.
 4. Déclarez le compte, sous `Orkeon:Tools:Drive:Accounts` :
 
    ```json
@@ -122,8 +132,11 @@ page de consentement de Google, à ouvrir, et reçoit la réponse sur une adress
    }
    ```
 
-5. Lancez `orkeon drive login perso`. La commande affiche une adresse Google à ouvrir et écoute
-   sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google affiche un écran
+5. Connectez-vous — **depuis Orkeon Studio** : Réglages › Stockage cloud, le compte, « Se
+   connecter », qui affiche l'adresse de Google avec « Copier le lien » et « Ouvrir dans le
+   navigateur », et un champ pour l'adresse où le navigateur aboutit, qui dit pourquoi quand ce
+   n'est pas la bonne ; dans un terminal, lancez `orkeon drive login perso`. La commande affiche
+   une adresse Google à ouvrir et écoute sur un port libre de `127.0.0.1`. Connectez-vous et acceptez ; Google affiche un écran
    d'avertissement pour une application qu'il n'a pas vérifiée, que vous pouvez passer pour votre
    propre application. **Quand le navigateur tourne sur une autre machine** — WSL, un conteneur,
    une session SSH — la dernière page ne peut pas se charger : copiez l'adresse où elle aboutit
@@ -232,7 +245,10 @@ orkeon drive logout <account>      # forgets the stored tokens
 ```
 
 Chaque verbe prend `--settings <fichier>` ; sans lui, les réglages sont résolus comme `orkeon run`
-les résout, si bien que les jetons arrivent là où chaque run les cherche.
+les résout, si bien que les jetons arrivent là où chaque run les cherche. `login` et `check`
+prennent aussi `--events jsonl` : une ligne d'événement par étape, pour un programme qui les
+pilote — l'onglet Stockage cloud d'Orkeon Studio, qui liste, teste, connecte et déconnecte les
+comptes du fichier qu'il édite ([référence CLI](../reference/cli.md#orkeon-drive)).
 
 ## Où vivent les jetons
 

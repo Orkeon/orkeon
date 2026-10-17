@@ -292,9 +292,9 @@ dossier de crew nommé `email` se lance avec `orkeon run email`.
 
 ```bash
 orkeon drive accounts [--settings <file>] [--json]   # the declared accounts, their rights, root folder, whether each is ready
-orkeon drive login <account> [--settings <file>]     # sign the account in (device code for OneDrive, browser for Google) and store its tokens
-orkeon drive logout <account> [--settings <file>]    # forget the stored tokens
-orkeon drive check <account> [--settings <file>]     # connect, find the root folder, list its first items
+orkeon drive login <account> [--settings <file>] [--events jsonl]   # sign the account in (device code for OneDrive, browser for Google) and store its tokens
+orkeon drive logout <account> [--settings <file>]                    # forget the stored tokens
+orkeon drive check <account> [--settings <file>] [--events jsonl]   # connect, find the root folder, list its first items
 ```
 
 Le côté opérateur des outils drive ([guide](../guides/drive.md)) : ce qui est déclaré sous
@@ -311,8 +311,20 @@ utilisable répond « run `orkeon drive login <account>` ».
   consentement de Google avec une redirection de bouclage (ou l'adresse collée où elle aboutit)
   pour Google Drive. Les jetons arrivent dans le sous-répertoire `drive` du répertoire
   d'identifiants, où chaque run les cherche.
+  Avec **`--events jsonl`**, un programme pilote la connexion — c'est ainsi que l'onglet Stockage
+  cloud d'Orkeon Studio la lance —, sur le protocole d'[`orkeon email login`](#orkeon-email) sous les
+  types de `Orkeon.Constants.Protocol.DriveEventKinds` : `drive.login.device_code`
+  (`verification_uri`, `user_code`, `expires_in`), `drive.login.authorization_url`
+  (`authorization_uri`), `drive.login.redirect_rejected` (`message`), `drive.login.completed`
+  (`account`), et `error` (`code`, `message`, `recoverable`). Une ligne sur l'entrée standard est
+  l'adresse où le navigateur a abouti ; fermer l'entrée standard abandonne la connexion avec le
+  code de sortie `130`.
 - **`check`** trouve le dossier racine du compte et liste sa première page :
   `Drive account 'pro' is reachable: root folder /Orkeon ('Orkeon') holds 3 item(s).`
+  Avec **`--events jsonl`**, le verdict est une seule ligne d'événement : `drive.check.completed`
+  (`account`, `root_path`, `root_name`, `items`, `more`, et `summary`, la phrase affichée sans
+  l'option), ou `error` avec son `code` (`LoginRequired`, `CredentialMissing`, …). Le code de
+  sortie est celui du verbe sans l'option.
 - **Codes de sortie** : 0 fait ; 1 ce que l'opérateur corrige (configuration, compte inconnu,
   variable manquante, connexion à faire, un droit ou une capacité manquants) ; 2 ce qu'ont fait le
   fournisseur ou le réseau ; 130 Ctrl+C.

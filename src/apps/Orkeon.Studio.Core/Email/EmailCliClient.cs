@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Orkeon.Constants.Protocol;
-using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Process;
 
 namespace Orkeon.Studio.Core.Email;
@@ -322,9 +320,7 @@ public static class EmailCheckCodes
 /// </summary>
 public sealed class EmailCliClient
 {
-    private const string SettingsLinePrefix = "Using settings:";
-
-    private readonly OrkeonProcessRunner _runner;
+    private readonly AccountCli _cli;
 
     /// <summary>
     /// Creates a client over <paramref name="runner"/> — in the window, the runner the doctor and
@@ -332,7 +328,7 @@ public sealed class EmailCliClient
     /// the teams.
     /// </summary>
     public EmailCliClient(OrkeonProcessRunner runner) =>
-        _runner = runner ?? throw new ArgumentNullException(nameof(runner));
+        _cli = new AccountCli(runner ?? throw new ArgumentNullException(nameof(runner)), AccountCliProtocol.Email);
 
     /// <summary>
     /// Runs <c>email accounts --json</c> on <paramref name="settingsPath"/> and reads the list.
@@ -340,9 +336,9 @@ public sealed class EmailCliClient
     /// </summary>
     public async Task<EmailAccountsResult> ListAsync(string settingsPath, CancellationToken cancellationToken = default)
     {
-        var (run, stdout, stderr) = await RunAsync(EmailArgumentsBuilder.BuildAccounts(settingsPath), cancellationToken).ConfigureAwait(false);
+        var (run, stdout, stderr) = await _cli.RunAsync(EmailArgumentsBuilder.BuildAccounts(settingsPath), cancellationToken).ConfigureAwait(false);
 
-        if (FailureOf(run, stderr, EmailArgumentsBuilder.AccountsVerb) is { } failure)
+        if (_cli.FailureOf(run, stderr, EmailArgumentsBuilder.AccountsVerb) is { } failure)
             return new EmailAccountsResult { Failure = failure };
 
         return EmailAccountsParser.TryParse(string.Join('\n', stdout), out var accounts, out var error)
@@ -355,48 +351,8 @@ public sealed class EmailCliClient
     /// Cancelling <paramref name="cancellationToken"/> stops the child. Never throws for what the
     /// process did.
     /// </summary>
-    public async Task<EmailCheckOutcome> CheckAsync(string account, string settingsPath, CancellationToken cancellationToken = default)
-    {
-        var (run, stdout, stderr) = await RunAsync(EmailArgumentsBuilder.BuildCheck(account, settingsPath), cancellationToken).ConfigureAwait(false);
-
-        // The verdict is an event line (the counts, or the error with its code); a verb that
-        // printed a sentence instead — an older CLI — is read as before.
-        string? summary = null;
-        string? code = null;
-        string? message = null;
-        foreach (var line in stdout)
-        {
-            if (!OrkeonEventParser.TryParse(line, out var orkeonEvent))
-                continue;
-
-            switch (orkeonEvent!.Kind)
-            {
-                case EmailEventKinds.CheckCompleted:
-                    summary = orkeonEvent.GetString("summary");
-                    break;
-                case EmailEventKinds.Error:
-                    code = orkeonEvent.GetString("code");
-                    message = orkeonEvent.GetString("message");
-                    break;
-            }
-        }
-
-        var refused = message is { Length: > 0 } ? message : Said(run, stderr, EmailArgumentsBuilder.CheckVerb);
-        return run.Outcome switch
-        {
-            RunOutcome.NotStarted => new EmailCheckOutcome(EmailCheckKind.Unavailable, run.Description),
-            RunOutcome.Cancelled => new EmailCheckOutcome(EmailCheckKind.Cancelled, run.Description, run.ExitCode),
-            RunOutcome.Success => new EmailCheckOutcome(
-                EmailCheckKind.Reachable,
-                summary is { Length: > 0 }
-                    ? summary
-                    : stdout.LastOrDefault(line => !string.IsNullOrWhiteSpace(line) && !OrkeonEventParser.TryParse(line, out _))?.Trim() ?? run.Description,
-                run.ExitCode),
-            RunOutcome.ScriptError => new EmailCheckOutcome(EmailCheckKind.OperatorFixable, refused, run.ExitCode, code),
-            RunOutcome.RuntimeError => new EmailCheckOutcome(EmailCheckKind.ServerOrNetwork, refused, run.ExitCode, code),
-            _ => new EmailCheckOutcome(EmailCheckKind.Unavailable, run.Description, run.ExitCode),
-        };
-    }
+    public Task<EmailCheckOutcome> CheckAsync(string account, string settingsPath, CancellationToken cancellationToken = default) =>
+        _cli.CheckAsync(EmailArgumentsBuilder.BuildCheck(account, settingsPath), EmailArgumentsBuilder.CheckVerb, cancellationToken);
 
     /// <summary>
     /// Runs <c>email login --events jsonl</c> on <paramref name="account"/> and follows it.
@@ -412,7 +368,7 @@ public sealed class EmailCliClient
     /// operating system should this process end without either.
     /// </para>
     /// </summary>
-    public async Task<EmailLoginStep> LoginAsync(
+    public Task<EmailLoginStep> LoginAsync(
         string account,
         string settingsPath,
         Action<EmailLoginStep> onStep,
@@ -421,88 +377,7 @@ public sealed class EmailCliClient
     {
         ArgumentNullException.ThrowIfNull(onStep);
         var arguments = EmailArgumentsBuilder.BuildLogin(account, settingsPath);
-        var dialogue = input ?? new EmailLoginInput();
-        var stderr = new List<string>();
-        EmailLoginStep? ended = null;
-        EmailCliFailure? refusal = null;
-
-        ProcessRunResult run;
-        using (cancellationToken.Register(dialogue.Close))
-        {
-            try
-            {
-                run = await _runner.RunAsync(
-                    arguments,
-                    onOutput: line =>
-                    {
-                        if (line.Channel == ProcessOutputChannel.StandardError)
-                        {
-                            stderr.Add(line.Text);
-                            return;
-                        }
-
-                        if (!OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
-                            return;
-
-                        switch (orkeonEvent!.Kind)
-                        {
-                            case EmailEventKinds.LoginDeviceCode when orkeonEvent.GetString("user_code") is { Length: > 0 } userCode:
-                                onStep(new EmailLoginStep
-                                {
-                                    Kind = EmailLoginStepKind.DeviceCode,
-                                    Address = orkeonEvent.GetString("verification_uri"),
-                                    UserCode = userCode,
-                                    ExpiresIn = orkeonEvent.GetInt64("expires_in") is { } seconds and > 0 ? TimeSpan.FromSeconds(seconds) : null,
-                                });
-                                break;
-                            case EmailEventKinds.LoginAuthorizationUrl when orkeonEvent.GetString("authorization_uri") is { Length: > 0 } address:
-                                onStep(new EmailLoginStep { Kind = EmailLoginStepKind.AuthorizationUrl, Address = address });
-                                break;
-                            case EmailEventKinds.LoginRedirectRejected:
-                                // The verb still waits, and still reads: nothing is closed.
-                                onStep(new EmailLoginStep { Kind = EmailLoginStepKind.RedirectRejected, Message = orkeonEvent.GetString("message") ?? "" });
-                                break;
-                            case EmailEventKinds.LoginCompleted:
-                                ended = EmailLoginStep.Completed;
-                                dialogue.Close();
-                                break;
-                            case EmailEventKinds.Error:
-                                refusal = new EmailCliFailure(
-                                    EmailCliFailureKind.Refused,
-                                    orkeonEvent.GetString("message") ?? "",
-                                    Code: orkeonEvent.GetString("code"));
-                                dialogue.Close();
-                                break;
-                        }
-                    },
-                    onInputReady: dialogue.Attach,
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                // Whatever ended the run, nothing reads that input any more.
-                dialogue.Close();
-            }
-        }
-
-        if (run.Outcome == RunOutcome.NotStarted)
-            return EmailLoginStep.Failed(new EmailCliFailure(EmailCliFailureKind.EngineMissing, run.Description));
-
-        if (ended is not null)
-            return ended;
-
-        if (refusal is not null)
-            return EmailLoginStep.Failed(refusal with { ExitCode = run.ExitCode });
-
-        return EmailLoginStep.Failed(run.Outcome switch
-        {
-            RunOutcome.Cancelled => new EmailCliFailure(EmailCliFailureKind.Cancelled, run.Description, run.ExitCode),
-            RunOutcome.Success => new EmailCliFailure(
-                EmailCliFailureKind.Unreadable,
-                $"orkeon email login ended without an {EmailEventKinds.LoginCompleted} event — is it a version without --events?",
-                run.ExitCode),
-            _ => new EmailCliFailure(EmailCliFailureKind.Stopped, Said(run, stderr, EmailArgumentsBuilder.LoginVerb), run.ExitCode),
-        });
+        return _cli.LoginAsync(arguments, EmailArgumentsBuilder.LoginVerb, onStep, input, cancellationToken);
     }
 
     /// <summary>
@@ -510,55 +385,8 @@ public sealed class EmailCliClient
     /// Null when the verb ended well — whether it had tokens to forget or not —, why it did not
     /// otherwise. Never throws for what the process did.
     /// </summary>
-    public async Task<EmailCliFailure?> LogoutAsync(string account, string settingsPath, CancellationToken cancellationToken = default)
-    {
-        var (run, _, stderr) = await RunAsync(EmailArgumentsBuilder.BuildLogout(account, settingsPath), cancellationToken).ConfigureAwait(false);
-        return FailureOf(run, stderr, EmailArgumentsBuilder.LogoutVerb);
-    }
-
-    private async Task<(ProcessRunResult Run, List<string> Stdout, List<string> Stderr)> RunAsync(
-        IReadOnlyList<string> arguments, CancellationToken cancellationToken)
-    {
-        var stdout = new List<string>();
-        var stderr = new List<string>();
-        var run = await _runner.RunAsync(
-            arguments,
-            onOutput: line => (line.Channel == ProcessOutputChannel.StandardOutput ? stdout : stderr).Add(line.Text),
-            cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return (run, stdout, stderr);
-    }
-
-    /// <summary>Why the run carries no answer to read; null when it ended on exit code 0.</summary>
-    private static EmailCliFailure? FailureOf(ProcessRunResult run, List<string> stderr, string verb) => run.Outcome switch
-    {
-        RunOutcome.Success => null,
-        RunOutcome.NotStarted => new EmailCliFailure(EmailCliFailureKind.EngineMissing, run.Description),
-        RunOutcome.Cancelled => new EmailCliFailure(EmailCliFailureKind.Cancelled, run.Description, run.ExitCode),
-        _ => new EmailCliFailure(EmailCliFailureKind.Stopped, Said(run, stderr, verb), run.ExitCode),
-    };
-
-    /// <summary>
-    /// What a verb that failed said: its own <c>orkeon email &lt;verb&gt;: …</c> line without that
-    /// prefix, else the last thing on standard error that is not the settings line, else what the
-    /// exit code means.
-    /// </summary>
-    private static string Said(ProcessRunResult run, List<string> stderr, string verb)
-    {
-        var prefix = $"orkeon {EmailArgumentsBuilder.Verb} {verb}: ";
-        var lines = stderr
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0 && !line.StartsWith(SettingsLinePrefix, StringComparison.Ordinal))
-            .ToList();
-
-        if (lines.LastOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal)) is { } message
-            && message[prefix.Length..].Trim() is { Length: > 0 } text)
-        {
-            return text;
-        }
-
-        return lines.Count > 0 ? lines[^1] : run.Description;
-    }
+    public Task<EmailCliFailure?> LogoutAsync(string account, string settingsPath, CancellationToken cancellationToken = default) =>
+        _cli.LogoutAsync(EmailArgumentsBuilder.BuildLogout(account, settingsPath), EmailArgumentsBuilder.LogoutVerb, cancellationToken);
 }
 
 /// <summary>

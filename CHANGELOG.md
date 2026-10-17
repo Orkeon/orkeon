@@ -45,6 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Not yet campaigned** against a real Google Drive or OneDrive (DRIVE-07, the owner's): the
   family is covered by offline tests against scripted APIs.
 
+### Added — a Drive tab in Orkeon Studio's settings (STUDIO-72)
+
+Studio manages drive accounts the way its Mails tab manages e-mail accounts: list, add, edit,
+rename and remove the accounts of `Orkeon:Tools:Drive` in place, without losing anything else of
+the settings file; the Google client secret remembered like a mail secret; each account's
+readiness; the sign-in (Microsoft's device code with its countdown, or Google's address with the
+field for the address the browser ends on) and the connection check, driven through
+`drive login` and `drive check` with `--events jsonl` (`DriveEventKinds`). Studio's validation
+agrees with the engine's resolver and writes the binder's keys (oracle and drift tests). The
+Drive family of the Tools list now sends to the tab. The JSON editing, the duplicate-key check,
+the reading of the CLI events and the sign-in panel are shared with the Mails tab, whose behaviour
+is unchanged.
+
 ### Changed — the OAuth client of the e-mail family is shared (DRIVE-01) **[breaking for a C# implementer]**
 
 The OAuth 2.0 client, the loopback listener, the secret reader and the interactive sign-in flows

@@ -168,4 +168,49 @@ public static class ValidationCodes
     /// every account aside until it is.
     /// </summary>
     public const string EmailScreening = "STUDIO-MAIL-SCREENING";
+
+    /// <summary>A drive account name the engine refuses: the account is set aside.</summary>
+    public const string DriveName = "STUDIO-DRIVE-NAME";
+
+    /// <summary>
+    /// Two drive account names equal but for the case: an error when both set one same key, which
+    /// the JSON configuration refuses; a warning when they share none, which the run reads as one.
+    /// </summary>
+    public const string DriveDuplicate = "STUDIO-DRIVE-DUPLICATE";
+
+    /// <summary>Two keys equal but for the case in one object of <c>Orkeon:Tools:Drive</c>, as <see cref="EmailTwin"/>.</summary>
+    public const string DriveTwin = "STUDIO-DRIVE-TWIN";
+
+    /// <summary>A key no drive account carries: the engine sets the account aside.</summary>
+    public const string DriveKey = "STUDIO-DRIVE-KEY";
+
+    /// <summary>A value of a drive account the engine cannot read (a misspelt right, a size in words).</summary>
+    public const string DriveValue = "STUDIO-DRIVE-VALUE";
+
+    /// <summary>A drive account that names no provider.</summary>
+    public const string DriveProvider = "STUDIO-DRIVE-PROVIDER";
+
+    /// <summary>A drive account that grants no right.</summary>
+    public const string DriveRights = "STUDIO-DRIVE-RIGHTS";
+
+    /// <summary>A drive account whose root folder is no folder path.</summary>
+    public const string DriveRoot = "STUDIO-DRIVE-ROOT";
+
+    /// <summary>How a drive account signs in: client id, client-secret variable, tenant.</summary>
+    public const string DriveAuth = "STUDIO-DRIVE-AUTH";
+
+    /// <summary>The sharing rules of a drive account: an allowed recipient that is no pattern.</summary>
+    public const string DriveShare = "STUDIO-DRIVE-SHARE";
+
+    /// <summary>The limits of a drive account: the upload size, the timeout.</summary>
+    public const string DriveLimits = "STUDIO-DRIVE-LIMITS";
+
+    /// <summary><c>Orkeon:Tools:Drive:DefaultAccount</c> names no declared account.</summary>
+    public const string DriveDefault = "STUDIO-DRIVE-DEFAULT";
+
+    /// <summary>
+    /// <c>Orkeon:Tools:Drive:Screening:WithholdRejected</c> is neither true nor false: the engine sets
+    /// every account aside until it is.
+    /// </summary>
+    public const string DriveScreening = "STUDIO-DRIVE-SCREENING";
 }

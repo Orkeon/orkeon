@@ -230,6 +230,20 @@ internal static class SettingsStops
 
         new()
         {
+            Name = "reglages-drive-vide",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsDrive,
+            World = CaptureWorldKind.Pristine,
+            Because = "No drive account at all: the head of the Drive tab alone — the file the accounts "
+                    + "would go to, the sentence that says none is declared, and « Add an account » — "
+                    + "with no form under it, the form of the selected account being gated on a "
+                    + "selection as the E-mail tab's is.",
+            CoversFalse = ["Config.Drive.HasAccounts", "Config.Drive.HasSelectedAccount", "Config.Drive.IsAdding"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
             Name = "reglages-mcp",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsMcp,

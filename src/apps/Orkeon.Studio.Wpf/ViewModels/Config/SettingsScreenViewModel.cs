@@ -38,6 +38,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>The e-mail accounts the mail tools use (STUDIO-67); both modes, the expert sees every field.</summary>
     public const string MailsTab = "mails";
 
+    /// <summary>The Drive tab: the cloud drive accounts the drive tools use.</summary>
+    public const string DriveTab = "drive";
+
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
 
@@ -70,6 +73,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         _mode.PropertyChanged += OnModeChanged;
         // The E-mail form is in both modes and shows more to the expert (STUDIO-67).
         Config.Email.IsExpert = _mode.IsExpert;
+        Config.Drive.IsExpert = _mode.IsExpert;
 
         // Novice auto-save (audit 07/16): the novice screen shows no Save button, so every
         // edit saves the document. Listening to each edit rather than the dirty transition
@@ -89,6 +93,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         {
             if (IsMailsTab)
                 Config.Email.RefreshStatesSoon();
+            else if (IsDriveTab)
+                Config.Drive.RefreshStatesSoon();
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
@@ -105,6 +111,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         ShowMcpCommand = new RelayCommand(() => ActiveTab = McpTab);
         ShowStudioCommand = new RelayCommand(() => ActiveTab = StudioTab);
         ShowMailsCommand = new RelayCommand(() => ActiveTab = MailsTab);
+        ShowDriveCommand = new RelayCommand(() => ActiveTab = DriveTab);
     }
 
     /// <summary>The settings-document editor the tabs render.</summary>
@@ -135,16 +142,17 @@ public sealed class SettingsScreenViewModel : ObservableObject
         get => _activeTab;
         set
         {
-            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab ? value : ModelTab;
+            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab or DriveTab ? value : ModelTab;
             if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
             var wasMails = IsMailsTab;
+            var wasDrive = IsDriveTab;
             if (SetProperty(ref _activeTab, requested))
             {
                 OnPropertiesChanged(
                     nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
-                    nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab));
+                    nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab), nameof(IsDriveTab));
 
                 // The e-mail tab asks the engine about its accounts on arrival, and stops what it
                 // was running when it is left: a connection test never outlives its tab (STUDIO-69).
@@ -152,6 +160,12 @@ public sealed class SettingsScreenViewModel : ObservableObject
                     _ = Config.Email.RefreshStatesAsync();
                 else if (wasMails)
                     Config.Email.StopActivity();
+
+                // The Drive tab does the same with its accounts.
+                if (IsDriveTab)
+                    _ = Config.Drive.RefreshStatesAsync();
+                else if (wasDrive)
+                    Config.Drive.StopActivity();
             }
         }
     }
@@ -180,6 +194,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>True while the e-mail tab shows.</summary>
     public bool IsMailsTab => _activeTab == MailsTab;
 
+    /// <summary>True while the Drive tab shows.</summary>
+    public bool IsDriveTab => _activeTab == DriveTab;
+
     /// <summary>Shows the model tab.</summary>
     public RelayCommand ShowModelCommand { get; }
 
@@ -204,6 +221,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>Shows the e-mail tab.</summary>
     public RelayCommand ShowMailsCommand { get; }
 
+    /// <summary>Shows the Drive tab.</summary>
+    public RelayCommand ShowDriveCommand { get; }
+
     /// <summary>
     /// The screen shows again — its sidebar entry was chosen: the e-mail tab, when it is the one
     /// showing, reads the states of its accounts again (STUDIO-69).
@@ -212,13 +232,19 @@ public sealed class SettingsScreenViewModel : ObservableObject
     {
         if (IsMailsTab)
             _ = Config.Email.RefreshStatesAsync();
+        else if (IsDriveTab)
+            _ = Config.Drive.RefreshStatesAsync();
     }
 
     /// <summary>
     /// The screen is left — another sidebar entry, or the window closing: whatever the e-mail tab
     /// still has running is stopped, so that no <c>orkeon</c> process outlives it (STUDIO-69).
     /// </summary>
-    public void Leave() => Config.Email.StopActivity();
+    public void Leave()
+    {
+        Config.Email.StopActivity();
+        Config.Drive.StopActivity();
+    }
 
     private void OnModeChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -226,6 +252,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
             return;
 
         Config.Email.IsExpert = _mode.IsExpert;
+        Config.Drive.IsExpert = _mode.IsExpert;
         if (_mode.IsNovice && (IsLimitsTab || IsJsonTab || IsMcpTab))
             ActiveTab = ModelTab;
     }

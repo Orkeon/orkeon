@@ -35,7 +35,8 @@ public enum ToolRequirement
     /// A drive account (Google Drive, OneDrive) declared in the settings file, under the section
     /// named in <see cref="ToolInfo.Argument"/>. Like <see cref="EmailAccount"/>, the tool is
     /// registered with or without one and, until an account is declared and signed in, refuses
-    /// every call saying what to do. Studio has no drive tab yet: the sentence names the section.
+    /// every call saying what to do. The sentence sends to the Drive tab, where accounts are
+    /// declared and signed in; the section stays the argument, as for <see cref="EmailAccount"/>.
     /// </summary>
     DriveAccount,
 }

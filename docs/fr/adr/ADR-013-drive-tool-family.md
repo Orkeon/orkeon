@@ -68,8 +68,9 @@ Microsoft Graph en HTTP simple — le tout interne à `Orkeon.Tools.Email`.
 - 102 classes d'outils intégrés, 49 projets src et 37 projets de test ; le paquet ombrelle porte
   neuf familles.
 - `orkeon drive accounts | login | logout | check` ; les typings des scripts `.ork.ts` ; une
-  famille « Drive » dans la liste des outils de Studio — sans onglet de réglages pour l'instant,
-  l'exigence nomme la section.
+  famille « Drive » dans la liste des outils de Studio, dont l'exigence renvoie à l'onglet de
+  réglages Stockage cloud de Studio — les comptes y sont déclarés, testés et connectés, par
+  `login` et `check --events jsonl`.
 - Les drives partagés Google, les bibliothèques SharePoint, les révisions, les commentaires, les
   copies et un montage VFS sont hors périmètre, documentés dans le guide.
 - La campagne sur de vrais comptes est celle du propriétaire (DRIVE-07) : les tests hors ligne

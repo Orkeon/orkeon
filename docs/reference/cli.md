@@ -289,9 +289,9 @@ matched before crew-path detection, like every verb: a crew folder named `email`
 
 ```bash
 orkeon drive accounts [--settings <file>] [--json]   # the declared accounts, their rights, root folder, whether each is ready
-orkeon drive login <account> [--settings <file>]     # sign the account in (device code for OneDrive, browser for Google) and store its tokens
-orkeon drive logout <account> [--settings <file>]    # forget the stored tokens
-orkeon drive check <account> [--settings <file>]     # connect, find the root folder, list its first items
+orkeon drive login <account> [--settings <file>] [--events jsonl]   # sign the account in (device code for OneDrive, browser for Google) and store its tokens
+orkeon drive logout <account> [--settings <file>]                    # forget the stored tokens
+orkeon drive check <account> [--settings <file>] [--events jsonl]   # connect, find the root folder, list its first items
 ```
 
 The operator's side of the drive tools ([guide](../guides/drive.md)): what is declared under
@@ -306,8 +306,19 @@ Agents never run these — a tool that finds no usable token answers
 - **`login`** runs the OAuth sign-in: Microsoft's device code for OneDrive, Google's consent page
   with a loopback redirect (or the pasted address it ends on) for Google Drive. The tokens land
   in the `drive` subdirectory of the credentials directory, where every run looks for them.
+  With **`--events jsonl`** a program drives the sign-in — the way Orkeon Studio's Drive tab runs
+  it —, on the protocol of [`orkeon email login`](#orkeon-email) under the kinds of
+  `Orkeon.Constants.Protocol.DriveEventKinds`: `drive.login.device_code` (`verification_uri`,
+  `user_code`, `expires_in`), `drive.login.authorization_url` (`authorization_uri`),
+  `drive.login.redirect_rejected` (`message`), `drive.login.completed` (`account`), and `error`
+  (`code`, `message`, `recoverable`). A line on standard input is the address the browser ended
+  on; closing standard input aborts the sign-in with exit code `130`.
 - **`check`** finds the account's root folder and lists its first page:
   `Drive account 'pro' is reachable: root folder /Orkeon ('Orkeon') holds 3 item(s).`
+  With **`--events jsonl`** the verdict is one event line instead: `drive.check.completed`
+  (`account`, `root_path`, `root_name`, `items`, `more`, and `summary`, the sentence printed
+  without the option), or `error` with its `code` (`LoginRequired`, `CredentialMissing`, …). The
+  exit code is the one the verb has without the option.
 - **Exit codes**: 0 done; 1 what the operator fixes (configuration, unknown account, missing
   variable, sign-in needed, a right or a capability missing); 2 what the provider or the network
   did; 130 Ctrl+C.

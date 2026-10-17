@@ -152,8 +152,8 @@ public sealed class ToolRequirementViewModel : ObservableObject
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
         // The sentence sends to the E-mail tab (STUDIO-67); the section the tool names is not said.
         ToolRequirement.EmailAccount => _strings[StudioStringKeys.ToolNeedsEmailAccount],
-        // No drive tab yet: the sentence names the section the accounts are declared under.
-        ToolRequirement.DriveAccount => Format(StudioStringKeys.ToolNeedsDriveAccount),
+        // The sentence sends to the Drive tab, as the e-mail one does to the E-mail tab.
+        ToolRequirement.DriveAccount => _strings[StudioStringKeys.ToolNeedsDriveAccount],
         _ => "",
     };
 

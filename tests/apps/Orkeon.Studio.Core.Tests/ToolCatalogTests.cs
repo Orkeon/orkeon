@@ -175,4 +175,19 @@ public sealed partial class ToolCatalogTests
         Assert.Contains(EnglishStudioStrings.Instance[StudioStringKeys.ShellMails], sentence, StringComparison.Ordinal);
         Assert.DoesNotContain("{0}", sentence, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The drive accounts have their form too, so the sentence of the requirement sends to
+    /// Settings › Drive: it names neither the section of the file nor the sign-in verb.
+    /// </summary>
+    [Fact]
+    public void The_drive_account_requirement_reads_as_a_pointer_to_the_drive_settings_tab()
+    {
+        var sentence = EnglishStudioStrings.Instance[StudioStringKeys.ToolNeedsDriveAccount];
+
+        Assert.Equal("needs a drive account, declared in Settings › Drive", sentence);
+        Assert.Contains(EnglishStudioStrings.Instance[StudioStringKeys.ShellDrive], sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("{0}", sentence, StringComparison.Ordinal);
+        Assert.DoesNotContain("login", sentence, StringComparison.Ordinal);
+    }
 }

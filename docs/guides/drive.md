@@ -19,8 +19,8 @@ operator allows:
   under it; an item outside is reported as not found.
 - **Sharing is closed by default**: an empty `Share:AllowedRecipients` allows nobody, and public
   links stay off until `Share:AllowPublicLinks` is `true`.
-- **Every account signs in once with OAuth2** (`orkeon drive login`), and the tools refresh the
-  access token by themselves.
+- **Every account signs in once with OAuth2** (`orkeon drive login` in a terminal, or « Sign in »
+  in Orkeon Studio), and the tools refresh the access token by themselves.
 
 > **Not yet campaigned.** The family is covered by offline tests against scripted Google and
 > Microsoft APIs. It has not been run against a real Google Drive or OneDrive yet: that campaign
@@ -80,7 +80,16 @@ Under `Orkeon:Tools:Drive:Accounts`:
 ```
 
 `Auth:Tenant` defaults to `consumers`, the tenant of personal accounts; for OneDrive for work or
-school set `"Tenant": "organizations"` or your tenant id. Then, in a terminal:
+school set `"Tenant": "organizations"` or your tenant id.
+
+**From Orkeon Studio**, this is a form: **Settings › Drive** — « Add an account », a name and
+OneDrive, then the client ID on the Sign-in tab, the rights on the Rights tab and the folder on
+the Account tab (the tenant is an expert field). Studio writes the section above into the
+settings file it edits, and the tab says what the engine makes of each account. « Sign in » runs
+the login below and shows Microsoft's address and the code, counted down; « Test the connection »
+runs the check.
+
+In a terminal:
 
 ```bash
 orkeon drive login pro
@@ -103,7 +112,9 @@ PKCE — the same flow as a Gmail account with OAuth2.
    `https://www.googleapis.com/auth/drive` (or `drive.readonly` for an account that only reads),
    and add your own address as a **test user**.
 3. Create an **OAuth client ID** of type **Desktop app**. Copy its client ID, and put its client
-   secret in an environment variable (`GOOGLE_DRIVE_CLIENT_SECRET` below).
+   secret in an environment variable (`GOOGLE_DRIVE_CLIENT_SECRET` below) — in Orkeon Studio,
+   type it on the Sign-in tab of the account: Studio keeps it in a user environment variable
+   (`DRIVE_<ACCOUNT>_CLIENT_SECRET`) and writes only that name into the file.
 4. Declare the account, under `Orkeon:Tools:Drive:Accounts`:
 
    ```json
@@ -118,7 +129,10 @@ PKCE — the same flow as a Gmail account with OAuth2.
    }
    ```
 
-5. Run `orkeon drive login perso`. It prints a Google address to open and listens on a free port
+5. Sign in — **from Orkeon Studio**: Settings › Drive, the account, « Sign in », which shows
+   Google's address with « Copy the link » and « Open in the browser », and a field for the
+   address the browser ends on, which says why when it is not the right one; in a terminal, run
+   `orkeon drive login perso`. It prints a Google address to open and listens on a free port
    of `127.0.0.1`. Sign in and accept; Google shows a warning screen for an application it has not
    verified, which you may continue past for your own application. **When the browser runs on
    another machine** — WSL, a container, an SSH session — the last page cannot load: copy the
@@ -224,7 +238,10 @@ orkeon drive logout <account>      # forgets the stored tokens
 ```
 
 Every verb takes `--settings <file>`; without it the settings are resolved like `orkeon run`
-resolves them, so the tokens land where every run looks for them.
+resolves them, so the tokens land where every run looks for them. `login` and `check` take
+`--events jsonl` too: one event line per step, for a program that drives them — Orkeon Studio's
+Drive tab, which lists, tests, signs in and signs out the accounts of the file it edits
+([CLI reference](../reference/cli.md#orkeon-drive)).
 
 ## Where the tokens live
 
