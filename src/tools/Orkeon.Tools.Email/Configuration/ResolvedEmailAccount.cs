@@ -1,3 +1,5 @@
+using Orkeon.Tools.Abstractions.Auth;
+
 namespace Orkeon.Tools.Email.Configuration;
 
 /// <summary>A server a protocol client connects to.</summary>
@@ -5,37 +7,6 @@ namespace Orkeon.Tools.Email.Configuration;
 /// <param name="Port">TCP port.</param>
 /// <param name="Security">Transport security.</param>
 internal sealed record MailEndpoint(string Host, int Port, TransportSecurity Security);
-
-/// <summary>OAuth 2.0 settings of an account, preset endpoints included.</summary>
-internal sealed record OAuthSettings
-{
-    /// <summary>Client id of the registered application.</summary>
-    public required string ClientId { get; init; }
-
-    /// <summary>Environment variable holding the client secret, when the provider requires one.</summary>
-    public string? ClientSecretEnvVar { get; init; }
-
-    /// <summary>How the first token is obtained.</summary>
-    public required OAuthFlow Flow { get; init; }
-
-    /// <summary>Token endpoint (code exchange and refresh).</summary>
-    public required Uri TokenEndpoint { get; init; }
-
-    /// <summary>Authorization endpoint of the loopback flow.</summary>
-    public Uri? AuthorizationEndpoint { get; init; }
-
-    /// <summary>Device authorization endpoint of the device-code flow.</summary>
-    public Uri? DeviceCodeEndpoint { get; init; }
-
-    /// <summary>Scopes requested at sign-in and refresh.</summary>
-    public required IReadOnlyList<string> Scopes { get; init; }
-
-    /// <summary>
-    /// Whether a refresh repeats the scopes. The Microsoft identity platform takes them on every
-    /// token request; Google documents none on a refresh and keeps the ones consented to.
-    /// </summary>
-    public bool ScopesOnRefresh { get; init; }
-}
 
 /// <summary>How an account authenticates, once resolved.</summary>
 internal sealed record ResolvedAuth

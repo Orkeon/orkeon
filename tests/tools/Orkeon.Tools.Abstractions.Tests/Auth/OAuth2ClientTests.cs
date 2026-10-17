@@ -1,19 +1,17 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Orkeon.Tools.Email.Auth;
-using Orkeon.Tools.Email.Configuration;
-using Orkeon.Tools.Email.Tests.Doubles;
-using Orkeon.Tools.Email.Tests.Fixtures;
+using Orkeon.Tools.Abstractions.Auth;
+using Orkeon.Tests.Shared.Timing;
 
-namespace Orkeon.Tools.Email.Tests.Auth;
+namespace Orkeon.Tools.Abstractions.Tests.Auth;
 
 /// <summary>The hand-written OAuth 2.0 client: device code, PKCE authorization, refresh.</summary>
 public sealed class OAuth2ClientTests : IDisposable
 {
     private readonly FakeHttpMessageHandler _handler = new();
     private readonly HttpClient _http;
-    private readonly FakeTimeProvider _time = new();
+    private readonly ManualTimeProvider _time = new();
     private readonly List<TimeSpan> _waits = [];
     private readonly OAuth2Client _client;
 
@@ -30,9 +28,29 @@ public sealed class OAuth2ClientTests : IDisposable
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private static OAuthSettings Microsoft => TestAccounts.Resolve("hotmail", TestAccounts.Outlook()).Auth.OAuth!;
+    // The settings the e-mail family resolves for its Outlook and Gmail presets.
+    private static readonly Uri MicrosoftAuthority = new("https://login.microsoftonline.com/consumers/oauth2/v2.0/");
 
-    private static OAuthSettings Google => TestAccounts.Resolve("perso", TestAccounts.GmailOAuth()).Auth.OAuth!;
+    private static OAuthSettings Microsoft { get; } = new()
+    {
+        ClientId = "00000000-1111-2222-3333-444444444444",
+        Flow = OAuthFlow.DeviceCode,
+        TokenEndpoint = new Uri(MicrosoftAuthority, "token"),
+        AuthorizationEndpoint = new Uri(MicrosoftAuthority, "authorize"),
+        DeviceCodeEndpoint = new Uri(MicrosoftAuthority, "devicecode"),
+        Scopes = ["https://graph.microsoft.com/Mail.ReadWrite", "https://graph.microsoft.com/Mail.Send", "offline_access"],
+        ScopesOnRefresh = true,
+    };
+
+    private static OAuthSettings Google { get; } = new()
+    {
+        ClientId = "google-client.apps.googleusercontent.com",
+        ClientSecretEnvVar = "ORKEON_TEST_GOOGLE_SECRET",
+        Flow = OAuthFlow.LoopbackPkce,
+        TokenEndpoint = new Uri("https://oauth2.googleapis.com/token"),
+        AuthorizationEndpoint = new Uri("https://accounts.google.com/o/oauth2/v2/auth"),
+        Scopes = ["https://mail.google.com/"],
+    };
 
     [Fact]
     public async Task Should_start_a_device_authorization_with_the_client_and_its_scopes()
@@ -67,9 +85,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.EnqueueJson("""{"error":"invalid_client","error_description":"AADSTS700016: Application not found."}""");
 
-        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RequestDeviceCodeAsync(Microsoft, Token));
+        var error = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RequestDeviceCodeAsync(Microsoft, Token));
 
-        Assert.Equal(EmailErrorCode.AuthenticationFailed, error.Code);
+        Assert.Equal(OAuthFailure.AuthenticationFailed, error.Failure);
         Assert.Equal("The device authorization was refused: invalid_client AADSTS700016: Application not found.", error.Message);
     }
 
@@ -78,17 +96,17 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.EnqueueJson("""{"device_code":"d","verification_uri":"https://microsoft.com/devicelogin"}""");
 
-        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RequestDeviceCodeAsync(Microsoft, Token));
+        var error = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RequestDeviceCodeAsync(Microsoft, Token));
 
-        Assert.Equal(EmailErrorCode.ServerError, error.Code);
+        Assert.Equal(OAuthFailure.ServerError, error.Failure);
     }
 
     [Fact]
     public async Task Should_refuse_a_device_authorization_for_a_provider_without_that_endpoint()
     {
-        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RequestDeviceCodeAsync(Google, Token));
+        var error = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RequestDeviceCodeAsync(Google, Token));
 
-        Assert.Equal(EmailErrorCode.InvalidConfiguration, error.Code);
+        Assert.Equal(OAuthFailure.InvalidConfiguration, error.Failure);
         Assert.Empty(_handler.Requests);
     }
 
@@ -138,9 +156,9 @@ public sealed class OAuth2ClientTests : IDisposable
         _handler.EnqueueJson($$"""{"error":"{{error}}","error_description":"The user said no."}""");
         var grant = new DeviceCodeGrant("d", "u", new Uri("https://microsoft.com/devicelogin"), TimeSpan.FromMinutes(15), TimeSpan.FromSeconds(5));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.PollDeviceCodeAsync(Microsoft, null, grant, Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.PollDeviceCodeAsync(Microsoft, null, grant, Token));
 
-        Assert.Equal(EmailErrorCode.LoginRequired, failure.Code);
+        Assert.Equal(OAuthFailure.LoginRequired, failure.Failure);
         Assert.Equal($"The sign-in did not complete: {error} The user said no.", failure.Message);
     }
 
@@ -151,9 +169,9 @@ public sealed class OAuth2ClientTests : IDisposable
         _handler.EnqueueJson("""{"error":"authorization_pending"}""");
         var grant = new DeviceCodeGrant("d", "u", new Uri("https://microsoft.com/devicelogin"), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.PollDeviceCodeAsync(Microsoft, null, grant, Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.PollDeviceCodeAsync(Microsoft, null, grant, Token));
 
-        Assert.Equal(EmailErrorCode.LoginRequired, failure.Code);
+        Assert.Equal(OAuthFailure.LoginRequired, failure.Failure);
         Assert.Equal("The sign-in code expired before the sign-in completed; run the login again.", failure.Message);
         Assert.Equal(2, _handler.Requests.Count);
     }
@@ -210,9 +228,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadRequest, $$"""{"error":"{{error}}","error_description":"AADSTS70008"}"""));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
 
-        Assert.Equal(Enum.Parse<EmailErrorCode>(code), failure.Code);
+        Assert.Equal(Enum.Parse<OAuthFailure>(code), failure.Failure);
         Assert.Equal($"The token refresh was refused: {error} AADSTS70008", failure.Message);
     }
 
@@ -221,9 +239,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadGateway, "<html>Bad gateway</html>", "text/html"));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
 
-        Assert.Equal(EmailErrorCode.ServerError, failure.Code);
+        Assert.Equal(OAuthFailure.ServerError, failure.Failure);
         Assert.Equal("The identity provider at login.microsoftonline.com answered HTTP 502 without JSON.", failure.Message);
     }
 
@@ -232,9 +250,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.OK, string.Empty));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RefreshAsync(Microsoft, null, "rt", Token));
 
-        Assert.Equal(EmailErrorCode.ServerError, failure.Code);
+        Assert.Equal(OAuthFailure.ServerError, failure.Failure);
         Assert.Equal("The token response has no access token.", failure.Message);
     }
 
@@ -243,9 +261,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(_ => throw new HttpRequestException("Name or service not known"));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Google, null, "rt", Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RefreshAsync(Google, null, "rt", Token));
 
-        Assert.Equal(EmailErrorCode.ServerError, failure.Code);
+        Assert.Equal(OAuthFailure.ServerError, failure.Failure);
         Assert.Equal("The identity provider at oauth2.googleapis.com could not be reached: Name or service not known", failure.Message);
     }
 
@@ -254,9 +272,9 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(_ => throw new TaskCanceledException("timeout", new TimeoutException()));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Google, null, "rt", Token));
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () => await _client.RefreshAsync(Google, null, "rt", Token));
 
-        Assert.Equal(EmailErrorCode.ServerError, failure.Code);
+        Assert.Equal(OAuthFailure.ServerError, failure.Failure);
         Assert.Equal("The identity provider at oauth2.googleapis.com did not answer in time; retry later.", failure.Message);
     }
 
@@ -284,10 +302,10 @@ public sealed class OAuth2ClientTests : IDisposable
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadRequest, """{"error":"invalid_grant","error_description":"Bad Request"}"""));
 
-        var failure = await Assert.ThrowsAsync<EmailToolException>(async () =>
+        var failure = await Assert.ThrowsAsync<OAuthException>(async () =>
             await _client.ExchangeCodeAsync(Google, null, "code", new Uri("http://127.0.0.1:1/"), PkceSession.Create(), Token));
 
-        Assert.Equal(EmailErrorCode.AuthenticationFailed, failure.Code);
+        Assert.Equal(OAuthFailure.AuthenticationFailed, failure.Failure);
         Assert.Equal("The authorization code was refused: invalid_grant Bad Request", failure.Message);
     }
 
@@ -319,8 +337,8 @@ public sealed class OAuth2ClientTests : IDisposable
         var settings = Google with { AuthorizationEndpoint = null };
 
         Assert.False(AuthorizationQuery(uri).ContainsKey("login_hint"));
-        Assert.Equal(EmailErrorCode.InvalidConfiguration, Assert.Throws<EmailToolException>(() =>
-            OAuth2Client.BuildAuthorizationUri(settings, new Uri("http://127.0.0.1:1/"), PkceSession.Create(), null)).Code);
+        Assert.Equal(OAuthFailure.InvalidConfiguration, Assert.Throws<OAuthException>(() =>
+            OAuth2Client.BuildAuthorizationUri(settings, new Uri("http://127.0.0.1:1/"), PkceSession.Create(), null)).Failure);
     }
 
     [Fact]
@@ -346,7 +364,7 @@ public sealed class OAuth2ClientTests : IDisposable
     [InlineData(-60, false)]
     public void Should_call_a_token_fresh_only_When_it_outlives_the_two_minute_margin(int secondsLeft, bool fresh)
     {
-        var tokens = new EmailTokenSet { AccessToken = "at", ExpiresAt = _time.GetUtcNow().AddSeconds(secondsLeft) };
+        var tokens = new OAuthTokenSet { AccessToken = "at", ExpiresAt = _time.GetUtcNow().AddSeconds(secondsLeft) };
 
         Assert.Equal(fresh, _client.IsFresh(tokens));
     }

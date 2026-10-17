@@ -16,6 +16,8 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Orkeon.Tests.Shared.Network" />
+    <Using Include="Orkeon.Tools.Abstractions.Auth" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj" />

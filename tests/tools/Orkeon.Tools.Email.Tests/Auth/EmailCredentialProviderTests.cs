@@ -50,7 +50,7 @@ public sealed class EmailCredentialProviderTests
         var declared = TestAccounts.Gmail();
         declared.Auth.PasswordEnvVar = name;
         var account = TestAccounts.Resolve("perso", declared);
-        using var fixture = new CredentialsFixture(new EmailEnvironment(
+        using var fixture = new CredentialsFixture(new SecretEnvironment(
             Environment.GetEnvironmentVariable,
             variable => variable == name ? "user-scope-password" : null));
 
@@ -78,7 +78,7 @@ public sealed class EmailCredentialProviderTests
     [Fact]
     public async Task Should_read_the_process_environment_first_When_both_scopes_hold_the_variable()
     {
-        using var fixture = new CredentialsFixture(new EmailEnvironment(
+        using var fixture = new CredentialsFixture(new SecretEnvironment(
             variable => variable == TestAccounts.PasswordVariable ? "process-password" : null,
             variable => variable == TestAccounts.PasswordVariable ? "user-password" : null));
 
@@ -92,7 +92,7 @@ public sealed class EmailCredentialProviderTests
     {
         // A registry read refused (a service account without a profile) is a password not found:
         // the call fails as it does without one, and the readiness check says so instead of throwing.
-        using var fixture = new CredentialsFixture(new EmailEnvironment(
+        using var fixture = new CredentialsFixture(new SecretEnvironment(
             _ => null,
             _ => throw new System.Security.SecurityException("registry access denied")));
 

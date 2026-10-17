@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 
-namespace Orkeon.Tools.Email.Tests.Doubles;
+namespace Orkeon.Tests.Shared.Network;
 
 /// <summary>A request the <see cref="FakeHttpMessageHandler"/> received, body read at send time.</summary>
 /// <param name="Method">HTTP method.</param>

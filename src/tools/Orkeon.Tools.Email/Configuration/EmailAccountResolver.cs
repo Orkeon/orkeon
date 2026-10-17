@@ -1,5 +1,6 @@
 using System.Net;
 using MimeKit;
+using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tools.Email.Constants;
 
 namespace Orkeon.Tools.Email.Configuration;

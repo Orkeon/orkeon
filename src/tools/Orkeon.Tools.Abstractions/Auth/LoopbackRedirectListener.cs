@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace Orkeon.Tools.Email.Auth;
+namespace Orkeon.Tools.Abstractions.Auth;
 
 /// <summary>
 /// Receives the one browser redirect that ends a loopback authorization (RFC 8252 §7.3). A raw

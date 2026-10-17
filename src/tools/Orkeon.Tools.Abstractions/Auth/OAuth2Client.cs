@@ -3,9 +3,8 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Orkeon.Tools.Email.Configuration;
 
-namespace Orkeon.Tools.Email.Auth;
+namespace Orkeon.Tools.Abstractions.Auth;
 
 /// <summary>A pending RFC 8628 device authorization.</summary>
 /// <param name="DeviceCode">Code the client polls the token endpoint with.</param>
@@ -34,7 +33,7 @@ internal sealed record PkceSession(string Verifier, string Challenge, string Sta
 }
 
 /// <summary>
-/// The OAuth 2.0 client of the e-mail family, over plain HTTP: device authorization
+/// The OAuth 2.0 client of the tool families that sign in to a cloud account (e-mail, drive), over plain HTTP: device authorization
 /// (RFC 8628), authorization code with PKCE (RFC 7636, RFC 8252) and refresh (RFC 6749 §6).
 /// Written by hand so that neither MSAL nor the Google SDK enters the dependency graph.
 /// </summary>
@@ -61,18 +60,21 @@ internal sealed class OAuth2Client
     }
 
     /// <summary>Whether <paramref name="tokens"/> still has an access token that outlives the refresh margin.</summary>
-    public bool IsFresh(EmailTokenSet tokens)
+    public bool IsFresh(OAuthTokenSet tokens)
     {
         ArgumentNullException.ThrowIfNull(tokens);
-        return tokens.ExpiresAt - _time.GetUtcNow() > RefreshMargin;
+        return IsFresh(tokens.ExpiresAt);
     }
+
+    /// <summary>Whether an access token expiring at <paramref name="expiresAt"/> outlives the refresh margin.</summary>
+    public bool IsFresh(DateTimeOffset expiresAt) => expiresAt - _time.GetUtcNow() > RefreshMargin;
 
     /// <summary>Starts a device authorization.</summary>
     public async Task<DeviceCodeGrant> RequestDeviceCodeAsync(OAuthSettings settings, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(settings);
         var endpoint = settings.DeviceCodeEndpoint
-            ?? throw new EmailToolException(EmailErrorCode.InvalidConfiguration, "This account's provider has no device authorization endpoint.");
+            ?? throw new OAuthException(OAuthFailure.InvalidConfiguration, "This account's provider has no device authorization endpoint.");
 
         using var document = await PostAsync(endpoint,
         [
@@ -82,7 +84,7 @@ internal sealed class OAuth2Client
 
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new EmailToolException(EmailErrorCode.AuthenticationFailed, $"The device authorization was refused: {error} {description}".Trim());
+            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The device authorization was refused: {error} {description}".Trim());
 
         var verification = ReadString(root, "verification_uri") ?? ReadString(root, "verification_url");
         if (ReadString(root, "device_code") is not { } deviceCode
@@ -90,7 +92,7 @@ internal sealed class OAuth2Client
             || verification is null
             || !Uri.TryCreate(verification, UriKind.Absolute, out var verificationUri))
         {
-            throw new EmailToolException(EmailErrorCode.ServerError, "The device authorization response lacks a device code, a user code or a verification address.");
+            throw new OAuthException(OAuthFailure.ServerError, "The device authorization response lacks a device code, a user code or a verification address.");
         }
 
         return new DeviceCodeGrant(
@@ -102,7 +104,7 @@ internal sealed class OAuth2Client
     }
 
     /// <summary>Polls the token endpoint until the user completes (or refuses) the device sign-in.</summary>
-    public async Task<EmailTokenSet> PollDeviceCodeAsync(
+    public async Task<OAuthTokenSet> PollDeviceCodeAsync(
         OAuthSettings settings, string? clientSecret, DeviceCodeGrant grant, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -134,11 +136,11 @@ internal sealed class OAuth2Client
                     interval += SlowDownStep;
                     continue;
                 default:
-                    throw new EmailToolException(EmailErrorCode.LoginRequired, $"The sign-in did not complete: {error} {description}".Trim());
+                    throw new OAuthException(OAuthFailure.LoginRequired, $"The sign-in did not complete: {error} {description}".Trim());
             }
         }
 
-        throw new EmailToolException(EmailErrorCode.LoginRequired, "The sign-in code expired before the sign-in completed; run the login again.");
+        throw new OAuthException(OAuthFailure.LoginRequired, "The sign-in code expired before the sign-in completed; run the login again.");
     }
 
     /// <summary>The address the user opens to authorize the loopback flow.</summary>
@@ -148,7 +150,7 @@ internal sealed class OAuth2Client
         ArgumentNullException.ThrowIfNull(redirectUri);
         ArgumentNullException.ThrowIfNull(session);
         var endpoint = settings.AuthorizationEndpoint
-            ?? throw new EmailToolException(EmailErrorCode.InvalidConfiguration, "This account's provider has no authorization endpoint.");
+            ?? throw new OAuthException(OAuthFailure.InvalidConfiguration, "This account's provider has no authorization endpoint.");
 
         var query = new List<KeyValuePair<string, string>>
         {
@@ -170,7 +172,7 @@ internal sealed class OAuth2Client
     }
 
     /// <summary>Exchanges an authorization code for tokens.</summary>
-    public async Task<EmailTokenSet> ExchangeCodeAsync(
+    public async Task<OAuthTokenSet> ExchangeCodeAsync(
         OAuthSettings settings, string? clientSecret, string code, Uri redirectUri, PkceSession session, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -189,12 +191,12 @@ internal sealed class OAuth2Client
         using var document = await PostAsync(settings.TokenEndpoint, form, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new EmailToolException(EmailErrorCode.AuthenticationFailed, $"The authorization code was refused: {error} {description}".Trim());
+            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The authorization code was refused: {error} {description}".Trim());
         return ReadTokens(root, previousRefreshToken: null, settings.Scopes);
     }
 
     /// <summary>Obtains a new access token from <paramref name="refreshToken"/>.</summary>
-    public async Task<EmailTokenSet> RefreshAsync(
+    public async Task<OAuthTokenSet> RefreshAsync(
         OAuthSettings settings, string? clientSecret, string refreshToken, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -213,9 +215,9 @@ internal sealed class OAuth2Client
         if (TryReadError(root, out var error, out var description))
         {
             var code = error is "invalid_grant" or "interaction_required" or "invalid_client" or "unauthorized_client"
-                ? EmailErrorCode.LoginRequired
-                : EmailErrorCode.AuthenticationFailed;
-            throw new EmailToolException(code, $"The token refresh was refused: {error} {description}".Trim());
+                ? OAuthFailure.LoginRequired
+                : OAuthFailure.AuthenticationFailed;
+            throw new OAuthException(code, $"The token refresh was refused: {error} {description}".Trim());
         }
 
         return ReadTokens(root, refreshToken, settings.Scopes);
@@ -237,12 +239,12 @@ internal sealed class OAuth2Client
         }
         catch (HttpRequestException ex)
         {
-            throw new EmailToolException(EmailErrorCode.ServerError, $"The identity provider at {endpoint.Host} could not be reached: {ex.Message}", ex);
+            throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} could not be reached: {ex.Message}", ex);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             // The HTTP client's own timeout, not a cancellation by the caller.
-            throw new EmailToolException(EmailErrorCode.ServerError, $"The identity provider at {endpoint.Host} did not answer in time; retry later.", ex);
+            throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} did not answer in time; retry later.", ex);
         }
 
         using (response)
@@ -255,21 +257,21 @@ internal sealed class OAuth2Client
             catch (JsonException ex)
             {
                 var status = ((int)response.StatusCode).ToString(CultureInfo.InvariantCulture);
-                throw new EmailToolException(EmailErrorCode.ServerError, $"The identity provider at {endpoint.Host} answered HTTP {status} without JSON.", ex);
+                throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} answered HTTP {status} without JSON.", ex);
             }
         }
     }
 
-    private EmailTokenSet ReadTokens(JsonElement root, string? previousRefreshToken, IReadOnlyList<string> requestedScopes)
+    private OAuthTokenSet ReadTokens(JsonElement root, string? previousRefreshToken, IReadOnlyList<string> requestedScopes)
     {
         var accessToken = ReadString(root, "access_token")
-            ?? throw new EmailToolException(EmailErrorCode.ServerError, "The token response has no access token.");
+            ?? throw new OAuthException(OAuthFailure.ServerError, "The token response has no access token.");
         var expiresIn = ReadInt(root, "expires_in") ?? 3600;
         var scopes = ReadString(root, "scope") is { Length: > 0 } granted
             ? granted.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             : requestedScopes.ToArray();
 
-        return new EmailTokenSet
+        return new OAuthTokenSet
         {
             AccessToken = accessToken,
             RefreshToken = ReadString(root, "refresh_token") ?? previousRefreshToken,
