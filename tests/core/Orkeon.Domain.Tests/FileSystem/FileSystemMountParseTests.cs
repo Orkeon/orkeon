@@ -158,6 +158,25 @@ public class FileSystemMountParseTests
     }
 
     [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldMountAPathWithDoubledQuotes_WhenTheSpecIsQuoted()
+    {
+        var mount = FileSystemMount.Parse("\"/d/say \"\"hi\"\"\":/d:ro");
+
+        Assert.Equal("/d/say \"hi\"", mount.BasePath);
+        Assert.Equal("/d", mount.VirtualPath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldNameTheDoublingRule_WhenAQuoteIsNotDoubled()
+    {
+        var ex = Assert.Throws<FormatException>(() => FileSystemMount.Parse("\"/d/say \"hi\" there\":/d:ro"));
+
+        Assert.Contains("a quote inside a quoted path is doubled", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Parse_UnterminatedQuote_ThrowsWithTheRemedy()
     {
         var ex = Assert.Throws<FormatException>(() => FileSystemMount.Parse(@"""C:\src:/workspace:ro"));

@@ -560,7 +560,7 @@ public sealed class ForgePromoteTests : IDisposable
         // The physical segment carries the mount grammar's own quotes: the anchor expands to
         // a path the generator does not know, and on Windows it always contains a ':'.
         var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
-        Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
+        Assert.Contains("--mount \"\\\"$DIRQ/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
         Assert.Equal(1, posix.Split("--mount").Length - 1);
 
         // On Windows the anchor stays between cmd's quotes, the mount grammar's own outside them
@@ -602,12 +602,12 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(Destination, "input")));
 
         var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
-        Assert.Contains("\\\"$DIR/input\\\":/workspace:ro", posix, StringComparison.Ordinal);
-        Assert.Contains("\\\"$DIR/output\\\":/output:rw", posix, StringComparison.Ordinal);
+        Assert.Contains("\\\"$DIRQ/input\\\":/workspace:ro", posix, StringComparison.Ordinal);
+        Assert.Contains("\\\"$DIRQ/output\\\":/output:rw", posix, StringComparison.Ordinal);
         Assert.Equal(1, posix.Split("--mount").Length - 1);
 
         // The team's own root is NOT mounted: an appsettings.json there holds API keys.
-        Assert.DoesNotContain(":/workspace:ro\"\n", posix.Replace("$DIR/input", "X", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.DoesNotContain(":/workspace:ro\"\n", posix.Replace("$DIRQ/input", "X", StringComparison.Ordinal), StringComparison.Ordinal);
 
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
         // The brief of this fixture is French, so the card is too.
@@ -679,6 +679,63 @@ public sealed class ForgePromoteTests : IDisposable
 
         Assert.Equal("/output", mount.VirtualPath);
         Assert.Equal(Path.Combine(awkward, "output"), Path.TrimEndingDirectorySeparator(mount.BasePath));
+        Assert.Equal(Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, mount.DefaultRights);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldWriteTheAnchoredMountByTheGrammar_WhenStudioOrForgePromoteWritesALauncher()
+    {
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"l","role":"Lecteur","goal":"Lire","tools":["file_read","file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"l","deliverable":"/output/r.md"}]}
+            """));
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
+        var windows = File.ReadAllText(Path.Combine(Destination, ForgePromoter.WindowsLauncherName));
+
+        Assert.Contains("\"\\\"$DIRQ/output\\\":/output:rw\"", posix, StringComparison.Ordinal);
+        Assert.Contains("\"\\\"$DIRQ/input\\\":/workspace:ro\"", posix, StringComparison.Ordinal);
+        Assert.DoesNotContain("$DIR/output", posix, StringComparison.Ordinal);
+        Assert.DoesNotContain("$DIR/input", posix, StringComparison.Ordinal);
+        Assert.DoesNotContain("--allow-external-mounts", posix, StringComparison.Ordinal);
+        Assert.DoesNotContain("--allow-external-mounts", windows, StringComparison.Ordinal);
+        Assert.Contains("%~dp0output", windows, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldQuoteTheVirtualRoot_WhenForgePromoteWritesAnAnchoredMount()
+    {
+        Assert.SkipUnless(PosixLauncherShell.IsAvailable, "The POSIX launcher needs a POSIX shell at /bin/sh.");
+
+        var session = ReadySession();
+        session.SaveArtifact(ForgeSession.BlueprintFileName, JsonSerializer.Deserialize<JsonElement>(
+            """
+            {"crew":{"name":"veille"},
+             "agents":[{"key":"c","role":"C","goal":"G","tools":["file_write"]}],
+             "tasks":[{"key":"t1","description":"d","expectedOutput":"e","agent":"c","deliverable":"/ra\"pport/r.md"}]}
+            """));
+
+        var team = Path.Combine(_workspace, "ma-veille");
+        ForgePromoter.Promote(
+            session, team, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var argv = PosixLauncherShell.Run(Path.Combine(team, ForgePromoter.PosixLauncherName), _workspace).ToList();
+        var spec = argv[argv.IndexOf("--mount") + 1];
+        var mount = Orkeon.Domain.FileSystem.FileSystemMount.Parse(spec);
+
+        // The root is carried the way the grammar writes it, not raw.
+        Assert.Contains(Orkeon.Domain.FileSystem.FileSystemMount.Quote("/ra\"pport"), spec, StringComparison.Ordinal);
+        Assert.Equal("/ra\"pport", mount.VirtualPath);
         Assert.Equal(Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite, mount.DefaultRights);
     }
 
@@ -785,7 +842,12 @@ public sealed class ForgePromoteTests : IDisposable
         var options = ParseRun(argv.Skip(2));
         Assert.Equal(["seuil=10%", @"dossier=C:\temp\", "titre=dit \"oui\" & part"], options.Variables);
         Assert.Equal("- puce un\n- puce deux", options.InitialContext);
-        Assert.Equal([$"\"{Path.Combine(team, "données")}\":/données:rw"], options.Mounts);
+        // The mount grammar doubles a quote inside a quoted path; parsing gives the folder back single.
+        var mountSpec = Assert.Single(options.Mounts);
+        Assert.Contains("\"\"y\"\"", mountSpec, StringComparison.Ordinal);
+        var mount = Orkeon.Domain.FileSystem.FileSystemMount.Parse(mountSpec);
+        Assert.Equal("/données", mount.VirtualPath);
+        Assert.Equal(Path.Combine(team, "données"), Path.TrimEndingDirectorySeparator(mount.BasePath));
     }
 
     /// <summary>

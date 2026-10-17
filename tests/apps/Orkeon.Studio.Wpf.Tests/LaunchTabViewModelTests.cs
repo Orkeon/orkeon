@@ -911,6 +911,46 @@ public sealed class LaunchTabViewModelTests
         return (root, team);
     }
 
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldReadTheCoreRule_WhenTheLaunchTabDecidesTheFlag()
+    {
+        string[] settings = ["docs|/srv/docs:/workspace:ro"];
+        var cases = new (string[] Mounts, bool Outside)[]
+        {
+            (["./output:/output:rw", "./../x:/x:rw"], true),
+            (["./output:/output:rw", "/srv/elsewhere:/e:rw"], true),
+            (["./output:/output:rw", "./input:/workspace:ro"], false),
+            (["docs"], false),
+        };
+
+        foreach (var (mounts, outside) in cases)
+        {
+            var (root, team) = TeamOnDisk("veille", mounts);
+            try
+            {
+                var tab = new LaunchTabViewModel(new LaunchTabDependencies
+                {
+                    ProcessRunner = new OrkeonProcessRunner(
+                        new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                    TargetProbe = TeamProbe(team),
+                    Directories = new FakeDirectoryProbe(root, team),
+                    DeclaredMounts = () => settings,
+                });
+
+                tab.Target.Select(team);
+
+                var described = TeamCatalog.DescribeTarget(team, settings);
+                Assert.Equal(Orkeon.Studio.Core.FileSystem.DeclaredMounts.ReachesOutsideTheTeam(described.Mounts, team), tab.Mounts.AllowExternalMounts);
+                Assert.Equal(outside, tab.Mounts.AllowExternalMounts);
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
     private static FakeTargetProbe TeamProbe(string team) =>
         new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
 

@@ -127,7 +127,7 @@ public sealed class ScheduledTeamLaunchersTests : IDisposable
         window.TeamMounts.SaveCommand.Execute(null);
 
         var posix = Posix();
-        Assert.Contains("--mount \"\\\"$DIR/output\\\":/output:rw\" \"\\\"$DIR/rapports\\\":/rapports:rw\"", posix, StringComparison.Ordinal);
+        Assert.Contains("--mount \"\\\"$DIRQ/output\\\":/output:rw\" \"\\\"$DIRQ/rapports\\\":/rapports:rw\"", posix, StringComparison.Ordinal);
         Assert.Contains("--llm-profile='deepseek'", posix, StringComparison.Ordinal);
         Assert.Contains("^\"\\\"%~dp0rapports\\\":/rapports:rw^\"", Windows(), StringComparison.Ordinal);
     }

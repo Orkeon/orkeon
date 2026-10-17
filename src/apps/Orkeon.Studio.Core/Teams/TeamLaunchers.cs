@@ -3,6 +3,7 @@ using Orkeon.Compliance.Vfs;
 using Orkeon.Constants.Cli;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Profiles;
@@ -57,6 +58,9 @@ public sealed record TeamLaunch
 
     /// <summary>The <c>--mount</c> values, in the sidecar's order.</summary>
     public IReadOnlyList<TeamLaunchMount> Mounts { get; init; } = [];
+
+    /// <summary>Whether the launchers carry <c>--allow-external-mounts</c>.</summary>
+    public bool AllowExternalMounts { get; init; }
 
     /// <summary>The <c>--mount-id</c> values: the settings declarations the team names.</summary>
     public IReadOnlyList<string> MountIds { get; init; } = [];
@@ -248,6 +252,11 @@ public static class TeamLaunchers
             SettingsPath = context.SettingsPath is { Length: > 0 } settings && File.Exists(settings) ? Path.GetFullPath(settings) : null,
             LlmProfile = llmProfile,
             Mounts = mounts,
+            AllowExternalMounts = DeclaredMounts.ReachesOutsideTheTeam(
+                [.. team.ResolvedMounts
+                    .Where(mount => mount.Source is not (TeamMountSource.Settings or TeamMountSource.UnknownId))
+                    .Select(mount => mount.Effective)],
+                teamDirectory),
             MountIds = [.. plan.MountIds, .. plan.UnknownIds.Except(plan.MountIds, StringComparer.Ordinal)],
             Variables = isScript ? [] : record.SampleVariables,
             InitialContext = isScript || string.IsNullOrWhiteSpace(record.SampleInitialContext) ? null : record.SampleInitialContext,
@@ -423,10 +432,13 @@ public static class TeamLaunchers
             [
                 TeamLauncherArgument.Word(RunOptionNames.Flag(RunOptionNames.Mount)),
                 .. launch.Mounts.Select(mount => mount.TeamFolder is { } folder
-                    ? TeamLauncherArgument.InTeam("\"", folder, "\"" + mount.Tail)
+                    ? TeamLauncherArgument.InTeamMount(folder, mount.Tail)
                     : TeamLauncherArgument.Literal(mount.Literal!)),
             ]);
         }
+
+        if (launch.AllowExternalMounts)
+            segments.Add([TeamLauncherArgument.Word(RunOptionNames.Flag(RunOptionNames.AllowExternalMounts))]);
 
         if (launch.MountIds.Count > 0)
         {

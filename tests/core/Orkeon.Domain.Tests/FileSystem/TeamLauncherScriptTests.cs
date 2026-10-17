@@ -46,7 +46,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
         segments.Add([
             TeamLauncherArgument.Word("--mount"),
             TeamLauncherArgument.Literal(value),
-            .. HostileLauncherInputs.TeamFolders.Select(folder => TeamLauncherArgument.InTeam("\"", folder, "\":/x:rw")),
+            .. HostileLauncherInputs.TeamFolders.Select(folder => TeamLauncherArgument.InTeamMount(folder, ":/x:rw")),
         ]);
         segments.Add([TeamLauncherArgument.Word("--var"), TeamLauncherArgument.Literal("k=" + value)]);
         if (value.Length > 0)
@@ -73,7 +73,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
 
         expected.Add("--mount");
         expected.Add(handed);
-        expected.AddRange(HostileLauncherInputs.TeamFolders.Select(team => $"\"{folder}{team}\":/x:rw"));
+        expected.AddRange(HostileLauncherInputs.TeamFolders.Select(team => $"\"{folder.Replace("\"", "\"\"", StringComparison.Ordinal)}{team.Replace("\"", "\"\"", StringComparison.Ordinal)}\":/x:rw"));
         expected.Add("--var");
         expected.Add("k=" + handed);
         if (handed.Length > 0)
@@ -90,6 +90,80 @@ public sealed class TeamLauncherScriptTests : IDisposable
         var argv = CrtArgv.Split(line);
         Assert.Equal("orkeon", argv[0]);
         return [.. argv.Skip(1)];
+    }
+
+    private const string QuoteLoopMarker = "DIRQ";
+
+    private static TeamLauncherSpec AnchoredMounts(string teamDirectory, params string[] folders) => new()
+    {
+        TeamName = "veille-docs",
+        TeamDirectory = teamDirectory,
+        Segments =
+        [
+            [TeamLauncherArgument.Word("run"), TeamLauncherArgument.InTeam("", "crew", "")],
+            [TeamLauncherArgument.Word("--mount"), .. folders.Select(folder => TeamLauncherArgument.InTeamMount(folder, ":/x:rw"))],
+        ],
+    };
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    [Trait("BR", "CH-13")]
+    public void ShouldMountTheTeamFolder_WhenItsPathHoldsAQuote()
+    {
+        Assert.SkipUnless(PosixLauncherShell.IsAvailable, "run.sh needs a POSIX shell at /bin/sh.");
+
+        var team = Path.Combine(_root, "x\"y\"z", "team");
+        Directory.CreateDirectory(team);
+        var launcher = Path.Combine(team, "run.sh");
+        File.WriteAllText(launcher, TeamLauncherScript.Posix(AnchoredMounts(team, "output", "a\"b")), new UTF8Encoding(false));
+
+        var argv = PosixLauncherShell.Run(launcher, _root);
+
+        var mounts = argv.SkipWhile(a => a != "--mount").Skip(1).ToList();
+        Assert.Equal(2, mounts.Count);
+        Assert.Equal(team + "/output", FileSystemMount.Parse(mounts[0]).BasePath);
+        Assert.Equal(team + "/a\"b", FileSystemMount.Parse(mounts[1]).BasePath);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldWriteTheQuoteLoopOnce_WhenTheLauncherHoldsAnAnchoredMount()
+    {
+        var text = TeamLauncherScript.Posix(AnchoredMounts(@"C:\teams\veille-docs", "output", "logs"));
+
+        var cd = text.IndexOf("cd \"$DIR\" || exit 1\n", StringComparison.Ordinal);
+        var loop = text.IndexOf(QuoteLoopMarker, StringComparison.Ordinal);
+        Assert.True(cd >= 0 && loop > cd, "the DIRQ loop follows cd \"$DIR\"");
+        Assert.True(loop < text.IndexOf("exec orkeon", StringComparison.Ordinal));
+        Assert.Equal(2, text.Split("while ", StringSplitOptions.None).Length - 1);
+        Assert.Contains("\"\\\"$DIRQ/output\\\":/x:rw\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"\\\"$DIRQ/logs\\\":/x:rw\"", text, StringComparison.Ordinal);
+
+        var plain = TeamLauncherScript.Posix(Spec("x"));
+        Assert.DoesNotContain(QuoteLoopMarker, TeamLauncherScript.Posix(new TeamLauncherSpec
+        {
+            TeamName = "veille-docs",
+            TeamDirectory = @"C:\teams\veille-docs",
+            Segments = [[TeamLauncherArgument.Word("run"), TeamLauncherArgument.InTeam("", "crew", "")]],
+        }), StringComparison.Ordinal);
+        Assert.Equal(2, plain.Split("while ", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldRefuseAQuote_WhenInTeamIsGivenOne()
+    {
+        Assert.Throws<ArgumentException>(() => TeamLauncherArgument.InTeam("\"", "output", ""));
+        Assert.Throws<ArgumentException>(() => TeamLauncherArgument.InTeam("", "output", "\":/x:rw"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-13")]
+    public void ShouldKeepTheBatchAnchor_WhenRunCmdHoldsAnAnchoredMount()
+    {
+        var text = TeamLauncherScript.Windows(AnchoredMounts(@"C:\teams\veille-docs", "output"));
+
+        Assert.Contains(" --mount ^\"\\\"%~dp0output\\\":/x:rw^\"", text, StringComparison.Ordinal);
     }
 
     // ── values ──
@@ -265,7 +339,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
             [
                 [TeamLauncherArgument.Word("run"), TeamLauncherArgument.InTeam("", "crew", "")],
                 [TeamLauncherArgument.Assign("--settings", @"C:\Users\Zoé\R&D\appsettings.json")],
-                [TeamLauncherArgument.Word("--mount"), TeamLauncherArgument.InTeam("\"", "output", "\":/output:rw")],
+                [TeamLauncherArgument.Word("--mount"), TeamLauncherArgument.InTeamMount("output", ":/output:rw")],
                 [TeamLauncherArgument.Word("--var"), TeamLauncherArgument.Literal("seuil=10%"), TeamLauncherArgument.Literal("titre=dit \"oui\" & part")],
                 [TeamLauncherArgument.Assign("--initial-context", "- puce un\n- puce deux")],
             ],
@@ -308,13 +382,22 @@ public sealed class TeamLauncherScriptTests : IDisposable
             exec orkeon \
               run "$DIR/crew" \
               --settings='C:\Users\Zoé\R&D\appsettings.json' \
-              --mount "\"$DIR/output\":/output:rw" \
+              --mount "\"$DIRQ/output\":/output:rw" \
               --var 'seuil=10%' 'titre=dit "oui" & part' \
               --initial-context='- puce un
             - puce deux'
 
             """.ReplaceLineEndings("\n"),
-            TeamLauncherScript.Posix(spec));
+            WithoutQuoteLoop(TeamLauncherScript.Posix(spec)));
+    }
+
+    /// <summary>The script without the DIRQ loop, whose text is pinned by its own test: what lies between cd and exec.</summary>
+    private static string WithoutQuoteLoop(string posix)
+    {
+        const string Cd = "cd \"$DIR\" || exit 1\n";
+        var start = posix.IndexOf(Cd, StringComparison.Ordinal) + Cd.Length;
+        var end = posix.IndexOf("exec orkeon", StringComparison.Ordinal);
+        return posix[..start] + posix[end..];
     }
 
     [Fact]
@@ -415,7 +498,7 @@ public sealed class TeamLauncherScriptTests : IDisposable
                 [TeamLauncherArgument.Word("run"), TeamLauncherArgument.InTeam("", "crew", "")],
                 [
                     TeamLauncherArgument.Word("--mount"),
-                    .. Enumerable.Range(0, 40).Select(i => TeamLauncherArgument.InTeam("\"", $"dossier-{i:00}", "\":/x:rw")),
+                    .. Enumerable.Range(0, 40).Select(i => TeamLauncherArgument.InTeamMount($"dossier-{i:00}", ":/x:rw")),
                 ],
                 [TeamLauncherArgument.Word("--var"), TeamLauncherArgument.Literal("seuil=10%")],
             ],
