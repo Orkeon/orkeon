@@ -96,6 +96,26 @@ public sealed class ToolsSettingsViewModelTests
         Assert.DoesNotContain(email.Requirements, r => r.Name == "email_parser");
     }
 
+    /// <summary>
+    /// DRIVE-05 — Studio has no drive tab yet: every drive tool's line names the section the
+    /// accounts are declared under and the command that signs one in.
+    /// </summary>
+    [Fact]
+    public void The_drive_family_says_each_tool_needs_an_account_declared_under_its_section()
+    {
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
+
+        var drive = Assert.Single(tools.Families, f => f.Key == ToolCatalog.DriveFamily);
+        Assert.Equal("Drive", drive.Label);
+        Assert.Equal(11, drive.Tools.Count);
+        Assert.Equal(11, drive.Requirements.Count);
+        Assert.All(drive.Requirements, r =>
+        {
+            Assert.Equal("needs a drive account, declared in the settings file under Orkeon:Tools:Drive:Accounts and signed in with `orkeon drive login`", r.Text);
+            Assert.False(r.IsKey);
+        });
+    }
+
     /// <summary>STUDIO-67 — the line names the tab the way each language's tab strip does.</summary>
     [Theory]
     [InlineData("fr")]

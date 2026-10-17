@@ -1881,6 +1881,9 @@
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
     <value>E-Mail</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve">
+    <value>Cloud-Speicher</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>Code</value>
   </data>
@@ -1913,6 +1916,9 @@
   </data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
     <value>braucht ein E-Mail-Konto, deklariert unter Einstellungen › E-Mail</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve">
+    <value>braucht ein Drive-Konto, in der Einstellungsdatei unter {0} deklariert und mit `orkeon drive login` angemeldet</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} Werkzeuge, nichts einzustellen</value>

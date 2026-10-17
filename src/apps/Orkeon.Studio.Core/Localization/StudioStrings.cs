@@ -1218,6 +1218,9 @@ public static class StudioStringKeys
     /// <summary>"E-mail"</summary>
     public const string ToolFamilyEmail = "Studio.Settings.ToolFamilyEmail";
 
+    /// <summary>"Drive"</summary>
+    public const string ToolFamilyDrive = "Studio.Settings.ToolFamilyDrive";
+
     /// <summary>"Code"</summary>
     public const string ToolFamilyCode = "Studio.Settings.ToolFamilyCode";
 
@@ -1251,6 +1254,9 @@ public static class StudioStringKeys
 
     /// <summary>"needs an e-mail account, declared in Settings › E-mail"</summary>
     public const string ToolNeedsEmailAccount = "Studio.Settings.ToolNeedsEmailAccount";
+
+    /// <summary>"needs a drive account, declared in the settings file under {0} and signed in with `orkeon drive login`"</summary>
+    public const string ToolNeedsDriveAccount = "Studio.Settings.ToolNeedsDriveAccount";
 
     /// <summary>"{0} tools, nothing to configure"</summary>
     public const string ToolFamilyQuietPattern = "Studio.Settings.ToolFamilyQuietPattern";
@@ -2753,6 +2759,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolFamilyFiles] = "Files",
         [StudioStringKeys.ToolFamilyData] = "Data",
         [StudioStringKeys.ToolFamilyEmail] = "E-mail",
+        [StudioStringKeys.ToolFamilyDrive] = "Drive",
         [StudioStringKeys.ToolFamilyCode] = "Code",
         [StudioStringKeys.ToolFamilySession] = "Session and memory",
         [StudioStringKeys.ToolFamilyEvents] = "Events",
@@ -2764,6 +2771,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
         [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
         [StudioStringKeys.ToolNeedsEmailAccount] = "needs an e-mail account, declared in Settings › E-mail",
+        [StudioStringKeys.ToolNeedsDriveAccount] = "needs a drive account, declared in the settings file under {0} and signed in with `orkeon drive login`",
         [StudioStringKeys.ToolFamilyQuietPattern] = "{0} tools, nothing to configure",
         [StudioStringKeys.McpProblemId] = "An identifier is required: letters, digits, '.', '_' and '-'.",
         [StudioStringKeys.McpProblemCommand] = "A stdio server needs a command to launch.",

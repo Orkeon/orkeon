@@ -1881,6 +1881,9 @@
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
     <value>电子邮件</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve">
+    <value>云盘</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>代码</value>
   </data>
@@ -1913,6 +1916,9 @@
   </data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
     <value>需要一个电子邮件账户，在“设置 › 电子邮件”中声明</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve">
+    <value>需要一个云盘账户，在设置文件的 {0} 下声明，并用 `orkeon drive login` 登录</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} 个工具，无需配置</value>

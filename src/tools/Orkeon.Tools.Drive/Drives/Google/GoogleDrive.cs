@@ -190,7 +190,7 @@ internal sealed class GoogleDrive : IDrive
         ArgumentNullException.ThrowIfNull(item);
         var destination = newParentId ?? item.ParentId;
         if (destination is not null && (newParentId is not null || newName is not null))
-            await RefuseTakenNameAsync(destination, newName ?? item.Name, cancellationToken).ConfigureAwait(false);
+            await RefuseTakenNameAsync(destination, newName ?? item.Name, cancellationToken, except: item.Id).ConfigureAwait(false);
 
         var query = $"fields={ItemFields}";
         if (newParentId is not null && newParentId != item.ParentId)
@@ -300,13 +300,14 @@ internal sealed class GoogleDrive : IDrive
         return parent;
     }
 
-    private async Task RefuseTakenNameAsync(string parentId, string name, CancellationToken cancellationToken)
+    private async Task RefuseTakenNameAsync(string parentId, string name, CancellationToken cancellationToken, string? except = null)
     {
         // Drive lets two items share a name in a folder; an agent addressing files by name would
         // then pick the wrong one, so the family refuses it like a file system would.
         var query = $"'{Escape(parentId)}' in parents and name = '{Escape(name)}' and trashed = false";
-        using var document = await _api.GetJsonAsync(FilesAddress($"q={Uri.EscapeDataString(query)}&pageSize=1&fields={Uri.EscapeDataString(ListFields)}"), cancellationToken).ConfigureAwait(false);
-        if (ReadFiles(document.RootElement).FirstOrDefault() is { } taken)
+        using var document = await _api.GetJsonAsync(FilesAddress($"q={Uri.EscapeDataString(query)}&pageSize=2&fields={Uri.EscapeDataString(ListFields)}"), cancellationToken).ConfigureAwait(false);
+        // The item being moved or renamed does not take its own name.
+        if (ReadFiles(document.RootElement).FirstOrDefault(found => found.Id != except) is { } taken)
             throw new DriveToolException(DriveErrorCode.Conflict, $"An item named '{name}' is already in that folder (id {taken.Id}): choose another name, or replace its content with drive_upload and `replace_id`.");
     }
 

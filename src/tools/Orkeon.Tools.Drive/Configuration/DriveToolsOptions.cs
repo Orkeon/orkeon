@@ -61,7 +61,7 @@ internal sealed class DriveAccountOptions
     public DriveShareOptions Share { get; } = new();
 
     /// <summary>The largest file an agent may upload, in megabytes. Unset means 100.</summary>
-    public int? MaxUploadMegabytes { get; set; }
+    public int? MaxUploadMegabytes { get; set; } = Constants.DriveDefaults.DefaultMaxUploadMegabytes;
 
     /// <summary>HTTP timeout in seconds. Unset keeps the client default.</summary>
     public int? TimeoutSeconds { get; set; }

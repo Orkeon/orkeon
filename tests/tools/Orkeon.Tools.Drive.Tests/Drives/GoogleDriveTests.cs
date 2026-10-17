@@ -200,6 +200,17 @@ public sealed class GoogleDriveTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_let_an_item_keep_its_own_name_when_it_only_moves()
+    {
+        _fixture.Handler.Map(HttpMethod.Get, Api + "files?q=", FakeHttpResponse.Json($$"""{"files":[{{File("d1", "draft.txt", "text/plain", parent: "dest")}}]}"""));
+        _fixture.Handler.Map(HttpMethod.Patch, Api + "files/d1?", FakeHttpResponse.Json(File("d1", "draft.txt", "text/plain", parent: "dest")));
+
+        var moved = await _fixture.Drive.MoveAsync(Item("draft.txt", "src", "d1"), "dest", newName: null, Token);
+
+        Assert.Equal("dest", moved.ParentId);
+    }
+
+    [Fact]
     public async Task Should_trash_by_a_flag_and_purge_by_a_delete()
     {
         _fixture.Handler.Map(HttpMethod.Patch, Api + "files/d1?", FakeHttpResponse.Json("""{"id":"d1"}"""));

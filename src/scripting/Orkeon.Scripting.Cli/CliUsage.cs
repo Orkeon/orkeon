@@ -56,6 +56,7 @@ internal static class CliUsage
         new("forge", "The Atelier: turn a need in plain words into a validated crew."),
         new("usecases", "Search, list, show and export the example use cases — offline, in five languages."),
         new("email", "List the e-mail accounts, sign an OAuth account in or out, check a connection."),
+        new("drive", "List the drive accounts (Google Drive, OneDrive), sign one in or out, check a connection."),
         new("typings", "Write the TypeScript typings for .ork.ts and .cmd.ts scripts into ./.orkeon/."),
         new("mcp", "Serve the host's tools to an MCP client (Claude Desktop, an editor) over stdio."),
     ];

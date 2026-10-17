@@ -2054,6 +2054,7 @@
       "path": "Orkeon:Tools:Drive:Accounts:<name>:MaxUploadMegabytes",
       "section": "Orkeon:Tools:Drive",
       "type": "integer",
+      "default": 100,
       "description": "The largest file an agent may upload, in megabytes. Unset means 100."
     },
     {

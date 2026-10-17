@@ -5,6 +5,7 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Tools;
+using Orkeon.Tools.Drive.DependencyInjection;
 using Orkeon.Tools.Email.DependencyInjection;
 
 namespace Orkeon.Studio.Core.Tests;
@@ -20,10 +21,10 @@ public sealed partial class ToolCatalogTests
     /// The <c>orkeon run</c> column, counted by hand from the matrix: Web core 5, search 5
     /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 5,
     /// data 22, e-mail 13 (the twelve account tools and email_parser, which left the files
-    /// family), shell_command, session 6, EventHub 7, Analysis 15, collaboration 3 (human_input
-    /// and the two per-agent coworker tools), list_mounts.
+    /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 15, collaboration 3
+    /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 83;
+    private const int ToolsARunExposes = 94;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";
@@ -112,6 +113,32 @@ public sealed partial class ToolCatalogTests
         // email_parser changed family: it is listed once, here, and no longer under Files.
         var files = Assert.Single(ToolCatalog.Families, f => f.Key == ToolCatalog.FilesFamily);
         Assert.DoesNotContain(files.Tools, t => t.Name == EmailParser);
+    }
+
+    /// <summary>
+    /// DRIVE-05 — the drive family is pinned against the code the same way: exactly the tool
+    /// contracts the drive assembly declares, every one of them needing a drive account declared
+    /// in the section the runtime binds.
+    /// </summary>
+    [Fact]
+    public void The_drive_family_carries_every_tool_the_drive_assembly_declares_each_needing_an_account()
+    {
+        var drive = Assert.Single(ToolCatalog.Families, f => f.Key == ToolCatalog.DriveFamily);
+        var declared = typeof(DriveToolsServiceCollectionExtensions).Assembly.GetTypes()
+            .Select(type => type.GetCustomAttribute<ToolContractAttribute>()?.UniqueName)
+            .OfType<string>()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(11, declared.Count);
+        Assert.Equal(declared, drive.Tools.Select(t => t.Name).Order(StringComparer.Ordinal));
+        Assert.All(drive.Tools, t =>
+        {
+            Assert.Equal(ToolRequirement.DriveAccount, t.Requirement);
+            Assert.Equal(ToolCatalog.DriveAccounts, t.Argument);
+        });
+        Assert.Equal("Orkeon:Tools:Drive:Accounts", ToolCatalog.DriveAccounts);
+        Assert.Equal(11, ToolCatalog.All.Count(t => t.Requirement == ToolRequirement.DriveAccount));
     }
 
     /// <summary>

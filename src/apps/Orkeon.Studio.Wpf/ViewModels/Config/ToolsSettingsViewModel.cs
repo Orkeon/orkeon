@@ -81,6 +81,7 @@ public sealed class ToolFamilyViewModel : ObservableObject
         ToolCatalog.FilesFamily => StudioStringKeys.ToolFamilyFiles,
         ToolCatalog.DataFamily => StudioStringKeys.ToolFamilyData,
         ToolCatalog.EmailFamily => StudioStringKeys.ToolFamilyEmail,
+        ToolCatalog.DriveFamily => StudioStringKeys.ToolFamilyDrive,
         ToolCatalog.CodeFamily => StudioStringKeys.ToolFamilyCode,
         ToolCatalog.SessionFamily => StudioStringKeys.ToolFamilySession,
         ToolCatalog.EventsFamily => StudioStringKeys.ToolFamilyEvents,
@@ -151,6 +152,8 @@ public sealed class ToolRequirementViewModel : ObservableObject
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
         // The sentence sends to the E-mail tab (STUDIO-67); the section the tool names is not said.
         ToolRequirement.EmailAccount => _strings[StudioStringKeys.ToolNeedsEmailAccount],
+        // No drive tab yet: the sentence names the section the accounts are declared under.
+        ToolRequirement.DriveAccount => Format(StudioStringKeys.ToolNeedsDriveAccount),
         _ => "",
     };
 
