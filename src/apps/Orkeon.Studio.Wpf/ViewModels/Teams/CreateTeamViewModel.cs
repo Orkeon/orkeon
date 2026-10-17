@@ -2512,6 +2512,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // farewell into a conversation that has already started over.
         var generation = _runGeneration;
 
+        // The assistant converses in the interface's language and names the team in it (#119),
+        // every run: a resume is a new process, and it must not fall back on the default.
+        request = request with { Language = _uiLanguage() };
+
         IsEngineRunning = true;
         _lastStderr = null;
         // A card left over from the previous run would contradict this one (STUDIO-13, D-05).

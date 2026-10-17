@@ -160,7 +160,8 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         ScriptedLlmProvider provider,
         ForgeReference? reference = null,
         IReadOnlyList<string>? crewTools = null,
-        ForgeSession? session = null)
+        ForgeSession? session = null,
+        string? language = null)
     {
         session ??= _session;
         var packPath = ForgePack.Ensure(session.Directory);
@@ -182,7 +183,7 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         foreach (var tool in crewTools ?? [])
             services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
 
-        return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference);
+        return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference, language: language);
     }
 
     /// <summary>
@@ -229,6 +230,50 @@ public sealed class ForgeCrewAssistantTests : IDisposable
 
         // The body carries the brief and the task, never the reference a second time.
         Assert.DoesNotContain("03-email-pipeline", provider.Chats[1][^1].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #119: the interview speaks the interface's language (<c>--lang</c>) — it used to be French
+    /// whatever the interface said — unless the user writes in or asks for another, which the
+    /// brief then records; the plan follows the brief, and writes the team's names in it.
+    /// </summary>
+    [Fact]
+    public async Task The_assistant_speaks_the_interface_language_until_the_brief_records_another()
+    {
+        var provider = new ScriptedLlmProvider().Answers("What do you need?").Answers("(no submission)");
+        var assistant = Build(provider, crewTools: ["json_tool"], language: "de");
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "Post sortieren" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+        var interview = provider.Chats[0][0].Content;
+        Assert.Contains("Converse with the user in German — unless the user writes in another", interview, StringComparison.Ordinal);
+        Assert.Contains("Set `language` to the code of the language you converse in: 'de'", interview, StringComparison.Ordinal);
+
+        // The brief recorded French: the user wrote in it.
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+        var design = provider.Chats[1][0].Content;
+        Assert.Contains("Converse with the user in French", design, StringComparison.Ordinal);
+        Assert.Contains("Write crew.name, the agents' roles and goals and the tasks in French", design, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_a_language_the_assistant_speaks_english()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "sort my mail" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("Converse with the user in English", provider.Chats[0][0].Content, StringComparison.Ordinal);
     }
 
     [Fact]

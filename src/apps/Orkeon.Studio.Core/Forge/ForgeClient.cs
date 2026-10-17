@@ -51,6 +51,13 @@ public sealed record ForgeStartRequest
     /// </summary>
     public string? ReferenceUseCaseId { get; init; }
 
+    /// <summary>
+    /// <c>--lang &lt;code&gt;</c> (#119): the interface's language, the one the assistant converses
+    /// and names the team in until the user writes in or asks for another — fr, en, es, de or
+    /// zh. English is the engine's own default and is never sent, nor is any other value.
+    /// </summary>
+    public string? Language { get; init; }
+
     /// <summary>Arbitrate without a human — Studio keeps the human, so false by default.</summary>
     public bool Auto { get; init; }
 
@@ -178,6 +185,17 @@ public static class ForgeArgumentsBuilder
         return arguments;
     }
 
+    /// <summary>The languages the engine converses in besides its default, English (#119).</summary>
+    private static readonly HashSet<string> ConversationLanguages = new(StringComparer.Ordinal) { "fr", "es", "de", "zh" };
+
+    /// <summary>
+    /// The <c>--lang</c> value for an interface language; null for English — the engine's
+    /// default, so the argv an English interface sends is the one it always sent — and for a
+    /// code the engine does not know.
+    /// </summary>
+    public static string? ConversationLanguage(string? uiLanguage) =>
+        uiLanguage is not null && ConversationLanguages.Contains(uiLanguage) ? uiLanguage : null;
+
     /// <summary>Builds the argv of <paramref name="request"/>, <c>--events jsonl</c> always on.</summary>
     public static IReadOnlyList<string> Build(ForgeStartRequest request)
     {
@@ -220,6 +238,12 @@ public static class ForgeArgumentsBuilder
         {
             arguments.Add("--reference");
             arguments.Add(request.ReferenceUseCaseId);
+        }
+
+        if (ForgeArgumentsBuilder.ConversationLanguage(request.Language) is { } language)
+        {
+            arguments.Add("--lang");
+            arguments.Add(language);
         }
 
         if (request.Auto)
