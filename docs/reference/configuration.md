@@ -1391,7 +1391,7 @@ holds it (`Auth:ClientSecretEnvVar`), read like the e-mail ones. Walkthroughs an
 | `Accounts:<name>:Auth:ClientId` | string | — |  | OAuth client id (Google Cloud or Microsoft Entra application). |
 | `Accounts:<name>:Auth:ClientSecretEnvVar` | string | — |  | Name of the environment variable holding the OAuth client secret (Google desktop clients). |
 | `Accounts:<name>:Auth:Tenant` | string | — |  | Microsoft tenant: `consumers` (default), `organizations`, `common` or a tenant id. |
-| `Accounts:<name>:MaxUploadMegabytes` | integer | — |  | The largest file an agent may upload, in megabytes. Unset means 100. |
+| `Accounts:<name>:MaxUploadMegabytes` | integer | `100` |  | The largest file an agent may upload, in megabytes. Unset means 100. |
 | `Accounts:<name>:Provider` | enum | — | `GoogleDrive`, `OneDrive` | `GoogleDrive` or `OneDrive`. Mandatory. |
 | `Accounts:<name>:Rights` | enum | `"None"` | `None`, `Read`, `Write`, `Organize`, `Share`, `Delete`, `Purge` | What an agent may do, e.g. `"Read, Write, Organize"`. Mandatory. |
 | `Accounts:<name>:Root` | string | — |  | The folder the agent is confined to, as a path from the root of the drive (`Orkeon/agents`). Unset opens the whole drive. |

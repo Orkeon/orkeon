@@ -1445,7 +1445,7 @@ lue comme celles de l'e-mail. Parcours et outils : [Outils drive](../guides/driv
 | `Accounts:<nom>:Auth:ClientId` | chaîne | — |  | Identifiant client OAuth (application Google Cloud ou Microsoft Entra). |
 | `Accounts:<nom>:Auth:ClientSecretEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le secret client OAuth (clients de bureau Google). |
 | `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | Tenant Microsoft : `consumers` (défaut), `organizations`, `common` ou un identifiant de tenant. |
-| `Accounts:<nom>:MaxUploadMegabytes` | entier | — |  | Le plus gros fichier qu'un agent peut déposer, en mégaoctets. Non renseigné : 100. |
+| `Accounts:<nom>:MaxUploadMegabytes` | entier | `100` |  | Le plus gros fichier qu'un agent peut déposer, en mégaoctets. Non renseigné : 100. |
 | `Accounts:<nom>:Provider` | énumération | — | `GoogleDrive`, `OneDrive` | `GoogleDrive` ou `OneDrive`. Obligatoire. |
 | `Accounts:<nom>:Rights` | énumération | `"None"` | `None`, `Read`, `Write`, `Organize`, `Share`, `Delete`, `Purge` | Ce qu'un agent peut faire, p. ex. `"Read, Write, Organize"`. Obligatoire. |
 | `Accounts:<nom>:Root` | chaîne | — |  | Le dossier auquel l'agent est confiné, en chemin depuis la racine du drive (`Orkeon/agents`). Non renseigné : tout le drive. |
