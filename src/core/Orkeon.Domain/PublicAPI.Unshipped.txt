@@ -1306,3 +1306,21 @@ const Orkeon.Domain.Constants.Crew.PlanningDefaults.Temperature = 0.3 -> double
 *REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.ForResponseFormat(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat! fmt) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride!
 *REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! baseConfig, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? taskOverride, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? callOverride) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! baseConfig, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride? taskOverride) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice.None = 0 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice.Refused = 1 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice.Silent = 2 -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.IsLocal.get -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Notice.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointNotice
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.OllamaRoot.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.ProviderKey.get -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.NativeOllamaRoot(string! baseUrl) -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(string? baseUrl, string? model, string? apiKey) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? other) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Equals(object? obj) -> bool
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.GetHashCode() -> int
+override Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.ToString() -> string!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? right) -> bool
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? right) -> bool

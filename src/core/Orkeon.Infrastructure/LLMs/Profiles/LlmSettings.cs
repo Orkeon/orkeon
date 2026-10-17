@@ -315,10 +315,11 @@ public static partial class LlmSettings
         if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        return Uri.TryCreate(raw, UriKind.Absolute, out var url)
-            ? url
-            : throw new InvalidOperationException(
-                $"{section.Path}:BaseUrl is not an absolute URL: '{raw}'.");
+        // The Domain reading is the only test of the address.
+        if (LlmEndpointReading.Of(raw, null, null).Notice == LlmEndpointNotice.Refused)
+            throw new InvalidOperationException(OperatorMessages.LlmBaseUrlRefused($"{section.Path}:BaseUrl", raw));
+
+        return new Uri(raw.Trim(), UriKind.Absolute);
     }
 
     /// <summary>

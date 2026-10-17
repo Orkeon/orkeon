@@ -1,1 +1,4 @@
 #nullable enable
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlRefused(string! settingPath, string! address) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmVendorAnthropicPathRefused(string! settingPath, string! address, string! vendor) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent(string! settingPath, string! address) -> string!

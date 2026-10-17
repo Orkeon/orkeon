@@ -358,6 +358,38 @@ public class OpenAICompatibleProviderBaseAdditionalTests
 
     #endregion
 
+    #region Local Server Tests
+
+    /// <summary>
+    /// Characterisation (STUDIO-54 decision 4): the OpenAI dialect requires a key even for a local server.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldAnswerThatAKeyIsMissing_WhenALocalOpenAICompatibleServerHasNoKey()
+    {
+        // Arrange
+        var localConfig = LlmConfig.Create(TestModelName, null) with
+        {
+            BaseUrl = new Uri("http://localhost:8080/v1")
+        };
+
+        using var handler = TestDoubles.TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, "{}");
+        var httpClient = new HttpClient(handler);
+        _httpClientFactory.RegisterClient("TestableOpenAICompatibleProvider", httpClient);
+
+        using var provider = new TestableOpenAICompatibleProvider(localConfig, _httpClientFactory, _noOpPolicy, _logger);
+
+        // Act
+        var result = await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Content);
+        Assert.Contains("API key is required", result.Metadata["error"].ToString(), StringComparison.Ordinal);
+        Assert.Empty(handler.CapturedRequests);
+    }
+
+    #endregion
+
     #region Endpoint Building Tests
 
     [Fact]

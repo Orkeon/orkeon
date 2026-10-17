@@ -531,8 +531,10 @@ public static partial class RunnerHost
             LogLlmProfileElected(logger, electedProfile);
         LogOfferedProfileKeys(logger, profilesSection, offered, defined);
         WarnUnresolvedApiKeyReferences(logger, configuration, profilesSection, hidden, electedProfile);
+        var hasDefault = LlmSettings.HasDefault(configuration);
+        WarnSilentAddresses(logger, hasDefault ? llmSection : null, profilesSection, offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)));
 
-        if (LlmSettings.HasDefault(configuration))
+        if (hasDefault)
         {
             LogResolvedDefault(logger, llmSection, keySection);
             return;
@@ -541,6 +543,31 @@ public static partial class RunnerHost
         Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
+
+    /// <summary>
+    /// A <c>custom</c> address with no path, once per section offered: logger and stderr, by the
+    /// section's path and its address as written, read by the Domain reading alone.
+    /// </summary>
+    private static void WarnSilentAddresses(
+        ILogger logger, IConfigurationSection? defaultSection, IConfigurationSection profilesSection, IEnumerable<string> profiles)
+    {
+        var sections = profiles.Select(profilesSection.GetSection);
+        if (defaultSection is not null)
+            sections = sections.Prepend(defaultSection);
+        foreach (var section in sections)
+        {
+            var address = section["BaseUrl"];
+            if (string.IsNullOrWhiteSpace(address) || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
+                continue;
+
+            var warning = OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address);
+            Console.Error.WriteLine("WARNING: " + warning);
+            LogLlmBaseUrlSilent(logger, warning);
+        }
+    }
+
+    private static LlmEndpointReading ReadEndpoint(IConfigurationSection section) =>
+        LlmEndpointReading.Of(section["BaseUrl"], section["Model"], section["ApiKey"]);
 
     /// <summary>Where each offered profile of the file takes its key from, one line per profile.</summary>
     private static void LogOfferedProfileKeys(
@@ -554,7 +581,8 @@ public static partial class RunnerHost
         foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
         {
             var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
-            LogLlmProfileKey(logger, profile, source);
+            var provider = ReadEndpoint(profilesSection.GetSection(profile)).ProviderKey;
+            LogLlmProfileKey(logger, profile, provider, source);
         }
     }
 
@@ -602,7 +630,8 @@ public static partial class RunnerHost
         var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
         var streamIdle = Shown(llmSection["StreamIdleSeconds"], "(unset)");
         var source = LlmSettings.DescribeApiKey(keySection);
-        LogLlmResolved(logger, model, baseUrl, temperature, timeout, streamIdle, source);
+        var provider = ReadEndpoint(llmSection).ProviderKey;
+        LogLlmResolved(logger, model, baseUrl, provider, temperature, timeout, streamIdle, source);
     }
 
     /// <summary>
@@ -631,12 +660,15 @@ public static partial class RunnerHost
     private static partial void LogLlmNotConfigured(ILogger logger);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message =
-        "LLM resolved: model={Model} baseUrl={BaseUrl} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}")]
+        "LLM resolved: model={Model} baseUrl={BaseUrl} provider={Provider} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}")]
     private static partial void LogLlmResolved(
-        ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds, string streamIdleSeconds, string apiKey);
+        ILogger logger, string model, string baseUrl, string provider, string temperature, string timeoutSeconds, string streamIdleSeconds, string apiKey);
 
-    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: apiKey={ApiKey}")]
-    private static partial void LogLlmProfileKey(ILogger logger, string profile, string apiKey);
+    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: provider={Provider} apiKey={ApiKey}")]
+    private static partial void LogLlmProfileKey(ILogger logger, string profile, string provider, string apiKey);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Warning}")]
+    private static partial void LogLlmBaseUrlSilent(ILogger logger, string warning);
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogApiKeyReferenceUnresolved(ILogger logger, string warning);

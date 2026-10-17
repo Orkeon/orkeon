@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Orkeon.Constants.Configuration;
 
 /// <summary>
@@ -31,4 +33,49 @@ public static class OperatorMessages
     public const string LlmApiKeyReferenceUnresolved =
         "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key " +
         "is required. Set the variable — in Orkeon Studio, remember the setting's key again — or remove the reference.";
+
+    /// <summary>A <c>BaseUrl</c> no run serves: the refusal, naming the key and the address.</summary>
+    [SuppressMessage("Design", "CA1055:URI-like return values should not be strings", Justification = "Returns an operator sentence, not an address.")]
+    public static string LlmBaseUrlRefused(string settingPath, string address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return $"{settingPath} is '{Shown(address)}', which no run serves: write an absolute http:// or https:// address, " +
+        "with its scheme (for example http://localhost:11434), and no vendor path on another vendor's host.";
+    }
+
+    /// <summary>A vendor's address under its <c>/anthropic</c> path: the Anthropic dialect, not the one its provider builds.</summary>
+    public static string LlmVendorAnthropicPathRefused(string settingPath, string address, string vendor)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        var shown = Shown(address);
+        var authority = shown.IndexOf('/', shown.IndexOf("//", StringComparison.Ordinal) + 2);
+        var standard = authority < 0 ? shown : shown[..authority];
+        return $"{settingPath} is '{shown}', a {vendor} address under an /anthropic path, which speaks the " +
+        "Anthropic Messages API dialect, not the OpenAI dialect this provider builds. " +
+        $"Use the standard endpoint ({standard}): it serves the same models.";
+    }
+
+    /// <summary>A <c>custom</c> address with no path: read as an OpenAI-compatible server at its root.</summary>
+    [SuppressMessage("Design", "CA1055:URI-like return values should not be strings", Justification = "Returns an operator sentence, not an address.")]
+    public static string LlmBaseUrlSilent(string settingPath, string address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return $"{settingPath} is '{Shown(address)}', with no path: it is read as an OpenAI-compatible server answering at its root. " +
+        "Add the path of its routes, often /v1; an Ollama server is read on its port 11434.";
+    }
+
+    /// <summary>The address as written, without user info, query or fragment: a secret may sit in them.</summary>
+    private static string Shown(string address)
+    {
+        var text = address.Trim();
+        var end = text.IndexOfAny(['?', '#']);
+        if (end >= 0)
+            text = text[..end];
+        var authority = text.IndexOf("//", StringComparison.Ordinal) + 2;
+        var at = text.LastIndexOf('@');
+        var slash = text.IndexOf('/', authority);
+        if (at >= authority && (slash < 0 || at < slash))
+            text = text[..authority] + text[(at + 1)..];
+        return text;
+    }
 }

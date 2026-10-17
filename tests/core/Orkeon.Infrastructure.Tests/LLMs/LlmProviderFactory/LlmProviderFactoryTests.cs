@@ -190,35 +190,6 @@ public class LlmProviderFactoryTests
         Assert.Equal("config", exception.ParamName);
     }
 
-    [Theory]
-    [InlineData(ModelLlama2, EndpointOllamaDefault, ProviderOllama)]
-    [InlineData(ModelGpt35Turbo, null, ProviderOpenAI)]
-    [InlineData(ModelGpt4, "https://api.openai.com", ProviderOpenAI)]
-    [InlineData(ModelMistral, null, ProviderOllama)]
-    [InlineData("codellama", null, ProviderOllama)]
-    [InlineData("unknown-model", null, ProviderOpenAI)] // Default
-    public void ShouldInferCorrectProviderType_WhenCreate(string model, string? baseUrl, string expectedType)
-    {
-        // Arrange
-        var httpClientFactory = new TestHttpClientFactory();
-        using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
-
-        var config = LlmConfig.Create(model) with { BaseUrl = baseUrl is null ? null : new Uri(baseUrl) };
-
-        // Act
-        var provider = factory.Create(config);
-
-        // Assert
-        Assert.NotNull(provider);
-        // Note: We can't directly test the provider type due to adapter pattern,
-        // but we can verify it doesn't throw for valid types
-        if (expectedType == ProviderAnthropic)
-        {
-            Assert.Throws<NotSupportedException>(() => factory.Create(config));
-        }
-    }
-
     #endregion
 
     #region Create(string, LlmConfig) Tests - Explicit Type
@@ -407,28 +378,21 @@ public class LlmProviderFactoryTests
     #region BaseUrl Inference Tests
 
     [Theory]
-    [InlineData("http://localhost:11434/v1/chat", ProviderOllama)]
-    [InlineData("http://127.0.0.1:11434", ProviderOllama)]
-    [InlineData("https://api.openai.com/v1", ProviderOpenAI)]
-    [InlineData("https://api.anthropic.com/v1", ProviderAnthropic)]
-    [InlineData(EndpointMistral, ProviderMistral)] // Cloud Mistral targeted via BaseUrl
-    [InlineData("https://custom-domain.com", ProviderOpenAI)] // Default
-    public void ShouldInferProviderFromBaseUrl_WhenCreate(string baseUrl, string expectedType)
+    [Trait("BR", "CH-08")]
+    [InlineData(ModelLlama2, EndpointOllamaDefault, "ollama")]
+    [InlineData(ModelGpt35Turbo, null, "openai")]
+    [InlineData(ModelGpt4, "https://api.openai.com", "openai")]
+    [InlineData(CustomModelName, "http://localhost:11434/v1", "ollama")]
+    [InlineData(CustomModelName, "http://127.0.0.1:11434", "ollama")]
+    [InlineData(CustomModelName, "https://api.anthropic.com/v1", "anthropic")]
+    [InlineData(CustomModelName, "http://localhost:8080/v1", "OpenAI")]
+    public void ShouldAssertTheBuiltProvider_WhereOnlyNotNullWasChecked(string model, string? baseUrl, string expectedName)
     {
-        // Arrange
-        var httpClientFactory = new TestHttpClientFactory();
         using var loggerFactory = new TestLoggerFactory();
-        var factory = new LlmProviderFactory(httpClientFactory, loggerFactory);
+        var factory = new LlmProviderFactory(new TestHttpClientFactory(), loggerFactory);
+        var config = LlmConfig.Create(model) with { BaseUrl = baseUrl is null ? null : new Uri(baseUrl) };
 
-        var config = LlmConfig.Create(CustomModelName) with { BaseUrl = new Uri(baseUrl) };
-
-        // Act
-        var provider = factory.Create(config);
-
-        // Assert
-        Assert.NotNull(provider);
-        // Use expectedType to prevent xUnit1026 warning
-        _ = expectedType;
+        Assert.Equal(expectedName, factory.Create(config).Name, ignoreCase: true);
     }
 
     #endregion

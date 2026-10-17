@@ -273,6 +273,25 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldLabelTheExchangeCustom_WhenALocalServerIsNotOllama()
+    {
+        _innerHandler.SetResponse(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        });
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost:8080/v1/chat/completions")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        };
+
+        await _invoker.SendAsync(request, CancellationToken.None);
+        await Polling.WaitUntilAsync(() => _logger.Captured is not null);
+
+        Assert.Equal("custom", _logger.Captured!.Provider);
+    }
+
+    [Fact]
     public async Task SendAsync_IdentifiesProviderFromUrl()
     {
         var testCases = new Dictionary<string, string>
