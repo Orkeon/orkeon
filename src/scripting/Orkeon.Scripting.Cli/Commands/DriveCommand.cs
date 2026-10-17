@@ -45,6 +45,11 @@ internal sealed class DriveLoginCommandOptions : DriveCommandOptionsBase
     [Value(0, Required = true, MetaName = "account", HelpText = "The account name, as declared under Orkeon:Tools:Drive:Accounts.")]
     public string Account { get; set; } = string.Empty;
 
+    /// <summary><c>--events jsonl</c>: the sign-in as protocol lines on stdout, for a program that drives it.</summary>
+    [Option("events", Required = false,
+        HelpText = "jsonl: write each step of the sign-in as one event line on stdout, read the pasted redirect address on stdin, and abort when stdin closes (the way Orkeon Studio drives it).")]
+    public string? Events { get; set; }
+
     /// <summary>Test seam: the terminal interaction.</summary>
     internal IOAuthLoginInteraction? Interaction { get; set; }
 }
@@ -65,6 +70,11 @@ internal sealed class DriveCheckCommandOptions : DriveCommandOptionsBase
     /// <summary>The account to check.</summary>
     [Value(0, Required = true, MetaName = "account", HelpText = "The account name.")]
     public string Account { get; set; } = string.Empty;
+
+    /// <summary><c>--events jsonl</c>: the verdict as one event line on stdout, for a program that drives the check.</summary>
+    [Option("events", Required = false,
+        HelpText = "jsonl: write the verdict as one event line on stdout — what the root folder holds, or the error with its code (the way Orkeon Studio drives it).")]
+    public string? Events { get; set; }
 }
 
 /// <summary>
@@ -75,6 +85,8 @@ internal sealed class DriveCheckCommandOptions : DriveCommandOptionsBase
 /// </summary>
 internal static class DriveCommand
 {
+    private const string EventsFormat = "jsonl";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>Parses <paramref name="args"/> (already stripped of the leading <c>drive</c>) and dispatches to a verb.</summary>
@@ -123,18 +135,55 @@ internal static class DriveCommand
         });
     }
 
-    /// <summary>Signs an account in.</summary>
-    public static Task<int> ExecuteLoginAsync(DriveLoginCommandOptions options)
+    /// <summary>
+    /// Signs an account in. With <c>--events jsonl</c> the steps are event lines on standard
+    /// output, the pasted redirect address is read on standard input, and the end of that input
+    /// aborts the sign-in — as <c>orkeon email login</c> does for Studio's Mails tab.
+    /// </summary>
+    public static async Task<int> ExecuteLoginAsync(DriveLoginCommandOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("login", options, async (administration, ct) =>
+        if (await RefuseFormatAsync("login", options.Events).ConfigureAwait(false))
+            return Program.ExitScriptError;
+
+        var events = options.Events is null ? null : new DriveEventWriter(Console.Out);
+        return await GuardedAsync("login", options, async (administration, ct) =>
         {
-            var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("drive");
-            await administration.LoginAsync(options.Account, interaction, ct).ConfigureAwait(false);
-            await Console.Out.WriteLineAsync($"Signed in: the tokens of drive account '{options.Account}' are stored. Agents can use it now.")
-                .ConfigureAwait(false);
+            if (events is null)
+            {
+                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("drive");
+                await administration.LoginAsync(options.Account, interaction, ct).ConfigureAwait(false);
+                await Console.Out.WriteLineAsync($"Signed in: the tokens of drive account '{options.Account}' are stored. Agents can use it now.")
+                    .ConfigureAwait(false);
+                return Program.ExitOk;
+            }
+
+            using var driver = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var dialogue = new EventOAuthLoginInteraction(events, Console.In, onInputClosed: () =>
+            {
+                try
+                {
+                    driver.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The sign-in ended before the driver closed the input; nothing left to abort.
+                }
+            });
+
+            try
+            {
+                await administration.LoginAsync(options.Account, dialogue, driver.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (driver.IsCancellationRequested)
+            {
+                // The driver left, or Ctrl+C: the same end, and nothing to say to a reader that is gone.
+                return Program.ExitCancelled;
+            }
+
+            events.LoginCompleted(options.Account);
             return Program.ExitOk;
-        });
+        }, events).ConfigureAwait(false);
     }
 
     /// <summary>Signs an account out.</summary>
@@ -152,16 +201,33 @@ internal static class DriveCommand
         });
     }
 
-    /// <summary>Checks that an account connects.</summary>
-    public static Task<int> ExecuteCheckAsync(DriveCheckCommandOptions options)
+    /// <summary>Checks that an account connects; with <c>--events jsonl</c> the verdict is one event line.</summary>
+    public static async Task<int> ExecuteCheckAsync(DriveCheckCommandOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("check", options, async (administration, ct) =>
+        if (await RefuseFormatAsync("check", options.Events).ConfigureAwait(false))
+            return Program.ExitScriptError;
+
+        var events = options.Events is null ? null : new DriveEventWriter(Console.Out);
+        return await GuardedAsync("check", options, async (administration, ct) =>
         {
             var result = await administration.CheckAsync(options.Account, ct).ConfigureAwait(false);
-            await Console.Out.WriteLineAsync(RenderCheck(result)).ConfigureAwait(false);
+            var summary = RenderCheck(result);
+            if (events is null)
+                await Console.Out.WriteLineAsync(summary).ConfigureAwait(false);
+            else
+                events.CheckCompleted(result.Account, result.RootPath, result.RootName, result.Items, result.More, summary);
             return Program.ExitOk;
-        });
+        }, events).ConfigureAwait(false);
+    }
+
+    /// <summary>Says, and answers true, when <paramref name="format"/> is an events format the verbs do not write.</summary>
+    private static async Task<bool> RefuseFormatAsync(string verb, string? format)
+    {
+        if (format is null || string.Equals(format, EventsFormat, StringComparison.OrdinalIgnoreCase))
+            return false;
+        await Console.Error.WriteLineAsync($"orkeon drive {verb}: unsupported --events format '{format}' — the only one is {EventsFormat}.").ConfigureAwait(false);
+        return true;
     }
 
     /// <summary>The sentence of a check that connected: the root folder and what it holds.</summary>
@@ -205,7 +271,8 @@ internal static class DriveCommand
     private static async Task<int> GuardedAsync(
         string verb,
         DriveCommandOptionsBase options,
-        Func<DriveAccountAdministration, CancellationToken, Task<int>> body)
+        Func<DriveAccountAdministration, CancellationToken, Task<int>> body,
+        DriveEventWriter? events = null)
     {
         using var cts = new CancellationTokenSource();
         ConsoleCancelEventHandler onCancel = (_, e) =>
@@ -228,17 +295,17 @@ internal static class DriveCommand
         }
         catch (DriveToolException ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon drive {verb}: {ex.Message}").ConfigureAwait(false);
+            await FailAsync(verb, events, ex.Code.ToString(), ex.Message).ConfigureAwait(false);
             return IsOperatorFixable(ex.Code) ? Program.ExitScriptError : Program.ExitRuntimeError;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or FileNotFoundException or DirectoryNotFoundException)
         {
-            await Console.Error.WriteLineAsync($"orkeon drive {verb}: {ex.Message}").ConfigureAwait(false);
+            await FailAsync(verb, events, nameof(DriveErrorCode.InvalidConfiguration), ex.Message).ConfigureAwait(false);
             return Program.ExitScriptError;
         }
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon drive {verb}: unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
+            await FailAsync(verb, events, DriveEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
@@ -247,6 +314,16 @@ internal static class DriveCommand
         {
             Console.CancelKeyPress -= onCancel;
         }
+    }
+
+    /// <summary>Says why the verb failed: an <c>error</c> event when a program drives it, one line on stderr otherwise.</summary>
+    private static Task FailAsync(string verb, DriveEventWriter? events, string code, string message)
+    {
+        if (events is null)
+            return Console.Error.WriteLineAsync($"orkeon drive {verb}: {message}");
+
+        events.Error(code, message);
+        return Task.CompletedTask;
     }
 
     private static bool IsOperatorFixable(DriveErrorCode code) => code is DriveErrorCode.NotConfigured

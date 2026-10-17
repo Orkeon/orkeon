@@ -8,7 +8,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// emission come from <see cref="OrkeonEventWriter"/>, this type adds the typed lines of
 /// <see cref="EmailEventKinds"/>. A sign-in belongs to no crew, so its events carry no identity.
 /// </summary>
-internal sealed class EmailEventWriter : OrkeonEventWriter
+internal sealed class EmailEventWriter : OrkeonEventWriter, IOAuthLoginEvents
 {
     /// <summary>What an <c>error</c> line carries as its code when the failure has no e-mail error code.</summary>
     public const string UnexpectedCode = "Unexpected";
