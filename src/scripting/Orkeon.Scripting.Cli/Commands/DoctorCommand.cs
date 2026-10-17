@@ -20,7 +20,7 @@ using Orkeon.Scripting.Toolchain;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options for <c>orkeon doctor</c>.</summary>
-internal sealed class DoctorCommandOptions
+internal sealed class DoctorCommandOptions : CliOptions
 {
     /// <summary>Emit the machine-readable report instead of the table.</summary>
     [Option("json", Required = false, Default = false,
@@ -117,17 +117,7 @@ internal static class DoctorCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(s =>
-        {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<DoctorCommandOptions>(args)
-            .MapResult(
-                (DoctorCommandOptions o) => ExecuteAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync<DoctorCommandOptions>("doctor", args, ExecuteAsync).ConfigureAwait(false);
     }
 
     /// <summary>Runs every check; returns 0 (green/warnings) or 1 (at least one failure).</summary>

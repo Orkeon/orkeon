@@ -178,6 +178,7 @@ public sealed class McpServeCommandTests
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
     public async Task Help_names_the_options_on_stderr_and_leaves_stdout_to_the_protocol()
     {
         using var console = new TestConsole();

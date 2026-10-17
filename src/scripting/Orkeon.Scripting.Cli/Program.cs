@@ -110,17 +110,7 @@ internal static class Program
     /// </summary>
     private static async Task<int> RunAsync(string[] args)
     {
-        using var parser = new Parser(s =>
-        {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await RunnerArguments.Parse<RunCommandOptions>(parser, args)
-            .MapResult(
-                async (RunCommandOptions o) => await RunCommand.ExecuteAsync(o).ConfigureAwait(false),
-                _ => Task.FromResult(ExitScriptError))
-            .ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync<RunCommandOptions>("run", args, RunCommand.ExecuteAsync).ConfigureAwait(false);
     }
 
     /// <summary>

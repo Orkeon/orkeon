@@ -13,7 +13,7 @@ using Orkeon.Infrastructure.LLMs.Profiles;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options for <c>orkeon init</c>.</summary>
-internal sealed class InitCommandOptions
+internal sealed class InitCommandOptions : CliOptions
 {
     /// <summary>Provider preset; omitting it starts the interactive wizard.</summary>
     [Option('p', "provider", Required = false,
@@ -101,17 +101,7 @@ internal static class InitCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(s =>
-        {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<InitCommandOptions>(args)
-            .MapResult(
-                (InitCommandOptions o) => ExecuteAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync<InitCommandOptions>("init", args, ExecuteAsync).ConfigureAwait(false);
     }
 
     /// <summary>Runs the assistant described by <paramref name="options"/>; returns the CLI exit code.</summary>

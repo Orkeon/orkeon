@@ -19,7 +19,7 @@ using Orkeon.Scripting.Toolchain;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Parsed CLI options for the <c>run</c> verb.</summary>
-internal sealed class RunCommandOptions
+internal sealed class RunCommandOptions : CliOptions
 {
     /// <summary>
     /// Path to the crew definition: a script (.ork.ts/.js), a YAML crew (.yaml/.yml), or a

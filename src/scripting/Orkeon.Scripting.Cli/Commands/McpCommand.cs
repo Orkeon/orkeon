@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Parsed options of <c>orkeon mcp serve</c>.</summary>
 [Verb("serve", HelpText = "Serve this host's tools to an MCP client over stdio: JSON-RPC in on stdin, out on stdout, one message per line.")]
-internal sealed class McpServeCommandOptions
+internal sealed class McpServeCommandOptions : CliOptions
 {
     /// <summary>Path to appsettings.json.</summary>
     [Option('s', "settings", Required = false,
@@ -54,18 +54,7 @@ internal static class McpCommand
     public static async Task<int> DispatchAsync(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        using var parser = new Parser(s =>
-        {
-            // The help too: on this verb stdout carries the protocol and nothing else.
-            s.HelpWriter = Console.Error;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments(args, typeof(McpServeCommandOptions))
-            .MapResult(
-                (McpServeCommandOptions o) => ServeAsync(o),
-                errors => Task.FromResult(errors.IsHelp() || errors.IsVersion() ? Program.ExitOk : Program.ExitScriptError))
-            .ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync("mcp", args, [typeof(McpServeCommandOptions)], options => ServeAsync((McpServeCommandOptions)options), helpOnStderr: true).ConfigureAwait(false);
     }
 
     /// <summary>Serves until the client closes stdin.</summary>

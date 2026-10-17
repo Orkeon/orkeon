@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommandLine;
 using Orkeon.Scripting.Cli.Commands;
+using Orkeon.Scripting.Cli.Commands.UseCases;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -250,5 +251,144 @@ public sealed class OptionGrammarTests
             offenders.Count == 0,
             $"{optionsType.Name} advertises as repeatable: {string.Join(", ", offenders)} — "
             + "the parser answers RepeatedOptionError. Say the values go space-separated after one flag.");
+    }
+
+    /// <summary>
+    /// CH-04: the forms the docs (<c>docs/reference/cli.md</c>), Studio, the smokes and
+    /// <c>.github/workflows/rag-eval.yml</c> write, per options type, and the refusals.
+    /// </summary>
+    private static IEnumerable<(Type Type, string[] Args)> Corpus()
+    {
+        (Type, string[]) Row<T>(params string[] args) => (typeof(T), args);
+
+        return
+        [
+            Row<DoctorCommandOptions>(),
+            Row<DoctorCommandOptions>("--json"),
+            Row<DoctorCommandOptions>("--nope"),
+            Row<InitCommandOptions>("--provider", "ollama", "--model", "llama3.2", "--no-probe"),
+            Row<InitCommandOptions>("-p", "custom", "-u", "http://x", "-m", "m", "--api-key-env=MY_KEY", "--path=/tmp/a b", "-f"),
+            Row<InitCommandOptions>("--provider"),
+            Row<LlmProbeCommandOptions>("-p", "openai", "-m", "gpt", "--api-version=2024-10-01"),
+            Row<LlmProbeCommandOptions>("--model", "x"),
+            Row<LlmModelsCommandOptions>("-p", "ollama", "--filter", "llama*"),
+            Row<LlmModelsCommandOptions>("-p", "ollama", "--json", "--filter=gpt-*"),
+            Row<RagIngestCommandOptions>("-c", "docs", "--source", "./a/**/*.md", "./b/*.md", "--chunking", "fixed", "--reindex"),
+            Row<RagIngestCommandOptions>("-c", "docs"),
+            Row<RagSearchCommandOptions>("what is x?", "-c", "docs", "--top-n", "3"),
+            Row<RagSearchCommandOptions>("-c", "docs", "-v", "1", "--mount", "a:/x:ro", "b:/y:rw", "what?"),
+            Row<RagSearchCommandOptions>("-c", "docs"),
+            Row<RagEvalCommandOptions>("--dataset", "examples/rag/eval/golden.yaml", "--compare", "fast,balanced,quality,corrective,adaptive", "--offline"),
+            Row<RagEvalCommandOptions>("--dataset", "g.yaml", "--profile", "balanced", "--offline", "--reindex", "--min-recall", "0.8", "--min-mrr", "0.7"),
+            Row<RagEvalCommandOptions>("--dataset=g.yaml", "-k", "3"),
+            Row<RagEvalCommandOptions>("--offline"),
+            Row<EmailAccountsCommandOptions>("--json", "-s", "a.json"),
+            Row<EmailAccountsCommandOptions>("--settings=a.json"),
+            Row<EmailLoginCommandOptions>("hotmail", "--events", "jsonl"),
+            Row<EmailLoginCommandOptions>("hotmail", "--events=jsonl"),
+            Row<EmailLoginCommandOptions>(),
+            Row<EmailLogoutCommandOptions>("hotmail"),
+            Row<EmailCheckCommandOptions>("hotmail", "--events", "jsonl", "--settings", "s.json"),
+            Row<UseCasesSearchOptions>("summarize my emails every morning"),
+            Row<UseCasesSearchOptions>("je veux", "un résumé", "--top", "3", "--lang", "fr"),
+            Row<UseCasesListOptions>("--category", "finance-trading", "--process", "parallel"),
+            Row<UseCasesShowOptions>("03-email-pipeline", "--crew"),
+            Row<UseCasesExportOptions>("01-research-assistant", "--to", "./research", "--lang", "fr"),
+            Row<UseCasesExportOptions>("01-research-assistant", "--to=./x"),
+            Row<McpServeCommandOptions>("--settings", "s.json", "--tools", "a,b"),
+            Row<McpServeCommandOptions>("--tools=a,b"),
+            Row<McpServeCommandOptions>("--nope"),
+            Row<RunCommandOptions>("crew.yaml", "--settings=/etc/orkeon/appsettings.json", "--events", "jsonl", "--client=studio"),
+        ];
+    }
+
+    /// <summary>The intended changes: a word no option or position takes is refused, where the parser alone drops it.</summary>
+    private static IEnumerable<(Type Type, string[] Args)> IntendedChanges() =>
+    [
+        (typeof(RunCommandOptions), ["crew.yaml", "--validate", "extra"]),
+        (typeof(RagSearchCommandOptions), ["question", "-c", "docs", "extra"]),
+        (typeof(EmailLoginCommandOptions), ["hotmail", "extra"]),
+        (typeof(UseCasesShowOptions), ["03-email-pipeline", "extra"]),
+    ];
+
+    private static Parser Lenient() => new(s =>
+    {
+        s.HelpWriter = null;
+        s.CaseInsensitiveEnumValues = true;
+    });
+
+    private static string Read(Type type, string[] args, bool asTheCommand)
+    {
+        object? value;
+        if (asTheCommand)
+        {
+            using var commandParser = CliGrammar.NewParser();
+            var reading = (CliReading)typeof(CliGrammar).GetMethods()
+                .Single(m => m.Name == "Read" && m.IsGenericMethodDefinition && m.GetParameters().Length == 2)
+                .MakeGenericMethod(type).Invoke(null, [commandParser, args])!;
+            if (reading.Options is null)
+                return "refused: " + string.Join(", ", reading.Errors.Select(e => e.Tag));
+            if (reading.Unexpected.Count > 0)
+                return "refused: unexpected " + string.Join(", ", reading.Unexpected);
+            value = reading.Options;
+        }
+        else
+        {
+            using var parser = Lenient();
+            var result = typeof(Parser).GetMethods()
+                .First(m => m.Name == "ParseArguments" && m.IsGenericMethodDefinition && m.GetGenericArguments().Length == 1
+                    && m.GetParameters() is [{ ParameterType: var p }] && p == typeof(IEnumerable<string>))
+                .MakeGenericMethod(type).Invoke(parser, [args])!;
+            var resultType = result.GetType();
+            if (resultType.Name.StartsWith("NotParsed", StringComparison.Ordinal))
+            {
+                var errors = (IEnumerable<Error>)resultType.GetProperty("Errors")!.GetValue(result)!;
+                return "refused: " + string.Join(", ", errors.Select(e => e.Tag));
+            }
+
+            value = resultType.GetProperty("Value")!.GetValue(result)!;
+        }
+
+        return string.Join('\n', type.GetProperties()
+            .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0 && p.GetMethod!.IsPublic)
+            .OrderBy(p => p.Name, StringComparer.Ordinal)
+            .Select(p => $"{p.Name}={p.GetValue(value) switch
+            {
+                null => "<null>",
+                string text => text,
+                System.Collections.IEnumerable items => "[" + string.Join('|', items.Cast<object>()) + "]",
+                var other => Convert.ToString(other, CultureInfo.InvariantCulture),
+            }}"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldReadEveryOptionTypeAsTheParserAlone_ExceptTheIntendedChanges()
+    {
+        foreach (var (type, args) in Corpus())
+            Assert.Equal(Read(type, args, asTheCommand: false), Read(type, args, asTheCommand: true));
+
+        foreach (var (type, args) in IntendedChanges())
+        {
+            Assert.DoesNotContain("refused", Read(type, args, asTheCommand: false), StringComparison.Ordinal);
+            Assert.StartsWith("refused", Read(type, args, asTheCommand: true), StringComparison.Ordinal);
+        }
+
+        // F3: forge, typings and settings belong to batch F3.
+        static bool OfF3(Type t) =>
+            t.Namespace?.EndsWith(".Forge", StringComparison.Ordinal) == true
+            || t.Name.StartsWith("Settings", StringComparison.Ordinal)
+            || t.Name.StartsWith("Typings", StringComparison.Ordinal);
+
+        var carriers = typeof(Program).Assembly.GetTypes()
+            .Where(t => !OfF3(t) && t != typeof(CliOptions) && t.GetProperties(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly)
+                .Any(p => p.IsDefined(typeof(OptionAttribute), false) || p.IsDefined(typeof(ValueAttribute), false)))
+            .ToList();
+        var covered = Corpus().Select(c => c.Type).ToHashSet();
+
+        Assert.NotEmpty(carriers);
+        Assert.Empty(carriers.Where(t => !typeof(CliOptions).IsAssignableFrom(t)).Select(t => t.Name));
+        Assert.Empty(carriers.Where(t => !t.IsAbstract && !covered.Contains(t)).Select(t => t.Name));
     }
 }

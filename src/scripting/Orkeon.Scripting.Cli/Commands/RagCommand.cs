@@ -18,7 +18,7 @@ using Orkeon.Tools.Rag;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options shared by the <c>orkeon rag</c> verbs (host bootstrap surface).</summary>
-internal abstract class RagCommandOptionsBase
+internal abstract class RagCommandOptionsBase : CliOptions
 {
     /// <summary>Path to appsettings.json (provides Llm/Embedding sections).</summary>
     [Option('s', "settings", Required = false,
@@ -183,19 +183,13 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(s =>
+        return await CliGrammar.DispatchAsync("rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions), typeof(RagEvalCommandOptions)], options => options switch
         {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<RagIngestCommandOptions, RagSearchCommandOptions, RagEvalCommandOptions>(args)
-            .MapResult(
-                (RagIngestCommandOptions o) => ExecuteIngestAsync(o),
-                (RagSearchCommandOptions o) => ExecuteSearchAsync(o),
-                (RagEvalCommandOptions o) => ExecuteEvalAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            RagIngestCommandOptions o => ExecuteIngestAsync(o),
+            RagSearchCommandOptions o => ExecuteSearchAsync(o),
+            RagEvalCommandOptions o => ExecuteEvalAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     /// <summary>Runs the ingestion described by <paramref name="options"/>; returns the CLI exit code.</summary>

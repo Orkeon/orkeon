@@ -9,7 +9,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 namespace Orkeon.Scripting.Cli.Commands.UseCases;
 
 /// <summary>Options every <c>orkeon usecases</c> verb shares.</summary>
-internal abstract class UseCasesCommandOptions
+internal abstract class UseCasesCommandOptions : CliOptions
 {
     /// <summary>The language of the titles shown — for a search, of the query; for an export, of the team's name.</summary>
     [Option("lang", Required = false,
@@ -112,20 +112,14 @@ internal static class UseCasesCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(settings =>
+        return await CliGrammar.DispatchAsync("usecases", args, [typeof(UseCasesSearchOptions), typeof(UseCasesListOptions), typeof(UseCasesShowOptions), typeof(UseCasesExportOptions)], options => options switch
         {
-            settings.HelpWriter = Console.Out;
-            settings.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<UseCasesSearchOptions, UseCasesListOptions, UseCasesShowOptions, UseCasesExportOptions>(args)
-            .MapResult(
-                (UseCasesSearchOptions options) => ExecuteSearchAsync(options),
-                (UseCasesListOptions options) => ExecuteListAsync(options),
-                (UseCasesShowOptions options) => ExecuteShowAsync(options),
-                (UseCasesExportOptions options) => ExecuteExportAsync(options),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            UseCasesSearchOptions o => ExecuteSearchAsync(o),
+            UseCasesListOptions o => ExecuteListAsync(o),
+            UseCasesShowOptions o => ExecuteShowAsync(o),
+            UseCasesExportOptions o => ExecuteExportAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     /// <summary>Runs one search, or the session mode; returns the CLI exit code.</summary>

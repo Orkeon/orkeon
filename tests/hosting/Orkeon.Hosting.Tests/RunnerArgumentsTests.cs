@@ -66,4 +66,147 @@ public sealed class RunnerArgumentsTests
 
         Assert.Contains(refused.Errors, e => e.Tag.ToString() == error);
     }
+
+    [Verb("a")]
+    private sealed class VerbA
+    {
+        [Option("settings")]
+        public string? Settings { get; set; }
+
+        [Value(0)]
+        public string? Target { get; set; }
+    }
+
+    [Verb("b")]
+    private sealed class VerbB
+    {
+        [Option("settings")]
+        public string? Settings { get; set; }
+
+        [Option("note")]
+        public string? Note { get; set; }
+
+        [Option('p', "profile")]
+        public string? Profile { get; set; }
+
+        [Option("count")]
+        public int? Count { get; set; }
+
+        [Value(0)]
+        public string? Target { get; set; }
+    }
+
+    private static ParserResult<object> ParseVerbs(bool dashDash, params string[] args)
+    {
+        using var parser = new Parser(s =>
+        {
+            s.HelpWriter = null;
+            s.EnableDashDash = dashDash;
+        });
+        return RunnerArguments.Parse(parser, args, typeof(VerbA), typeof(VerbB));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldReadAttachedValuesAsWritten_WhenTheSecondVerbIsChosen()
+    {
+        var result = ParseVerbs(true, "b", "--settings= x", "--note=un\ndeux");
+
+        var options = Assert.IsType<VerbB>(Assert.IsType<Parsed<object>>(result).Value);
+        Assert.Equal(" x", options.Settings);
+        Assert.Equal("un\ndeux", options.Note);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldKeepTheFinalNewline_WhenAnAttachedValueEndsWithOne()
+    {
+        var result = ParseVerbs(true, "b", "--note=deux\n");
+
+        var options = Assert.IsType<VerbB>(Assert.IsType<Parsed<object>>(result).Value);
+        Assert.Equal("deux\n", options.Note);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldSetNothingAside_WhenTheValueFollowsADoubleDash()
+    {
+        var result = ParseVerbs(true, "b", "--", "--settings=x");
+
+        var options = Assert.IsType<VerbB>(Assert.IsType<Parsed<object>>(result).Value);
+        Assert.Null(options.Settings);
+        Assert.Equal("--settings=x", options.Target);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-04")]
+    [InlineData("help")]
+    [InlineData("--version")]
+    [InlineData("zzz")]
+    [InlineData("a", "--note=x")]
+    public void ShouldReturnWhatTheParserReturns_WhenNoVerbIsRecognised(params string[] args)
+    {
+        using var stock = new Parser(s => s.HelpWriter = null);
+        var expected = stock.ParseArguments(args, typeof(VerbA), typeof(VerbB));
+
+        var result = ParseVerbs(true, args);
+
+        var refused = Assert.IsType<NotParsed<object>>(result);
+        Assert.Equal(
+            ((NotParsed<object>)expected).Errors.Select(e => e.Tag),
+            refused.Errors.Select(e => e.Tag));
+        if (args[0] == "a")
+            Assert.Contains(refused.Errors, e => e.Tag == ErrorType.UnknownOptionError);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldRefuseAMissingValue_WhenAnOptionIsFollowedByADoubleDash()
+    {
+        var result = ParseVerbs(true, "b", "--profile", "--");
+
+        var refused = Assert.IsType<NotParsed<object>>(result);
+        Assert.Contains(refused.Errors, e => e.Tag == ErrorType.MissingValueOptionError);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldRefuseAMissingValue_WhenAShortNameIsFollowedByADoubleDash()
+    {
+        var result = ParseVerbs(true, "b", "-p", "--");
+
+        var refused = Assert.IsType<NotParsed<object>>(result);
+        Assert.Contains(refused.Errors, e => e.Tag == ErrorType.MissingValueOptionError);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldRefuseAMissingValue_WhenANumberOptionIsFollowedByADoubleDash()
+    {
+        var result = ParseVerbs(true, "b", "--count", "--");
+
+        var refused = Assert.IsType<NotParsed<object>>(result);
+        Assert.Contains(refused.Errors, e => e.Tag == ErrorType.MissingValueOptionError);
+    }
+
+    public sealed class WordsOptions : RunnerOptionsBase
+    {
+        [Value(0)]
+        public IEnumerable<string> Words { get; set; } = [];
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public void ShouldLoseNoWord_WhenTheSingleFormMeetsAnOptionBeforeADoubleDash()
+    {
+        using var parser = new Parser(s =>
+        {
+            s.HelpWriter = null;
+            s.EnableDashDash = true;
+        });
+
+        var result = RunnerArguments.Parse<WordsOptions>(parser, ["--settings", "--", "extra"]);
+
+        Assert.IsType<NotParsed<WordsOptions>>(result);
+    }
 }
