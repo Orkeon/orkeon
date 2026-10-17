@@ -1324,3 +1324,5 @@ override Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.GetHashCode(
 override Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.ToString() -> string!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.operator !=(Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? right) -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.operator ==(Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? left, Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading? right) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder
+static Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder.TryMatch(string? value, out string? name) -> bool

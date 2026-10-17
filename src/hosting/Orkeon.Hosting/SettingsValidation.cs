@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Hosting;
 
@@ -116,13 +118,17 @@ internal static class SettingsValidation
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var references = ReferenceRefusals(configuration);
+        if (references.Count > 0)
+            return references;
+
         var declarations = services.GetServices<SettingsDeclaration>().ToList();
         var refusals = new List<string>();
         EvaluateDeclaredOptions(services, declarations, refusals);
         if (refusals.Count == 0)
             RunStartupValidator(services, refusals);
 
-        var configuration = services.GetRequiredService<IConfiguration>();
         refusals.AddRange(UnknownSectionNames(configuration));
         refusals.AddRange(UnknownKeys(configuration, declarations));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
@@ -281,6 +287,33 @@ internal static class SettingsValidation
         {
             refusals.Add(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// The settings of <see cref="SettingPlaceholders.Settings"/> that hold a variable reference in the
+    /// configuration as it is read: a value a higher layer covers is not the one read, so not judged.
+    /// </summary>
+    private static List<string> ReferenceRefusals(IConfiguration configuration)
+    {
+        var pending = new Stack<IConfigurationSection>(configuration.GetChildren());
+        var refusals = new List<string>();
+        while (pending.Count > 0)
+        {
+            var section = pending.Pop();
+            var children = section.GetChildren().ToList();
+            if (children.Count > 0)
+            {
+                foreach (var child in children)
+                    pending.Push(child);
+            }
+            else if (SettingReference.Phrase(section.Path, section.Value) is { } refusal)
+            {
+                refusals.Add(refusal);
+            }
+        }
+
+        refusals.Sort(StringComparer.Ordinal);
+        return refusals;
     }
 
     /// <summary>

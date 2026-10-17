@@ -122,9 +122,10 @@ public sealed class EmailValidationOracleTests
         ["a name with a blank"] = (Gmail with { Name = "a b" }, [ValidationCodes.EmailName]),
         ["a name with every character allowed"] = (Gmail with { Name = "4.b_c-D" }, []),
 
-        // GAP-55 will make the engine refuse a ${NAME} reference: this row then turns red, and the
-        // rule is added to EmailAccountRules.
-        ["a password variable written as a reference"] = (Gmail with { PasswordEnvVar = "${GMAIL_APP_PASSWORD}" }, []),
+        // GAP-55: the engine sets an account aside when its variable is written as a ${NAME} reference,
+        // and Studio warns on it.
+        ["a password variable written as a reference"] = (Gmail with { PasswordEnvVar = "${GMAIL_APP_PASSWORD}" }, [ValidationCodes.EmailAuth]),
+        ["a client secret variable written as a reference"] = (Gmail with { PasswordEnvVar = null, ClientId = "id.apps.googleusercontent.com", ClientSecretEnvVar = "${GMAIL_CLIENT_SECRET}" }, [ValidationCodes.EmailAuth]),
 
         ["a provider the engine does not know"] = (Gmail with { Provider = "Yahoo" }, [ValidationCodes.EmailValue]),
         ["a security the engine does not know"] = (Gmail with { IncomingSecurity = "Tls", OutgoingProtocol = "Imap" }, [ValidationCodes.EmailValue, ValidationCodes.EmailValue]),
@@ -216,6 +217,7 @@ public sealed class EmailValidationOracleTests
 
     public static TheoryData<string> FileRows() => new(Files.Keys);
 
+    [Trait("BR", "CH-15")]
     [Theory]
     [MemberData(nameof(DefinitionRows))]
     public void Studio_and_the_engine_say_the_same_of_an_account_studio_writes(string row)

@@ -242,6 +242,32 @@ public sealed class EmailAccountResolverValidationTests
         Assert.True(problems.Count >= 5);
     }
 
+    [Fact]
+    [Trait("BR", "CH-15")]
+    public void ShouldSetTheAccountAside_WhenItsPasswordVariableIsAReference()
+    {
+        var options = TestAccounts.Custom();
+        options.Auth.PasswordEnvVar = "${GMAIL_APP_PASSWORD}";
+
+        var problems = Problems(options);
+
+        Assert.Contains(problems, p => p.Contains("Auth:PasswordEnvVar", StringComparison.Ordinal));
+        Assert.DoesNotContain(problems, p => p.Contains("GMAIL_APP_PASSWORD", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-15")]
+    public void ShouldSetTheAccountAside_WhenItsHostIsAReference()
+    {
+        var options = TestAccounts.Custom();
+        options.Incoming.Host = "${IMAP_HOST}";
+
+        var problems = Problems(options);
+
+        Assert.Contains(problems, p => p.Contains("Incoming:Host", StringComparison.Ordinal));
+        Assert.DoesNotContain(problems, p => p.Contains("IMAP_HOST", StringComparison.Ordinal));
+    }
+
     private static List<string> Problems(EmailAccountOptions options)
     {
         var resolution = EmailAccountResolver.Resolve("acct", options);

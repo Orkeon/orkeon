@@ -10,6 +10,8 @@ using Orkeon.Infrastructure.Telemetry.HealthChecks;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Telemetry;
 using Orkeon.Constants.Configuration;
+using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.LLMs.Profiles;
 
 namespace Orkeon.Infrastructure.Telemetry;
 
@@ -130,6 +132,7 @@ public static class OpenTelemetryExtensions
         if (string.IsNullOrEmpty(endpoint))
             return;
 
+        SettingReference.Refuse("Telemetry:OtlpEndpoint", endpoint);
         if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {

@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Constants.Configuration;
+using Orkeon.Hosting;
 using Orkeon.Host.Tests.Doubles;
 
 namespace Orkeon.Host.Tests;
@@ -207,6 +210,90 @@ public sealed class HostStartupSequenceTests : IDisposable
         Assert.Equal(78, launch.ExitCode);
         var reported = Assert.Single(_failures.Reported);
         Assert.Contains("'/sandbox' is a virtual root reserved by the runner", reported, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// CH-14 - a variable reference in a name the daemon reads is refused before it reports ready:
+    /// exit 78, naming the key and its correction.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-14")]
+    [InlineData(", \"Discord\": { \"Enabled\": true, \"TokenEnvironmentVariable\": \"${DISCORD_TOKEN}\" }", "", "Orkeon:Host:Discord:TokenEnvironmentVariable")]
+    [InlineData("", ", \"A2A\": { \"Security\": { \"ApiKeySecretNames\": [ \"${PEER_KEY}\" ] } }", "A2A:Security:ApiKeySecretNames:0")]
+    public void ShouldRefuseWith78BeforeReady_WhenADaemonVariableNameIsAReference(string host, string top, string key)
+    {
+        var port = Orkeon.Tests.Shared.Network.LoopbackPorts.Probe();
+        var a2a = top.Length == 0 ? "" : $", \"A2A\": {{ \"Enabled\": true, \"Port\": {port}, \"Crews\": [ \"support\" ] }}";
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false }{{top}},
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ]{{host}}{{a2a}} } }
+            }
+            """);
+
+        var launch = Prepare(path);
+
+        AssertRefused(launch, key);
+        var reported = _failures.Reported[0];
+        Assert.Contains(OperatorMessages.SettingPlaceholderRefused(key, SettingPlaceholders.CorrectionFor(key)!), reported, StringComparison.Ordinal);
+    }
+
+    private sealed class WitnessOptions
+    {
+        public string? FooApiKey { get; set; }
+    }
+
+    private static readonly Dictionary<string, string> s_excluded = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Orkeon:TokenCounter:CharsPerToken"] = "A number of characters per token: it holds no credential, address or command.",
+        ["Orkeon:Host:A2A:Host"] = "The listen address of the daemon's own A2A server (a bind pattern such as http://+), not a credential, a remote endpoint or a command.",
+    };
+
+    private static readonly string[] s_sensitiveSuffixes =
+    [
+        "ApiKey", "Secret", "SecretName", "SecretNames", "Password", "Token", "ConnectionString", "Url", "Uri",
+        "Endpoint", "Host", "Authority", "Command", "Args", "Env", "EnvVar", "EnvironmentVariable",
+    ];
+
+    private static void Walk(string path, string name, SettingsShape shape, ISet<string> found)
+    {
+        if (shape.Named.Count == 0 && s_sensitiveSuffixes.Any(s => name.EndsWith(s, StringComparison.OrdinalIgnoreCase)))
+            found.Add(path);
+
+        foreach (var (key, child) in shape.Named)
+            Walk(path + ":" + key, key, child, found);
+        if (shape.Entries is not null)
+            Walk(path + ":*", name, shape.Entries, found);
+    }
+
+    private static List<string> Uncovered(IEnumerable<(string Path, Type Shape)> declarations)
+    {
+        var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, type) in declarations)
+            Walk(path, path.Split(':')[^1], SettingsShape.Of(type), found);
+
+        return found
+            .Where(p => SettingPlaceholders.CorrectionFor(p) is null && SettingPlaceholders.CorrectionFor(p + ":*") is null)
+            .Where(p => !s_excluded.ContainsKey(p))
+            .ToList();
+    }
+
+    [Fact]
+    [Trait("BR", "CH-14")]
+    public void ShouldListEverySensitiveProperty_WhenTheDeclaredShapesAreWalked()
+    {
+        Assert.Equal(["Witness:FooApiKey"], Uncovered([("Witness", typeof(WitnessOptions))]));
+
+        var launch = Prepare(Settings());
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        var declarations = host.Services.GetServices<SettingsDeclaration>().Select(d => (d.Path, d.Shape)).ToList();
+        Assert.NotEmpty(declarations);
+
+        var uncovered = Uncovered(declarations);
+
+        Assert.True(uncovered.Count == 0, "Sensitive properties neither listed nor excluded: " + string.Join(", ", uncovered));
     }
 
     private void AssertRefused(HostLaunch launch, string named)

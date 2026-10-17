@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json.Nodes;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Studio.Core.Configuration;
 using static Orkeon.Studio.Core.Configuration.EmailSection.Values;
 
@@ -402,7 +403,12 @@ public static class EmailAccountRules
         // Studio's own, and never the value: it may be the secret, pasted in the field that names it.
         foreach (var (key, variable) in new[] { (PasswordEnvVarKey, definition.PasswordEnvVar), (ClientSecretEnvVarKey, definition.ClientSecretEnvVar) })
         {
-            if (!LlmSection.IsVariableName(variable))
+            if (SettingPlaceholder.TryMatch(variable, out _))
+            {
+                findings.Add(ValidationCodes.EmailAuth, key,
+                    $"{key} holds a variable reference, and Orkeon expands no variable here: write the value itself (a host) or the NAME of the environment variable alone");
+            }
+            else if (!LlmSection.IsVariableName(variable))
             {
                 findings.Add(ValidationCodes.EmailAuth, key,
                     $"{key} must be the name of an environment variable (no '=', space or line break), never the secret itself");

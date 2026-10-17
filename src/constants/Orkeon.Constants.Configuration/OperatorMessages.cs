@@ -34,6 +34,12 @@ public static class OperatorMessages
         "{0} names an environment variable that is not set: calls on that LLM profile answer that an API key " +
         "is required. Set the variable — in Orkeon Studio, remember the setting's key again — or remove the reference.";
 
+    /// <summary>A setting holding a variable reference the runtime does not expand: names the key and the correction, never the value.</summary>
+    public static string SettingPlaceholderRefused(string settingPath, string correction)
+    {
+        return $"{settingPath} holds a variable reference, but Orkeon expands no variable in its settings and would pass the text as written. {correction}";
+    }
+
     /// <summary>A <c>BaseUrl</c> no run serves: the refusal, naming the key and the address.</summary>
     [SuppressMessage("Design", "CA1055:URI-like return values should not be strings", Justification = "Returns an operator sentence, not an address.")]
     public static string LlmBaseUrlRefused(string settingPath, string address)

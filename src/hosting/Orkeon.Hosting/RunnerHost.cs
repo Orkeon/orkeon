@@ -18,6 +18,7 @@ using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Telemetry;
@@ -1330,6 +1331,7 @@ public static partial class RunnerHost
         services.AddSingleton(BraveKeySetting);
         var braveKey = context.Configuration[EnvironmentVariableNames.BraveApiKey]
             ?? Environment.GetEnvironmentVariable(EnvironmentVariableNames.BraveApiKey);
+        SettingReference.Refuse(EnvironmentVariableNames.BraveApiKey, braveKey);
         if (!string.IsNullOrEmpty(braveKey))
             services.AddOrkeonBraveSearchTool(braveKey);
 
@@ -1576,6 +1578,8 @@ public static partial class RunnerHost
         // Default to on-device local embeddings (zero-config BGE-micro-v2, no network) so
         // codebase_search works out of the box; a host can override to OpenAI/Ollama via config.
         var provider = EmbeddingProvider(embeddingSection);
+        SettingReference.Refuse("RaggableTree:Embedding:ApiKey", embeddingSection["ApiKey"]);
+        SettingReference.Refuse("RaggableTree:Embedding:BaseUrl", embeddingSection["BaseUrl"]);
         var embedding = new EmbeddingOptions
         {
             Provider = provider,

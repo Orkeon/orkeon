@@ -1,4 +1,5 @@
 using System.Text;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -114,6 +115,63 @@ public sealed class RunnerSettingsRefusalExitTests : IDisposable
         Assert.Contains(named, last, StringComparison.Ordinal);
         // stdout is a protocol for --list-tools (the manifest): a refusal writes nothing there.
         Assert.Equal(string.Empty, stdout);
+    }
+
+    /// <summary>
+    /// CH-14, R15: an MCP stdio server whose <c>Env</c> holds <c>"GITHUB_TOKEN": "${GITHUB_TOKEN}"</c>
+    /// started with the text as the token. The start is refused first, naming the key and its
+    /// correction, and no server is spawned (its marker file never appears).
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-14")]
+    [InlineData("run")]
+    [InlineData("validate")]
+    [InlineData("list-tools")]
+    public async Task ShouldRefuseBeforeAnyServerStarts_WhenAnMcpEnvEntryIsAReference(string mode)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The marker server is a POSIX shell command.");
+        const string path = "MCP:Servers:s:Env:GITHUB_TOKEN";
+        var marker = Path.Combine(_root, "started-" + Guid.NewGuid().ToString("N"));
+        var settings = Path.Combine(_root, "refused.json");
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            RaggableTree = new { Enabled = false },
+            MCP = new
+            {
+                Servers = new
+                {
+                    s = new
+                    {
+                        Command = "sh",
+                        Args = new[] { "-c", $"touch '{marker}'; exec cat" },
+                        Env = new Dictionary<string, string> { ["GITHUB_TOKEN"] = "${GITHUB_TOKEN}" },
+                    },
+                },
+            },
+        });
+        await File.WriteAllTextAsync(settings, json, TestContext.Current.CancellationToken);
+        var crew = Path.Combine(_root, "crew.yaml");
+        await File.WriteAllTextAsync(crew, Crew, TestContext.Current.CancellationToken);
+        var options = new TestOptions
+        {
+            ConfigPath = mode == "list-tools" ? "" : crew,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+            Validate = mode == "validate",
+            ListTools = mode == "list-tools",
+        };
+
+        var (exit, stdout, stderr) = await CaptureAsync(() => RunnerExecution.RunOneShotAsync(options, "Orkeon.Hosting.Tests"));
+
+        Assert.True(exit == 1, $"exit {exit} - stderr: {stderr}");
+        var errors = stderr.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.StartsWith("ERROR:", StringComparison.Ordinal)).ToList();
+        var line = Assert.Single(errors);
+        var correction = SettingPlaceholders.CorrectionFor(path);
+        Assert.NotNull(correction);
+        Assert.Contains(path, line, StringComparison.Ordinal);
+        Assert.Contains(correction, line, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, stdout);
+        Assert.False(File.Exists(marker), "the MCP server was started");
     }
 
     private static async Task<(int Exit, string Stdout, string Stderr)> CaptureAsync(Func<Task<int>> run)
