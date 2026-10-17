@@ -74,8 +74,36 @@ public static class FolderSlug
             // cap; a single overlong word is cut where the cap falls.
             var cut = slug.LastIndexOf('-', MaxLength);
             slug = slug[..(cut >= MaxLength / 2 ? cut : MaxLength)].TrimEnd('-');
+
+            // A cut slug never ends on a stop word (#118): « ...-et-rediger-a » reads as a
+            // sentence cut in its middle. A slug the cap did not cut keeps every word.
+            while (slug.LastIndexOf('-') is var last and > 0 && IsStopWord(slug[(last + 1)..]))
+                slug = slug[..last];
         }
 
         return slug.Length > 0 ? slug : null;
     }
+
+    /// <summary>
+    /// Whether <paramref name="word"/> is an article, a preposition or a conjunction of one of
+    /// the languages of Studio's interface (fr, en, es, de) — a word a name or a folder cut by
+    /// a cap must not end on. Case and accents do not matter: « À » is « a ».
+    /// </summary>
+    public static bool IsStopWord(string? word) =>
+        From(word) is { } slug && StopWords.Contains(slug);
+
+    /// <summary>The stop words, in slug form (lowercase ASCII).</summary>
+    private static readonly HashSet<string> StopWords = new(StringComparer.Ordinal)
+    {
+        // fr
+        "a", "au", "aux", "d", "de", "des", "du", "l", "la", "le", "les", "et", "ou", "en", "un", "une",
+        "pour", "par", "sur", "dans", "avec", "sans", "que", "qui", "ce", "ces", "se", "y",
+        // en
+        "an", "the", "of", "and", "or", "to", "in", "on", "for", "with", "by", "at", "from", "into", "as",
+        // es
+        "el", "los", "las", "del", "o", "una", "para", "por", "con", "al",
+        // de
+        "der", "die", "das", "den", "dem", "und", "oder", "zu", "im", "am", "an", "auf", "mit", "fur",
+        "von", "ein", "eine", "einen", "zum", "zur",
+    };
 }

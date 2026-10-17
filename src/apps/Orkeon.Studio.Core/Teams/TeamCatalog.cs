@@ -1366,21 +1366,33 @@ public static partial class TeamCatalog
         metadata.Name is { Length: > 0 } name ? metadata with { Name = NormalizeName(name) } : metadata;
 
     private static string CutSummary(string text) =>
-        text.Length <= MaxSummaryLength ? text : CutAtWord(text, MaxSummaryLength - 1) + "…";
+        CutAtWord(text, MaxSummaryLength);
 
     /// <summary>
     /// Cuts at the last space inside the window when one is reasonably close, the way the
     /// slug does; a single window-length word is cut hard. Trailing punctuation left by the
-    /// cut goes with it — never a trailing comma.
+    /// cut goes with it — never a trailing comma — and so do trailing stop words, never
+    /// « … et rédiger à » (#118). A cut text ends with an ellipsis, inside the window.
     /// </summary>
     private static string CutAtWord(string text, int maxLength)
     {
         if (text.Length <= maxLength)
             return text;
 
-        var cut = text.LastIndexOf(' ', maxLength);
-        return text[..(cut >= maxLength / 2 ? cut : maxLength)].TrimEnd(',', ';', ':', '.', ' ');
+        var window = maxLength - Ellipsis.Length;
+        var cut = text.LastIndexOf(' ', window);
+        var kept = text[..(cut >= window / 2 ? cut : window)].TrimEnd(TrailingCut);
+        while (kept.LastIndexOf(' ') is var last and > 0 && FolderSlug.IsStopWord(kept[(last + 1)..]))
+            kept = kept[..last].TrimEnd(TrailingCut);
+
+        return kept + Ellipsis;
     }
+
+    /// <summary>What marks a name or a summary the cap cut.</summary>
+    private const string Ellipsis = "…";
+
+    /// <summary>What a cut leaves at its end and takes away with it.</summary>
+    private static readonly char[] TrailingCut = [',', ';', ':', '.', ' '];
 
     private static string[] Lines(string text) =>
         text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');

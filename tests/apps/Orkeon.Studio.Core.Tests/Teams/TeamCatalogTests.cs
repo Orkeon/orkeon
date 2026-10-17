@@ -301,17 +301,32 @@ public sealed class TeamCatalogTests : IDisposable
 
         // The first line only, its heading marker, code spans and stars gone, cut at a word
         // — never mid-word, never a trailing comma — under the slug's cap.
-        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", name);
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées…", name);
         Assert.True(name.Length <= TeamCatalog.MaxNameLength, $"too long: {name.Length}");
 
         // v3 W-07's goal-length title, at the slug's cap now rather than 48.
         Assert.Equal("Veille documentaire", TeamCatalog.NormalizeName("  Veille documentaire  "));
         Assert.Equal(
-            "Résumer en un seul passage les nouveautés d'un site, à partir",
+            "Résumer en un seul passage les nouveautés d'un site, à partir…",
             TeamCatalog.NormalizeName(
                 "Résumer en un seul passage les nouveautés d'un site, à partir des fichiers enregistrés"));
-        // A short name is untouched, trailing punctuation included: only a cut trims it.
+        // A short name is untouched, trailing punctuation included: only a cut trims it, and
+        // only a cut ends with an ellipsis (#118).
         Assert.Equal("Veille docs.", TeamCatalog.NormalizeName("Veille docs."));
+    }
+
+    /// <summary>
+    /// #118: a name the cap cuts ends on a full word that is not a stop word, and says it was
+    /// cut — never « … et rédiger à ».
+    /// </summary>
+    [Fact]
+    public void NormalizeName_cut_drops_trailing_stop_words_and_ends_with_an_ellipsis()
+    {
+        var name = TeamCatalog.NormalizeName(
+            "Lire les notes déposées dans le dossier input et rédiger à partir de chacune un résumé hebdomadaire");
+
+        Assert.Equal("Lire les notes déposées dans le dossier input et rédiger…", name);
+        Assert.True(name.Length <= TeamCatalog.MaxNameLength, $"too long: {name.Length}");
     }
 
     [Fact]
@@ -385,7 +400,7 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Null(refusal);
         Assert.NotNull(destination);
         var imported = TeamCatalog.Describe(destination!);
-        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", imported.Name);
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées…", imported.Name);
         // The copy is rewritten, the source never is; the need travels whole.
         Assert.Equal(PastedPage, imported.Description);
         Assert.Equal("Local", imported.Profile);

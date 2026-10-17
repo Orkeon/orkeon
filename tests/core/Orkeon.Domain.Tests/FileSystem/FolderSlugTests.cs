@@ -79,6 +79,32 @@ public sealed class FolderSlugTests
         Assert.Equal(FolderSlug.MaxLength, slug!.Length);
     }
 
+    /// <summary>
+    /// #118: the cut lands on a word, and that word is never an article, a preposition or a
+    /// conjunction — « …-et-rediger-a » read as a folder name cut mid-sentence. A slug the cap
+    /// does not cut keeps every word: only the cut trims.
+    /// </summary>
+    [Fact]
+    public void A_cut_slug_never_ends_on_a_stop_word()
+    {
+        var need = "Lire les notes déposées dans le dossier input et rédiger à partir de chacune un résumé hebdomadaire";
+
+        Assert.Equal("lire-les-notes-deposees-dans-le-dossier-input-et-rediger", FolderSlug.From(need));
+        Assert.Equal("tout-ou-rien-de", FolderSlug.From("Tout ou rien de"));
+    }
+
+    [Theory]
+    [InlineData("à", true)]
+    [InlineData("de", true)]
+    [InlineData("The", true)]
+    [InlineData("und", true)]
+    [InlineData("rédiger", false)]
+    [InlineData("input", false)]
+    public void A_stop_word_is_recognised_whatever_its_case_and_accents(string word, bool expected)
+    {
+        Assert.Equal(expected, FolderSlug.IsStopWord(word));
+    }
+
     [Fact]
     public void A_word_that_crosses_the_cap_is_dropped_whole()
     {

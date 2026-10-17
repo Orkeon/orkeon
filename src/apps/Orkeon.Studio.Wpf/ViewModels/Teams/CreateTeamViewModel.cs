@@ -384,6 +384,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     private bool _isEngineRunning;
     private bool _isTechOpen;
     private string _teamName = "";
+
+    /// <summary>The name the session's title last pre-filled; a name that differs is the user's own (#118).</summary>
+    private string? _prefilledTeamName;
     private int _scheduleChoice;
     private string _scheduleTime = "07:30";
     private string? _adoptProfileName;
@@ -3037,10 +3040,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         SyncDecisions();
         SyncProgress();
 
-        // An older session's title may still be the goal sentence (v3 W-07): the same
-        // one-line rule as adoption cuts it at a word, never mid-word (STUDIO-16, D-04).
-        if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
+        // The name follows the session's title until the user types one of their own (#118):
+        // the title is the goal sentence until the assistant names the crew, and its short name
+        // then replaces the cut sentence. An older session's title may still be the goal (v3
+        // W-07): the same one-line rule as adoption cuts it at a word (STUDIO-16, D-04).
+        if (_model.Title is { Length: > 0 } title
+            && (_teamName.Length == 0 || string.Equals(_teamName, _prefilledTeamName, StringComparison.Ordinal)))
+        {
             TeamName = TeamCatalog.NormalizeName(title);
+            _prefilledTeamName = _teamName;
+        }
 
         // The generic something-went-wrong line must not replace the sentence that says WHAT.
         // A failed session used to overwrite the engine's own error — the one line with
