@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Hosting;
 using Orkeon.Host.Tests.Doubles;
 
@@ -294,6 +295,99 @@ public sealed class HostStartupSequenceTests : IDisposable
         var uncovered = Uncovered(declarations);
 
         Assert.True(uncovered.Count == 0, "Sensitive properties neither listed nor excluded: " + string.Join(", ", uncovered));
+    }
+
+    /// <summary>
+    /// CH-10 - a folder granted to a crew that is missing, or a grant that is malformed, is refused at
+    /// the start, exit 78, the line naming the crew.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-10")]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    public void ShouldRefuseWith78NamingTheCrew_WhenAGrantedFolderIsMalformedOrMissing(string defect)
+    {
+        var grant = defect == "missing"
+            ? Path.Combine(_scratch, "not-there") + ":/data:ro"
+            : "\"/a\"b\":/x:ro";
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml", "Mounts": [ {{System.Text.Json.JsonSerializer.Serialize(grant)}} ] } ] } }
+            }
+            """);
+
+        var launch = Prepare(path);
+
+        AssertRefused(launch, "support");
+    }
+
+    [Theory]
+    [Trait("BR", "CH-11")]
+    [InlineData("none")]
+    [InlineData("flag")]
+    [InlineData("variable")]
+    public void ShouldRefuseWith78_WhenAnOperatorMountIsOutsideWithoutTheFlag(string cover)
+    {
+        var external = Directory.CreateTempSubdirectory("orkeon-host-external-").FullName;
+        var variable = RunnerEnvironment.AllowExternalMountsVariable;
+        var previous = Environment.GetEnvironmentVariable(variable);
+        Environment.SetEnvironmentVariable(variable, cover == "variable" ? "1" : null);
+        try
+        {
+            string[] args = cover == "flag"
+                ? ["--settings", Settings(), "--mount", $"{external}:/data:ro", "--allow-external-mounts"]
+                : ["--settings", Settings(), "--mount", $"{external}:/data:ro"];
+
+            var launch = HostStartup.Prepare(args, _failures.Report);
+
+            using var host = launch.Host;
+            if (cover == "none")
+            {
+                AssertRefused(launch, "--allow-external-mounts");
+                Assert.Contains("/data", _failures.Reported[0], StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.NotNull(host);
+                Assert.Empty(_failures.Reported);
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, previous);
+            try { Directory.Delete(external, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-11")]
+    public void ShouldReadTheGrantedFolder_WhenItIsOutsideTheWorkingDirectory()
+    {
+        var granted = Directory.CreateTempSubdirectory("orkeon-host-granted-").FullName;
+        try
+        {
+            var grant = System.Text.Json.JsonSerializer.Serialize($"{granted}:/data:ro");
+            var path = Path.Combine(_scratch, "host.json");
+            File.WriteAllText(path, $$"""
+                {
+                  "RaggableTree": { "Enabled": false },
+                  "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml", "Mounts": [ {{grant}} ] } ] } }
+                }
+                """);
+
+            var launch = Prepare(path);
+
+            using var host = launch.Host;
+            Assert.NotNull(host);
+            var validator = host.Services.GetRequiredService<IPathValidator>();
+            Assert.True(validator.ValidatePath(Path.Combine(granted, "a.txt")).IsAllowed);
+        }
+        finally
+        {
+            try { Directory.Delete(granted, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
     }
 
     private void AssertRefused(HostLaunch launch, string named)

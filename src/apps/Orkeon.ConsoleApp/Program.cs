@@ -160,6 +160,7 @@ static class Program
             new Orkeon.Hosting.RunnerMountPlan
             {
                 CliMounts = CliWorkspaceMountBootstrapper.ResolvePhysicalSegments(scriptedOpts.Mounts),
+                InputDirectories = [.. scriptedOpts.CommandDirs, .. scriptedOpts.CrewDirs],
                 AllowExternalMounts = scriptedOpts.EffectiveAllowExternalMounts,
             },
             SettingsLabel(scriptedOpts, globalSettingsPath),

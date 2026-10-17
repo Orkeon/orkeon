@@ -403,6 +403,31 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
+    /// CH-11 - the forge takes no operator mount: the folders it reads outside the working directory
+    /// are inputs, and reading them no longer counts as the external-mounts flag.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-11")]
+    public void ShouldRefuseAnOperatorMount_WhenTheForgeReadsAFolderOutsideTheWorkingDirectory()
+    {
+        var documents = Path.Combine(Path.GetTempPath(), "orkeon-forge-read-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(documents);
+        try
+        {
+            var session = ForgeSession.Create(_workspace, "une veille");
+
+            var plan = ForgeCommand.BuildMountPlan(_workspace, documents, session);
+
+            Assert.Contains(plan.CliMounts, m => m.Contains(documents, StringComparison.Ordinal));
+            Assert.False(plan.AllowExternalMounts);
+        }
+        finally
+        {
+            Directory.Delete(documents, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// <c>--read</c> moves the documents, not the atelier: the read folder becomes the
     /// trial's <c>/workspace</c>, while the session keeps living under the workspace's own
     /// forge root — and the settings keep resolving next to the workspace.
@@ -428,7 +453,7 @@ public sealed class ForgeCommandTests : IDisposable
             Assert.StartsWith(ForgeSession.RootFor(_workspace), session.Directory, StringComparison.Ordinal);
             // A folder outside the process cwd is whitelisted for the file tools, like the
             // script directory of `orkeon run`: the mount alone would register and then deny.
-            Assert.True(plan.AllowExternalMounts);
+            Assert.False(plan.AllowExternalMounts);
 
             // Without --read, the workspace itself is read, as before, and nothing is whitelisted.
             var defaultPlan = ForgeCommand.BuildMountPlan(_workspace, null, session);
@@ -507,30 +532,33 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
-    /// GAP-49, decision 3: the forge offers no way to choose between two entries of a root it does
-    /// not mount itself - no <c>--mount-id</c>, no crew, no <c>--mount</c> -, so the line says the one
-    /// thing left: keep one of them in the settings.
+    /// CH-12: the forge has no selector, so a root declared twice is withdrawn: the cycle goes on
+    /// (to the missing LLM here) with a warning line and the FORGE-MOUNT-AMBIGUOUS event.
     /// </summary>
     [Fact]
-    public async Task A_root_declared_twice_is_refused_with_the_one_remedy_the_forge_has()
+    [Trait("BR", "CH-12")]
+    public async Task ShouldContinueAndEmitAWarning_WhenTheForgeSettingsDeclareARootTwice()
     {
         var a = Directory.CreateDirectory(Path.Combine(_workspace, "a")).FullName;
         var b = Directory.CreateDirectory(Path.Combine(_workspace, "b")).FullName;
         var idA = Orkeon.Domain.Common.MountId.Create();
         var idB = Orkeon.Domain.Common.MountId.Create();
-        var settings = WriteSettings($"{idA}|{a}:/data:ro", $"{idB}|{b}:/data:ro");
+        var settings = WriteSettings($"{idA}|{a}:/docs:ro", $"{idB}|{b}:/docs:ro");
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(
+            ["une", "veille", "--settings", settings, "--dry", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);
-        Assert.Contains(
-            $"ERROR: '/data' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
-            + $"Keep one of them in {settings}.",
-            console.Stderr,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("--mount", console.Stderr, StringComparison.Ordinal);
-        Assert.DoesNotContain("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("declared twice", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stdout + console.Stderr, StringComparison.Ordinal);
+        var warning = Assert.Single(
+            console.Stderr.Split('\n').Select(l => l.TrimEnd('\r')),
+            l => l.StartsWith("WARNING:", StringComparison.Ordinal) && l.Contains("/docs", StringComparison.Ordinal));
+        Assert.Contains("/docs", warning, StringComparison.Ordinal);
+        Assert.Contains(idA.ToString(), warning, StringComparison.Ordinal);
+        Assert.Contains(idB.ToString(), warning, StringComparison.Ordinal);
+        Assert.Contains("FORGE-MOUNT-AMBIGUOUS", console.Stdout, StringComparison.Ordinal);
     }
 
     /// <summary>A settings file declaring <paramref name="mounts"/> and no LLM, under the workspace.</summary>

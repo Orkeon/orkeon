@@ -179,6 +179,12 @@ internal sealed record ForgeValidationVerdict
 /// <summary>The public error codes of the forge cycle (SPEC-ORKEON-FORGE §6).</summary>
 internal static class ForgeErrorCodes
 {
+    /// <summary>
+    /// The settings declare a virtual root twice and the forge has no selector: no entry of it is
+    /// mounted. A warning event, never an error (CH-12).
+    /// </summary>
+    public const string MountAmbiguous = "FORGE-MOUNT-AMBIGUOUS";
+
     /// <summary>The interview could not produce a schema-valid brief.</summary>
     public const string BriefIncomplete = "FORGE-BRIEF-INCOMPLETE";
 

@@ -233,7 +233,7 @@ public sealed class RunnerHostMemoryProviderTests : IDisposable
             """);
         using var host = RunnerHost.Build(
             Path.Combine(_root, "appsettings.json"),
-            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_kb)}:/kb:ro"] });
+            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_kb)}:/kb:ro"], AllowExternalMounts = true });
 
         var factory = host.Services.GetRequiredService<IMemoryProviderFactory>();
         var ambient = host.Services.GetRequiredService<Orkeon.Domain.Memory.IMemoryProvider>();

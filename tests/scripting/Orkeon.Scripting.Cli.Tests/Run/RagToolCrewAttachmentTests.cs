@@ -41,7 +41,7 @@ public sealed class RagToolCrewAttachmentTests : IDisposable
 
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_root)}:/crew:ro"] },
+            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_root)}:/crew:ro"], AllowExternalMounts = true },
             configureServices: (_, services) =>
             {
                 // The last registration wins over the real pipelines the host registered.

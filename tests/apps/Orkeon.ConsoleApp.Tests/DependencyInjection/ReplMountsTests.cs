@@ -104,7 +104,7 @@ public sealed class ReplMountsTests : IDisposable
         using var logs = new CapturingLoggerProvider();
 
         var launch = ReplStartup.Prepare(
-            ["--settings", settings, "--mount", $"{c}:/workspace:rw"],
+            ["--settings", settings, "--mount", $"{c}:/workspace:rw", "--allow-external-mounts"],
             UiMode.Plain, replWordWrap: false, _reported.Add,
             logging => logging.AddProvider(logs));
 
@@ -205,7 +205,7 @@ public sealed class ReplMountsTests : IDisposable
     {
         var d = Folder("d");
 
-        var launch = Start("--mount", $"{d}:/cli-commands:ro");
+        var launch = Start("--mount", $"{d}:/cli-commands:ro", "--allow-external-mounts");
 
         using var host = launch.Host;
         Assert.NotNull(host);
@@ -221,7 +221,7 @@ public sealed class ReplMountsTests : IDisposable
         var c = Folder("c");
         Settings(Path.Combine("global", "appsettings.json"), $"{MountId.Create()}|{a}:/output:rw", $"{MountId.Create()}|{b}:/output:rw");
 
-        var launch = Start("--mount", $"{c}:/output:rw");
+        var launch = Start("--mount", $"{c}:/output:rw", "--allow-external-mounts");
 
         using var host = launch.Host;
         Assert.NotNull(host);
@@ -246,8 +246,25 @@ public sealed class ReplMountsTests : IDisposable
         Assert.True(Reads(host, "/data/a.txt"));
     }
 
+    /// <summary>CH-10 - without the opt-in the barrier refuses the mount, exit 1, instead of an access refused later.</summary>
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void ShouldRefuseAtStart_WhenTheReplMountIsOutsideTheWorkingDirectory()
+    {
+        var external = Folder("external", "a.txt");
+        Assert.False(PhysicalPathContainment.IsUnder(external, Directory.GetCurrentDirectory()));
+
+        var launch = Start("--mount", $"{external}:/workspace:rw");
+
+        using var host = launch.Host;
+        Assert.Null(launch.Host);
+        Assert.Equal(ReplStartup.RefusedExitCode, launch.ExitCode);
+        Assert.NotEmpty(_reported);
+        Assert.Contains("/workspace", _reported[0], StringComparison.Ordinal);
+        Assert.Contains("--allow-external-mounts", _reported[0], StringComparison.Ordinal);
+    }
+
     [Theory]
-    [InlineData(null, false)]
     [InlineData("--allow-external-mounts", true)]
     [InlineData("ORKEON_ALLOW_EXTERNAL_MOUNTS", true)]
     public void A_mount_outside_the_working_directory_is_readable_under_the_opt_in_only(string? optIn, bool readable)
@@ -264,6 +281,34 @@ public sealed class ReplMountsTests : IDisposable
         Assert.NotNull(host);
         Assert.Equal(external, MountsByRoot(host)["/workspace"].BasePath);
         Assert.Equal(readable, Reads(host, "/workspace/a.txt"));
+    }
+
+    /// <summary>CH-11 - the commands and crews folders are inputs: the REPL starts on them outside the cwd, no flag.</summary>
+    [Fact]
+    [Trait("BR", "CH-11")]
+    public async Task ShouldReadTheCommandsDir_WhenItIsOutsideTheWorkingDirectory()
+    {
+        var commands = Folder("commands-in");
+        var crews = Folder("crews-in");
+        Assert.False(PhysicalPathContainment.IsUnder(commands, Directory.GetCurrentDirectory()));
+        await File.WriteAllTextAsync(Path.Combine(commands, "hello.cmd.ts"), """
+            defineCommand({
+              name: "hello",
+              description: "Say hello.",
+              handler: function (args, ctx) {
+                return ctx.continue("hello");
+              },
+            });
+            """, TestContext.Current.CancellationToken);
+
+        var launch = Start("--commands-dir", commands, "--crews-dir", crews, "--Orkeon:Cli:ScriptCommands:EsbuildTranspile=false");
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        Assert.Empty(_reported);
+        var registry = host.Services.GetRequiredService<ScriptCommandRegistry>();
+        await registry.EnsureLoadedAsync(TestContext.Current.CancellationToken);
+        Assert.Contains(registry.ScriptCommands, command => command.Name == "hello");
     }
 
     /// <summary>A <c>--commands-dir</c> is an entry of the REPL, like the script of <c>orkeon run</c>: read wherever it is.</summary>

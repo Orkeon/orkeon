@@ -674,8 +674,14 @@ internal static class ForgeCommand
         // run by the test stage. Everything else the crew sees is read-only.
         Directory.CreateDirectory(OutputDirectoryOf(session));
 
-        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan))
+        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan, out var mountWarnings))
             return 1;
+
+        // Disposing the renderer never touches Console.Out — it only wraps it.
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        foreach (var warning in mountWarnings)
+            events.Warning(ForgeErrorCodes.MountAmbiguous, warning);
 
         using var host = BuildEngineHost(settingsPath, mountPlan, box, tally, observer);
 
@@ -699,9 +705,6 @@ internal static class ForgeCommand
             .Select(tool => tool.Name)
             .ToHashSet(StringComparer.Ordinal);
 
-        // Disposing the renderer never touches Console.Out — it only wraps it.
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
             ? new JsonLinesUserChannel(Console.In)
@@ -786,14 +789,22 @@ internal static class ForgeCommand
     /// </para>
     /// </summary>
     private static bool TryPlanMounts(
-        string workspace, string? readRoot, ForgeSession session, string? settingsPath, out RunnerMountPlan mountPlan)
+        string workspace, string? readRoot, ForgeSession session, string? settingsPath,
+        out RunnerMountPlan mountPlan, out IReadOnlyList<string> warnings)
     {
         mountPlan = BuildMountPlan(workspace, readRoot, session);
-        // The forge takes no --mount, no --mount-id, no crew: a root declared twice has one remedy
-        // left, in the settings, and the line says that one (GAP-49, decision 3).
-        return RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
-            && RunnerExecution.EnsureMountSelectionIsResolvable(
-                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out _);
+        warnings = [];
+        // The forge takes no --mount, no --mount-id, no crew: a root declared twice is withdrawn
+        // and said so (CH-12), on stderr here and as an event once the writer exists.
+        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
+            || !RunnerExecution.EnsureMountSelectionIsResolvable(
+                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out var selection))
+        {
+            return false;
+        }
+
+        warnings = selection.Warnings;
+        return true;
     }
 
     /// <summary>
@@ -853,11 +864,9 @@ internal static class ForgeCommand
     /// the session stays under <see cref="ForgeSession.RootFor"/> of the workspace and the
     /// settings still resolve next to it — <c>--read</c> moves the documents, not the atelier.
     /// <para>
-    /// A read folder outside the process working directory is whitelisted the way
-    /// <c>orkeon run</c> whitelists its script directory and <c>orkeon rag</c> its corpus:
-    /// the mounts register either way, but the path validator behind every file tool refuses
-    /// a physical path outside the cwd unless the plan allows it — and the plan is the forge's
-    /// own three roots, nothing a user typed, so allowing it grants exactly those.
+    /// The folders the forge reads are inputs of the plan, as the script directory of
+    /// <c>orkeon run</c> and the corpus of <c>orkeon rag</c> are: the path validator behind every
+    /// file tool opens them without the external-mounts flag, which the forge never sets.
     /// </para>
     /// <para>
     /// Built here, apart from the host, so it can be asserted without an LLM.
@@ -878,11 +887,6 @@ internal static class ForgeCommand
             : [];
         var claimed = folders.Select(m => m.Folder.Path).ToHashSet(StringComparer.Ordinal);
 
-        // Containment, not spelling, like the run and rag verbs: ~/proj-old is not inside ~/proj.
-        var cwd = Directory.GetCurrentDirectory();
-        var readsOutsideCwd = (readRoot is not null && !PhysicalPathContainment.IsUnder(readRoot, cwd))
-            || folders.Any(m => !PhysicalPathContainment.IsUnder(m.PhysicalPath, cwd));
-
         // Quoted, like every other spec the framework builds: a session, workspace or
         // read-folder path carrying a ':' or ';' would otherwise split into the wrong
         // segments and the forge would die at host build with a grammar error about
@@ -899,7 +903,15 @@ internal static class ForgeCommand
         return new RunnerMountPlan
         {
             CliMounts = mounts,
-            AllowExternalMounts = readsOutsideCwd,
+            WithdrawsAmbiguousRoots = true,
+            // The folders the forge reads and writes are its own inputs: open without the flag.
+            InputDirectories =
+            [
+                readRoot ?? workspace,
+                session.Directory,
+                OutputDirectoryOf(session),
+                .. folders.Select(m => m.PhysicalPath),
+            ],
         };
     }
 

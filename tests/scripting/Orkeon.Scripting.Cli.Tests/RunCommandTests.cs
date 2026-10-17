@@ -24,6 +24,71 @@ public sealed class RunCommandTests
     }
 
     [Fact]
+    [Trait("BR", "CH-11")]
+    public async Task ShouldRefuseBeforeTheHost_WhenAYamlCrewFolderIsOutsideTheWorkingDirectory()
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", """
+            name: outside-crew
+            agents:
+              - name: a
+                role: r
+                goal: g
+            tasks:
+              - name: t
+                description: d
+                agent: a
+            """);
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("--allow-external-mounts is required", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains(scratch.ScriptDir, console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Using settings", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-11")]
+    public async Task ShouldRefuseTheMountButReadTheScript_WhenAProceduralScriptRunsFromElsewhere()
+    {
+        using var scratch = new ScriptScratch();
+        using var other = new ScriptScratch();
+        await File.WriteAllTextAsync(Path.Combine(scratch.ScriptDir, "data.txt"), "payload-ok", TestContext.Current.CancellationToken);
+        var script = scratch.WriteScript("read.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            await tools.fileRead({ path: "/script/data.txt" });
+            """);
+
+        int refused;
+        string refusedErr;
+        using (var console = new TestConsole())
+        {
+            refused = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = script,
+                Mounts = new[] { $"{other.OutDir}:/data:ro" },
+            });
+            refusedErr = console.Stderr;
+        }
+
+        Assert.NotEqual(Program.ExitOk, refused);
+        Assert.Contains(other.OutDir, refusedErr, StringComparison.Ordinal);
+        Assert.Contains("--allow-external-mounts", refusedErr, StringComparison.Ordinal);
+
+        using var console2 = new TestConsole();
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ScriptPath = script });
+
+        // A denied read throws in the script and turns the exit code: ExitOk is the read.
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.DoesNotContain("denied", console2.Stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Missing_script_returns_ExitScriptError_and_reports_on_stderr()
     {
         using var scratch = new ScriptScratch();
@@ -69,6 +134,7 @@ public sealed class RunCommandTests
         {
             ScriptPath = script,
             Mounts = new[] { $"{scratch.OutDir}:/output:rw" },
+            AllowExternalMounts = true,
         });
 
         Assert.Equal(Program.ExitOk, exit);
@@ -91,6 +157,7 @@ public sealed class RunCommandTests
             ScriptPath = script,
             Verbose = verbose,
             Mounts = new[] { $"{scratch.OutDir}:/output:rw" },
+            AllowExternalMounts = true,
         });
 
         Assert.Equal(Program.ExitOk, exit);

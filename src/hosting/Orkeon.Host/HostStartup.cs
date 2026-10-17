@@ -141,13 +141,22 @@ internal static class HostStartup
         // (ADR-008), never identity-mapped: the loader reads through the VFS, and a crew path that
         // only exists on the physical disk would pass the startup probe and then fail on every
         // message. The crew definitions are the host's primary input — declared by the operator in
-        // the configuration — so their mounts do not require the external-mounts opt-in any more
-        // than the CLI's own config directory does.
+        // the configuration — and so are the folders it grants its crews: all are inputs of the daemon,
+        // readable without the external-mounts opt-in. Only an operator --mount outside the working
+        // directory needs --allow-external-mounts (or ORKEON_ALLOW_EXTERNAL_MOUNTS=1).
         HostCrewMountPlan crewPlan;
+        List<string> inputs;
         try
         {
             var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
-            crewPlan = HostCrewMounts.For(ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews);
+            var crews = ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews;
+            crewPlan = HostCrewMounts.For(crews);
+            inputs = [.. crewPlan.Mounts.Concat(crews.SelectMany(crew => crew.Mounts))
+                .Where(mount => !string.IsNullOrWhiteSpace(mount))
+                .Select(FileSystemMount.TryGetBasePath)
+                .OfType<string>()];
+            if (GrantedFolderRefusal(crews) is { } grantError)
+                return Refused(report, grantError);
         }
         catch (HostConfigurationException ex)
         {
@@ -186,7 +195,8 @@ internal static class HostStartup
                 new RunnerMountPlan
                 {
                     CliMounts = mounts,
-                    AllowExternalMounts = crewPlan.Mounts.Count > 0 || command.AllowExternalMounts,
+                    InputDirectories = inputs,
+                    AllowExternalMounts = command.AllowExternalMounts || RunnerEnvironment.AllowExternalMounts,
                 },
                 configureLogging: null,
                 // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a
@@ -279,6 +289,32 @@ internal static class HostStartup
 
         if (command.SettingsPath is not null && !StartupProbes.SettingsFileExists(command.SettingsPath))
             return $"orkeon-host: settings file not found: {command.SettingsPath}";
+
+        return null;
+    }
+
+    /// <summary>
+    /// CH-10: the first folder granted to a crew that is malformed or missing, the line naming the crew.
+    /// </summary>
+    [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: probes operator-granted folders on the physical disk at start, before the VFS exists.")]
+    private static string? GrantedFolderRefusal(IEnumerable<HostedCrewOptions> crews)
+    {
+        foreach (var crew in crews)
+        {
+            foreach (var grant in crew.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)))
+            {
+                try
+                {
+                    var mount = FileSystemMount.Parse(grant);
+                    if (!Directory.Exists(mount.BasePath))
+                        return $"orkeon-host: crew '{crew.Name}' is granted a folder that does not exist: '{grant}'.";
+                }
+                catch (Exception ex) when (ex is FormatException or ArgumentException)
+                {
+                    return $"orkeon-host: crew '{crew.Name}' is granted an invalid mount '{grant}': {ex.Message}";
+                }
+            }
+        }
 
         return null;
     }

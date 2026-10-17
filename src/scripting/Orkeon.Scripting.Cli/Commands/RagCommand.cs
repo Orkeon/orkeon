@@ -494,20 +494,14 @@ internal static class RagCommand
 
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
-        // The corpus root is the verb's primary input (parity with the run verb's
-        // /script mount): when it lives outside the process cwd (tests, `--mount`
-        // scenarios), it must be whitelisted regardless of --allow-external-mounts.
-        var processCwd = Directory.GetCurrentDirectory();
-        // Containment, not spelling — see RunCommand: ~/proj-old is not inside ~/proj.
-        var implicitlyAllow = options.EffectiveAllowExternalMounts
-            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(cwd, processCwd);
-
         return RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan
             {
                 CliMounts = cliMounts,
-                AllowExternalMounts = implicitlyAllow,
+                // The corpus root is the verb's input: read without the flag.
+                InputDirectories = [cwd],
+                AllowExternalMounts = options.EffectiveAllowExternalMounts,
             },
             configureLogging: verbosity > 0
                 ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)

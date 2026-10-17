@@ -707,7 +707,7 @@ public sealed class ForgeFoldersResumeHostTests : IDisposable
     }
 
     [Fact]
-    public async Task A_folder_confirmed_after_the_host_was_built_is_mounted_but_refused()
+    public async Task A_folder_confirmed_after_the_host_was_built_is_mounted_and_read()
     {
         var pdfs = OutsideFolder();
         var session = ForgeSession.Create(_workspace, "same-process");
@@ -723,7 +723,6 @@ public sealed class ForgeFoldersResumeHostTests : IDisposable
         var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
 
         Assert.Contains("/inpdf", fileSystem.GetAvailableMounts().Select(m => m.VirtualPath));
-        await Assert.ThrowsAsync<FileAccessDeniedException>(
-            () => fileSystem.TryReadAllTextAsync("/inpdf/facture.pdf", TestContext.Current.CancellationToken));
+        Assert.Equal("%PDF facture", await fileSystem.TryReadAllTextAsync("/inpdf/facture.pdf", TestContext.Current.CancellationToken));
     }
 }

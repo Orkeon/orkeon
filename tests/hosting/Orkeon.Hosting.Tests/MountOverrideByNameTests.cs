@@ -88,7 +88,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         using var logs = new CapturingLoggerProvider();
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(other, "/data", "rw")] },
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(other, "/data", "rw")], AllowExternalMounts = true },
             configureLogging: (_, b) => { b.AddProvider(logs); b.SetMinimumLevel(LogLevel.Information); });
 
         // One /data, the run's own — not the settings entry, and not a duplicate of it.
@@ -120,7 +120,7 @@ public sealed class MountOverrideByNameTests : IDisposable
 
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(extra, "/extra", "rw")] });
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(extra, "/extra", "rw")], AllowExternalMounts = true });
 
         // The operator's, both of them — /data is the one that used to vanish under the
         // index-0 rule — alongside what the run added.
@@ -178,6 +178,7 @@ public sealed class MountOverrideByNameTests : IDisposable
             {
                 CliMounts = [Spec(crew, "/crew", "ro")],
                 InternalMounts = [Spec(logs, RunnerVirtualRoots.LlmLogs, "rw")],
+                AllowExternalMounts = true,
             });
 
         var mounts = MountsByRoot(host);
@@ -201,24 +202,19 @@ public sealed class MountOverrideByNameTests : IDisposable
     public void A_settings_declared_mount_outside_the_cwd_is_whitelisted_for_the_path_validator()
     {
         var declared = SubDir("declared");
-        var extra = SubDir("extra");
-        var crew = SubDir("crew");
         File.WriteAllText(Path.Combine(declared, "invoice.txt"), "x");
-        File.WriteAllText(Path.Combine(extra, "note.txt"), "x");
         Assert.False(PhysicalPathContainment.IsUnder(declared, Directory.GetCurrentDirectory()));
         var settingsPath = WriteSettings([Spec(declared, "/data", "ro")]);
 
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(extra, "/extra", "ro")] });
+            new RunnerMountPlan());
 
         var whitelist = host.Services.GetRequiredService<IOptions<PathSecurityOptions>>().Value.AdditionalAllowedDirectories;
         Assert.Contains(declared, whitelist);
-        Assert.DoesNotContain(extra, whitelist);
 
         var fileSystem = host.Services.GetRequiredService<IFileSystemService>();
         Assert.True(fileSystem.ResolveAndValidate("/data/invoice.txt", FileAccessRights.Read).IsAllowed);
-        Assert.False(fileSystem.ResolveAndValidate("/extra/note.txt", FileAccessRights.Read).IsAllowed);
     }
 
     private static string IdSpec(MountId id, string directory, string virtualPath, string rights) =>
@@ -243,7 +239,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         using var logs = new CapturingLoggerProvider();
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(run, "/output", "rw")] },
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(run, "/output", "rw")], AllowExternalMounts = true },
             configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
 
         var mounts = MountsByRoot(host);
@@ -282,7 +278,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         using var logs = new CapturingLoggerProvider();
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB] },
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB], AllowExternalMounts = true },
             configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
 
         var mounts = MountsByRoot(host);
@@ -321,6 +317,7 @@ public sealed class MountOverrideByNameTests : IDisposable
             {
                 CliMounts = [Spec(crew, "/crew", "ro")],
                 CrewMountReferences = [MountReference.ForId(idA, "/output")],
+                AllowExternalMounts = true,
             },
             configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
 
@@ -373,13 +370,13 @@ public sealed class MountOverrideByNameTests : IDisposable
         try
         {
             var ex = Assert.Throws<RunnerSettingsException>(() =>
-                RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")] }));
+                RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], AllowExternalMounts = true }));
             Assert.Contains("nothing selects one", ex.Message, StringComparison.Ordinal);
             Assert.DoesNotContain("Duplicate virtual paths", ex.Message, StringComparison.Ordinal);
 
             using var host = RunnerHost.Build(
                 settingsPath,
-                new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB] });
+                new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB], AllowExternalMounts = true });
             Assert.Equal(b, MountsByRoot(host)["/output"].BasePath);
         }
         finally
