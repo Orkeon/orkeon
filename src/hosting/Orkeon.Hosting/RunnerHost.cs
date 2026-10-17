@@ -31,6 +31,8 @@ using Orkeon.Tools.Analysis.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.Drive.Configuration;
+using Orkeon.Tools.Drive.DependencyInjection;
 using Orkeon.Tools.Email.Configuration;
 using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.EventHub.DependencyInjection;
@@ -164,7 +166,7 @@ public static partial class RunnerHost
                 throw new RunnerSettingsException(refusal);
 
             LogMountDecisions(host, decisions);
-            WarnIfEmailTokensUnavailable(host, decisions);
+            WarnIfTokensUnavailable(host, decisions);
             AnnounceSettingsNotices(host.Services, WarnOnStderr);
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
             ActivateTelemetry(host);
@@ -446,31 +448,35 @@ public static partial class RunnerHost
 
         public MountSelectionPlan Plan { get; set; } = MountSelectionPlan.Empty;
 
-        /// <summary>Why the OAuth accounts of the settings have no token store in this run, when they have none.</summary>
-        public string? EmailTokensUnavailable { get; set; }
+        /// <summary>Why OAuth accounts of the settings (e-mail, drive) have no token store in this run, one sentence per cause.</summary>
+        public List<string> TokensUnavailable { get; } = [];
 
         /// <summary>The profile <c>--llm-profile</c> elected as the run's default, by its key in the settings; null when none.</summary>
         public string? ElectedLlmProfile { get; set; }
     }
 
     /// <summary>
-    /// An OAuth e-mail account is declared, but the runner could not provide its token store:
-    /// said once, on the log and on stderr, because the run goes on — a crew that sends no mail
-    /// must not fail for it — and each e-mail call of such an account will then refuse.
+    /// An OAuth e-mail or drive account is declared, but the runner could not provide its token
+    /// store as asked: said once, on the log and on stderr, because the run goes on — a crew that
+    /// sends no mail and opens no drive must not fail for it — and each call of such an account
+    /// will then refuse.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static void WarnIfEmailTokensUnavailable(IHost host, MountDecisions decisions)
+    private static void WarnIfTokensUnavailable(IHost host, MountDecisions decisions)
     {
-        if (decisions.EmailTokensUnavailable is not { } reason)
+        if (decisions.TokensUnavailable.Count == 0)
             return;
 
-        Console.Error.WriteLine("WARNING: " + reason);
         var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.RunnerHost");
-        LogEmailTokensUnavailable(logger, reason);
+        foreach (var reason in decisions.TokensUnavailable)
+        {
+            Console.Error.WriteLine("WARNING: " + reason);
+            LogTokensUnavailable(logger, reason);
+        }
     }
 
     [LoggerMessage(EventId = 8, Level = LogLevel.Warning, Message = "{Reason}")]
-    private static partial void LogEmailTokensUnavailable(ILogger logger, string reason);
+    private static partial void LogTokensUnavailable(ILogger logger, string reason);
 
     /// <summary>
     /// OpenTelemetry creates its tracer and meter providers in a hosted service, and the
@@ -723,7 +729,7 @@ public static partial class RunnerHost
     /// <para>
     /// That mounts half is <see cref="PlaceMounts"/>, which <c>orkeon-repl</c> applies to its own
     /// layers through <see cref="ConfigureMounts"/> (GAP-49, decision 3). The runner adds what only a
-    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail accounts.
+    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail and drive accounts.
     /// </para>
     /// </summary>
     /// <param name="builder">The host's configuration builder.</param>
@@ -750,8 +756,9 @@ public static partial class RunnerHost
         var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
 
         // The runner's own Internal mount, after the others: the token store of the OAuth e-mail
-        // accounts (ADR-012). Planning it refuses any mount claiming /credentials, whatever its layer.
-        var credentialsDirectory = PlanEmailCredentials(
+        // and drive accounts (ADR-012, ADR-013). Planning it refuses any mount claiming
+        // /credentials, whatever its layer.
+        var credentialsDirectory = PlanCredentials(
             declared, placement.DeclaredMounts, placement.DeclaredInternal, mounts.CliMounts, settingsPath, decisions);
         if (credentialsDirectory is not null)
         {
@@ -975,18 +982,21 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// Where the OAuth tokens of the declared e-mail accounts live, creating the directory and
-    /// its <c>email</c> subdirectory, or null when no account signs in with OAuth2 — no mount,
-    /// then, and nothing created. The directory sits next to the per-user settings unless the
-    /// operator names one (<c>Orkeon:Tools:Email:CredentialsDirectory</c>, for a service
-    /// account; a relative one is read from the settings file's directory). On Unix the
-    /// subdirectory holding the tokens is owner-only, narrowed to it if it already existed wider.
-    /// A directory that cannot be prepared is reported in <paramref name="decisions"/>, not
-    /// thrown: the run goes on and only the OAuth accounts refuse. A user mount claiming
-    /// <see cref="RunnerVirtualRoots.Credentials"/> is refused whatever the accounts: the root
-    /// is reserved, like the other internal ones.
+    /// Where the OAuth tokens of the declared e-mail and drive accounts live, creating the
+    /// directory and the subdirectory of each family that needs one (<c>email</c>, <c>drive</c>),
+    /// or null when no account signs in with OAuth2 — no mount, then, and nothing created. The
+    /// directory sits next to the per-user settings unless the operator names one
+    /// (<c>Orkeon:Tools:Email:CredentialsDirectory</c> or <c>Orkeon:Tools:Drive:CredentialsDirectory</c>,
+    /// for a service account; a relative one is read from the settings file's directory). The
+    /// runner keeps one credentials directory: when the two families name different ones, the
+    /// e-mail family's wins and the drive's is said to be ignored. On Unix each subdirectory
+    /// holding tokens is owner-only, narrowed to it if it already existed wider. A directory that
+    /// cannot be prepared is reported in <paramref name="decisions"/>, not thrown: the run goes on
+    /// and only the OAuth accounts refuse. A user mount claiming
+    /// <see cref="RunnerVirtualRoots.Credentials"/> is refused whatever the accounts: the root is
+    /// reserved, like the other internal ones.
     /// </summary>
-    private static string? PlanEmailCredentials(
+    private static string? PlanCredentials(
         DeclaredConfiguration declared,
         List<(int Index, string? Value)> declaredMounts,
         List<(int Index, string? Value)> declaredInternal,
@@ -1002,18 +1012,32 @@ public static partial class RunnerHost
         if (claimed)
         {
             throw new RunnerSettingsException(
-                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail accounts there. Mount the folder under another name.");
+                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail and drive accounts there. Mount the folder under another name.");
         }
 
-        var section = declared.Section(ConfigurationKeys.ToolsEmail);
-        if (section is null || !section.Exists() || !EmailCredentialsLocation.NeedsTokenStore(section))
+        var email = declared.Section(ConfigurationKeys.ToolsEmail);
+        var drive = declared.Section(ConfigurationKeys.ToolsDrive);
+        var emailNeeds = email is not null && email.Exists() && EmailCredentialsLocation.NeedsTokenStore(email);
+        var driveNeeds = drive is not null && drive.Exists() && DriveCredentialsLocation.NeedsTokenStore(drive);
+        if (!emailNeeds && !driveNeeds)
             return null;
 
-        var directory = EmailCredentialsLocation.ConfiguredDirectory(section) ?? DefaultCredentialsDirectory();
+        var emailDirectory = emailNeeds ? EmailCredentialsLocation.ConfiguredDirectory(email!) : null;
+        var driveDirectory = driveNeeds ? DriveCredentialsLocation.ConfiguredDirectory(drive!) : null;
+        if (emailDirectory is not null && driveDirectory is not null && !string.Equals(emailDirectory, driveDirectory, StringComparison.Ordinal))
+        {
+            decisions.TokensUnavailable.Add(
+                $"{ConfigurationKeys.ToolsDrive}:CredentialsDirectory ({driveDirectory}) differs from {ConfigurationKeys.ToolsEmail}:CredentialsDirectory ({emailDirectory}): " +
+                "the runner keeps one credentials directory, the e-mail one, and the drive tokens go there too.");
+        }
+
+        var directory = emailDirectory ?? driveDirectory ?? DefaultCredentialsDirectory();
+        var families = string.Join(" and ", new[] { emailNeeds ? "e-mail" : null, driveNeeds ? "drive" : null }.OfType<string>());
         if (directory is null)
         {
-            decisions.EmailTokensUnavailable =
-                $"No per-user settings directory can be found to keep the OAuth tokens of e-mail accounts: set {ConfigurationKeys.ToolsEmail}:CredentialsDirectory.";
+            decisions.TokensUnavailable.Add(
+                $"No per-user settings directory can be found to keep the OAuth tokens of {families} accounts: set " +
+                $"{(emailNeeds ? ConfigurationKeys.ToolsEmail : ConfigurationKeys.ToolsDrive)}:CredentialsDirectory.");
             return null;
         }
 
@@ -1023,29 +1047,37 @@ public static partial class RunnerHost
             // different directories share one token store.
             var settingsDirectory = settingsPath is null ? null : Path.GetDirectoryName(Path.GetFullPath(settingsPath));
             directory = Path.GetFullPath(settingsDirectory is null ? directory : Path.Combine(settingsDirectory, directory));
-            var tokens = Path.Combine(directory, EmailCredentialsLocation.TokenSubdirectory);
-            if (OperatingSystem.IsWindows())
-            {
-                Directory.CreateDirectory(tokens);
-            }
-            else
-            {
-                // The mode applies to the one directory each call creates, never to its parents.
-                const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
-                Directory.CreateDirectory(directory, ownerOnly);
-                Directory.CreateDirectory(tokens, ownerOnly);
-                if ((File.GetUnixFileMode(tokens) & ~ownerOnly) != 0)
-                    File.SetUnixFileMode(tokens, ownerOnly);
-            }
+            if (emailNeeds)
+                PrepareTokenDirectory(directory, EmailCredentialsLocation.TokenSubdirectory);
+            if (driveNeeds)
+                PrepareTokenDirectory(directory, DriveCredentialsLocation.TokenSubdirectory);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            decisions.EmailTokensUnavailable =
-                $"The directory of the e-mail OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth e-mail accounts have no token store in this run.";
+            decisions.TokensUnavailable.Add(
+                $"The directory of the {families} OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth {families} accounts have no token store in this run.");
             return null;
         }
 
         return directory;
+    }
+
+    /// <summary>Creates <paramref name="subdirectory"/> of <paramref name="directory"/>, owner-only on Unix.</summary>
+    private static void PrepareTokenDirectory(string directory, string subdirectory)
+    {
+        var tokens = Path.Combine(directory, subdirectory);
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(tokens);
+            return;
+        }
+
+        // The mode applies to the one directory each call creates, never to its parents.
+        const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        Directory.CreateDirectory(directory, ownerOnly);
+        Directory.CreateDirectory(tokens, ownerOnly);
+        if ((File.GetUnixFileMode(tokens) & ~ownerOnly) != 0)
+            File.SetUnixFileMode(tokens, ownerOnly);
     }
 
     /// <summary>
@@ -1247,6 +1279,17 @@ public static partial class RunnerHost
             services.AddOrkeonEmailTokenStore(
                 sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
                 $"{RunnerVirtualRoots.Credentials}/{EmailCredentialsLocation.TokenSubdirectory}");
+        }
+
+        // Drive (DRIVE): the eleven drive_* tools (Google Drive, OneDrive), inert until an
+        // account is declared under Orkeon:Tools:Drive. Their tokens share the internal
+        // /credentials root with the e-mail family's, in a subdirectory of their own (ADR-013).
+        services.AddOrkeonDriveTools(context.Configuration);
+        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
+        {
+            services.AddOrkeonDriveTokenStore(
+                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
+                $"{RunnerVirtualRoots.Credentials}/{DriveCredentialsLocation.TokenSubdirectory}");
         }
 
         // RAG (GAP-02): the subsystem and its three agent tools, for every runner — YAML
