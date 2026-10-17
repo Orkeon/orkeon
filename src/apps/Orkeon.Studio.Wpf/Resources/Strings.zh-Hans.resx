@@ -2448,10 +2448,10 @@
     <value>添加智能体</value>
   </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
-    <value>{0}（读取）</value>
+    <value>{0} · 读取</value>
   </data>
   <data name="Studio.Teams.MountRw" xml:space="preserve">
-    <value>{0}（读取、写入）</value>
+    <value>{0} · 读取、写入</value>
   </data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>无法读取的文件夹</value>
@@ -3434,7 +3434,7 @@
     <value>它包含什么、团队应如何使用——助手会遵循这些说明。</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>点击切换：由团队读取，或由团队写入。</value>
+    <value>只读，或读写。</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>您的需求未指定任何文件夹：这是标准建议。如有需要可重命名文件夹，说明每个文件夹的位置，然后确认：团队将只使用这些文件夹。</value>
@@ -3473,7 +3473,7 @@
     <value>读取</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>写入</value>
+    <value>读取、写入</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>尚未选择文件夹</value>
@@ -3531,4 +3531,5 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>执行</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>缓冲</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>缓冲（回退）</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>更改</value></data>
 </root>

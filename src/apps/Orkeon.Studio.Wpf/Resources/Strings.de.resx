@@ -2448,10 +2448,10 @@
     <value>Agent hinzufügen</value>
   </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
-    <value>{0} (Lesen)</value>
+    <value>{0} · Lesen</value>
   </data>
   <data name="Studio.Teams.MountRw" xml:space="preserve">
-    <value>{0} (Lesen, Schreiben)</value>
+    <value>{0} · Lesen, Schreiben</value>
   </data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>unlesbarer Ordner</value>
@@ -3434,7 +3434,7 @@
     <value>Was er enthält und wie das Team ihn nutzen soll — der Assistent folgt diesen Hinweisen.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Klicken zum Wechseln: vom Team gelesen oder geschrieben.</value>
+    <value>Nur lesen, oder lesen und schreiben.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Ihre Anfrage nennt keinen Ordner: dies ist der Standardvorschlag. Benennen Sie einen Ordner bei Bedarf um, sagen Sie, wo jeder liegt, und bestätigen Sie: das Team verwendet genau diese.</value>
@@ -3470,10 +3470,10 @@
     <value>Weiter</value>
   </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
-    <value>gelesen</value>
+    <value>Lesen</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>geschrieben</value>
+    <value>Lesen, Schreiben</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>noch kein Ordner gewählt</value>
@@ -3531,4 +3531,5 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Ausführung</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>Gepuffert</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>Gepuffert (Rückfall)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Ändern</value></data>
 </root>

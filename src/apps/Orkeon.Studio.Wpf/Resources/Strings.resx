@@ -861,8 +861,8 @@
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Edit</value></data>
   <data name="Studio.Create.AddAgent" xml:space="preserve"><value>Add an agent</value></data>
-  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} (read)</value></data>
-  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} (read, write)</value></data>
+  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · read</value></data>
+  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · read, write</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>unreadable folder</value></data>
   <data name="Studio.Teams.ToTest" xml:space="preserve"><value>to try</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
@@ -1758,7 +1758,7 @@
     <value>What it holds and how the team must use it — the assistant follows these notes.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Click to switch: read by the team, or written by it.</value>
+    <value>Read only, or read and write.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Your request names no folder: this is the standard proposal. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.</value>
@@ -1797,7 +1797,7 @@
     <value>read</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>written</value>
+    <value>read, write</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>no folder chosen yet</value>
@@ -1855,4 +1855,5 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Execution</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>Buffer</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>Buffer (fallback)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Change</value></data>
 </root>

@@ -532,10 +532,10 @@ public static class StudioStringKeys
     /// <summary>"Choose where to export the team" — the export destination browser's caption.</summary>
     public const string DialogExportDestination = "Studio.Settings.ExportDestination";
 
-    /// <summary>"{0} (read)" — a team card's read-only mount chip.</summary>
+    /// <summary>"{0} · read" — a team card's read-only mount chip.</summary>
     public const string TeamsMountRo = "Studio.Teams.MountRo";
 
-    /// <summary>"{0} (read, write)" — a team card's writable mount chip.</summary>
+    /// <summary>"{0} · read, write" — a team card's writable mount chip.</summary>
     public const string TeamsMountRw = "Studio.Teams.MountRw";
 
     /// <summary>
@@ -2118,7 +2118,7 @@ public static class StudioStringKeys
     /// <summary>"read" — the role of an input folder on the Folders step (STUDIO-46).</summary>
     public const string WizardFolderRoleInput = "Studio.Create.FolderRoleInput";
 
-    /// <summary>"written" — the role of an output folder on the Folders step.</summary>
+    /// <summary>"read, write" — the role of an output folder on the Folders step.</summary>
     public const string WizardFolderRoleOutput = "Studio.Create.FolderRoleOutput";
 
     /// <summary>"no folder chosen yet" — an input folder nothing answers yet.</summary>
@@ -2313,8 +2313,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.AgentEditorAdd] = "Add to the team",
         [StudioStringKeys.ActSave] = "Save",
         [StudioStringKeys.DialogExportDestination] = "Choose where to export the team",
-        [StudioStringKeys.TeamsMountRo] = "{0} (read)",
-        [StudioStringKeys.TeamsMountRw] = "{0} (read, write)",
+        [StudioStringKeys.TeamsMountRo] = "{0} · read",
+        [StudioStringKeys.TeamsMountRw] = "{0} · read, write",
         [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
         [StudioStringKeys.TeamsToTest] = "to try",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
@@ -3052,7 +3052,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-14 wizard: where a team's folders live; STUDIO-46: the Folders step
         [StudioStringKeys.WizardFolderRoleInput] = "read",
-        [StudioStringKeys.WizardFolderRoleOutput] = "written",
+        [StudioStringKeys.WizardFolderRoleOutput] = "read, write",
         [StudioStringKeys.WizardFolderNotChosen] = "no folder chosen yet",
         [StudioStringKeys.WizardFolderInvalidName] = "« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
         [StudioStringKeys.WizardFolderTwice] = "{0} is listed twice.",

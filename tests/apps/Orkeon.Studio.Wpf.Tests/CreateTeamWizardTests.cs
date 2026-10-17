@@ -1636,7 +1636,7 @@ public partial class CreateTeamWizardTests
             Assert.True(wizard.IsFoldersStep);
             Assert.True(wizard.IsEngineWaitingOnUser);
             Assert.Equal(["/inpdf", "/outmd"], wizard.FolderRows.Select(r => r.VirtualPath));
-            Assert.Equal(["read", "written"], wizard.FolderRows.Select(r => r.RoleLabel));
+            Assert.Equal(["read", "read, write"], wizard.FolderRows.Select(r => r.RoleLabel));
             Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
             Assert.True(wizard.FolderRows[0].IsUnanswered);
             Assert.Equal("no folder chosen yet", wizard.FolderRows[0].FolderLabel);
@@ -1776,7 +1776,7 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.False(vm.IsFillingFolders);
         Assert.Equal(["/inpdf", "/outmd"], vm.HeldFolderRows.Select(r => r.VirtualPath));
-        Assert.Equal(["read", "written"], vm.HeldFolderRows.Select(r => r.RoleLabel));
+        Assert.Equal(["read", "read, write"], vm.HeldFolderRows.Select(r => r.RoleLabel));
         Assert.Equal("/ws/.orkeon/forge/veille/folders/inpdf", vm.HeldFolderRows[0].Directory);
         Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
         Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
@@ -1848,7 +1848,7 @@ public partial class CreateTeamWizardTests
 
             added.ToggleRoleCommand.Execute(null);
             Assert.False(added.IsInput);
-            Assert.Equal("written", added.RoleLabel);
+            Assert.Equal("read, write", added.RoleLabel);
             Assert.True(added.IsInsideTeam);
             added.VirtualPath = "/rapports";
             added.Purpose = "  un compte rendu par envoi, en Markdown  ";

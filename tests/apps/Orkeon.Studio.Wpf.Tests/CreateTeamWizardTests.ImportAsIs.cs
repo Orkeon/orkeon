@@ -128,7 +128,7 @@ public partial class CreateTeamWizardTests
             Assert.False(import.IsImporting);
             Assert.Equal($"Team “{EmailTriageTeam}” is saved in My teams.", import.ImportedLine);
             Assert.Equal("Declared folders", import.FoldersReport!.Title);
-            Assert.Equal("2 folder(s): /data (read), /output (read, write)", import.FoldersReport.Detail);
+            Assert.Equal("2 folder(s): /data · read, /output · read, write", import.FoldersReport.Detail);
 
             // My teams: a card with a name, a description and « Modify » active (D-04).
             var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = teamsRoot, LoadSessions = () => [] });
@@ -137,7 +137,7 @@ public partial class CreateTeamWizardTests
             Assert.Equal("Trier mes e-mails et préparer les réponses", card.Description);
             Assert.True(card.CanModify);
             Assert.True(card.ModifyCommand.CanExecute(null));
-            Assert.Equal(["/data (read)", "/output (read, write)"], card.MountChips.Select(chip => chip.Label));
+            Assert.Equal(["/data · read", "/output · read, write"], card.MountChips.Select(chip => chip.Label));
         }
         finally
         {
