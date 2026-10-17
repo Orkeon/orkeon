@@ -96,6 +96,14 @@ internal sealed class FakeDrive : IDrive
     public Task<DrivePage> ListAsync(string folderId, int limit, string? cursor, CancellationToken cancellationToken)
     {
         ListLimits.Add(limit);
+        // A cursor written "folder:<id>" lists that folder instead, as a forged OneDrive cursor
+        // (an address of another folder) would.
+        if (cursor is not null && cursor.StartsWith("folder:", StringComparison.Ordinal))
+        {
+            folderId = cursor["folder:".Length..];
+            cursor = null;
+        }
+
         var children = _items.Values.Where(item => item.ParentId == folderId).OrderByDescending(item => item.IsFolder).ThenBy(item => item.Name, StringComparer.Ordinal).ToList();
         var start = cursor is null ? 0 : int.Parse(cursor, System.Globalization.CultureInfo.InvariantCulture);
         var page = children.Skip(start).Take(limit).ToList();

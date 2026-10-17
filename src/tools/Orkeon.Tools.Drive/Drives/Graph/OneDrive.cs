@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
@@ -25,7 +24,7 @@ internal sealed partial class OneDrive : IDrive
     private const string RootPathPrefix = "root:";
 
     private readonly DriveApiClient _api;
-    private readonly ConcurrentDictionary<string, string?> _parents = new(StringComparer.Ordinal);
+    private readonly ParentChain _parents;
     private DriveItem? _root;
 
     /// <summary>Creates the drive of the account <paramref name="api"/> speaks for.</summary>
@@ -33,6 +32,7 @@ internal sealed partial class OneDrive : IDrive
     {
         ArgumentNullException.ThrowIfNull(api);
         _api = api;
+        _parents = new ParentChain(FetchParentAsync);
     }
 
     /// <inheritdoc />
@@ -81,7 +81,7 @@ internal sealed partial class OneDrive : IDrive
     public async Task<DriveItem> GetItemAsync(string id, CancellationToken cancellationToken)
     {
         using var document = await _api.GetJsonAsync(Item(id, $"?$select={ItemFields}"), cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        return _parents.Remember(ToItem(document.RootElement));
     }
 
     /// <inheritdoc />
@@ -91,25 +91,19 @@ internal sealed partial class OneDrive : IDrive
         ArgumentNullException.ThrowIfNull(root);
         if (item.Id == root.Id)
             return true;
-        if (Account.Root.Count == 0)
-            return true;
 
         // The path, when Graph gives it, answers at once; a search result may come without one.
+        // It is a path within one drive: an item shared from another drive is never inside.
         if (item.ParentPath is { } parentPath && FullPath(root) is { } rootPath)
         {
+            if (item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase))
+                return false;
+
             return string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase)
                 || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase);
         }
 
-        var current = item.ParentId;
-        for (var depth = 0; current is not null && depth < DriveDefaults.MaxRootDepth; depth++)
-        {
-            if (current == root.Id)
-                return true;
-            current = await ParentOfAsync(current, cancellationToken).ConfigureAwait(false);
-        }
-
-        return false;
+        return await _parents.ReachesAsync(item, root.Id, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -176,7 +170,7 @@ internal sealed partial class OneDrive : IDrive
     {
         var body = new JsonObject { ["name"] = name, ["folder"] = new JsonObject(), [ConflictBehavior] = "fail" };
         using var document = await _api.SendJsonAsync(HttpMethod.Post, Item(parentId, $"/children?$select={ItemFields}"), body, cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        return _parents.Remember(ToItem(document.RootElement));
     }
 
     /// <inheritdoc />
@@ -189,7 +183,7 @@ internal sealed partial class OneDrive : IDrive
             var response = await _api.SendAsync(
                 HttpMethod.Put, Graph($"me/drive/items/{target}/content?{ConflictBehavior}=fail"), () => UploadContents.Whole(upload), cancellationToken).ConfigureAwait(false);
             using var document = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
-            return Remember(ToItem(document.RootElement));
+            return _parents.Remember(ToItem(document.RootElement));
         }
 
         return await SessionUploadAsync(Graph($"me/drive/items/{target}/createUploadSession"), "fail", upload, cancellationToken).ConfigureAwait(false);
@@ -203,7 +197,7 @@ internal sealed partial class OneDrive : IDrive
         {
             var response = await _api.SendAsync(HttpMethod.Put, Item(id, "/content"), () => UploadContents.Whole(upload), cancellationToken).ConfigureAwait(false);
             using var document = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
-            return Remember(ToItem(document.RootElement));
+            return _parents.Remember(ToItem(document.RootElement));
         }
 
         return await SessionUploadAsync(Item(id, "/createUploadSession"), "replace", upload, cancellationToken).ConfigureAwait(false);
@@ -219,7 +213,7 @@ internal sealed partial class OneDrive : IDrive
         if (newName is not null)
             body["name"] = newName;
         using var document = await _api.SendJsonAsync(HttpMethod.Patch, Item(item.Id, $"?$select={ItemFields}"), body, cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        return _parents.Remember(ToItem(document.RootElement));
     }
 
     /// <inheritdoc />
@@ -227,14 +221,14 @@ internal sealed partial class OneDrive : IDrive
     {
         // Graph's DELETE moves the item to the recycle bin.
         using var _ = await _api.SendJsonAsync(HttpMethod.Delete, Item(id, string.Empty), body: null, cancellationToken).ConfigureAwait(false);
-        _parents.TryRemove(id, out var _);
+        _parents.Forget(id);
     }
 
     /// <inheritdoc />
     public async Task DeletePermanentlyAsync(string id, CancellationToken cancellationToken)
     {
         using var _ = await _api.SendJsonAsync(HttpMethod.Post, Item(id, "/permanentDelete"), body: null, cancellationToken).ConfigureAwait(false);
-        _parents.TryRemove(id, out var _);
+        _parents.Forget(id);
     }
 
     /// <inheritdoc />
@@ -271,11 +265,12 @@ internal sealed partial class OneDrive : IDrive
         if (item.TryGetProperty("file", out var file))
             mimeType = Text(file, "mimeType");
 
-        string? parentId = null, parentPath = null;
+        string? parentId = null, parentPath = null, driveId = null;
         if (item.TryGetProperty("parentReference", out var parent) && parent.ValueKind == JsonValueKind.Object)
         {
             parentId = Text(parent, "id");
             parentPath = NormalizePath(Text(parent, "path"));
+            driveId = Text(parent, "driveId");
         }
 
         return new DriveItem
@@ -289,6 +284,7 @@ internal sealed partial class OneDrive : IDrive
                 && DateTimeOffset.TryParse(modified, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var when) ? when : null,
             ParentId = parentId,
             ParentPath = parentPath,
+            DriveId = driveId,
             WebUrl = Text(item, "webUrl"),
         };
     }
@@ -384,24 +380,14 @@ internal sealed partial class OneDrive : IDrive
             }
 
             using var document = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
-            return Remember(ToItem(document.RootElement));
+            return _parents.Remember(ToItem(document.RootElement));
         }
     }
 
-    private async Task<string?> ParentOfAsync(string id, CancellationToken cancellationToken)
+    private async Task<string?> FetchParentAsync(string id, CancellationToken cancellationToken)
     {
-        if (_parents.TryGetValue(id, out var known))
-            return known;
         using var document = await _api.GetJsonAsync(Item(id, "?$select=id,parentReference"), cancellationToken).ConfigureAwait(false);
-        var parent = document.RootElement.TryGetProperty("parentReference", out var reference) ? Text(reference, "id") : null;
-        _parents[id] = parent;
-        return parent;
-    }
-
-    private DriveItem Remember(DriveItem item)
-    {
-        _parents[item.Id] = item.ParentId;
-        return item;
+        return document.RootElement.TryGetProperty("parentReference", out var reference) ? Text(reference, "id") : null;
     }
 
     private Uri Cursor(string cursor, int limit)
@@ -422,7 +408,7 @@ internal sealed partial class OneDrive : IDrive
 
     private List<DriveItem> ReadValues(JsonElement root) =>
         root.TryGetProperty("value", out var values) && values.ValueKind == JsonValueKind.Array
-            ? values.EnumerateArray().Select(ToItem).Select(Remember).ToList()
+            ? values.EnumerateArray().Select(ToItem).Select(_parents.Remember).ToList()
             : [];
 
     private static string? NextLink(JsonElement root) => Text(root, "@odata.nextLink");

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Tools.Drive.Tools;
@@ -9,10 +10,23 @@ internal static class FileNames
 
     private static readonly char[] Forbidden = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
 
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    };
+
     /// <summary><paramref name="name"/> stripped of what a file name may not hold; <c>file</c> when nothing is left.</summary>
+    /// <remarks>
+    /// A drive item's name is chosen by whoever shared it: a format character (U+202E) would show
+    /// "invoice\u202Efdp.exe" as "invoiceexe.pdf", and a device name (CON) cannot be written on Windows.
+    /// </remarks>
     public static string Sanitize(string? name)
     {
-        var cleaned = new string((name ?? string.Empty).Select(c => char.IsControl(c) || Forbidden.Contains(c) ? '_' : c).ToArray()).Trim().Trim('.');
+        var cleaned = new string((name ?? string.Empty)
+            .Select(c => char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format || Forbidden.Contains(c) ? '_' : c)
+            .ToArray()).Trim().Trim('.');
         if (cleaned.Length == 0)
             return "file";
 
@@ -20,7 +34,14 @@ internal static class FileNames
         var stem = cleaned[..^extension.Length];
         if (stem.Length > MaxStemLength)
             stem = stem[..MaxStemLength];
-        return stem.Length == 0 ? "file" + extension : stem + extension;
+        if (stem.Length == 0)
+            return "file" + extension;
+
+        // Windows reserves a device name whatever follows its first dot: CON.tar.gz is CON too.
+        var dot = stem.IndexOf('.', StringComparison.Ordinal);
+        if (ReservedDeviceNames.Contains((dot < 0 ? stem : stem[..dot]).TrimEnd(' ')))
+            stem = "_" + stem;
+        return stem + extension;
     }
 
     /// <summary>The first free path for <paramref name="name"/> in <paramref name="directory"/>: <c>name.ext</c>, then <c>name (2).ext</c>…</summary>

@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Two providers, plain HTTP, no new package.** Google Drive through the Drive API v3 (folders
   found by name under each parent; Google Docs, Sheets, Slides and Drawings read and downloaded by
   export) and OneDrive — personal or for work — through Microsoft Graph. Uploads go through a
-  resumable session (Google) or, above 4 MiB, an upload session in 10 MiB chunks (OneDrive).
+  resumable session in 8 MiB chunks (Google) or, above 4 MiB, an upload session in 10 MiB chunks (OneDrive), so that no request outlives the HTTP timeout.
 - **Configuration `Orkeon:Tools:Drive`**, validated at first use like the e-mail section:
   `DefaultAccount`, `CredentialsDirectory`, `Screening:WithholdRejected`, and per account
   `Provider`, a **mandatory** `Rights` list (`Read`, `Write`, `Organize`, `Share`, `Delete`,

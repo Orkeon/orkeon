@@ -90,6 +90,32 @@ public sealed class RunnerHostDriveCredentialsTests : IDisposable
         Assert.Contains("WARNING: Orkeon:Tools:Drive:CredentialsDirectory (" + drive + ") differs from Orkeon:Tools:Email:CredentialsDirectory", stderr.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_drive_subdirectory_that_cannot_be_prepared_leaves_the_e_mail_token_store_standing()
+    {
+        var tokens = Path.Combine(_root, "tokens");
+        Directory.CreateDirectory(tokens);
+        // A file where the drive subdirectory should be: it cannot be created.
+        File.WriteAllText(Path.Combine(tokens, "drive"), "not a directory");
+        using var stderr = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(WriteSettings(email: EmailSection(tokens), drive: DriveSection(credentialsDirectory: null)), new RunnerMountPlan());
+
+            Assert.Equal(tokens, Assert.Single(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials).BasePath);
+            Assert.IsType<FileSystemEmailTokenStore>(host.Services.GetRequiredService<IEmailTokenStore>());
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.Contains("WARNING: The directory of the drive OAuth tokens", stderr.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("The directory of the e-mail OAuth tokens", stderr.ToString(), StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<FileSystemMount> Mounts(Microsoft.Extensions.Hosting.IHost host) =>
         host.Services.GetService<FileSystemRegistry>()?.GetMounts().ToList() ?? [];
 

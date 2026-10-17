@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -20,7 +19,7 @@ internal sealed class GoogleDrive : IDrive
     private const string ListFields = "nextPageToken,files(" + ItemFields + ")";
 
     private readonly DriveApiClient _api;
-    private readonly ConcurrentDictionary<string, string?> _parents = new(StringComparer.Ordinal);
+    private readonly ParentChain _parents;
     private DriveItem? _root;
 
     /// <summary>Creates the drive of the account <paramref name="api"/> speaks for.</summary>
@@ -28,6 +27,7 @@ internal sealed class GoogleDrive : IDrive
     {
         ArgumentNullException.ThrowIfNull(api);
         _api = api;
+        _parents = new ParentChain(FetchParentAsync);
     }
 
     /// <inheritdoc />
@@ -63,8 +63,7 @@ internal sealed class GoogleDrive : IDrive
     {
         using var document = await _api.GetJsonAsync(FileAddress(id, $"fields={ItemFields}"), cancellationToken).ConfigureAwait(false);
         var item = ToItem(document.RootElement);
-        _parents[item.Id] = item.ParentId;
-        return item;
+        return _parents.Remember(item);
     }
 
     /// <inheritdoc />
@@ -74,19 +73,8 @@ internal sealed class GoogleDrive : IDrive
         ArgumentNullException.ThrowIfNull(root);
         if (item.Id == root.Id)
             return true;
-        // The whole drive: everything the account can open is in reach, shared items included.
-        if (Account.Root.Count == 0)
-            return true;
 
-        var current = item.ParentId;
-        for (var depth = 0; current is not null && depth < DriveDefaults.MaxRootDepth; depth++)
-        {
-            if (current == root.Id)
-                return true;
-            current = await ParentOfAsync(current, cancellationToken).ConfigureAwait(false);
-        }
-
-        return false;
+        return await _parents.ReachesAsync(item, root.Id, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -162,7 +150,7 @@ internal sealed class GoogleDrive : IDrive
             ["parents"] = new JsonArray(parentId),
         };
         using var document = await _api.SendJsonAsync(HttpMethod.Post, FilesAddress($"fields={ItemFields}"), body, cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        return _parents.Remember(ToItem(document.RootElement));
     }
 
     /// <inheritdoc />
@@ -204,7 +192,7 @@ internal sealed class GoogleDrive : IDrive
         if (newName is not null)
             body["name"] = newName;
         using var document = await _api.SendJsonAsync(HttpMethod.Patch, FileAddress(item.Id, query), body, cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        return _parents.Remember(ToItem(document.RootElement));
     }
 
     /// <inheritdoc />
@@ -217,7 +205,7 @@ internal sealed class GoogleDrive : IDrive
     public async Task DeletePermanentlyAsync(string id, CancellationToken cancellationToken)
     {
         using var _ = await _api.SendJsonAsync(HttpMethod.Delete, FileAddress(id, query: null), body: null, cancellationToken).ConfigureAwait(false);
-        _parents.TryRemove(id, out var _);
+        _parents.Forget(id);
     }
 
     /// <inheritdoc />
@@ -233,16 +221,27 @@ internal sealed class GoogleDrive : IDrive
             return new DriveShareResult(item.WebUrl, []);
         }
 
+        var shared = new List<string>(request.Recipients.Count);
         foreach (var recipient in request.Recipients)
         {
             var query = $"fields=id&sendNotificationEmail={(request.Notify ? "true" : "false")}";
             if (request.Notify && !string.IsNullOrWhiteSpace(request.Message))
                 query += $"&emailMessage={Uri.EscapeDataString(request.Message)}";
-            using var _ = await _api.SendJsonAsync(
-                HttpMethod.Post,
-                FileAddress(item.Id, "permissions", query),
-                new JsonObject { ["type"] = "user", ["role"] = role, ["emailAddress"] = recipient },
-                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                using var _ = await _api.SendJsonAsync(
+                    HttpMethod.Post,
+                    FileAddress(item.Id, "permissions", query),
+                    new JsonObject { ["type"] = "user", ["role"] = role, ["emailAddress"] = recipient },
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (DriveToolException ex) when (shared.Count > 0)
+            {
+                // One permission per recipient: those granted before the failure stay granted.
+                throw new DriveToolException(ex.Code, $"{ex.Message} Already shared with: {string.Join(", ", shared)}.", ex);
+            }
+
+            shared.Add(recipient);
         }
 
         return new DriveShareResult(item.WebUrl, request.Recipients);
@@ -284,20 +283,16 @@ internal sealed class GoogleDrive : IDrive
             parameters += $"&pageToken={Uri.EscapeDataString(cursor)}";
 
         using var document = await _api.GetJsonAsync(FilesAddress(parameters), cancellationToken).ConfigureAwait(false);
-        var items = ReadFiles(document.RootElement).Select(Remember).ToList();
+        var items = ReadFiles(document.RootElement).Select(_parents.Remember).ToList();
         return new DrivePage(items, Text(document.RootElement, "nextPageToken"));
     }
 
-    private async Task<string?> ParentOfAsync(string id, CancellationToken cancellationToken)
+    private async Task<string?> FetchParentAsync(string id, CancellationToken cancellationToken)
     {
-        if (_parents.TryGetValue(id, out var known))
-            return known;
         using var document = await _api.GetJsonAsync(FileAddress(id, "fields=id,parents"), cancellationToken).ConfigureAwait(false);
-        var parent = document.RootElement.TryGetProperty("parents", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
+        return document.RootElement.TryGetProperty("parents", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
             ? list[0].GetString()
             : null;
-        _parents[id] = parent;
-        return parent;
     }
 
     private async Task RefuseTakenNameAsync(string parentId, string name, CancellationToken cancellationToken, string? except = null)
@@ -333,21 +328,58 @@ internal sealed class GoogleDrive : IDrive
     private async Task<DriveItem> SendSessionAsync(Uri session, DriveUpload upload, CancellationToken cancellationToken)
     {
         // The session address authorizes the upload by itself: the token is not sent again.
-        var response = await _api.SendPreauthenticatedAsync(HttpMethod.Put, session, () => UploadContents.Whole(upload), cancellationToken).ConfigureAwait(false);
-        using var document = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
-        return Remember(ToItem(document.RootElement));
+        if (upload.Length <= DriveDefaults.GoogleChunkBytes)
+        {
+            var whole = await _api.SendPreauthenticatedAsync(HttpMethod.Put, session, () => UploadContents.Whole(upload), cancellationToken).ConfigureAwait(false);
+            using var document = await DriveApiClient.ReadJsonAsync(whole, cancellationToken).ConfigureAwait(false);
+            return _parents.Remember(ToItem(document.RootElement));
+        }
+
+        if (upload.Content.CanSeek)
+            upload.Content.Position = 0;
+        long sent = 0;
+        while (true)
+        {
+            var chunk = await UploadContents.ReadChunkAsync(upload, DriveDefaults.GoogleChunkBytes, cancellationToken).ConfigureAwait(false);
+            if (chunk.Length == 0)
+                throw new DriveToolException(DriveErrorCode.InvalidRequest, "The file ended before its announced length: it changed while it was being uploaded.");
+
+            var first = sent;
+            var last = sent + chunk.Length - 1;
+            var response = await _api.SendPreauthenticatedAsync(HttpMethod.Put, session, () =>
+            {
+                var content = new ByteArrayContent(chunk);
+                content.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(first, last, upload.Length);
+                return content;
+            }, cancellationToken, acceptAnyStatus: true).ConfigureAwait(false);
+            sent += chunk.Length;
+
+            // 308 Resume Incomplete: the chunk is stored, the next one is expected.
+            if ((int)response.StatusCode == 308)
+            {
+                response.Dispose();
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var status = (int)response.StatusCode;
+                using var failure = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
+                var (code, message) = DriveApiClient.ReadError(failure.RootElement.GetRawText());
+                throw new DriveToolException(
+                    DriveErrorCode.ServerError,
+                    string.Create(CultureInfo.InvariantCulture, $"Google Drive stopped the upload at byte {first} with HTTP {status} ({code}: {message})."));
+            }
+
+            using var document = await DriveApiClient.ReadJsonAsync(response, cancellationToken).ConfigureAwait(false);
+            return _parents.Remember(ToItem(document.RootElement));
+        }
     }
 
     private static async Task<DriveContent> ContentOfAsync(HttpResponseMessage response, string mimeType, string fileName, CancellationToken cancellationToken)
     {
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         return new DriveContent(stream, mimeType, fileName, response.Content.Headers.ContentLength, response);
-    }
-
-    private DriveItem Remember(DriveItem item)
-    {
-        _parents[item.Id] = item.ParentId;
-        return item;
     }
 
     private static List<DriveItem> ReadFiles(JsonElement root) =>

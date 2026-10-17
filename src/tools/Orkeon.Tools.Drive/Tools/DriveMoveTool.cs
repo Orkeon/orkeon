@@ -52,7 +52,7 @@ internal sealed class DriveMoveTool : ToolBase<DriveMoveRequest, DriveMoveRespon
         if (!string.IsNullOrWhiteSpace(request.DestinationId))
         {
             var folder = await DriveAccess.FolderAsync(drive, request.DestinationId, cancellationToken).ConfigureAwait(false);
-            if (folder.Id == item.Id || (item.IsFolder && await drive.IsWithinAsync(folder, item, cancellationToken).ConfigureAwait(false) && !IsWholeDriveShortcut(account)))
+            if (folder.Id == item.Id || (item.IsFolder && await drive.IsWithinAsync(folder, item, cancellationToken).ConfigureAwait(false)))
                 throw new DriveToolException(DriveErrorCode.InvalidRequest, $"'{item.Name}' cannot be moved into itself or into one of its own folders.");
             destination = folder.Id;
         }
@@ -60,8 +60,4 @@ internal sealed class DriveMoveTool : ToolBase<DriveMoveRequest, DriveMoveRespon
         var moved = await drive.MoveAsync(item, destination, string.IsNullOrWhiteSpace(request.NewName) ? null : request.NewName.Trim(), cancellationToken).ConfigureAwait(false);
         return new DriveMoveResponse { Account = account.Name, Item = DriveToolHelpers.ToDto(moved, withUrl: true) };
     }
-
-    // An account without a root folder answers every containment check with yes: it cannot tell
-    // a folder's own subtree apart, so the provider refuses such a move itself.
-    private static bool IsWholeDriveShortcut(ResolvedDriveAccount account) => account.Root.Count == 0;
 }

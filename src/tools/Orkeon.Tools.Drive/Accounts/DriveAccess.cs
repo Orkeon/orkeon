@@ -57,7 +57,8 @@ internal sealed class DriveAccess
             return root;
 
         var item = await drive.GetItemAsync(trimmed, cancellationToken).ConfigureAwait(false);
-        if (!await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
+        // The whole drive: everything the account can open is in reach, shared items included.
+        if (drive.Account.Root.Count > 0 && !await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
             throw NotFound(drive.Account, trimmed);
         return item;
     }

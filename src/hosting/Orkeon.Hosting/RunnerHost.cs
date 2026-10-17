@@ -1047,19 +1047,38 @@ public static partial class RunnerHost
             // different directories share one token store.
             var settingsDirectory = settingsPath is null ? null : Path.GetDirectoryName(Path.GetFullPath(settingsPath));
             directory = Path.GetFullPath(settingsDirectory is null ? directory : Path.Combine(settingsDirectory, directory));
-            if (emailNeeds)
-                PrepareTokenDirectory(directory, EmailCredentialsLocation.TokenSubdirectory);
-            if (driveNeeds)
-                PrepareTokenDirectory(directory, DriveCredentialsLocation.TokenSubdirectory);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
         {
             decisions.TokensUnavailable.Add(
                 $"The directory of the {families} OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth {families} accounts have no token store in this run.");
             return null;
         }
 
-        return directory;
+        // Each family's subdirectory on its own: one that cannot be prepared leaves the other's
+        // token store in place, instead of taking both families' OAuth accounts down.
+        var prepared = false;
+        foreach (var (needs, family, subdirectory) in new[]
+                 {
+                     (emailNeeds, "e-mail", EmailCredentialsLocation.TokenSubdirectory),
+                     (driveNeeds, "drive", DriveCredentialsLocation.TokenSubdirectory),
+                 })
+        {
+            if (!needs)
+                continue;
+            try
+            {
+                PrepareTokenDirectory(directory, subdirectory);
+                prepared = true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                decisions.TokensUnavailable.Add(
+                    $"The directory of the {family} OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth {family} accounts have no token store in this run.");
+            }
+        }
+
+        return prepared ? directory : null;
     }
 
     /// <summary>Creates <paramref name="subdirectory"/> of <paramref name="directory"/>, owner-only on Unix.</summary>

@@ -69,6 +69,13 @@ internal static class DriveDefaults
     /// <summary>One chunk of a OneDrive upload session: 10 MiB, a multiple of 320 KiB as Graph requires.</summary>
     public const int OneDriveChunkBytes = 32 * 320 * 1024;
 
+    /// <summary>
+    /// One chunk of a Google resumable upload: 8 MiB, a multiple of 256 KiB as the Drive API
+    /// requires. Each chunk is one request, so no request outlives the HTTP timeout however large
+    /// the file; a file no larger than one chunk goes in a single request.
+    /// </summary>
+    public const int GoogleChunkBytes = 32 * 256 * 1024;
+
     /// <summary>The largest upload an account accepts when it does not say.</summary>
     public const int DefaultMaxUploadMegabytes = 100;
 

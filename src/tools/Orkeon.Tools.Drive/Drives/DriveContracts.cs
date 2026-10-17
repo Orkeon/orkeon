@@ -32,6 +32,12 @@ internal sealed record DriveItem
     /// </summary>
     public string? ParentPath { get; init; }
 
+    /// <summary>
+    /// The id of the drive holding it, when the provider says (OneDrive does): an item shared from
+    /// another drive may carry the same <see cref="ParentPath"/> as one of the account's own.
+    /// </summary>
+    public string? DriveId { get; init; }
+
     /// <summary>The address a person opens it at in a browser.</summary>
     public string? WebUrl { get; init; }
 

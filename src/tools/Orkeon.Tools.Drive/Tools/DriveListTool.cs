@@ -38,7 +38,14 @@ internal sealed class DriveListTool : ToolBase<DriveListRequest, DriveListRespon
 
         var (_, response) = await DriveToolHelpers.FitPageAsync(
             DriveToolHelpers.Limit(request.Limit),
-            limit => drive.ListAsync(folder.Id, limit, request.Cursor, cancellationToken),
+            async limit =>
+            {
+                var page = await drive.ListAsync(folder.Id, limit, request.Cursor, cancellationToken).ConfigureAwait(false);
+                // A cursor is the agent's to pass back, and on OneDrive it is an address: one that
+                // lists another folder (outside the root) must not reach the agent. Only the
+                // children of the folder checked above are kept.
+                return page with { Items = page.Items.Where(item => item.ParentId == folder.Id).ToList() };
+            },
             page => new DriveListResponse
             {
                 Account = account.Name,
