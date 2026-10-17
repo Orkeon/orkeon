@@ -701,6 +701,22 @@ public sealed class LaunchTabViewModelTests
     }
 
     [Fact]
+    public async Task The_outcome_sentence_is_not_repeated_on_the_status_line()
+    {
+        // #117: the verdict line shows the badge and the exit code; the status line keeps
+        // whatever else the tab has to say.
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var (tab, _, _) = Build(probe);
+        tab.Target.Select("/crews/team.yaml");
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(tab.HasResult);
+        Assert.False(string.IsNullOrWhiteSpace(tab.StatusMessage));
+        Assert.False(tab.ShowsStatusMessage);
+    }
+
+    [Fact]
     public async Task Should_ReportCancellation_When_TheTokenIsAlreadyCancelled()
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
@@ -1417,7 +1433,7 @@ public sealed class LaunchScreenFacetsTests
     public void The_team_headline_is_the_normalized_name()
     {
         // STUDIO-16 (D-01/D-03): a sidecar whose name is a pasted README gives a one-line
-        // headline, and the meta line carries the derived summary of the need, not the page.
+        // headline, and the description carries the derived summary of the need, not the page.
         var root = Path.Combine(Path.GetTempPath(), $"orkeon-headline-{Guid.NewGuid():N}");
         try
         {
@@ -1436,8 +1452,9 @@ public sealed class LaunchScreenFacetsTests
 
             Assert.True(tab.HasTeamCard);
             Assert.Equal("Extraction des factures", tab.TeamHeadline);
-            Assert.Contains("Chaque matin, les factures sont lues.", tab.TeamMetaLine, StringComparison.Ordinal);
-            Assert.DoesNotContain("Second paragraphe", tab.TeamMetaLine, StringComparison.Ordinal);
+            // #117: the need has its own line under the meta line, never mixed into it.
+            Assert.Equal("Chaque matin, les factures sont lues.", tab.TeamDescription);
+            Assert.DoesNotContain("Chaque matin", tab.TeamMetaLine, StringComparison.Ordinal);
             Assert.DoesNotContain('\n', tab.TeamMetaLine!);
         }
         finally

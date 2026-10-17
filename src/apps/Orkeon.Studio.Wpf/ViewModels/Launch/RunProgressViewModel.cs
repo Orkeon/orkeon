@@ -210,6 +210,9 @@ public sealed class RunProgressViewModel : ObservableObject
             cost.Model ?? "—")
         : string.Empty;
 
+    /// <summary>The model the meter last reported, for the finished run's summary line; null until it does.</summary>
+    public string? CostModel => _model.Cost?.Model;
+
     /// <summary>Wall time of the finished run, as the stream reported it; null before it ends.</summary>
     public long? FinalDurationMs => _model.FinalDurationMs;
 
@@ -393,6 +396,7 @@ public sealed class RunProgressViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(CostSummary));
+        OnPropertyChanged(nameof(CostModel));
         OnPropertyChanged(nameof(PendingQuestion));
         OnPropertyChanged(nameof(IsAsking));
         OnPropertyChanged(nameof(QuestionPrompt));

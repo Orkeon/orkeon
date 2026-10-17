@@ -3535,4 +3535,12 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Speicherort</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Ordner auf diesem Computer</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Auswählen…</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Erfolgreich</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Abgebrochen</value></data>
+  <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>Exit-Code</value></data>
+  <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENT</value></data>
+  <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>TOOL-AUFRUFE</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DAUER</value></data>
 </root>
