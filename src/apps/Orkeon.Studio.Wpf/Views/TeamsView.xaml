@@ -478,7 +478,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
-                  <WrapPanel VerticalAlignment="Top">
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
                     <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,4" Command="{Binding LaunchCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
@@ -501,51 +501,58 @@
                         <TextBlock Text="{Binding [Studio.Teams.Modify], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                  </WrapPanel>
-                  <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                    <!-- STUDIO-28 (D-07): the folder, the workshop session, the titles and the
-                         schedule follow the new name — Modify only retitles. -->
-                    <Button Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding RenameCommand}"
-                            ToolTip="{Binding [Studio.Teams.RenameTip], Source={x:Static services:I18n.Instance}}">
+                  </StackPanel>
+                  <!-- Filled from the right edge (RightToLeft, children in reverse order, each button
+                       LeftToRight again): a WrapPanel aligned Right is arranged at exactly its
+                       measured width, and the layout rounding of a scaled screen (125 %) made it a
+                       fraction too narrow — the last button wrapped however wide the window. This
+                       one takes the whole column, so it only wraps when the buttons do not fit.
+                       The tab order is the reading order, stated: Rename … Delete. -->
+                  <WrapPanel Grid.Column="1" FlowDirection="RightToLeft" VerticalAlignment="Top" Margin="12,0,0,0"
+                             KeyboardNavigation.TabNavigation="Local">
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="7" Style="{StaticResource BtnQuietDanger}" Margin="0,0,8,4" Command="{Binding AskDeleteCommand}">
                       <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="pencil-line" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
+                        <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding OpenCommand}"
-                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Open], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding DuplicateCommand}"
-                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Duplicate], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ExportCommand}"
-                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Export], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Rectangle Style="{StaticResource VSeparator}"/>
                     <!-- STUDIO-32 (D-02): no question — it is undone in one click: the undo banner follows. -->
-                    <Button Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ArchiveCommand}"
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="6" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ArchiveCommand}"
                             ToolTip="{Binding [Studio.Teams.ArchiveTip], Source={x:Static services:I18n.Instance}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource BtnQuietDanger}" Margin="0,0,8,4" Command="{Binding AskDeleteCommand}">
+                    <Rectangle Style="{StaticResource VSeparator}"/>
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="4" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ExportCommand}"
+                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
+                        <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Export], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="3" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding DuplicateCommand}"
+                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Duplicate], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="2" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding OpenCommand}"
+                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Open], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <!-- STUDIO-28 (D-07): the folder, the workshop session, the titles and the
+                         schedule follow the new name — Modify only retitles. -->
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="1" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding RenameCommand}"
+                            ToolTip="{Binding [Studio.Teams.RenameTip], Source={x:Static services:I18n.Instance}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="pencil-line" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
                   </WrapPanel>
