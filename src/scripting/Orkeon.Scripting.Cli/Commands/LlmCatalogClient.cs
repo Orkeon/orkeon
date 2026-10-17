@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Constants.Llm;
 
 namespace Orkeon.Scripting.Cli.Commands;
@@ -156,7 +157,7 @@ internal static class LlmCatalogClient
         }
 
         if (IsOllama(provider))
-            return new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/tags");
+            return new HttpRequestMessage(HttpMethod.Get, $"{LlmEndpointReading.NativeOllamaRoot(baseUrl)}/api/tags");
 
         if (IsAnthropic(provider))
         {

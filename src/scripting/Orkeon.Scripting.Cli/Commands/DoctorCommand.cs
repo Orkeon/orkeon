@@ -1,5 +1,6 @@
 using Orkeon.Constants.Configuration;
 using Orkeon.Constants.FileSystem;
+using Orkeon.Constants.Llm;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -169,7 +170,7 @@ internal static class DoctorCommand
             CheckInstallChannel(installDirectory),
             CheckAppSettings(llm),
             CheckLlmConfig(llm),
-            CheckLlmProfiles(llm),
+            .. CheckLlmProfiles(llm),
             .. CheckLlmProfileKeys(llm),
             .. CheckRunnerSettings(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
@@ -203,6 +204,10 @@ internal static class DoctorCommand
         public string? ProfilesError { get; init; }
         /// <summary>The <c>ApiKeyEnvVar</c> paths naming a variable set nowhere (<see cref="LlmSettings.UnresolvedApiKeyReferences(IConfiguration)"/>).</summary>
         public IReadOnlyList<string> UnresolvedReferences { get; init; } = [];
+        /// <summary>The phrase for the default address when it says nothing of its provider (no path), else null.</summary>
+        public string? SilentDefault { get; init; }
+        /// <summary>One phrase per profile address that says nothing of its provider.</summary>
+        public IReadOnlyList<string> SilentProfiles { get; init; } = [];
         /// <summary>The variables without a prefix, the settings file, the <c>ORKEON_</c> variables: what a runner reads.</summary>
         public required IConfiguration Configuration { get; init; }
     }
@@ -224,7 +229,7 @@ internal static class DoctorCommand
         var section = configuration.GetSection(ConfigurationKeys.LlmSection);
         var model = Blank(section["Model"]);
         var baseUrl = Blank(section["BaseUrl"]);
-        context = context with { HasLlmSection = true, Model = model, BaseUrl = baseUrl };
+        context = context with { HasLlmSection = true, Model = model, BaseUrl = baseUrl, SilentDefault = SilentAddress(section) };
 
         // The key as a run resolves it (STUDIO-49) — LlmSettings, the reader the runners use,
         // rather than a second reading of Llm:ApiKey that would miss ApiKeyEnvVar.
@@ -239,23 +244,19 @@ internal static class DoctorCommand
             return context with { SettingsError = ex.Message };
         }
 
-        // Reuse the factory's own inference (BaseUrl → model → key) instead of duplicating it.
+        // The provider of the configuration the run reads, built by the factory's own inference.
         try
         {
-            var config = LlmConfig.Create(model ?? "gpt-4") with
-            {
-                BaseUrl = settings.BaseUrl,
-                ApiKey = context.ApiKey,
-            };
             using var httpFactory = new CliHttpClientFactory();
             var factory = new LlmProviderFactory(httpFactory, NullLoggerFactory.Instance);
-            if (factory.Create(config) is LlmProviderAdapter adapter)
+            if (factory.Create(settings) is LlmProviderAdapter adapter)
             {
                 var typeName = MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider).GetType().Name;
+                var reading = LlmEndpointReading.Of(baseUrl, model, context.ApiKey);
                 context = context with
                 {
                     ProviderTypeName = typeName,
-                    ProviderDisplayName = ToDisplayName(typeName),
+                    ProviderDisplayName = ToDisplayName(typeName, reading.ProviderKey),
                 };
             }
         }
@@ -281,6 +282,7 @@ internal static class DoctorCommand
             {
                 Profiles = [.. profiles.Select(p => (p.Name, LlmSettings.DescribeApiKey(section.GetSection(p.Name))))],
                 UnresolvedReferences = LlmSettings.UnresolvedApiKeyReferences(context.Configuration),
+                SilentProfiles = [.. profiles.Select(p => SilentAddress(section.GetSection(p.Name))).OfType<string>()],
             };
         }
         catch (InvalidOperationException ex)
@@ -295,10 +297,24 @@ internal static class DoctorCommand
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
-    private static string ToDisplayName(string providerTypeName) =>
-        providerTypeName
+    /// <summary>The warning phrase when the section's address says nothing of its provider, else null.</summary>
+    private static string? SilentAddress(IConfigurationSection section)
+    {
+        var address = section["BaseUrl"];
+        return !string.IsNullOrWhiteSpace(address)
+            && LlmEndpointReading.Of(address, section["Model"], section["ApiKey"]).Notice == LlmEndpointNotice.Silent
+            ? OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address)
+            : null;
+    }
+
+    private static string ToDisplayName(string providerTypeName, string providerKey) => providerKey switch
+    {
+        LlmProviderKeys.Custom => "OpenAI-compatible (custom)",
+        LlmProviderKeys.DockerModelRunner => "Docker Model Runner",
+        _ => providerTypeName
             .Replace("LlmProvider", "", StringComparison.Ordinal)
-            .Replace("Provider", "", StringComparison.Ordinal);
+            .Replace("Provider", "", StringComparison.Ordinal),
+    };
 
     // ── individual checks ───────────────────────────────────────────────────
 
@@ -388,9 +404,9 @@ internal static class DoctorCommand
         return new DoctorCheckResult
         {
             Check = "llm-config",
-            Status = llm.ProviderDisplayName is not null && !unresolved ? StatusOk : StatusWarn,
+            Status = llm.ProviderDisplayName is not null && !unresolved && llm.SilentDefault is null ? StatusOk : StatusWarn,
             Detail = $"provider {provider}, model {llm.Model ?? "(default)"}, endpoint {llm.BaseUrl ?? "(provider default)"}, " +
-                     $"API key {llm.ApiKeySource}",
+                     $"API key {llm.ApiKeySource}" + (llm.SilentDefault is null ? "" : " — " + llm.SilentDefault),
         };
     }
 
@@ -401,7 +417,11 @@ internal static class DoctorCommand
     private const string DefaultApiKeyReference = ConfigurationKeys.LlmSection + ":" + ConfigurationKeys.LlmApiKeyEnvVar;
 
     /// <summary>One line covers <c>Llm:Profiles</c>: each profile a crew may name, and where its key comes from.</summary>
-    private static DoctorCheckResult CheckLlmProfiles(LlmContext llm)
+    private static IEnumerable<DoctorCheckResult> CheckLlmProfiles(LlmContext llm) =>
+        [CheckLlmProfilesLine(llm), .. llm.SilentProfiles.Select(warning =>
+            new DoctorCheckResult { Check = "llm-profiles", Status = StatusWarn, Detail = warning })];
+
+    private static DoctorCheckResult CheckLlmProfilesLine(LlmContext llm)
     {
         if (llm.ProfilesError is { } error)
             return new DoctorCheckResult { Check = "llm-profiles", Status = StatusFail, Detail = error };

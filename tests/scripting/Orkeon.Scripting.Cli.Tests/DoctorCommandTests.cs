@@ -636,4 +636,60 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Contains("\"ApiKeyEnvVar\": \"DEEPSEEK_API_KEY\"", config.GetProperty("detail").GetString()!, StringComparison.Ordinal);
         Assert.Contains("skipped", ByCheck(doc)["llm-reachability"].GetProperty("detail").GetString()!, StringComparison.OrdinalIgnoreCase);
     }
+
+    // ── GAP-50-55 F6: the provider doctor names is the one the run builds ───
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldSayOpenAICompatible_WhenTheAddressIsALocalServerOtherThanOllama()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """{ "Llm": { "BaseUrl": "http://localhost:8080/v1" } }""");
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Contains("OpenAI-compatible (custom)", config.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldSayGrok_WhenOnlyAnXaiKeyIsSet()
+    {
+        var value = "xai-" + Guid.NewGuid().ToString("N");
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", $$"""{ "Llm": { "ApiKey": "{{value}}" } }""");
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Contains("Grok", config.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain(value, config.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-09")]
+    public async Task ShouldWarn_WhenTheAddressHasNoPath()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            {
+              "Llm": {
+                "BaseUrl": "http://localhost:8080",
+                "Model": "m",
+                "Profiles": { "local": { "BaseUrl": "http://localhost:8080", "Model": "m" } }
+              }
+            }
+            """);
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("warn", config.Status);
+        Assert.Contains(Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent("Llm:BaseUrl", "http://localhost:8080"),
+            config.Detail, StringComparison.Ordinal);
+        var warn = Assert.Single(lines, l => l.Check == "llm-profiles" && l.Status == "warn");
+        Assert.Contains(Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent("Llm:Profiles:local:BaseUrl", "http://localhost:8080"),
+            warn.Detail, StringComparison.Ordinal);
+    }
 }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using CommandLine;
 using Microsoft.Extensions.Configuration;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
@@ -57,6 +58,9 @@ internal sealed class InitCommandOptions : CliOptions
 
     /// <summary>Test seam: replaces <see cref="Console.In"/> for the interactive wizard.</summary>
     internal TextReader? InputOverride { get; set; }
+
+    /// <summary>Test seam: the handler the probe's HTTP client uses; production leaves it null.</summary>
+    internal HttpMessageHandler? HttpHandler { get; set; }
 }
 
 /// <summary>
@@ -170,6 +174,14 @@ internal static class InitCommand
             }
         }
 
+        var reading = ReadAddress(plan);
+        var accordError = AccordError(plan, reading);
+        if (accordError is not null)
+        {
+            await Console.Error.WriteLineAsync($"orkeon init: {accordError}").ConfigureAwait(false);
+            return Program.ExitScriptError;
+        }
+
         var target = ResolveTargetPath(options.OutputPath);
         if (File.Exists(target) && !options.Force)
         {
@@ -184,13 +196,51 @@ internal static class InitCommand
         Console.WriteLine($"Wrote {target}");
         PrintGuidance(plan);
 
+        if (reading?.Notice == LlmEndpointNotice.Silent)
+        {
+            await Console.Error.WriteLineAsync(
+                "WARNING: " + OperatorMessages.LlmBaseUrlSilent(ConfigurationKeys.LlmSection + ":BaseUrl", plan.BaseUrl!))
+                .ConfigureAwait(false);
+        }
+
         if (!options.NoProbe && plan.Provider != "none" && plan.BaseUrl is not null
-            && !await ProbeAsync(plan, target, ct).ConfigureAwait(false))
+            && !await ProbeAsync(plan, target, options.HttpHandler, ct).ConfigureAwait(false))
         {
             return Program.ExitScriptError;
         }
 
         return Program.ExitOk;
+    }
+
+    // ── the address, read as the run reads it ───────────────────────────────
+
+    private static LlmEndpointReading? ReadAddress(InitPlan plan) =>
+        plan.Provider != "none" && plan.BaseUrl is not null
+            ? LlmEndpointReading.Of(plan.BaseUrl, plan.Model, plan.InlineApiKey)
+            : null;
+
+    /// <summary>The line refusing a preset the reading contradicts, or null; a refused address is the probe's to report.</summary>
+    private static string? AccordError(InitPlan plan, LlmEndpointReading? reading)
+    {
+        if (reading is null || reading.Notice == LlmEndpointNotice.Refused)
+            return null;
+
+        var isOllama = reading.ProviderKey == LlmProviderKeys.Ollama;
+        if (isOllama && plan.Provider is not ("ollama" or "custom"))
+        {
+            return $"the address {plan.BaseUrl} is read as an Ollama server, which preset '{plan.Provider}' does not serve — " +
+                   "write --provider ollama (or --provider custom) for it.";
+        }
+
+        if (!isOllama && plan.Provider == "ollama")
+        {
+            var address = plan.BaseUrl!.TrimEnd('/');
+            var hasPath = Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.AbsolutePath.Trim('/').Length > 0;
+            return $"the address {plan.BaseUrl} is not read as an Ollama server (port 11434) — " +
+                   $"write --provider custom --base-url {(hasPath ? address : address + "/v1")} for an OpenAI-compatible server.";
+        }
+
+        return null;
     }
 
     // ── plan building ───────────────────────────────────────────────────────
@@ -465,7 +515,7 @@ internal static class InitCommand
     /// </summary>
     /// <returns>False when a run would refuse the section: the reader's message is printed, the file stays written.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic messages.")]
-    private static async Task<bool> ProbeAsync(InitPlan plan, string target, CancellationToken ct)
+    private static async Task<bool> ProbeAsync(InitPlan plan, string target, HttpMessageHandler? handler, CancellationToken ct)
     {
         var configuration = RunnerSettings.ReadConfiguration(target);
         var section = configuration.GetSection(ConfigurationKeys.LlmSection);
@@ -497,10 +547,12 @@ internal static class InitCommand
         // The endpoint a run calls — the file's, unless an ORKEON_ variable moves it; ollama has its
         // own catalogue dialect, every other preset is OpenAI-compatible.
         var baseUrl = (string.IsNullOrWhiteSpace(section["BaseUrl"]) ? plan.BaseUrl! : section["BaseUrl"]!).TrimEnd('/');
-        var catalogKey = plan.Provider == "ollama" ? "ollama" : "openai";
+        var catalogKey = LlmEndpointReading.Of(baseUrl, plan.Model, null).ProviderKey == LlmProviderKeys.Ollama ? "ollama" : "openai";
         Console.WriteLine($"Probing {baseUrl} — API key {source}");
 
-        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        using var client = handler is null
+            ? new HttpClient { Timeout = TimeSpan.FromSeconds(5) }
+            : new HttpClient(handler, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(5) };
         try
         {
             var models = await LlmCatalogClient
