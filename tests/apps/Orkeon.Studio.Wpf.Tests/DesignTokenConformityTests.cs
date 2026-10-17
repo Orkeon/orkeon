@@ -63,6 +63,25 @@ public sealed partial class DesignTokenConformityTests
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
                      && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
 
+    /// <summary>
+    /// A Run's Text binds TwoWay by default, and a TwoWay binding on a read-only source — the
+    /// I18n indexer, a getter-only property — throws when the view loads: Studio did not start
+    /// (#117). Every bound Run states Mode=OneWay; this suite runs where no XAML is ever loaded.
+    /// </summary>
+    [Fact]
+    public void Every_bound_run_is_one_way()
+    {
+        var offenders = XamlFiles()
+            .SelectMany(file => File.ReadLines(file).Select((line, index) => (file, line, index)))
+            .Where(l => l.line.Contains("<Run ", StringComparison.Ordinal)
+                     && l.line.Contains("{Binding", StringComparison.Ordinal)
+                     && !l.line.Contains("Mode=OneWay", StringComparison.Ordinal))
+            .Select(l => $"{Path.GetFileName(l.file)}:{l.index + 1}")
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Bound Run without Mode=OneWay: " + string.Join(", ", offenders));
+    }
+
     private static string Theme(string fileName) =>
         Path.Combine(WpfSourceRoot(), "Themes", fileName);
 

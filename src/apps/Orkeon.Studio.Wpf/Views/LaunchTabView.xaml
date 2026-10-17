@@ -598,7 +598,7 @@
               </TextBlock>
             </Border>
             <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" Margin="10,0,0,0" VerticalAlignment="Center">
-              <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}}"/>
+              <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
               <Run Text="{Binding ExitCode, Mode=OneWay}"/>
             </TextBlock>
           </StackPanel>
