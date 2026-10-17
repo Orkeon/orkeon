@@ -50,6 +50,22 @@ internal static class ForgeDocuments
 /// </summary>
 public class ForgeBriefTests
 {
+    /// <summary>#119: a brief records any of the five languages of Studio's interface, and no other.</summary>
+    [Theory]
+    [InlineData("fr", true)]
+    [InlineData("en", true)]
+    [InlineData("es", true)]
+    [InlineData("de", true)]
+    [InlineData("zh", true)]
+    [InlineData("it", false)]
+    public void A_brief_records_a_language_of_the_interface(string language, bool valid)
+    {
+        var json = ForgeDocuments.ValidBrief.Replace("\"language\": \"fr\"", $"\"language\": \"{language}\"", StringComparison.Ordinal);
+
+        Assert.Equal(valid, ForgeBrief.TryParse(json, out _, out var errors));
+        Assert.Equal(valid, errors.Count == 0);
+    }
+
     [Fact]
     public void A_valid_brief_parses_with_its_criteria()
     {

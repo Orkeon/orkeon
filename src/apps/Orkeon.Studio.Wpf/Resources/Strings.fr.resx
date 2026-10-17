@@ -861,8 +861,8 @@
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Create.AddAgent" xml:space="preserve"><value>Ajouter un agent</value></data>
-  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} (lecture)</value></data>
-  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} (lecture, écriture)</value></data>
+  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · lecture</value></data>
+  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · lecture, écriture</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
   <data name="Studio.Teams.ToTest" xml:space="preserve"><value>à tester</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
@@ -1758,7 +1758,7 @@
     <value>Ce qu'il contient et comment l'équipe doit s'en servir — l'assistant suivra ces consignes.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Cliquer pour changer : lu par l'équipe, ou écrit par elle.</value>
+    <value>Lecture seule, ou lecture et écriture.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Votre demande ne nomme aucun dossier : voici la proposition standard. Renommez un dossier si vous le souhaitez, dites où chacun se trouve, puis confirmez : l'équipe utilisera exactement ceux-là.</value>
@@ -1794,10 +1794,10 @@
     <value>Continuer</value>
   </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
-    <value>lu</value>
+    <value>lecture</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>écrit</value>
+    <value>lecture, écriture</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>aucun dossier choisi</value>
@@ -1855,4 +1855,17 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Exécution</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>Tampon</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>Buffer (repli)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Changer</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Emplacement</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Dossier sur cet ordinateur</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Choisir…</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Réussi</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Échoué</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Annulé</value></data>
+  <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>code de sortie</value></data>
+  <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENT</value></data>
+  <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>APPELS D’OUTILS</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURÉE</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Pas lancé</value></data>
 </root>

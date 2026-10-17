@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the create-team assistant speaks the interface's language (#119)
+
+The forge's assistant conversed in French whatever Studio's interface said: the interview had no brief yet, and
+the engine's default was `fr`. Studio now passes its interface language with every run (`orkeon forge … --lang
+<code>`, a new session or a resume), and the assistant converses in it — until the user writes in another
+language or asks for one, which the brief then records. The team's name, agents and tasks are written in the
+brief's language, so the folder named after the team follows it. A brief records any of the five interface
+languages (`fr`, `en`, `es`, `de`, `zh`), no longer `fr` and `en` only.
+
+| Before | After |
+|---|---|
+| `orkeon forge "<need>"` interviewed in French | It interviews in English; pass `--lang fr` for French, or write in French |
+| `brief.language`: `fr` or `en` | `fr`, `en`, `es`, `de` or `zh` |
+
+### Fixed — a team's name is no longer cut mid-sentence (#118)
+
+A team created from a long request was named after the first 64 characters of it — « Lire les notes déposées
+dans le dossier input et rédiger à », folder `…-et-rediger-a` — because the wizard pre-filled the name from the
+goal sentence once and never took the assistant's short name that replaced it. The name now follows the
+session's title until the user types one. A name the 64-character cap still cuts drops its trailing stop words
+and ends with « … »; a folder name the cap cuts drops them too (`FolderSlug.IsStopWord`). Existing teams keep
+their name and folder.
+
+### Changed — Orkeon Studio: no more action columns (#117)
+
+Four screens of Studio — My teams, the Folders and Compose steps of Create a team, Run — no longer set their
+actions in a column beside the content. Content takes the card's width (titles wrap, descriptions clamp to two
+lines, paths stay on one line cut in the middle by the new `MiddleEllipsisText`), one or two light actions sit
+on the object's header line, three or more in a footer bar under it, each with its label. Run shows one verdict
+line (badge and exit code) and the agents as a table. Access rights read « read » / « read, write » everywhere.
+New shared styles in `Themes/Studio.xaml`: `BtnQuiet`, `BtnQuietDanger`, `CardFooter`, `FooterItem`,
+`HSeparator`, `VSeparator`, `ObjectTitle`, `MetaLine`, `Description2Lines`, `PathText`, `SegmentBtnOn`,
+`MountChipTemplate` and the `FocusRing` focus style.
+
 ### Changed — CI installs the .NET SDK that `global.json` pins
 
 The workflows asked `actions/setup-dotnet` for `10.0.x`, a version written in thirteen places beside the one

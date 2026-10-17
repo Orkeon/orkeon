@@ -162,9 +162,11 @@ public sealed partial class I18nResourceParityTests
         // French word, a real cognate (the same floor), measured, not above it.
         // STUDIO-57: es raised by one for « No », the fill step's answer — Spanish spells it as
         // English does, a real cognate (the same floor), measured, not above it.
-        ["Strings.fr.resx"] = 59,
-        ["Strings.es.resx"] = 42,
-        ["Strings.de.resx"] = 44,
+        // #117: raised by the run table's column headers no language rewrites — « AGENT » (fr, de)
+        // and « TOKENS » (fr, es, de), real cognates (the same floor), measured, not above it.
+        ["Strings.fr.resx"] = 61,
+        ["Strings.es.resx"] = 43,
+        ["Strings.de.resx"] = 46,
         ["Strings.zh-Hans.resx"] = 35,
     };
 

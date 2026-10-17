@@ -137,7 +137,7 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
         + "comes in is typed, pasted or fetched from the web); acceptance "
         + "(array of {id: 'A1'…, statement, kind: "
         + "must|should}, required, at least one); sample ({variables: object, initialContext}); "
-        + "language ('fr' or 'en').";
+        + "language ('fr', 'en', 'es', 'de' or 'zh' — the language you converse in).";
 
     /// <inheritdoc />
     public override ToolSchema Schema => new(
@@ -155,7 +155,7 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
             ["folders"] = new("array", "The folders the request names or describes: {path: '/name', role: input|output, purpose}; a described folder is named from what it holds.", Required: false),
             ["readsFiles"] = new("boolean", "true when the team reads files or documents from a folder; false when what comes in is typed, pasted or fetched from the web (a URL, a text, a question).", Required: false),
             ["sample"] = new("object", "The test input: {variables, initialContext}.", Required: false),
-            ["language"] = new("string", "'fr' or 'en'.", Required: false),
+            ["language"] = new("string", "The language you converse in: 'fr', 'en', 'es', 'de' or 'zh'.", Required: false),
         });
 
     /// <inheritdoc />

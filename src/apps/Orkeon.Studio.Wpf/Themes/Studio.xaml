@@ -78,8 +78,21 @@
     <Setter Property="Padding" Value="13,10"/>
   </Style>
 
+  <!-- Keyboard focus: one accent ring, drawn just outside the control's own radius. -->
+  <Style x:Key="FocusRing">
+    <Setter Property="Control.Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border Margin="-3" CornerRadius="12" BorderThickness="2" BorderBrush="{DynamicResource AccentBrush}"
+                  SnapsToDevicePixels="True"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ══ Buttons ══ -->
   <Style x:Key="BtnBase" TargetType="Button">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="12.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -196,6 +209,100 @@
     </Style.Triggers>
   </Style>
 
+  <!-- ══ Card footer action bar (#117): actions of an object with three or more, under its
+       content and never beside it. Primary first on the left, quiet ones after, destructive
+       ones last behind a VSeparator; a WrapPanel inside so the bar wraps on a narrow window. ══ -->
+
+  <!-- Icon + label, no chrome at rest: the secondary actions of a footer bar (Rename, Open
+       folder, Duplicate, Export). The hover gives it the ghost's surface. -->
+  <Style x:Key="BtnQuiet" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Padding" Value="8,7"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+  <!-- The quiet destructive action (Delete): danger text at rest, a weak danger fill on hover.
+       It only arms the inline confirmation; BtnDanger stays the confirming button. -->
+  <Style x:Key="BtnQuietDanger" TargetType="Button" BasedOn="{StaticResource BtnQuiet}">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- Bleeds to the card's edges (Card padding 20,18), hairline on top, tinted. -->
+  <Style x:Key="CardFooter" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
+    <Setter Property="BorderThickness" Value="0,1,0,0"/>
+    <Setter Property="CornerRadius" Value="0,0,13,13"/>
+    <Setter Property="Margin" Value="-20,16,-20,-18"/>
+    <Setter Property="Padding" Value="20,10,20,6"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+  <!-- Spacing of a button inside a footer bar's WrapPanel: the bottom margin is the gap
+       between the two lines once the bar wraps. -->
+  <Style x:Key="FooterItem" TargetType="FrameworkElement">
+    <Setter Property="Margin" Value="0,0,8,4"/>
+  </Style>
+
+  <Style x:Key="HSeparator" TargetType="Rectangle">
+    <Setter Property="Height" Value="1"/>
+    <Setter Property="Fill" Value="{DynamicResource LineFaintBrush}"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+  <Style x:Key="VSeparator" TargetType="Rectangle">
+    <Setter Property="Width" Value="1"/>
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="Margin" Value="4,0,12,4"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Fill" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+
+  <!-- An object's title: wraps, never trimmed on one line. -->
+  <Style x:Key="ObjectTitle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <!-- The « · »-joined metadata line under a title: mono, faint, wraps. -->
+  <Style x:Key="MetaLine" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="LineHeight" Value="17"/>
+  </Style>
+  <!-- A description clamped to two lines: WPF has no MaxLines, so the height is bounded at
+       2 x a pinned LineHeight, the ellipsis on the second line. Bind the full text to ToolTip. -->
+  <Style x:Key="Description2Lines" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="LineHeight" Value="18"/>
+    <Setter Property="MaxHeight" Value="36"/>
+  </Style>
+  <!-- A file path on one line, cut in the middle (controls:MiddleEllipsisText). -->
+  <Style x:Key="PathText" TargetType="{x:Type controls:MiddleEllipsisText}">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
   <!-- ══ Sidebar nav item (RadioButton, GroupName="Nav") ══ -->
   <Style x:Key="NavItem" TargetType="RadioButton">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -289,6 +396,7 @@
   <!-- Text that acts: no chrome at all, underlined on hover. Used for «Modifier» on the
        brief card and «Passer cette question» under the input. -->
   <Style x:Key="LinkBtn" TargetType="Button">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -553,6 +661,7 @@
        The «no pill» rule of T-17 targets the VERDICT buttons («Ça me va», «Abandonner»),
        which stay rectangles at radius 10 — not this chip. -->
   <Style x:Key="ChipAction" TargetType="Button">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -594,6 +703,7 @@
        the team » on a Folders row — reads as CHOSEN when it is, accent-filled, not as a button
        nobody may press. Same metrics as ChipAction, so the two sit on one line. -->
   <Style x:Key="ChipToggle" TargetType="ToggleButton">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -773,6 +883,7 @@
   </Style>
 
   <Style x:Key="SegmentBtn" TargetType="Button">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="11.5"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -790,6 +901,17 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+
+  <!-- A segmented pair bound to one state: Tag="True" marks the active half, the way StepPill
+       does. The active half is disabled by its command, and keeps its accent: no dimming. -->
+  <Style x:Key="SegmentBtnOn" TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+      </DataTrigger>
+    </Style.Triggers>
   </Style>
 
   <Style x:Key="SegmentBtnMono" TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
@@ -1090,6 +1212,42 @@
           </TextBlock>
         </StackPanel>
       </DockPanel>
+    </Border>
+  </DataTemplate>
+
+
+  <!-- ══ A team's folder chip «/input · read» (#117): My teams and Run. The item exposes Label
+       and IsUndeclared (TeamMountChip); an undeclared folder is outlined in danger. ══ -->
+  <DataTemplate x:Key="MountChipTemplate">
+    <Border Margin="0,0,7,4">
+      <Border.Style>
+        <Style TargetType="Border" BasedOn="{StaticResource ToolChip}">
+          <Style.Triggers>
+            <!-- Not in « Settings › Allowed folders » — /output and /input live inside the
+                 team itself and are never declared. -->
+            <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+              <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <StackPanel Orientation="Horizontal">
+        <controls:LucideIcon Kind="folder" Size="11" VerticalAlignment="Center" Margin="0,0,6,0">
+          <controls:LucideIcon.Style>
+            <Style TargetType="controls:LucideIcon">
+              <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+              <Setter Property="IsTabStop" Value="False"/>
+              <Setter Property="Focusable" Value="False"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </controls:LucideIcon.Style>
+        </controls:LucideIcon>
+        <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
+      </StackPanel>
     </Border>
   </DataTemplate>
 

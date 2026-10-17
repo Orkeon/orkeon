@@ -2448,10 +2448,10 @@
     <value>Añadir un agente</value>
   </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
-    <value>{0} (lectura)</value>
+    <value>{0} · lectura</value>
   </data>
   <data name="Studio.Teams.MountRw" xml:space="preserve">
-    <value>{0} (lectura, escritura)</value>
+    <value>{0} · lectura, escritura</value>
   </data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>carpeta ilegible</value>
@@ -3434,7 +3434,7 @@
     <value>Qué contiene y cómo debe usarla el equipo — el asistente seguirá estas notas.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Clic para cambiar: leída por el equipo, o escrita por él.</value>
+    <value>Solo lectura, o lectura y escritura.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Su solicitud no nombra ninguna carpeta: esta es la propuesta estándar. Renombre una carpeta si lo desea, diga dónde está cada una y confirme: el equipo usará exactamente estas.</value>
@@ -3470,10 +3470,10 @@
     <value>Continuar</value>
   </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
-    <value>leída</value>
+    <value>lectura</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>escrita</value>
+    <value>lectura, escritura</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>ninguna carpeta elegida</value>
@@ -3531,4 +3531,17 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Ejecución</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>En búfer</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>En búfer (reserva)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Cambiar</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Ubicación</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Carpeta en este equipo</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Elegir…</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Correcto</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Fallido</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Cancelado</value></data>
+  <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>código de salida</value></data>
+  <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENTE</value></data>
+  <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>LLAMADAS A HERRAMIENTAS</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURACIÓN</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>No iniciado</value></data>
 </root>

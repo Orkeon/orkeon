@@ -53,6 +53,25 @@ public class ForgeClientTests
     /// carries no <c>--read</c>, so an older engine never meets the option for a team that
     /// reads nothing.
     /// </summary>
+    /// <summary>
+    /// #119: the interface's language reaches the engine, a resume included — English, the
+    /// engine's default, is never sent, so an English interface's argv is the one it always was.
+    /// </summary>
+    [Fact]
+    public void The_argv_carries_the_interface_language_unless_it_is_english()
+    {
+        Assert.Equal(
+            ["forge", "resume", "veille", "--events", "jsonl", "--lang", "fr"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Language = "fr" }));
+        Assert.Equal(
+            ["forge", "je veux une veille", "--events", "jsonl", "--lang", "zh", "--dry"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { Need = "je veux une veille", Language = "zh", Dry = true }));
+
+        Assert.DoesNotContain("--lang", ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Language = "en" }));
+        Assert.DoesNotContain("--lang", ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Language = "it" }));
+        Assert.DoesNotContain("--lang", ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille" }));
+    }
+
     [Fact]
     public void The_argv_carries_the_read_root_when_one_is_known()
     {

@@ -118,9 +118,19 @@ internal sealed record ForgeBrief
     [JsonPropertyName("sample")]
     public ForgeSample? Sample { get; init; }
 
-    /// <summary><c>fr</c> | <c>en</c>.</summary>
+    /// <summary>
+    /// The language of the conversation and of the team's names (#119): one of
+    /// <see cref="Languages"/>.
+    /// </summary>
     [JsonPropertyName("language")]
     public string? Language { get; init; }
+
+    /// <summary>The languages of Studio's interface, the ones a brief may record (#119).</summary>
+    public static readonly IReadOnlySet<string> Languages =
+        new HashSet<string>(StringComparer.Ordinal) { "fr", "en", "es", "de", "zh" };
+
+    /// <summary>The language of a session nothing chose one for.</summary>
+    public const string DefaultLanguage = "en";
 
     private static readonly JsonSerializerOptions ParseOptions = new()
     {
@@ -172,8 +182,8 @@ internal sealed record ForgeBrief
         if (Folders is { Count: > 0 } folders)
             errors.AddRange(ForgeFolders.Validate(folders));
 
-        if (Language is not (null or "fr" or "en"))
-            errors.Add($"'language' must be 'fr' or 'en', not '{Language}'.");
+        if (Language is not null && !Languages.Contains(Language))
+            errors.Add($"'language' must be one of fr, en, es, de, zh, not '{Language}'.");
 
         return errors;
     }

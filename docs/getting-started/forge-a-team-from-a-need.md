@@ -103,6 +103,7 @@ Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or poin
 |---|---|---|
 | `--read <dir>` | a new session, `forge resume` | The folder the trial reads behind the first input folder no real folder was bound to (`/workspace` by default), in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
 | `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
+| `--lang <code>` | a new session, `forge resume` | The language the assistant converses in and names the team in (`fr`, `en`, `es`, `de`, `zh`; English by default) — until you write in another language or ask for one. |
 | `--settings <path>` | a new session, `forge resume` | The settings file, with the same semantics as `orkeon run --settings`. |
 | `--with-settings` | `forge promote` | Copies the resolved settings file into the promoted folder. Off by default: a settings file usually holds API keys and the folder is made to be shared — without the copy, the launch scripts reference the file in place. |
 | `--events jsonl` | every verb | The versioned event protocol on stdout, the answers on stdin — how Orkeon Studio drives the forge. |

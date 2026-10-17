@@ -12,7 +12,10 @@
 
 var input = globalThis.inputs || {};
 var phase = input.phase || "brief";
-var language = input.language || "fr";
+var language = input.language || "en";
+// The language name, not its code: a model reads "French" more surely than "fr" (#119).
+var languageNames = { fr: "French", en: "English", es: "Spanish", de: "German", zh: "Simplified Chinese" };
+var languageName = languageNames[language] || language;
 var readTools = (input.readTools || []).slice().sort();
 var submitTool = input.submitTool || "brief_submit";
 
@@ -28,7 +31,8 @@ function stableHeader() {
   lines.push("problem solved; the team is the means, never the topic. Never mention YAML,");
   lines.push("blueprints, crews or orchestration to the user.");
   lines.push("");
-  lines.push("Converse with the user in: " + language + ".");
+  lines.push("Converse with the user in " + languageName + " — unless the user writes in another");
+  lines.push("language or asks for one: then converse in theirs from that message on.");
   lines.push("");
 
   if (phase === "brief") {
@@ -72,6 +76,8 @@ function stableHeader() {
     lines.push("  folder (PDFs, spreadsheets, text files it is given), false when what comes in");
     lines.push("  is typed, pasted or fetched from the web (a URL, a text, a question). It");
     lines.push("  decides whether a folder to read is proposed at all.");
+    lines.push("- Set `language` to the code of the language you converse in: '" + language + "', or");
+    lines.push("  the user's when they wrote in or asked for another (fr, en, es, de, zh).");
     lines.push("- Keep the interview short: when you have goal + acceptance + sample, stop");
     lines.push("  asking and submit.");
     lines.push("- If the submission is rejected, fix exactly what the rejection names and");
@@ -92,6 +98,8 @@ function stableHeader() {
     lines.push("  dependencies name existing task keys.");
     lines.push("- crew.name is a short display name (3 to 5 words, 60 characters max) —");
     lines.push("  never the goal sentence. It becomes the team's folder name.");
+    lines.push("- Write crew.name, the agents' roles and goals and the tasks in " + languageName + ":");
+    lines.push("  the user reads them, and the team's folder is named after crew.name.");
     lines.push("- Small is right: two or three agents solve most problems. One clear role");
     lines.push("  and goal per agent; tasks phrased as work, not as prompts.");
     lines.push("- maxIterations: leave it out (the engine's default fits most agents). When you");

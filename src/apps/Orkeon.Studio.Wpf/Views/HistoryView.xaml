@@ -1,5 +1,5 @@
-<!-- The "History" screen (§5.3, audit 06/15): the mock's card list — status icon, team name,
-     date · duration, a plain-language result sentence, and per-card actions. The exact
+<!-- The "History" screen (§5.3, audit 06/15): the mock's card list — team name with its one
+     status badge (#117), date · duration, and the two per-card actions on the header line. The exact
      command line and exit code are expert detail. DataContext: LaunchHistoryViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.HistoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -59,106 +59,113 @@
           <Border CornerRadius="12" Padding="16,13" Margin="0,0,0,9"
                   BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}"
                   Background="{DynamicResource SurfaceBrush}">
+            <!-- #117: the content takes the card's width; the two light actions sit on the
+                 header line, right-aligned, and the body runs below it. -->
             <DockPanel LastChildFill="True">
-
-              <!-- per-card actions -->
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
-                        Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
-                <Button Style="{StaticResource BtnGhost}" Command="{Binding ReplayCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-
-              <!-- status icon -->
-              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10"
-                      VerticalAlignment="Top" Margin="0,1,13,0">
-                <Border.Style>
-                  <Style TargetType="Border">
-                    <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
-                        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
-                        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
-                        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Border.Style>
-                <controls:LucideIcon Size="16" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <controls:LucideIcon.Style>
-                    <Style TargetType="controls:LucideIcon">
-                      <Setter Property="Kind" Value="circle-x"/>
-                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
-                          <Setter Property="Kind" Value="circle-check"/>
-                          <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
-                          <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
-                          <Setter Property="Kind" Value="circle"/>
-                          <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </controls:LucideIcon.Style>
-                </controls:LucideIcon>
+              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" VerticalAlignment="Top"
+                      Margin="0,0,13,0" Background="{DynamicResource AccentWeakBrush}">
+                <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Border>
 
-              <!-- team · date/duration · result sentence, plus the expert command line -->
               <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding TeamName, Mode=OneWay}" ToolTip="{Binding Target}"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
-                             Text="{Binding DateLine, Mode=OneWay}"/>
-                </StackPanel>
-                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0"
-                           Text="{Binding OutcomeSentence, Mode=OneWay}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
-                            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" MaxWidth="520"
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
+                    <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
+                            Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource BtnGhost}" Command="{Binding ReplayCommand}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
+                        <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                  <!-- The team's name wraps, never trimmed; the one status is the badge on its
+                       last line — the plain-language sentence is its tooltip, not a second line. -->
+                  <TextBlock Style="{StaticResource ObjectTitle}" FontSize="13" ToolTip="{Binding Target}">
+                    <Run Text="{Binding TeamName, Mode=OneWay}"/>
+                    <InlineUIContainer BaselineAlignment="Center">
+                      <Border Margin="8,0,0,0" ToolTip="{Binding OutcomeSentence, Mode=OneWay}">
+                        <Border.Style>
+                          <Style TargetType="Border" BasedOn="{StaticResource BadgeFail}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
+                                <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
+                                <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
+                                <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Border.Style>
+                        <TextBlock>
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
+                              <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeFailed], Source={x:Static services:I18n.Instance}}"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
+                                  <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeSucceeded], Source={x:Static services:I18n.Instance}}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
+                                  <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeCancelled], Source={x:Static services:I18n.Instance}}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
+                                  <Setter Property="Text" Value="{Binding [Studio.History.OutcomeBadgeNotStarted], Source={x:Static services:I18n.Instance}}"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </Border>
+                    </InlineUIContainer>
+                  </TextBlock>
+                </DockPanel>
+
+                <!-- date · duration · usage, the metadata line -->
+                <TextBlock Style="{StaticResource MetaLine}" Margin="0,4,0,0" Text="{Binding DateLine, Mode=OneWay}"/>
+
+                <!-- Expert: the exit code, then the exact command line at full width, on one line. -->
+                <DockPanel Margin="0,4,0,0" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,0,10,0"
+                             Foreground="{DynamicResource InkFaintBrush}">
+                    <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
+                    <Run Text="{Binding ExitCode, Mode=OneWay}"/>
+                  </TextBlock>
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="NoWrap"
                              TextTrimming="CharacterEllipsis" Text="{Binding CommandLine, Mode=OneWay}"
                              ToolTip="{Binding CommandLine, Mode=OneWay}"/>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="10,0,0,0"
-                             Foreground="{DynamicResource InkFaintBrush}">
-                    <Run Text="exit"/><Run Text=" "/><Run Text="{Binding ExitCode, Mode=OneWay}"/>
-                  </TextBlock>
-                </StackPanel>
+                </DockPanel>
 
                 <!-- STUDIO-31 (D-07): « Replay » found the team archived and ran nothing. The card
                      asks in place, the way a delete banner does; « Restore » only restores — the
-                     next « Replay » runs it. -->
+                     next « Replay » runs it. The answers sit under the question, not beside it. -->
                 <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="11,8" Margin="0,8,0,0"
                         Visibility="{Binding IsOfferingRestore, Converter={StaticResource BooleanToVisibility}}">
-                  <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                  <StackPanel>
+                    <DockPanel>
+                      <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="14" Margin="0,0,9,0"
+                                           VerticalAlignment="Top" Foreground="{DynamicResource WarningBrush}"/>
+                      <TextBlock FontSize="12" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource WarningBrush}" Text="{Binding RestoreOffer, Mode=OneWay}"/>
+                    </DockPanel>
+                    <WrapPanel Margin="23,8,0,0">
                       <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding RestoreCommand}"
                               Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnGhost}" Command="{Binding DismissRestoreCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                    <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="14" Margin="0,0,9,0"
-                                         VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
-                    <TextBlock FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"
-                               Foreground="{DynamicResource WarningBrush}" Text="{Binding RestoreOffer, Mode=OneWay}"/>
-                  </DockPanel>
+                    </WrapPanel>
+                  </StackPanel>
                 </Border>
               </StackPanel>
 

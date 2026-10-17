@@ -82,6 +82,9 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     private readonly ScriptHost _scriptHost;
     private readonly IReadOnlyList<string> _readTools;
     private readonly IReadOnlyList<ForgeToolInfo> _crewTools;
+    /// <summary>The interface's language (<c>--lang</c>), until the brief records one.</summary>
+    private readonly string? _language;
+
     private readonly ForgeReference? _reference;
     private readonly string? _referenceOutline;
     private readonly string _packPhysicalPath;
@@ -98,7 +101,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         ForgeSession session,
         string packPhysicalPath,
         string sessionVirtualRoot = "/forge",
-        ForgeReference? reference = null)
+        ForgeReference? reference = null,
+        string? language = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -118,6 +122,7 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         // The reference's structure, cut down to that very catalogue (STUDIO-40, D-02): read
         // once, since neither the crew file nor the catalogue changes during a session.
         _reference = reference;
+        _language = language;
         _referenceOutline = reference?.Outline([.. _crewTools.Select(tool => tool.Name)]);
 
         var configuration = services.GetRequiredService<IConfiguration>();
@@ -287,8 +292,13 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         }, InputsOptions);
     }
 
-    private static string LanguageOf(ForgeAssistantRequest request) =>
-        request.Brief?.Language ?? "fr";
+    /// <summary>
+    /// The language the assistant converses and writes in (#119): the brief's once it records
+    /// one — the user's choice when they wrote in or asked for another — else the interface's
+    /// (<c>--lang</c>), else English.
+    /// </summary>
+    private string LanguageOf(ForgeAssistantRequest request) =>
+        request.Brief?.Language ?? _language ?? ForgeBrief.DefaultLanguage;
 
     /// <summary>
     /// Reads <c>finalOutput</c> from <see cref="ScriptHost.RunFromFileAsync"/>'s handoff
