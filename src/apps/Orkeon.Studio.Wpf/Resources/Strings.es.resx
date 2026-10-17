@@ -3543,4 +3543,5 @@
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>LLAMADAS A HERRAMIENTAS</value></data>
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURACIÓN</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>No iniciado</value></data>
 </root>

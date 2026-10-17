@@ -3543,4 +3543,5 @@
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>工具调用</value></data>
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>令牌</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>时长</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>未启动</value></data>
 </root>

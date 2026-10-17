@@ -3543,4 +3543,5 @@
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>TOOL-AUFRUFE</value></data>
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DAUER</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Nicht gestartet</value></data>
 </root>
