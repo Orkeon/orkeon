@@ -87,7 +87,7 @@ public static class FolderSlug
     /// <summary>
     /// Whether <paramref name="word"/> is an article, a preposition or a conjunction of one of
     /// the languages of Studio's interface (fr, en, es, de) — a word a name or a folder cut by
-    /// a cap must not end on. Case and accents do not matter: « À » is « a ».
+    /// a cap must not end on. Case and accents do not matter: an accented "a" is "a".
     /// </summary>
     public static bool IsStopWord(string? word) =>
         From(word) is { } slug && StopWords.Contains(slug);

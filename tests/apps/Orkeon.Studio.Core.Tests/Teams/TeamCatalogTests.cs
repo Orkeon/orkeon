@@ -317,7 +317,7 @@ public sealed class TeamCatalogTests : IDisposable
 
     /// <summary>
     /// #118: a name the cap cuts ends on a full word that is not a stop word, and says it was
-    /// cut — never « … et rédiger à ».
+    /// cut, never "... et rediger a".
     /// </summary>
     [Fact]
     public void NormalizeName_cut_drops_trailing_stop_words_and_ends_with_an_ellipsis()

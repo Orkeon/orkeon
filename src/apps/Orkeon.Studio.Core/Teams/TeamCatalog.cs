@@ -1372,7 +1372,7 @@ public static partial class TeamCatalog
     /// Cuts at the last space inside the window when one is reasonably close, the way the
     /// slug does; a single window-length word is cut hard. Trailing punctuation left by the
     /// cut goes with it — never a trailing comma — and so do trailing stop words, never
-    /// « … et rédiger à » (#118). A cut text ends with an ellipsis, inside the window.
+    /// "... et rediger a" (#118). A cut text ends with an ellipsis, inside the window.
     /// </summary>
     private static string CutAtWord(string text, int maxLength)
     {
