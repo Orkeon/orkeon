@@ -17,6 +17,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Orkeon.Tests.Shared.Network" />
+    <Using Include="Orkeon.Tests.Shared.FileSystem" />
     <Using Include="Orkeon.Tools.Abstractions.Auth" />
   </ItemGroup>
   <ItemGroup>

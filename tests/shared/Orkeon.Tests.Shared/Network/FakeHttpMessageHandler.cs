@@ -11,7 +11,8 @@ namespace Orkeon.Tests.Shared.Network;
 /// <param name="Prefer">The <c>Prefer</c> header, or null.</param>
 /// <param name="ContentType">The body's media type, or null.</param>
 /// <param name="Body">The body as text, or null.</param>
-public sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Authorization, string? Prefer, string? ContentType, string? Body)
+/// <param name="ContentRange">The body's <c>Content-Range</c> header, or null.</param>
+public sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Authorization, string? Prefer, string? ContentType, string? Body, string? ContentRange = null)
 {
     /// <summary>The body read as an <c>application/x-www-form-urlencoded</c> form.</summary>
     public IReadOnlyDictionary<string, string> Form
@@ -39,7 +40,8 @@ public sealed record RecordedRequest(HttpMethod Method, Uri Uri, string? Authori
 /// <param name="Body">Body text.</param>
 /// <param name="MediaType">Body media type.</param>
 /// <param name="RetryAfter">Value of a <c>Retry-After</c> header, when set.</param>
-public sealed record FakeHttpResponse(HttpStatusCode Status, string Body, string MediaType = "application/json", TimeSpan? RetryAfter = null)
+/// <param name="Location">Value of a <c>Location</c> header, when set.</param>
+public sealed record FakeHttpResponse(HttpStatusCode Status, string Body, string MediaType = "application/json", TimeSpan? RetryAfter = null, Uri? Location = null)
 {
     /// <summary>A 200 JSON answer.</summary>
     public static FakeHttpResponse Json(string body) => new(HttpStatusCode.OK, body);
@@ -105,7 +107,8 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
             request.Headers.Authorization?.ToString(),
             request.Headers.TryGetValues("Prefer", out var prefer) ? string.Join(", ", prefer) : null,
             request.Content?.Headers.ContentType?.MediaType,
-            body);
+            body,
+            request.Content?.Headers.ContentRange?.ToString());
 
         Func<RecordedRequest, FakeHttpResponse>? respond;
         lock (_gate)
@@ -127,6 +130,8 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         };
         if (answer.RetryAfter is { } delay)
             response.Headers.RetryAfter = new RetryConditionHeaderValue(delay);
+        if (answer.Location is { } location)
+            response.Headers.Location = location;
         return response;
     }
 }
