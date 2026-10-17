@@ -491,44 +491,89 @@
             <ItemsControl ItemsSource="{Binding FolderRows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
-                    <DockPanel>
+                  <!-- #117: one full-width block per folder — name, rights and the cross; the note;
+                       where it lives. No action column beside the fields. -->
+                  <StackPanel Margin="0,0,0,12">
+                    <Rectangle Style="{StaticResource HSeparator}" Margin="0,0,0,12"/>
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <TextBox Style="{StaticResource Input}" Width="240" VerticalAlignment="Center"
+                               AutomationProperties.Name="{Binding VirtualPath}"
+                               Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
+                      <!-- STUDIO-57: read, or read and write — the two halves flip the one role;
+                           the active half is the one that cannot be pressed. -->
+                      <Border Grid.Column="1" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15"
+                              HorizontalAlignment="Left" Margin="10,0,0,0"
+                              ToolTip="{Binding [Studio.Create.FolderRoleTip], Source={x:Static services:I18n.Instance}}">
+                        <StackPanel Orientation="Horizontal" Margin="2">
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ToggleRoleCommand}"
+                                  Tag="{Binding IsInput}" IsEnabled="{Binding IsInput, Converter={StaticResource Negate}}"
+                                  Content="{Binding [Studio.Create.FolderRoleInput], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ToggleRoleCommand}"
+                                  Tag="{Binding IsInput, Converter={StaticResource Negate}}" IsEnabled="{Binding IsInput}"
+                                  Content="{Binding [Studio.Create.FolderRoleOutput], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Border>
                       <!-- STUDIO-57: the cross takes the row off the list. -->
-                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Center" Margin="6,0,0,0"
+                      <Button Grid.Column="2" Style="{StaticResource IconBtn}" VerticalAlignment="Center"
                               Command="{Binding RemoveCommand}"
-                              ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
+                              ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
+                              AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
                         <controls:LucideIcon Kind="x" Size="12" Foreground="{DynamicResource InkMutedBrush}"/>
                       </Button>
-                      <!-- STUDIO-57: « Inside the team » is a state, checkable — it reads chosen
-                           when it is, and unchecking an input hands it back to the disk picker. -->
-                      <ToggleButton DockPanel.Dock="Right" Style="{StaticResource ChipToggle}" VerticalAlignment="Center" Margin="6,0,0,0"
-                                    IsChecked="{Binding IsInsideTeam, Mode=TwoWay}"
-                                    ToolTip="{Binding [Studio.Create.FolderInsideTeamTip], Source={x:Static services:I18n.Instance}}"
-                                    Content="{Binding [Studio.Create.FolderInsideTeam], Source={x:Static services:I18n.Instance}}"/>
-                      <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
-                              Command="{Binding PickCommand}"
-                              Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"/>
-                      <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" FontSize="11.5" VerticalAlignment="Center"
-                                 Margin="10,0,0,0" MaxWidth="240" TextTrimming="CharacterEllipsis"
-                                 Text="{Binding FolderLabel}" ToolTip="{Binding FolderLabel}"/>
-                      <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                          <TextBox Style="{StaticResource Input}" Width="160" VerticalAlignment="Center"
-                                   Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
-                          <!-- STUDIO-57: the role is a chip that flips — read, written. -->
-                          <Button Style="{StaticResource ChipAction}" Margin="8,0,0,0" VerticalAlignment="Center"
-                                  Command="{Binding ToggleRoleCommand}" Content="{Binding RoleLabel}"
-                                  ToolTip="{Binding [Studio.Create.FolderRoleTip], Source={x:Static services:I18n.Instance}}"/>
+                    </Grid>
+                    <!-- STUDIO-57: the note the assistant follows — what the folder holds and how the
+                         team must use it. The forge's words to start with. Full width. -->
+                    <TextBox Style="{StaticResource Input}" Margin="0,8,0,0" TextWrapping="Wrap" AcceptsReturn="False"
+                             Tag="{Binding [Studio.Create.FolderPurposeHint], Source={x:Static services:I18n.Instance}}"
+                             AutomationProperties.Name="{Binding [Studio.Create.FolderPurposeHint], Source={x:Static services:I18n.Instance}}"
+                             Text="{Binding Purpose, UpdateSourceTrigger=PropertyChanged}"/>
+                    <!-- Where it lives: inside the team, or a folder of this machine — exclusive
+                         (AnswerInsideTeam / AnswerWithDirectory). The path and « Choose… » sit on
+                         the same line, next to the choice they complete. -->
+                    <Grid Margin="0,8,0,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <TextBlock Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0"
+                                 Text="{Binding [Studio.Create.FolderLocation], Source={x:Static services:I18n.Instance}}"/>
+                      <Border Grid.Column="1" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
+                        <StackPanel Orientation="Horizontal" Margin="2">
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding InsideTeamCommand}"
+                                  Tag="{Binding IsInsideTeam}"
+                                  ToolTip="{Binding [Studio.Create.FolderInsideTeamTip], Source={x:Static services:I18n.Instance}}"
+                                  Content="{Binding [Studio.Create.FolderInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding PickCommand}"
+                                  Tag="{Binding HasDirectory}"
+                                  ToolTip="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
+                                  Content="{Binding [Studio.Create.FolderOnMachine], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
-                        <!-- STUDIO-57: the note the assistant follows — what the folder holds and
-                             how the team must use it. The forge's words to start with. -->
-                        <TextBox Style="{StaticResource Input}" Margin="0,6,0,0" MinWidth="360" MaxWidth="640"
-                                 HorizontalAlignment="Left" TextWrapping="Wrap" AcceptsReturn="False"
-                                 Tag="{Binding [Studio.Create.FolderPurposeHint], Source={x:Static services:I18n.Instance}}"
-                                 Text="{Binding Purpose, UpdateSourceTrigger=PropertyChanged}"/>
-                      </StackPanel>
-                    </DockPanel>
-                  </Border>
+                      </Border>
+                      <Border Grid.Column="2" Style="{StaticResource Well}" Padding="10,5" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <!-- A DockPanel, not a StackPanel: the path needs a finite width to be cut. -->
+                        <DockPanel>
+                          <controls:LucideIcon DockPanel.Dock="Left" Kind="folder" Size="12" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                          <controls:MiddleEllipsisText Style="{StaticResource PathText}" Text="{Binding FolderLabel}"/>
+                        </DockPanel>
+                      </Border>
+                      <Button Grid.Column="3" Style="{StaticResource BtnGhost}" Margin="10,0,0,0" VerticalAlignment="Center"
+                              Command="{Binding PickCommand}"
+                              ToolTip="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
+                              Visibility="{Binding IsInsideTeam, Converter={StaticResource InverseBooleanToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                          <TextBlock Text="{Binding [Studio.Create.ChooseShort], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+                  </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

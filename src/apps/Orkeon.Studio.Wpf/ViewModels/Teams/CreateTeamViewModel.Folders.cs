@@ -76,7 +76,7 @@ public sealed class WizardFolderRow : ObservableObject
     /// <summary>Whether the team only reads this folder.</summary>
     public bool IsInput => string.Equals(_role, ForgeFolder.InputRole, StringComparison.Ordinal);
 
-    /// <summary>« read » or « written », in the user's language — the label of the chip that flips it.</summary>
+    /// <summary>« read » or « read, write », in the user's language — the label of the half that shows it.</summary>
     public string RoleLabel => _strings[IsInput ? StudioStringKeys.WizardFolderRoleInput : StudioStringKeys.WizardFolderRoleOutput];
 
     /// <summary>
@@ -157,7 +157,7 @@ public sealed class WizardFolderRow : ObservableObject
     /// <summary>« Inside the team »: the folder will be the team's own.</summary>
     public RelayCommand InsideTeamCommand { get; }
 
-    /// <summary>The role chip: read becomes written, written becomes read (STUDIO-57).</summary>
+    /// <summary>The role pair: read becomes read, write, and back (STUDIO-57).</summary>
     public RelayCommand ToggleRoleCommand { get; }
 
     /// <summary>The cross: the row leaves the list (STUDIO-57).</summary>

@@ -3532,4 +3532,7 @@
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>缓冲</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>缓冲（回退）</value></data>
   <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>更改</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>位置</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>此计算机上的文件夹</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>选择…</value></data>
 </root>

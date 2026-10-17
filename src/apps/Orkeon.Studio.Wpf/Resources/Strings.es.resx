@@ -3532,4 +3532,7 @@
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>En búfer</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>En búfer (reserva)</value></data>
   <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Cambiar</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Ubicación</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Carpeta en este equipo</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Elegir…</value></data>
 </root>

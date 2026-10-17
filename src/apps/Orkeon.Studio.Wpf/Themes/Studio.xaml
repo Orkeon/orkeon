@@ -903,16 +903,14 @@
     </Setter>
   </Style>
 
-  <!-- A segmented pair bound to one state: Tag="True" marks the active half, the way StepPill does. -->
+  <!-- A segmented pair bound to one state: Tag="True" marks the active half, the way StepPill
+       does. The active half is disabled by its command, and keeps its accent: no dimming. -->
   <Style x:Key="SegmentBtnOn" TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
     <Style.Triggers>
       <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
         <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
       </DataTrigger>
-      <Trigger Property="IsEnabled" Value="False">
-        <Setter Property="Opacity" Value="0.45"/>
-      </Trigger>
     </Style.Triggers>
   </Style>
 
