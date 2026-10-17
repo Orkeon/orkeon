@@ -507,39 +507,41 @@
                        measured width, and the layout rounding of a scaled screen (125 %) made it a
                        fraction too narrow — the last button wrapped however wide the window. This
                        one takes the whole column, so it only wraps when the buttons do not fit.
-                       The tab order is the reading order, stated: Rename … Delete. -->
-                  <WrapPanel Grid.Column="1" FlowDirection="RightToLeft" VerticalAlignment="Top" Margin="12,0,0,0"
+                       The tab order is the reading order, stated: Rename … Delete. The quiet buttons
+                       draw no border, so their padding is the gap: 2 px between them keeps the French
+                       labels on one line at a common window width. -->
+                  <WrapPanel Grid.Column="1" FlowDirection="RightToLeft" VerticalAlignment="Top" Margin="8,0,0,0"
                              KeyboardNavigation.TabNavigation="Local">
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="7" Style="{StaticResource BtnQuietDanger}" Margin="0,0,8,4" Command="{Binding AskDeleteCommand}">
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="7" Style="{StaticResource BtnQuietDanger}" Margin="0,0,2,4" Command="{Binding AskDeleteCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
                     <!-- STUDIO-32 (D-02): no question — it is undone in one click: the undo banner follows. -->
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="6" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ArchiveCommand}"
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="6" Style="{StaticResource BtnQuiet}" Margin="0,0,2,4" Command="{Binding ArchiveCommand}"
                             ToolTip="{Binding [Studio.Teams.ArchiveTip], Source={x:Static services:I18n.Instance}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Rectangle Style="{StaticResource VSeparator}"/>
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="4" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding ExportCommand}"
+                    <Rectangle Style="{StaticResource VSeparator}" Margin="6,0,6,4"/>
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="4" Style="{StaticResource BtnQuiet}" Margin="0,0,2,4" Command="{Binding ExportCommand}"
                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Teams.Export], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="3" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding DuplicateCommand}"
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="3" Style="{StaticResource BtnQuiet}" Margin="0,0,2,4" Command="{Binding DuplicateCommand}"
                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Teams.Duplicate], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="2" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding OpenCommand}"
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="2" Style="{StaticResource BtnQuiet}" Margin="0,0,2,4" Command="{Binding OpenCommand}"
                             Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
@@ -548,7 +550,7 @@
                     </Button>
                     <!-- STUDIO-28 (D-07): the folder, the workshop session, the titles and the
                          schedule follow the new name — Modify only retitles. -->
-                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="1" Style="{StaticResource BtnQuiet}" Margin="0,0,8,4" Command="{Binding RenameCommand}"
+                    <Button FlowDirection="LeftToRight" KeyboardNavigation.TabIndex="1" Style="{StaticResource BtnQuiet}" Margin="0,0,2,4" Command="{Binding RenameCommand}"
                             ToolTip="{Binding [Studio.Teams.RenameTip], Source={x:Static services:I18n.Instance}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="pencil-line" Size="13" Margin="0,0,7,0"/>
