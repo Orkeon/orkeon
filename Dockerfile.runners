@@ -337,6 +337,8 @@ RUN printf '%s\n' \
 # redundant friction here. Bake the env opt-in so `run /workspace/...` works out
 # of the box; pass -e ORKEON_ALLOW_EXTERNAL_MOUNTS=0 to restore the guard.
 ENV ORKEON_ALLOW_EXTERNAL_MOUNTS=1
+# The container is the boundary: shell_command runs unconfined in it (Auto would turn it off too, said explicitly here).
+ENV Orkeon__Tools__Shell__Confinement__Mode=None
 
 # Published apps, one directory per runner (see the dispatcher below).
 COPY --from=build /app/runners ./runners

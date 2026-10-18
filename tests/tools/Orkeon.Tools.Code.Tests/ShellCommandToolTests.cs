@@ -28,7 +28,7 @@ public sealed class ShellCommandToolTests : IDisposable
 
     public ShellCommandToolTests()
     {
-        _tool = new ShellCommandTool(new FakeFileSystemService());
+        _tool = new ShellCommandTool(new FakeFileSystemService()) { Confinement = TestConfinement.Off() };
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed class ShellCommandToolTests : IDisposable
 
         var tool = new ShellCommandTool(
             new FakeFileSystemService(),
-            allowedCommands: s_sleepEchoAllowlist);
+            allowedCommands: s_sleepEchoAllowlist) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(request, TestContext.Current.CancellationToken);
 
@@ -184,7 +184,7 @@ public sealed class ShellCommandToolTests : IDisposable
 
         var tool = new ShellCommandTool(
             new FakeFileSystemService(),
-            allowedCommands: s_pwdCdAllowlist);
+            allowedCommands: s_pwdCdAllowlist) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(request, TestContext.Current.CancellationToken);
 
@@ -230,7 +230,7 @@ public sealed class ShellCommandToolTests : IDisposable
     {
         var tool = new ShellCommandTool(
             new FakeFileSystemService(),
-            allowedCommands: s_python3Allowlist);
+            allowedCommands: s_python3Allowlist) { Confinement = TestConfinement.Off() };
 
         var request = new ToolCallRequest(
             ToolName: "shell_command",
@@ -254,7 +254,7 @@ public sealed class ShellCommandToolTests : IDisposable
     {
         var tool = new ShellCommandTool(
             new FakeFileSystemService(),
-            blockedPatterns: s_dangerousBlocklist);
+            blockedPatterns: s_dangerousBlocklist) { Confinement = TestConfinement.Off() };
 
         var request = new ToolCallRequest(
             ToolName: "shell_command",
@@ -554,7 +554,7 @@ public sealed class ShellCommandToolTests : IDisposable
     [InlineData("dotnet --version")]
     public async Task ShouldAllowInterpreter_WhenOptedIn(string command)
     {
-        var tool = new ShellCommandTool(new FakeFileSystemService(), allowInterpreters: true);
+        var tool = new ShellCommandTool(new FakeFileSystemService(), allowInterpreters: true) { Confinement = TestConfinement.Off() };
 
         var request = new ToolCallRequest(
             ToolName: "shell_command",
@@ -625,7 +625,7 @@ public sealed class ShellCommandToolTests : IDisposable
         {
             var tool = new ShellCommandTool(
                 new FakeFileSystemService(),
-                allowedCommands: s_environmentReaderAllowlist);
+                allowedCommands: s_environmentReaderAllowlist) { Confinement = TestConfinement.Off() };
 
             var request = new ToolCallRequest(
                 ToolName: "shell_command",
@@ -658,7 +658,7 @@ public sealed class ShellCommandToolTests : IDisposable
     {
         var tool = new ShellCommandTool(
             new FakeFileSystemService(),
-            allowedCommands: s_environmentReaderAllowlist);
+            allowedCommands: s_environmentReaderAllowlist) { Confinement = TestConfinement.Off() };
 
         var request = new ToolCallRequest(
             ToolName: "shell_command",
@@ -787,7 +787,7 @@ public sealed class ShellCommandToolTests : IDisposable
         // A duration no other process uses, so the child is found by its command line alone even
         // when several test passes run at once; it would outlive any run were it not killed.
         var marker = $"3600.{Random.Shared.Next(100_000, 999_999)}";
-        using var tool = new ShellCommandTool(new FakeFileSystemService(), allowedCommands: s_sleepEchoAllowlist);
+        using var tool = new ShellCommandTool(new FakeFileSystemService(), allowedCommands: s_sleepEchoAllowlist) { Confinement = TestConfinement.Off() };
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var request = new ToolCallRequest(
             ToolName: "shell_command",

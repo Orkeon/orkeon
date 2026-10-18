@@ -114,13 +114,16 @@ public sealed record ShellCommandResponse
 /// <c>ICodeSandbox</c> (Docker <c>--network=none</c>) instead.
 /// </para>
 /// <para>
-/// <b>Confinement (opt-in, Linux).</b> With <see cref="Confinement"/> set to
-/// <see cref="ShellConfinementMode.Bubblewrap"/>, the process runs under <c>bwrap</c> in a view built from
+/// <b>Confinement (on by default).</b> <see cref="Confinement"/> defaults to
+/// <see cref="ShellConfinementMode.Auto"/>, the backend of the platform, and to no confinement inside a
+/// container; <see cref="ShellConfinementMode.None"/> turns it off. Under
+/// <see cref="ShellConfinementMode.Bubblewrap"/> (Linux), the process runs under <c>bwrap</c> in a view built from
 /// the VFS (the session is <c>bwrap … -- /bin/sh -s</c>, reopened when the mounts change): each agent-facing mount bound at its virtual path (read-only when it lacks Write, a sub path
 /// without rights covered), the system directories read-only, nothing else of the host, the network off
 /// unless allowed. The process then works on virtual paths, so the arguments are checked but not
 /// rewritten, and the kernel enforces a read-only mount on whatever the process reaches by itself. When
-/// bubblewrap is unavailable the call fails with the reason; it never runs unconfined.
+/// the backend is unavailable the call fails with the reason and how to turn confinement off; it never
+/// runs unconfined.
 /// </para>
 /// </remarks>
 [ToolContract("shell_command",
@@ -133,7 +136,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     public override ToolAccess Access => ToolAccess.Execute;
 
     /// <summary>
-    /// How the process is confined: <see cref="ShellConfinementMode.None"/> (default) runs it on the
+    /// How the process is confined: <see cref="ShellConfinementMode.Auto"/> (default) picks the backend
+    /// of the platform, none inside a container; <see cref="ShellConfinementMode.None"/> runs it on the
     /// host; <see cref="ShellConfinementMode.Bubblewrap"/> runs it in a view built from the VFS.
     /// </summary>
     public ShellConfinementOptions Confinement { get; init; } = new();
@@ -144,17 +148,24 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>Keeps the shell session of each agent run. Replaced by the tests.</summary>
     internal ShellSessionManager Sessions { get; init; } = ShellSessionManager.Shared;
 
+    /// <summary>Whether the host runs in a container, read by <see cref="ShellConfinementMode.Auto"/>. Replaced by the tests.</summary>
+    internal IContainerDetector ContainerDetector { get; init; } = Orkeon.Tools.Code.Confinement.ContainerDetector.Host;
+
+    /// <summary>The platform the backend is chosen for. Replaced by the tests.</summary>
+    internal ShellPlatform Platform { get; init; } = ShellConfinementResolver.CurrentPlatform;
+
     /// <summary>
-    /// How the session runs; null picks it from <see cref="Confinement"/>: bubblewrap (over
-    /// <see cref="Bubblewrap"/>) or none. Set by the dependency injection registration and the tests.
+    /// How the session runs; null picks it from <see cref="Confinement"/> through
+    /// <see cref="ShellSandboxSelector"/> (bubblewrap over <see cref="Bubblewrap"/>, none, or a backend
+    /// that reports why it cannot run). Set by the dependency injection registration and the tests.
     /// </summary>
     internal IShellSandbox? Sandbox { get; init; }
 
     private IShellSandbox? _defaultSandbox;
 
-    private IShellSandbox ActiveSandbox => Sandbox ?? (_defaultSandbox ??= Confinement.Mode == ShellConfinementMode.Bubblewrap
-        ? new BubblewrapShellSandbox(Bubblewrap)
-        : UnconfinedShellSandbox.Shared);
+    private IShellSandbox ActiveSandbox => Sandbox ?? (_defaultSandbox ??=
+        new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), ContainerDetector, Platform, _logger)
+            .Select(Confinement.Mode));
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
@@ -555,20 +566,21 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     // ── Confinement ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Null when the call may run: no confinement, or bubblewrap works and the extra read-only paths
-    /// are absolute. Otherwise the reason the call fails.
+    /// Null when the call may run: no confinement, or the confining backend works and the extra
+    /// read-only paths are absolute. Otherwise the reason the call fails.
     /// </summary>
     private string? ValidateConfinement()
     {
-        if (Confinement.Mode != ShellConfinementMode.Bubblewrap)
-            return null;
+        var sandbox = ActiveSandbox;
+        if (sandbox.UsesVirtualPaths)
+        {
+            var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
+            if (relative is not null)
+                return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
+                    + "which is not an absolute path. The command did not run.";
+        }
 
-        var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
-        if (relative is not null)
-            return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
-                + "which is not an absolute path. The command did not run.";
-
-        var availability = ActiveSandbox.Availability;
+        var availability = sandbox.Availability;
         if (availability.IsAvailable)
             return null;
 
@@ -576,12 +588,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return ConfinementUnavailable(availability.Reason).Stderr;
     }
 
-    private static ShellCommandResponse ConfinementUnavailable(string? reason) => new()
+    /// <summary>The failure of a call whose confinement cannot run, with the way to turn it off.</summary>
+    private ShellCommandResponse ConfinementUnavailable(string? reason) => new()
     {
         ExitCode = -1,
         Stdout = "",
-        Stderr = $"Confinement unavailable: {ShellToolOptions.SectionName}:Confinement:Mode is Bubblewrap, "
-            + $"but {reason}. The command did not run.",
+        Stderr = $"Confinement unavailable: {ShellToolOptions.SectionName}:Confinement:Mode is {Confinement.Mode}, "
+            + $"but {reason}. The command did not run. Install the backend, or set "
+            + $"{ShellToolOptions.SectionName}:Confinement:Mode = None to run shell commands unconfined.",
         Completed = false
     };
 

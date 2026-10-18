@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Tools.Code.Confinement;
 using Orkeon.Tools.Code.Sessions;
 
 namespace Orkeon.Tools.Code.DependencyInjection;
@@ -57,6 +58,14 @@ public static class CodeToolExtensions
         services.TryAddSingleton<ShellSessionManager>();
         services.TryAddSingleton<UnconfinedShellSandbox>();
         services.TryAddSingleton<BubblewrapShellSandbox>();
+        // Auto (the default) resolves once per host to the platform's backend, or to none inside a
+        // container, which the selector logs once.
+        services.TryAddSingleton(sp => new ShellSandboxSelector(
+            sp.GetRequiredService<UnconfinedShellSandbox>(),
+            sp.GetRequiredService<BubblewrapShellSandbox>(),
+            ContainerDetector.Host,
+            ShellConfinementResolver.CurrentPlatform,
+            sp.GetService<ILogger<ShellSandboxSelector>>()));
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
@@ -67,9 +76,7 @@ public static class CodeToolExtensions
             {
                 Confinement = shell.Confinement,
                 Sessions = sp.GetRequiredService<ShellSessionManager>(),
-                Sandbox = shell.Confinement.Mode == ShellConfinementMode.Bubblewrap
-                    ? sp.GetRequiredService<BubblewrapShellSandbox>()
-                    : sp.GetRequiredService<UnconfinedShellSandbox>(),
+                Sandbox = sp.GetRequiredService<ShellSandboxSelector>().Select(shell.Confinement.Mode),
             };
         });
         // SecureCodeInterpreterTool is registered via AddOrkeonCodeSandbox() in InfrastructureExtensions

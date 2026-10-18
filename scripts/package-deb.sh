@@ -48,7 +48,10 @@ HOMEPAGE="https://github.com/Orkeon/orkeon"
 #              of the apt repository's end-to-end check fails the day a targeted
 #              distribution moves to an ICU missing here — add it at the front.
 #   OpenSSL  — Ubuntu 24.04 renamed libssl3 to libssl3t64 (time_t transition).
-DEPENDS="libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates"
+#   bubblewrap — shell_command confines its process with bwrap by default
+#              (Confinement:Mode = Auto); its package ships the AppArmor profile
+#              that lets /usr/bin/bwrap create user namespaces on Ubuntu 24.04+.
+DEPENDS="libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70, libssl3t64 | libssl3, zlib1g, libgcc-s1, libc6 (>= 2.34), ca-certificates, bubblewrap"
 # The repository's signing key. Recommends, not Depends: `apt install ./orkeon_*.deb`
 # with no repository configured must keep working, and apt installs recommends by
 # default, so a repository install keeps the key current without asking.

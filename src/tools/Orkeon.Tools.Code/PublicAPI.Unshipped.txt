@@ -2,8 +2,11 @@
 Orkeon.Tools.Code.ShellCommandTool.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!
 Orkeon.Tools.Code.ShellCommandTool.Confinement.init -> void
 Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.AppContainer = 4 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Auto = 2 -> Orkeon.Tools.Code.ShellConfinementMode
 Orkeon.Tools.Code.ShellConfinementMode.Bubblewrap = 1 -> Orkeon.Tools.Code.ShellConfinementMode
 Orkeon.Tools.Code.ShellConfinementMode.None = 0 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Seatbelt = 3 -> Orkeon.Tools.Code.ShellConfinementMode
 Orkeon.Tools.Code.ShellConfinementOptions
 Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.get -> bool
 Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.set -> void

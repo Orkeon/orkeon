@@ -6,6 +6,7 @@ using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests.Confinement;
 
@@ -79,10 +80,11 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
             confinement.ReadOnlyPaths.Add(path);
 
         return bubblewrap is null
-            ? new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands) { Confinement = confinement }
+            ? new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands) { Confinement = confinement, Platform = ShellPlatform.Linux }
             : new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands)
             {
                 Confinement = confinement,
+                Platform = ShellPlatform.Linux,
                 Bubblewrap = bubblewrap,
             };
     }
@@ -104,6 +106,54 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldTellHowToTurnConfinementOff_WhenAutoFindsNoBubblewrapOnALinuxHost()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.Linux,
+            ContainerDetector = new FakeContainerDetector { InContainer = false },
+            Bubblewrap = () => BubblewrapAvailability.Unavailable("bwrap was not found (install the bubblewrap package)"),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Confinement:Mode is Auto, but bwrap was not found", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("set Orkeon:Tools:Shell:Confinement:Mode = None", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRunUnconfinedWithoutProbing_WhenAutoRunsInAContainer()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.Linux,
+            ContainerDetector = new FakeContainerDetector { InContainer = true },
+            Bubblewrap = () => throw new InvalidOperationException("probed inside a container"),
+        };
+
+        var dict = Unpack(await tool.CallAsync(Request("echo unconfined"), Ct));
+
+        Assert.Equal(0, (int)dict["exit_code"]!);
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCall_WhenAnExplicitModeIsForAnotherPlatform()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.Seatbelt },
+            Platform = ShellPlatform.Linux,
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Mode is Seatbelt, but Seatbelt confines a process on macOS only", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("The command did not run.", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldRefuseTheCall_WhenAnExtraReadOnlyPathIsRelative()
     {
         using var tool = Confined(() => BubblewrapAvailability.Available("/usr/bin/bwrap"), readOnlyPaths: ["opt/node"]);
@@ -119,6 +169,7 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     {
         using var tool = new ShellCommandTool(FileSystem())
         {
+            Confinement = TestConfinement.Off(),
             Bubblewrap = () => throw new InvalidOperationException("probed without confinement"),
         };
 

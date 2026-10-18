@@ -40,6 +40,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Outils drive](./guides/drive.md) | Donner aux agents un Google Drive ou un OneDrive : enregistrer l'application OAuth, `orkeon drive login`, droits, le dossier racine qu'un agent ne peut pas quitter, la liste d'autorisation de partage fermée, ce que le jeton n'atteint jamais |
 | [Commandes `orkeon drive`](./reference/cli.md#orkeon-drive) | `accounts`, `check` (trouver le dossier racine et le lister), `login` / `logout` — options et codes de sortie |
 | [ADR-013 — la famille d'outils drive](./adr/ADR-013-drive-tool-family.md) | Pourquoi une famille d'outils plutôt qu'un montage VFS, et la couche OAuth que partagent les deux familles cloud |
+| [ADR-014 — le confinement du shell par défaut](./adr/ADR-014-shell-confinement-by-default.md) | Pourquoi `shell_command` est confiné par plateforme par défaut, coupé dans les conteneurs, et tourne dans une session shell par exécution d'agent |
 
 ### Architecture
 
