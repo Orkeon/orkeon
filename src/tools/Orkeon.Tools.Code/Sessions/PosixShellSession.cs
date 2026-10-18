@@ -310,15 +310,43 @@ internal sealed class PosixShellSession : IShellSession
         await _stdin.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>What the session's own error output said last, as a sentence ending, or a full stop.</summary>
+    /// <summary>
+    /// How the session's process ended and what its own error output said last (a confinement that
+    /// refuses its profile says why there), as a sentence ending.
+    /// </summary>
     private async Task<string> StderrNoteAsync()
     {
-        // The shell's last words may still be in the pipe when its output closes.
-        await Task.WhenAny(_stderrPump, Task.Delay(s_stderrGrace)).ConfigureAwait(false);
+        // The shell's last words may still be in the pipe when its output closes. The pump never
+        // faults; a wait that times out leaves it running, with no timer behind.
+        try
+        {
+            await _stderrPump.WaitAsync(s_stderrGrace).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // What came within the grace is what is reported.
+        }
+
+        var status = await WaitForExitAsync(s_stderrGrace).ConfigureAwait(false)
+            ? $" (exit code {ExitCodeOrUnknown()})"
+            : "";
         string tail;
         lock (_stderrTail)
             tail = _stderrTail.ToString().Trim();
-        return tail.Length == 0 ? "." : $": {tail}";
+        return tail.Length == 0 ? $"{status}, with nothing on its error output." : $"{status}: {tail}";
+    }
+
+    [SuppressMessage("Design", "CA1031", Justification = "A diagnostic: a process already disposed has no exit code to report.")]
+    private string ExitCodeOrUnknown()
+    {
+        try
+        {
+            return _process.ExitCode.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (Exception)
+        {
+            return "unknown";
+        }
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "A background drain of the session's error output: a failed read only ends the drain.")]

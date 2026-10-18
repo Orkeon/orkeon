@@ -89,9 +89,17 @@ public sealed class AppContainerShellSessionTests : IDisposable
         var made = await session.RunAsync(Builtin("mkdir", workspace, "made"), Ct);
         var listed = await session.RunAsync(Builtin("dir", workspace, "/b"), Ct);
 
-        Assert.Equal(0, made.ExitCode);
+        if (made.ExitCode != 0)
+        {
+            // Diagnostic: whether the integrity label is what refuses the write (Low IL container, Medium object).
+            var before = Acls(workspace);
+            Icacls(workspace, "/setintegritylevel", "(OI)(CI)low");
+            var retried = await session.RunAsync(Builtin("mkdir", workspace, "made-low"), Ct);
+            Assert.Fail($"{Describe("mkdir made", made)}\n{await DescribeContainerAsync(session)}\n{before}\nafter a Low label: {Describe("mkdir made-low", retried)}");
+        }
+
         Assert.True(Directory.Exists(Path.Combine(workspace, "made")));
-        Assert.Equal(0, listed.ExitCode);
+        Assert.True(listed.ExitCode == 0, Describe("dir /b", listed));
         Assert.Contains("made", listed.Stdout, StringComparison.Ordinal);
     }
 
@@ -111,10 +119,11 @@ public sealed class AppContainerShellSessionTests : IDisposable
         var vendorRead = await session.RunAsync(Builtin("type", workspace, @"vendor\lib.txt"), Ct);
         var vendorWrite = await session.RunAsync(Builtin("mkdir", workspace, @"vendor\made"), Ct);
 
-        Assert.NotEqual(0, secret.ExitCode);
+        var acls = Acls(workspace, Path.Combine(workspace, "secrets"), Path.Combine(workspace, "secrets", "key.txt"), Path.Combine(workspace, "vendor"));
+        Assert.True(secret.ExitCode != 0, $"{Describe(@"type secrets\key.txt", secret)}\n{acls}");
         Assert.DoesNotContain("s3cr3t", secret.Stdout, StringComparison.Ordinal);
-        Assert.Contains("lib", vendorRead.Stdout, StringComparison.Ordinal);
-        Assert.NotEqual(0, vendorWrite.ExitCode);
+        Assert.True(vendorRead.Stdout.Contains("lib", StringComparison.Ordinal), $"{Describe(@"type vendor\lib.txt", vendorRead)}\n{acls}");
+        Assert.True(vendorWrite.ExitCode != 0, $"{Describe(@"mkdir vendor\made", vendorWrite)}\n{acls}");
         Assert.False(Directory.Exists(Path.Combine(workspace, "vendor", "made")));
     }
 
@@ -160,12 +169,15 @@ public sealed class AppContainerShellSessionTests : IDisposable
     {
         var scope = AgentRunScope.Begin("agent-appcontainer");
         var manager = new ShellSessionManager();
-        var lingering = new ShellInvocation("cmd.exe", ["/d", "/c", "start", "/b", "ping", "-n", "120", "127.0.0.1"], null, TimeSpan.FromSeconds(30));
+        // A background cmd.exe that loops until it is killed: ping, the unconfined tests' lingerer, exits at
+        // once in an AppContainer, which may not reach the loopback interface.
+        var lingering = new ShellInvocation(
+            "cmd.exe", ["/d", "/c", "start", "/b", "cmd.exe", "/d", "/c", "for /l %i in (0,0,1) do @rem"], null, TimeSpan.FromSeconds(30));
         var sandbox = new MockShellSandbox(_sandbox);
 
-        await manager.RunAsync(sandbox, ShellSessionView.Empty, lingering, Ct);
+        var started = await manager.RunAsync(sandbox, ShellSessionView.Empty, lingering, Ct);
         var pids = ((WindowsShellSession)Assert.Single(sandbox.Opened)).Job.ProcessIds();
-        Assert.SkipWhen(pids.Count == 0, "ping does not linger in an AppContainer on this host.");
+        Assert.True(pids.Count > 0, $"Nothing lingers in the session's job: {Describe("start /b", started)}");
 
         await scope.DisposeAsync();
 
@@ -274,7 +286,9 @@ public sealed class AppContainerShellSessionTests : IDisposable
         var hidden = Unpack(await tool.CallAsync(Request(@"type secrets\key.txt", "/workspace"), Ct));
 
         Assert.Contains("confined", read["stdout"]!.ToString(), StringComparison.Ordinal);
-        Assert.NotEqual(0, (int)hidden["exit_code"]!);
+        Assert.True((int)hidden["exit_code"]! != 0,
+            $"type secrets\\key.txt: exit {hidden["exit_code"]}, stdout [{hidden["stdout"]}], stderr [{hidden["stderr"]}]\n"
+            + Acls(workspace, Path.Combine(workspace, "secrets"), Path.Combine(workspace, "secrets", "key.txt")));
         Assert.DoesNotContain("s3cr3t", hidden["stdout"]!.ToString(), StringComparison.Ordinal);
     }
 
@@ -284,6 +298,45 @@ public sealed class AppContainerShellSessionTests : IDisposable
             ["command"] = command,
             ["working_directory"] = workingDirectory,
         });
+
+    private static string Describe(string command, ShellRunResult result)
+        => $"{command}: exit {result.ExitCode}, stdout [{result.Stdout.Trim()}], stderr [{result.Stderr.Trim()}]";
+
+    /// <summary>The groups and integrity level of the session's container, for a failure message.</summary>
+    private static async Task<string> DescribeContainerAsync(IShellSession session)
+        => Describe("whoami /groups", await session.RunAsync(new ShellInvocation("whoami.exe", ["/groups"], null, TimeSpan.FromSeconds(30)), Ct));
+
+    private static void Icacls(params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "icacls.exe")) { UseShellExecute = false, CreateNoWindow = true };
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
+        using var process = Process.Start(startInfo)!;
+        process.WaitForExit();
+    }
+
+    /// <summary>What icacls says of each path (its ACEs and its integrity label), for a failure message.</summary>
+    private static string Acls(params string[] paths)
+    {
+        var text = new System.Text.StringBuilder();
+        foreach (var path in paths)
+        {
+            var startInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "icacls.exe"))
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            startInfo.ArgumentList.Add(path);
+            using var process = Process.Start(startInfo)!;
+            var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            text.Append("icacls ").Append(path).Append('\n').Append(output.Trim()).Append('\n');
+        }
+
+        return text.ToString();
+    }
 
     private static Dictionary<string, object?> Unpack(ToolCallResponse result)
     {

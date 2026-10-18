@@ -239,6 +239,16 @@ jobs:
           fi
           echo "Seatbelt tests succeeded: $succeeded (floor: $MIN_SUCCEEDED)"
           exit $rc
+      - name: Show what the sandbox refused (on failure)
+        if: failure()
+        run: |
+          # The kernel logs each operation a profile denies ("deny(1) file-read-data /path"); a process
+          # that died on startup leaves a crash report.
+          log show --last 20m --style compact --predicate 'eventMessage CONTAINS[c] "deny("' | tail -n 300 || true
+          ls -t ~/Library/Logs/DiagnosticReports 2>/dev/null | head -n 20 || true
+          for report in $(ls -t ~/Library/Logs/DiagnosticReports/*.ips 2>/dev/null | head -n 2); do
+            echo "== $report"; head -c 4000 "$report"; echo
+          done
 
   # The AppContainer + Job Object confinement of shell_command (src/tools/Orkeon.Tools.Code/
   # Sessions/Windows) can only be exercised on a real Windows host: its integration tests

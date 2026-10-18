@@ -48,6 +48,21 @@ public sealed class PosixShellSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldReportTheExitCodeAndTheErrorOutput_WhenTheSessionDiesDuringItsStart()
+    {
+        // A wrapper that refuses to start (a confinement rejecting its profile) says why on its error output.
+        var startInfo = new ProcessStartInfo("/bin/sh");
+        foreach (var argument in (string[])["-c", "echo 'profile rejected' >&2; exit 3"])
+            startInfo.ArgumentList.Add(argument);
+
+        var error = await Assert.ThrowsAsync<ShellSessionException>(
+            () => PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: false, Ct));
+
+        Assert.Contains("exit code 3", error.Message, StringComparison.Ordinal);
+        Assert.Contains("profile rejected", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldPassEachArgumentAsOneWord_WhateverItHolds()
     {
         string[] words = ["it's", "", "two words", "$HOME", "`id`", "$(id)", "line1\nline2", "*", ";", "&&"];
