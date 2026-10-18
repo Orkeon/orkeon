@@ -81,6 +81,9 @@ public sealed class HintBarView : View
         Refresh();
     }
 
+    internal static bool IsTurnRunning(IInteractiveRunner? runner, TuiIntegration? integration)
+        => runner?.IsCommandRunning == true || integration?.PromptTurnRunning?.Invoke() == true;
+
     /// <summary>Recomposes the bar from the current mode + turn state.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing mode provider degrades the posture to 'default', never crashes the UI.")]
     public void Refresh()
@@ -94,7 +97,7 @@ public sealed class HintBarView : View
         {
             mode = "default";
         }
-        var running = _runner?.IsCommandRunning == true;
+        var running = IsTurnRunning(_runner, _integration);
         var agents = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
         var segments = HintBarModel.LeftSegments(mode, running, agents);
 

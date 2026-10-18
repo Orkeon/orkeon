@@ -170,6 +170,9 @@ public sealed class ReplPaneView : View
     /// <summary>Emitted on every key down on the input field. Used by the console adapter's <c>ReadKey</c>.</summary>
     public event EventHandler<KeyCapturedEventArgs>? KeyCaptured;
 
+    /// <summary>Raised by the second consecutive Esc.</summary>
+    public event EventHandler? InterruptRequested;
+
     /// <summary>
     /// The editable multi-line input field. Exposed so the global right-click
     /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste"/>)
@@ -303,14 +306,19 @@ public sealed class ReplPaneView : View
 
         var bare = PaneClipboard.BareKey(key);
 
-        // Escape never quits the app from the prompt: a single Escape is swallowed, a second
-        // consecutive Escape clears the current draft (Esc-Esc). Any other key disarms the sequence.
+        // Escape never quits the app from the prompt: the first Escape clears the draft and arms,
+        // a second consecutive Escape requests an interrupt (Esc-Esc). Any other key disarms the sequence.
         if (bare == KeyCode.Esc)
         {
-            if (_escapeArmed)
-                ClearInput();
-            _escapeArmed = !_escapeArmed;
             key.Handled = true;
+            if (_escapeArmed)
+            {
+                _escapeArmed = false;
+                InterruptRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+            ClearInput();
+            _escapeArmed = true;
             return;
         }
         _escapeArmed = false;

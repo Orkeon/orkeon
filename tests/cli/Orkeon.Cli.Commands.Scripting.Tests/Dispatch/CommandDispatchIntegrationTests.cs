@@ -26,6 +26,7 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
 /// dispatches by name to an agent that declared <c>onCommand</c>, exercising the sync path,
 /// the async post + completed-drain path, and the per-command admission quota.
 /// </summary>
+[Collection("PromptScope")]
 public sealed class CommandDispatchIntegrationTests : IDisposable
 {
     private readonly string _tempDir;
@@ -219,6 +220,34 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
         Assert.Contains("still running", result.Message);
 
         gate.SetResult();
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public async Task Sync_typed_line_takes_over_the_prompt_turn_from_an_earlier_crew_line()
+    {
+        var service = NewDispatchService();
+        RegisterEchoAgent(service);
+
+        string earlier;
+        using (CommandDispatchService.BeginCommand("index", CancellationToken.None, timeout: null, promptLine: "/index"))
+        {
+            earlier = service.postWork("index", "crew:x", async ct =>
+            {
+                await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+                return new CommandResponse("x", "index", success: true, payload: string.Empty, error: null);
+            });
+        }
+        Assert.Contains(earlier, service.PromptTurnTickets());
+
+        var registry = LoadFixture("ask.cmd.ts", service);
+        var ask = registry.ScriptCommands.Single(c => c.Name == "ask");
+        var console = new ScriptedTestConsole();
+
+        await ask.ExecuteAsync(Ctx("ask hello", "hello", console), CancellationToken.None);
+
+        Assert.DoesNotContain(earlier, service.PromptTurnTickets());
+        service.cancel(earlier);
     }
 
     private static IInteractiveCommand Builtin(ScriptCommandRegistry registry, string name)

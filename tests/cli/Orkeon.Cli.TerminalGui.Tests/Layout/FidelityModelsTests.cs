@@ -226,12 +226,21 @@ public class HintBarModelTests
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
     public void Running_bar_gains_the_interrupt_entry()
     {
         // The contextuality IS the observed behaviour: capture 2's bar grows
         // "esc to interrupt" only while a turn is in flight.
         var segments = HintBarModel.LeftSegments("default", commandRunning: true, agentsPaneAvailable: true);
-        Assert.Contains(segments, s => s.Contains("esc to interrupt", StringComparison.Ordinal));
+        Assert.Contains(segments, s => s.Contains("esc esc to interrupt", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-07")]
+    public void Running_bar_names_the_escape_pair()
+    {
+        var segments = HintBarModel.LeftSegments("default", commandRunning: true, agentsPaneAvailable: true);
+        Assert.Contains("esc esc to interrupt", segments);
     }
 
     [Fact]

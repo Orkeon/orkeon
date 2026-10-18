@@ -89,6 +89,9 @@ public sealed class TuiIntegration
     /// <summary>Cancel the in-flight async work (hint bar's Esc during a turn).</summary>
     public Action? InterruptCurrent { get; set; }
 
+    /// <summary>True while a dispatched prompt turn runs.</summary>
+    public Func<bool>? PromptTurnRunning { get; set; }
+
     /// <summary>The long operation currently reporting progress. Null ⇒ no bar.</summary>
     public Func<ProgressInfo?>? Progress { get; set; }
 

@@ -131,14 +131,11 @@ internal static class TuiFidelityWiring
             integration.AgentRows = () => BuildAgentRows(dispatch);
             integration.InterruptCurrent = () =>
             {
-                // Cancel the most recent still-running async instance — the reference's
-                // "esc to interrupt" acts on the turn in flight.
-                var running = dispatch.list()
-                    .Where(v => v.state is "running" or "dispatched")
-                    .OrderByDescending(v => v.startedAt, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (running is not null) dispatch.cancel(running.ticket);
+                // "esc to interrupt" acts on the prompt turn in flight: every ticket of it.
+                foreach (var ticket in dispatch.PromptTurnTickets())
+                    dispatch.cancel(ticket);
             };
+            integration.PromptTurnRunning = () => dispatch.PromptTurnTickets().Count > 0;
             integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket));
         }
 

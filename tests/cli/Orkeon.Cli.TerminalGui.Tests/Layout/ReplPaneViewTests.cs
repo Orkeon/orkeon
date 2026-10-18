@@ -461,6 +461,7 @@ public class ReplPaneViewTests
     // ── Double-Escape clears the draft (never quits) ──────────────────────────────────────
 
     [Fact]
+    [Trait("BR", "CH-02")]
     public void DoubleEscape_clears_the_current_draft()
     {
         using var pane = CreatePane();
@@ -468,6 +469,7 @@ public class ReplPaneViewTests
         pane.CurrentInput = "half-typed command";
 
         pane.RaiseKeyDown(new Key(KeyCode.Esc));
+        Assert.Equal(string.Empty, pane.CurrentInput);
         pane.RaiseKeyDown(new Key(KeyCode.Esc));
 
         Assert.Equal(string.Empty, pane.CurrentInput);
@@ -475,29 +477,68 @@ public class ReplPaneViewTests
     }
 
     [Fact]
-    public void SingleEscape_is_swallowed_and_leaves_the_draft_intact()
+    [Trait("BR", "CH-02")]
+    public void SingleEscape_clears_the_draft_and_raises_no_interrupt()
     {
         using var pane = CreatePane();
+        var raised = 0;
+        pane.InterruptRequested += (_, _) => raised++;
         pane.CurrentInput = "keep me";
 
         var key = new Key(KeyCode.Esc);
         pane.RaiseKeyDown(key);
 
         Assert.True(key.Handled);            // swallowed ⇒ never reaches the app quit binding
-        Assert.Equal("keep me", pane.CurrentInput);
+        Assert.Equal(string.Empty, pane.CurrentInput);
+        Assert.Equal(0, raised);
     }
 
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void First_escape_clears_the_draft_and_the_second_raises_InterruptRequested()
+    {
+        using var pane = CreatePane();
+        var raised = 0;
+        pane.InterruptRequested += (_, _) => raised++;
+        pane.CurrentInput = "draft";
+
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));
+        Assert.Equal(string.Empty, pane.CurrentInput);
+        Assert.Equal(0, raised);
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));
+
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void Escape_pair_on_an_empty_prompt_raises_InterruptRequested()
+    {
+        using var pane = CreatePane();
+        var raised = 0;
+        pane.InterruptRequested += (_, _) => raised++;
+
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));
+
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
     public void Escape_sequence_resets_after_another_key()
     {
         using var pane = CreatePane();
-        pane.CurrentInput = "keep me";
+        var raised = 0;
+        pane.InterruptRequested += (_, _) => raised++;
 
         pane.RaiseKeyDown(new Key(KeyCode.Esc));      // arm
-        pane.RaiseKeyDown(new Key(KeyCode.CursorUp)); // unrelated key disarms (no history ⇒ no change)
-        pane.RaiseKeyDown(new Key(KeyCode.Esc));      // arms again, but does NOT clear
+        pane.RaiseKeyDown(new Key(KeyCode.CursorUp)); // unrelated key disarms
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));      // arms again, no interrupt
+        Assert.Equal(0, raised);
 
-        Assert.Equal("keep me", pane.CurrentInput);
+        pane.RaiseKeyDown(new Key(KeyCode.Esc));      // consecutive pair completes
+        Assert.Equal(1, raised);
     }
 
     [Fact]

@@ -1,1 +1,4 @@
 #nullable enable
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.InterruptRequested -> System.EventHandler?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.get -> System.Func<bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.set -> void

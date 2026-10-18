@@ -117,7 +117,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     private async Task<CommandResult> ExecuteSyncCommand(CommandContext context, JsValue argsObj, CancellationToken ct)
     {
         var ctxObj = PushContext(context.Console, context.RawInput, ct);
-        using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct) : null;
+        using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
 
         JsValue result;
         try
@@ -168,7 +168,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         var ctxObj = PushContext(context.Console, context.RawInput, ct);
         try
         {
-            using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct) : null;
+            using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
 
             JsValue result;
             try

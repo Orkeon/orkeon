@@ -7,3 +7,6 @@ Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.deny(string! tool, s
 Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.enabled.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.list() -> string![]!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Permissions = "permissions" -> string!
+*REMOVED*static Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
+static Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null, string? promptLine = null) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.PromptTurnTickets() -> System.Collections.Generic.IReadOnlyList<string!>!

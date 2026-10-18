@@ -18,9 +18,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// <remarks>
 /// Ctrl+T moved to Ctrl+G (toggle loGs): Ctrl+T used to toggle the now-removed tasks
 /// bandeau, and reusing it for logs would retrain muscle memory onto a different effect.
-/// Esc-to-interrupt is guarded on <c>IsCommandRunning</c> so the REPL's own Esc-Esc
-/// draft-clearing keeps working while idle — Application.KeyDown fires before view
-/// dispatch, and an unguarded Esc here would steal it.
+/// Esc-to-interrupt has no global binding: the REPL input's Esc-Esc pair raises
+/// <c>InterruptRequested</c>, and Application.KeyDown fires before view dispatch, so a
+/// global Esc would steal it from the focused panes.
 /// </remarks>
 public static class GlobalKeyBindings
 {
@@ -57,7 +57,7 @@ public static class GlobalKeyBindings
         var bindings = new (Func<Key, bool> Match, Action Action)[]
         {
             (k => IsCtrl(k, KeyCode.F), findDialog.Show),
-            (k => IsCtrl(k, KeyCode.Q), () => HandleQuit(toplevel)),
+            (k => IsCtrl(k, KeyCode.Q), () => HandleQuit(toplevel, integration)),
             (k => IsCtrl(k, KeyCode.G), toplevel.ToggleLogsVisible),
             (k => IsCtrl(k, KeyCode.R), toplevel.ToggleReplVisible),
             (k => IsCtrl(k, KeyCode.L), toplevel.Logs.Clear),
@@ -72,7 +72,6 @@ public static class GlobalKeyBindings
             (k => k.KeyCode == Key.F4.KeyCode, () => ToggleAgentSelection(toplevel)),
             // Fidelity bindings (hint bar contract):
             (k => k.KeyCode == Key.Tab.WithShift.KeyCode, () => CycleMode(toplevel, integration)),
-            (k => IsBareEsc(k) && toplevel.Runner?.IsCommandRunning == true, () => Interrupt(toplevel, integration)),
         };
 
         // Selection plumbing: Enter/double-click prints the instance detail into the
@@ -83,6 +82,7 @@ public static class GlobalKeyBindings
             var detail = SafeDescribe(integration, e.Ticket);
             toplevel.Repl.AppendOutputLine(detail ?? $"[{e.Ticket}] no detail available.");
         };
+        toplevel.Repl.InterruptRequested += (_, _) => OnInterruptRequested(toplevel, integration);
         toplevel.Agents.SelectionExited += (_, _) => toplevel.Repl.Input?.SetFocus();
 
         Application.KeyDown += (_, key) =>
@@ -101,10 +101,6 @@ public static class GlobalKeyBindings
 
     private static bool IsCtrl(Key key, KeyCode letter)
         => key.IsCtrl && (key.KeyCode & ~(KeyCode.CtrlMask | KeyCode.AltMask | KeyCode.ShiftMask)) == letter;
-
-    private static bool IsBareEsc(Key key)
-        => !key.IsCtrl && !key.IsAlt && !key.IsShift
-           && (key.KeyCode & ~(KeyCode.CtrlMask | KeyCode.AltMask | KeyCode.ShiftMask)) == KeyCode.Esc;
 
     private static void CycleMode(SplitPaneToplevel toplevel, TuiIntegration? integration)
     {
@@ -133,17 +129,16 @@ public static class GlobalKeyBindings
 
     private static void Interrupt(SplitPaneToplevel toplevel, TuiIntegration? integration)
     {
-        // Prefer the host's targeted cancel (the async ticket); fall back to the
-        // runner-level cancellation the Ctrl+C path already uses.
-        if (integration?.InterruptCurrent is { } interrupt) interrupt();
-        else toplevel.Runner?.RequestCommandCancellation();
+        // A running command is cancelled at the runner (Ctrl+C path); the prompt's turn
+        // is interrupted by the host's targeted cancel. Both run: both are cancelled.
+        if (toplevel.Runner?.IsCommandRunning == true) toplevel.Runner.RequestCommandCancellation();
+        if (integration?.PromptTurnRunning?.Invoke() == true) integration.InterruptCurrent?.Invoke();
         toplevel.Repl.AppendOutputLine("⏹  interrupt requested (esc).");
     }
 
-    private static void HandleQuit(SplitPaneToplevel toplevel)
+    private static void HandleQuit(SplitPaneToplevel toplevel, TuiIntegration? integration)
     {
-        var runner = toplevel.Runner;
-        if (runner is { IsCommandRunning: true })
+        if (QuitNeedsConfirmation(toplevel.Runner, integration))
         {
             var choice = MessageBox.Query(
                 Application.Instance!,
@@ -154,6 +149,15 @@ public static class GlobalKeyBindings
         }
         Application.RequestStop(toplevel);
     }
+
+    internal static void OnInterruptRequested(SplitPaneToplevel toplevel, TuiIntegration? integration)
+    {
+        if (HintBarView.IsTurnRunning(toplevel.Runner, integration))
+            Interrupt(toplevel, integration);
+    }
+
+    internal static bool QuitNeedsConfirmation(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner? runner, TuiIntegration? integration)
+        => HintBarView.IsTurnRunning(runner, integration);
 
     internal static LogLevel MoreVerbose(LogLevel current)
     {

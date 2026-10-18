@@ -77,11 +77,11 @@ public sealed class StatusLineView : View
     private string ComposeText()
     {
         var runner = _runner;
-        var running = runner?.IsCommandRunning == true;
+        var running = HintBarView.IsTurnRunning(runner, _integration);
 
         if (running && !_wasRunning)
         {
-            _turnStartedAt = runner!.CurrentCommandStartedAtUtc ?? _clock.GetUtcNow().UtcDateTime;
+            _turnStartedAt = runner?.CurrentCommandStartedAtUtc ?? _clock.GetUtcNow().UtcDateTime;
             _tokensAtTurnStart = ReadSessionTokens() ?? 0;
         }
         if (!running && _wasRunning)

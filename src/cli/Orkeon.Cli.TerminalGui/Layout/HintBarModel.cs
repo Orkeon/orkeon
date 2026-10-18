@@ -25,7 +25,7 @@ public static class HintBarModel
     {
         var mode = string.IsNullOrWhiteSpace(permissionMode) ? "default" : permissionMode.Trim();
         var segments = new List<string>(4) { $"{mode} (shift+tab to cycle)" };
-        if (commandRunning) segments.Add("esc to interrupt");
+        if (commandRunning) segments.Add("esc esc to interrupt");
         segments.Add("ctrl+g logs");
         if (agentsPaneAvailable) segments.Add("f4 agents");
         return segments;
