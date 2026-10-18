@@ -1332,9 +1332,13 @@ remplace en entier — le remplacement annule `AllowInterpreters`. Une commande 
 par défaut en lecture seule (un interpréteur, une commande ajoutée, git une fois sa restriction
 levée) peut écrire : un chemin virtuel de sa ligne de commande et son répertoire de travail
 demandent tous les droits, si bien qu'un montage en lecture seule lui est refusé et reste lisible
-par les outils de fichiers. `Confinement:Mode = Bubblewrap`
-lance le processus sous `bwrap` (Linux) dans une vue construite depuis le VFS ; un appel échoue,
-avec la raison, quand `bwrap` ne peut le confiner ([limites](./limitations.md)).
+par les outils de fichiers. `Confinement` dit comment le système d'exploitation confine la
+session shell de l'agent : `Mode = Auto` (le défaut) choisit bubblewrap sous Linux, Seatbelt sous
+macOS, un AppContainer dans un Job Object sous Windows, et aucun confinement quand l'hôte tourne
+dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait échouer l'appel,
+avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
+par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
+([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

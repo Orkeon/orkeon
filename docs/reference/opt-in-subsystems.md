@@ -66,7 +66,6 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
-| Shell confinement | config only: `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap` (Linux, `bwrap` on the host) | Tools.Code | (`ShellCommandTool` runs its process under `bwrap` in a view built from the VFS; unavailable ⇒ the call fails, never unconfined) | Beta |
 | Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 | Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly; `orkeon-repl` calls it when its settings carry a `Plugins` section, no other shipped binary does) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
@@ -562,23 +561,17 @@ No attribute carries an id of a crew, task or agent.
     the read-only git subcommand restriction.
   - An absent or empty section binds to `null` (defaults) — never to an empty
     array, which would block every command.
-- **VFS path rewriting** (always on, no flag): arguments naming a mount-prefixed
+- **VFS path rewriting** (always on, no flag; under bubblewrap the process sees the virtual paths and nothing is rewritten): arguments naming a mount-prefixed
   virtual path (incl. `--out=/workspace/dist`) are resolved virtual→physical before
   the process starts — a denied path fails the call with the redacted reason — and
   stdout/stderr are rewritten physical→virtual, so the model only ever sees virtual
   paths. `AgentFacing` mounts, ordinal matching; without mounts both passes are
   no-ops.
-- **Confinement** (`Orkeon:Tools:Shell:Confinement`, off by default): `Mode =
-  Bubblewrap` runs the process under `bwrap` (Linux) with every namespace unshared, in
-  a view built from the VFS — each agent-facing mount bound at its virtual path,
-  read-only when it lacks Write, a sub path without rights covered, the system
-  directories (`/usr`, `/bin`, `/sbin`, `/lib*`, `/etc`) and `ReadOnlyPaths` read-only,
-  a fresh `/proc`, `/dev` and `/tmp`, nothing else of the host — and the network off
-  unless `AllowNetwork`. The process then sees the virtual paths: arguments are
-  checked, not rewritten, and the kernel refuses a write to a read-only mount whatever
-  path the process reaches by itself. When `bwrap` is absent or cannot create its
-  namespaces (probed once per process), the call fails with the reason; it never runs
-  unconfined. Limits: [Known limitations](./limitations.md).
+- **Confinement is not opt-in** (`Orkeon:Tools:Shell:Confinement`): since
+  `1.0.0-rc.5` the process runs confined by default (`Mode = Auto`: bubblewrap on Linux,
+  Seatbelt on macOS, an AppContainer on Windows, off in a container), and
+  `AllowInterpreters` lets in more commands, not a wider view. `Mode = None` is the
+  opt-out — see [Shell confinement](../architecture/security.md#shell-confinement).
 
 ## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)`
 

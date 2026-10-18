@@ -1283,9 +1283,13 @@ emitted); `ExtraAllowedCommands` adds to the allowlist and `AllowedCommands` rep
 the replacement cancels `AllowInterpreters`. A command outside the read-only default list (an
 interpreter, an added command, git once its restriction is lifted) can write: a virtual path on
 its command line and its working directory need every right, so a read-only mount is refused to
-it and stays readable through the file tools. `Confinement:Mode = Bubblewrap` runs the process
-under `bwrap` (Linux) in a view built from the VFS; a call fails, with the reason, when `bwrap`
-cannot confine it ([limits](./limitations.md)).
+it and stays readable through the file tools. `Confinement` says how the operating system
+confines the agent's shell session: `Mode = Auto` (the default) picks bubblewrap on Linux,
+Seatbelt on macOS, an AppContainer inside a Job Object on Windows, and no confinement when the
+host runs in a container; `None` turns it off. A backend that cannot run fails the call, with the
+reason, rather than run it unconfined. `AllowNetwork` opens the network (off by default) and
+`ReadOnlyPaths` lends a toolchain outside the system directories
+([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

@@ -22,8 +22,14 @@ tourner.
 1. **Le confinement est actif par défaut.** `Orkeon:Tools:Shell:Confinement:Mode` reçoit `Auto`, le
    nouveau défaut, qui choisit le moteur de la plateforme :
    - **Linux** : bubblewrap (`bwrap`), chaque montage exposé aux agents lié à son chemin virtuel ;
-   - **macOS** : Seatbelt (`sandbox-exec` et un profil généré) ;
-   - **Windows** : un AppContainer dans un Job Object, les montages lui étant accordés par ACL.
+   - **macOS** : Seatbelt (`sandbox-exec` et un profil généré), avec un dossier de travail propre
+     à la session comme `HOME` et `TMPDIR` ;
+   - **Windows 10 et suivants** : un AppContainer (un profil par session) dans un Job Object, les
+     montages étant accordés à son SID par ACL. Un programme n'est cherché que sur le `PATH`, jamais
+     dans le répertoire de travail ; un fichier de commandes (`.bat`, `.cmd`) est refusé, car
+     cmd.exe analyserait de nouveau ses arguments ; une commande interne de cmd.exe (`echo`, `dir`,
+     `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"` dans le conteneur, chaque
+     argument qui n'est pas un mot simple entre guillemets doubles et `%` refusé.
    Dans chaque moteur, le processus voit les montages de l'agent (en lecture seule sans Write), les
    répertoires système en lecture seule, rien d'autre de l'hôte, et pas de réseau sauf
    `AllowNetwork`.
@@ -35,14 +41,20 @@ tourner.
 3. **Échec franc.** Un moteur qui ne peut pas tourner (absent, refusé par le noyau, un mode d'une
    autre plateforme) fait échouer l'appel avec la raison et la façon de couper le confinement
    (`Mode = None`). Une commande ne se rabat jamais sur une exécution hors confinement.
-4. **Une session shell par exécution d'agent.** La première commande d'un agent ouvre un shell
-   persistant (`/bin/sh -s`, dans le moteur), lié à l'`AgentRunScope` de l'exécution ; les commandes
-   suivantes de la même exécution le réutilisent, si bien que la vue confinée est construite une
-   fois et rouverte seulement quand les montages changent. La session et tous les processus
-   qu'elle a lancés sont tués quand l'exécution se termine, échoue ou est annulée (la portée se
-   ferme), et quand l'hôte meurt (`--die-with-parent` et un espace de noms PID sous bubblewrap, un
-   chien de garde hors confinement, le Job Object sous Windows). L'annulation de l'appelant tue la
-   commande en cours.
+4. **Une session shell par exécution d'agent.** La première commande d'un agent ouvre sa session,
+   liée à l'`AgentRunScope` de l'exécution ; les commandes suivantes de la même exécution la
+   réutilisent, si bien que la vue confinée est construite une fois et rouverte seulement quand
+   les montages changent. Sous Linux et macOS, la session est un shell persistant (`/bin/sh -s`,
+   dans le moteur) qui lance chaque commande dans un sous-shell ; sous Windows, c'est
+   l'AppContainer et le Job Object, chaque commande étant son propre processus créé dedans. La
+   session et tous les processus qu'elle a lancés sont tués quand l'exécution se termine, échoue ou
+   est annulée (la portée se ferme), et quand l'hôte meurt : par le noyau sous bubblewrap
+   (`--die-with-parent` et un espace de noms PID) et sous Windows (le Job Object, confiné ou non) ;
+   par un chien de garde sous Seatbelt (il tourne hors du bac à sable, qui ne peut pas signaler les
+   processus de l'hôte) et hors confinement sous Linux et macOS, qui sonde l'hôte chaque seconde et
+   tue l'arbre de processus de la session. Un dépassement de délai ou l'annulation de l'appelant tue
+   la session ; la commande suivante en ouvre une nouvelle. Sous Linux et macOS, une commande qui
+   dépasse son délai ne rend aucune sortie partielle.
 5. **La ligne de commande reste sous liste d'autorisation.** La session est un vrai shell, mais
    l'outil analyse et vérifie toujours chaque commande contre sa liste d'autorisation et ses
    opérateurs interdits avant de l'écrire dans la session.
@@ -74,10 +86,19 @@ tourner.
   AppContainer, sur des chemins physiques, traduits à l'aller et au retour comme pour une commande
   hors confinement.
 - **ACL Windows** : l'AppContainer n'atteint un montage que par une ACE ajoutée pour lui ; les ACE
-  sont enregistrées et retirées à la fermeture de la session, et les restes d'un hôte tombé sont
-  nettoyés au démarrage suivant.
+  sont notées dans un registre (`%LOCALAPPDATA%\Orkeon\shell-sessions\`) et retirées à la
+  fermeture de la session, et la première session du processus hôte suivant reprend ce qu'un hôte
+  tombé a laissé. Windows propage chaque ACE héritable à chaque objet sous la racine du montage :
+  une session coûte une écriture de descripteur de sécurité par fichier de ses montages, dans
+  chaque sens. Si c'est trop lent sur de gros arbres, la sortie est un SID d'AppContainer stable
+  par jeu de droits, accordé une fois.
+- **Fichiers de commandes Windows** : `npm.cmd` et tout `.bat`/`.cmd` sont refusés dans tous les
+  modes.
+- **Le chien de garde est plus faible que le noyau** : sous Seatbelt et hors confinement sous
+  Linux et macOS, un processus sorti de l'arbre de la session (un double fork) survit à un crash
+  de l'hôte.
 - **Changement cassant** : un hôte qui comptait sur l'ancien défaut (`None`) reçoit le
   confinement ; la sortie est `Mode = None` (`CHANGELOG.md`, tableau de migration). Le paquet
-  Debian dépend de `bubblewrap` ; sous Ubuntu 24.04 et suivantes, le profil AppArmor de
-  `/usr/bin/bwrap` lève pour bubblewrap seul la restriction des espaces de noms utilisateur non
-  privilégiés.
+  Debian dépend de `bubblewrap` ; sous Ubuntu 24.04 et suivantes, AppArmor restreint les espaces de
+  noms utilisateur non privilégiés, et un profil AppArmor de `/usr/bin/bwrap` qui accorde `userns`
+  lève la restriction pour bubblewrap seul ; sans lui, l'appel échoue avec la raison de bwrap.

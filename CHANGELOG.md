@@ -14,7 +14,7 @@ set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confi
 ([ADR-014](docs/adr/ADR-014-shell-confinement-by-default.md)):
 
 - **`Auto`, the new default, picks the backend of the platform**: bubblewrap (`bwrap`) on Linux,
-  Seatbelt (`sandbox-exec`) on macOS, an AppContainer inside a Job Object on Windows. The process
+  Seatbelt (`sandbox-exec`) on macOS, an AppContainer inside a Job Object on Windows 10 and later. The process
   sees the agent's mounts (read-only when the VFS grants no Write), the system directories
   read-only, nothing else of the host, and no network unless `Confinement:AllowNetwork`.
 - **Off in a container.** When the host runs in a container (`/.dockerenv`, `/run/.containerenv`,
@@ -28,7 +28,13 @@ set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confi
 - **One shell session per agent run.** An agent's commands run in one persistent shell, opened at
   its first command and bound to the run (`AgentRunScope`): the confined view is built once, and the
   session and every process it started are killed when the agent ends, fails or is cancelled, and
-  when the host dies.
+  when the host dies (by the kernel under bubblewrap and the Job Object; by a watchdog polling every
+  second under Seatbelt and unconfined on Linux and macOS). A timeout kills the session and the
+  next command opens a new one; on Linux and macOS the timed-out command returns no partial output.
+- **Windows commands.** In every mode a program is looked up on `PATH` only (never the working
+  directory), a batch file (`.bat`, `.cmd`) is refused, and a cmd.exe built-in runs as
+  `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`, `%` refused. Each AppContainer session grants
+  its mounts by ACE, which Windows propagates to every file below them, once per session.
 - **Cancellation kills the command.** A caller's cancellation now kills the running command's
   process tree; it used to keep running after the call returned.
 - **The Debian package depends on `bubblewrap`.** On Ubuntu 24.04 and later, AppArmor restricts
@@ -42,6 +48,7 @@ set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confi
 | `Confinement:Mode = Bubblewrap` | Unchanged (Linux only) |
 | A toolchain outside the system directories (`/opt/node`, `~/.dotnet`, `nvm`) was reachable | List its folder in `Confinement:ReadOnlyPaths`, or set `Mode = None` |
 | The command reached the network | It does not, unless `Confinement:AllowNetwork = true` |
+| A timed-out command returned what it had printed | Linux and macOS: no partial output, and the session is reset |
 | `ShellConfinementMode` had `None = 0`, `Bubblewrap = 1` | Adds `Auto = 2`, `Seatbelt = 3`, `AppContainer = 4`; `ShellConfinementOptions.Mode` defaults to `Auto` |
 
 ### Added — Google Drive and OneDrive tools for agents (DRIVE-01..06)

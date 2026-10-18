@@ -66,7 +66,6 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
-| Shell : confinement | config seule : `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap` (Linux, `bwrap` sur l'hôte) | Tools.Code | (`ShellCommandTool` lance son processus sous `bwrap` dans une vue construite depuis le VFS ; indisponible ⇒ l'appel échoue, jamais hors confinement) | Bêta |
 | Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement ; `orkeon-repl` l'appelle quand ses réglages portent une section `Plugins`, aucun autre binaire livré ne le fait) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
@@ -578,24 +577,17 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
     restriction git lecture-seule.
   - Une section absente ou vide se lie à `null` (défauts) — jamais à un tableau vide,
     qui bloquerait toute commande.
-- **Réécriture de chemins VFS** (toujours active, sans flag) : les arguments qui nomment
+- **Réécriture de chemins VFS** (toujours active, sans flag ; sous bubblewrap, le processus voit les chemins virtuels et rien n'est réécrit) : les arguments qui nomment
   un chemin virtuel préfixé par un montage (y compris `--out=/workspace/dist`) sont
   résolus virtuel→physique avant le démarrage du processus — un chemin refusé fait
   échouer l'appel avec la raison expurgée — et stdout/stderr sont réécrits
   physique→virtuel : le modèle ne voit jamais que des chemins virtuels. Montages
   `AgentFacing`, correspondance ordinale ; sans montage, les deux passes sont sans effet.
-- **Confinement** (`Orkeon:Tools:Shell:Confinement`, coupé par défaut) : `Mode =
-  Bubblewrap` lance le processus sous `bwrap` (Linux), tous les espaces de noms séparés,
-  dans une vue construite depuis le VFS — chaque montage exposé aux agents lié à son
-  chemin virtuel, en lecture seule quand il n'a pas Write, un sous-chemin sans droit
-  couvert, les répertoires système (`/usr`, `/bin`, `/sbin`, `/lib*`, `/etc`) et
-  `ReadOnlyPaths` en lecture seule, des `/proc`, `/dev` et `/tmp` neufs, rien d'autre de
-  l'hôte — et le réseau coupé sauf `AllowNetwork`. Le processus voit alors les chemins
-  virtuels : les arguments sont vérifiés, pas réécrits, et le noyau refuse une écriture
-  dans un montage en lecture seule quel que soit le chemin que le processus atteint de
-  lui-même. Quand `bwrap` manque ou ne peut créer ses espaces de noms (sondé une fois par
-  processus), l'appel échoue avec la raison ; il ne tourne jamais hors confinement.
-  Limites : [Limitations connues](./limitations.md).
+- **Le confinement n'est pas sur option** (`Orkeon:Tools:Shell:Confinement`) : depuis
+  `1.0.0-rc.5`, le processus tourne confiné par défaut (`Mode = Auto` : bubblewrap sous
+  Linux, Seatbelt sous macOS, un AppContainer sous Windows, coupé dans un conteneur), et
+  `AllowInterpreters` laisse passer plus de commandes, pas une vue plus large. `Mode = None`
+  est la sortie — voir [Confinement du shell](../architecture/security.md#confinement-du-shell).
 
 ## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)`
 
