@@ -1,4 +1,5 @@
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Abstractions.Security;
@@ -109,6 +110,9 @@ public partial class ScrapeElementTool : HttpToolBase<ScrapeElementRequest, Scra
         : base(urlValidator, headerSanitizer, httpClient, logger)
     {
     }
+
+    /// <summary>Extracting an element from a page changes nothing in the workspace: a read for the permission gate (#126).</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
     protected override string? ValidateTypedRequest(ScrapeElementRequest request)

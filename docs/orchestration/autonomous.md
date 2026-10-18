@@ -32,7 +32,7 @@ Unlike the Sequential mode, where the declared order and the task's `agent:` dec
 | `BudgetExhaustedException` | `Autonomous/AgentExecutionBudget.cs` | Typed exception with `BudgetDimension` (ToolCalls, DelegationDepth, WallTime, Tokens, SpawnedAgents) |
 | `BudgetDimension` | `Autonomous/AgentExecutionBudget.cs` | Enum of the 5 budget dimensions |
 
-The limits are `init`-only; the counters are thread-safe (`Interlocked`). Each `Record*` call (`RecordToolCall`, `RecordDelegation`, `RecordSpawn`, `RecordTokens(n)`) checks the wall time, increments its counter and throws `BudgetExhaustedException` when the counter goes past its limit. `ThrowIfExhausted()` is the pre-flight check that consumes nothing, `AssertWallTime()` checks the clock alone, and `IsExhausted` reports whether any dimension is spent. The clock is injectable (`TimeProvider`) for tests.
+The limits are `init`-only; the counters are thread-safe (`Interlocked`). Each `Record*` call (`RecordToolCall`, `RecordDelegation`, `RecordSpawn`, `RecordTokens(n)`) checks the wall time, increments its counter and throws `BudgetExhaustedException` when the counter goes past its limit. `ThrowIfExhausted()` is the pre-flight check that consumes nothing, `AssertWallTime()` checks the clock alone, and `IsExhausted` reports whether any dimension is spent. The clock is injectable (`TimeProvider`) for tests. `PauseWallClock()` stops the wall clock until the handle it returns is disposed (pauses nest): `ctx.llm.act` holds one while the permission gate waits for an operator's answer, so an approval that takes minutes does not end an agent whose own run stays within `MaxWallTime`.
 
 ### Domain layer — ProcessType
 

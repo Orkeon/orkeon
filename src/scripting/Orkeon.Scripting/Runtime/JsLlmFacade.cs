@@ -102,6 +102,13 @@ public sealed partial class JsLlmFacade
     /// <summary>Whether <see cref="interrupt"/> was requested (or the host token cancelled).</summary>
     public bool isInterrupted => _cts.IsCancellationRequested;
 
+    /// <summary>
+    /// What a script can learn about the host's permission gate (#128), read-only:
+    /// <c>ctx.llm.permissionGate.enabled</c> is false when the host registered none, and every tool
+    /// call of <see cref="act"/> then runs unchecked, whatever <c>permissionMode</c> the script poses.
+    /// </summary>
+    public JsPermissionGateState permissionGate => _permissionGate is null ? JsPermissionGateState.Off : JsPermissionGateState.On;
+
     /// <summary>True when the cancellation is a local interrupt(), not a host cancellation.</summary>
     private bool IsLocalInterrupt => _cts.IsCancellationRequested && !_hostCt.IsCancellationRequested;
 
@@ -693,6 +700,10 @@ public sealed partial class JsLlmFacade
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
             PermissionMode = ResolvePermissionMode(options);
+            // A mode the script poses on a host without a gate checks nothing: say so once for
+            // this call rather than drop it in silence (#128).
+            if (facade._permissionGate is null && facade._logger is not null && DeclaresPermissionMode(options))
+                LogUngatedPermissionMode(facade._logger, PermissionMode, facade._agentName);
             Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.OnProfile();
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
@@ -1026,8 +1037,10 @@ public sealed partial class JsLlmFacade
         if (_permissionGate is not null)
         {
             // The gate may hold the call while an operator answers an approval: that time is not
-            // the script's, so the engine's wall-clock limit stops while the gate decides.
+            // the script's, so the engine's wall-clock limit and the agent's wall-time budget
+            // both stop while the gate decides (#127).
             using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
+            using var budgetPaused = _budget?.PauseWallClock();
             verdict = await _permissionGate.CheckAsync(
                 toolName, toolArgs, permissionMode,
                 tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
@@ -1187,6 +1200,15 @@ public sealed partial class JsLlmFacade
         var raw = options.Get("permissionMode");
         return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : "default";
     }
+
+    private static bool DeclaresPermissionMode(JsValue? options) =>
+        options is not null && !options.IsUndefined() && !options.IsNull()
+        && options.Get("permissionMode") is { } raw && raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString());
+
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 2, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "act: permissionMode '{Mode}' was declared (agent '{Agent}') but the host registered no permission gate - every tool call runs unchecked; set Orkeon:Security:PermissionGate:Enabled = true to check them")]
+    static partial void LogUngatedPermissionMode(Microsoft.Extensions.Logging.ILogger logger, string mode, string agent);
 
     /// <summary>
     /// Reads the <c>system</c> act option: the system prompt seeded as the first message of

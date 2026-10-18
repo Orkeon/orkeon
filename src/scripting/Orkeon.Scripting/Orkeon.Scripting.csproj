@@ -123,6 +123,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Scripting.Tests" />
+    <!-- BuiltInToolTypingsTests renders tools.generated.d.ts from the tools a run registers. -->
+    <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
     <!-- Orkeon.Scripting.Cli ships as the `orkeon` CLI assembly (see its
          <AssemblyName>orkeon</AssemblyName>); InternalsVisibleTo matches the
          assembly name, not the project. -->

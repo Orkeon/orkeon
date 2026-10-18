@@ -50,6 +50,10 @@ public sealed class AgentExecutionBudget
     private int _spawnedAgents;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
     private readonly long _startTimestamp = TimeProvider.System.GetTimestamp();
+    private readonly Lock _pauseGate = new();
+    private TimeSpan _paused;
+    private int _pauses;
+    private long _pausedSince;
 
     /// <summary>Current number of tool calls executed.</summary>
     public int CurrentToolCalls => _toolCalls;
@@ -63,8 +67,57 @@ public sealed class AgentExecutionBudget
     /// <summary>Current number of spawned agents.</summary>
     public int CurrentSpawnedAgents => _spawnedAgents;
 
-    /// <summary>Elapsed wall-clock time since budget creation.</summary>
-    public TimeSpan Elapsed => _timeProvider.GetElapsedTime(_startTimestamp);
+    /// <summary>
+    /// Elapsed wall-clock time since budget creation, the time spent under
+    /// <see cref="PauseWallClock"/> excluded.
+    /// </summary>
+    public TimeSpan Elapsed
+    {
+        get
+        {
+            lock (_pauseGate)
+            {
+                var paused = _pauses > 0 ? _paused + _timeProvider.GetElapsedTime(_pausedSince) : _paused;
+                return _timeProvider.GetElapsedTime(_startTimestamp) - paused;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stops the wall clock until the returned handle is disposed: the time a permission gate
+    /// holds a tool call for an operator's answer is not the agent's. Pauses nest; the clock
+    /// runs again when the last one ends, and disposing a handle twice resumes once.
+    /// </summary>
+    public IDisposable PauseWallClock()
+    {
+        lock (_pauseGate)
+        {
+            if (_pauses++ == 0)
+                _pausedSince = _timeProvider.GetTimestamp();
+        }
+
+        return new WallClockResumption(this);
+    }
+
+    private void ResumeWallClock()
+    {
+        lock (_pauseGate)
+        {
+            if (--_pauses == 0)
+                _paused += _timeProvider.GetElapsedTime(_pausedSince);
+        }
+    }
+
+    private sealed class WallClockResumption(AgentExecutionBudget owner) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                owner.ResumeWallClock();
+        }
+    }
 
     /// <summary>Whether the budget has been exhausted on any dimension.</summary>
     public bool IsExhausted =>

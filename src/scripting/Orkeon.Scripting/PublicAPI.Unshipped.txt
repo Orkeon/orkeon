@@ -3,3 +3,6 @@ Orkeon.Scripting.Builders.JsAgentBuilder.maxExecutionTime(double seconds) -> Ork
 Orkeon.Scripting.ScriptToolCatalogue
 Orkeon.Scripting.ScriptToolCatalogue.GetEnumerator() -> System.Collections.Generic.IEnumerator<Orkeon.Domain.Tools.IBaseTool!>!
 Orkeon.Scripting.ScriptToolCatalogue.ScriptToolCatalogue(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! containerTools, Orkeon.Domain.Tools.IToolRegistry? registry) -> void
+Orkeon.Scripting.Runtime.JsLlmFacade.permissionGate.get -> Orkeon.Scripting.Runtime.JsPermissionGateState!
+Orkeon.Scripting.Runtime.JsPermissionGateState
+Orkeon.Scripting.Runtime.JsPermissionGateState.enabled.get -> bool

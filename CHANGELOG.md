@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — every built-in tool is typed in the shipped typings (#125)
+
+`OrkeonTools` declared a handful of tools by hand, and three of them did not match the tools:
+`fileRead` took `encoding` where the tool reads `max_length`, `directoryRead` `recursive` where it
+reads `max_results`; every other tool fell through the index signature and type-checked only with a
+cast. `Typings/tools.generated.d.ts` now declares the input and the result of every built-in tool a
+run registers (`OrkeonBuiltInTools`, which `OrkeonTools` extends), written by `BuiltInToolTypings`
+from each tool's request record (its `[JsonPropertyName]` names, its required members) and response
+record. `BuiltInToolTypingsTests` pins the committed file against the tools and type-checks a script
+that calls them: a parameter renamed on the .NET side, or misspelled in a script, fails `tsc`. The
+e-mail and drive families keep their hand-written declarations; the index signature remains for
+plugin and MCP tools. The hand-written `fileRead`, `fileWrite`, `directoryRead`, `webScrape`,
+`httpApi`, `searchTool`, `databaseQuery`, `delegateWork` and `askQuestion` are gone: the four
+names no tool answers to (`searchTool`, `databaseQuery`, `delegateWork`, `askQuestion`) now fall
+to the index signature.
+
+### Changed — the web and RAG lookups are reads for the permission gate (#126)
+
+`web_scrape`, `scrape_element`, `rag_search` and `rag_ingest` declared no access, so the gate
+classified them as writes: every call asked in `default` and was refused in `plan` and `dontAsk`.
+The first three now declare `ToolAccess.Read`. `rag_ingest` declares `ToolAccess.Edit`: it writes into
+the knowledge index, not into the workspace, so `acceptEdits` accepts it, `default` asks and `plan`
+refuses it. `BuiltInToolAccessTests` lists the built-in tools a run registers that still declare
+nothing.
+
+### Fixed — waiting for the operator no longer spends an agent's wall-time budget (#127)
+
+A crew agent's `.budget({ wallTime })` counted the time the permission gate held a tool call for an
+operator's answer: an approval that took a few minutes ended the agent with `Wall time exceeded`
+although the agent itself had not run that long. `AgentExecutionBudget.PauseWallClock()` stops the
+budget's clock, and `ctx.llm.act` holds it while the gate decides, as it already did for the engine's
+`ExecutionTimeout`. An agent that runs past its budget on its own is still ended.
+
+### Added — a script reads whether the permission gate is on (#128)
+
+Without `Orkeon:Security:PermissionGate:Enabled = true` no gate is registered: every tool call of
+`ctx.llm.act` runs unchecked, and the `permissionMode` a script posed had no effect, with nothing to
+tell it so. `ctx.llm.permissionGate.enabled` (typed in `context.d.ts`) reports it, read-only, and an
+`act()` call that passes a `permissionMode` on a host without a gate logs one warning saying the mode
+checks nothing.
+
 ### Changed — Shell commands are confined by default **[breaking]**
 
 `shell_command` used to run its process on the host, as the user of the host, unless an operator

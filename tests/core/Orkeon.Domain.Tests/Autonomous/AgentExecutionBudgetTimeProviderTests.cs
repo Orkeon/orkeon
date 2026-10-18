@@ -72,6 +72,79 @@ public class AgentExecutionBudgetTimeProviderTests
         Assert.True(child.IsExhausted);
     }
 
+    [Fact]
+    public void ShouldExcludePausedTime_WhenTheWallClockIsPaused()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget
+        {
+            MaxWallTime = TimeSpan.FromSeconds(60),
+            TimeProvider = clock
+        };
+        clock.Advance(TimeSpan.FromSeconds(10));
+
+        // Act - an operator takes 90 s to answer while the clock is paused
+        using (budget.PauseWallClock())
+        {
+            clock.Advance(TimeSpan.FromSeconds(90));
+            Assert.Equal(TimeSpan.FromSeconds(10), budget.Elapsed);
+        }
+        clock.Advance(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(15), budget.Elapsed);
+        Assert.Null(Record.Exception(budget.AssertWallTime));
+    }
+
+    [Fact]
+    public void ShouldStillExhaustWallTime_WhenTheAgentItselfRunsPastMax()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget
+        {
+            MaxWallTime = TimeSpan.FromSeconds(60),
+            TimeProvider = clock
+        };
+        using (budget.PauseWallClock())
+            clock.Advance(TimeSpan.FromSeconds(90));
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(61));
+
+        // Assert
+        var ex = Assert.Throws<BudgetExhaustedException>(budget.AssertWallTime);
+        Assert.Equal(BudgetDimension.WallTime, ex.Dimension);
+    }
+
+    [Fact]
+    public void ShouldResumeTheWallClockOnce_WhenNestedPausesEndAndAHandleIsDisposedTwice()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget
+        {
+            MaxWallTime = TimeSpan.FromMinutes(5),
+            TimeProvider = clock
+        };
+        var outer = budget.PauseWallClock();
+        var inner = budget.PauseWallClock();
+
+        // Act
+        clock.Advance(TimeSpan.FromSeconds(30));
+        inner.Dispose();
+        inner.Dispose();
+        clock.Advance(TimeSpan.FromSeconds(30));
+        var whileOuterOpen = budget.Elapsed;
+        outer.Dispose();
+        clock.Advance(TimeSpan.FromSeconds(7));
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, whileOuterOpen);
+        Assert.Equal(TimeSpan.FromSeconds(7), budget.Elapsed);
+    }
+
     /// <summary>
     /// Minimal manual <see cref="TimeProvider"/> whose timestamp only advances when
     /// <see cref="Advance"/> is called, enabling deterministic wall-time tests.

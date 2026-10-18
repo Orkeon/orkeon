@@ -216,8 +216,10 @@ itération ; sans lui, `act()` envoie un seul message utilisateur. `permissionMo
 (`default`, `acceptEdits`, `bypassPermissions`, `plan`, `dontAsk`) est vérifié auprès de la porte de
 permissions de l'hôte à chaque appel d'outil, quand l'hôte en a enregistré une : un appel pour
 lequel le mode demande attend l'opérateur quand l'hôte a un canal d'approbation (`orkeon-repl` en
-a un), et il est refusé sinon ; le temps que la porte met à décider ne compte pas dans
-`ExecutionTimeout` — déclarez
+a un), et il est refusé sinon ; le temps que la porte met à décider ne compte ni dans
+`ExecutionTimeout`, ni dans le budget de temps mural de l'agent (`.budget({ wallTime })`).
+`ctx.llm.permissionGate.enabled` dit si l'hôte a enregistré une porte ; sans elle, un
+`permissionMode` ne contrôle rien et l'appel journalise un avertissement qui le dit — déclarez
 `.access("read")` sur un outil de script pour qu'il passe `plan` ; `onDelta` reçoit le texte
 streamé de chaque tour de l'assistant.
 
@@ -244,7 +246,7 @@ agent: { id, name } }` et le contexte ; `code` vaut `rate_limit`, `network`, `ti
 | Globale | Ce qu'elle contient |
 |---|---|
 | `llm` | Les réglages de modèle que prend `agentBuilder().llm(...)` (forme déclarative). `llm.default_` — une valeur, pas une fonction — est le fournisseur de l'hôte sur son modèle configuré (un `model` vide quand l'hôte n'en configure aucun : l'agent tourne alors sur le modèle par défaut de ce fournisseur, jamais sur celui d'OpenAI), ou l'écho `<undefined-llm>` quand l'hôte n'en a pas ; `llm.model(name, overrides?)` est le même fournisseur sur un autre modèle ; `llm.profile(name, overrides?)` est l'un des profils nommés de l'hôte (`Llm:Profiles:<nom>`) sur son propre modèle — un agent configuré avec lui fait ses tours et ses appels `ctx.llm` sur ce fournisseur, et un nom que l'hôte n'offre pas lève une erreur qui liste les profils connus (`"default"` est `llm.default_`). `with({ model, temperature, maxTokens, responseFormat })` rend une copie, garde le profil et refuse toute autre clé. Il n'y a pas de fabrique par vendeur : un script choisit parmi les fournisseurs que l'hôte a configurés, par nom de profil. |
-| `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.d.ts` déclare `fileRead`, `fileWrite`, `directoryRead`, `webScrape`, `httpApi`, `searchTool`, `databaseQuery`, `delegateWork`, `askQuestion` et les treize outils `email*` ; tout autre outil enregistré s'atteint de la même façon. |
+| `tools` | Les outils intégrés de l'hôte, appelés depuis un `body` : `tools.fileRead({ path })`, le nom snake_case passé en camelCase. `tools.generated.d.ts` déclare l'entrée et le résultat de chaque outil intégré qu'un run enregistre, écrits depuis ses records de requête et de réponse (les clés snake_case de l'outil : `tools.fileRead({ path, max_length })`), si bien qu'un paramètre mal orthographié échoue au contrôle de types ; `tools.d.ts` déclare à la main les familles e-mail et drive. Un outil de plugin ou MCP s'atteint de la même façon, sans type. |
 | `rag` | `rag.ingest({ collection, sources, chunkingStrategy?, reindex? })`, `rag.query(question, { collection, profile?, topN? })` (une réponse ancrée avec citations) et `rag.retrieve(...)` (les mêmes passages, sans génération). Demande un hôte qui a enregistré le sous-système RAG (`AddOrkeonRag`). |
 | `ErrorAction` | Les fabriques qu'un gestionnaire `onError` retourne : `fail()`, `skip()`, `fallback(value)`, `retry({ delay?, max? })`. Tout le reste vaut `fail()`. |
 | `stateMachine`, `stateGraph`, `START`, `END` | Ci-dessous. |

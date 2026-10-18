@@ -35,6 +35,13 @@ public class RagIngestTool : IBaseTool
         "Ingest documents into a knowledge collection so they become searchable via rag_search. " +
         "Accepts file paths, glob patterns and http(s) addresses; unchanged sources are skipped (incremental).";
 
+    /// <summary>
+    /// Ingestion writes into the knowledge index, a store other runs read, never into the workspace: an
+    /// edit for the permission gate (#126), accepted by <c>acceptEdits</c>, asked in <c>default</c> and
+    /// refused in <c>plan</c>, which promises a turn that changes nothing.
+    /// </summary>
+    public ToolAccess Access => ToolAccess.Edit;
+
     /// <inheritdoc />
     public ToolSchema Schema => new(
         Name: Name,

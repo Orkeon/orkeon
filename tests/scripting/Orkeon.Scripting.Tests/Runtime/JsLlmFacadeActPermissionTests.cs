@@ -1,10 +1,14 @@
 using Jint;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -84,6 +88,117 @@ public sealed class JsLlmFacadeActPermissionTests
         Assert.True(pausedWhileDeciding);
         Assert.False(clock.IsPaused);
         Assert.Equal(1, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task An_approval_longer_than_the_wall_time_budget_does_not_end_the_turn()
+    {
+        using var engine = new Engine();
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromSeconds(60), TimeProvider = clock };
+        var tool = new RecordingTool("file_write");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("file_write", "{\"path\":\"/x\"}") },
+            new LlmResponse { Content = "written", RawResponseBody = null },
+        });
+        // The operator takes 90 s to answer yes.
+        var gate = new ScriptedGate((_, _) =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(90));
+            return PermissionVerdict.Allow();
+        });
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool },
+            new JsLlmActGuards { PermissionGate = gate, Budget = budget });
+
+        var result = await facade.ActAsync(engine, "write something", null);
+
+        Assert.Equal("written", result.Get("output").AsString());
+        Assert.Equal(1, tool.CallCount);
+        Assert.True(budget.Elapsed < TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public async Task The_wall_time_budget_still_ends_an_agent_that_itself_runs_past_it()
+    {
+        using var engine = new Engine();
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromSeconds(60), TimeProvider = clock };
+        // The tool itself runs 90 s; the gate answers at once.
+        var tool = new RecordingTool("file_write") { OnCall = () => clock.Advance(TimeSpan.FromSeconds(90)) };
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("file_write", "{\"path\":\"/x\"}") },
+            new LlmResponse { Content = "never reached", RawResponseBody = null },
+        });
+        var gate = new ScriptedGate((_, _) => PermissionVerdict.Allow());
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool },
+            new JsLlmActGuards { PermissionGate = gate, Budget = budget });
+
+        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "write something", null));
+
+        Assert.Equal(BudgetDimension.WallTime, ex.Dimension);
+        Assert.Single(provider.MessagesPerCall);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void A_script_reads_whether_the_host_registered_a_permission_gate(bool registered)
+    {
+        using var engine = new Engine();
+        var guards = registered ? new JsLlmActGuards { PermissionGate = new ScriptedGate((_, _) => PermissionVerdict.Allow()) } : null;
+        var facade = new JsLlmFacade(engine, provider: null, CancellationToken.None, tools: null, guards);
+        engine.SetValue("llm", facade);
+
+        Assert.Equal(registered, engine.Evaluate("llm.permissionGate.enabled").AsBoolean());
+    }
+
+    [Fact]
+    public async Task A_permissionMode_without_a_gate_logs_one_warning_and_the_tool_still_runs()
+    {
+        using var engine = new Engine();
+        var tool = new RecordingTool("file_write");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("file_write", "{\"path\":\"/x\"}") },
+            new LlmResponse { Content = "written", RawResponseBody = null },
+        });
+        var logger = new RecordingLogger();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, guards: null,
+            new JsLlmObservability { Logger = logger, AgentName = "coder" });
+
+        var result = await facade.ActAsync(engine, "write something", EvalOptions(engine, "({ permissionMode: \"plan\" })"));
+
+        Assert.Equal("written", result.Get("output").AsString());
+        Assert.Equal(1, tool.CallCount);
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("'plan'", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("no permission gate", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_a_permissionMode_or_with_a_gate_no_warning_is_logged()
+    {
+        using var engine = new Engine();
+        var provider = new MessageCapturingProvider(new[] { new LlmResponse { Content = "done", RawResponseBody = null } });
+        var logger = new RecordingLogger();
+        var observability = new JsLlmObservability { Logger = logger };
+
+        var ungated = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, guards: null, observability);
+        await ungated.ActAsync(engine, "hello", null);
+        var gated = new JsLlmFacade(
+            engine, provider, CancellationToken.None, tools: null,
+            new JsLlmActGuards { PermissionGate = new ScriptedGate((_, _) => PermissionVerdict.Allow()) }, observability);
+        await gated.ActAsync(engine, "hello", EvalOptions(engine, "({ permissionMode: \"plan\" })"));
+
+        Assert.DoesNotContain(logger.Entries, e => e.Level == LogLevel.Warning);
     }
 
     [Fact]
@@ -345,10 +460,12 @@ public sealed class JsLlmFacadeActPermissionTests
         public string Description => "test tool";
         public ToolSchema Schema => new(Name, Description, new Dictionary<string, ParameterSchema>());
         public int CallCount { get; private set; }
+        public Action? OnCall { get; init; }
 
         public Task<ToolCallResponse> CallAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken = default)
         {
             CallCount++;
+            OnCall?.Invoke();
             return Task.FromResult(new ToolCallResponse(true, new Dictionary<string, object?> { ["ok"] = true }, null));
         }
 
