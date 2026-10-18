@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Administration;
 using Orkeon.Tools.Email.Auth;
@@ -57,7 +58,7 @@ public static class EmailToolsServiceCollectionExtensions
         services.TryAddSingleton(sp => new EmailCredentialProvider(
             sp.GetRequiredService<IEmailTokenStore>(),
             sp.GetRequiredService<OAuth2Client>(),
-            EmailEnvironment.Machine));
+            SecretEnvironment.Machine));
         services.TryAddSingleton<IMailServiceConnector>(_ => new NetworkMailServiceConnector());
         // The real provider is registered as itself so the container, not the decorator, disposes its connections.
         services.TryAddSingleton(sp => new MailboxProvider(

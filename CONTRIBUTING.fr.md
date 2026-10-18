@@ -117,8 +117,8 @@ le consomment, et les six projets `src/packaging/` sont de pur empaquetage :
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (cœur Clean Architecture)
-├── tools/       # 10 packs d'outils : Abstractions, Analysis (RaggableTree), Code, Data, Email,
-│                #   Embeddings.Local, EventHub, FileSystem, Rag, Web
+├── tools/       # 11 packs d'outils : Abstractions, Analysis (RaggableTree), Code, Data, Drive,
+│                #   Email, Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # Sous-système RAG : Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # Moteur RaggableTree : Analysis.Abstractions, Analysis
 ├── scripting/   # Orkeon.Scripting (DSL .ork.ts) + Orkeon.Scripting.Cli (le tool `orkeon`)
@@ -359,7 +359,10 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   motivée, actée par le propriétaire le 2026-09-26 : un script `.ork.ts` ne
   peut pas ouvrir de socket, et un plugin ne mettrait pas l'e-mail dans Orkeon
   lui-même, ce qui était demandé
-  ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La règle vaut pour
+  ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La famille drive
+  (`Orkeon.Tools.Drive`, onze outils pour Google Drive et OneDrive) est la
+  troisième, actée par le propriétaire le 2026-10-17, pour la même raison
+  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). La règle vaut pour
   tout le reste ;
 - pas de nouveau store de mémoire, adaptateur de langage ou mode d'orchestration.
 

@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Drive;
 using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
@@ -106,6 +107,25 @@ public sealed record StudioServices
     /// own, since one ticker keeps one beat; one that never beats when absent.
     /// </summary>
     public IUiTicker? SignInTicker { get; init; }
+
+    /// <summary>
+    /// What says whether each drive account is ready, tests its connection and signs it in and
+    /// out: the `orkeon drive` verbs. When null, a client over <see cref="ProcessRunner"/> — and
+    /// none at all when that is null too, as for <see cref="EmailCli"/>.
+    /// </summary>
+    public DriveCliClient? DriveCli { get; init; }
+
+    /// <summary>
+    /// The "later" of the Drive tab's reading of its accounts' states, as
+    /// <see cref="EmailStatesDelay"/> is the E-mail tab's — an instance of its own. Immediate when null.
+    /// </summary>
+    public IUiDelay? DriveStatesDelay { get; init; }
+
+    /// <summary>
+    /// The beat the countdown of a OneDrive device code moves on — a ticker of its own, since one
+    /// ticker keeps one beat; one that never beats when absent.
+    /// </summary>
+    public IUiTicker? DriveSignInTicker { get; init; }
 
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }

@@ -113,8 +113,8 @@ resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Anal
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)
-├── tools/       # 10 tool packs: Abstractions, Analysis (RaggableTree), Code, Data, Email,
-│                #   Embeddings.Local, EventHub, FileSystem, Rag, Web
+├── tools/       # 11 tool packs: Abstractions, Analysis (RaggableTree), Code, Data, Drive,
+│                #   Email, Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # RAG subsystem: Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # RaggableTree engine: Analysis.Abstractions, Analysis
 ├── scripting/   # Orkeon.Scripting (.ork.ts DSL) + Orkeon.Scripting.Cli (the `orkeon` tool)
@@ -344,8 +344,11 @@ ask for more, **the functional surface does not grow**:
   (`Orkeon.Tools.Email`, thirteen tools) is the second motivated exception,
   decided by the owner on 2026-09-26: an `.ork.ts` script cannot open a
   socket, and a plugin would not put e-mail in Orkeon itself, which is what
-  was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The rule
-  stands for everything else;
+  was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The drive
+  family (`Orkeon.Tools.Drive`, eleven tools for Google Drive and OneDrive)
+  is the third, decided by the owner on 2026-10-17, for the same reason
+  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The rule stands for
+  everything else;
 - no new memory store, language adapter, or orchestration mode.
 
 A pull request adding one of these will be closed with a link to this section,

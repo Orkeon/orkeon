@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Orkeon.Constants.Configuration;
+using static Orkeon.Studio.Core.Configuration.SectionNodes;
 
 namespace Orkeon.Studio.Core.Configuration;
 
@@ -329,42 +330,6 @@ public sealed class EmailSection
     }
 
     /// <summary>
-    /// The key of <paramref name="owner"/> spelt exactly as <paramref name="name"/>, else the first
-    /// that differs only by case — the one the configuration reads under that name.
-    /// </summary>
-    private static string? FindKey(JsonObject owner, string name) =>
-        owner.ContainsKey(name)
-            ? name
-            : owner.Select(property => property.Key).FirstOrDefault(key => string.Equals(key, name, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>What <paramref name="owner"/> holds under <paramref name="key"/>, whatever the case the file spells it in.</summary>
-    private static JsonNode? Node(JsonObject? owner, string key) =>
-        owner is not null && FindKey(owner, key) is { } found ? owner[found] : null;
-
-    /// <summary>Removes the key the file holds for <paramref name="key"/>, whatever its case.</summary>
-    private static void Remove(JsonObject? owner, string key)
-    {
-        if (owner is not null && FindKey(owner, key) is { } found)
-            owner.Remove(found);
-    }
-
-    /// <summary>Writes under the key the file holds for <paramref name="key"/>, or creates it as <see cref="Keys"/> spells it.</summary>
-    private static void Write(JsonObject owner, string key, JsonNode value) =>
-        owner[FindKey(owner, key) ?? key] = value;
-
-    // Reads: the document's own readers over a node in hand — an account name may hold a colon or a
-    // blank, which a colon-separated path could not spell.
-
-    private static string? ReadText(JsonObject? owner, string key) => AppSettingsDocument.ReadString(Node(owner, key));
-
-    private static int? ReadInt(JsonObject? owner, string key) => AppSettingsDocument.ReadInt32(Node(owner, key));
-
-    private static IEnumerable<string> ReadStrings(JsonNode? node) =>
-        node is JsonArray array
-            ? array.OfType<JsonValue>().Select(value => AppSettingsDocument.ReadString(value)).OfType<string>()
-            : [];
-
-    /// <summary>
     /// Reads the rights the way the binder's converter does (names without regard to case, or a
     /// number), and refuses what it would refuse: a number with an undefined bit, and nothing granted.
     /// </summary>
@@ -381,49 +346,6 @@ public sealed class EmailSection
 
         rights = parsed;
         return true;
-    }
-
-    // Writes: a value that reads the same as the one in the file leaves the node alone.
-
-    private static void WriteText(JsonObject owner, string key, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            Remove(owner, key);
-        else if (!string.Equals(ReadText(owner, key), value, StringComparison.Ordinal))
-            Write(owner, key, JsonValue.Create(value));
-    }
-
-    private static void WriteInt(JsonObject owner, string key, int? value)
-    {
-        if (value is null)
-            Clear(owner, key, readable: ReadInt(owner, key) is not null);
-        else if (ReadInt(owner, key) != value)
-            Write(owner, key, JsonValue.Create(value.Value));
-    }
-
-    private static void WriteBoolean(JsonObject owner, string key, bool? value)
-    {
-        if (value is null)
-            Clear(owner, key, readable: AppSettingsDocument.ReadBoolean(Node(owner, key)) is not null);
-        else if (AppSettingsDocument.ReadBoolean(Node(owner, key)) != value)
-            Write(owner, key, JsonValue.Create(value.Value));
-    }
-
-    /// <summary>
-    /// Clears a number or a switch: the key goes when it held a value that reads, or nothing (a
-    /// JSON null, a blank text). A value the engine cannot read (<c>"Port": "abc"</c>) came back
-    /// as null when the account was read, so a null written back is that same value, unchanged:
-    /// it stays as the file spelt it, with the finding the run makes of it, until a value that
-    /// reads replaces it.
-    /// </summary>
-    private static void Clear(JsonObject owner, string key, bool readable)
-    {
-        if (readable
-            || Node(owner, key) is not { } written
-            || (written is JsonValue value && value.TryGetValue<string>(out var text) && string.IsNullOrWhiteSpace(text)))
-        {
-            Remove(owner, key);
-        }
     }
 
     /// <summary>
@@ -446,53 +368,9 @@ public sealed class EmailSection
         Write(owner, Keys.Rights, JsonValue.Create(string.Join(", ", names)));
     }
 
-    /// <summary>
-    /// Writes the list, unless it is the one the file reads as: what is no text in the array
-    /// (<c>["a@x.org", 42]</c>), and what is no array at all, never came into the list that was
-    /// read, so the same list written back leaves the node as the file spelt it.
-    /// </summary>
-    private static void WriteRecipients(JsonObject owner, IEnumerable<string> recipients)
-    {
-        var kept = recipients.Where(recipient => !string.IsNullOrWhiteSpace(recipient)).ToList();
-        if (kept.SequenceEqual(ReadStrings(Node(owner, Keys.AllowedRecipients)), StringComparer.Ordinal))
-            return;
-
-        if (kept.Count == 0)
-        {
-            Remove(owner, Keys.AllowedRecipients);
-            return;
-        }
-
-        var array = new JsonArray();
-        foreach (var recipient in kept)
-            array.Add(JsonValue.Create(recipient));
-
-        Write(owner, Keys.AllowedRecipients, array);
-    }
-
-    /// <summary>
-    /// Fills the object under <paramref name="key"/>, creating it when needed and removing it when
-    /// it ends up empty. What is no object under the key (<c>"Auth": "oauth"</c>) read as no field:
-    /// it stays as written while nothing is set under it, and gives way to the object as soon as
-    /// something is.
-    /// </summary>
-    private static void WriteObject(JsonObject owner, string key, Action<JsonObject> fill)
-    {
-        var existing = Node(owner, key) as JsonObject;
-        var child = existing ?? [];
-
-        fill(child);
-
-        if (existing is null)
-        {
-            if (child.Count > 0)
-                Write(owner, key, child);
-        }
-        else if (child.Count == 0)
-        {
-            Remove(owner, key);
-        }
-    }
+    /// <summary>Writes the recipient list in place; see <see cref="SectionNodes.WriteStrings"/>.</summary>
+    private static void WriteRecipients(JsonObject owner, IEnumerable<string> recipients) =>
+        WriteStrings(owner, Keys.AllowedRecipients, recipients);
 
     /// <summary>
     /// The enumeration values the engine binds, one constant each, for the code that branches on

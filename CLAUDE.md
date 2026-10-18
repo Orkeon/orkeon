@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 91 built-in tool classes. Version `1.0.0-rc.5` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
+Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 102 built-in tool classes. Version `1.0.0-rc.5` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
 Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in `backstage/tasks/GAP-00-PLAN.md`: check there before assuming a registered surface is invoked.
 Decisions live in `docs/adr/`; breaking changes and migration tables in `CHANGELOG.md`.
 
@@ -78,7 +78,7 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 
 ## Architecture map
 
-The repository holds **48 src projects** and **36 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
+The repository holds **49 src projects** and **37 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
 - `src/core/`: Clean Architecture. `Orkeon.Domain` holds entities, value objects and most interfaces (`ILlmProvider`, `IMemoryProvider`, `IAgentFactory`) and references only `Orkeon.Constants.Llm` (ADR-009). `Orkeon.Application` holds use cases, ports and DTOs. `Orkeon.Infrastructure` holds the adapters: 16 LLM providers in `LLMs/`, memory stores, and orchestration strategies in `Crew/Strategies/` + `Consensus/`. Allowed cross-layer exceptions are in ADR-002, 003, 005, 006 and 012.
 - `src/tools/`: the tool families (`ToolBase<TReq,TRes>`). `src/rag/`: the RAG subsystem (ADR-006). `src/analysis/`: RaggableTree, the semantic code graph.
 - `src/scripting/`: the `.ork.ts` DSL (Jint + esbuild) and the `orkeon` CLI. `src/cli/`: REPL command contracts and the Terminal.Gui console.

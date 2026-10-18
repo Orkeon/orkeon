@@ -30,6 +30,15 @@ public enum ToolRequirement
     /// stays the argument, as the key the file holds them under.
     /// </summary>
     EmailAccount,
+
+    /// <summary>
+    /// A drive account (Google Drive, OneDrive) declared in the settings file, under the section
+    /// named in <see cref="ToolInfo.Argument"/>. Like <see cref="EmailAccount"/>, the tool is
+    /// registered with or without one and, until an account is declared and signed in, refuses
+    /// every call saying what to do. The sentence sends to the Drive tab, where accounts are
+    /// declared and signed in; the section stays the argument, as for <see cref="EmailAccount"/>.
+    /// </summary>
+    DriveAccount,
 }
 
 /// <summary>One tool of the catalogue: its registry name and what it needs.</summary>
@@ -69,6 +78,9 @@ public static class ToolCatalog
     /// <summary>Where an e-mail account is declared: one entry per account, keyed by its name.</summary>
     public const string EmailAccounts = ConfigurationKeys.ToolsEmail + ":Accounts";
 
+    /// <summary>Where a drive account is declared: one entry per account, keyed by its name.</summary>
+    public const string DriveAccounts = ConfigurationKeys.ToolsDrive + ":Accounts";
+
     /// <summary>Family keys, in display order.</summary>
     public const string WebFamily = "web";
     /// <summary>Search and knowledge.</summary>
@@ -79,6 +91,8 @@ public static class ToolCatalog
     public const string DataFamily = "data";
     /// <summary>E-mail: the mailbox tools and the <c>.eml</c> parser.</summary>
     public const string EmailFamily = "email";
+    /// <summary>Drive: Google Drive and OneDrive.</summary>
+    public const string DriveFamily = "drive";
     /// <summary>Code.</summary>
     public const string CodeFamily = "code";
     /// <summary>Session and memory.</summary>
@@ -179,6 +193,20 @@ public static class ToolCatalog
             new("email_send", ToolRequirement.EmailAccount, EmailAccounts),
             // Reads an .eml file from a mount: no account involved.
             new("email_parser"),
+        ]),
+        new(DriveFamily,
+        [
+            new("drive_accounts", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_list", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_search", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_info", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_read", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_download", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_upload", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_create_folder", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_move", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_delete", ToolRequirement.DriveAccount, DriveAccounts),
+            new("drive_share", ToolRequirement.DriveAccount, DriveAccounts),
         ]),
         new(CodeFamily,
         [

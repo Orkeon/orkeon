@@ -96,6 +96,26 @@ public sealed class ToolsSettingsViewModelTests
         Assert.DoesNotContain(email.Requirements, r => r.Name == "email_parser");
     }
 
+    /// <summary>
+    /// DRIVE-05 — Studio has no drive tab yet: every drive tool's line names the section the
+    /// accounts are declared under and the command that signs one in.
+    /// </summary>
+    [Fact]
+    public void The_drive_family_says_each_tool_needs_an_account_declared_in_the_drive_tab()
+    {
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
+
+        var drive = Assert.Single(tools.Families, f => f.Key == ToolCatalog.DriveFamily);
+        Assert.Equal("Drive", drive.Label);
+        Assert.Equal(11, drive.Tools.Count);
+        Assert.Equal(11, drive.Requirements.Count);
+        Assert.All(drive.Requirements, r =>
+        {
+            Assert.Equal("needs a drive account, declared in Settings › Drive", r.Text);
+            Assert.False(r.IsKey);
+        });
+    }
+
     /// <summary>STUDIO-67 — the line names the tab the way each language's tab strip does.</summary>
     [Theory]
     [InlineData("fr")]
@@ -113,6 +133,27 @@ public sealed class ToolsSettingsViewModelTests
         {
             Assert.Contains(strings["Studio.Shell.Mails"], r.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("orkeon email", r.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("{0}", r.Text, StringComparison.Ordinal);
+        });
+    }
+
+    /// <summary>The drive line names the Drive tab the way each language's tab strip does.</summary>
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("de")]
+    [InlineData("es")]
+    [InlineData("zh-Hans")]
+    public void The_drive_line_names_the_tab_as_the_tab_strip_spells_it(string culture)
+    {
+        var strings = new FakeResxStudioStrings(culture);
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore(), strings);
+
+        var drive = Assert.Single(tools.Families, f => f.Key == ToolCatalog.DriveFamily);
+
+        Assert.All(drive.Requirements, r =>
+        {
+            Assert.Contains(strings["Studio.Shell.Drive"], r.Text, StringComparison.Ordinal);
+            Assert.DoesNotContain("drive login", r.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("{0}", r.Text, StringComparison.Ordinal);
         });
     }

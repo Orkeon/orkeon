@@ -82,6 +82,9 @@
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowMailsCommand}"
               Tag="{Binding IsMailsTab}"
               Content="{Binding [Studio.Shell.Mails], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowDriveCommand}"
+              Tag="{Binding IsDriveTab}"
+              Content="{Binding [Studio.Shell.Drive], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowStudioCommand}"
               Tag="{Binding IsStudioTab}"
               Content="{Binding [Studio.Shell.StudioTab], Source={x:Static services:I18n.Instance}}"/>
@@ -526,6 +529,10 @@
     <!-- ══ MAILS (STUDIO-67, both modes): the accounts the mail tools use ══ -->
     <views:EmailView DataContext="{Binding Config.Email}"
                      Visibility="{Binding DataContext.IsMailsTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
+
+    <!-- ══ DRIVE (both modes): the Google Drive and OneDrive accounts the drive tools use ══ -->
+    <views:DriveView DataContext="{Binding Config.Drive}"
+                     Visibility="{Binding DataContext.IsDriveTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
 
     <!-- ══ STUDIO (STUDIO-35): how Studio itself behaves — the provider balance first ══ -->
     <views:StudioSettingsView Visibility="{Binding IsStudioTab, Converter={StaticResource BooleanToVisibility}}"/>

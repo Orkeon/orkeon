@@ -42,6 +42,9 @@ internal enum CaptureScreen
     /// <summary>Settings, on the e-mail tab (STUDIO-67): both modes, the expert sees every field.</summary>
     SettingsEmail,
 
+    /// <summary>Settings, on the Drive tab: both modes, the expert sees every field.</summary>
+    SettingsDrive,
+
     /// <summary>Settings, on the MCP tab — expert only (STUDIO-21).</summary>
     SettingsMcp,
 

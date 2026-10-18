@@ -11,7 +11,7 @@ namespace Orkeon.Tools.Email.Tests.Fixtures;
 internal sealed class CredentialsFixture : IDisposable
 {
     /// <summary>Creates the fixture.</summary>
-    public CredentialsFixture(EmailEnvironment? environment = null)
+    public CredentialsFixture(SecretEnvironment? environment = null)
     {
         Http = new HttpClient(Handler, disposeHandler: false);
         OAuth = new OAuth2Client(Http, Time, (_, _) => Task.CompletedTask);

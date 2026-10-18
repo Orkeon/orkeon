@@ -200,13 +200,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 30 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 57 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 70 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 21 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-67 sections, 358 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+68 sections, 371 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1226,7 +1226,7 @@ chaque résultat d'outil par `IToolInvocationPipeline`.
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
 | `Policy` | énumération | `"Warn"` | `None`, `Warn`, `Block` | La politique appliquée à un résultat d'outil réussi. Défaut `Warn` : le résultat arrive au modèle balisé comme donnée, et tout motif d'injection est journalisé et audité. `Block` retient un résultat qui porte un motif High ou Critical (le modèle en est informé) ; `None` laisse passer les résultats intacts et sans balise. |
-| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012) — les baliser de nouveau empilerait deux enveloppes. Les entrées de la configuration s'ajoutent à celles-ci. |
+| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012) — les baliser de nouveau empilerait deux enveloppes. Les entrées de la configuration s'ajoutent à celles-ci. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1412,6 +1412,49 @@ Parcours par fournisseur et table clé par clé :
 | `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages par utilisateur n'est pas le bon (un compte de service). Lu par l'hôte, pas par les outils. |
 | `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |
 | `Screening:WithholdRejected` | booléen | `false` |  | À true, le corps d'un message que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut : le détecteur a été réglé sur des pages web, et les lettres d'information le déclenchent. |
+<!-- /settings -->
+
+### `Orkeon:Tools:Drive`
+
+Lié par `AddOrkeonDriveTools(configuration)` — l'hôte partagé des runners et `orkeon-repl`
+l'appellent — et validé paresseusement, comme la section e-mail : un compte est validé la première
+fois qu'un outil ou une commande `orkeon drive` s'en sert, tous ses problèmes signalés d'un coup,
+et une valeur que le binder ne sait pas lire met ce seul compte de côté au lieu de faire échouer
+l'hôte. Chaque compte se connecte en OAuth2 ; le secret client qu'exige un compte Google n'y est
+jamais une valeur, seulement le **nom** de la variable qui le contient (`Auth:ClientSecretEnvVar`),
+lue comme celles de l'e-mail. Parcours et outils : [Outils drive](../guides/drive.md).
+
+- **`DefaultAccount`** — le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un
+  seul compte).
+- **`CredentialsDirectory`** — le répertoire physique dont le sous-répertoire `drive` contient les
+  jetons OAuth ; par défaut : `credentials` à côté du fichier de réglages de l'utilisateur. Le
+  runner garde un seul répertoire de jetons : quand `Orkeon:Tools:Email:CredentialsDirectory` en
+  nomme un autre, celui de l'e-mail l'emporte, et le runner le dit au démarrage.
+- **`Screening:WithholdRejected`** — retenir le texte d'un fichier que le filtre anti-injection de
+  prompt rejette (défaut `false` : signaler seulement).
+- **`Accounts:<nom>`** — un compte. `Provider` (`GoogleDrive` ou `OneDrive`) et `Rights`
+  (`Read, Write, Organize, Share, Delete, Purge`) sont **obligatoires** ; `Root` confine l'agent à
+  un dossier du drive ; une liste `Share:AllowedRecipients` vide n'autorise personne, et les liens
+  publics restent fermés tant que `Share:AllowPublicLinks` ne vaut pas `true`.
+
+<!-- settings:Orkeon:Tools:Drive -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `Accounts:<nom>:Auth:ClientId` | chaîne | — |  | Identifiant client OAuth (application Google Cloud ou Microsoft Entra). |
+| `Accounts:<nom>:Auth:ClientSecretEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le secret client OAuth (clients de bureau Google). |
+| `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | Tenant Microsoft : `consumers` (défaut), `organizations`, `common` ou un identifiant de tenant. |
+| `Accounts:<nom>:MaxUploadMegabytes` | entier | `100` |  | Le plus gros fichier qu'un agent peut déposer, en mégaoctets. Non renseigné : 100. |
+| `Accounts:<nom>:Provider` | énumération | — | `GoogleDrive`, `OneDrive` | `GoogleDrive` ou `OneDrive`. Obligatoire. |
+| `Accounts:<nom>:Rights` | énumération | `"None"` | `None`, `Read`, `Write`, `Organize`, `Share`, `Delete`, `Purge` | Ce qu'un agent peut faire, p. ex. `"Read, Write, Organize"`. Obligatoire. |
+| `Accounts:<nom>:Root` | chaîne | — |  | Le dossier auquel l'agent est confiné, en chemin depuis la racine du drive (`Orkeon/agents`). Non renseigné : tout le drive. |
+| `Accounts:<nom>:Share:AllowedRecipients` | liste de chaînes | `[]` |  | Avec qui un agent peut partager : une adresse, `*@domaine`, ou `*` pour toute adresse. Vide signifie personne : le partage reste fermé tant qu'un opérateur ne l'ouvre pas. |
+| `Accounts:<nom>:Share:AllowPublicLinks` | booléen | — |  | Si un agent peut créer un lien que toute personne qui le détient peut ouvrir. Désactivé par défaut. |
+| `Accounts:<nom>:TimeoutSeconds` | entier | — |  | Délai HTTP, en secondes. Non renseigné : celui du client. |
+| `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages de l'utilisateur ne convient pas (un compte de service). Lu par l'hôte, pas par les outils. |
+| `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |
+| `Screening:WithholdRejected` | booléen | `false` |  | Si vrai, le texte d'un fichier que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut, comme pour l'e-mail : le détecteur signale ; les droits et le dossier racine bornent l'agent. |
 <!-- /settings -->
 
 ### `MCP`
@@ -1967,6 +2010,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Llm:Profiles:<nom>:ApiKeyEnvVar` | La clé d'API de ce profil, lue de la même façon. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:PasswordEnvVar` | Le mot de passe, ou mot de passe d'application, du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Drive:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte Google Drive. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

@@ -1,8 +1,8 @@
 using System.Net.Sockets;
 using System.Text;
-using Orkeon.Tools.Email.Auth;
+using Orkeon.Tools.Abstractions.Auth;
 
-namespace Orkeon.Tools.Email.Tests.Auth;
+namespace Orkeon.Tools.Abstractions.Tests.Auth;
 
 /// <summary>The loopback listener that receives the browser redirect of a PKCE sign-in, over real TCP.</summary>
 public sealed class LoopbackRedirectListenerTests

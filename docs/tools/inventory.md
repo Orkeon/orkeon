@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **91 built-in tool classes**. The counting
+This page is the reference catalogue of the **102 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -177,6 +177,33 @@ Hotmail/Outlook.com and your own server, the security model and the `orkeon emai
 | `email_send` | `EmailSendTool` | Send (+ Read to reply or forward) | Execute | Send a new message, a reply or a forward to the recipients `Send:AllowedRecipients` allows (an empty list allows nobody); `From` is always the account | `{ "reply_to_id": "…", "text": "Received, thank you." }` |
 | `email_parser` | `EmailParserTool` | none (no account) | Read | Parse an `.eml` file from a virtual path; same output as `email_read` | `{ "path": "/workspace/mail/invoice.eml" }` |
 
+## Drive tools (`Orkeon.Tools.Drive`) — `AddOrkeonDriveTools(configuration)`
+
+Eleven tools over the cloud drives an operator declares under `Orkeon:Tools:Drive`: Google Drive
+through the Drive API v3 and OneDrive (personal or for work) through Microsoft Graph, both in plain
+HTTP. Until an account is declared and signed in (`orkeon drive login`), every tool but
+`drive_accounts` refuses each call saying what to do. An agent names an account (`account`, or the
+default one) — never a client or a token — and the account's `Rights` decide what it may do; an
+account's `Root` confines every call to a folder of the drive, an item outside it being reported as
+not found. Ids are the provider's own and opaque; `root` names the account's root folder wherever a
+folder id is taken. `drive_share` reaches only the addresses `Share:AllowedRecipients` allows, and
+public links stay off unless `Share:AllowPublicLinks` is set. Setup for both providers, the
+security model and the `orkeon drive` commands: [Drive tools](../guides/drive.md).
+
+| Tool | Class | Right needed | Access | Use case | Call example |
+|-------|--------|------|------|-------------|-----------------|
+| `drive_accounts` | `DriveAccountsTool` | none | Read | List the configured accounts: the name to pass as `account`, their rights, their root folder, whether each is ready | `{}` |
+| `drive_list` | `DriveListTool` | Read | Read | List a folder (the account's root by default), folders first; at most `limit` items per page (20 by default, 50 at most), the page fitted to a tool result — `next_cursor` resumes exactly after the last item shown | `{ "folder_id": "root" }` |
+| `drive_search` | `DriveSearchTool` | Read | Read | Search by words, name, MIME type, kind, modification date or folder, inside the root; a Google Drive `raw_query` clause; OneDrive needs `text` or `name_contains` | `{ "name_contains": "invoice", "mime_type": "application/pdf" }` |
+| `drive_info` | `DriveInfoTool` | Read | Read | One item's metadata, its browser address included | `{ "id": "<id from drive_list>" }` |
+| `drive_read` | `DriveReadTool` | Read | Read | Read a text file, or a Google Docs, Sheets or Slides file through its text export: the untrusted-content notice and the screening verdict first, then the text in slices (`offset`, `max_chars` up to 3000, then `next_offset`); a PDF, an Office file or an image is sent to `drive_download` | `{ "id": "…" }` |
+| `drive_download` | `DriveDownloadTool` | Read, plus a writable mount | Edit | Save a file into a virtual directory — a Google document exported to `format` (pdf, docx, xlsx, csv…); names sanitized, nothing overwritten | `{ "id": "…", "directory": "/output/drive" }` |
+| `drive_upload` | `DriveUploadTool` | Write | Edit | Upload a file of the VFS into a folder, or replace an existing file's content with `replace_id`; a name already taken is refused; at most `MaxUploadMegabytes` (100 by default) | `{ "path": "/output/report.pdf", "folder_id": "…" }` |
+| `drive_create_folder` | `DriveCreateFolderTool` | Write | Edit | Create a folder; a name already taken in the parent is refused | `{ "name": "Reports" }` |
+| `drive_move` | `DriveMoveTool` | Organize | Edit | Move an item into another folder (`destination_id`), rename it (`new_name`), or both, inside the root | `{ "id": "…", "destination_id": "…" }` |
+| `drive_delete` | `DriveDeleteTool` | Delete; Purge with `permanent: true` | Execute | Move an item to the trash, or delete it for good (Google Drive, OneDrive for work; a personal OneDrive refuses it) | `{ "id": "…" }` |
+| `drive_share` | `DriveShareTool` | Share | Execute | Give allowed addresses read or write access (no notification unless `notify`), or create a public link when the account allows one | `{ "id": "…", "recipients": ["boss@example.com"] }` |
+
 ## Codebase analysis tools (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
 Fifteen tools over the RaggableTree semantic code graph — the full guide is
@@ -215,7 +242,7 @@ Fifteen tools over the RaggableTree semantic code graph — the full guide is
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 91 built-in tool classes:
+Deliberately **not** part of the 102 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -239,13 +266,14 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.Data` | 22 |
 | `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 15 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
+| `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 5 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 each |
-| **Total** | **91** |
+| **Total** | **102** |
 
 ## Availability by composition root
 
@@ -263,6 +291,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 |---|---|---|
 | FileSystem (5), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
+| Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ while RaggableTree is enabled with its default local embedding provider | ✅ |
@@ -281,7 +310,8 @@ and serves its tools to an MCP client, `human_input` aside — see
 `orkeon forge` builds on the runner host but removes `shell_command` and `code_interpreter`
 from the catalogue a forged crew draws from. The twelve mailbox tools stay in it: a try runs
 them on a fictitious trial mailbox and never reaches the operator's real one (FORGE-10, see
-[Forged crews](../guides/email.md#forged-crews)).
+[Forged crews](../guides/email.md#forged-crews)). The eleven drive tools are removed too: there is
+no trial drive, and a try would read and change the operator's actual one.
 
 ## Tool resolution by name (YAML → instance)
 
@@ -327,6 +357,7 @@ services.AddOrkeonSessionTools();      // session_store, session_snip, session_s
 services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // the 7 event-hub tools
 services.AddOrkeonEmailTools(configuration); // the 13 email_* tools; the mailbox ones need a declared account
+services.AddOrkeonDriveTools(configuration); // the 11 drive_* tools; they need a declared, signed-in account
 services.AddRaggableTreeTools();       // the 15 analysis tools
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (the extension lives in Orkeon.Hosting)
@@ -361,6 +392,17 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `directory_search` | `DirectorySearchTool` | `Orkeon.Tools.FileSystem` |
 | `docx_reader` | `DocxReadTool` | `Orkeon.Tools.Data` |
 | `docx_writer` | `DocxWriteTool` | `Orkeon.Tools.Data` |
+| `drive_accounts` | `DriveAccountsTool` | `Orkeon.Tools.Drive` |
+| `drive_create_folder` | `DriveCreateFolderTool` | `Orkeon.Tools.Drive` |
+| `drive_delete` | `DriveDeleteTool` | `Orkeon.Tools.Drive` |
+| `drive_download` | `DriveDownloadTool` | `Orkeon.Tools.Drive` |
+| `drive_info` | `DriveInfoTool` | `Orkeon.Tools.Drive` |
+| `drive_list` | `DriveListTool` | `Orkeon.Tools.Drive` |
+| `drive_move` | `DriveMoveTool` | `Orkeon.Tools.Drive` |
+| `drive_read` | `DriveReadTool` | `Orkeon.Tools.Drive` |
+| `drive_search` | `DriveSearchTool` | `Orkeon.Tools.Drive` |
+| `drive_share` | `DriveShareTool` | `Orkeon.Tools.Drive` |
+| `drive_upload` | `DriveUploadTool` | `Orkeon.Tools.Drive` |
 | `email_accounts` | `EmailAccountsTool` | `Orkeon.Tools.Email` |
 | `email_create_folder` | `EmailCreateFolderTool` | `Orkeon.Tools.Email` |
 | `email_delete` | `EmailDeleteTool` | `Orkeon.Tools.Email` |
@@ -469,6 +511,6 @@ The following categories are not covered by the existing tools:
 - **Notifications and alerts**: e-mail is covered — `email_send`, limited to each account's allow-list (see [E-mail tools](../guides/email.md)) — and Slack by a host opt-in; there is no SMS, push or Teams tool.
 - **Version control**: no native Git tool for commit, branch, diff (`shell_command` allows read-only git subcommands by default).
 - **Calendar / Scheduling**: no tool to interact with calendars (Google Calendar, Outlook, etc.).
-- **Cloud storage**: no tool to interact with S3, Azure Blob, GCS.
-- **OAuth authentication**: no generic tool for the OAuth flows required by third-party APIs — OAuth exists only for e-mail accounts, signed in once with `orkeon email login`.
+- **Cloud storage**: Google Drive and OneDrive are covered by the drive tools (see [Drive tools](../guides/drive.md)); there is no tool for S3, Azure Blob, GCS, Dropbox, nor for Google shared drives and SharePoint libraries.
+- **OAuth authentication**: no generic tool for the OAuth flows required by third-party APIs — OAuth exists only for e-mail and drive accounts, signed in once with `orkeon email login` or `orkeon drive login`.
 - **Image processing**: images reach a model through the opt-in multimodal pipeline (`AddOrkeonMultiModal`, `IMultiModalContentLoader`), but no tool transforms or analyses an image; `image_generation` only creates one.

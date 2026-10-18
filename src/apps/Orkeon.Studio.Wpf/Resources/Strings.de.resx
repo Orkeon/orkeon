@@ -1881,6 +1881,9 @@
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
     <value>E-Mail</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve">
+    <value>Cloud-Speicher</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>Code</value>
   </data>
@@ -1913,6 +1916,9 @@
   </data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
     <value>braucht ein E-Mail-Konto, deklariert unter Einstellungen › E-Mail</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve">
+    <value>braucht ein Cloud-Speicher-Konto, deklariert unter Einstellungen › Cloud-Speicher</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} Werkzeuge, nichts einzustellen</value>
@@ -3544,4 +3550,127 @@
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DAUER</value></data>
   <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Nicht gestartet</value></data>
+  <data name="Studio.Shell.Drive" xml:space="preserve">
+    <value>Cloud-Speicher</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderGoogle" xml:space="preserve">
+    <value>Google Drive — Anmeldung über Ihren Browser</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderOneDrive" xml:space="preserve">
+    <value>OneDrive — privat oder geschäftlich; Anmeldung mit einem Code</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirst" xml:space="preserve">
+    <value>Zuerst das Client-Secret speichern</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve">
+    <value>Tragen Sie es im Reiter Anmeldung ein und speichern Sie es; der Test gelingt, sobald es hinterlegt ist.</value>
+  </data>
+  <data name="Studio.Settings.DriveTitle" xml:space="preserve">
+    <value>Cloud-Speicher-Konten</value>
+  </data>
+  <data name="Studio.Settings.DriveIntro" xml:space="preserve">
+    <value>Die Google-Drive- und OneDrive-Konten, die Ihre Agenten nutzen dürfen. Jedes Konto beschränkt sie auf einen Ordner Ihrer Wahl und legt fest, was sie dort tun dürfen.</value>
+  </data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve">
+    <value>Kein Konto deklariert: Die Cloud-Speicher-Werkzeuge lehnen jeden Aufruf ab, bis eines deklariert ist.</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve">
+    <value>Den Text einer Datei zurückhalten, die die Prüfung auf Prompt-Injection ablehnt</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve">
+    <value>Aus: Der Agent liest die Datei mit einer Warnung; an: Er liest nur die Warnung.</value>
+  </data>
+  <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve">
+    <value>Nichts wurde gespeichert. Der Cloud-Speicher-Leitfaden (docs/guides/drive.md) erklärt jede Ablehnung.</value>
+  </data>
+  <data name="Studio.Settings.DriveRenameCost" xml:space="preserve">
+    <value>Das Konto muss sich unter dem neuen Namen erneut anmelden: Seine Token liegen unter dem alten. Sein Client-Secret bleibt in seiner Umgebungsvariablen, unter deren eigenem Namen.</value>
+  </data>
+  <data name="Studio.Settings.DriveRemoveCost" xml:space="preserve">
+    <value>Die Umgebungsvariable mit dem Client-Secret und die Anmeldetoken bleiben auf diesem Rechner; im Cloud-Speicher wird nichts angetastet.</value>
+  </data>
+  <data name="Studio.Settings.DriveRoot" xml:space="preserve">
+    <value>Ordner, auf den die Agenten beschränkt sind</value>
+  </data>
+  <data name="Studio.Settings.DriveRootHint" xml:space="preserve">
+    <value>Ein Pfad ab der Wurzel des Speichers, zum Beispiel Orkeon/agents. Leer sehen die Agenten den gesamten Speicher.</value>
+  </data>
+  <data name="Studio.Settings.DriveRootWhole" xml:space="preserve">
+    <value>der gesamte Speicher</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUpload" xml:space="preserve">
+    <value>Größte Datei, die ein Agent hochladen darf, in Megabyte</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUploadHint" xml:space="preserve">
+    <value>Zwischen 1 und 10240. Leer: 100.</value>
+  </data>
+  <data name="Studio.Settings.DriveTimeoutHint" xml:space="preserve">
+    <value>Leer: der des HTTP-Clients.</value>
+  </data>
+  <data name="Studio.Settings.DriveRightRead" xml:space="preserve">
+    <value>Lesen — Dateien auflisten, suchen, lesen und herunterladen</value>
+  </data>
+  <data name="Studio.Settings.DriveRightWrite" xml:space="preserve">
+    <value>Schreiben — Dateien hochladen, ihren Inhalt ersetzen und Ordner anlegen</value>
+  </data>
+  <data name="Studio.Settings.DriveRightOrganize" xml:space="preserve">
+    <value>Ordnen — Dateien und Ordner verschieben und umbenennen</value>
+  </data>
+  <data name="Studio.Settings.DriveRightShare" xml:space="preserve">
+    <value>Teilen — nur mit den erlaubten Empfängern</value>
+  </data>
+  <data name="Studio.Settings.DriveRightDelete" xml:space="preserve">
+    <value>Löschen — Dateien und Ordner in den Papierkorb verschieben</value>
+  </data>
+  <data name="Studio.Settings.DriveRightPurge" xml:space="preserve">
+    <value>Endgültig löschen — Dateien und Ordner unwiderruflich entfernen</value>
+  </data>
+  <data name="Studio.Settings.DriveShareClosed" xml:space="preserve">
+    <value>Noch kann niemand Zugriff erhalten: Listen Sie die erlaubten Empfänger auf.</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinks" xml:space="preserve">
+    <value>Links erlauben, die jeder öffnen kann, der sie besitzt</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinksHint" xml:space="preserve">
+    <value>Aus: Ein Agent teilt nur mit den erlaubten Empfängern.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-NAME" xml:space="preserve">
+    <value>Ein Cloud-Speicher-Kontoname ist unbrauchbar: nur Buchstaben, Ziffern, '.', '_' und '-', höchstens 64 Zeichen. Die Engine stellt das Konto zurück.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DUPLICATE" xml:space="preserve">
+    <value>Zwei Cloud-Speicher-Konten tragen bis auf die Groß-/Kleinschreibung denselben Namen: Die Engine liest sie als eines oder kann die Datei gar nicht mehr lesen. Benennen Sie eines um.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-TWIN" xml:space="preserve">
+    <value>Zwei Schlüssel der Cloud-Speicher-Einstellungen tragen bis auf die Groß-/Kleinschreibung denselben Namen: Die Engine liest sie als einen oder kann die Datei gar nicht mehr lesen. Behalten Sie nur einen.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-KEY" xml:space="preserve">
+    <value>Ein Cloud-Speicher-Konto enthält einen Schlüssel, den die Engine nicht kennt: Sie stellt das Konto zurück, bis er korrigiert oder entfernt ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-VALUE" xml:space="preserve">
+    <value>Ein Cloud-Speicher-Konto enthält einen Wert, den die Engine nicht lesen kann: Sie stellt das Konto zurück, bis er korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-PROVIDER" xml:space="preserve">
+    <value>Ein Cloud-Speicher-Konto nennt keinen Dienst: Die Engine stellt es zurück, bis es Google Drive oder OneDrive angibt.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-RIGHTS" xml:space="preserve">
+    <value>Ein Cloud-Speicher-Konto gewährt kein Recht: Die Engine stellt es zurück, bis es sagt, was ein Agent tun darf.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-ROOT" xml:space="preserve">
+    <value>Der Ordner, auf den ein Cloud-Speicher-Konto die Agenten beschränkt, ist kein Ordnerpfad: Die Engine stellt das Konto zurück, bis er korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-AUTH" xml:space="preserve">
+    <value>Die Anmeldung eines Cloud-Speicher-Kontos ist unvollständig oder passt nicht zu seinem Dienst: Das Konto ist unbrauchbar, bis sie korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SHARE" xml:space="preserve">
+    <value>Ein erlaubter Empfänger eines Cloud-Speicher-Kontos ist weder eine Adresse noch *@Domäne noch *: Die Engine stellt das Konto zurück, bis er korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve">
+    <value>Ein Grenzwert eines Cloud-Speicher-Kontos liegt außerhalb des Bereichs (Upload-Größe, Zeitlimit): Die Engine stellt das Konto zurück, bis er korrigiert ist.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve">
+    <value>Das Standard-Cloud-Speicher-Konto nennt kein deklariertes Konto: Ein Aufruf, der kein Konto nennt, schlägt fehl.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
+    <value>Der Prüfschalter des Cloud-Speicher-Abschnitts ist weder true noch false: Die Engine stellt alle Konten zurück, bis er es ist.</value>
+  </data>
 </root>

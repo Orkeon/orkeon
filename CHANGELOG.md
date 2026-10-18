@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Google Drive and OneDrive tools for agents (DRIVE-01..06)
+
+- **A new tool family, `Orkeon.Tools.Drive`** — the ninth of the `Orkeon.Tools` umbrella, and the
+  third motivated exception to the scope freeze, decided by the owner on 2026-10-17
+  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). Eleven tools: `drive_accounts`,
+  `drive_list`, `drive_search`, `drive_info`, `drive_read`, `drive_download`, `drive_upload`,
+  `drive_create_folder`, `drive_move`, `drive_delete`, `drive_share`. Built-in tool classes go
+  from 91 to 102.
+- **Two providers, plain HTTP, no new package.** Google Drive through the Drive API v3 (folders
+  found by name under each parent; Google Docs, Sheets, Slides and Drawings read and downloaded by
+  export) and OneDrive — personal or for work — through Microsoft Graph. Uploads go through a
+  resumable session in 8 MiB chunks (Google) or, above 4 MiB, an upload session in 10 MiB chunks (OneDrive), so that no request outlives the HTTP timeout.
+- **Configuration `Orkeon:Tools:Drive`**, validated at first use like the e-mail section:
+  `DefaultAccount`, `CredentialsDirectory`, `Screening:WithholdRejected`, and per account
+  `Provider`, a **mandatory** `Rights` list (`Read`, `Write`, `Organize`, `Share`, `Delete`,
+  `Purge`), `Root`, `Auth` (`ClientId`, `ClientSecretEnvVar`, `Tenant`), `Share`
+  (`AllowedRecipients`, `AllowPublicLinks`), `MaxUploadMegabytes`, `TimeoutSeconds`.
+- **Guard rails that do not rely on the model.** An agent names an account, never a client or a
+  token. `Root` confines an account to a folder: an item outside it is reported as not found, and
+  search results outside it are dropped. Sharing fails closed — an empty `Share:AllowedRecipients`
+  allows nobody, no notification is sent unless asked, and public links stay off until
+  `Share:AllowPublicLinks`. An account that only reads asks for a read-only scope. Deletion goes to
+  the trash; `permanent` needs `Purge`. `drive_read` opens with an untrusted-content notice and the
+  prompt-injection verdict. The token is sent to the API host only: never to a OneDrive download
+  link, an upload session or a paging link elsewhere.
+- **`orkeon drive accounts | login | logout | check`**: Microsoft's device code for OneDrive, Google's
+  consent page with a loopback redirect — or the pasted address it ends on — for Google Drive.
+  Tokens live in a `drive` subdirectory of the runner's internal `/credentials` root, owner-only on
+  Unix, beside the e-mail family's; one credentials directory per run.
+- **Wired everywhere the e-mail family is**: the runner host (and `orkeon-host`, `orkeon mcp serve`), a
+  run refused at start when a drive tool lacks its right on every ready account, `orkeon-repl`
+  (registered; its accounts are refused there, the REPL keeping no token store), the `.ork.ts`
+  typings (`tools.driveList`…), a "Drive" family in Studio's tool list, the settings catalogue and
+  the configuration reference. The forge removes the drive tools from a forged crew: there is no
+  trial drive yet.
+- **Not yet campaigned** against a real Google Drive or OneDrive (DRIVE-07, the owner's): the
+  family is covered by offline tests against scripted APIs.
+
+### Added — a Drive tab in Orkeon Studio's settings (STUDIO-72)
+
+Studio manages drive accounts the way its Mails tab manages e-mail accounts: list, add, edit,
+rename and remove the accounts of `Orkeon:Tools:Drive` in place, without losing anything else of
+the settings file; the Google client secret remembered like a mail secret; each account's
+readiness; the sign-in (Microsoft's device code with its countdown, or Google's address with the
+field for the address the browser ends on) and the connection check, driven through
+`drive login` and `drive check` with `--events jsonl` (`DriveEventKinds`). Studio's validation
+agrees with the engine's resolver and writes the binder's keys (oracle and drift tests). The
+Drive family of the Tools list now sends to the tab. The JSON editing, the duplicate-key check,
+the reading of the CLI events and the sign-in panel are shared with the Mails tab, whose behaviour
+is unchanged.
+
+### Changed — the OAuth client of the e-mail family is shared (DRIVE-01) **[breaking for a C# implementer]**
+
+The OAuth 2.0 client, the loopback listener, the secret reader and the interactive sign-in flows
+move from `Orkeon.Tools.Email` to `Orkeon.Tools.Abstractions/Auth`, internal and shared with the
+drive family. Nothing an agent or an operator sees changes: the e-mail family translates the
+shared failures into the same `EmailToolException` codes and messages.
+
+| Before | After |
+|---|---|
+| `IEmailLoginInteraction` declared its four members | They are declared by the new public `Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction`, which `IEmailLoginInteraction` now inherits with no member of its own. A class implementing `IEmailLoginInteraction` compiles unchanged; code compiled against the old assembly must be rebuilt. |
+
+The standard tool manifest of the example linter (`scripts/data/tool-manifest-standard.txt`) is
+regenerated: the drive tools join it, and so do `rag_search`, `rag_ingest` and `rag_eval`, which
+every runner host registers since GAP-02 and the previous regeneration predated.
+
 ### Changed — the create-team assistant speaks the interface's language (#119)
 
 The forge's assistant conversed in French whatever Studio's interface said: the interview had no brief yet, and

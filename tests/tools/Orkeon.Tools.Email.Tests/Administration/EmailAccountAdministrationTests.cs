@@ -361,7 +361,7 @@ public sealed class EmailAccountAdministrationTests
         {
         }
 
-        public AdministrationFixture(EmailToolsOptions options, EmailEnvironment environment)
+        public AdministrationFixture(EmailToolsOptions options, SecretEnvironment environment)
         {
             Credentials = new CredentialsFixture(environment);
             _registry = new EmailAccountRegistry(Microsoft.Extensions.Options.Options.Create(options));

@@ -1881,6 +1881,9 @@
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
     <value>电子邮件</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve">
+    <value>云盘</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>代码</value>
   </data>
@@ -1913,6 +1916,9 @@
   </data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
     <value>需要一个电子邮件账户，在“设置 › 电子邮件”中声明</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve">
+    <value>需要一个云盘账户，在“设置 › 云盘”中声明</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} 个工具，无需配置</value>
@@ -3544,4 +3550,127 @@
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>令牌</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>时长</value></data>
   <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>未启动</value></data>
+  <data name="Studio.Shell.Drive" xml:space="preserve">
+    <value>云盘</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderGoogle" xml:space="preserve">
+    <value>Google Drive — 通过浏览器登录</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderOneDrive" xml:space="preserve">
+    <value>OneDrive — 个人或工作账户；使用代码登录</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirst" xml:space="preserve">
+    <value>请先保存客户端密钥</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve">
+    <value>在「登录」标签页中输入并保存；密钥保存后测试即可通过。</value>
+  </data>
+  <data name="Studio.Settings.DriveTitle" xml:space="preserve">
+    <value>云盘账户</value>
+  </data>
+  <data name="Studio.Settings.DriveIntro" xml:space="preserve">
+    <value>您的智能体可以使用的 Google Drive 和 OneDrive 账户。每个账户将它们限制在您选择的文件夹内，并规定它们可以在其中做什么。</value>
+  </data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve">
+    <value>尚未声明账户：在声明账户之前，云盘工具会拒绝所有调用。</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve">
+    <value>扣留提示注入筛查拒绝的文件的文本</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve">
+    <value>关闭时，智能体读取文件并附带警告；开启时，只读取警告。</value>
+  </data>
+  <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve">
+    <value>未保存任何内容。云盘指南（docs/guides/drive.md）说明了每种拒绝的含义。</value>
+  </data>
+  <data name="Studio.Settings.DriveRenameCost" xml:space="preserve">
+    <value>账户需要以新名称重新登录：它的令牌保存在旧名称下。客户端密钥仍留在其环境变量中，变量名不变。</value>
+  </data>
+  <data name="Studio.Settings.DriveRemoveCost" xml:space="preserve">
+    <value>保存其客户端密钥的环境变量和登录令牌仍会留在这台计算机上；云盘上的内容不受影响。</value>
+  </data>
+  <data name="Studio.Settings.DriveRoot" xml:space="preserve">
+    <value>智能体被限制在的文件夹</value>
+  </data>
+  <data name="Studio.Settings.DriveRootHint" xml:space="preserve">
+    <value>从云盘根目录开始的路径，例如 Orkeon/agents。留空时，智能体可以看到整个云盘。</value>
+  </data>
+  <data name="Studio.Settings.DriveRootWhole" xml:space="preserve">
+    <value>整个云盘</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUpload" xml:space="preserve">
+    <value>智能体可以上传的最大文件，以兆字节计</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUploadHint" xml:space="preserve">
+    <value>介于 1 和 10240 之间。留空：100。</value>
+  </data>
+  <data name="Studio.Settings.DriveTimeoutHint" xml:space="preserve">
+    <value>留空：使用 HTTP 客户端自身的超时。</value>
+  </data>
+  <data name="Studio.Settings.DriveRightRead" xml:space="preserve">
+    <value>读取 — 列出、搜索、读取和下载文件</value>
+  </data>
+  <data name="Studio.Settings.DriveRightWrite" xml:space="preserve">
+    <value>写入 — 上传文件、替换其内容并创建文件夹</value>
+  </data>
+  <data name="Studio.Settings.DriveRightOrganize" xml:space="preserve">
+    <value>整理 — 移动和重命名文件及文件夹</value>
+  </data>
+  <data name="Studio.Settings.DriveRightShare" xml:space="preserve">
+    <value>共享 — 仅限允许的收件人</value>
+  </data>
+  <data name="Studio.Settings.DriveRightDelete" xml:space="preserve">
+    <value>删除 — 将文件和文件夹移到回收站</value>
+  </data>
+  <data name="Studio.Settings.DriveRightPurge" xml:space="preserve">
+    <value>彻底删除 — 永久删除文件和文件夹</value>
+  </data>
+  <data name="Studio.Settings.DriveShareClosed" xml:space="preserve">
+    <value>目前还不能向任何人授予访问权限：请列出允许的收件人。</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinks" xml:space="preserve">
+    <value>允许任何持有链接的人都能打开的链接</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinksHint" xml:space="preserve">
+    <value>关闭时，智能体只与允许的收件人共享。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-NAME" xml:space="preserve">
+    <value>某个云盘账户的名称不可用：只能包含字母、数字、“.”、“_”和“-”，最多 64 个字符。引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DUPLICATE" xml:space="preserve">
+    <value>两个云盘账户的名称仅大小写不同：引擎会把它们读成同一个账户，或者根本无法读取该文件。请重命名其中一个。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-TWIN" xml:space="preserve">
+    <value>云盘设置中有两个键的名称仅大小写不同：引擎会把它们读成同一个键，或者根本无法读取该文件。请只保留其中一个。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-KEY" xml:space="preserve">
+    <value>某个云盘账户含有引擎不认识的键：在更正或删除该键之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-VALUE" xml:space="preserve">
+    <value>某个云盘账户含有引擎无法读取的值：在更正之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-PROVIDER" xml:space="preserve">
+    <value>某个云盘账户没有指定服务：在它注明 Google Drive 或 OneDrive 之前，引擎会搁置它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-RIGHTS" xml:space="preserve">
+    <value>某个云盘账户未授予任何权限：在它说明智能体可以做什么之前，引擎会搁置它。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-ROOT" xml:space="preserve">
+    <value>某个云盘账户限制智能体所用的文件夹不是有效的文件夹路径：在更正之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-AUTH" xml:space="preserve">
+    <value>某个云盘账户的登录方式不完整或与其服务不符：在更正之前，该账户无法使用。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SHARE" xml:space="preserve">
+    <value>某个云盘账户的允许收件人既不是地址，也不是 *@域名 或 *：在更正之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve">
+    <value>某个云盘账户的限制超出范围（上传大小、超时）：在更正之前，引擎会搁置该账户。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve">
+    <value>默认云盘账户没有指向任何已声明的账户：未指定账户的调用将失败。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
+    <value>云盘部分的筛查开关既不是 true 也不是 false：在更正之前，引擎会搁置所有账户。</value>
+  </data>
 </root>

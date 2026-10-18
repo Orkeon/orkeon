@@ -25,15 +25,20 @@ public static class EmailSecretNames
     /// <param name="accountName">The account's name, as the file holds it.</param>
     /// <param name="taken">The variables the other accounts of the file already name.</param>
     public static string PasswordFor(string accountName, IEnumerable<string> taken) =>
-        Derive(accountName, PasswordSuffix, taken);
+        Derive(Prefix, accountName, PasswordSuffix, taken);
 
     /// <summary>The variable of the OAuth client secret of the account <paramref name="accountName"/>.</summary>
     /// <param name="accountName">The account's name, as the file holds it.</param>
     /// <param name="taken">The variables the other accounts of the file already name.</param>
     public static string ClientSecretFor(string accountName, IEnumerable<string> taken) =>
-        Derive(accountName, ClientSecretSuffix, taken);
+        Derive(Prefix, accountName, ClientSecretSuffix, taken);
 
-    private static string Derive(string accountName, string suffix, IEnumerable<string> taken)
+    /// <summary>
+    /// <c>&lt;prefix&gt;&lt;ACCOUNT&gt;&lt;suffix&gt;</c>, ranked clear of <paramref name="taken"/>: the
+    /// convention every account family of the settings file names its secrets by
+    /// (<see cref="DriveSecretNames"/> too).
+    /// </summary>
+    internal static string Derive(string prefix, string accountName, string suffix, IEnumerable<string> taken)
     {
         ArgumentNullException.ThrowIfNull(accountName);
         ArgumentNullException.ThrowIfNull(taken);
@@ -43,7 +48,7 @@ public static class EmailSecretNames
             .Select(name => name.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var account = string.Concat(accountName.ToUpperInvariant().Select(c => char.IsAsciiLetterOrDigit(c) ? c : '_'));
-        var name = Prefix + account + suffix;
+        var name = prefix + account + suffix;
         if (!held.Contains(name))
             return name;
 

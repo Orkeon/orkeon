@@ -45,20 +45,46 @@ public sealed record EmailSignInServices
 }
 
 /// <summary>
-/// What the E-mail section hands every sign-in panel it opens: the CLI the verb runs on, the
-/// settings file declaring the account, the strings, the dispatcher an answer lands on, and the
-/// panel's own services.
+/// Runs the <c>login --events jsonl</c> verb of an account family and follows it: what
+/// <see cref="EmailCliClient.LoginAsync"/> and <see cref="Orkeon.Studio.Core.Drive.DriveCliClient.LoginAsync"/>
+/// both are — the two families speak the same sign-in protocol.
+/// </summary>
+internal delegate Task<EmailLoginStep> AccountLogin(
+    string account,
+    string settingsPath,
+    Action<EmailLoginStep> onStep,
+    EmailLoginInput input,
+    CancellationToken cancellationToken);
+
+/// <summary>
+/// The section a sign-in panel belongs to (the E-mail tab, the Drive tab): what it says of a
+/// failure, and what it reads again once tokens are stored.
+/// </summary>
+internal interface IAccountSignInOwner
+{
+    /// <summary>Why nothing could be done, for the panel: localized when the CLI is missing, the CLI's words otherwise.</summary>
+    string FailureText(EmailCliFailure failure);
+
+    /// <summary>Reads again what the engine makes of the accounts of the saved file.</summary>
+    Task RefreshStatesAsync();
+}
+
+/// <summary>
+/// What a section hands every sign-in panel it opens: the verb the panel follows, the settings
+/// file declaring the account, the strings, the dispatcher an answer lands on, and the panel's own
+/// services.
 /// </summary>
 internal sealed record EmailSignInEnvironment(
-    EmailCliClient Cli,
+    AccountLogin Login,
     string SettingsPath,
     IStudioStrings Strings,
     IUiDispatcher Dispatcher,
     EmailSignInServices Services);
 
 /// <summary>
-/// One sign-in of an OAuth e-mail account, from the click to its end (STUDIO-70): the panel under
-/// the account's row. Studio runs no OAuth flow — <c>orkeon email login --events jsonl</c> does,
+/// One sign-in of an OAuth account, from the click to its end (STUDIO-70): the panel under the
+/// account's row — of the E-mail tab, and of the Drive tab, whose <c>orkeon drive login</c> speaks
+/// the same protocol. Studio runs no OAuth flow — <c>orkeon email login --events jsonl</c> does,
 /// and stores the tokens where every run looks for them; this shows what the person has to do
 /// meanwhile, and waits. A device sign-in (Microsoft) is a page and a code, counted down on the
 /// clock it is given; a browser sign-in (Google) is an address, and a field for the one the
@@ -78,8 +104,8 @@ internal sealed record EmailSignInEnvironment(
 /// </summary>
 public sealed class EmailSignInViewModel : ObservableObject
 {
-    private readonly EmailSectionViewModel _owner;
-    private readonly EmailCliClient _cli;
+    private readonly IAccountSignInOwner _owner;
+    private readonly AccountLogin _login;
     private readonly string _settingsPath;
     private readonly IStudioStrings _strings;
     private readonly IUiDispatcher _dispatcher;
@@ -109,7 +135,7 @@ public sealed class EmailSignInViewModel : ObservableObject
     /// </summary>
     internal EmailSignInViewModel(
         string account,
-        EmailSectionViewModel owner,
+        IAccountSignInOwner owner,
         EmailSignInEnvironment environment,
         Action moved,
         Action<EmailSignInViewModel> closed)
@@ -118,7 +144,7 @@ public sealed class EmailSignInViewModel : ObservableObject
         var services = environment.Services;
         Account = account;
         _owner = owner;
-        _cli = environment.Cli;
+        _login = environment.Login;
         _settingsPath = environment.SettingsPath;
         _strings = environment.Strings;
         _dispatcher = environment.Dispatcher;
@@ -321,7 +347,7 @@ public sealed class EmailSignInViewModel : ObservableObject
         EmailLoginStep ended;
         try
         {
-            ended = await _cli.LoginAsync(
+            ended = await _login(
                 Account, _settingsPath, step => _dispatcher.Post(() => OnStep(attempt, step)), input, cancellation.Token);
         }
         finally

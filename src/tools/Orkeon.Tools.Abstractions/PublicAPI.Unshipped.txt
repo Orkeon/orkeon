@@ -1,1 +1,6 @@
 #nullable enable
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ReadRedirectAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowAuthorizationUrlAsync(string! account, System.Uri! authorizationUri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowDeviceCodeAsync(string! account, System.Uri! verificationUri, string! userCode, System.TimeSpan expiresIn, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowRedirectRejectedAsync(string! account, string! reason, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
