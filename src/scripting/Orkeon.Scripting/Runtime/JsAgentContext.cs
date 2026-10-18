@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
+using Orkeon.Domain.Execution;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Internal;
@@ -61,6 +62,10 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     private JsValue? _stateWithJs;
     private Action<string>? _rejectStateMutation;
 
+    // One run scope per attempt of the agent body: every act() of the body enters it, and Dispose
+    // (CloseAttempt, or the run's release of an attempt left open) ends it.
+    private readonly AgentRunScope _runScope;
+
     public JsValue state { get; private set; }
 
     internal JsAgentContext(JsExecutionEnvironment environment, JsValue initialState)
@@ -72,6 +77,8 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _crewRef = environment.Crew;
         _stateRaw = initialState ?? JsValue.Undefined;
         memory.agent = new JsMemoryScope();
+        _runScope = AgentRunScope.Create(_self.id, _self.name);
+        llm.AttachRunScope(_runScope);
         state = BuildStateProxy(_stateRaw);
     }
 
@@ -162,6 +169,10 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _locks.Clear();
         _stateMutex.Dispose();
         llm.DisposeInterruptSource();
+        // Not awaited: Dispose runs on the engine's draining thread, which a resource's release
+        // must never wait on. The end marks the scope ended at once (nothing more is created in
+        // it) and never throws, so the task needs no observer.
+        _ = _runScope.DisposeAsync().AsTask();
     }
 }
 #pragma warning restore CS1591

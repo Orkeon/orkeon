@@ -4,7 +4,10 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Sessions;
+using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests.Confinement;
 
@@ -78,10 +81,11 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
             confinement.ReadOnlyPaths.Add(path);
 
         return bubblewrap is null
-            ? new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands) { Confinement = confinement }
+            ? new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands) { Confinement = confinement, Platform = ShellPlatform.Linux }
             : new ShellCommandTool(FileSystem(), extraAllowedCommands: extraAllowedCommands)
             {
                 Confinement = confinement,
+                Platform = ShellPlatform.Linux,
                 Bubblewrap = bubblewrap,
             };
     }
@@ -103,6 +107,54 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldTellHowToTurnConfinementOff_WhenAutoFindsNoBubblewrapOnALinuxHost()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.Linux,
+            ContainerDetector = new FakeContainerDetector { InContainer = false },
+            Bubblewrap = () => BubblewrapAvailability.Unavailable("bwrap was not found (install the bubblewrap package)"),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Confinement:Mode is Auto, but bwrap was not found", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("set Orkeon:Tools:Shell:Confinement:Mode = None", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRunUnconfinedWithoutProbing_WhenAutoRunsInAContainer()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.Linux,
+            ContainerDetector = new FakeContainerDetector { InContainer = true },
+            Bubblewrap = () => throw new InvalidOperationException("probed inside a container"),
+        };
+
+        var dict = Unpack(await tool.CallAsync(Request("echo unconfined"), Ct));
+
+        Assert.Equal(0, (int)dict["exit_code"]!);
+    }
+
+    [Fact]
+    public async Task ShouldFailTheCall_WhenAnExplicitModeIsForAnotherPlatform()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.Seatbelt },
+            Platform = ShellPlatform.Linux,
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Mode is Seatbelt, but Seatbelt confines a process on macOS only", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("The command did not run.", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldRefuseTheCall_WhenAnExtraReadOnlyPathIsRelative()
     {
         using var tool = Confined(() => BubblewrapAvailability.Available("/usr/bin/bwrap"), readOnlyPaths: ["opt/node"]);
@@ -114,10 +166,44 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldFailTheCallWithTheWayToTurnItOff_WhenSeatbeltIsUnavailable()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.MacOS,
+            ContainerDetector = new FakeContainerDetector(),
+            Seatbelt = () => new Orkeon.Tools.Code.Sessions.ShellSandboxAvailability("/usr/bin/sandbox-exec was not found"),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Confinement:Mode is Auto, but /usr/bin/sandbox-exec was not found", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("set Orkeon:Tools:Shell:Confinement:Mode = None", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheCall_WhenAnExtraReadOnlyPathIsRelativeUnderSeatbelt()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.Seatbelt, ReadOnlyPaths = { "opt/homebrew" } },
+            Platform = ShellPlatform.MacOS,
+            Seatbelt = () => Orkeon.Tools.Code.Sessions.ShellSandboxAvailability.Available,
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("'opt/homebrew', which is not an absolute path", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldNeverProbeBubblewrap_WhenConfinementIsOff()
     {
         using var tool = new ShellCommandTool(FileSystem())
         {
+            Confinement = TestConfinement.Off(),
             Bubblewrap = () => throw new InvalidOperationException("probed without confinement"),
         };
 
@@ -127,30 +213,35 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     /// <summary>
-    /// The whole wiring, with a stand-in for <c>bwrap</c> that records the arguments it is given: each
-    /// mount at its virtual path with its rights, the folder without rights covered, the virtual working
-    /// directory, then the command with its virtual arguments untouched.
+    /// The whole wiring, with a stand-in for <c>bwrap</c> that records the arguments it is given, then
+    /// runs the session's shell on the host while keeping a copy of what the tool writes to it: each
+    /// mount at its virtual path with its rights, the folder without rights covered, the shell reading
+    /// its input; then the command, its virtual working directory and arguments quoted, untouched.
     /// </summary>
     [Fact]
     public async Task ShouldStartBubblewrapWithTheViewOfTheMountsAndTheVirtualCommand()
     {
         Assert.SkipWhen(s_isWindows, "The stand-in for bwrap is a POSIX shell script.");
         var recorded = Path.Combine(_tempDir, "bwrap-arguments.txt");
+        var input = Path.Combine(_tempDir, "bwrap-input.txt");
         var standIn = Path.Combine(_tempDir, "bwrap");
-        await File.WriteAllTextAsync(standIn, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{recorded}'\n", Ct);
+        await File.WriteAllTextAsync(standIn, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{recorded}'\ntee '{input}' | /bin/sh -s\n", Ct);
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(standIn, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         using var tool = Confined(() => BubblewrapAvailability.Available(standIn));
 
+        // The stand-in does not build the view: what the command does on the host is not the point.
         var dict = Unpack(await tool.CallAsync(Request("cat /docs/a.txt", workingDirectory: "/workspace"), Ct));
 
-        Assert.Equal(0, (int)dict["exit_code"]!);
+        Assert.True((bool)dict["completed"]!);
         var arguments = (await File.ReadAllLinesAsync(recorded, Ct)).ToList();
-        Assert.Equal(["--", "cat", "/docs/a.txt"], arguments.TakeLast(3));
+        Assert.Equal(["--", "/bin/sh", "-s"], arguments.TakeLast(3));
         Assert.Contains($"--ro-bind-try|{_docs}|/docs", Joined(arguments), StringComparison.Ordinal);
         Assert.Contains($"--bind-try|{_workspace}|/workspace", Joined(arguments), StringComparison.Ordinal);
         Assert.Contains("--tmpfs|/workspace/secrets|--remount-ro|/workspace/secrets", Joined(arguments), StringComparison.Ordinal);
-        Assert.Contains("--chdir|/workspace|--", Joined(arguments), StringComparison.Ordinal);
+        Assert.Contains("--chdir|/|--", Joined(arguments), StringComparison.Ordinal);
+        await Polling.WaitUntilAsync(() => File.ReadAllText(input).Contains("exec 'cat'", StringComparison.Ordinal));
+        Assert.Contains("( cd '/workspace' && exec 'cat' '/docs/a.txt' )", await File.ReadAllTextAsync(input, Ct), StringComparison.Ordinal);
     }
 
     private static string Joined(IEnumerable<string> arguments) => string.Join('|', arguments);
@@ -235,5 +326,24 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
 
         Assert.Contains("secrets", dict["stdout"]!.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("key.txt", dict["stdout"]!.ToString(), StringComparison.Ordinal);
+    }
+
+    // -- AppContainer (Windows) ----------------------------------------------
+
+    [Fact]
+    public async Task ShouldFailTheCall_WhenAnAppContainerReadOnlyPathIsNotFullyQualified()
+    {
+        var confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.AppContainer };
+        confinement.ReadOnlyPaths.Add(@"tools\bin");
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = confinement,
+            Sandbox = new AppContainerShellSandbox(() => ShellSandboxAvailability.Available),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains(@"ReadOnlyPaths holds 'tools\bin', which is not an absolute path", result.Error!, StringComparison.Ordinal);
     }
 }

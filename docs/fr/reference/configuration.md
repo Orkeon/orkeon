@@ -1361,9 +1361,13 @@ remplace en entier — le remplacement annule `AllowInterpreters`. Une commande 
 par défaut en lecture seule (un interpréteur, une commande ajoutée, git une fois sa restriction
 levée) peut écrire : un chemin virtuel de sa ligne de commande et son répertoire de travail
 demandent tous les droits, si bien qu'un montage en lecture seule lui est refusé et reste lisible
-par les outils de fichiers. `Confinement:Mode = Bubblewrap`
-lance le processus sous `bwrap` (Linux) dans une vue construite depuis le VFS ; un appel échoue,
-avec la raison, quand `bwrap` ne peut le confiner ([limites](./limitations.md)).
+par les outils de fichiers. `Confinement` dit comment le système d'exploitation confine la
+session shell de l'agent : `Mode = Auto` (le défaut) choisit bubblewrap sous Linux, Seatbelt sous
+macOS, un AppContainer dans un Job Object sous Windows, et aucun confinement quand l'hôte tourne
+dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait échouer l'appel,
+avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
+par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
+([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1373,7 +1377,7 @@ avec la raison, quand `bwrap` ne peut le confiner ([limites](./limitations.md)).
 | `AllowedCommands` | liste de chaînes | `[]` |  | Un remplacement complet de l'allowlist par défaut, tel quel ; il annule `AllowInterpreters` et rétablit la restriction de git à la lecture seule. Vide garde l'allowlist par défaut. |
 | `AllowInterpreters` | booléen | `false` |  | Active les interpréteurs (`node`, `dotnet`, `npm`, `find`) et les sous-commandes git qui modifient — équivalent à une RCE sur l'hôte, pour les hôtes d'agent de code de confiance seulement. Faux par défaut. |
 | `Confinement:AllowNetwork` | booléen | `false` |  | Laisse le processus confiné atteindre le réseau. Faux par défaut : il a son propre espace de noms réseau, avec la seule boucle locale. |
-| `Confinement:Mode` | énumération | `"None"` | `None`, `Bubblewrap` | Comment le processus est confiné. `None` (défaut) le lance sur l'hôte, sous l'utilisateur de l'hôte. `Bubblewrap` le lance sous `bwrap` (Linux) : chaque montage lié à son chemin virtuel, en lecture seule quand il n'a pas Write, les répertoires système en lecture seule, rien d'autre de l'hôte, le réseau coupé. Quand il est indisponible (autre OS, pas de `bwrap`, espaces de noms refusés), l'appel échoue avec la raison et la commande ne tourne pas. |
+| `Confinement:Mode` | énumération | `"Auto"` | `None`, `Bubblewrap`, `Auto`, `Seatbelt`, `AppContainer` | Comment le processus est confiné. `Auto` (défaut) choisit le moteur de la plateforme : `Bubblewrap` sous Linux, `Seatbelt` sous macOS, `AppContainer` sous Windows, et aucun confinement quand l'hôte tourne dans un conteneur (le conteneur est la frontière). `None` lance le processus sur l'hôte, sous l'utilisateur de l'hôte. `Bubblewrap` le lance sous `bwrap` (Linux) : chaque montage lié à son chemin virtuel, en lecture seule quand il n'a pas Write, les répertoires système en lecture seule, rien d'autre de l'hôte, le réseau coupé. Quand le moteur est indisponible (autre OS, pas de `bwrap`, espaces de noms refusés), l'appel échoue avec la raison et la commande ne tourne pas. |
 | `Confinement:ReadOnlyPaths` | liste de chaînes | `[]` |  | Répertoires absolus de l'hôte liés en lecture seule à leur propre chemin, en plus des répertoires système (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), pour un programme installé ailleurs, comme `/opt/node` ou un dossier `.dotnet`. |
 | `ExtraAllowedCommands` | liste de chaînes | `[]` |  | Commandes ajoutées à l'allowlist par défaut (ou de remplacement), comme `make`. |
 <!-- /settings -->

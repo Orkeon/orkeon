@@ -1328,3 +1328,19 @@ Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder
 static Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder.TryMatch(string? value, out string? name) -> bool
 static Orkeon.Domain.FileSystem.TeamLauncherArgument.InTeamMount(string! folder, string! tail) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
 static Orkeon.Domain.FileSystem.FolderSlug.IsStopWord(string? word) -> bool
+Orkeon.Domain.Execution.AgentRunScope
+Orkeon.Domain.Execution.AgentRunScope.AgentId.get -> string?
+Orkeon.Domain.Execution.AgentRunScope.AgentRole.get -> string?
+Orkeon.Domain.Execution.AgentRunScope.DisposalErrors.get -> System.Collections.Generic.IReadOnlyList<System.Exception!>!
+Orkeon.Domain.Execution.AgentRunScope.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Orkeon.Domain.Execution.AgentRunScope.EndAsync() -> System.Threading.Tasks.ValueTask
+Orkeon.Domain.Execution.AgentRunScope.Enter() -> System.IDisposable!
+Orkeon.Domain.Execution.AgentRunScope.GetOrAdd<T>(object! key, System.Func<T!>! factory) -> T!
+Orkeon.Domain.Execution.AgentRunScope.IsEnded.get -> bool
+Orkeon.Domain.Execution.AgentRunScope.Parent.get -> Orkeon.Domain.Execution.AgentRunScope?
+Orkeon.Domain.Execution.AgentRunScope.Register(System.IAsyncDisposable! resource) -> void
+Orkeon.Domain.Execution.AgentRunScope.RunId.get -> string!
+Orkeon.Domain.Execution.AgentRunScope.TryGet<T>(object! key, out T? resource) -> bool
+static Orkeon.Domain.Execution.AgentRunScope.Begin(string? agentId = null, string? agentRole = null) -> Orkeon.Domain.Execution.AgentRunScope!
+static Orkeon.Domain.Execution.AgentRunScope.Create(string? agentId = null, string? agentRole = null) -> Orkeon.Domain.Execution.AgentRunScope!
+static Orkeon.Domain.Execution.AgentRunScope.Current.get -> Orkeon.Domain.Execution.AgentRunScope?

@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Tools.Code** ships the code-oriented agent tools, including the sandboxed `SecureCodeInterpreter` for executing generated code under strict resource and filesystem controls.
+**Orkeon.Tools.Code** ships the code-oriented agent tools, including the sandboxed `SecureCodeInterpreter` for executing generated code under strict resource and filesystem controls. `shell_command` runs an allowlist of commands in one shell session per agent run, confined by the operating system by default (bubblewrap on Linux, Seatbelt on macOS, an AppContainer on Windows — [ADR-014](https://github.com/Orkeon/orkeon/blob/main/docs/adr/ADR-014-shell-confinement-by-default.md)).
 
 ## Install
 

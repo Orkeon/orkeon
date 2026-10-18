@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Shell commands are confined by default **[breaking]**
+
+`shell_command` used to run its process on the host, as the user of the host, unless an operator
+set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confined by default
+([ADR-014](docs/adr/ADR-014-shell-confinement-by-default.md)):
+
+- **`Auto`, the new default, picks the backend of the platform**: bubblewrap (`bwrap`) on Linux,
+  Seatbelt (`sandbox-exec`) on macOS, an AppContainer inside a Job Object on Windows 10 and later. The process
+  sees the agent's mounts (read-only when the VFS grants no Write), the system directories
+  read-only, nothing else of the host, and no network unless `Confinement:AllowNetwork`.
+- **Off in a container.** When the host runs in a container (`/.dockerenv`, `/run/.containerenv`,
+  `DOTNET_RUNNING_IN_CONTAINER=true`), the container is the boundary: `Auto` leaves the shell
+  unconfined and logs it once (`shell confinement off: running in a container; set
+  Orkeon:Tools:Shell:Confinement:Mode to force it`). The `orkeon-runners`, console and
+  `orkeon-host` images also set `Orkeon__Tools__Shell__Confinement__Mode=None` explicitly.
+- **Fail closed.** When the backend is unavailable (`bwrap` missing, user namespaces refused, a
+  mode for another platform), the call fails with the reason and the way out
+  (`Orkeon:Tools:Shell:Confinement:Mode = None`); the command never runs unconfined.
+- **One shell session per agent run.** An agent's commands run in one persistent shell, opened at
+  its first command and bound to the run (`AgentRunScope`): the confined view is built once, and the
+  session and every process it started are killed when the agent ends, fails or is cancelled, and
+  when the host dies (by the kernel under bubblewrap and the Job Object; by a watchdog polling every
+  second under Seatbelt and unconfined on Linux and macOS). A timeout kills the session and the
+  next command opens a new one; on Linux and macOS the timed-out command returns no partial output.
+- **Windows commands.** In every mode a program is looked up on `PATH` only (never the working
+  directory), and a cmd.exe built-in runs as `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`,
+  `%` refused. A batch file (`.bat`, `.cmd`) runs with `Mode = None` only (`npm` finds `npm.cmd`
+  after `.exe` and `.com`), through cmd.exe and escaped as a built-in, `%` refused; an AppContainer
+  session refuses it. Each AppContainer session grants
+  its mounts by ACE, which Windows propagates to every file below them, once per session; a hidden
+  sub path, or a read-only one inside a writable mount, gets a protected DACL for the session,
+  written back at its end (an AppContainer's access check skips deny ACEs). cmd's `dir`, `vol`,
+  `attrib` and `where /r` answer "Access is denied." in a confined session (they query the drive's
+  root).
+- **Cancellation kills the command.** A caller's cancellation now kills the running command's
+  process tree; it used to keep running after the call returned.
+- **The Debian package depends on `bubblewrap`.** On Ubuntu 24.04 and later, AppArmor restricts
+  unprivileged user namespaces; the AppArmor profile for `/usr/bin/bwrap` lifts the restriction for
+  bubblewrap alone. Where it is missing, the call fails with bwrap's reason.
+
+| Before | After |
+|---|---|
+| `Confinement:Mode` absent: `None`, the process ran on the host | Absent: `Auto`, the platform's backend; nothing changes inside a container |
+| `Confinement:Mode = None` | Unchanged: no confinement — now the explicit opt-out |
+| `Confinement:Mode = Bubblewrap` | Unchanged (Linux only) |
+| A toolchain outside the system directories (`/opt/node`, `~/.dotnet`, `nvm`) was reachable | List its folder in `Confinement:ReadOnlyPaths`, or set `Mode = None` |
+| The command reached the network | It does not, unless `Confinement:AllowNetwork = true` |
+| A timed-out command returned what it had printed | Linux and macOS: no partial output, and the session is reset |
+| `ShellConfinementMode` had `None = 0`, `Bubblewrap = 1` | Adds `Auto = 2`, `Seatbelt = 3`, `AppContainer = 4`; `ShellConfinementOptions.Mode` defaults to `Auto` |
+
 ### Added — Google Drive and OneDrive tools for agents (DRIVE-01..06)
 
 - **A new tool family, `Orkeon.Tools.Drive`** — the ninth of the `Orkeon.Tools` umbrella, and the

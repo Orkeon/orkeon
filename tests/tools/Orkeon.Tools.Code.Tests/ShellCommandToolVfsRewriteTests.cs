@@ -70,7 +70,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         // Root resolution disabled ⇒ empty outbound table ⇒ echo shows the raw
         // physical argument, proving the INBOUND rewrite alone.
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution()) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(Request("echo /ws/dist"), TestContext.Current.CancellationToken));
 
@@ -81,7 +81,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewriteEmbeddedVirtualArgument_WhenTokenContainsEquals()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution()) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(Request("echo --out=/ws/dist"), TestContext.Current.CancellationToken));
 
@@ -92,7 +92,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewriteOnlyFirstEquals_WhenTokenHasMultipleEquals()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution()) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(Request("echo --out=/ws/a=b"), TestContext.Current.CancellationToken));
 
@@ -104,7 +104,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldNotRewriteArgument_WhenPrefixBoundaryDoesNotMatch()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution()) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(Request("echo /wsx/dist"), TestContext.Current.CancellationToken));
 
@@ -116,7 +116,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldFailToolCall_WhenVirtualArgumentIsDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret")) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(Request("echo /ws/secret"), TestContext.Current.CancellationToken);
 
@@ -130,7 +130,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldFailToolCall_WhenEmbeddedVirtualArgumentIsDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").Deny("/ws/secret")) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(Request("echo --out=/ws/secret"), TestContext.Current.CancellationToken);
 
@@ -144,7 +144,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         // Regression guard for every pre-existing test: the zero-mount fake makes
         // both rewrite passes exact no-ops — and, naming no working directory, the child
         // inherits this process's own. Nothing is mounted, so there is nothing to confine to.
-        using var tool = new ShellCommandTool(new FakeFileSystemService());
+        using var tool = new ShellCommandTool(new FakeFileSystemService()) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("echo /workspace/x", workingDirectory: ""),
@@ -167,7 +167,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
             Path.Combine(_tempDir, "hello.txt"), "hello", TestContext.Current.CancellationToken);
         using var tool = new ShellCommandTool(
             new DiskBackedFileSystemService(_tempDir, "/src"),
-            allowedCommands: ["ls", "dir"]);
+            allowedCommands: ["ls", "dir"]) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "dir" : "ls";
         var dict = Unpack(await tool.CallAsync(
@@ -182,7 +182,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     {
         await File.WriteAllTextAsync(
             Path.Combine(_tempDir, "hello.txt"), "hello", TestContext.Current.CancellationToken);
-        using var tool = new ShellCommandTool(new DiskBackedFileSystemService(_tempDir, "/src"));
+        using var tool = new ShellCommandTool(new DiskBackedFileSystemService(_tempDir, "/src")) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "type /src/hello.txt" : "cat /src/hello.txt";
         var dict = Unpack(await tool.CallAsync(
@@ -198,7 +198,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     {
         await File.WriteAllTextAsync(
             Path.Combine(_tempDir, "hello.txt"), "hello", TestContext.Current.CancellationToken);
-        using var tool = new ShellCommandTool(new DiskBackedFileSystemService(_tempDir, "/src"));
+        using var tool = new ShellCommandTool(new DiskBackedFileSystemService(_tempDir, "/src")) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "dir /src" : "ls /src";
         var dict = Unpack(await tool.CallAsync(
@@ -214,7 +214,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewritePhysicalPathsToVirtual_WhenCommandOutputsPhysicalPaths()
     {
         var fs = new DiskBackedFileSystemService(_tempDir, "/src");
-        using var tool = new ShellCommandTool(fs);
+        using var tool = new ShellCommandTool(fs) { Confinement = TestConfinement.Off() };
 
         // The physical base is passed as a NON mount-prefixed argument (verbatim
         // inbound), echoed back by the process, and must come home virtualized.
@@ -231,7 +231,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRewritePhysicalPathsInStderr_WhenCommandFails()
     {
         var fs = new DiskBackedFileSystemService(_tempDir, "/src");
-        using var tool = new ShellCommandTool(fs);
+        using var tool = new ShellCommandTool(fs) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "dir /src/missing_dir_42" : "ls /src/missing_dir_42";
         var dict = Unpack(await tool.CallAsync(
@@ -250,7 +250,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldSkipMount_WhenRootResolutionDenied()
     {
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution());
+            new StubMappingFileSystemService(_tempDir).AddMount("/ws", "/phys/root").WithFailingRootResolution()) { Confinement = TestConfinement.Off() };
 
         // '/phys/root/file' is not mount-prefixed (inbound verbatim); with the root
         // resolution failing, the outbound table is empty, so it stays physical.
@@ -265,7 +265,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         // An identity mount (virtual IS the resolved path, like the in-memory fakes)
         // must not enter the outbound table.
         using var tool = new ShellCommandTool(
-            new StubMappingFileSystemService(_tempDir).AddMount("/data", "/data"));
+            new StubMappingFileSystemService(_tempDir).AddMount("/data", "/data")) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(Request("echo /data/x"), TestContext.Current.CancellationToken));
 
@@ -278,7 +278,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
         var command = s_isWindows ? "ping -n 11 127.0.0.1" : "sleep 10";
         using var tool = new ShellCommandTool(
             new DiskBackedFileSystemService(_tempDir, "/src"),
-            allowedCommands: s_sleepEchoAllowlist);
+            allowedCommands: s_sleepEchoAllowlist) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request(command, timeoutSeconds: 1, workingDirectory: "/src"),
@@ -365,7 +365,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRefuseAWritingCommand_WhenAPathArgumentIsInAReadOnlyMount()
     {
         var doomed = WriteDocsFile("a.tmp");
-        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(
             Request("find /docs -name *.tmp -delete", workingDirectory: "/ws"),
@@ -381,7 +381,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     [Fact]
     public async Task ShouldRefuseAWritingCommand_WhenAnEmbeddedPathArgumentIsInAReadOnlyMount()
     {
-        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]);
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(
             Request("make --directory=/docs", workingDirectory: "/ws"), TestContext.Current.CancellationToken);
@@ -394,7 +394,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRunAReadOnlyCommand_WhenItsPathArgumentIsInAReadOnlyMount()
     {
         WriteDocsFile("a.txt", "from the docs");
-        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "type /docs/a.txt" : "cat /docs/a.txt";
         var dict = Unpack(await tool.CallAsync(
@@ -407,7 +407,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     [Fact]
     public async Task ShouldRefuseGit_WhenInterpretersLiftItsRestrictionAndAPathIsReadOnly()
     {
-        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true);
+        using var tool = new ShellCommandTool(BuildMountedService(), allowInterpreters: true) { Confinement = TestConfinement.Off() };
 
         var result = await tool.CallAsync(
             Request("git checkout -- /docs", workingDirectory: "/ws"), TestContext.Current.CancellationToken);
@@ -419,7 +419,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     [Fact]
     public async Task ShouldRefuseAWritingCommand_WhenItsWorkingDirectoryIsReadOnly()
     {
-        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]);
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["make"]) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("make --version", workingDirectory: "/docs"), TestContext.Current.CancellationToken));
@@ -433,7 +433,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     public async Task ShouldRunAWritingCommandInTheFirstWritableMount_WhenNoWorkingDirectoryIsNamed()
     {
         Assert.SkipWhen(s_isWindows, "env runs a command in the working directory on POSIX only.");
-        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["env"]);
+        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["env"]) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("env pwd", workingDirectory: ""), TestContext.Current.CancellationToken));
@@ -445,7 +445,7 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     [Fact]
     public async Task ShouldRefuseAWritingCommand_WhenNoMountIsWritable()
     {
-        using var tool = new ShellCommandTool(BuildMountedService(writable: false), extraAllowedCommands: ["make"]);
+        using var tool = new ShellCommandTool(BuildMountedService(writable: false), extraAllowedCommands: ["make"]) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("make --version", workingDirectory: ""), TestContext.Current.CancellationToken));

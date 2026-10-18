@@ -31,6 +31,8 @@ COPY --from=build /app .
 # embeds: their notices go with it, at the Debian package's path. The .NET runtime is the
 # base image's, which carries its own.
 COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
+# The container is the boundary: shell_command runs unconfined in it (Auto would turn it off too, said explicitly here).
+ENV Orkeon__Tools__Shell__Confinement__Mode=None
 
 # A daemon running someone else's prompts through tools should not be root while doing it.
 RUN useradd --system --create-home --home-dir /var/lib/orkeon orkeon \

@@ -9,7 +9,7 @@ Le framework intègre plusieurs couches de sécurité :
 - **Outils** : `ToolAccessPolicy` (whitelist/blacklist/unrestricted) par agent, vérifiée quand un outil est attaché à l'agent ; `IPathValidator` pour la protection path traversal, `IUrlValidator` pour la protection SSRF, `HttpHeaderSanitizer`. Les noms d'outils spécifiés dans les configurations YAML sont validés à la création via `IToolRegistry` ; sous `Orkeon:CrewFactory:StrictTools` (le défaut des runners) aucun outil non enregistré ne peut être assigné à un agent — le défaut bibliothèque est tolérant (saut + Warning).
 - **Système de fichiers** : toute E/S du framework passe par `IFileSystemService` — montages, `FileAccessRights` par montage (Read/Write/Create/Delete), chemins physiques masqués dans les messages d'erreur ; l'analyseur Roslyn `Orkeon.Compliance.Vfs` interdit le `System.IO` direct dans le code du framework ([conformité VFS](./vfs-compliance.md)). En dessous, `PathValidator` (section `PathSecurity`) refuse le path traversal, les chemins système sensibles et les extensions dangereuses : `AdditionalAllowedDirectories`, `AdditionalBlockedExtensions`, `ResolveSymlinks` (défaut `true`), `MaxFileSizeBytes` (défaut 50 Mo), `DefaultWorkspaceRoot`.
 - **Réseau (SSRF)** : `UrlValidator` (section `Security:Url`) n'autorise que `http`/`https` (`AllowedSchemes`), bloque les adresses privées et de bouclage (`BlockPrivateIPs`, défaut `true`) après résolution DNS (`ResolveDNS`, défaut `true`), refuse les ports des services internes courants (22, 23, 25, 110, 143, 445, 3306, 5432, 6379, 27017 — `BlockedPorts`) et respecte `AllowedDomains`/`BlockedDomains`. Il est consulté par les bases d'outils HTTP, `http_api`, les outils de scraping, `WebPageLoader` et le repli web RAG.
-- **Shell** : `ShellCommandTool` applique par défaut une liste d'autorisation en lecture seule (`ls`, `cat`, `pwd`, `which`, `grep`, `wc`, `echo`, `dir`, `type`, `where`, et `git` restreint à `status`/`log`/`diff`/`show`) ; les interpréteurs (`dotnet`, `npm`, `node`, `find`) et le git mutant ne reviennent qu'avec `Orkeon:Tools:Shell:AllowInterpreters` (équivalent RCE, avertissement journalisé) — voir [Sous-systèmes opt-in](../reference/opt-in-subsystems.md). Un chemin virtuel de la ligne de commande est résolu et vérifié par le VFS : la lecture pour une commande de la liste en lecture seule, tous les droits (lecture, écriture, création, suppression) pour toute autre commande et pour son répertoire de travail, puisque le processus peut y écrire ; ce que le processus atteint de lui-même (un chemin dans un script) échappe au VFS. Le processus tourne sur l'hôte sous l'utilisateur de l'hôte, sauf avec `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap` (Linux) : il tourne alors sous `bwrap` dans une vue construite depuis le VFS — chaque montage à son chemin virtuel, en lecture seule quand il n'a pas Write, les répertoires système en lecture seule, le réseau coupé — et un appel échoue plutôt que de tourner hors confinement quand `bwrap` ne peut le confiner.
+- **Shell** : `ShellCommandTool` applique par défaut une liste d'autorisation en lecture seule (`ls`, `cat`, `pwd`, `which`, `grep`, `wc`, `echo`, `dir`, `type`, `where`, et `git` restreint à `status`/`log`/`diff`/`show`) ; les interpréteurs (`dotnet`, `npm`, `node`, `find`) et le git mutant ne reviennent qu'avec `Orkeon:Tools:Shell:AllowInterpreters` (équivalent RCE, avertissement journalisé) — voir [Sous-systèmes opt-in](../reference/opt-in-subsystems.md). Un chemin virtuel de la ligne de commande est résolu et vérifié par le VFS : la lecture pour une commande de la liste en lecture seule, tous les droits (lecture, écriture, création, suppression) pour toute autre commande et pour son répertoire de travail, puisque le processus peut y écrire. Ce que le processus atteint de lui-même (un chemin dans un script) est tenu par le système d'exploitation : **le confinement est actif par défaut** (`Orkeon:Tools:Shell:Confinement:Mode = Auto`) — bubblewrap sous Linux, Seatbelt sous macOS, un AppContainer dans un Job Object sous Windows — et coupé quand l'hôte tourne dans un conteneur, qui est alors la frontière. Le processus voit les montages de l'agent (en lecture seule sans Write), les répertoires système en lecture seule, rien d'autre de l'hôte et pas de réseau ; un backend qui ne peut pas tourner fait échouer l'appel, jamais tourner hors confinement. Chaque exécution d'agent a une session shell, tuée avec elle ([ADR-014](../adr/ADR-014-shell-confinement-by-default.md), [Confinement du shell](#confinement-du-shell) ci-dessous).
 - **Code** : `RoslynCodeSecurityAnalyzer` (`ICodeSecurityAnalyzer`) et les implémentations d'`ICodeSandbox` — `DockerSandbox`, `HostProcessRunner` derrière `LazyProbingCodeSandbox` (`Orkeon.Infrastructure.Sandbox`) — pour l'exécution de code C# par `SecureCodeInterpreterTool`. `DockerSandbox` lance `docker run --rm --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=…` avec un plafond mémoire, `--network=none` sauf si la requête autorise le réseau et `--read-only` (+ un tmpfs `noexec`) sauf si elle autorise l'écriture ; le conteneur tourne toujours en root dans son espace de noms, sans capacités. `HostProcessRunner` n'offre **aucune** isolation au niveau de l'OS, d'où une barrière fermée par défaut : sans Docker, l'exécution est refusée sauf si l'opérateur pose `Orkeon:CodeSandbox:AllowHostExecution = true` (équivalent RCE — code de confiance uniquement). Autres clés : `TimeoutSeconds` (30), `MaxMemoryBytes` (256 Mo), `MaxOutputBytes` (50 000) ; `Orkeon:CodeSandbox:Docker` porte `ImageName` (`mcr.microsoft.com/dotnet/sdk:10.0-alpine`) et `PullImageOnStartup`.
 - **Données** : `IDatabaseSecurityPolicy` (`Orkeon.Tools.Abstractions.Data`) pour la validation des requêtes SQL dans les outils de bases relationnelles, `PiiDetector` et les cinq implémentations d'`IDlpInterceptor` (sortie d'outil, délégation, log, mémoire, sortie externe — `Orkeon.Infrastructure.Security.Dlp`). Le sous-système DLP est **opt-in** (`AddOrkeonDlp()`, voir [Sous-systèmes opt-in](../reference/opt-in-subsystems.md))
 - **Validation des sorties** : les six `IOutputValidator` (`LengthValidator`, `FormatValidator`, `SchemaValidator`, `CompletenessValidator`, `ContentSafetyValidator`, `PiiDetectionValidator`) forment l'`OutputValidationPipeline` que l'orchestrateur d'exécution applique à la sortie d'une tâche quand celle-ci déclare des attentes de sortie, avec des relances de correction.
@@ -30,6 +30,7 @@ chacun fait sans code hôte :
 |---|---|
 | Résolution des outils (`StrictTools`), `ToolAccessPolicy`, droits VFS + `PathValidator`, `UrlValidator`, liste d'autorisation shell, barrière du bac à sable, pipeline de validation des sorties, `LlmRateLimiter`, chaîne de secrets | **Oui** — appliqués là où ils s'appliquent, sans code hôte |
 | `GuardianPipeline` (`Orkeon:Guardian` — `InputGuard`, `ToolGuard`, `DelegationGuard`), `IPromptSanitizer` (`Security:Prompt`), `ToolResultSanitizer` (`Security:ToolResults`), `IToolInvocationPipeline`, la piste d'audit | **Oui** — toutes les boucles d'agent et `ctx.llm.act` les traversent (phase d'entrée, puis chaque appel d'outil par le point d'invocation), de même que chaque `tools/call` du serveur MCP (`orkeon mcp serve`) ; `Orkeon:Guardian:Enabled = false` coupe les gardes |
+| Confinement du shell (`Orkeon:Tools:Shell:Confinement`) | **Oui** — actif par défaut (`Auto`) hors conteneur ; `Mode = None` le coupe ([plus bas](#confinement-du-shell)) |
 | Permission gate | Oui pour le runtime scripté une fois activée ; les crews YAML ne la consultent pas |
 | Intercepteurs DLP, reporting NIST, rotation de clés, limitation de débit des outils | Opt-in, et invoqués par l'hôte une fois enregistrés — voir [Sous-systèmes opt-in](../reference/opt-in-subsystems.md) |
 
@@ -45,6 +46,79 @@ jetons bearer A2A (ci-dessous).
 
 - **Mode strict** (`Orkeon:CrewFactory:StrictTools=true` — le défaut d'`orkeon run` et des runners) : `CrewFactory` lève, nomme les outils manquants et liste les noms disponibles du registre. Aucun agent ne peut opérer avec des capacités inexistantes.
 - **Mode tolérant** (le défaut bibliothèque, `false`) : l'outil est sauté avec un log Warning et la crew se charge sans lui — un hôte qui embarque la bibliothèque et veut la garantie active le mode strict.
+
+### Confinement du shell
+
+`shell_command` vérifie chaque ligne de commande contre sa liste d'autorisation et le VFS, puis la
+confie à la **session shell** de l'agent, que le système d'exploitation confine
+([ADR-014](../adr/ADR-014-shell-confinement-by-default.md)).
+
+**Backends.** `Orkeon:Tools:Shell:Confinement:Mode` vaut `Auto` par défaut :
+
+| Plateforme | Backend | Ce que voit le processus |
+|---|---|---|
+| Linux | bubblewrap (`bwrap --unshare-all --die-with-parent`) | les chemins **virtuels** : chaque montage exposé aux agents lié à son chemin virtuel, en lecture seule sans Write, un sous-chemin sans droits recouvert ; `/usr`, `/bin`, `/sbin`, `/lib*`, `/etc` en lecture seule ; ses propres `/proc`, `/dev` et `/tmp` (`HOME` et `TMPDIR`) |
+| macOS | Seatbelt (`/usr/bin/sandbox-exec -p <profil>`) | les chemins **physiques**, filtrés par un profil `(deny default)` : les montages en lecture seule ou en lecture-écriture selon leurs droits, les répertoires système en lecture seule, la liste de `/` (le chargeur dynamique la lit), un dossier de travail propre à la session comme `HOME` et `TMPDIR` |
+| Windows 10 et suivants | un AppContainer (un profil par session) dans un Job Object | les chemins **physiques** : les montages accordés au SID du conteneur par ACE (lecture et exécution, ou modification), un sous-chemin sans droits (ou en lecture seule dans un montage accessible en écriture) coupé de l'accord que son parent transmet (sa DACL protégée le temps de la session, puis réécrite : le contrôle d'accès du conteneur ignore une ACE de refus), ce que lit `ALL APPLICATION PACKAGES` (les arborescences Windows et Program Files) ; `TEMP`, `TMP` et `HOME` dans le dossier propre au profil |
+
+- **Coupé dans un conteneur.** `Auto` vaut `None` quand l'hôte tourne dans un conteneur
+  (`/.dockerenv`, `/run/.containerenv`, `DOTNET_RUNNING_IN_CONTAINER=true`) et le journalise une
+  fois ; les images fixent aussi `Orkeon__Tools__Shell__Confinement__Mode=None`. Un mode explicite
+  n'est jamais remplacé.
+- **Échec franc.** Un backend qui ne peut pas tourner (`bwrap` absent, espaces de noms
+  utilisateur refusés, Windows antérieur à 10, un mode d'une autre plateforme) fait échouer l'appel
+  avec la raison et la façon d'en sortir (`Mode = None`) ; la commande ne se rabat jamais sur une
+  exécution non confinée.
+- **Pas de réseau** sauf `Confinement:AllowNetwork = true` : un espace de noms réseau limité au
+  loopback sous bubblewrap, `(deny network*)` sous Seatbelt, aucune capacité réseau sous
+  AppContainer.
+- **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
+  AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
+  sortie reviennent virtuels.
+- **Commandes Windows.** Un programme est cherché sur le `PATH` seulement (jamais le répertoire de
+  travail, un montage où l'agent écrit), `.exe` puis `.com`. Une commande interne de cmd.exe (`echo`, `dir`,
+  `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"`, chaque argument qui n'est
+  pas un mot simple entre guillemets doubles, `%` refusé. C'est vrai aussi avec `Mode = None`. Un
+  fichier de commandes (`.bat`, `.cmd`) est refusé dans une session AppContainer, car cmd.exe
+  analyserait de nouveau ses arguments ; avec `Mode = None`, il tourne (`npm` trouve `npm.cmd`
+  après `.exe` et `.com`) en `cmd.exe /d /v:off /s /c "<chemin> <arguments>"`, échappé comme une
+  commande interne, `%` refusé.
+
+**La vie de la session.** La session est ouverte à la première commande de l'exécution d'agent et
+rattachée à son `AgentRunScope` ; les commandes suivantes de l'exécution la réutilisent (chacune
+dans un sous-shell : un `cd` ou une variable ne se reporte pas), et elle est rouverte quand les
+montages changent. Des agents qui tournent côte à côte ont chacun la leur. Elle est tuée avec tout
+ce qu'elle a lancé quand l'exécution se termine, échoue ou est annulée. Une commande qui dépasse
+son délai, ou une annulation de l'appelant, tue la session : le résultat le dit et la commande
+suivante en ouvre une nouvelle. Une commande hors de toute exécution d'agent a sa propre session,
+fermée après elle. Quand l'hôte lui-même meurt :
+
+| Backend | Ce qui abat la session |
+|---|---|
+| bubblewrap | le noyau : `--die-with-parent` et l'espace de noms PID, dont `bwrap` est l'init — tous les processus de la session, détachés ou non |
+| AppContainer, et `None` sous Windows | le noyau : le Job Object est `KILL_ON_JOB_CLOSE` et l'hôte en tient le seul handle ; les ACE qu'un crash a laissées sont notées dans `%LOCALAPPDATA%\Orkeon\shell-sessions\` et reprises par la première session de l'hôte suivant |
+| Seatbelt, et `None` sous Linux et macOS | une sentinelle shell (hors du bac à sable sous Seatbelt) qui vérifie chaque seconde que l'hôte existe encore, puis arrête et tue l'arbre de processus de la session et retire son dossier de travail ; un processus sorti de l'arbre (un double fork) n'est pas atteint, et la sentinelle elle-même est un processus qu'un `SIGKILL` qui la vise termine |
+
+**Réglages courants** (en variables d'environnement ; les mêmes clés vont dans `appsettings.json`) :
+
+- **Le couper** : `Orkeon__Tools__Shell__Confinement__Mode=None`. Le processus tourne alors sur
+  l'hôte sous l'utilisateur de l'hôte, le VFS ne vérifiant que les chemins de sa ligne de commande.
+- **Installer bubblewrap** (Linux) : `sudo apt-get install bubblewrap` sous Debian et Ubuntu (le
+  `.deb` d'Orkeon en dépend). Ubuntu 24.04 et suivants restreignent les espaces de noms utilisateur
+  non privilégiés par AppArmor : un profil AppArmor pour `/usr/bin/bwrap` qui accorde `userns` lève
+  la restriction pour bubblewrap seul ; sans lui l'appel échoue avec la raison de bwrap, et la
+  sortie valable pour toute la machine est `sysctl kernel.apparmor_restrict_unprivileged_userns=0`
+  (ce que fait le runner de nuit). Vérifier avec
+  `bwrap --unshare-all --die-with-parent --ro-bind / / /bin/true`.
+- **Lui donner une chaîne d'outils** hors des répertoires système :
+  `Orkeon__Tools__Shell__Confinement__ReadOnlyPaths__0=/opt/node`,
+  `Orkeon__Tools__Shell__Confinement__ReadOnlyPaths__1=/home/me/.dotnet` (liés en lecture seule à
+  leur propre chemin ; sous Windows, des répertoires de l'hôte pleinement qualifiés que le conteneur
+  peut lire et exécuter).
+- **Autoriser le réseau** (un gestionnaire de paquets, `git fetch`) :
+  `Orkeon__Tools__Shell__Confinement__AllowNetwork=true`.
+
+Limites : [Limitations connues](../reference/limitations.md).
 
 ### TLS mutuel A2A
 
