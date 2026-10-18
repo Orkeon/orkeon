@@ -1599,6 +1599,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>La clave de API está escrita ${NOMBRE}, que el motor nunca sustituye: indique su variable en ApiKeyEnvVar.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve">
+    <value>Un ajuste contiene una referencia de variable (${NOMBRE} o %NOMBRE%), que el motor nunca sustituye: usaría el texto tal cual. Escriba el valor, o solo el nombre, como indica el mensaje.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
     <value>Una dirección de modelo se rechaza o queda muda: una dirección bajo la ruta /anthropic de otro proveedor se rechaza, y una dirección sin ruta se lee como un servidor compatible con OpenAI en su raíz.</value>
   </data>

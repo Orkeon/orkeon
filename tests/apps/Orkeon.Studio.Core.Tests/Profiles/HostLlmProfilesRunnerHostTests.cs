@@ -363,4 +363,32 @@ public sealed class HostLlmProfilesRunnerHostTests : IDisposable
             new AppSettingsValidator(new FakeDirectoryProbe()).Validate(document),
             message => message.Code == ValidationCodes.LlmProfileReservedName && message.Path == "Llm:Profiles:default");
     }
+
+    /// <summary>One row per entry of the list, the two API keys included, the daemon's paths too.</summary>
+    public static TheoryData<string> PlaceholderPaths()
+    {
+        var data = new TheoryData<string>();
+        foreach (var path in AppSettingsValidatorTests.PlaceholderPaths())
+            data.Add(path);
+        return data;
+    }
+
+    /// <summary>CH-15: the same reference at the same path is refused by the real host and by Studio's check.</summary>
+    [Theory]
+    [Trait("BR", "CH-15")]
+    [MemberData(nameof(PlaceholderPaths))]
+    public async Task ShouldRefuseTheSameValueAtTheSamePath_WhenStudioAndTheHostJudgeIt(string path)
+    {
+        var json = AppSettingsValidatorTests.NestedJson(path, "${X}");
+        var document = AppSettingsDocument.Parse(json);
+        var settingsPath = Path.Combine(_root, AppSettingsDocument.FileName);
+        await File.WriteAllTextAsync(settingsPath, json, TestContext.Current.CancellationToken);
+
+        var refused = Assert.Throws<RunnerSettingsException>(() => Build(settingsPath, new Dictionary<string, string>(StringComparer.Ordinal)));
+        Assert.Contains(path, refused.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            new AppSettingsValidator(new FakeDirectoryProbe()).Validate(document),
+            message => message.Severity == ValidationSeverity.Error
+                && string.Equals(message.Path, path, StringComparison.OrdinalIgnoreCase));
+    }
 }

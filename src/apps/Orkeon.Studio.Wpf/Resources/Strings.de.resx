@@ -1599,6 +1599,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>Der API-Schlüssel ist als ${NAME} geschrieben, was die Engine nie ersetzt: Nennen Sie seine Variable in ApiKeyEnvVar.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve">
+    <value>Eine Einstellung enthält eine Variablenreferenz (${NAME} oder %NAME%), die die Engine nie ersetzt: Sie würde den Text unverändert verwenden. Schreiben Sie den Wert oder nur den Namen, wie die Meldung es angibt.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
     <value>Eine Modelladresse wird abgelehnt oder bleibt stumm: Eine Adresse unter dem Pfad /anthropic eines anderen Anbieters wird abgelehnt, und eine Adresse ohne Pfad wird als OpenAI-kompatibler Server an seiner Wurzel gelesen.</value>
   </data>

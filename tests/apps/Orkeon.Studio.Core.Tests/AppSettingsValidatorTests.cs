@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Tests.Doubles;
 using Orkeon.Studio.Core.Validation;
@@ -30,6 +32,87 @@ public sealed class AppSettingsValidatorTests
 
     private static ValidationMessage? Find(IEnumerable<ValidationMessage> messages, string code) =>
         messages.FirstOrDefault(m => m.Code == code);
+
+    /// <summary>The list's paths, <c>*</c> replaced by a concrete key or index; the daemon's included.</summary>
+    public static IEnumerable<string> PlaceholderPaths()
+    {
+        foreach (var setting in SettingPlaceholders.Settings)
+        {
+            var segments = setting.Path.Split(':');
+            for (var i = 0; i < segments.Length; i++)
+            {
+                if (segments[i] != "*")
+                    continue;
+                segments[i] = i < segments.Length - 1
+                    ? (segments[i - 1] == "Servers" ? "s" : "p")
+                    : segments[i - 1] switch
+                    {
+                        "Args" => "0",
+                        "Env" => "GITHUB_TOKEN",
+                        "Secrets" => "PEER_KEY",
+                        _ => "ITEM",
+                    };
+            }
+
+            yield return string.Join(':', segments);
+        }
+    }
+
+    /// <summary>One row per entry of the list other than the two API keys, plus a row in another case.</summary>
+    public static TheoryData<string> PlaceholderRows()
+    {
+        var data = new TheoryData<string>();
+        foreach (var path in PlaceholderPaths())
+        {
+            if (path == "Llm:ApiKey" || path == "Llm:Profiles:p:ApiKey")
+                continue;
+            data.Add(path);
+        }
+
+        data.Add("llm:baseurl");
+        return data;
+    }
+
+    /// <summary>A settings document holding <paramref name="value"/> at <paramref name="path"/> (a number segment is an index).</summary>
+    public static string NestedJson(string path, string value)
+    {
+        var root = new JsonObject { ["RaggableTree"] = new JsonObject { ["Enabled"] = false } };
+        JsonNode node = root;
+        var segments = path.Split(':');
+        for (var i = 0; i < segments.Length; i++)
+        {
+            var last = i == segments.Length - 1;
+            JsonNode child = last
+                ? JsonValue.Create(value)!
+                : int.TryParse(segments[i + 1], out _) ? new JsonArray() : new JsonObject();
+            if (node is JsonArray array)
+                array.Add(child);
+            else
+                ((JsonObject)node)[segments[i]] = child;
+            node = child;
+        }
+
+        return root.ToJsonString();
+    }
+
+    [Theory]
+    [Trait("BR", "CH-15")]
+    [MemberData(nameof(PlaceholderRows))]
+    public void ShouldReportAnErrorWithTheRunLine_ForEachSettingOfTheListARunReads(string path)
+    {
+        var document = AppSettingsDocument.Parse(NestedJson(path, "${X}"));
+
+        var errors = Validator().Validate(document)
+            .Where(m => m.Severity == ValidationSeverity.Error)
+            .Where(m => string.Equals(m.Path, path, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var error = Assert.Single(errors);
+        Assert.Contains(
+            OperatorMessages.SettingPlaceholderRefused(path, SettingPlaceholders.CorrectionFor(path)!),
+            error.Text,
+            StringComparison.Ordinal);
+    }
 
     [Fact]
     public void A_document_without_an_llm_section_reproduces_the_win01_warning()

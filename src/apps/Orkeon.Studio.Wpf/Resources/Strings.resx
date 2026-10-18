@@ -565,6 +565,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT" xml:space="preserve"><value>An added folder line is empty.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS" xml:space="preserve"><value>Two conflicting input sources are set — keep one.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve"><value>The API key is written ${NAME}, which the engine never replaces: name its variable in ApiKeyEnvVar.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve"><value>A setting holds a variable reference (${NAME} or %NAME%), which the engine never replaces: it would use the text as written. Write the value, or the name alone, as the message says.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve"><value>A model address is refused or left silent: an address under another vendor's /anthropic path is refused, and one with no path is read as an OpenAI-compatible server at its root.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve"><value>A model profile is named 'default', the Llm section's own name: the engine refuses to start. Rename it.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve"><value>Two folders carry the same identifier: an identifier names one folder.</value></data>

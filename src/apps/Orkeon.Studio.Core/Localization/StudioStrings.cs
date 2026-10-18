@@ -2490,6 +2490,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT"] = "An added folder line is empty.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS"] = "Two conflicting input sources are set — keep one.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER"] = "The API key is written ${NAME}, which the engine never replaces: name its variable in ApiKeyEnvVar.",
+        ["Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER"] = "A setting holds a variable reference (${NAME} or %NAME%), which the engine never replaces: it would use the text as written. Write the value, or the name alone, as the message says.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT"] = "A model address is refused or left silent: an address under another vendor's /anthropic path is refused, and one with no path is read as an OpenAI-compatible server at its root.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME"] = "A model profile is named 'default', the Llm section's own name: the engine refuses to start. Rename it.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-ID"] = "Two folders carry the same identifier: an identifier names one folder.",

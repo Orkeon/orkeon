@@ -96,10 +96,6 @@ public sealed class AppSettingsValidator
     // settings file, it is the very thing the API-key rows keep out of every file.
     private static readonly string[] SecretWords = ["TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD"];
 
-    // The indirection spellings a value may use to NAME a variable instead of holding one —
-    // the same four the team catalog tolerates (STUDIO-16).
-    private static readonly string[] IndirectionPrefixes = ["${", "%", "env:", "ORKEON_"];
-
     private readonly MountValidator _mounts;
 
     /// <summary>Creates a validator over the given directory access (defaults to the real disk).</summary>
@@ -142,6 +138,7 @@ public sealed class AppSettingsValidator
         ValidateMounts(document, messages);
         ValidateMcp(document, messages);
         ValidateEmail(document, messages);
+        ValidateSettingPlaceholders(document, messages);
 
         return messages;
     }
@@ -329,7 +326,7 @@ public sealed class AppSettingsValidator
     {
         if (string.IsNullOrWhiteSpace(value))
             return false;
-        if (IndirectionPrefixes.Any(prefix => value.StartsWith(prefix, StringComparison.Ordinal)))
+        if (SettingPlaceholder.TryMatch(value, out _))
             return false;
 
         return SecretWords.Any(word => name.Contains(word, StringComparison.OrdinalIgnoreCase));
@@ -356,7 +353,8 @@ public sealed class AppSettingsValidator
     /// <summary>
     /// The keys of a section of the <c>Llm</c> shape, judged as the run reads them at start
     /// (<c>LlmSettings</c>, STUDIO-55): strings, a finite temperature, three integers, two switches, an
-    /// absolute http(s) address, a variable's name, and a key that is no <c>${NAME}</c> placeholder.
+    /// absolute http(s) address and a variable's name. A variable reference is judged apart, by
+    /// <see cref="ValidateSettingPlaceholders"/>.
     /// One error per field, at its path; never the value of <c>ApiKeyEnvVar</c> or <c>ApiKey</c>,
     /// which may be a key pasted in the wrong field.
     /// </summary>
@@ -418,17 +416,64 @@ public sealed class AppSettingsValidator
                 $"{sectionPath}:{ConfigurationKeys.LlmApiKeyEnvVar}"));
         }
 
-        if (Child(section, "ApiKey") is JsonValue keyNode
-            && AppSettingsDocument.ReadString(keyNode) is { } apiKey
-            && LlmSection.IsKeyPlaceholder(apiKey))
+    }
+
+    /// <summary>
+    /// CH-15: every string of the document at a path the run refuses a variable reference at
+    /// (<see cref="SettingPlaceholders"/>, keys compared without case), judged by the Domain's
+    /// recognition. One blocking error per value at its path, which replaces any other finding on
+    /// that value (a name-shape or URL error says less than the reference does).
+    /// </summary>
+    private static void ValidateSettingPlaceholders(AppSettingsDocument document, List<ValidationMessage> messages)
+    {
+        var refused = new List<ValidationMessage>();
+        CollectPlaceholders(document.Root, string.Empty, refused);
+        foreach (var message in refused)
         {
-            messages.Add(ValidationMessage.Error(
-                ValidationCodes.LlmApiKeyPlaceholder,
-                $"'{sectionPath}:ApiKey' is a ${{…}} placeholder, which the engine never expands — the text itself " +
-                "would be sent as the key, and the run refuses to start. Name the variable that holds the key " +
-                $"instead, in place of ApiKey: \"{ConfigurationKeys.LlmApiKeyEnvVar}\": \"{LlmSection.PlaceholderVariable(apiKey)}\".",
-                $"{sectionPath}:ApiKey"));
+            messages.RemoveAll(other => string.Equals(other.Path, message.Path, StringComparison.OrdinalIgnoreCase));
+            messages.Add(message);
         }
+    }
+
+    private static void CollectPlaceholders(JsonNode? node, string path, List<ValidationMessage> refused)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var (key, child) in obj)
+                    CollectPlaceholders(child, path.Length == 0 ? key : $"{path}:{key}", refused);
+                break;
+            case JsonArray array:
+                for (var i = 0; i < array.Count; i++)
+                    CollectPlaceholders(array[i], string.Create(CultureInfo.InvariantCulture, $"{path}:{i}"), refused);
+                break;
+            case JsonValue leaf when SettingPlaceholders.CorrectionFor(path) is { } correction
+                && AppSettingsDocument.ReadString(leaf) is { } text
+                && SettingPlaceholder.TryMatch(text, out _):
+                refused.Add(PlaceholderRefusal(path, correction, text));
+                break;
+            default:
+                break;
+        }
+    }
+
+    private static ValidationMessage PlaceholderRefusal(string path, string correction, string text)
+    {
+        var segments = path.Split(':');
+        if (segments.Length > 1
+            && string.Equals(segments[0], LlmSection.SectionPath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(segments[^1], "ApiKey", StringComparison.OrdinalIgnoreCase))
+        {
+            return ValidationMessage.Error(
+                ValidationCodes.LlmApiKeyPlaceholder,
+                $"'{path}' is a ${{…}} placeholder, which the engine never expands — the text itself " +
+                "would be sent as the key, and the run refuses to start. Name the variable that holds the key " +
+                $"instead, in place of ApiKey: \"{ConfigurationKeys.LlmApiKeyEnvVar}\": \"{LlmSection.PlaceholderVariable(text)}\".",
+                path);
+        }
+
+        return ValidationMessage.Error(
+            ValidationCodes.SettingPlaceholder, OperatorMessages.SettingPlaceholderRefused(path, correction), path);
     }
 
     /// <summary>The information on a key written in clear in <c>Llm</c> — a placeholder is an error instead.</summary>

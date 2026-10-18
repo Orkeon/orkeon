@@ -1599,6 +1599,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>API 密钥写成了 ${名称}，引擎从不替换它：请在 ApiKeyEnvVar 中填写其变量名。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve">
+    <value>某项设置含有变量引用（${名称} 或 %名称%），引擎从不替换它：会按原文使用。请按提示填写值或仅填写名称。</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
     <value>模型地址被拒绝或保持沉默：位于其他供应商 /anthropic 路径下的地址会被拒绝，没有路径的地址会被当作根路径上的 OpenAI 兼容服务器。</value>
   </data>
