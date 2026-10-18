@@ -601,6 +601,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 Completed = false
             };
         }
+        finally
+        {
+            // Whatever ends the call - the caller's cancellation included, which the catch above
+            // lets propagate - the process tree must not outlive it.
+            KillIfRunning(process);
+        }
+    }
+
+    /// <summary>Kills the process and its children when it has not exited yet.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup in a finally: HasExited can throw when the process is inaccessible; a failed check must not replace the call's own outcome.")]
+    private static void KillIfRunning(Process process)
+    {
+        try
+        {
+            if (process.HasExited) return;
+        }
+        catch
+        {
+            // Unknown state: try the kill anyway.
+        }
+        KillProcess(process);
     }
 
     // ── Confinement ────────────────────────────────────────────────────────

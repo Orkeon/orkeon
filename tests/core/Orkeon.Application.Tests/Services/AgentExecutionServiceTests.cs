@@ -4,6 +4,8 @@ using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Memory;
+using Orkeon.Domain.Execution;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Application.Agent;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
@@ -515,6 +517,75 @@ public sealed class AgentExecutionServiceTests : IDisposable
         Assert.Equal(0, _memoryCoordinator.RecallCount);
         Assert.Empty(_executionOrchestrator.LastContext!.RecalledMemories);
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldDisposeRunResource_WhenTaskSucceeds()
+    {
+        var resource = new FakeAsyncDisposable();
+        _executionOrchestrator.ResourceToRegister = resource;
+
+        var result = await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        var scope = Assert.IsType<AgentRunScope>(_executionOrchestrator.RunScopeDuringRun);
+        Assert.Equal(_testAgent.Role.Value, scope.AgentRole);
+        Assert.True(scope.IsEnded);
+        Assert.Equal(1, resource.DisposeCount);
+        Assert.Null(AgentRunScope.Current);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldDisposeRunResource_WhenTaskThrows()
+    {
+        var resource = new FakeAsyncDisposable();
+        _executionOrchestrator.ResourceToRegister = resource;
+        _executionOrchestrator.ThrowException(new InvalidOperationException("agent failed"));
+
+        var result = await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(1, resource.DisposeCount);
+        Assert.Null(AgentRunScope.Current);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldDisposeRunResource_WhenTaskIsCancelledWhileRunning()
+    {
+        var resource = new FakeAsyncDisposable();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        _executionOrchestrator.ResourceToRegister = resource;
+        // The caller cancels once the agent is running and holds its resource.
+        _executionOrchestrator.OnRun = cts.Cancel;
+        _executionOrchestrator.SimulateDelay(TimeSpan.FromMinutes(5));
+
+        try
+        {
+            await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancellation may surface as a failed result or as the exception: both end the run.
+        }
+
+        Assert.True(cts.IsCancellationRequested);
+        Assert.Equal(1, resource.DisposeCount);
+        Assert.Null(AgentRunScope.Current);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldGiveNestedRunItsOwnScope_WhenAgentRunsInsideAnotherRun()
+    {
+        await using var callerScope = AgentRunScope.Begin("caller");
+
+        await _service.ExecuteTaskAsync(_testAgent, _testTask, _context, TestContext.Current.CancellationToken);
+
+        var nested = Assert.IsType<AgentRunScope>(_executionOrchestrator.RunScopeDuringRun);
+        Assert.NotSame(callerScope, nested);
+        Assert.Same(callerScope, nested.Parent);
+        Assert.True(nested.IsEnded);
+        Assert.False(callerScope.IsEnded);
+        Assert.Same(callerScope, AgentRunScope.Current);
+    }
 }
 
 // Test doubles for dependencies
@@ -531,10 +602,23 @@ internal class TestExecutionOrchestrator : IExecutionOrchestrator
     /// <summary>The context of the last execution: what the agent's prompt was built from.</summary>
     public SimpleExecutionContext? LastContext { get; private set; }
 
+    /// <summary>A resource the run registers in its ambient <see cref="AgentRunScope"/>.</summary>
+    public IAsyncDisposable? ResourceToRegister { get; set; }
+
+    /// <summary>Runs once the resource is registered, before the simulated delay.</summary>
+    public Action? OnRun { get; set; }
+
+    /// <summary>The ambient run scope the execution saw.</summary>
+    public AgentRunScope? RunScopeDuringRun { get; private set; }
+
     public async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreAsync(
         DomainAgent agent, DomainTask task, SimpleExecutionContext context, CancellationToken cancellationToken)
     {
         LastContext = context;
+        RunScopeDuringRun = AgentRunScope.Current;
+        if (ResourceToRegister is not null)
+            AgentRunScope.Current!.Register(ResourceToRegister);
+        OnRun?.Invoke();
         if (_delay > TimeSpan.Zero)
         {
             await System.Threading.Tasks.Task.Delay(_delay, cancellationToken);

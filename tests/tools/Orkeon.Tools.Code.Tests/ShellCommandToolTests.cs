@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Tools.Code.Tests;
 
@@ -776,6 +777,87 @@ public sealed class ShellCommandToolTests : IDisposable
 
         Assert.False(result.Success);
         Assert.Contains("blocked pattern", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldKillChild_WhenCallerCancelsWhileCommandRuns()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "The test finds the child through /proc.");
+
+        // A duration no other process uses, so the child is found by its command line alone even
+        // when several test passes run at once; it would outlive any run were it not killed.
+        var marker = $"3600.{Random.Shared.Next(100_000, 999_999)}";
+        using var tool = new ShellCommandTool(new FakeFileSystemService(), allowedCommands: s_sleepEchoAllowlist);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = $"sleep {marker}",
+                ["timeout_seconds"] = 3600
+            });
+
+        var call = tool.CallAsync(request, cts.Token);
+        int? pid = null;
+        try
+        {
+            await Polling.WaitUntilAsync(() => (pid = FindSleep(marker)) is not null);
+
+            await cts.CancelAsync();
+            try
+            {
+                await call;
+            }
+            catch (OperationCanceledException)
+            {
+                // The cancellation may surface as the exception or as a failed result.
+            }
+
+            await Polling.WaitUntilAsync(() => !IsAlive(pid!.Value));
+        }
+        finally
+        {
+            // Never leak the child from a failing run.
+            if (pid is { } leftover && IsAlive(leftover))
+                System.Diagnostics.Process.GetProcessById(leftover).Kill();
+        }
+    }
+
+    /// <summary>The pid of the <c>sleep</c> whose argument is <paramref name="marker"/>, or null.</summary>
+    private static int? FindSleep(string marker)
+    {
+        var expected = $"sleep\0{marker}\0";
+        foreach (var dir in Directory.EnumerateDirectories("/proc"))
+        {
+            if (!int.TryParse(Path.GetFileName(dir), out var pid)) continue;
+            try
+            {
+                var cmdline = File.ReadAllText(Path.Combine(dir, "cmdline"));
+                if (cmdline.EndsWith(expected, StringComparison.Ordinal)
+                    && (cmdline.Length == expected.Length || cmdline[^(expected.Length + 1)] == '/')
+                    && IsAlive(pid))
+                    return pid;
+            }
+            catch (IOException) { /* the process exited while being read */ }
+            catch (UnauthorizedAccessException) { /* another user's process */ }
+        }
+        return null;
+    }
+
+    /// <summary>Whether the process exists and is not a zombie waiting to be reaped.</summary>
+    private static bool IsAlive(int pid)
+    {
+        try
+        {
+            var stat = File.ReadAllText($"/proc/{pid}/stat");
+            // The state follows the command name, which is parenthesised and may hold spaces.
+            var state = stat[(stat.LastIndexOf(')') + 2)..].Split(' ')[0];
+            return state != "Z" && state != "X";
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     public void Dispose()
