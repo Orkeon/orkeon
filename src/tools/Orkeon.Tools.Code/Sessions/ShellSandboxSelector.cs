@@ -5,31 +5,30 @@ namespace Orkeon.Tools.Code.Sessions;
 
 /// <summary>
 /// Picks the sandbox of a configured <see cref="ShellConfinementMode"/> on this host, through
-/// <see cref="ShellConfinementResolver"/>: unconfined, bubblewrap, Seatbelt, or one that reports why
-/// it cannot run (a mode for another platform, AppContainer until its backend lands). The container
-/// notice is logged once per selector.
+/// <see cref="ShellConfinementResolver"/>: unconfined, bubblewrap, Seatbelt, AppContainer, or one that
+/// reports why it cannot run (a mode for another platform). The container notice is logged once per
+/// selector.
 /// </summary>
 internal sealed partial class ShellSandboxSelector
 {
-    /// <summary>Why AppContainer cannot run yet.</summary>
-    internal const string AppContainerNotImplemented = "AppContainer confinement is not implemented yet on this platform";
-
     private readonly UnconfinedShellSandbox _unconfined;
     private readonly BubblewrapShellSandbox _bubblewrap;
     private readonly SeatbeltShellSandbox _seatbelt;
+    private readonly AppContainerShellSandbox _appContainer;
     private readonly IContainerDetector _containers;
     private readonly ShellPlatform _platform;
     private readonly ILogger? _logger;
     private int _noticeLogged;
 
-    /// <summary>A selector over the given sandboxes, container detector and platform.</summary>
+    /// <summary>A selector over the given sandboxes (the shared AppContainer one by default), container detector and platform.</summary>
     public ShellSandboxSelector(
         UnconfinedShellSandbox unconfined,
         BubblewrapShellSandbox bubblewrap,
         SeatbeltShellSandbox seatbelt,
         IContainerDetector containers,
         ShellPlatform platform,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        AppContainerShellSandbox? appContainer = null)
     {
         ArgumentNullException.ThrowIfNull(unconfined);
         ArgumentNullException.ThrowIfNull(bubblewrap);
@@ -38,6 +37,7 @@ internal sealed partial class ShellSandboxSelector
         _unconfined = unconfined;
         _bubblewrap = bubblewrap;
         _seatbelt = seatbelt;
+        _appContainer = appContainer ?? AppContainerShellSandbox.Shared;
         _containers = containers;
         _platform = platform;
         _logger = logger;
@@ -57,7 +57,7 @@ internal sealed partial class ShellSandboxSelector
             ShellConfinementBackend.None => _unconfined,
             ShellConfinementBackend.Bubblewrap => _bubblewrap,
             ShellConfinementBackend.Seatbelt => _seatbelt,
-            ShellConfinementBackend.AppContainer => new UnavailableShellSandbox("appcontainer", AppContainerNotImplemented),
+            ShellConfinementBackend.AppContainer => _appContainer,
             _ => new UnavailableShellSandbox("unavailable", resolution.UnavailableReason ?? "no confinement backend is available"),
         };
     }

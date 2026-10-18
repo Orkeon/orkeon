@@ -2343,7 +2343,7 @@
       "section": "Orkeon:Tools:Shell",
       "type": "boolean",
       "default": false,
-      "description": "Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only."
+      "description": "Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only (under AppContainer: no network capability, hence no network at all)."
     },
     {
       "path": "Orkeon:Tools:Shell:Confinement:Mode",
@@ -2364,7 +2364,7 @@
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
       "default": [],
-      "description": "Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder."
+      "description": "Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. Under AppContainer (Windows) they are fully qualified host directories the container may read and execute, such as a tool installed under the user profile."
     },
     {
       "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",

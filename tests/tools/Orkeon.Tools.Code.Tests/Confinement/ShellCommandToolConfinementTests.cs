@@ -6,6 +6,7 @@ using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Sessions;
 using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests.Confinement;
@@ -325,5 +326,24 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
 
         Assert.Contains("secrets", dict["stdout"]!.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("key.txt", dict["stdout"]!.ToString(), StringComparison.Ordinal);
+    }
+
+    // -- AppContainer (Windows) ----------------------------------------------
+
+    [Fact]
+    public async Task ShouldFailTheCall_WhenAnAppContainerReadOnlyPathIsNotFullyQualified()
+    {
+        var confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.AppContainer };
+        confinement.ReadOnlyPaths.Add(@"tools\bin");
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = confinement,
+            Sandbox = new AppContainerShellSandbox(() => ShellSandboxAvailability.Available),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains(@"ReadOnlyPaths holds 'tools\bin', which is not an absolute path", result.Error!, StringComparison.Ordinal);
     }
 }

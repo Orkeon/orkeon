@@ -6,7 +6,8 @@ namespace Orkeon.Tools.Code.Sessions;
 /// No confinement (<see cref="ShellConfinementMode.None"/>): the session runs on the host, as the
 /// user of the host, and sees the physical paths. On Linux and macOS it is one <c>/bin/sh -s</c> per
 /// agent run with a watchdog that kills its process tree when the host disappears; on Windows each
-/// command is its own process (<see cref="ProcessPerCallShellSession"/>).
+/// command is its own process, created inside a Job Object the session holds
+/// (<see cref="Windows.WindowsShellSession"/>), so nothing outlives the session or the host there either.
 /// </summary>
 internal sealed class UnconfinedShellSandbox : IShellSandbox
 {
@@ -33,7 +34,7 @@ internal sealed class UnconfinedShellSandbox : IShellSandbox
     {
         ArgumentNullException.ThrowIfNull(view);
         if (OperatingSystem.IsWindows())
-            return new ProcessPerCallShellSession();
+            return Windows.WindowsShellSession.OpenUnconfined();
 
         var startInfo = new ProcessStartInfo(PosixShell);
         startInfo.ArgumentList.Add("-s");

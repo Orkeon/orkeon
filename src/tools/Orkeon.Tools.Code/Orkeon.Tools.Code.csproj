@@ -3,6 +3,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- The source-generated P/Invoke of the Windows shell sessions (Sessions/Windows) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Package Metadata -->
     <PackageId>Orkeon.Tools.Code</PackageId>

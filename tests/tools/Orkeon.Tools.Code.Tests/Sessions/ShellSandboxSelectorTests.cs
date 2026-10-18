@@ -8,18 +8,19 @@ namespace Orkeon.Tools.Code.Tests.Sessions;
 
 /// <summary>
 /// <see cref="ShellSandboxSelector"/>: the sandbox of each mode, the container notice logged once, and
-/// the backend not built yet reported unavailable.
+/// a mode for another platform reported unavailable.
 /// </summary>
 public sealed class ShellSandboxSelectorTests
 {
     private readonly UnconfinedShellSandbox _unconfined = new();
     private readonly BubblewrapShellSandbox _bubblewrap = new(() => BubblewrapAvailability.Available("/usr/bin/bwrap"));
     private readonly SeatbeltShellSandbox _seatbelt = new(() => ShellSandboxAvailability.Available);
+    private readonly AppContainerShellSandbox _appContainer = new(() => ShellSandboxAvailability.Available);
     private readonly FakeContainerDetector _containers = new();
     private readonly RecordingLogger _logger = new();
 
     private ShellSandboxSelector Selector(ShellPlatform platform)
-        => new(_unconfined, _bubblewrap, _seatbelt, _containers, platform, _logger);
+        => new(_unconfined, _bubblewrap, _seatbelt, _containers, platform, _logger, _appContainer);
 
     [Fact]
     public void ShouldPickBubblewrap_WhenAutoRunsOnALinuxHost()
@@ -58,19 +59,10 @@ public sealed class ShellSandboxSelectorTests
     }
 
     [Fact]
-    public void ShouldReportNotImplemented_WhenAutoPicksABackendNotBuiltYet()
-    {
-        var sandbox = Selector(ShellPlatform.Windows).Select(ShellConfinementMode.Auto);
-
-        Assert.False(sandbox.Availability.IsAvailable);
-        Assert.Contains("AppContainer confinement is not implemented yet", sandbox.Availability.Reason!, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task ShouldFailClosed_WhenSeatbeltIsUnavailable()
     {
         var unavailable = new SeatbeltShellSandbox(() => new ShellSandboxAvailability("sandbox-exec was not found"));
-        var sandbox = new ShellSandboxSelector(_unconfined, _bubblewrap, unavailable, _containers, ShellPlatform.MacOS, _logger)
+        var sandbox = new ShellSandboxSelector(_unconfined, _bubblewrap, unavailable, _containers, ShellPlatform.MacOS, _logger, _appContainer)
             .Select(ShellConfinementMode.Auto);
 
         Assert.False(sandbox.Availability.IsAvailable);
@@ -78,6 +70,18 @@ public sealed class ShellSandboxSelectorTests
             ShellSessionView.Empty, TestContext.Current.CancellationToken));
         Assert.Contains("sandbox-exec was not found", error.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(ShellConfinementMode.Auto)]
+    [InlineData(ShellConfinementMode.AppContainer)]
+    public void ShouldPickAppContainer_OnAWindowsHost(ShellConfinementMode mode)
+        => Assert.Same(_appContainer, Selector(ShellPlatform.Windows).Select(mode));
+
+    [Fact]
+    public void ShouldUseTheSharedAppContainerSandbox_WhenNoneIsGiven()
+        => Assert.Same(
+            AppContainerShellSandbox.Shared,
+            new ShellSandboxSelector(_unconfined, _bubblewrap, _seatbelt, _containers, ShellPlatform.Windows).Select(ShellConfinementMode.Auto));
 
     [Fact]
     public async Task ShouldNeverOpenASession_WhenTheModeIsForAnotherPlatform()

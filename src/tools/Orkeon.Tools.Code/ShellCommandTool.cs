@@ -68,8 +68,9 @@ public sealed record ShellCommandResponse
 /// Each agent run keeps one shell session (<see cref="Sessions.ShellSessionManager"/>, held by the
 /// run's <see cref="Orkeon.Domain.Execution.AgentRunScope"/>): on Linux and macOS a <c>sh -s</c> the
 /// tool feeds one fragment per command, every word of it POSIX-quoted so the shell expands nothing
-/// (<see cref="Sessions.ShellScript"/>); on Windows each command is its own process, its arguments
-/// passed one by one, shell built-ins (echo, dir, etc.) routed through <c>cmd.exe /c</c>. A timeout
+/// (<see cref="Sessions.ShellScript"/>); on Windows each command is its own process inside the
+/// session's Job Object, its arguments quoted one by one, shell built-ins (echo, dir, etc.) routed
+/// through <c>cmd.exe /c</c> with every argument escaped for cmd. A timeout
 /// or the caller's cancellation kills the session and the next command opens a new one; nothing the
 /// session started outlives the run.
 /// </summary>
@@ -504,20 +505,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // NOSONAR — the executable is a bare, allowlisted name (validated in ValidateTypedRequest),
         // resolved on the session's PATH by design: the allowed commands (git, dotnet, npm, etc.)
         // may be installed in different locations across environments.
-        var fileName = executable;
-        IReadOnlyList<string> argv = arguments;
-        if (!confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable))
-        {
-            // On Windows, shell built-in commands (echo, dir, etc.) are not standalone
-            // executables. Route them through cmd.exe /c to make them functional.
-            // Security is preserved: forbidden operators were already rejected in
-            // ValidateTypedRequest, and arguments are passed individually (no shell
-            // interpretation of special characters).
-            fileName = ShellDefaults.WindowsShell; // NOSONAR — cmd.exe is a Windows system binary resolved via SystemRoot
-            argv = [ShellDefaults.WindowsCommandSwitch, executable, .. arguments];
-        }
-
-        var invocation = new ShellInvocation(fileName, argv, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds));
+        // On Windows, shell built-in commands (echo, dir, etc.) are not standalone executables:
+        // the Windows session runs them through `cmd.exe /d /v:off /s /c`, inside its job (and its
+        // AppContainer when confined), every argument escaped so that cmd reads no operator in it
+        // (WindowsCommandLine.CmdBuiltin). Forbidden operators and '%' were already rejected in
+        // ValidateTypedRequest.
+        var windowsBuiltin = !confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable);
+        var invocation = new ShellInvocation(
+            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin);
 
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
@@ -580,13 +575,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private string? ValidateConfinement()
     {
         var sandbox = ActiveSandbox;
-        if (sandbox.UsesVirtualPaths || sandbox is SeatbeltShellSandbox)
+        var relative = sandbox switch
         {
-            var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
-            if (relative is not null)
-                return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
-                    + "which is not an absolute path. The command did not run.";
-        }
+            { UsesVirtualPaths: true } or SeatbeltShellSandbox => Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/')),
+            AppContainerShellSandbox => AppContainerShellSandbox.FirstUnqualifiedPath(Confinement.ReadOnlyPaths),
+            _ => null,
+        };
+        if (relative is not null)
+            return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
+                + "which is not an absolute path. The command did not run.";
 
         var availability = sandbox.Availability;
         if (availability.IsAvailable)

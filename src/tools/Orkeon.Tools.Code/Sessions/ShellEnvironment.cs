@@ -44,17 +44,28 @@ internal static class ShellEnvironment
     {
         ArgumentNullException.ThrowIfNull(startInfo);
         startInfo.Environment.Clear();
+        foreach (var (name, value) in RestrictedVariables())
+            startInfo.Environment[name] = value;
+    }
 
+    /// <summary>
+    /// The variables a session starts with: the propagated ones the host has, then the two that
+    /// keep <c>dotnet</c> quiet. The keys compare without case, as Windows does.
+    /// </summary>
+    public static Dictionary<string, string> RestrictedVariables()
+    {
+        var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in s_propagatedEnvironmentVariables)
         {
             var value = Environment.GetEnvironmentVariable(name);
             if (!string.IsNullOrEmpty(value))
-                startInfo.Environment[name] = value;
+                variables[name] = value;
         }
 
         // Set, not propagated: the child must stay quiet and must not start a telemetry
         // upload of its own on the first `dotnet` invocation of a crew run.
-        startInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-        startInfo.Environment["DOTNET_NOLOGO"] = "1";
+        variables["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        variables["DOTNET_NOLOGO"] = "1";
+        return variables;
     }
 }

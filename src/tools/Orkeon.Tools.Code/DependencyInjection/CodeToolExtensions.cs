@@ -59,6 +59,7 @@ public static class CodeToolExtensions
         services.TryAddSingleton<UnconfinedShellSandbox>();
         services.TryAddSingleton<BubblewrapShellSandbox>();
         services.TryAddSingleton<SeatbeltShellSandbox>();
+        services.TryAddSingleton<AppContainerShellSandbox>();
         // Auto (the default) resolves once per host to the platform's backend, or to none inside a
         // container, which the selector logs once.
         services.TryAddSingleton(sp => new ShellSandboxSelector(
@@ -67,7 +68,8 @@ public static class CodeToolExtensions
             sp.GetRequiredService<SeatbeltShellSandbox>(),
             ContainerDetector.Host,
             ShellConfinementResolver.CurrentPlatform,
-            sp.GetService<ILogger<ShellSandboxSelector>>()));
+            sp.GetService<ILogger<ShellSandboxSelector>>(),
+            sp.GetRequiredService<AppContainerShellSandbox>()));
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();

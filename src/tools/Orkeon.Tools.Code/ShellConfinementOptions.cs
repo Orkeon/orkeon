@@ -22,7 +22,7 @@ public sealed class ShellConfinementOptions
 
     /// <summary>
     /// Lets the confined process reach the network. Default false: it gets its own network
-    /// namespace, loopback only.
+    /// namespace, loopback only (under AppContainer: no network capability, hence no network at all).
     /// </summary>
     public bool AllowNetwork { get; set; }
 
@@ -30,6 +30,8 @@ public sealed class ShellConfinementOptions
     /// Absolute host directories bound read-only at their own path, on top of the system
     /// directories (<c>/usr</c>, <c>/bin</c>, <c>/sbin</c>, <c>/lib</c>, <c>/lib32</c>, <c>/lib64</c>,
     /// <c>/etc</c>), for a program installed elsewhere, such as <c>/opt/node</c> or a <c>.dotnet</c> folder.
+    /// Under AppContainer (Windows) they are fully qualified host directories the container may read and
+    /// execute, such as a tool installed under the user profile.
     /// </summary>
     public Collection<string> ReadOnlyPaths { get; } = [];
 }

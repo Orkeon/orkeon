@@ -8,11 +8,17 @@ namespace Orkeon.Tools.Code.Sessions;
 /// otherwise); null or empty keeps the session's own directory.
 /// </param>
 /// <param name="Timeout">How long the command may run before the session gives up on it.</param>
+/// <param name="WindowsBuiltin">
+/// Whether <paramref name="Executable"/> is a cmd.exe built-in (<c>echo</c>, <c>dir</c>, <c>type</c>, …)
+/// a Windows session runs through cmd.exe, its arguments escaped for cmd
+/// (<see cref="Windows.WindowsCommandLine.CmdBuiltin"/>). Read by the Windows sessions only.
+/// </param>
 internal sealed record ShellInvocation(
     string Executable,
     IReadOnlyList<string> Arguments,
     string? WorkingDirectory,
-    TimeSpan Timeout);
+    TimeSpan Timeout,
+    bool WindowsBuiltin = false);
 
 /// <summary>What a command run by a shell session produced.</summary>
 /// <param name="ExitCode">The command's exit code; -1 when it timed out.</param>
