@@ -15,6 +15,13 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Tools.Abstractions.Tests" />
+    <!-- DRIVE-01: the OAuth client and the sign-in flows are shared by the families that sign in to a cloud account. -->
+    <InternalsVisibleTo Include="Orkeon.Tools.Email" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Drive.Tests" />
+    <!-- STUDIO-65: the Studio drift tests read the OAuth settings the e-mail resolver derives. -->
+    <InternalsVisibleTo Include="Orkeon.Studio.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

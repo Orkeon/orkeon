@@ -35,6 +35,7 @@
     "Orkeon:Security:PermissionGate",
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",
+    "Orkeon:Tools:Drive",
     "Orkeon:Tools:Email",
     "Orkeon:Tools:Shell",
     "PathSecurity",

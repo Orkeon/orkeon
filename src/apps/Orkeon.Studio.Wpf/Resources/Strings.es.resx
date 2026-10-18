@@ -1896,6 +1896,9 @@
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
     <value>Correo electrónico</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve">
+    <value>Almacenamiento en la nube</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>Código</value>
   </data>
@@ -1928,6 +1931,9 @@
   </data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
     <value>necesita una cuenta de correo, declarada en Ajustes › Correo electrónico</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve">
+    <value>necesita una cuenta de almacenamiento en la nube, declarada en Ajustes › Almacenamiento en la nube</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} herramientas, nada que configurar</value>
@@ -2463,10 +2469,10 @@
     <value>Añadir un agente</value>
   </data>
   <data name="Studio.Teams.MountRo" xml:space="preserve">
-    <value>{0} (lectura)</value>
+    <value>{0} · lectura</value>
   </data>
   <data name="Studio.Teams.MountRw" xml:space="preserve">
-    <value>{0} (lectura, escritura)</value>
+    <value>{0} · lectura, escritura</value>
   </data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve">
     <value>carpeta ilegible</value>
@@ -3449,7 +3455,7 @@
     <value>Qué contiene y cómo debe usarla el equipo — el asistente seguirá estas notas.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Clic para cambiar: leída por el equipo, o escrita por él.</value>
+    <value>Solo lectura, o lectura y escritura.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Su solicitud no nombra ninguna carpeta: esta es la propuesta estándar. Renombre una carpeta si lo desea, diga dónde está cada una y confirme: el equipo usará exactamente estas.</value>
@@ -3485,10 +3491,10 @@
     <value>Continuar</value>
   </data>
   <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
-    <value>leída</value>
+    <value>lectura</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>escrita</value>
+    <value>lectura, escritura</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>ninguna carpeta elegida</value>
@@ -3546,4 +3552,140 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Ejecución</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>En búfer</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>En búfer (reserva)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Cambiar</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Ubicación</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Carpeta en este equipo</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Elegir…</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Correcto</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Fallido</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Cancelado</value></data>
+  <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>código de salida</value></data>
+  <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENTE</value></data>
+  <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>LLAMADAS A HERRAMIENTAS</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURACIÓN</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>No iniciado</value></data>
+  <data name="Studio.Shell.Drive" xml:space="preserve">
+    <value>Almacenamiento en la nube</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderGoogle" xml:space="preserve">
+    <value>Google Drive — inicia sesión en su navegador</value>
+  </data>
+  <data name="Studio.Settings.DriveProviderOneDrive" xml:space="preserve">
+    <value>OneDrive — personal o profesional; inicia sesión con un código</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirst" xml:space="preserve">
+    <value>Guarde primero el secreto de cliente</value>
+  </data>
+  <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve">
+    <value>Escríbalo en la pestaña Inicio de sesión y guárdelo; la prueba pasa una vez almacenado.</value>
+  </data>
+  <data name="Studio.Settings.DriveTitle" xml:space="preserve">
+    <value>Cuentas de almacenamiento en la nube</value>
+  </data>
+  <data name="Studio.Settings.DriveIntro" xml:space="preserve">
+    <value>Las cuentas de Google Drive y OneDrive que pueden usar sus agentes. Cada cuenta los limita a la carpeta que usted elija y dice lo que pueden hacer en ella.</value>
+  </data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve">
+    <value>Ninguna cuenta declarada: las herramientas de almacenamiento en la nube rechazan toda llamada hasta que haya una.</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve">
+    <value>Retener el texto de un archivo que el filtro de inyección de prompts rechaza</value>
+  </data>
+  <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve">
+    <value>Desactivado, el agente lee el archivo con una advertencia; activado, solo lee la advertencia.</value>
+  </data>
+  <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve">
+    <value>No se guardó nada. La guía de almacenamiento en la nube (docs/guides/drive.md) explica cada rechazo.</value>
+  </data>
+  <data name="Studio.Settings.DriveRenameCost" xml:space="preserve">
+    <value>La cuenta deberá volver a iniciar sesión con su nuevo nombre: sus tokens están guardados con el antiguo. Su secreto de cliente sigue en su variable de entorno, con el nombre de la variable.</value>
+  </data>
+  <data name="Studio.Settings.DriveRemoveCost" xml:space="preserve">
+    <value>La variable de entorno que guarda su secreto de cliente y sus tokens de inicio de sesión se quedan en este equipo; no se toca nada en el almacenamiento en la nube.</value>
+  </data>
+  <data name="Studio.Settings.DriveRoot" xml:space="preserve">
+    <value>Carpeta a la que se limitan los agentes</value>
+  </data>
+  <data name="Studio.Settings.DriveRootHint" xml:space="preserve">
+    <value>Una ruta desde la raíz del almacenamiento, por ejemplo Orkeon/agents. Vacía, los agentes ven todo el almacenamiento.</value>
+  </data>
+  <data name="Studio.Settings.DriveRootWhole" xml:space="preserve">
+    <value>todo el almacenamiento</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUpload" xml:space="preserve">
+    <value>Archivo más grande que un agente puede subir, en megabytes</value>
+  </data>
+  <data name="Studio.Settings.DriveMaxUploadHint" xml:space="preserve">
+    <value>Entre 1 y 10240. Vacío: 100.</value>
+  </data>
+  <data name="Studio.Settings.DriveTimeoutHint" xml:space="preserve">
+    <value>Vacío: el del cliente HTTP.</value>
+  </data>
+  <data name="Studio.Settings.DriveRightRead" xml:space="preserve">
+    <value>Leer — listar, buscar, leer y descargar archivos</value>
+  </data>
+  <data name="Studio.Settings.DriveRightWrite" xml:space="preserve">
+    <value>Escribir — subir archivos, reemplazar su contenido y crear carpetas</value>
+  </data>
+  <data name="Studio.Settings.DriveRightOrganize" xml:space="preserve">
+    <value>Organizar — mover y renombrar archivos y carpetas</value>
+  </data>
+  <data name="Studio.Settings.DriveRightShare" xml:space="preserve">
+    <value>Compartir — solo con los destinatarios permitidos</value>
+  </data>
+  <data name="Studio.Settings.DriveRightDelete" xml:space="preserve">
+    <value>Eliminar — mover archivos y carpetas a la papelera</value>
+  </data>
+  <data name="Studio.Settings.DriveRightPurge" xml:space="preserve">
+    <value>Purgar — eliminar archivos y carpetas definitivamente</value>
+  </data>
+  <data name="Studio.Settings.DriveShareClosed" xml:space="preserve">
+    <value>Todavía nadie puede recibir acceso: indique los destinatarios permitidos.</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinks" xml:space="preserve">
+    <value>Permitir enlaces que cualquiera que los tenga puede abrir</value>
+  </data>
+  <data name="Studio.Settings.DriveAllowPublicLinksHint" xml:space="preserve">
+    <value>Desactivado, un agente solo comparte con los destinatarios permitidos.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-NAME" xml:space="preserve">
+    <value>El nombre de una cuenta de almacenamiento en la nube no es utilizable: solo letras, dígitos, '.', '_' y '-', 64 caracteres como máximo. El motor aparta la cuenta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DUPLICATE" xml:space="preserve">
+    <value>Dos cuentas de almacenamiento en la nube llevan el mismo nombre salvo por las mayúsculas: el motor las lee como una sola, o ya no puede leer el archivo. Cambie el nombre de una.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-TWIN" xml:space="preserve">
+    <value>Dos claves de los ajustes de almacenamiento en la nube llevan el mismo nombre salvo por las mayúsculas: el motor las lee como una sola, o ya no puede leer el archivo. Conserve solo una.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-KEY" xml:space="preserve">
+    <value>Una cuenta de almacenamiento en la nube lleva una clave que el motor no conoce: aparta la cuenta hasta que se corrija o se quite.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-VALUE" xml:space="preserve">
+    <value>Una cuenta de almacenamiento en la nube contiene un valor que el motor no sabe leer: aparta la cuenta hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-PROVIDER" xml:space="preserve">
+    <value>Una cuenta de almacenamiento en la nube no nombra ningún servicio: el motor la aparta hasta que diga Google Drive u OneDrive.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-RIGHTS" xml:space="preserve">
+    <value>Una cuenta de almacenamiento en la nube no concede ningún derecho: el motor la aparta hasta que diga qué puede hacer un agente.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-ROOT" xml:space="preserve">
+    <value>La carpeta a la que una cuenta de almacenamiento en la nube limita a los agentes no es una ruta de carpeta: el motor aparta la cuenta hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-AUTH" xml:space="preserve">
+    <value>El inicio de sesión de una cuenta de almacenamiento en la nube está incompleto o no corresponde a su servicio: la cuenta no se puede usar hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SHARE" xml:space="preserve">
+    <value>Un destinatario permitido de una cuenta de almacenamiento en la nube no es ni una dirección, ni *@dominio, ni *: el motor aparta la cuenta hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve">
+    <value>Un límite de una cuenta de almacenamiento en la nube está fuera de rango (el tamaño de subida, el tiempo de espera): el motor aparta la cuenta hasta que se corrija.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve">
+    <value>La cuenta de almacenamiento en la nube predeterminada no nombra ninguna cuenta declarada: una llamada que no nombra cuenta falla.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
+    <value>El interruptor de filtrado de la sección de almacenamiento en la nube no es ni true ni false: el motor aparta todas las cuentas hasta que lo sea.</value>
+  </data>
 </root>

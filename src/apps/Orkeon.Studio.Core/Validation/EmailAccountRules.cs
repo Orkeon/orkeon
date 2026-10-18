@@ -532,7 +532,7 @@ public static class EmailAccountRules
     /// <paramref name="flags"/> with <c>None</c> for 0 —, or null when it converts none. Members are
     /// separated by commas and combined; each is a name, without regard to case, or a number.
     /// </summary>
-    private static long? EnumerationValue(IReadOnlyList<string> names, string text, bool flags)
+    internal static long? EnumerationValue(IReadOnlyList<string> names, string text, bool flags)
     {
         long value = 0;
         foreach (var part in text.Split(','))
@@ -577,7 +577,7 @@ public static class EmailAccountRules
     /// string as it is, a number as written, a switch as <c>True</c> or <c>False</c>, an empty list
     /// as an empty string; null for what carries no value of its own.
     /// </summary>
-    private static string? ConfigurationText(JsonNode? node) => node switch
+    internal static string? ConfigurationText(JsonNode? node) => node switch
     {
         JsonValue value when value.TryGetValue<string>(out var text) => text,
         JsonValue value when value.TryGetValue<bool>(out var flag) => flag ? bool.TrueString : bool.FalseString,
@@ -587,7 +587,7 @@ public static class EmailAccountRules
     };
 
     /// <summary>The node at <paramref name="key"/> under <paramref name="account"/>, keys compared without case as the configuration binds them.</summary>
-    private static JsonNode? Child(JsonObject account, string key)
+    internal static JsonNode? Child(JsonObject account, string key)
     {
         JsonNode? current = account;
         foreach (var segment in key.Split(':'))

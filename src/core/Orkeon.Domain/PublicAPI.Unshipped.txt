@@ -1327,3 +1327,4 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.operator ==(Or
 Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder
 static Orkeon.Domain.SharedKernel.ValueObjects.SettingPlaceholder.TryMatch(string? value, out string? name) -> bool
 static Orkeon.Domain.FileSystem.TeamLauncherArgument.InTeamMount(string! folder, string! tail) -> Orkeon.Domain.FileSystem.TeamLauncherArgument!
+static Orkeon.Domain.FileSystem.FolderSlug.IsStopWord(string? word) -> bool

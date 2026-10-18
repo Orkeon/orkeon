@@ -21,7 +21,9 @@ public class ToolResultSecurityOptions
     /// <summary>
     /// Tools whose results bypass sanitization. Defaults to the <c>email_*</c> tools, which
     /// screen what they read with <c>PromptInjectionDocumentValidator</c> and mark it untrusted
-    /// themselves (ADR-012) — tagging them again would stack two envelopes. Entries from
+    /// themselves (ADR-012), and to <c>drive_read</c>, which does the same with a file's text
+    /// (ADR-013) — tagging them again would stack two envelopes. The other <c>drive_*</c> tools
+    /// return names and metadata they do not screen, and stay sanitized. Entries from
     /// configuration are added to these.
     /// </summary>
     public HashSet<string> TrustedTools { get; } = new(StringComparer.OrdinalIgnoreCase)
@@ -29,5 +31,6 @@ public class ToolResultSecurityOptions
         "email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders",
         "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder",
         "email_save_attachment", "email_search", "email_send",
+        "drive_read",
     };
 }

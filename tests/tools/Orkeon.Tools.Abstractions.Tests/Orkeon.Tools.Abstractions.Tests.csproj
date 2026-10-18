@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Orkeon.Tests.Shared.Network" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />

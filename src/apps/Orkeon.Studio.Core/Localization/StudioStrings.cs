@@ -532,10 +532,10 @@ public static class StudioStringKeys
     /// <summary>"Choose where to export the team" — the export destination browser's caption.</summary>
     public const string DialogExportDestination = "Studio.Settings.ExportDestination";
 
-    /// <summary>"{0} (read)" — a team card's read-only mount chip.</summary>
+    /// <summary>"{0} · read" — a team card's read-only mount chip.</summary>
     public const string TeamsMountRo = "Studio.Teams.MountRo";
 
-    /// <summary>"{0} (read, write)" — a team card's writable mount chip.</summary>
+    /// <summary>"{0} · read, write" — a team card's writable mount chip.</summary>
     public const string TeamsMountRw = "Studio.Teams.MountRw";
 
     /// <summary>
@@ -1227,6 +1227,9 @@ public static class StudioStringKeys
     /// <summary>"E-mail"</summary>
     public const string ToolFamilyEmail = "Studio.Settings.ToolFamilyEmail";
 
+    /// <summary>"Drive"</summary>
+    public const string ToolFamilyDrive = "Studio.Settings.ToolFamilyDrive";
+
     /// <summary>"Code"</summary>
     public const string ToolFamilyCode = "Studio.Settings.ToolFamilyCode";
 
@@ -1260,6 +1263,9 @@ public static class StudioStringKeys
 
     /// <summary>"needs an e-mail account, declared in Settings › E-mail"</summary>
     public const string ToolNeedsEmailAccount = "Studio.Settings.ToolNeedsEmailAccount";
+
+    /// <summary>"needs a drive account, declared in Settings › Drive"</summary>
+    public const string ToolNeedsDriveAccount = "Studio.Settings.ToolNeedsDriveAccount";
 
     /// <summary>"{0} tools, nothing to configure"</summary>
     public const string ToolFamilyQuietPattern = "Studio.Settings.ToolFamilyQuietPattern";
@@ -1435,6 +1441,23 @@ public static class StudioStringKeys
 
     /// <summary>"Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means."</summary>
     public const string MailSignInFailedHint = "Studio.Settings.MailSignInFailedHint";
+
+    // ── the Drive tab: what the form says that a binding cannot ──
+
+    /// <summary>"Drive"</summary>
+    public const string ShellDrive = "Studio.Shell.Drive";
+
+    /// <summary>"Google Drive — you sign in through your browser"</summary>
+    public const string DriveProviderGoogle = "Studio.Settings.DriveProviderGoogle";
+
+    /// <summary>"OneDrive — personal or work; you sign in with a code"</summary>
+    public const string DriveProviderOneDrive = "Studio.Settings.DriveProviderOneDrive";
+
+    /// <summary>"Store the client secret first"</summary>
+    public const string DriveTestSecretFirst = "Studio.Settings.DriveTestSecretFirst";
+
+    /// <summary>"Type it on the Sign-in tab and save it; the test passes once it is stored."</summary>
+    public const string DriveTestSecretFirstHint = "Studio.Settings.DriveTestSecretFirstHint";
 
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
@@ -2127,7 +2150,7 @@ public static class StudioStringKeys
     /// <summary>"read" — the role of an input folder on the Folders step (STUDIO-46).</summary>
     public const string WizardFolderRoleInput = "Studio.Create.FolderRoleInput";
 
-    /// <summary>"written" — the role of an output folder on the Folders step.</summary>
+    /// <summary>"read, write" — the role of an output folder on the Folders step.</summary>
     public const string WizardFolderRoleOutput = "Studio.Create.FolderRoleOutput";
 
     /// <summary>"no folder chosen yet" — an input folder nothing answers yet.</summary>
@@ -2322,8 +2345,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.AgentEditorAdd] = "Add to the team",
         [StudioStringKeys.ActSave] = "Save",
         [StudioStringKeys.DialogExportDestination] = "Choose where to export the team",
-        [StudioStringKeys.TeamsMountRo] = "{0} (read)",
-        [StudioStringKeys.TeamsMountRw] = "{0} (read, write)",
+        [StudioStringKeys.TeamsMountRo] = "{0} · read",
+        [StudioStringKeys.TeamsMountRw] = "{0} · read, write",
         [StudioStringKeys.TeamsMountUnreadable] = "unreadable folder",
         [StudioStringKeys.TeamsToTest] = "to try",
         [StudioStringKeys.TeamsLastRun] = "Last run: {0}, {1}",
@@ -2484,6 +2507,19 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MAIL-SEND"] = "The sending rules of an e-mail account do not hold (a recipient, a quota, or the right to send without an outgoing server): the run sets the account aside.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-DEFAULT"] = "The default e-mail account names no declared account: a call that names no account fails.",
         ["Studio.Diagnostics.Code.STUDIO-MAIL-SCREENING"] = "The screening switch of the e-mail section is neither true nor false: the run sets every account aside until it is.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-NAME"] = "A drive account name is unusable: letters, digits, '.', '_' and '-' only, 64 characters at most. The run sets the account aside.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-DUPLICATE"] = "Two drive accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-TWIN"] = "Two keys of the drive settings carry the same name but for the case: the run reads them as one, or cannot read the file at all. Keep one.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-KEY"] = "A drive account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-VALUE"] = "A drive account holds a value the engine cannot read: the run sets the account aside until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-PROVIDER"] = "A drive account names no drive: the run sets it aside until it says Google Drive or OneDrive.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-RIGHTS"] = "A drive account grants no right: the run sets it aside until it says what an agent may do.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-ROOT"] = "The folder a drive account confines the agents to is no folder path: the run sets the account aside until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-AUTH"] = "The sign-in of a drive account is incomplete or does not fit its drive: the account cannot be used until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-SHARE"] = "An allowed recipient of a drive account is neither an address, *@domain nor *: the run sets the account aside until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS"] = "A limit of a drive account is out of range (the upload size, the timeout): the run sets the account aside until it is corrected.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT"] = "The default drive account names no declared account: a call that names no account fails.",
+        ["Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING"] = "The screening switch of the drive section is neither true nor false: the run sets every account aside until it is.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION"] = "This option does not apply to the selected team.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE"] = "The verbosity level is not valid.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR"] = "A variable is malformed (expected name=value).",
@@ -2767,6 +2803,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolFamilyFiles] = "Files",
         [StudioStringKeys.ToolFamilyData] = "Data",
         [StudioStringKeys.ToolFamilyEmail] = "E-mail",
+        [StudioStringKeys.ToolFamilyDrive] = "Drive",
         [StudioStringKeys.ToolFamilyCode] = "Code",
         [StudioStringKeys.ToolFamilySession] = "Session and memory",
         [StudioStringKeys.ToolFamilyEvents] = "Events",
@@ -2778,6 +2815,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
         [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
         [StudioStringKeys.ToolNeedsEmailAccount] = "needs an e-mail account, declared in Settings › E-mail",
+        [StudioStringKeys.ToolNeedsDriveAccount] = "needs a drive account, declared in Settings › Drive",
         [StudioStringKeys.ToolFamilyQuietPattern] = "{0} tools, nothing to configure",
         [StudioStringKeys.McpProblemId] = "An identifier is required: letters, digits, '.', '_' and '-'.",
         [StudioStringKeys.McpProblemCommand] = "A stdio server needs a command to launch.",
@@ -2833,6 +2871,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.MailSignedIn] = "Signed in",
         [StudioStringKeys.MailSignInFailed] = "The sign-in did not complete",
         [StudioStringKeys.MailSignInFailedHint] = "Nothing was stored. The e-mail guide (docs/guides/email.md) says what each refusal means.",
+        [StudioStringKeys.ShellDrive] = "Drive",
+        [StudioStringKeys.DriveProviderGoogle] = "Google Drive — you sign in through your browser",
+        [StudioStringKeys.DriveProviderOneDrive] = "OneDrive — personal or work; you sign in with a code",
+        [StudioStringKeys.DriveTestSecretFirst] = "Store the client secret first",
+        [StudioStringKeys.DriveTestSecretFirstHint] = "Type it on the Sign-in tab and save it; the test passes once it is stored.",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",
@@ -3066,7 +3109,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         // STUDIO-14 wizard: where a team's folders live; STUDIO-46: the Folders step
         [StudioStringKeys.WizardFolderRoleInput] = "read",
-        [StudioStringKeys.WizardFolderRoleOutput] = "written",
+        [StudioStringKeys.WizardFolderRoleOutput] = "read, write",
         [StudioStringKeys.WizardFolderNotChosen] = "no folder chosen yet",
         [StudioStringKeys.WizardFolderInvalidName] = "« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
         [StudioStringKeys.WizardFolderTwice] = "{0} is listed twice.",

@@ -384,19 +384,20 @@ public static partial class RunnerExecution
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
 
         var crew = await LoadCrewTargetAsync(host, factory, configPath, logger, targetIsDirectory, ct).ConfigureAwait(false);
-        await RefuseUngrantedMailToolsAsync(host, scopeServices, crew, ct).ConfigureAwait(false);
+        await RefuseUngrantedAccountToolsAsync(host, scopeServices, crew, ct).ConfigureAwait(false);
         return crew;
     }
 
     /// <summary>
-    /// Refuses a crew whose mail tools no ready account grants, before any model call: one read of
-    /// the account statuses, none when the crew names no mail tool.
+    /// Refuses a crew whose mail or drive tools no ready account grants, before any model call:
+    /// one read of each family's account statuses, none when the crew names none of its tools.
     /// </summary>
-    private static async Task RefuseUngrantedMailToolsAsync(
+    private static async Task RefuseUngrantedAccountToolsAsync(
         IHost host, IServiceProvider scopeServices, Domain.Crew.Crew crew, CancellationToken ct)
     {
-        var check = host.Services.GetService<Orkeon.Tools.Email.Accounts.EmailRightsCheck>();
-        if (check is null)
+        var mail = host.Services.GetService<Orkeon.Tools.Email.Accounts.EmailRightsCheck>();
+        var drive = host.Services.GetService<Orkeon.Tools.Drive.Accounts.DriveRightsCheck>();
+        if (mail is null && drive is null)
             return;
 
         var agents = scopeServices.GetService<Domain.Agent.IAgentRepository>() is { } agentRepository
@@ -411,7 +412,11 @@ public static partial class RunnerExecution
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        var lines = await check.CheckAsync(toolNames, ct).ConfigureAwait(false);
+        var lines = new List<string>();
+        if (mail is not null)
+            lines.AddRange(await mail.CheckAsync(toolNames, ct).ConfigureAwait(false));
+        if (drive is not null)
+            lines.AddRange(await drive.CheckAsync(toolNames, ct).ConfigureAwait(false));
         if (lines.Count > 0)
             throw new InvalidOperationException(string.Join('\n', lines));
     }

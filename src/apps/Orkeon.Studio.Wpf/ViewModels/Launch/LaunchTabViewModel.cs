@@ -59,6 +59,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private string? _commandLinePreview;
     private bool _commandLineCopied;
     private readonly IClipboardService _clipboard;
+    /// <summary>The outcome sentence of the last run, which the verdict line stands for.</summary>
+    private string? _outcomeMessage;
     private string? _statusMessage;
     private ProcessRunResult? _lastResult;
     private BinaryLocation? _binaryLocation;
@@ -95,7 +97,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
-                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel), nameof(ArchivedTargetMessage),
+                nameof(CliBanner), nameof(TeamMetaLine), nameof(TeamDescription), nameof(OpenResultLabel), nameof(ArchivedTargetMessage),
                 nameof(TeamSettingsLine));
             RaiseRunStateChanged();
         };
@@ -261,8 +263,19 @@ public sealed class LaunchTabViewModel : ObservableObject
     public string? StatusMessage
     {
         get => _statusMessage;
-        private set => SetProperty(ref _statusMessage, value);
+        private set
+        {
+            if (SetProperty(ref _statusMessage, value))
+                OnPropertiesChanged(nameof(ShowsStatusMessage));
+        }
     }
+
+    /// <summary>
+    /// Whether the status line says something the verdict line does not (#117): the outcome
+    /// sentence of the last run is shown as its badge and exit code, never as a second line.
+    /// </summary>
+    public bool ShowsStatusMessage =>
+        _statusMessage is { Length: > 0 } && !string.Equals(_statusMessage, _outcomeMessage, StringComparison.Ordinal);
 
     /// <summary>The result of the last run, exit code and interpretation included.</summary>
     public ProcessRunResult? LastResult
@@ -842,6 +855,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             // A dry run's outcome is a verdict, not just an exit code: the launcher says whether
             // the crew validated, as the terminal launcher does.
             var outcome = LaunchOutcomeFormatter.Describe(result, dryRun, _strings);
+            _outcomeMessage = outcome;
             StatusMessage = outcome;
             Log.AppendOutcome(outcome);
 
@@ -967,7 +981,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
-        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(TeamDescription), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
             nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
             nameof(IsTargetArchived), nameof(ArchivedTargetMessage));
@@ -1009,7 +1023,13 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public string? TeamHeadline => _team.Name is { Length: > 0 } name ? TeamCatalog.NormalizeName(name) : _team.Name;
 
-    /// <summary>"3 agents · setting X" — only the parts the catalog can honestly assert.</summary>
+    /// <summary>
+    /// The need under the meta line, on its own (#117): the derived one-paragraph summary, never
+    /// the whole need (STUDIO-16, D-03) — the user's brief, pages long when a README was pasted.
+    /// </summary>
+    public string? TeamDescription => _team.Summary is { Length: > 0 } summary ? summary : null;
+
+    /// <summary>"3 agents · reads /docs · setting X" — only the parts the catalog can honestly assert.</summary>
     public string? TeamMetaLine
     {
         get
@@ -1028,10 +1048,6 @@ public sealed class LaunchTabViewModel : ObservableObject
                 }
             }
 
-            // The derived one-paragraph summary, never the whole need (STUDIO-16, D-03): the
-            // need is the user's brief, pages long when a README was pasted.
-            if (_team.Summary is { Length: > 0 } summary)
-                parts.Add(summary);
             // A setting no setting of this machine bears runs on the default: said with the card's
             // own words (STUDIO-52).
             if (_team.Profile is { Length: > 0 } profile)
@@ -1358,7 +1374,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
-        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
+        OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(TeamDescription), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
             nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
             nameof(IsTargetArchived), nameof(ArchivedTargetMessage));

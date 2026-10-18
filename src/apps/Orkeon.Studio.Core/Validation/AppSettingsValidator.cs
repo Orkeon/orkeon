@@ -138,6 +138,7 @@ public sealed class AppSettingsValidator
         ValidateMounts(document, messages);
         ValidateMcp(document, messages);
         ValidateEmail(document, messages);
+        ValidateDrive(document, messages);
         ValidateSettingPlaceholders(document, messages);
 
         return messages;
@@ -184,7 +185,7 @@ public sealed class AppSettingsValidator
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var earlier = new Dictionary<string, (string First, EmailTwinKeys.Reading Read)>(StringComparer.OrdinalIgnoreCase);
+        var earlier = new Dictionary<string, (string First, TwinKeys.Reading Read)>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in names)
         {
             if (!twins.Contains(name))
@@ -196,11 +197,11 @@ public sealed class AppSettingsValidator
             var account = accounts?[name];
             if (earlier.TryGetValue(name, out var twin))
             {
-                messages.Add(DuplicateAccount(twin.First, name, twin.Read.Next(account)));
+                messages.Add(DuplicateAccount(EmailFamily, twin.First, name, twin.Read.Next(account)));
             }
             else
             {
-                var read = new EmailTwinKeys.Reading();
+                var read = new TwinKeys.Reading();
                 read.Next(account);
                 earlier[name] = (name, read);
             }
@@ -212,26 +213,95 @@ public sealed class AppSettingsValidator
     }
 
     /// <summary>
+    /// The drive accounts, judged as the run will judge them, on the model of the e-mail ones: each
+    /// finding a warning in the engine's own sentence (<see cref="DriveAccountRules"/>), the one
+    /// error a pair of names or of keys equal but for the case that set one same key.
+    /// </summary>
+    private static void ValidateDrive(AppSettingsDocument document, List<ValidationMessage> messages)
+    {
+        var drive = document.Drive;
+        if (document.GetNode(DriveSection.SectionPath) is JsonObject section)
+            messages.AddRange(DriveTwinKeys.Under(section, DriveSection.SectionPath, drive.AccountsNode));
+
+        if (DriveAccountRules.ScreeningProblem(document) is { } screening)
+        {
+            messages.Add(ValidationMessage.Warning(
+                ValidationCodes.DriveScreening,
+                screening,
+                $"{DriveSection.SectionPath}:{DriveSection.Keys.Screening}:{DriveSection.Keys.WithholdRejected}"));
+        }
+
+        var names = drive.AccountNames;
+        if (drive.DefaultAccount?.Trim() is { Length: > 0 } named && !names.Contains(named, StringComparer.OrdinalIgnoreCase))
+        {
+            // The sentence a call that names no account gets from the engine's registry.
+            var configured = names.Count == 0 ? "none" : string.Join(", ", names.Order(StringComparer.OrdinalIgnoreCase));
+            messages.Add(ValidationMessage.Warning(
+                ValidationCodes.DriveDefault,
+                $"Unknown drive account '{named}'. Configured: {configured}.",
+                $"{DriveSection.SectionPath}:{DriveSection.Keys.DefaultAccount}"));
+        }
+
+        var accounts = drive.AccountsNode;
+        var twins = names
+            .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var earlier = new Dictionary<string, (string First, TwinKeys.Reading Read)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in names)
+        {
+            if (!twins.Contains(name))
+            {
+                messages.AddRange(DriveAccountRules.Check(document, name));
+                continue;
+            }
+
+            var account = accounts?[name];
+            if (earlier.TryGetValue(name, out var twin))
+            {
+                messages.Add(DuplicateAccount(DriveFamily, twin.First, name, twin.Read.Next(account)));
+            }
+            else
+            {
+                var read = new TwinKeys.Reading();
+                read.Next(account);
+                earlier[name] = (name, read);
+            }
+
+            if (account is JsonObject keys)
+                messages.AddRange(DriveTwinKeys.Under(keys, $"{DriveSection.AccountsPath}:{name}"));
+        }
+    }
+
+    /// <summary>What names an account family in the sentences of <see cref="DuplicateAccount"/>.</summary>
+    private sealed record AccountFamily(string Label, string Code, string AccountsPath);
+
+    private static readonly AccountFamily EmailFamily = new("E-mail", ValidationCodes.EmailDuplicate, EmailSection.AccountsPath);
+
+    private static readonly AccountFamily DriveFamily = new("Drive", ValidationCodes.DriveDuplicate, DriveSection.AccountsPath);
+
+    /// <summary>
     /// What the configuration does of two account names equal but for the case: it refuses the
     /// file when both objects set one same key (<paramref name="shared"/> — an error: every run
     /// fails to start), and reads one account made of both otherwise (a warning).
     /// </summary>
-    private static ValidationMessage DuplicateAccount(string first, string name, string? shared)
+    private static ValidationMessage DuplicateAccount(AccountFamily family, string first, string name, string? shared)
     {
-        var path = $"{EmailSection.AccountsPath}:{name}";
+        var path = $"{family.AccountsPath}:{name}";
         if (shared is null)
         {
             return ValidationMessage.Warning(
-                ValidationCodes.EmailDuplicate,
-                $"E-mail accounts '{first}' and '{name}' differ only by case: the run reads them as one account, " +
+                family.Code,
+                $"{family.Label} accounts '{first}' and '{name}' differ only by case: the run reads them as one account, " +
                 "the keys of both together. Rename one, or merge them.",
                 path);
         }
 
         var what = shared.Length == 0 ? "a value" : shared;
         return ValidationMessage.Error(
-            ValidationCodes.EmailDuplicate,
-            $"E-mail accounts '{first}' and '{name}' differ only by case and both set " +
+            family.Code,
+            $"{family.Label} accounts '{first}' and '{name}' differ only by case and both set " +
             $"{what}: the configuration refuses a key written twice, " +
             "so no run can read this file. Rename one, or merge them.",
             path);

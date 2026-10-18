@@ -45,6 +45,7 @@ public sealed class AppSettingsDocument
         Mcp = new McpSection(this);
         ShellTools = new ShellToolsSection(this);
         Email = new EmailSection(this);
+        Drive = new DriveSection(this);
     }
 
     /// <summary>The mutable JSON tree backing this document — the raw-edit surface of the UIs.</summary>
@@ -76,6 +77,9 @@ public sealed class AppSettingsDocument
 
     /// <summary>Typed view over the <c>Orkeon:Tools:Email</c> section (STUDIO-65).</summary>
     public EmailSection Email { get; }
+
+    /// <summary>Typed view over the <c>Orkeon:Tools:Drive</c> section.</summary>
+    public DriveSection Drive { get; }
 
     /// <summary>Creates an empty document (<c>{}</c>).</summary>
     public static AppSettingsDocument CreateEmpty() => new(new JsonObject());

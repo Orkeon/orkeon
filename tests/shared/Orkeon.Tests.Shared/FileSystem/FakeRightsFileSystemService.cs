@@ -1,8 +1,7 @@
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
-using Orkeon.Tests.Shared.FileSystem;
 
-namespace Orkeon.Tools.Email.Tests.Doubles;
+namespace Orkeon.Tests.Shared.FileSystem;
 
 /// <summary>
 /// <see cref="IFileSystemService"/> over the shared <see cref="FakeFileSystemService"/> that, unlike
@@ -11,7 +10,7 @@ namespace Orkeon.Tools.Email.Tests.Doubles;
 /// and records the right every validation asked for, so a test can tell a read-only mount from a
 /// writable one, and one that may not create from one that may.
 /// </summary>
-internal sealed class FakeRightsFileSystemService : IFileSystemService
+public sealed class FakeRightsFileSystemService : IFileSystemService
 {
     private readonly FakeFileSystemService _inner = new();
     private readonly List<(string Path, FileAccessRights Rights)> _mounts = [];

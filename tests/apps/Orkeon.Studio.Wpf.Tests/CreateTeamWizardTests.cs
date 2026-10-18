@@ -303,6 +303,39 @@ public partial class CreateTeamWizardTests
         Assert.Equal(3, vm.MaxStep);   // the run advanced the stepper to Essayer
     }
 
+    /// <summary>
+    /// #118: the name is pre-filled from the session's title, which is the goal sentence until
+    /// the assistant names the crew. The short name replaces the cut sentence — until the user
+    /// types a name of their own, which nothing replaces.
+    /// </summary>
+    [Fact]
+    public async Task The_name_follows_the_assistants_short_title_until_the_user_edits_it()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"Lire les notes déposées dans le dossier input et rédiger à partir de chacune un résumé hebdomadaire"}}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"Synthèse hebdomadaire des notes"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+            Out("""{"v":2,"seq":4,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        Assert.Equal("Synthèse hebdomadaire des notes", vm.TeamName);
+
+        vm.TeamName = "Mon équipe";
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":true}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"Autre nom"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}],"rationale":"r"},"iteration":1}"""),
+        ]);
+        await vm.TryTeamCommand.ExecuteAsync();
+
+        Assert.Equal("Mon équipe", vm.TeamName);
+    }
+
     [Fact]
     public async Task At_the_dry_pause_an_agent_edit_relaunches_the_engine_with_the_amended_blueprint()
     {
@@ -1020,7 +1053,7 @@ public partial class CreateTeamWizardTests
             var promote = processes.LastRequest!.Arguments.ToList();
             Assert.Equal(promoted, promote[promote.IndexOf("--to") + 1]);
             var summary = TeamCatalog.Describe(promoted);
-            Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", summary.Name);
+            Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées…", summary.Name);
             Assert.True(summary.Name.Length <= TeamCatalog.MaxNameLength);
             // The need stays whole: it is the archive of what was asked, the summary is derived.
             Assert.Equal(PastedPage, summary.Description);
@@ -1082,7 +1115,7 @@ public partial class CreateTeamWizardTests
 
         // A pasted page collapses to its first line at once, markup gone, cut at a word.
         vm.TeamName = PastedPage;
-        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", vm.TeamName);
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées…", vm.TeamName);
 
         // Typing is never fought: the space before the next word stays, and so does the
         // leading one; the write trims them. A character past the cap is refused whole,
@@ -1655,7 +1688,7 @@ public partial class CreateTeamWizardTests
             Assert.True(wizard.IsFoldersStep);
             Assert.True(wizard.IsEngineWaitingOnUser);
             Assert.Equal(["/inpdf", "/outmd"], wizard.FolderRows.Select(r => r.VirtualPath));
-            Assert.Equal(["read", "written"], wizard.FolderRows.Select(r => r.RoleLabel));
+            Assert.Equal(["read", "read, write"], wizard.FolderRows.Select(r => r.RoleLabel));
             Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
             Assert.True(wizard.FolderRows[0].IsUnanswered);
             Assert.Equal("no folder chosen yet", wizard.FolderRows[0].FolderLabel);
@@ -1795,7 +1828,7 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.False(vm.IsFillingFolders);
         Assert.Equal(["/inpdf", "/outmd"], vm.HeldFolderRows.Select(r => r.VirtualPath));
-        Assert.Equal(["read", "written"], vm.HeldFolderRows.Select(r => r.RoleLabel));
+        Assert.Equal(["read", "read, write"], vm.HeldFolderRows.Select(r => r.RoleLabel));
         Assert.Equal("/ws/.orkeon/forge/veille/folders/inpdf", vm.HeldFolderRows[0].Directory);
         Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
         Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
@@ -1867,7 +1900,7 @@ public partial class CreateTeamWizardTests
 
             added.ToggleRoleCommand.Execute(null);
             Assert.False(added.IsInput);
-            Assert.Equal("written", added.RoleLabel);
+            Assert.Equal("read, write", added.RoleLabel);
             Assert.True(added.IsInsideTeam);
             added.VirtualPath = "/rapports";
             added.Purpose = "  un compte rendu par envoi, en Markdown  ";

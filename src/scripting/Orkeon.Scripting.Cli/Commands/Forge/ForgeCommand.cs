@@ -150,6 +150,13 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public string? Reference { get; init; }
 
+    /// <summary>
+    /// <c>--lang &lt;code&gt;</c> (#119): the language the assistant converses in — Studio's
+    /// interface language — until the user writes in or asks for another one. Null: English.
+    /// One of <see cref="ForgeBrief.Languages"/>.
+    /// </summary>
+    public string? Language { get; init; }
+
     /// <summary>What made the parse fail, when it did.</summary>
     public string? Error { get; init; }
 
@@ -170,6 +177,7 @@ internal sealed record ForgeCommandOptions
         ["--pack"] = "--pack needs a directory.",
         ["--read"] = "--read needs a directory.",
         ["--reference"] = "--reference needs a use case id (see `orkeon usecases list`).",
+        ["--lang"] = "--lang needs a language: fr, en, es, de or zh.",
     };
 
     /// <summary>
@@ -350,6 +358,7 @@ internal sealed record ForgeCommandOptions
         "--settings" => options with { SettingsPath = value },
         "--read" => options with { ReadDirectory = value },
         "--reference" => options with { Reference = value },
+        "--lang" => ForgeBrief.Languages.Contains(value) ? options with { Language = value } : options with { Error = invalid },
         _ => options with { PackDirectory = value },
     };
 
@@ -406,6 +415,8 @@ internal sealed record ForgeCommandOptions
             "--adopt and --edit are two different answers to the same pause."),
         ((o, _) => ReadOutsideACycle(o),
             "--read only applies to a new session or to `forge resume`."),
+        ((o, _) => LanguageOutsideACycle(o),
+            "--lang only applies to a new session or to `forge resume`."),
         ((o, _) => ReferenceOutsideANewSession(o),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
         ((o, needWords) => o.ReopenDirectory is not null && ShapesACycleOrNeed(o, needWords),
@@ -431,6 +442,10 @@ internal sealed record ForgeCommandOptions
     /// <summary>Whether <c>--read</c> was passed to a verb that starts no cycle.</summary>
     private static bool ReadOutsideACycle(ForgeCommandOptions o) =>
         o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o));
+
+    /// <summary>Whether <c>--lang</c> was passed to a verb that holds no conversation.</summary>
+    private static bool LanguageOutsideACycle(ForgeCommandOptions o) =>
+        o.Language is not null && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o) || o.Rephrase);
 
     /// <summary>Whether <c>--reference</c> was passed to a verb other than a new session.</summary>
     private static bool ReferenceOutsideANewSession(ForgeCommandOptions o) =>
@@ -697,7 +712,7 @@ internal static class ForgeCommand
         }
 
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
-        var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference);
+        var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference, language: options.Language);
 
         // The sandbox catalogue: what the blueprint prompt shows is exactly what the
         // validation enforces (SPEC §9.1) — one list, two consumers.

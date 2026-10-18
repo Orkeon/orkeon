@@ -146,6 +146,9 @@ public partial class App : System.Windows.Application
                 // The E-mail tab asks the engine about its accounts once the saves pause, not at
                 // every key the novice types (STUDIO-69): a timer of its own, dropped on its own.
                 EmailStatesDelay = new WpfDelay(Dispatcher),
+                // The Drive tab keeps a timer and a beat of its own, for the same reasons.
+                DriveStatesDelay = new WpfDelay(Dispatcher),
+                DriveSignInTicker = new WpfTicker(Dispatcher),
             },
             new StudioUiPreferences
             {

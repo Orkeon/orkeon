@@ -20,3 +20,4 @@ override Orkeon.Constants.Configuration.SettingPlaceholderSetting.GetHashCode() 
 override Orkeon.Constants.Configuration.SettingPlaceholderSetting.ToString() -> string!
 static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator !=(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
 static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator ==(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
+const Orkeon.Constants.Configuration.ConfigurationKeys.ToolsDrive = "Orkeon:Tools:Drive" -> string!

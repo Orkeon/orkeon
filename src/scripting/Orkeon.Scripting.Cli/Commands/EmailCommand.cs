@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -152,7 +151,7 @@ internal static class EmailCommand
         {
             if (events is null)
             {
-                var interaction = options.Interaction ?? new ConsoleLoginInteraction();
+                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("e-mail");
                 await administration.LoginAsync(options.Account, interaction, ct).ConfigureAwait(false);
                 await Console.Out.WriteLineAsync($"Signed in: the tokens of e-mail account '{options.Account}' are stored. Agents can use it now.")
                     .ConfigureAwait(false);
@@ -160,7 +159,7 @@ internal static class EmailCommand
             }
 
             using var driver = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            var dialogue = new EventLoginInteraction(events, Console.In, onInputClosed: () =>
+            var dialogue = new EventOAuthLoginInteraction(events, Console.In, onInputClosed: () =>
             {
                 try
                 {
@@ -374,94 +373,5 @@ internal static class EmailCommand
                 logging.SetMinimumLevel(LogLevel.Warning);
             },
             configureServices: (context, services) => options.ConfigureTestServices?.Invoke(context, services));
-    }
-
-    /// <summary>The terminal side of an interactive sign-in.</summary>
-    private sealed class ConsoleLoginInteraction : IEmailLoginInteraction
-    {
-        public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken) =>
-            Console.Out.WriteLineAsync(
-                $"To sign e-mail account '{account}' in, open {verificationUri} in a browser and enter the code {userCode}.{Environment.NewLine}Waiting for the sign-in to complete (Ctrl+C to abort)…");
-
-        public Task ShowAuthorizationUrlAsync(string account, Uri authorizationUri, CancellationToken cancellationToken) =>
-            Console.Out.WriteLineAsync(
-                $"To sign e-mail account '{account}' in, open this address in a browser:{Environment.NewLine}{Environment.NewLine}  {authorizationUri}{Environment.NewLine}{Environment.NewLine}" +
-                "If the browser cannot reach this machine (WSL, a container, a remote shell), paste here the address it ends on (http://127.0.0.1:…) and press Enter.");
-
-        public async Task<string?> ReadRedirectAsync(CancellationToken cancellationToken)
-        {
-            var line = await Console.In.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            return line;
-        }
-
-        public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken) =>
-            Console.Out.WriteLineAsync(
-                $"That is not the address the browser ended on: {reason} Paste the complete address (http://127.0.0.1:…) and press Enter.");
-    }
-
-    /// <summary>
-    /// The sign-in a program drives (STUDIO-70): each step is an event line, and the redirect
-    /// address is whatever line the driver writes on standard input — a line that is not one is
-    /// answered by an event too, never by silence. That input is read from the start, on a thread
-    /// of its own — a read of a redirected input blocks its caller —, so that its end is noticed
-    /// in the device sign-in too, where nothing is ever pasted.
-    /// </summary>
-    private sealed class EventLoginInteraction : IEmailLoginInteraction
-    {
-        private readonly EmailEventWriter _events;
-        private readonly Channel<string> _pasted = Channel.CreateUnbounded<string>();
-
-        public EventLoginInteraction(EmailEventWriter events, TextReader input, Action onInputClosed)
-        {
-            _events = events;
-            _ = Task.Factory.StartNew(
-                () => Pump(input, onInputClosed), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-        }
-
-        public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, TimeSpan expiresIn, CancellationToken cancellationToken)
-        {
-            _events.LoginDeviceCode(verificationUri, userCode, expiresIn);
-            return Task.CompletedTask;
-        }
-
-        public Task ShowAuthorizationUrlAsync(string account, Uri authorizationUri, CancellationToken cancellationToken)
-        {
-            _events.LoginAuthorizationUrl(authorizationUri);
-            return Task.CompletedTask;
-        }
-
-        public async Task<string?> ReadRedirectAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                return await _pasted.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (ChannelClosedException)
-            {
-                return null;
-            }
-        }
-
-        public Task ShowRedirectRejectedAsync(string account, string reason, CancellationToken cancellationToken)
-        {
-            _events.LoginRedirectRejected(reason);
-            return Task.CompletedTask;
-        }
-
-        private void Pump(TextReader input, Action onInputClosed)
-        {
-            try
-            {
-                while (input.ReadLine() is { } line)
-                    _pasted.Writer.TryWrite(line);
-            }
-            catch (Exception ex) when (ex is IOException or ObjectDisposedException)
-            {
-                // The input broke rather than ended: the driver is gone all the same.
-            }
-
-            _pasted.Writer.TryComplete();
-            onInputClosed();
-        }
     }
 }

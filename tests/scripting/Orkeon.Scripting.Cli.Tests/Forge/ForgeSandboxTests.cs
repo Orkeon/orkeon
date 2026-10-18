@@ -5,6 +5,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tools.Drive.DependencyInjection;
 using Orkeon.Tools.Email.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
@@ -17,7 +18,13 @@ namespace Orkeon.Scripting.Cli.Tests.Forge;
 public sealed class ForgeSandboxTests
 {
     private static readonly string[] Others = ["file_read", "shell_command", "code_interpreter"];
-    private static readonly string[] Denied = ["code_interpreter", "shell_command"];
+    private static readonly string[] Denied =
+    [
+        "code_interpreter",
+        "drive_accounts", "drive_create_folder", "drive_delete", "drive_download", "drive_info", "drive_list",
+        "drive_move", "drive_read", "drive_search", "drive_share", "drive_upload",
+        "shell_command",
+    ];
 
     [Fact]
     [Trait("BR", "BR-01")]
@@ -43,8 +50,23 @@ public sealed class ForgeSandboxTests
 
     [Fact]
     [Trait("BR", "BR-10")]
-    public void ShouldDenyShellAndCodeInterpreter_Only()
+    public void ShouldDenyShellCodeInterpreterAndTheDriveTools_Only()
     {
         Assert.Equal(Denied, ForgeSandbox.DeniedTools.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void ShouldLeaveEveryDriveToolOut_WhenTheHostRegistersThem()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddOrkeonDriveTools(new ConfigurationBuilder().Build());
+        using var provider = services.BuildServiceProvider();
+        var registered = provider.GetServices<IBaseTool>().Append(new StubBaseTool("file_read")).ToList();
+
+        var catalogue = ForgeSandbox.SelectCrewTools(registered).Select(tool => tool.Name).ToList();
+
+        Assert.Equal(["file_read"], catalogue);
     }
 }

@@ -26,6 +26,12 @@
       href: guides/email.md
     - name: Commandes orkeon email
       href: reference/cli.md#orkeon-email
+- name: Drives dans le nuage
+  items:
+    - name: Outils drive — Google Drive et OneDrive
+      href: guides/drive.md
+    - name: Commandes orkeon drive
+      href: reference/cli.md#orkeon-drive
 - name: Architecture
   items:
     - name: Fournisseurs LLM
@@ -156,6 +162,8 @@
       href: adr/ADR-011-aspire-dashboard-observability.md
     - name: ADR-012 — La famille d'outils e-mail
       href: adr/ADR-012-email-tool-family.md
+    - name: ADR-013 — La famille d'outils drive
+      href: adr/ADR-013-drive-tool-family.md
     - name: ADR — Graphe sémantique RaggableTree
       href: architecture/raggable-tree-adr.md
 - name: Gabarits

@@ -99,8 +99,10 @@ public sealed class CapturePlannerTests
         // form of nobody used to show there —, both modes, both themes, language sweep) = +8 shots.
         // 2026-10-09: +2 stops (reglages-mails-droits and reglages-mails-identifiants, the Rights and
         // Sign-in tabs of an account's form, both modes, both themes) = +8 shots.
-        Assert.Equal(69, CaptureCatalog.All.Count);
-        Assert.Equal(382, plan.Count);
+        // Drive tab: +1 stop (reglages-drive-vide, the Drive tab of the pristine machine, both modes,
+        // both themes, language sweep) = +8 shots.
+        Assert.Equal(70, CaptureCatalog.All.Count);
+        Assert.Equal(390, plan.Count);
     }
 
     [Fact]

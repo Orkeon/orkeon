@@ -664,6 +664,7 @@
   <data name="Studio.Settings.ToolFamilyFiles" xml:space="preserve"><value>Files</value></data>
   <data name="Studio.Settings.ToolFamilyData" xml:space="preserve"><value>Data</value></data>
   <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Studio.Settings.ToolFamilyDrive" xml:space="preserve"><value>Drive</value></data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve"><value>Code</value></data>
   <data name="Studio.Settings.ToolFamilySession" xml:space="preserve"><value>Session and memory</value></data>
   <data name="Studio.Settings.ToolFamilyEvents" xml:space="preserve"><value>Events</value></data>
@@ -675,6 +676,7 @@
   <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve"><value>the connection parameters are given at the call, by the agent</value></data>
   <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve"><value>expert setting below: {0}</value></data>
   <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve"><value>needs an e-mail account, declared in Settings › E-mail</value></data>
+  <data name="Studio.Settings.ToolNeedsDriveAccount" xml:space="preserve"><value>needs a drive account, declared in Settings › Drive</value></data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve"><value>{0} tools, nothing to configure</value></data>
   <data name="Studio.Settings.McpProblemId" xml:space="preserve"><value>An identifier is required: letters, digits, '.', '_' and '-'.</value></data>
   <data name="Studio.Settings.McpProblemCommand" xml:space="preserve"><value>A stdio server needs a command to launch.</value></data>
@@ -866,8 +868,8 @@
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Edit</value></data>
   <data name="Studio.Create.AddAgent" xml:space="preserve"><value>Add an agent</value></data>
-  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} (read)</value></data>
-  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} (read, write)</value></data>
+  <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · read</value></data>
+  <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · read, write</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>unreadable folder</value></data>
   <data name="Studio.Teams.ToTest" xml:space="preserve"><value>to try</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Last run: {0}, {1}</value></data>
@@ -1763,7 +1765,7 @@
     <value>What it holds and how the team must use it — the assistant follows these notes.</value>
   </data>
   <data name="Studio.Create.FolderRoleTip" xml:space="preserve">
-    <value>Click to switch: read by the team, or written by it.</value>
+    <value>Read only, or read and write.</value>
   </data>
   <data name="Studio.Create.FoldersStepSubDefaults" xml:space="preserve">
     <value>Your request names no folder: this is the standard proposal. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.</value>
@@ -1802,7 +1804,7 @@
     <value>read</value>
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
-    <value>written</value>
+    <value>read, write</value>
   </data>
   <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
     <value>no folder chosen yet</value>
@@ -1860,4 +1862,58 @@
   <data name="Studio.Shell.StatusScopeExecution" xml:space="preserve"><value>Execution</value></data>
   <data name="Studio.Shell.StatusModeBuffer" xml:space="preserve"><value>Buffer</value></data>
   <data name="Studio.Shell.StatusModeFallback" xml:space="preserve"><value>Buffer (fallback)</value></data>
+  <data name="Studio.Teams.ChangeMountsShort" xml:space="preserve"><value>Change</value></data>
+  <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Location</value></data>
+  <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Folder on this machine</value></data>
+  <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Choose…</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>exit code</value></data>
+  <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENT</value></data>
+  <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>TOOL CALLS</value></data>
+  <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
+  <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURATION</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Not started</value></data>
+  <data name="Studio.Shell.Drive" xml:space="preserve"><value>Drive</value></data>
+  <data name="Studio.Settings.DriveProviderGoogle" xml:space="preserve"><value>Google Drive — you sign in through your browser</value></data>
+  <data name="Studio.Settings.DriveProviderOneDrive" xml:space="preserve"><value>OneDrive — personal or work; you sign in with a code</value></data>
+  <data name="Studio.Settings.DriveTestSecretFirst" xml:space="preserve"><value>Store the client secret first</value></data>
+  <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve"><value>Type it on the Sign-in tab and save it; the test passes once it is stored.</value></data>
+  <data name="Studio.Settings.DriveTitle" xml:space="preserve"><value>Drive accounts</value></data>
+  <data name="Studio.Settings.DriveIntro" xml:space="preserve"><value>The Google Drive and OneDrive accounts your agents may use. Each account confines them to a folder you choose, and says what they are allowed to do there.</value></data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>No account declared: the drive tools refuse every call until one is.</value></data>
+  <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve"><value>Withhold the text of a file the prompt-injection screening rejects</value></data>
+  <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve"><value>Off, the agent reads the file with a warning; on, it reads the warning alone.</value></data>
+  <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve"><value>Nothing was stored. The drive guide (docs/guides/drive.md) says what each refusal means.</value></data>
+  <data name="Studio.Settings.DriveRenameCost" xml:space="preserve"><value>The account must sign in again under its new name: its tokens are filed under the old one. Its client secret stays in its environment variable, under the variable's own name.</value></data>
+  <data name="Studio.Settings.DriveRemoveCost" xml:space="preserve"><value>The environment variable that holds its client secret and its sign-in tokens stay on this machine; nothing on the drive is touched.</value></data>
+  <data name="Studio.Settings.DriveRoot" xml:space="preserve"><value>Folder the agents are confined to</value></data>
+  <data name="Studio.Settings.DriveRootHint" xml:space="preserve"><value>A path from the root of the drive, for example Orkeon/agents. Empty, the agents see the whole drive.</value></data>
+  <data name="Studio.Settings.DriveRootWhole" xml:space="preserve"><value>the whole drive</value></data>
+  <data name="Studio.Settings.DriveMaxUpload" xml:space="preserve"><value>Largest file an agent may upload, in megabytes</value></data>
+  <data name="Studio.Settings.DriveMaxUploadHint" xml:space="preserve"><value>Between 1 and 10240. Empty: 100.</value></data>
+  <data name="Studio.Settings.DriveTimeoutHint" xml:space="preserve"><value>Empty: the HTTP client's own.</value></data>
+  <data name="Studio.Settings.DriveRightRead" xml:space="preserve"><value>Read — list, search, read and download files</value></data>
+  <data name="Studio.Settings.DriveRightWrite" xml:space="preserve"><value>Write — upload files, replace their content and create folders</value></data>
+  <data name="Studio.Settings.DriveRightOrganize" xml:space="preserve"><value>Organize — move and rename files and folders</value></data>
+  <data name="Studio.Settings.DriveRightShare" xml:space="preserve"><value>Share — with the allowed recipients only</value></data>
+  <data name="Studio.Settings.DriveRightDelete" xml:space="preserve"><value>Delete — move files and folders to the trash</value></data>
+  <data name="Studio.Settings.DriveRightPurge" xml:space="preserve"><value>Purge — delete files and folders for good</value></data>
+  <data name="Studio.Settings.DriveShareClosed" xml:space="preserve"><value>Nobody can be given access yet: list the allowed recipients.</value></data>
+  <data name="Studio.Settings.DriveAllowPublicLinks" xml:space="preserve"><value>Allow links that anyone holding them can open</value></data>
+  <data name="Studio.Settings.DriveAllowPublicLinksHint" xml:space="preserve"><value>Off, an agent shares with the allowed recipients only.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-NAME" xml:space="preserve"><value>A drive account name is unusable: letters, digits, '.', '_' and '-' only, 64 characters at most. The run sets the account aside.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DUPLICATE" xml:space="preserve"><value>Two drive accounts carry the same name but for the case: the run reads them as one, or cannot read the file at all. Rename one.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-TWIN" xml:space="preserve"><value>Two keys of the drive settings carry the same name but for the case: the run reads them as one, or cannot read the file at all. Keep one.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-KEY" xml:space="preserve"><value>A drive account carries a key the engine does not know: the run sets the account aside until the key is corrected or removed.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-VALUE" xml:space="preserve"><value>A drive account holds a value the engine cannot read: the run sets the account aside until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-PROVIDER" xml:space="preserve"><value>A drive account names no drive: the run sets it aside until it says Google Drive or OneDrive.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-RIGHTS" xml:space="preserve"><value>A drive account grants no right: the run sets it aside until it says what an agent may do.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-ROOT" xml:space="preserve"><value>The folder a drive account confines the agents to is no folder path: the run sets the account aside until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-AUTH" xml:space="preserve"><value>The sign-in of a drive account is incomplete or does not fit its drive: the account cannot be used until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SHARE" xml:space="preserve"><value>An allowed recipient of a drive account is neither an address, *@domain nor *: the run sets the account aside until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve"><value>A limit of a drive account is out of range (the upload size, the timeout): the run sets the account aside until it is corrected.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve"><value>The default drive account names no declared account: a call that names no account fails.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve"><value>The screening switch of the drive section is neither true nor false: the run sets every account aside until it is.</value></data>
 </root>

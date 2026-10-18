@@ -65,7 +65,7 @@ public sealed record EmailCliSeams
 /// beats their countdown, and stops them with the rest of its activity.
 /// </para>
 /// </summary>
-public sealed class EmailSectionViewModel : DocumentSectionViewModel
+public sealed class EmailSectionViewModel : DocumentSectionViewModel, IAccountSignInOwner
 {
     /// <summary>The provider a new account's box opens on: the preset a first account most often uses.</summary>
     private const string NewAccountProviderDefault = EmailSection.Values.Gmail;
@@ -514,7 +514,7 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
             return null;
 
         var signIn = new EmailSignInViewModel(
-            row.Name, this, new EmailSignInEnvironment(_cli, path, _strings, _dispatcher, _signInServices),
+            row.Name, this, new EmailSignInEnvironment(_cli.LoginAsync, path, _strings, _dispatcher, _signInServices),
             moved: () =>
             {
                 row.RefreshTest();
@@ -597,6 +597,9 @@ public sealed class EmailSectionViewModel : DocumentSectionViewModel
     internal string FailureText(EmailCliFailure failure) => failure.Kind == EmailCliFailureKind.EngineMissing
         ? EngineMissingText
         : failure.Reason;
+
+    /// <inheritdoc />
+    string IAccountSignInOwner.FailureText(EmailCliFailure failure) => FailureText(failure);
 
     /// <summary>The sentence the create-a-team screen — the one Studio opens on — says of a missing CLI.</summary>
     internal string EngineMissingText => _strings[StudioStringKeys.WizardFailureEngineMissing];

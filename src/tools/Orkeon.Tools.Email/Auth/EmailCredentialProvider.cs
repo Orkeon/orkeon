@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
+using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tools.Email.Configuration;
 
 namespace Orkeon.Tools.Email.Auth;
@@ -29,57 +29,6 @@ internal sealed record BearerCredential(string Username, string AccessToken) : E
 }
 
 /// <summary>
-/// Where the variable an account names for its password or its client secret is read
-/// (STUDIO-68): the process environment, then the user's persistent scope —
-/// <c>HKCU\Environment</c> on Windows, where Orkeon Studio remembers a password. Linux and macOS
-/// have no such scope, and <see cref="User"/> is then null. Read only, never written: a secret
-/// found in the user scope is not copied into the process, so what a run starts — a shell tool,
-/// an MCP server — inherits no secret it did not have. The seam of Infrastructure's
-/// <c>LlmKeyEnvironment</c>, spelt again because this assembly does not reference it; replaced in
-/// tests, which never touch the machine's environment.
-/// </summary>
-/// <param name="Process">Reads a variable of the process environment by name.</param>
-/// <param name="User">Reads a variable of the user's persistent scope by name, and may throw when the scope cannot be read; null on a machine that has none.</param>
-internal sealed record EmailEnvironment(Func<string, string?> Process, Func<string, string?>? User = null)
-{
-    /// <summary>The machine's own environment.</summary>
-    public static EmailEnvironment Machine { get; } = new(
-        Environment.GetEnvironmentVariable,
-        OperatingSystem.IsWindows() ? name => Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User) : null);
-
-    /// <summary>What a failure says of a variable found nowhere: the places it was looked for.</summary>
-    public string Unset => User is null ? "is not set" : "is set neither in the process environment nor in the user's";
-
-    /// <summary>The first non-empty value of <paramref name="name"/>, the process before the user scope; null when neither holds one.</summary>
-    public string? Read(string name)
-    {
-        if (Process(name) is { Length: > 0 } inProcess)
-            return inProcess;
-        return ReadUserScope(name) is { Length: > 0 } inUserScope ? inUserScope : null;
-    }
-
-    /// <summary>
-    /// The user scope, read only. A scope that cannot be read — the registry refused, a service
-    /// account without a profile — is a variable not found: the call then fails as it does
-    /// without a password, and the readiness check says which variable is missing.
-    /// </summary>
-    [SuppressMessage("Design", "CA1031",
-        Justification = "Whatever reading the user scope throws, the variable is not found there — exactly " +
-                        "like an absent one; the account then says which variable it could not read.")]
-    private string? ReadUserScope(string name)
-    {
-        try
-        {
-            return User?.Invoke(name);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-}
-
-/// <summary>
 /// Produces the credential an account connects with: its password from the named environment
 /// variable, or an OAuth access token from the store, refreshed when it is about to expire.
 /// It never signs in interactively — that is <c>orkeon email login</c>'s job — so a tool that
@@ -89,12 +38,12 @@ internal sealed class EmailCredentialProvider
 {
     private readonly IEmailTokenStore _store;
     private readonly OAuth2Client _oauth;
-    private readonly EmailEnvironment _environment;
+    private readonly SecretEnvironment _environment;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshGates = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, EmailTokenSet> _fresh = new(StringComparer.Ordinal);
 
     /// <summary>Creates the provider.</summary>
-    public EmailCredentialProvider(IEmailTokenStore store, OAuth2Client oauth, EmailEnvironment environment)
+    public EmailCredentialProvider(IEmailTokenStore store, OAuth2Client oauth, SecretEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(oauth);
@@ -140,7 +89,7 @@ internal sealed class EmailCredentialProvider
             // A refresh needs the client secret too, when the account names one (Google).
             _ = ReadClientSecret(account);
             var tokens = await _store.ReadAsync(TokenKey(account), cancellationToken).ConfigureAwait(false);
-            return tokens is not null && (_oauth.IsFresh(tokens) || tokens.RefreshToken is not null)
+            return tokens is not null && (_oauth.IsFresh(tokens.ExpiresAt) || tokens.RefreshToken is not null)
                 ? null
                 : LoginHint(account);
         }
@@ -181,7 +130,7 @@ internal sealed class EmailCredentialProvider
         var settings = account.Auth.OAuth
             ?? throw new EmailToolException(EmailErrorCode.InvalidConfiguration, $"E-mail account '{account.Name}' does not use OAuth2.");
         var key = TokenKey(account);
-        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached) && cached.AccessToken != refused)
+        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached.ExpiresAt) && cached.AccessToken != refused)
             return cached.AccessToken;
 
         var gate = _refreshGates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
@@ -189,7 +138,7 @@ internal sealed class EmailCredentialProvider
         try
         {
             var tokens = await _store.ReadAsync(key, cancellationToken).ConfigureAwait(false);
-            if (tokens is not null && _oauth.IsFresh(tokens) && tokens.AccessToken != refused)
+            if (tokens is not null && _oauth.IsFresh(tokens.ExpiresAt) && tokens.AccessToken != refused)
             {
                 _fresh[key] = tokens;
                 return tokens.AccessToken;
@@ -201,11 +150,15 @@ internal sealed class EmailCredentialProvider
             EmailTokenSet refreshed;
             try
             {
-                refreshed = await _oauth.RefreshAsync(settings, ReadClientSecret(account), refreshToken, cancellationToken).ConfigureAwait(false);
+                refreshed = ToEmail(await _oauth.RefreshAsync(settings, ReadClientSecret(account), refreshToken, cancellationToken).ConfigureAwait(false));
             }
-            catch (EmailToolException ex) when (ex.Code == EmailErrorCode.LoginRequired)
+            catch (OAuthException ex) when (ex.Failure == OAuthFailure.LoginRequired)
             {
                 throw new EmailToolException(EmailErrorCode.LoginRequired, $"{LoginHint(account)} ({ex.Message})", ex);
+            }
+            catch (OAuthException ex)
+            {
+                throw Translate(ex);
             }
 
             await _store.WriteAsync(key, refreshed, cancellationToken).ConfigureAwait(false);
@@ -253,6 +206,33 @@ internal sealed class EmailCredentialProvider
             string.Join(' ', oauth?.Scopes ?? []));
         var digest = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
         return $"{account.Name}-{digest[..12]}";
+    }
+
+    /// <summary>The e-mail form of tokens the shared OAuth client returned.</summary>
+    public static EmailTokenSet ToEmail(OAuthTokenSet tokens)
+    {
+        ArgumentNullException.ThrowIfNull(tokens);
+        return new EmailTokenSet
+        {
+            AccessToken = tokens.AccessToken,
+            RefreshToken = tokens.RefreshToken,
+            ExpiresAt = tokens.ExpiresAt,
+            Scopes = tokens.Scopes,
+        };
+    }
+
+    /// <summary>The e-mail exception of a shared OAuth failure: same message, the matching code.</summary>
+    public static EmailToolException Translate(OAuthException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        var code = exception.Failure switch
+        {
+            OAuthFailure.InvalidConfiguration => EmailErrorCode.InvalidConfiguration,
+            OAuthFailure.AuthenticationFailed => EmailErrorCode.AuthenticationFailed,
+            OAuthFailure.LoginRequired => EmailErrorCode.LoginRequired,
+            _ => EmailErrorCode.ServerError,
+        };
+        return new EmailToolException(code, exception.Message, exception);
     }
 
     private string ReadPassword(ResolvedEmailAccount account)

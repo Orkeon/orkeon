@@ -109,6 +109,12 @@ internal static class SettingsCatalogBuilder
             sources.Add(new SettingsSource(ConfigurationKeys.ToolsEmail, email));
         }
 
+        if (DriveOptionsType() is { } drive
+            && services.Any(descriptor => descriptor.ServiceType == typeof(IConfigureOptions<>).MakeGenericType(drive)))
+        {
+            sources.Add(new SettingsSource(ConfigurationKeys.ToolsDrive, drive));
+        }
+
         if (services.Any(descriptor => descriptor.ServiceType == typeof(IConfigureOptions<Orkeon.Tools.Code.ShellToolOptions>)))
             sources.Add(new SettingsSource(Orkeon.Tools.Code.ShellToolOptions.SectionName, typeof(Orkeon.Tools.Code.ShellToolOptions)));
 
@@ -237,6 +243,11 @@ internal static class SettingsCatalogBuilder
     private static Type? EmailOptionsType() =>
         typeof(Orkeon.Tools.Email.DependencyInjection.EmailToolsServiceCollectionExtensions).Assembly
             .GetType("Orkeon.Tools.Email.Configuration.EmailToolsOptions");
+
+    /// <summary>The internal options type of the drive tools, reached through their assembly.</summary>
+    private static Type? DriveOptionsType() =>
+        typeof(Orkeon.Tools.Drive.DependencyInjection.DriveToolsServiceCollectionExtensions).Assembly
+            .GetType("Orkeon.Tools.Drive.Configuration.DriveToolsOptions");
 
     /// <summary>A new instance of <paramref name="type"/>, whose property values are the defaults, or null when it has none.</summary>
     private static object? Instance(Type type)

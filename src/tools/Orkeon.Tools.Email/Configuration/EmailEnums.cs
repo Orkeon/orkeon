@@ -84,13 +84,3 @@ internal enum EmailRights
     /// <summary>Delete messages permanently.</summary>
     Purge = 32,
 }
-
-/// <summary>How an OAuth 2.0 account obtains its first token.</summary>
-internal enum OAuthFlow
-{
-    /// <summary>RFC 8628 device authorization grant (Microsoft).</summary>
-    DeviceCode,
-
-    /// <summary>Authorization code with PKCE and a loopback redirect (Google).</summary>
-    LoopbackPkce,
-}

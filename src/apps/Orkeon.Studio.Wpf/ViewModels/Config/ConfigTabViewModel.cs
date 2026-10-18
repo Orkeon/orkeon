@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Drive;
 using Orkeon.Studio.Core.Email;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
@@ -88,6 +89,24 @@ public sealed class ConfigTabViewModel : ObservableObject
                 },
                 StatesDelay = seams.EmailStatesDelay,
             });
+        // The Drive tab, on the model of the E-mail one: its client secrets go to the same store,
+        // its states and sign-ins to `orkeon drive` over the same runner, on timers of its own.
+        Drive = new DriveSectionViewModel(
+            () => _document, MarkDirty, _strings, () => Location.EffectivePath, Picker, seams.KeyStore,
+            new DriveCliSeams
+            {
+                Cli = seams.DriveCli ?? (seams.ProcessRunner is { } runner ? new DriveCliClient(runner) : null),
+                IsDirty = () => _isDirty,
+                Dispatcher = seams.Dispatcher,
+                SignIn = new EmailSignInServices
+                {
+                    Browser = seams.BrowserOpener,
+                    Clipboard = seams.Clipboard,
+                    Ticker = seams.DriveSignInTicker,
+                    Clock = seams.Clock,
+                },
+                StatesDelay = seams.DriveStatesDelay,
+            });
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,
@@ -109,7 +128,10 @@ public sealed class ConfigTabViewModel : ObservableObject
             if (e.PropertyName is nameof(SettingsLocationViewModel.CanSave))
                 SaveCommand.RaiseCanExecuteChanged();
             if (e.PropertyName is nameof(SettingsLocationViewModel.EffectivePath))
+            {
                 Email.RefreshSettingsFile();
+                Drive.RefreshSettingsFile();
+            }
         };
         // The explicit Validate lands its verdict in the status line (audit 07/16): the
         // novice screen has no validation card any more, the summary is the feedback.
@@ -148,6 +170,9 @@ public sealed class ConfigTabViewModel : ObservableObject
 
     /// <summary>The <c>Orkeon:Tools:Email</c> form of the E-mail tab (STUDIO-67).</summary>
     public EmailSectionViewModel Email { get; }
+
+    /// <summary>The <c>Orkeon:Tools:Drive</c> form of the Drive tab.</summary>
+    public DriveSectionViewModel Drive { get; }
 
     /// <summary>The <c>Orkeon:FileSystem:Mounts</c> editor (spec §4.5).</summary>
     public MountsEditorViewModel Mounts { get; }
@@ -191,7 +216,10 @@ public sealed class ConfigTabViewModel : ObservableObject
         {
             // The e-mail tab shows the states of the file as saved, and says so while it differs.
             if (SetProperty(ref _isDirty, value))
+            {
                 Email.RefreshSavedFile();
+                Drive.RefreshSavedFile();
+            }
         }
     }
 
@@ -265,6 +293,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         ShellTools.Refresh();
         Mcp.Refresh();
         Email.Refresh();
+        Drive.Refresh();
         Mounts.Load(_document.Mounts.RawEntries);
 
         IsDirty = false;

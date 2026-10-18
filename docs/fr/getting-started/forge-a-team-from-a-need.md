@@ -103,6 +103,7 @@ Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — 
 |---|---|---|
 | `--read <dir>` | une nouvelle session, `forge resume` | Le dossier que l'essai lit derrière le premier dossier d'entrée relié à aucun dossier réel (`/workspace` par défaut), à la place du répertoire de travail — pour pointer un essai sur les documents que l'équipe doit lire ; les sessions restent sous le répertoire de travail. |
 | `--reference <id>` | une nouvelle session | Compose l'équipe à partir d'un cas d'usage du catalogue (`orkeon usecases list`) : la structure de sa crew sert de modèle à l'assistant, et la session, `forge.json` et `FORGE.md` l'enregistrent. |
+| `--lang <code>` | une nouvelle session, `forge resume` | La langue dans laquelle l'assistant converse et nomme l'équipe (`fr`, `en`, `es`, `de`, `zh` ; l'anglais par défaut) — jusqu'à ce que vous écriviez dans une autre langue ou le demandiez. |
 | `--settings <path>` | une nouvelle session, `forge resume` | Le fichier de settings, avec la même sémantique qu'`orkeon run --settings`. |
 | `--with-settings` | `forge promote` | Copie le fichier de settings résolu dans le dossier promu. Désactivé par défaut : un fichier de settings contient souvent des clés API et le dossier est fait pour être partagé — sans la copie, les scripts de lancement référencent le fichier sur place. |
 | `--events jsonl` | chaque verbe | Le protocole d'événements versionné sur stdout, les réponses sur stdin — c'est ainsi qu'Orkeon Studio pilote la forge. |

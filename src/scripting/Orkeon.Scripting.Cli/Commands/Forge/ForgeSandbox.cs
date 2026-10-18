@@ -16,12 +16,15 @@ internal static class ForgeSandbox
     /// <summary>
     /// Tools that escape the VFS confinement and never enter a forged crew (V1): the shell and
     /// the interpreter. FORGE-10: the mailbox tools are offered — a try runs them on a trial
-    /// mailbox, never on the operator's actual mail.
+    /// mailbox, never on the operator's actual mail. DRIVE: the drive tools have no trial drive
+    /// yet, and would read and change the operator's actual Google Drive or OneDrive: denied.
     /// </summary>
     public static readonly IReadOnlySet<string> DeniedTools =
         new HashSet<string>(StringComparer.Ordinal)
         {
             "shell_command", "code_interpreter",
+            "drive_accounts", "drive_create_folder", "drive_delete", "drive_download", "drive_info", "drive_list",
+            "drive_move", "drive_read", "drive_search", "drive_share", "drive_upload",
         };
 
     /// <summary>

@@ -14,6 +14,17 @@ directory_read
 directory_search
 docx_reader
 docx_writer
+drive_accounts
+drive_create_folder
+drive_delete
+drive_download
+drive_info
+drive_list
+drive_move
+drive_read
+drive_search
+drive_share
+drive_upload
 email_accounts
 email_create_folder
 email_delete
@@ -57,6 +68,9 @@ pdf_search
 post_message
 postgres_query
 publish_event
+rag_eval
+rag_ingest
+rag_search
 receive_message
 relational_database_query
 reply_to

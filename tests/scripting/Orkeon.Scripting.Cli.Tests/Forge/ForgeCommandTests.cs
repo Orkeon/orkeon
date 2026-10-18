@@ -572,4 +572,22 @@ public sealed class ForgeCommandTests : IDisposable
         }));
         return path;
     }
+
+    /// <summary>
+    /// #119: <c>--lang</c> names the language the assistant converses in — Studio's interface
+    /// language — for a new session or a resume, the two verbs that hold a conversation; one of
+    /// the five languages of the interface, nothing else.
+    /// </summary>
+    [Fact]
+    public void The_conversation_language_is_taken_for_a_new_session_or_a_resume_only()
+    {
+        Assert.Equal("de", ForgeCommandOptions.Parse(["une", "veille", "--lang", "de"]).Language);
+        var resumed = ForgeCommandOptions.Parse(["resume", "demo", "--lang", "zh"]);
+        Assert.Null(resumed.Error);
+        Assert.Equal("zh", resumed.Language);
+        Assert.Null(ForgeCommandOptions.Parse(["une", "veille"]).Language);
+
+        Assert.Equal("--lang needs a language: fr, en, es, de or zh.", ForgeCommandOptions.Parse(["une", "veille", "--lang", "it"]).Error);
+        Assert.Equal("--lang only applies to a new session or to `forge resume`.", ForgeCommandOptions.Parse(["reopen", "/teams/veille", "--lang", "fr"]).Error);
+    }
 }

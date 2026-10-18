@@ -1,1 +1,11 @@
 #nullable enable
+Orkeon.Constants.Protocol.DriveEventKinds
+const Orkeon.Constants.Protocol.DriveEventKinds.CheckCompleted = "drive.check.completed" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginAuthorizationUrl = "drive.login.authorization_url" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginCompleted = "drive.login.completed" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginDeviceCode = "drive.login.device_code" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginRedirectRejected = "drive.login.redirect_rejected" -> string!
+static Orkeon.Constants.Protocol.DriveEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.DriveEventKinds.Check.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.DriveEventKinds.Login.get -> System.Collections.Generic.IReadOnlyList<string!>!

@@ -99,7 +99,7 @@ jobs:
       # the guard above exists for. Runnable locally: python3 scripts/check-release-readiness.py
       - name: Verify the release checklist (CHANGELOG cut, PublicAPI shipped)
         run: python3 scripts/check-release-readiness.py
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with: { global-json-file: global.json }
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
@@ -247,7 +247,7 @@ jobs:
           version=$(bash scripts/resolve-version.sh --props src/Directory.Build.props --run "$CI_RUN")
           { echo "prefix=${version%%-*}"; echo "suffix=${version#*-}"; echo "version=$version"; } >> "$GITHUB_OUTPUT"
           echo "Dev version: $version (CI run #$CI_RUN)"
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with: { global-json-file: global.json }
       # One pack, restore and build included. ContinuousIntegrationBuild must reach the
       # build, not only the pack: it is what maps the source paths in the PDBs.
