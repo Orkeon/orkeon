@@ -54,15 +54,17 @@ public static class CodeToolExtensions
                 provider.GetService<IConfiguration>()?.GetSection(ShellToolOptions.SectionName).Bind(options))
             .ValidateOnStart();
         // One shell session per agent run: the manager is stateless (the sessions live in each run's
-        // AgentRunScope) and the sandboxes hold no session, so all three are singletons.
+        // AgentRunScope) and the sandboxes hold no session, so all of them are singletons.
         services.TryAddSingleton<ShellSessionManager>();
         services.TryAddSingleton<UnconfinedShellSandbox>();
         services.TryAddSingleton<BubblewrapShellSandbox>();
+        services.TryAddSingleton<SeatbeltShellSandbox>();
         // Auto (the default) resolves once per host to the platform's backend, or to none inside a
         // container, which the selector logs once.
         services.TryAddSingleton(sp => new ShellSandboxSelector(
             sp.GetRequiredService<UnconfinedShellSandbox>(),
             sp.GetRequiredService<BubblewrapShellSandbox>(),
+            sp.GetRequiredService<SeatbeltShellSandbox>(),
             ContainerDetector.Host,
             ShellConfinementResolver.CurrentPlatform,
             sp.GetService<ILogger<ShellSandboxSelector>>()));

@@ -13,8 +13,8 @@ internal sealed record ShellSandboxAvailability(string? Reason)
 
 /// <summary>
 /// One way of running an agent's shell session: on the host (<see cref="UnconfinedShellSandbox"/>)
-/// or confined (<see cref="BubblewrapShellSandbox"/> on Linux; Seatbelt and AppContainer plug in the
-/// same way). A sandbox holds no session: <see cref="ShellSessionManager"/> keeps them per agent run.
+/// or confined (<see cref="BubblewrapShellSandbox"/> on Linux, <see cref="SeatbeltShellSandbox"/> on
+/// macOS; AppContainer plugs in the same way). A sandbox holds no session: <see cref="ShellSessionManager"/> keeps them per agent run.
 /// </summary>
 internal interface IShellSandbox
 {

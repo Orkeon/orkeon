@@ -165,6 +165,39 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldFailTheCallWithTheWayToTurnItOff_WhenSeatbeltIsUnavailable()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Platform = ShellPlatform.MacOS,
+            ContainerDetector = new FakeContainerDetector(),
+            Seatbelt = () => new Orkeon.Tools.Code.Sessions.ShellSandboxAvailability("/usr/bin/sandbox-exec was not found"),
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("Confinement:Mode is Auto, but /usr/bin/sandbox-exec was not found", result.Error!, StringComparison.Ordinal);
+        Assert.Contains("set Orkeon:Tools:Shell:Confinement:Mode = None", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheCall_WhenAnExtraReadOnlyPathIsRelativeUnderSeatbelt()
+    {
+        using var tool = new ShellCommandTool(FileSystem())
+        {
+            Confinement = new ShellConfinementOptions { Mode = ShellConfinementMode.Seatbelt, ReadOnlyPaths = { "opt/homebrew" } },
+            Platform = ShellPlatform.MacOS,
+            Seatbelt = () => Orkeon.Tools.Code.Sessions.ShellSandboxAvailability.Available,
+        };
+
+        var result = await tool.CallAsync(Request("echo confined"), Ct);
+
+        Assert.False(result.Success);
+        Assert.Contains("'opt/homebrew', which is not an absolute path", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldNeverProbeBubblewrap_WhenConfinementIsOff()
     {
         using var tool = new ShellCommandTool(FileSystem())

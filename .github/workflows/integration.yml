@@ -192,3 +192,50 @@ jobs:
           gh issue close "$existing" --reason completed \
             --comment "Nightly Integration/Slow suites are green again: $RUN_URL"
           echo "Closed tracking issue #$existing."
+
+  # Seatbelt (sandbox-exec), the shell confinement of macOS: only a macOS runner can apply a
+  # profile, so the Seatbelt suites of shell_command run here, the pure profile tests with them.
+  # SeatbeltShellSessionTests SKIPS where the probe fails, which would make a green night that never
+  # confined anything: the probe step fails the job instead, and the run must report every
+  # integration test of the suite as succeeded, none skipped.
+  seatbelt:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with: { global-json-file: global.json }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            packages
+            ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
+      - run: dotnet build tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj -c Release --no-restore
+      - name: Check that sandbox-exec applies a profile
+        run: |
+          /usr/bin/sandbox-exec -p '(version 1)(allow default)' /usr/bin/true
+          echo "Seatbelt applies a profile on this runner."
+      - name: Run the Seatbelt suites
+        env:
+          # The integration tests of SeatbeltShellSessionTests: all of them must succeed.
+          MIN_SUCCEEDED: '7'
+        run: |
+          set +e
+          out="$(dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj -c Release --no-build \
+            --filter "FullyQualifiedName~Seatbelt" -- --no-ansi 2>&1)"
+          rc=$?
+          echo "$out"
+          if printf '%s\n' "$out" | grep -q 'skipped Orkeon.Tools.Code.Tests.Sessions.SeatbeltShellSessionTests'; then
+            echo "::error::A Seatbelt session test was skipped: the confinement was not exercised on this runner."
+            exit 1
+          fi
+          succeeded="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*succeeded:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | sort -n | tail -1)"
+          if [ "${succeeded:-0}" -lt "$MIN_SUCCEEDED" ]; then
+            echo "::error::Only ${succeeded:-0} test(s) succeeded, expected at least $MIN_SUCCEEDED. Check the filter; do NOT lower MIN_SUCCEEDED to clear this."
+            exit 1
+          fi
+          echo "Seatbelt tests succeeded: $succeeded (floor: $MIN_SUCCEEDED)"
+          exit $rc

@@ -125,6 +125,13 @@ public sealed record ShellCommandResponse
 /// the backend is unavailable the call fails with the reason and how to turn confinement off; it never
 /// runs unconfined.
 /// </para>
+/// <para>
+/// Under <see cref="ShellConfinementMode.Seatbelt"/> (macOS), the session is <c>sandbox-exec -p &lt;profile&gt; /bin/sh -s</c>:
+/// the profile denies everything but the system directories read-only, each mount read-only or
+/// read-write after its rights (a sub path without rights denied), a scratch directory of the session
+/// and the network when allowed. Seatbelt filters without moving anything, so the process works on
+/// physical paths and the arguments are rewritten as when unconfined.
+/// </para>
 /// </remarks>
 [ToolContract("shell_command",
     Name = "shell_command",
@@ -145,6 +152,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>Whether bubblewrap works here; probed once per process. Replaced by the tests.</summary>
     internal Func<BubblewrapAvailability> Bubblewrap { get; init; } = BubblewrapProbe.Current;
 
+    /// <summary>Whether Seatbelt works here; probed once per process. Replaced by the tests.</summary>
+    internal Func<ShellSandboxAvailability> Seatbelt { get; init; } = SeatbeltProbe.Current;
+
     /// <summary>Keeps the shell session of each agent run. Replaced by the tests.</summary>
     internal ShellSessionManager Sessions { get; init; } = ShellSessionManager.Shared;
 
@@ -156,7 +166,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     /// <summary>
     /// How the session runs; null picks it from <see cref="Confinement"/> through
-    /// <see cref="ShellSandboxSelector"/> (bubblewrap over <see cref="Bubblewrap"/>, none, or a backend
+    /// <see cref="ShellSandboxSelector"/> (bubblewrap over <see cref="Bubblewrap"/>, Seatbelt over <see cref="Seatbelt"/>, none, or a backend
     /// that reports why it cannot run). Set by the dependency injection registration and the tests.
     /// </summary>
     internal IShellSandbox? Sandbox { get; init; }
@@ -164,7 +174,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private IShellSandbox? _defaultSandbox;
 
     private IShellSandbox ActiveSandbox => Sandbox ?? (_defaultSandbox ??=
-        new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), ContainerDetector, Platform, _logger)
+        new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, _logger)
             .Select(Confinement.Mode));
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
@@ -479,13 +489,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 Completed = false
             };
 
-        if (confined)
-        {
-            // Validation proved the confinement works; it is checked again, never assumed.
-            var availability = sandbox.Availability;
-            if (!availability.IsAvailable)
-                return ConfinementUnavailable(availability.Reason);
-        }
+        // Validation proved the confinement works; it is checked again, never assumed (a session on the
+        // host is always available, a confined one on virtual or on physical paths may not be).
+        var availability = sandbox.Availability;
+        if (!availability.IsAvailable)
+            return ConfinementUnavailable(availability.Reason);
 
         // A confined session sees the mounts at their virtual paths; an empty directory keeps the
         // session's own (the root of the confined view, the host's directory otherwise).
@@ -572,7 +580,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private string? ValidateConfinement()
     {
         var sandbox = ActiveSandbox;
-        if (sandbox.UsesVirtualPaths)
+        if (sandbox.UsesVirtualPaths || sandbox is SeatbeltShellSandbox)
         {
             var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
             if (relative is not null)
