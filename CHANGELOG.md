@@ -121,7 +121,7 @@ its own `11.0.x`.
 A setting a host hands to a process as written is never expanded: `${NAME}` and `%NAME%` reached the MCP servers,
 the e-mail accounts and the paths of a run as literal text and failed late, far from their cause. `orkeon`, the REPL,
 `doctor` and `orkeon-host` now refuse the start, before any MCP server (exit 1; 78 for `orkeon-host`), with the
-correction and never the value. `$NAME` passes. An e-mail account holding one is reported misconfigured (the problem names the field) and is not used. Studio
+correction and never the value. `$NAME` passes. An e-mail or drive account holding one is reported misconfigured (the problem names the field) and is not used. Studio
 refuses the same values before saving (`STUDIO-SETTING-PLACEHOLDER`, one error at its path); `Llm:ApiKey` keeps
 `STUDIO-LLM-APIKEY-PLACEHOLDER` and now refuses `sk-${X}`; the four indirection prefixes go, so `env:X` and
 `ORKEON_X` are judged as values (GAP-55). See `docs/reference/configuration.md`.

@@ -158,7 +158,7 @@ pour les garder.
 | `Accounts:<nom>:Rights` | Parmi `Read, Write, Organize, Share, Delete, Purge` — obligatoire |
 | `Accounts:<nom>:Root` | Le dossier auquel le compte est confiné, en chemin depuis la racine du drive (`Orkeon/agents`) ; non renseigné : tout le drive |
 | `Accounts:<nom>:Auth:ClientId` | L'application Google Cloud ou Microsoft Entra — obligatoire |
-| `Accounts:<nom>:Auth:ClientSecretEnvVar` | Le **nom** de la variable qui contient le secret client Google — obligatoire pour Google Drive |
+| `Accounts:<nom>:Auth:ClientSecretEnvVar` | Le **nom** de la variable qui contient le secret client Google — obligatoire pour Google Drive. Écrivez le nom seul : Orkeon ne développe aucune variable, et un compte dont `Auth:ClientSecretEnvVar` contient une référence `${NOM}` ou `%NOM%` est mis de côté, avec ce problème |
 | `Accounts:<nom>:Auth:Tenant` | Microsoft seulement : `consumers` (défaut), `organizations`, `common` ou un id de tenant |
 | `Accounts:<nom>:Share:AllowedRecipients` | Avec qui un agent peut partager : une adresse, `*@domaine` ou `*` ; vide : personne |
 | `Accounts:<nom>:Share:AllowPublicLinks` | Si un agent peut créer un lien que quiconque le détient peut ouvrir (défaut `false`) |

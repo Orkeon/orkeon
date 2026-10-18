@@ -439,8 +439,9 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
 
 Un compte e-mail dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou
-`Auth:ClientSecretEnvVar` contient une référence ne refuse pas le démarrage : le compte est mis de
-côté, avec son problème ([guide e-mail](../guides/email.md)).
+`Auth:ClientSecretEnvVar` contient une référence, ou un compte drive dont `Auth:ClientSecretEnvVar`
+en contient une, ne refuse pas le démarrage : le compte est mis de côté, avec son problème
+([guide e-mail](../guides/email.md), [guide drive](../guides/drive.md)).
 
 ### Profils nommés (`Llm:Profiles`)
 

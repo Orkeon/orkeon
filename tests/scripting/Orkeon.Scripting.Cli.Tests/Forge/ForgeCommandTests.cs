@@ -586,6 +586,11 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Null(resumed.Error);
         Assert.Equal("zh", resumed.Language);
         Assert.Null(ForgeCommandOptions.Parse(["une", "veille"]).Language);
+        // GAP-51: --lang=<code> reads as written, and the need after `--` stays the need.
+        var written = ForgeCommandOptions.Parse(["--lang=fr", "--", "--lang", "de"]);
+        Assert.Null(written.Error);
+        Assert.Equal("fr", written.Language);
+        Assert.Equal("--lang de", written.Need);
 
         Assert.Equal("--lang needs a language: fr, en, es, de or zh.", ForgeCommandOptions.Parse(["une", "veille", "--lang", "it"]).Error);
         Assert.Equal("--lang only applies to a new session or to `forge resume`.", ForgeCommandOptions.Parse(["reopen", "/teams/veille", "--lang", "fr"]).Error);

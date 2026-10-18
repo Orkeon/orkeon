@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Mail;
 using System.Text.Json.Nodes;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Studio.Core.Configuration;
 using static Orkeon.Studio.Core.Configuration.DriveSection.Values;
 
@@ -231,7 +232,12 @@ public static class DriveAccountRules
             findings.Add(ValidationCodes.DriveLimits, DriveSection.Keys.TimeoutSeconds, "TimeoutSeconds must be positive");
 
         // Studio's own, and never the value: it may be the secret, pasted in the field that names it.
-        if (!LlmSection.IsVariableName(definition.ClientSecretEnvVar))
+        if (SettingPlaceholder.TryMatch(definition.ClientSecretEnvVar, out _))
+        {
+            findings.Add(ValidationCodes.DriveAuth, ClientSecretEnvVarKey,
+                $"{ClientSecretEnvVarKey} holds a variable reference, and Orkeon expands no variable here: write the NAME of the environment variable alone");
+        }
+        else if (!LlmSection.IsVariableName(definition.ClientSecretEnvVar))
         {
             findings.Add(ValidationCodes.DriveAuth, ClientSecretEnvVarKey,
                 $"{ClientSecretEnvVarKey} must be the name of an environment variable (no '=', space or line break), never the secret itself");

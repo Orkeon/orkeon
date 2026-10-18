@@ -289,6 +289,13 @@ public sealed class OptionGrammarTests
             Row<EmailLoginCommandOptions>(),
             Row<EmailLogoutCommandOptions>("hotmail"),
             Row<EmailCheckCommandOptions>("hotmail", "--events", "jsonl", "--settings", "s.json"),
+            Row<DriveAccountsCommandOptions>("--json", "-s", "a.json"),
+            Row<DriveAccountsCommandOptions>("--settings=a.json"),
+            Row<DriveLoginCommandOptions>("pro", "--events", "jsonl"),
+            Row<DriveLoginCommandOptions>("pro", "--events=jsonl"),
+            Row<DriveLoginCommandOptions>(),
+            Row<DriveLogoutCommandOptions>("pro"),
+            Row<DriveCheckCommandOptions>("pro", "--events", "jsonl", "--settings", "s.json"),
             Row<UseCasesSearchOptions>("summarize my emails every morning"),
             Row<UseCasesSearchOptions>("je veux", "un résumé", "--top", "3", "--lang", "fr"),
             Row<UseCasesListOptions>("--category", "finance-trading", "--process", "parallel"),
@@ -308,6 +315,7 @@ public sealed class OptionGrammarTests
         (typeof(RunCommandOptions), ["crew.yaml", "--validate", "extra"]),
         (typeof(RagSearchCommandOptions), ["question", "-c", "docs", "extra"]),
         (typeof(EmailLoginCommandOptions), ["hotmail", "extra"]),
+        (typeof(DriveCheckCommandOptions), ["pro", "extra"]),
         (typeof(UseCasesShowOptions), ["03-email-pipeline", "extra"]),
     ];
 

@@ -414,8 +414,9 @@ covers is not the one read, so it is not judged. The settings judged, from
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
 
 An e-mail account holding a reference in `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` or
-`Auth:ClientSecretEnvVar` is not a start refusal: the account is set aside, with its problem
-([e-mail guide](../guides/email.md)).
+`Auth:ClientSecretEnvVar`, or a drive account holding one in `Auth:ClientSecretEnvVar`, is not a
+start refusal: the account is set aside, with its problem ([e-mail guide](../guides/email.md),
+[drive guide](../guides/drive.md)).
 
 ### Named profiles (`Llm:Profiles`)
 

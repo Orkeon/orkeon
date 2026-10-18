@@ -14,7 +14,7 @@ using Orkeon.Tools.Drive.Administration;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options shared by the <c>orkeon drive</c> verbs.</summary>
-internal abstract class DriveCommandOptionsBase
+internal abstract class DriveCommandOptionsBase : CliOptions
 {
     /// <summary>Path to appsettings.json holding <c>Orkeon:Tools:Drive</c>.</summary>
     [Option('s', "settings", Required = false,
@@ -93,20 +93,14 @@ internal static class DriveCommand
     public static async Task<int> DispatchAsync(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        using var parser = new Parser(s =>
+        return await CliGrammar.DispatchAsync("drive", args, [typeof(DriveAccountsCommandOptions), typeof(DriveLoginCommandOptions), typeof(DriveLogoutCommandOptions), typeof(DriveCheckCommandOptions)], options => options switch
         {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<DriveAccountsCommandOptions, DriveLoginCommandOptions, DriveLogoutCommandOptions, DriveCheckCommandOptions>(args)
-            .MapResult(
-                (DriveAccountsCommandOptions o) => ExecuteAccountsAsync(o),
-                (DriveLoginCommandOptions o) => ExecuteLoginAsync(o),
-                (DriveLogoutCommandOptions o) => ExecuteLogoutAsync(o),
-                (DriveCheckCommandOptions o) => ExecuteCheckAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            DriveAccountsCommandOptions o => ExecuteAccountsAsync(o),
+            DriveLoginCommandOptions o => ExecuteLoginAsync(o),
+            DriveLogoutCommandOptions o => ExecuteLogoutAsync(o),
+            DriveCheckCommandOptions o => ExecuteCheckAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     /// <summary>Lists the accounts.</summary>
