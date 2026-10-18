@@ -123,9 +123,9 @@ public sealed class AclPlanTests
         => Assert.Empty(AclPlan.Build([], []));
 
     [Fact]
-    public void ShouldLabelAHiddenPathBelowAGrantedOne_NoAccessUp_AndAReadOnlySubPathOfAWritableOne_NoWriteUp()
+    public void ShouldIsolateAHiddenPathBelowAGrantedOne_AndAReadOnlySubPathOfAWritableOne_ParentsFirst()
     {
-        var labels = AclPlan.Labels(
+        var isolations = AclPlan.Isolations(
         [
             new ConfinedPath(@"C:\work\repo\secrets", "/workspace/secrets", ConfinedAccess.HiddenDirectory),
             new ConfinedPath(@"C:\work\repo\.env", "/workspace/.env", ConfinedAccess.HiddenFile),
@@ -135,52 +135,27 @@ public sealed class AclPlanTests
             new ConfinedPath(@"C:\data\docs", "/docs", ConfinedAccess.ReadOnly),
         ], []);
 
-        Assert.Equal(
-        [
-            new LabelEntry(@"C:\data\docs\private", LabelPolicy.NoAccessUp),
-            new LabelEntry(@"C:\work\repo\.env", LabelPolicy.NoAccessUp),
-            new LabelEntry(@"C:\work\repo\secrets", LabelPolicy.NoAccessUp),
-            new LabelEntry(@"C:\work\repo\vendor", LabelPolicy.NoWriteUp),
-        ], labels);
+        Assert.Equal([@"C:\data\docs\private", @"C:\work\repo\.env", @"C:\work\repo\secrets", @"C:\work\repo\vendor"], isolations);
     }
 
     [Fact]
-    public void ShouldLabelAHiddenPathBelowAnExtraReadOnlyPath()
+    public void ShouldIsolateAHiddenPathBelowAnExtraReadOnlyPath()
     {
-        var labels = AclPlan.Labels([new ConfinedPath(@"C:	ools
-ode\secrets", "/x", ConfinedAccess.HiddenDirectory)], [@"C:	ools
-ode"]);
+        var isolations = AclPlan.Isolations([new ConfinedPath(@"C:\tools\node\secrets", "/x", ConfinedAccess.HiddenDirectory)], [@"C:\tools\node"]);
 
-        Assert.Equal([new LabelEntry(@"C:	ools
-ode\secrets", LabelPolicy.NoAccessUp)], labels);
+        Assert.Equal([@"C:\tools\node\secrets"], isolations);
     }
 
     [Fact]
-    public void ShouldNotLabel_WhatNothingGrantedHolds_NorAReadOnlyMountOutsideAnyWritableOne()
+    public void ShouldNotIsolate_WhatNothingGrantedHolds_NorAReadOnlyMountOutsideAnyWritableOne()
     {
-        var labels = AclPlan.Labels(
+        var isolations = AclPlan.Isolations(
         [
             new ConfinedPath(@"C:\work\repo", "/workspace", ConfinedAccess.ReadWrite),
             new ConfinedPath(@"C:\work\repository-secrets", "/s", ConfinedAccess.HiddenDirectory),
             new ConfinedPath(@"C:\data\docs", "/docs", ConfinedAccess.ReadOnly),
         ], []);
 
-        Assert.Empty(labels);
+        Assert.Empty(isolations);
     }
-
-    [Theory]
-    [InlineData("NoWriteUp", true, "S:(ML;OICI;NW;;;ME)")]
-    [InlineData("NoAccessUp", true, "S:(ML;OICI;NRNWNX;;;ME)")]
-    [InlineData("NoAccessUp", false, "S:(ML;;NRNWNX;;;ME)")]
-    public void ShouldWriteAMediumLabel_InheritedByADirectorysTree(string policy, bool directory, string expected)
-        => Assert.Equal(expected, LabelSddl.Of(Enum.Parse<LabelPolicy>(policy), directory));
-
-    [Theory]
-    [InlineData("", "")]
-    [InlineData("S:", "")]
-    [InlineData("S:(ML;OICIID;NW;;;LW)", "")]
-    [InlineData("S:(ML;OICI;NW;;;LW)", "S:(ML;OICI;NW;;;LW)")]
-    [InlineData("S:AI(ML;;NRNWNX;;;ME)(ML;IOID;NW;;;LW)", "S:(ML;;NRNWNX;;;ME)")]
-    public void ShouldKeepOnlyTheExplicitLabel_OfALabelSddl(string sddl, string expected)
-        => Assert.Equal(expected, LabelSddl.ExplicitOf(sddl));
 }

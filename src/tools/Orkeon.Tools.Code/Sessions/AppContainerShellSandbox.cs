@@ -139,7 +139,7 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
         }
 
         var plan = AclPlan.Build(view.Paths, view.ReadOnlyPaths);
-        var labels = AclPlan.Labels(view.Paths, view.ReadOnlyPaths);
+        var isolations = AclPlan.Isolations(view.Paths, view.ReadOnlyPaths);
         var ledger = new ShellSessionLedger
         {
             ProfileName = profile.Name,
@@ -152,12 +152,17 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
         try
         {
             // The ledger comes first: a crash between two changes leaves a record of every path. The
-            // labels come before the ACEs, so no grant ever stands without the refusals below it.
-            lock (IntegrityLabels.Sync)
+            // isolations come before the ACEs, so no grant ever flows into a path it must not reach.
+            lock (AclIsolation.Sync)
             {
-                ledger = ledger with { Labels = [.. labels.Select(label => new ShellSessionLabel { Path = label.Path, Original = OriginalLabel(label.Path, store) })] };
+                ledger = ledger with
+                {
+                    Isolations = [.. isolations.Select(path => (Path: path, Dacl: OriginalDacl(path, store)))
+                        .Where(i => i.Dacl is not null)
+                        .Select(i => new ShellSessionIsolation { Path = i.Path, OriginalDacl = i.Dacl! })],
+                };
                 store.Write(ledger);
-                IntegrityLabels.Apply(labels);
+                AclIsolation.Apply(ledger.Isolations.Select(i => i.Path), profile.Sid);
             }
 
             AclGrants.Apply(plan, profile.Sid);
@@ -202,61 +207,63 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
     }
 
     /// <summary>
-    /// Removes a session's ACEs and puts back the labels it replaced. A label another session of the
-    /// store also recorded stays: that session still relies on it, and puts it back when it ends.
+    /// Removes a session's ACEs and writes back the DACLs it isolated. A path another session of the
+    /// store also isolated stays as it is: that session still relies on it, and puts it back when it
+    /// ends.
     /// </summary>
     /// <returns>True when nothing is left; otherwise the ledger keeps what is (for the next sweep).</returns>
     [SupportedOSPlatform("windows")]
     private static bool TakeBack(ShellSessionLedger ledger, ShellSessionLedgerStore store)
     {
         var failedPaths = AclGrants.Purge(ledger.GrantedPaths, new SecurityIdentifier(ledger.ContainerSid));
-        List<ShellSessionLabel> failedLabels = [];
-        lock (IntegrityLabels.Sync)
+        List<ShellSessionIsolation> failedIsolations = [];
+        lock (AclIsolation.Sync)
         {
-            var shared = LabelsOfOtherSessions(ledger.ProfileName, store);
-            foreach (var label in ledger.Labels)
+            var shared = IsolationsOfOtherSessions(ledger.ProfileName, store);
+            foreach (var isolation in ledger.Isolations)
             {
-                if (!shared.ContainsKey(label.Path) && !IntegrityLabels.Restore(label.Path, label.Original))
-                    failedLabels.Add(label);
+                if (!shared.ContainsKey(isolation.Path) && !AclIsolation.Restore(isolation.Path, isolation.OriginalDacl))
+                    failedIsolations.Add(isolation);
             }
 
-            if (failedPaths.Count == 0 && failedLabels.Count == 0)
+            if (failedPaths.Count == 0 && failedIsolations.Count == 0)
             {
-                // Written at once, under the lock: a session opening now must not take a label put
-                // back as one still standing.
-                if (ledger.Labels.Count > 0)
-                    store.Write(ledger with { Labels = [] });
+                // Written at once, under the lock: a session opening now must not take a DACL put
+                // back for one still isolated.
+                if (ledger.Isolations.Count > 0)
+                    store.Write(ledger with { Isolations = [] });
                 return true;
             }
 
-            store.Write(ledger with { GrantedPaths = [.. failedPaths], Labels = [.. failedLabels] });
+            store.Write(ledger with { GrantedPaths = [.. failedPaths], Isolations = [.. failedIsolations] });
             return false;
         }
     }
 
     /// <summary>
-    /// The label a session about to relabel <paramref name="path"/> must put back: the one another
-    /// session recorded when it relabelled the path first, or else the path's own explicit label.
+    /// The DACL a session about to isolate <paramref name="path"/> must write back: the one another
+    /// session recorded when it isolated the path first, or else the path's own; null when the path
+    /// does not exist.
     /// </summary>
     [SupportedOSPlatform("windows")]
-    private static string OriginalLabel(string path, ShellSessionLedgerStore store)
-        => LabelsOfOtherSessions(null, store).TryGetValue(path, out var original)
+    private static string? OriginalDacl(string path, ShellSessionLedgerStore store)
+        => IsolationsOfOtherSessions(null, store).TryGetValue(path, out var original)
             ? original
-            : IntegrityLabels.Read(path) ?? "";
+            : AclIsolation.Read(path);
 
-    /// <summary>The labels the ledgers of the store record, by path, except those of <paramref name="profileName"/>.</summary>
-    private static Dictionary<string, string> LabelsOfOtherSessions(string? profileName, ShellSessionLedgerStore store)
+    /// <summary>The isolations the ledgers of the store record, by path, except those of <paramref name="profileName"/>.</summary>
+    private static Dictionary<string, string> IsolationsOfOtherSessions(string? profileName, ShellSessionLedgerStore store)
     {
-        var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var isolations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, other) in store.ReadAll())
         {
             if (other is null || string.Equals(name, profileName, StringComparison.Ordinal))
                 continue;
-            foreach (var label in other.Labels)
-                labels.TryAdd(label.Path, label.Original);
+            foreach (var isolation in other.Isolations)
+                isolations.TryAdd(isolation.Path, isolation.OriginalDacl);
         }
 
-        return labels;
+        return isolations;
     }
 
     /// <summary>The UTC start ticks of the live process <paramref name="pid"/>, or null when there is none.</summary>

@@ -230,52 +230,6 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Advapi32)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     internal static partial nint FreeSid(nint sid);
-
-    // Security descriptors: the integrity label of a file or directory.
-    internal const int SeFileObject = 1;
-    internal const uint LabelSecurityInformation = 0x00000010;
-    internal const uint SddlRevision1 = 1;
-    internal const uint AclRevision = 2;
-    internal const int ErrorFileNotFound = 2;
-    internal const int ErrorPathNotFound = 3;
-    internal const int ErrorAccessDenied = 5;
-
-    [LibraryImport(Advapi32, EntryPoint = "GetNamedSecurityInfoW", StringMarshalling = StringMarshalling.Utf16)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    internal static partial int GetNamedSecurityInfo(
-        string objectName, int objectType, uint securityInfo, nint owner, nint group, nint dacl, nint sacl, out nint securityDescriptor);
-
-    [LibraryImport(Advapi32, EntryPoint = "SetNamedSecurityInfoW", StringMarshalling = StringMarshalling.Utf16)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    internal static partial int SetNamedSecurityInfo(
-        string objectName, int objectType, uint securityInfo, nint owner, nint group, nint dacl, nint sacl);
-
-    [LibraryImport(Advapi32, EntryPoint = "ConvertStringSecurityDescriptorToSecurityDescriptorW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool ConvertStringSecurityDescriptorToSecurityDescriptor(
-        string sddl, uint revision, out nint securityDescriptor, nint size);
-
-    [LibraryImport(Advapi32, EntryPoint = "ConvertSecurityDescriptorToStringSecurityDescriptorW", SetLastError = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool ConvertSecurityDescriptorToStringSecurityDescriptor(
-        nint securityDescriptor, uint revision, uint securityInfo, out nint sddl, nint length);
-
-    [LibraryImport(Advapi32, SetLastError = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool GetSecurityDescriptorSacl(
-        nint securityDescriptor, [MarshalAs(UnmanagedType.Bool)] out bool present, out nint sacl, [MarshalAs(UnmanagedType.Bool)] out bool defaulted);
-
-    [LibraryImport(Advapi32, SetLastError = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool InitializeAcl(void* acl, uint length, uint revision);
-
-    [LibraryImport(Kernel32)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    internal static partial nint LocalFree(nint memory);
 }
 
 /// <summary>A Job Object handle, closed with <c>CloseHandle</c>: closing the last one kills the job's processes.</summary>

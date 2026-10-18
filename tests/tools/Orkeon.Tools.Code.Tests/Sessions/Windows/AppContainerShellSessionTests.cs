@@ -99,6 +99,9 @@ public sealed class AppContainerShellSessionTests : IDisposable
             probes.AppendLine(Describe("dir /b (profile folder)", await session.RunAsync(Builtin("dir", null, "/b"), Ct)));
             probes.AppendLine(Describe("cd", await session.RunAsync(Builtin("cd", workspace), Ct)));
             probes.AppendLine(Describe("for %f in (*)", await session.RunAsync(new ShellInvocation("cmd.exe", ["/d", "/c", "for %f in (*) do @echo %f"], workspace, TimeSpan.FromSeconds(30)), Ct)));
+            probes.AppendLine(Describe("vol", await session.RunAsync(Builtin("vol", workspace), Ct)));
+            probes.AppendLine(Describe("attrib", await session.RunAsync(new ShellInvocation("attrib.exe", ["/d", "*"], workspace, TimeSpan.FromSeconds(30)), Ct)));
+            probes.AppendLine(Describe("whoami /groups", await session.RunAsync(new ShellInvocation("whoami.exe", ["/groups"], null, TimeSpan.FromSeconds(30)), Ct)));
             probes.AppendLine(Describe("where /r . *", await session.RunAsync(new ShellInvocation("where.exe", ["/r", ".", "*"], workspace, TimeSpan.FromSeconds(30)), Ct)));
             var parent = Path.GetDirectoryName(workspace)!;
             Assert.Fail($"{Describe("dir /b", listed)}\n{probes}{Acls(workspace, parent, Path.GetDirectoryName(parent)!, Path.GetPathRoot(workspace)!)}");
@@ -117,7 +120,9 @@ public sealed class AppContainerShellSessionTests : IDisposable
             new ConfinedPath(Path.Combine(workspace, "secrets"), "/workspace/secrets", ConfinedAccess.HiddenDirectory),
             new ConfinedPath(Path.Combine(workspace, "vendor"), "/workspace/vendor", ConfinedAccess.ReadOnly),
         ], [], false);
+        var before = AclIsolation.Read(Path.Combine(workspace, "secrets"));
         await using var session = await _sandbox.OpenAsync(view, Ct);
+        Assert.True(AclIsolation.IsProtected(Path.Combine(workspace, "secrets")));
 
         var secret = await session.RunAsync(Builtin("type", workspace, @"secrets\key.txt"), Ct);
         var vendorRead = await session.RunAsync(Builtin("type", workspace, @"vendor\lib.txt"), Ct);
@@ -132,9 +137,10 @@ public sealed class AppContainerShellSessionTests : IDisposable
 
         await session.DisposeAsync();
 
-        // The labels that refused are taken back with the session.
-        Assert.Equal("", IntegrityLabels.Read(Path.Combine(workspace, "secrets")));
-        Assert.Equal("", IntegrityLabels.Read(Path.Combine(workspace, "vendor")));
+        // The isolated paths inherit again once the session ends.
+        Assert.False(AclIsolation.IsProtected(Path.Combine(workspace, "secrets")));
+        Assert.False(AclIsolation.IsProtected(Path.Combine(workspace, "vendor")));
+        Assert.Equal(before, AclIsolation.Read(Path.Combine(workspace, "secrets")));
     }
 
     [Fact]
@@ -311,10 +317,6 @@ public sealed class AppContainerShellSessionTests : IDisposable
 
     private static string Describe(string command, ShellRunResult result)
         => $"{command}: exit {result.ExitCode}, stdout [{result.Stdout.Trim()}], stderr [{result.Stderr.Trim()}]";
-
-    /// <summary>The groups and integrity level of the session's container, for a failure message.</summary>
-    private static async Task<string> DescribeContainerAsync(IShellSession session)
-        => Describe("whoami /groups", await session.RunAsync(new ShellInvocation("whoami.exe", ["/groups"], null, TimeSpan.FromSeconds(30)), Ct));
 
     /// <summary>What icacls says of each path (its ACEs and its integrity label), for a failure message.</summary>
     private static string Acls(params string[] paths)

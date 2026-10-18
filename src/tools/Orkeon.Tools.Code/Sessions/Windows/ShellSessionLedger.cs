@@ -35,11 +35,11 @@ internal sealed record ShellSessionLedger
     public ImmutableList<string> GrantedPaths { get; init; } = [];
 
     /// <summary>
-    /// The host paths the session put an integrity label on, each with the explicit label it had
-    /// before, which the end of the session puts back.
+    /// The host paths whose DACL the session protected from inheritance (<see cref="AclIsolation"/>),
+    /// each with the DACL it had before, which the end of the session writes back.
     /// </summary>
-    [JsonPropertyName("labels")]
-    public ImmutableList<ShellSessionLabel> Labels { get; init; } = [];
+    [JsonPropertyName("isolations")]
+    public ImmutableList<ShellSessionIsolation> Isolations { get; init; } = [];
 
     /// <summary>The ledger as JSON.</summary>
     public string Serialize() => JsonSerializer.Serialize(this, ShellSessionLedgerJsonContext.Default.ShellSessionLedger);
@@ -74,16 +74,16 @@ internal sealed record ShellSessionLedger
     }
 }
 
-/// <summary>An integrity label a session wrote, and the one it replaced.</summary>
-internal sealed record ShellSessionLabel
+/// <summary>A path a session isolated, and the DACL it had before.</summary>
+internal sealed record ShellSessionIsolation
 {
     /// <summary>The host path.</summary>
     [JsonPropertyName("path")]
     public required string Path { get; init; }
 
-    /// <summary>The explicit label the path had before (SDDL), empty when it had none.</summary>
-    [JsonPropertyName("original")]
-    public required string Original { get; init; }
+    /// <summary>The DACL the path had before, as SDDL.</summary>
+    [JsonPropertyName("original_dacl")]
+    public required string OriginalDacl { get; init; }
 }
 
 /// <summary>The source-generated JSON contract of <see cref="ShellSessionLedger"/>.</summary>
