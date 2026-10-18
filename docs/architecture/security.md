@@ -73,10 +73,12 @@ agent's **shell session**, which the operating system confines
   AppContainer and `None` they are translated virtual→physical, and physical paths in the output
   come back virtual.
 - **Windows commands.** A program is looked up on `PATH` only (never the working directory, a
-  mount the agent writes to), `.exe` then `.com`; a batch file (`.bat`, `.cmd`) is refused, since
-  cmd.exe would parse its arguments again. A cmd.exe built-in (`echo`, `dir`, `type`) runs as
+  mount the agent writes to), `.exe` then `.com`. A cmd.exe built-in (`echo`, `dir`, `type`) runs as
   `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`, every argument that is not a plain word
-  between double quotes, `%` refused. This holds with `Mode = None` too.
+  between double quotes, `%` refused. This holds with `Mode = None` too. A batch file (`.bat`,
+  `.cmd`) is refused in an AppContainer session, since cmd.exe would parse its arguments again;
+  with `Mode = None` it runs (`npm` finds `npm.cmd` after `.exe` and `.com`) as
+  `cmd.exe /d /v:off /s /c "<path> <arguments>"`, escaped as a built-in, `%` refused.
 
 **The session's life.** The session is opened at the agent run's first command and bound to its
 `AgentRunScope`; the run's later commands reuse it (each in a subshell, so `cd` or a variable

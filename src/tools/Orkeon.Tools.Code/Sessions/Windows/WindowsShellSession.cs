@@ -100,7 +100,7 @@ internal sealed class WindowsShellSession : IShellSession
             }
             catch (ArgumentException ex)
             {
-                // A built-in argument cmd.exe would expand: the command does not run.
+                // An argument of a built-in or a batch file cmd.exe would expand: the command does not run.
                 return new ShellRunResult(1, "", ex.Message);
             }
 
@@ -227,9 +227,16 @@ internal sealed class WindowsShellSession : IShellSession
             return (cmd, WindowsCommandLine.CmdBuiltin(cmd, invocation.Executable, invocation.Arguments));
         }
 
-        // OUT-OF-SCOPE: host lookup of the program on PATH.
-        var program = WindowsExecutableResolver.Resolve(invocation.Executable, _path, File.Exists, out var error)
+        // OUT-OF-SCOPE: host lookup of the program on PATH. A batch file runs only unconfined.
+        var program = WindowsExecutableResolver.Resolve(
+                invocation.Executable, _path, File.Exists, out var error, allowBatchFiles: _containerSid is null)
             ?? throw new Win32Exception(2, $"An error occurred trying to start process '{invocation.Executable}': {error}.");
+        if (WindowsExecutableResolver.IsBatchFile(program))
+        {
+            var cmd = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+            return (cmd, WindowsCommandLine.BatchFile(cmd, program, invocation.Arguments));
+        }
+
         return (program, WindowsCommandLine.Build(program, invocation.Arguments));
     }
 }

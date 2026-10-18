@@ -76,11 +76,13 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.
 - **Commandes Windows.** Un programme est cherché sur le `PATH` seulement (jamais le répertoire de
-  travail, un montage où l'agent écrit), `.exe` puis `.com` ; un fichier de commandes (`.bat`,
-  `.cmd`) est refusé, car cmd.exe analyserait de nouveau ses arguments. Une commande interne de
-  cmd.exe (`echo`, `dir`, `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"`,
-  chaque argument qui n'est pas un mot simple entre guillemets doubles, `%` refusé. C'est vrai
-  aussi avec `Mode = None`.
+  travail, un montage où l'agent écrit), `.exe` puis `.com`. Une commande interne de cmd.exe (`echo`, `dir`,
+  `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"`, chaque argument qui n'est
+  pas un mot simple entre guillemets doubles, `%` refusé. C'est vrai aussi avec `Mode = None`. Un
+  fichier de commandes (`.bat`, `.cmd`) est refusé dans une session AppContainer, car cmd.exe
+  analyserait de nouveau ses arguments ; avec `Mode = None`, il tourne (`npm` trouve `npm.cmd`
+  après `.exe` et `.com`) en `cmd.exe /d /v:off /s /c "<chemin> <arguments>"`, échappé comme une
+  commande interne, `%` refusé.
 
 **La vie de la session.** La session est ouverte à la première commande de l'exécution d'agent et
 rattachée à son `AgentRunScope` ; les commandes suivantes de l'exécution la réutilisent (chacune

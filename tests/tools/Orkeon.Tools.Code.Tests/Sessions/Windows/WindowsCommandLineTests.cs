@@ -12,6 +12,25 @@ public sealed class WindowsCommandLineTests
 {
     private const string Cmd = @"C:\Windows\System32\cmd.exe";
 
+    [Fact]
+    public void ShouldRunABatchFileThroughCmd_ItsPathAndArgumentsEscapedAsABuiltinsAre()
+        => Assert.Equal(
+            "\"" + Cmd + "\" /d /v:off /s /c \"\"C:\\Program Files\\nodejs\\npm.cmd\" install \"a&b\"\"",
+            WindowsCommandLine.BatchFile(Cmd, @"C:\Program Files\nodejs\npm.cmd", ["install", "a&b"]));
+
+    [Theory]
+    [InlineData("%PATH%")]
+    [InlineData("a\nb")]
+    public void ShouldRefuseABatchFileArgument_CmdWouldExpandOrSplit(string argument)
+        => Assert.Throws<ArgumentException>(() => WindowsCommandLine.BatchFile(Cmd, @"C:\tools\npm.cmd", [argument]));
+
+    [Theory]
+    [InlineData("a & calc.exe")]
+    [InlineData("x\" & calc.exe & \"")]
+    [InlineData("^\" & del *")]
+    public void ShouldLeaveNoCmdOperatorOutsideQuotes_ForABatchFile(string argument)
+        => AssertNoOperatorOutsideQuotes(WindowsCommandLine.BatchFile(Cmd, @"C:\my tools\run.cmd", ["safe", argument]));
+
     [Theory]
     [InlineData("plain", "plain")]
     [InlineData("", "\"\"")]

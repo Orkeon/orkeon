@@ -29,9 +29,17 @@ namespace Orkeon.Tools.Code.Sessions.Windows;
 /// it for a built-in), as are line breaks and NUL; <c>/v:off</c> keeps <c>!NAME!</c> literal;
 /// <c>/d</c> skips the AutoRun commands of the registry.</item>
 /// </list>
+/// <para>
 /// Hence no character of an argument ever reaches cmd's parser outside double quotes unless it is a
 /// plain word character. A built-in still sees the quotes as cmd hands them over (<c>echo "a b"</c>
 /// prints the quotes), exactly as before.
+/// </para>
+/// <para>
+/// <b>Batch files.</b> <see cref="BatchFile"/> runs a <c>.bat</c> or <c>.cmd</c> the same way,
+/// <c>cmd.exe /d /v:off /s /c "&lt;path&gt; &lt;arguments&gt;"</c>, the path and each argument escaped
+/// as a built-in's. The script receives an argument with its quotes (<c>%1</c> is <c>"a b"</c>,
+/// <c>%~1</c> is <c>a b</c>); what the script then does with it is its own parsing.
+/// </para>
 /// </remarks>
 internal static class WindowsCommandLine
 {
@@ -108,7 +116,25 @@ internal static class WindowsCommandLine
         return Build(cmdPath, []) + " " + CmdSwitches + " \"" + line + "\"";
     }
 
-    /// <summary>One argument of a built-in, as cmd.exe must read it (see the remarks).</summary>
+    /// <summary>
+    /// The command line that runs the batch file <paramref name="batchPath"/> through
+    /// <paramref name="cmdPath"/> (see the remarks for the escaping).
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The path or an argument holds <c>%</c>, a line break or NUL.
+    /// </exception>
+    public static string BatchFile(string cmdPath, string batchPath, IEnumerable<string> arguments)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(batchPath);
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        var line = new StringBuilder(CmdArgument(batchPath));
+        foreach (var argument in arguments)
+            line.Append(' ').Append(CmdArgument(argument));
+        return Build(cmdPath, []) + " " + CmdSwitches + " \"" + line + "\"";
+    }
+
+    /// <summary>One argument of a built-in or a batch file, as cmd.exe must read it (see the remarks).</summary>
     /// <exception cref="ArgumentException">The argument holds <c>%</c>, a line break or NUL.</exception>
     public static string CmdArgument(string argument)
     {

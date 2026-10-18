@@ -11,34 +11,40 @@ namespace Orkeon.Tools.Code.Sessions.Windows;
 /// runs.</item>
 /// <item>A name without extension is tried with <c>.exe</c> then <c>.com</c>, as
 /// <see cref="System.Diagnostics.Process"/> does.</item>
-/// <item>A batch file (<c>.bat</c>, <c>.cmd</c>) is never run: Windows would start it through
-/// cmd.exe, whose own parsing of the arguments the C runtime quoting does not protect.</item>
+/// <item>A batch file (<c>.bat</c>, <c>.cmd</c>) is refused unless the caller allows it (an
+/// unconfined session): Windows starts it through cmd.exe, whose own parsing of the arguments the C
+/// runtime quoting does not protect, so the caller runs it with <see cref="WindowsCommandLine.BatchFile"/>.
+/// When allowed, a name without extension is then tried with <c>.bat</c> and <c>.cmd</c> too
+/// (<c>npm</c> finds <c>npm.cmd</c>).</item>
 /// </list>
 /// </remarks>
 internal static class WindowsExecutableResolver
 {
     private static readonly string[] s_extensions = [".exe", ".com"];
+    private static readonly string[] s_batchExtensions = [".bat", ".cmd"];
 
     /// <summary>The full path of <paramref name="name"/>, or null with the reason in <paramref name="error"/>.</summary>
     /// <param name="name">A bare command name, validated by the tool.</param>
     /// <param name="pathVariable">The <c>PATH</c> the session runs with.</param>
     /// <param name="fileExists">Whether a file exists on the host.</param>
     /// <param name="error">Why nothing was found.</param>
-    public static string? Resolve(string name, string? pathVariable, Func<string, bool> fileExists, out string? error)
+    /// <param name="allowBatchFiles">Whether a <c>.bat</c> or <c>.cmd</c> may be the result.</param>
+    public static string? Resolve(string name, string? pathVariable, Func<string, bool> fileExists, out string? error, bool allowBatchFiles = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(fileExists);
 
         var extension = Path.GetExtension(name);
-        if (extension.Equals(".bat", StringComparison.OrdinalIgnoreCase) || extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase))
+        if (IsBatchFile(name) && !allowBatchFiles)
         {
-            error = $"'{name}' is a batch file, which a shell session does not run (cmd.exe would parse its arguments)";
+            error = $"'{name}' is a batch file, which a confined shell session does not run (cmd.exe would parse its arguments)";
             return null;
         }
 
-        string[] candidates = s_extensions.Any(e => extension.Equals(e, StringComparison.OrdinalIgnoreCase))
+        string[] extensions = allowBatchFiles ? [.. s_extensions, .. s_batchExtensions] : s_extensions;
+        string[] candidates = extensions.Any(e => extension.Equals(e, StringComparison.OrdinalIgnoreCase))
             ? [name]
-            : [.. s_extensions.Select(e => name + e)];
+            : [.. extensions.Select(e => name + e)];
 
         foreach (var directory in (pathVariable ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
@@ -59,6 +65,10 @@ internal static class WindowsExecutableResolver
         error = $"'{name}' was not found on PATH";
         return null;
     }
+
+    /// <summary>Whether <paramref name="path"/> names a batch file, which only cmd.exe runs.</summary>
+    public static bool IsBatchFile(string path)
+        => s_batchExtensions.Any(e => Path.GetExtension(path).Equals(e, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>A drive path (<c>C:\…</c>) or a UNC path (<c>\\server\…</c>): a relative PATH entry is skipped.</summary>
     private static bool IsAbsolute(string folder)

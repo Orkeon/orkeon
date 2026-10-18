@@ -3,8 +3,8 @@ using Orkeon.Tools.Code.Sessions.Windows;
 namespace Orkeon.Tools.Code.Tests.Sessions.Windows;
 
 /// <summary>
-/// <see cref="WindowsExecutableResolver"/>: PATH only and in order, <c>.exe</c> then <c>.com</c>, never a
-/// batch file, never a relative PATH entry.
+/// <see cref="WindowsExecutableResolver"/>: PATH only and in order, <c>.exe</c> then <c>.com</c>, a batch
+/// file only when the caller allows it, never a relative PATH entry.
 /// </summary>
 public sealed class WindowsExecutableResolverTests
 {
@@ -33,7 +33,7 @@ public sealed class WindowsExecutableResolverTests
     [Theory]
     [InlineData("npm.cmd")]
     [InlineData("build.bat")]
-    public void ShouldNeverRunABatchFile(string name)
+    public void ShouldRefuseABatchFile_UnlessAllowed(string name)
     {
         var found = WindowsExecutableResolver.Resolve(name, Path, _ => true, out var error);
 
@@ -44,6 +44,28 @@ public sealed class WindowsExecutableResolverTests
     [Fact]
     public void ShouldNotFindABatchFile_ForABareName()
         => Assert.Null(WindowsExecutableResolver.Resolve("npm", Path, Existing(@"C:\tools\npm.cmd"), out _));
+
+    [Theory]
+    [InlineData("npm.cmd", @"C:\tools\npm.cmd")]
+    [InlineData("build.bat", @"C:\tools\build.bat")]
+    public void ShouldKeepAnExplicitBatchFile_WhenAllowed(string name, string file)
+        => Assert.Equal(file, WindowsExecutableResolver.Resolve(name, Path, Existing(file), out _, allowBatchFiles: true));
+
+    [Fact]
+    public void ShouldFindTheCmdOfABareName_WhenBatchFilesAreAllowed()
+        => Assert.Equal(@"C:\tools\npm.cmd", WindowsExecutableResolver.Resolve("npm", Path, Existing(@"C:\tools\npm.cmd"), out _, allowBatchFiles: true));
+
+    [Fact]
+    public void ShouldPreferTheExeToABatchFile_InTheSameDirectory()
+        => Assert.Equal(@"C:\tools\node.exe", WindowsExecutableResolver.Resolve("node", Path, Existing(@"C:\tools\node.cmd", @"C:\tools\node.exe"), out _, allowBatchFiles: true));
+
+    [Theory]
+    [InlineData(@"C:\tools\npm.cmd", true)]
+    [InlineData("build.BAT", true)]
+    [InlineData("git.exe", false)]
+    [InlineData("cmd", false)]
+    public void ShouldTellABatchFile(string path, bool expected)
+        => Assert.Equal(expected, WindowsExecutableResolver.IsBatchFile(path));
 
     [Fact]
     public void ShouldSkipARelativePathEntry_SoTheWorkingDirectoryNeverProvidesTheProgram()

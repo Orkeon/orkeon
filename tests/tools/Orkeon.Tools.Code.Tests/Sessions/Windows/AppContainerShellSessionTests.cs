@@ -209,6 +209,23 @@ public sealed class AppContainerShellSessionTests : IDisposable
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The session owns the job and disposes it.")]
+    public async Task ShouldRunABatchFileFromPath_WhenUnconfined()
+    {
+        var tools = Folder("tools", ("greet.cmd", "@echo off\r\necho hello %1\r\n"));
+        var environment = new Dictionary<string, string>(ShellEnvironment.RestrictedVariables(), StringComparer.OrdinalIgnoreCase)
+        {
+            ["PATH"] = tools + ";" + Environment.SystemDirectory,
+        };
+        await using var session = new WindowsShellSession(JobObject.Create(), null, [], environment, null, null);
+
+        var result = await session.RunAsync(new ShellInvocation("greet", ["a & b"], null, TimeSpan.FromSeconds(30)), Ct);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("hello \"a & b\"", result.Stdout.Trim());
+    }
+
+    [Fact]
     public async Task ShouldTakeItsAcesAndItsLedgerBack_WhenItEnds()
     {
         var docs = Folder("docs", ("a.txt", "confined"));

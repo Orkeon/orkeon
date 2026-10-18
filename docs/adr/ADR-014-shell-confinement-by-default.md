@@ -26,7 +26,7 @@ caller's cancellation left the command running.
    - **Windows 10 and later**: an AppContainer (one profile per session) inside a Job Object, the
      mounts granted to its SID by ACL. A program is looked up on `PATH` only, never in the
      working directory; a batch file (`.bat`, `.cmd`) is refused, since cmd.exe would parse its
-     arguments again; a cmd.exe built-in (`echo`, `dir`, `type`) runs as
+     arguments again (unconfined, it runs through cmd.exe, escaped as a built-in); a cmd.exe built-in (`echo`, `dir`, `type`) runs as
      `cmd.exe /d /v:off /s /c "<built-in> <arguments>"` inside the container, each argument that
      is not a plain word between double quotes and `%` refused.
    In every backend the process sees the agent's mounts (read-only without Write), the system
@@ -88,7 +88,9 @@ caller's cancellation left the command running.
   Windows propagates each inheritable ACE to every object below the mount's root: a session costs
   one security-descriptor write per file of its mounts, each way. Should it prove too slow on big
   trees, the way out is a stable AppContainer SID per set of rights, granted once.
-- **Windows batch files**: `npm.cmd` and every `.bat`/`.cmd` are refused in every mode.
+- **Windows batch files**: `npm.cmd` and every `.bat`/`.cmd` are refused in an AppContainer
+  session. With `Mode = None` they run through cmd.exe, each argument escaped as a built-in's and
+  `%` refused; what the script does with `%~1` is its own parsing.
 - **cmd's `dir` in an AppContainer**: `dir`, `vol`, `attrib` and `where /r` query the drive's root,
   which a standard Windows ACL does not open to an AppContainer: they answer "Access is denied."
   in a confined session (`for %f in (*)` and the programs that list a directory work).

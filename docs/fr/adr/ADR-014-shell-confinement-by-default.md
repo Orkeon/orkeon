@@ -27,7 +27,8 @@ tourner.
    - **Windows 10 et suivants** : un AppContainer (un profil par session) dans un Job Object, les
      montages étant accordés à son SID par ACL. Un programme n'est cherché que sur le `PATH`, jamais
      dans le répertoire de travail ; un fichier de commandes (`.bat`, `.cmd`) est refusé, car
-     cmd.exe analyserait de nouveau ses arguments ; une commande interne de cmd.exe (`echo`, `dir`,
+     cmd.exe analyserait de nouveau ses arguments (sans confinement, il passe par cmd.exe, échappé
+     comme une commande interne) ; une commande interne de cmd.exe (`echo`, `dir`,
      `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"` dans le conteneur, chaque
      argument qui n'est pas un mot simple entre guillemets doubles et `%` refusé.
    Dans chaque moteur, le processus voit les montages de l'agent (en lecture seule sans Write), les
@@ -97,8 +98,10 @@ tourner.
   une session coûte une écriture de descripteur de sécurité par fichier de ses montages, dans
   chaque sens. Si c'est trop lent sur de gros arbres, la sortie est un SID d'AppContainer stable
   par jeu de droits, accordé une fois.
-- **Fichiers de commandes Windows** : `npm.cmd` et tout `.bat`/`.cmd` sont refusés dans tous les
-  modes.
+- **Fichiers de commandes Windows** : `npm.cmd` et tout `.bat`/`.cmd` sont refusés dans une
+  session AppContainer. Avec `Mode = None`, ils passent par cmd.exe, chaque argument échappé comme
+  pour une commande interne et `%` refusé ; ce que le script fait de `%~1` relève de sa propre
+  analyse.
 - **Le `dir` de cmd dans un AppContainer** : `dir`, `vol`, `attrib` et `where /r` interrogent la
   racine du lecteur, qu'une ACL Windows standard n'ouvre pas à un AppContainer : ils répondent
   « Access is denied. » dans une session confinée (`for %f in (*)` et les programmes qui listent un

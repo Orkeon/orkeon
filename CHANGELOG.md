@@ -32,8 +32,10 @@ set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confi
   second under Seatbelt and unconfined on Linux and macOS). A timeout kills the session and the
   next command opens a new one; on Linux and macOS the timed-out command returns no partial output.
 - **Windows commands.** In every mode a program is looked up on `PATH` only (never the working
-  directory), a batch file (`.bat`, `.cmd`) is refused, and a cmd.exe built-in runs as
-  `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`, `%` refused. Each AppContainer session grants
+  directory), and a cmd.exe built-in runs as `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`,
+  `%` refused. A batch file (`.bat`, `.cmd`) runs with `Mode = None` only (`npm` finds `npm.cmd`
+  after `.exe` and `.com`), through cmd.exe and escaped as a built-in, `%` refused; an AppContainer
+  session refuses it. Each AppContainer session grants
   its mounts by ACE, which Windows propagates to every file below them, once per session; a hidden
   sub path, or a read-only one inside a writable mount, gets a protected DACL for the session,
   written back at its end (an AppContainer's access check skips deny ACEs). cmd's `dir`, `vol`,
