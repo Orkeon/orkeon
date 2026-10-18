@@ -81,10 +81,17 @@ caller's cancellation left the command running.
 - **Windows ACLs**: the AppContainer reaches a mount only through an ACE added for it; the ACEs are
   recorded in a ledger (`%LOCALAPPDATA%\Orkeon\shell-sessions\`) and removed when the session
   closes, and the first session of the next host process takes back what a crashed host left.
+  The container's access check keeps only what allow ACEs grant its SID (a deny ACE, or an
+  integrity label, does not stop it): a hidden sub path, or a read-only one inside a writable
+  mount, gets a protected DACL for the session (what it inherited kept, minus the session's SID),
+  recorded in the ledger and written back at the end.
   Windows propagates each inheritable ACE to every object below the mount's root: a session costs
   one security-descriptor write per file of its mounts, each way. Should it prove too slow on big
   trees, the way out is a stable AppContainer SID per set of rights, granted once.
 - **Windows batch files**: `npm.cmd` and every `.bat`/`.cmd` are refused in every mode.
+- **cmd's `dir` in an AppContainer**: `dir`, `vol`, `attrib` and `where /r` query the drive's root,
+  which a standard Windows ACL does not open to an AppContainer: they answer "Access is denied."
+  in a confined session (`for %f in (*)` and the programs that list a directory work).
 - **The watchdog is weaker than the kernel**: under Seatbelt and unconfined on Linux and macOS, a
   process that left the session's tree (a double fork) survives a host crash.
 - **Breaking change**: a host that relied on the old default (`None`) gets confinement; the opt-out

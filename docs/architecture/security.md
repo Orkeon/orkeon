@@ -57,8 +57,8 @@ agent's **shell session**, which the operating system confines
 | Platform | Backend | What the process sees |
 |---|---|---|
 | Linux | bubblewrap (`bwrap --unshare-all --die-with-parent`) | the **virtual** paths: each agent-facing mount bound at its virtual path, read-only without Write, a sub path without rights covered; `/usr`, `/bin`, `/sbin`, `/lib*`, `/etc` read-only; its own `/proc`, `/dev` and `/tmp` (`HOME` and `TMPDIR`) |
-| macOS | Seatbelt (`/usr/bin/sandbox-exec -p <profile>`) | the **physical** paths, filtered by a `(deny default)` profile: the mounts read-only or read-write after their rights, the system directories read-only, a scratch folder of the session as `HOME` and `TMPDIR` |
-| Windows 10 and later | an AppContainer (one profile per session) inside a Job Object | the **physical** paths: the mounts granted to the container's SID by ACE (read and execute, or modify), a deny ACE on a sub path without rights, what `ALL APPLICATION PACKAGES` reads (the Windows and Program Files trees); `TEMP`, `TMP` and `HOME` in the profile's own folder |
+| macOS | Seatbelt (`/usr/bin/sandbox-exec -p <profile>`) | the **physical** paths, filtered by a `(deny default)` profile: the mounts read-only or read-write after their rights, the system directories read-only, the listing of `/` (the dynamic loader reads it), a scratch folder of the session as `HOME` and `TMPDIR` |
+| Windows 10 and later | an AppContainer (one profile per session) inside a Job Object | the **physical** paths: the mounts granted to the container's SID by ACE (read and execute, or modify), a sub path without rights (or read-only inside a writable mount) cut off from the grant its parent passes down (its DACL protected for the session, then written back: the container's access check skips a deny ACE), what `ALL APPLICATION PACKAGES` reads (the Windows and Program Files trees); `TEMP`, `TMP` and `HOME` in the profile's own folder |
 
 - **Off in a container.** `Auto` resolves to `None` when the host runs in a container
   (`/.dockerenv`, `/run/.containerenv`, `DOTNET_RUNNING_IN_CONTAINER=true`) and logs it once; the

@@ -34,7 +34,11 @@ set `Orkeon:Tools:Shell:Confinement:Mode = Bubblewrap`. Its process is now confi
 - **Windows commands.** In every mode a program is looked up on `PATH` only (never the working
   directory), a batch file (`.bat`, `.cmd`) is refused, and a cmd.exe built-in runs as
   `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`, `%` refused. Each AppContainer session grants
-  its mounts by ACE, which Windows propagates to every file below them, once per session.
+  its mounts by ACE, which Windows propagates to every file below them, once per session; a hidden
+  sub path, or a read-only one inside a writable mount, gets a protected DACL for the session,
+  written back at its end (an AppContainer's access check skips deny ACEs). cmd's `dir`, `vol`,
+  `attrib` and `where /r` answer "Access is denied." in a confined session (they query the drive's
+  root).
 - **Cancellation kills the command.** A caller's cancellation now kills the running command's
   process tree; it used to keep running after the call returned.
 - **The Debian package depends on `bubblewrap`.** On Ubuntu 24.04 and later, AppArmor restricts

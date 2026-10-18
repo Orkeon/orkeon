@@ -88,12 +88,21 @@ tourner.
 - **ACL Windows** : l'AppContainer n'atteint un montage que par une ACE ajoutée pour lui ; les ACE
   sont notées dans un registre (`%LOCALAPPDATA%\Orkeon\shell-sessions\`) et retirées à la
   fermeture de la session, et la première session du processus hôte suivant reprend ce qu'un hôte
-  tombé a laissé. Windows propage chaque ACE héritable à chaque objet sous la racine du montage :
+  tombé a laissé. Le contrôle d'accès du conteneur ne retient que ce que les ACE d'autorisation
+  accordent à son SID (une ACE de refus, ou une étiquette d'intégrité, ne l'arrête pas) : un
+  sous-chemin masqué, ou en lecture seule dans un montage accessible en écriture, reçoit une DACL
+  protégée le temps de la session (ce dont il héritait conservé, moins le SID de la session),
+  notée dans le registre et réécrite à la fin. Windows propage chaque ACE héritable à chaque objet
+  sous la racine du montage :
   une session coûte une écriture de descripteur de sécurité par fichier de ses montages, dans
   chaque sens. Si c'est trop lent sur de gros arbres, la sortie est un SID d'AppContainer stable
   par jeu de droits, accordé une fois.
 - **Fichiers de commandes Windows** : `npm.cmd` et tout `.bat`/`.cmd` sont refusés dans tous les
   modes.
+- **Le `dir` de cmd dans un AppContainer** : `dir`, `vol`, `attrib` et `where /r` interrogent la
+  racine du lecteur, qu'une ACL Windows standard n'ouvre pas à un AppContainer : ils répondent
+  « Access is denied. » dans une session confinée (`for %f in (*)` et les programmes qui listent un
+  répertoire fonctionnent).
 - **Le chien de garde est plus faible que le noyau** : sous Seatbelt et hors confinement sous
   Linux et macOS, un processus sorti de l'arbre de la session (un double fork) survit à un crash
   de l'hôte.

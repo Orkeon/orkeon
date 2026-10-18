@@ -87,26 +87,14 @@ public sealed class AppContainerShellSessionTests : IDisposable
         await using var session = await _sandbox.OpenAsync(new ShellSessionView([new ConfinedPath(workspace, "/workspace", ConfinedAccess.ReadWrite)], [], false), Ct);
 
         var made = await session.RunAsync(Builtin("mkdir", workspace, "made"), Ct);
-        var listed = await session.RunAsync(Builtin("dir", workspace, "/b"), Ct);
+        // cmd's dir (like vol, attrib and where /r) queries the drive's root, which a standard Windows
+        // ACL does not open to an AppContainer: it answers "Access is denied." in a confined session.
+        // The listing goes through FindFirstFile on the mount itself.
+        var listed = await session.RunAsync(new ShellInvocation("cmd.exe", ["/d", "/c", "for /d %f in (*) do @echo %f"], workspace, TimeSpan.FromSeconds(30)), Ct);
 
         Assert.True(made.ExitCode == 0, Describe("mkdir made", made));
         Assert.True(Directory.Exists(Path.Combine(workspace, "made")));
-        if (listed.ExitCode != 0)
-        {
-            // Diagnostic: which listing the container is refused, and where.
-            var probes = new System.Text.StringBuilder();
-            probes.AppendLine(Describe("dir /b <full path>", await session.RunAsync(Builtin("dir", null, "/b", workspace), Ct)));
-            probes.AppendLine(Describe("dir /b (profile folder)", await session.RunAsync(Builtin("dir", null, "/b"), Ct)));
-            probes.AppendLine(Describe("cd", await session.RunAsync(Builtin("cd", workspace), Ct)));
-            probes.AppendLine(Describe("for %f in (*)", await session.RunAsync(new ShellInvocation("cmd.exe", ["/d", "/c", "for %f in (*) do @echo %f"], workspace, TimeSpan.FromSeconds(30)), Ct)));
-            probes.AppendLine(Describe("vol", await session.RunAsync(Builtin("vol", workspace), Ct)));
-            probes.AppendLine(Describe("attrib", await session.RunAsync(new ShellInvocation("attrib.exe", ["/d", "*"], workspace, TimeSpan.FromSeconds(30)), Ct)));
-            probes.AppendLine(Describe("whoami /groups", await session.RunAsync(new ShellInvocation("whoami.exe", ["/groups"], null, TimeSpan.FromSeconds(30)), Ct)));
-            probes.AppendLine(Describe("where /r . *", await session.RunAsync(new ShellInvocation("where.exe", ["/r", ".", "*"], workspace, TimeSpan.FromSeconds(30)), Ct)));
-            var parent = Path.GetDirectoryName(workspace)!;
-            Assert.Fail($"{Describe("dir /b", listed)}\n{probes}{Acls(workspace, parent, Path.GetDirectoryName(parent)!, Path.GetPathRoot(workspace)!)}");
-        }
-
+        Assert.True(listed.ExitCode == 0, $"{Describe("for /d %f in (*)", listed)}\n{Acls(workspace)}");
         Assert.Contains("made", listed.Stdout, StringComparison.Ordinal);
     }
 
@@ -140,7 +128,7 @@ public sealed class AppContainerShellSessionTests : IDisposable
         // The isolated paths inherit again once the session ends.
         Assert.False(AclIsolation.IsProtected(Path.Combine(workspace, "secrets")));
         Assert.False(AclIsolation.IsProtected(Path.Combine(workspace, "vendor")));
-        Assert.Equal(before, AclIsolation.Read(Path.Combine(workspace, "secrets")));
+        Assert.Equal(AceList(before), AceList(AclIsolation.Read(Path.Combine(workspace, "secrets"))));
     }
 
     [Fact]
@@ -171,8 +159,15 @@ public sealed class AppContainerShellSessionTests : IDisposable
         Assert.SkipUnless(File.Exists(curl), "curl.exe is not in System32.");
         var probe = new ShellInvocation("curl.exe", ["-s", "-o", "NUL", "-m", "10", "https://www.microsoft.com/"], null, TimeSpan.FromSeconds(30));
 
+        // The host's own reach is probed up to three times: one slow answer must not skip the test.
+        var hostReaches = false;
         await using (var host = WindowsShellSession.OpenUnconfined())
-            Assert.SkipUnless((await host.RunAsync(probe, Ct)).ExitCode == 0, "the host itself has no network.");
+        {
+            for (var attempt = 0; attempt < 3 && !hostReaches; attempt++)
+                hostReaches = (await host.RunAsync(probe, Ct)).ExitCode == 0;
+        }
+
+        Assert.SkipUnless(hostReaches, "the host itself has no network.");
 
         await using var session = await _sandbox.OpenAsync(ShellSessionView.Empty, Ct);
         var confined = await session.RunAsync(probe, Ct);
@@ -317,6 +312,9 @@ public sealed class AppContainerShellSessionTests : IDisposable
 
     private static string Describe(string command, ShellRunResult result)
         => $"{command}: exit {result.ExitCode}, stdout [{result.Stdout.Trim()}], stderr [{result.Stderr.Trim()}]";
+
+    /// <summary>The ACEs of a DACL's SDDL, without its control flags (<c>AI</c> marks a DACL written with inheritance on).</summary>
+    private static string? AceList(string? sddl) => sddl is null ? null : sddl[sddl.IndexOf('(', StringComparison.Ordinal)..];
 
     /// <summary>What icacls says of each path (its ACEs and its integrity label), for a failure message.</summary>
     private static string Acls(params string[] paths)
