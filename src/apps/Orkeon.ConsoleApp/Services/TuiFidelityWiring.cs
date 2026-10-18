@@ -1,4 +1,5 @@
 using Orkeon.Constants.Configuration;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,7 +44,7 @@ internal static class TuiFidelityWiring
     /// <summary>Builds the banner from what the host actually knows. Empty parts are omitted.</summary>
     public static BannerInfo BuildBannerInfo(IConfiguration configuration)
     {
-        var version = typeof(TuiFidelityWiring).Assembly.GetName().Version?.ToString(3) ?? "dev";
+        var version = ProductVersion();
         var model = configuration["Llm:Model"];
         var window = configuration[ConfigurationKeys.CliSessionContextWindowTokens];
         var baseUrl = configuration["Llm:BaseUrl"];
@@ -64,6 +65,20 @@ internal static class TuiFidelityWiring
                 "+more · /status",
             ],
         };
+    }
+
+    /// <summary>The informational version of this assembly without build metadata; "dev" when absent.</summary>
+    internal static string ProductVersion()
+    {
+        var informational = typeof(TuiFidelityWiring).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrEmpty(informational))
+        {
+            return "dev";
+        }
+
+        var plus = informational.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? informational : informational[..plus];
     }
 
     /// <summary>
