@@ -121,7 +121,7 @@ public sealed class DriveCommandEventsTests
 
     private static List<JsonElement> EventLines(string stdout) =>
         stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement.Clone())
+            .Select(line => JsonElement.Parse(line))
             .ToList();
 
     private static void WriteOneDriveSettings(ScriptScratch scratch, string credentials) =>
