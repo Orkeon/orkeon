@@ -89,17 +89,21 @@ public sealed class AppContainerShellSessionTests : IDisposable
         var made = await session.RunAsync(Builtin("mkdir", workspace, "made"), Ct);
         var listed = await session.RunAsync(Builtin("dir", workspace, "/b"), Ct);
 
-        if (made.ExitCode != 0)
+        Assert.True(made.ExitCode == 0, Describe("mkdir made", made));
+        Assert.True(Directory.Exists(Path.Combine(workspace, "made")));
+        if (listed.ExitCode != 0)
         {
-            // Diagnostic: whether the integrity label is what refuses the write (Low IL container, Medium object).
-            var before = Acls(workspace);
-            Icacls(workspace, "/setintegritylevel", "(OI)(CI)low");
-            var retried = await session.RunAsync(Builtin("mkdir", workspace, "made-low"), Ct);
-            Assert.Fail($"{Describe("mkdir made", made)}\n{await DescribeContainerAsync(session)}\n{before}\nafter a Low label: {Describe("mkdir made-low", retried)}");
+            // Diagnostic: which listing the container is refused, and where.
+            var probes = new System.Text.StringBuilder();
+            probes.AppendLine(Describe("dir /b <full path>", await session.RunAsync(Builtin("dir", null, "/b", workspace), Ct)));
+            probes.AppendLine(Describe("dir /b (profile folder)", await session.RunAsync(Builtin("dir", null, "/b"), Ct)));
+            probes.AppendLine(Describe("cd", await session.RunAsync(Builtin("cd", workspace), Ct)));
+            probes.AppendLine(Describe("for %f in (*)", await session.RunAsync(new ShellInvocation("cmd.exe", ["/d", "/c", "for %f in (*) do @echo %f"], workspace, TimeSpan.FromSeconds(30)), Ct)));
+            probes.AppendLine(Describe("where /r . *", await session.RunAsync(new ShellInvocation("where.exe", ["/r", ".", "*"], workspace, TimeSpan.FromSeconds(30)), Ct)));
+            var parent = Path.GetDirectoryName(workspace)!;
+            Assert.Fail($"{Describe("dir /b", listed)}\n{probes}{Acls(workspace, parent, Path.GetDirectoryName(parent)!, Path.GetPathRoot(workspace)!)}");
         }
 
-        Assert.True(Directory.Exists(Path.Combine(workspace, "made")));
-        Assert.True(listed.ExitCode == 0, Describe("dir /b", listed));
         Assert.Contains("made", listed.Stdout, StringComparison.Ordinal);
     }
 
@@ -125,6 +129,12 @@ public sealed class AppContainerShellSessionTests : IDisposable
         Assert.True(vendorRead.Stdout.Contains("lib", StringComparison.Ordinal), $"{Describe(@"type vendor\lib.txt", vendorRead)}\n{acls}");
         Assert.True(vendorWrite.ExitCode != 0, $"{Describe(@"mkdir vendor\made", vendorWrite)}\n{acls}");
         Assert.False(Directory.Exists(Path.Combine(workspace, "vendor", "made")));
+
+        await session.DisposeAsync();
+
+        // The labels that refused are taken back with the session.
+        Assert.Equal("", IntegrityLabels.Read(Path.Combine(workspace, "secrets")));
+        Assert.Equal("", IntegrityLabels.Read(Path.Combine(workspace, "vendor")));
     }
 
     [Fact]
@@ -305,15 +315,6 @@ public sealed class AppContainerShellSessionTests : IDisposable
     /// <summary>The groups and integrity level of the session's container, for a failure message.</summary>
     private static async Task<string> DescribeContainerAsync(IShellSession session)
         => Describe("whoami /groups", await session.RunAsync(new ShellInvocation("whoami.exe", ["/groups"], null, TimeSpan.FromSeconds(30)), Ct));
-
-    private static void Icacls(params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "icacls.exe")) { UseShellExecute = false, CreateNoWindow = true };
-        foreach (var argument in arguments)
-            startInfo.ArgumentList.Add(argument);
-        using var process = Process.Start(startInfo)!;
-        process.WaitForExit();
-    }
 
     /// <summary>What icacls says of each path (its ACEs and its integrity label), for a failure message.</summary>
     private static string Acls(params string[] paths)

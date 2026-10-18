@@ -47,6 +47,16 @@ public sealed class SeatbeltProfileTests
     }
 
     [Fact]
+    public void ShouldLetTheLoaderListTheRootDirectory_AndNothingBelowItByThatRule()
+    {
+        var profile = Build();
+
+        var rule = RuleIndex(profile, "allow file-read-data", "(literal \"/\")");
+        var end = profile.IndexOf(")\n", profile.IndexOf("(literal \"/\")", rule, StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Equal("(allow file-read-data\n  (literal \"/\"))", profile[rule..(end + 1)]);
+    }
+
+    [Fact]
     public void ShouldLetTheShellRunProgramsAndSignalOnlyItsOwnSandbox()
     {
         var profile = Build();

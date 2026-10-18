@@ -104,12 +104,8 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
             if (ledger is null || !string.Equals(ledger.ProfileName, profileName, StringComparison.Ordinal) || !ledger.IsStale(StartTicksOf))
                 continue;
 
-            var failed = AclGrants.Purge(ledger.GrantedPaths, new SecurityIdentifier(ledger.ContainerSid));
-            if (failed.Count > 0)
-            {
-                store.Write(ledger with { GrantedPaths = [.. failed] });
+            if (!TakeBack(ledger, store))
                 continue;
-            }
 
             if (AppContainerProfile.Delete(ledger.ProfileName))
             {
@@ -143,6 +139,7 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
         }
 
         var plan = AclPlan.Build(view.Paths, view.ReadOnlyPaths);
+        var labels = AclPlan.Labels(view.Paths, view.ReadOnlyPaths);
         var ledger = new ShellSessionLedger
         {
             ProfileName = profile.Name,
@@ -154,8 +151,15 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
 
         try
         {
-            // The ledger comes first: a crash between two ACEs leaves a record of every path.
-            store.Write(ledger);
+            // The ledger comes first: a crash between two changes leaves a record of every path. The
+            // labels come before the ACEs, so no grant ever stands without the refusals below it.
+            lock (IntegrityLabels.Sync)
+            {
+                ledger = ledger with { Labels = [.. labels.Select(label => new ShellSessionLabel { Path = label.Path, Original = OriginalLabel(label.Path, store) })] };
+                store.Write(ledger);
+                IntegrityLabels.Apply(labels);
+            }
+
             AclGrants.Apply(plan, profile.Sid);
 
             var environment = ShellEnvironment.RestrictedVariables();
@@ -188,20 +192,71 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
     {
         try
         {
-            var failed = AclGrants.Purge(ledger.GrantedPaths, new SecurityIdentifier(ledger.ContainerSid));
-            if (failed.Count > 0)
-            {
-                store.Write(ledger with { GrantedPaths = [.. failed] });
-                return;
-            }
-
-            if (AppContainerProfile.Delete(ledger.ProfileName))
+            if (TakeBack(ledger, store) && AppContainerProfile.Delete(ledger.ProfileName))
                 store.Delete(ledger.ProfileName);
         }
         catch
         {
             // Left for the next sweep.
         }
+    }
+
+    /// <summary>
+    /// Removes a session's ACEs and puts back the labels it replaced. A label another session of the
+    /// store also recorded stays: that session still relies on it, and puts it back when it ends.
+    /// </summary>
+    /// <returns>True when nothing is left; otherwise the ledger keeps what is (for the next sweep).</returns>
+    [SupportedOSPlatform("windows")]
+    private static bool TakeBack(ShellSessionLedger ledger, ShellSessionLedgerStore store)
+    {
+        var failedPaths = AclGrants.Purge(ledger.GrantedPaths, new SecurityIdentifier(ledger.ContainerSid));
+        List<ShellSessionLabel> failedLabels = [];
+        lock (IntegrityLabels.Sync)
+        {
+            var shared = LabelsOfOtherSessions(ledger.ProfileName, store);
+            foreach (var label in ledger.Labels)
+            {
+                if (!shared.ContainsKey(label.Path) && !IntegrityLabels.Restore(label.Path, label.Original))
+                    failedLabels.Add(label);
+            }
+
+            if (failedPaths.Count == 0 && failedLabels.Count == 0)
+            {
+                // Written at once, under the lock: a session opening now must not take a label put
+                // back as one still standing.
+                if (ledger.Labels.Count > 0)
+                    store.Write(ledger with { Labels = [] });
+                return true;
+            }
+
+            store.Write(ledger with { GrantedPaths = [.. failedPaths], Labels = [.. failedLabels] });
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The label a session about to relabel <paramref name="path"/> must put back: the one another
+    /// session recorded when it relabelled the path first, or else the path's own explicit label.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static string OriginalLabel(string path, ShellSessionLedgerStore store)
+        => LabelsOfOtherSessions(null, store).TryGetValue(path, out var original)
+            ? original
+            : IntegrityLabels.Read(path) ?? "";
+
+    /// <summary>The labels the ledgers of the store record, by path, except those of <paramref name="profileName"/>.</summary>
+    private static Dictionary<string, string> LabelsOfOtherSessions(string? profileName, ShellSessionLedgerStore store)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, other) in store.ReadAll())
+        {
+            if (other is null || string.Equals(name, profileName, StringComparison.Ordinal))
+                continue;
+            foreach (var label in other.Labels)
+                labels.TryAdd(label.Path, label.Original);
+        }
+
+        return labels;
     }
 
     /// <summary>The UTC start ticks of the live process <paramref name="pid"/>, or null when there is none.</summary>

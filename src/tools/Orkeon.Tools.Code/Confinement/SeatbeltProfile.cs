@@ -106,6 +106,11 @@ internal static class SeatbeltProfile
         var ancestors = allowed.SelectMany(Ancestors).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
         AppendRule(builder, "allow file-read-metadata", ancestors.Select(Literal));
 
+        // The listing of the root directory (its entry names, not the content below them): dyld's
+        // libignition reads it while it locates the shared cache in the OS cryptex, and aborts the
+        // process (SIGABRT before main, nothing on stderr) when refused, as on macOS 26.
+        AppendRule(builder, "allow file-read-data", [Literal("/")]);
+
         // The extra read-only directories the operator named.
         AppendRule(builder, "allow file-read*", extras.Select(Subpath));
 
