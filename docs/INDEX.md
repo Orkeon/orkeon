@@ -40,6 +40,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Drive tools](./guides/drive.md) | Give agents a Google Drive or a OneDrive: registering the OAuth application, `orkeon drive login`, rights, the root folder an agent cannot leave, the closed share allow-list, what the token never reaches |
 | [`orkeon drive` commands](./reference/cli.md#orkeon-drive) | `accounts`, `check` (find the root folder and list it), `login` / `logout` — options and exit codes |
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |
+| [ADR-014 — shell confinement by default](./adr/ADR-014-shell-confinement-by-default.md) | Why `shell_command` is confined per platform by default, off in containers, and runs one shell session per agent run |
 
 ### Architecture
 

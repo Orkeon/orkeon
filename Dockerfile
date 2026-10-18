@@ -30,6 +30,8 @@ COPY --from=build /app/publish .
 # embeds: their notices go with it, at the Debian package's path. The .NET runtime is the
 # base image's, which carries its own.
 COPY LICENSE.md THIRD-PARTY-NOTICES.md /usr/share/doc/orkeon/
+# The container is the boundary: shell_command runs unconfined in it (Auto would turn it off too, said explicitly here).
+ENV Orkeon__Tools__Shell__Confinement__Mode=None
 
 # Run as the non-root `app` user built into the GA runtime image
 # (the minimal runtime:10.0 image has no `adduser`).

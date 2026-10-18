@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -23,9 +24,18 @@ public sealed class CodeToolExtensionsTests
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
         if (registerConfiguration)
         {
+            // Confinement off: these tests are about the allowlist, and Auto would pick by machine.
+            var settings = new Dictionary<string, string?>(config ?? []);
+            settings.TryAdd("Orkeon:Tools:Shell:Confinement:Mode", "None");
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
-                .AddInMemoryCollection(config ?? [])
+                .AddInMemoryCollection(settings)
                 .Build());
+        }
+
+        else
+        {
+            // No IConfiguration: the confinement is turned off through the options themselves.
+            services.Configure<ShellToolOptions>(options => options.Confinement.Mode = ShellConfinementMode.None);
         }
 
         services.AddOrkeonCodeTools();
@@ -159,5 +169,27 @@ public sealed class CodeToolExtensionsTests
         var result = await CallAsync(tool, "echo hello");
 
         Assert.True(result.Success, result.Error);
+    }
+
+    [Theory]
+    [InlineData(null, ShellConfinementMode.Auto)]
+    [InlineData("Auto", ShellConfinementMode.Auto)]
+    [InlineData("None", ShellConfinementMode.None)]
+    [InlineData("Bubblewrap", ShellConfinementMode.Bubblewrap)]
+    [InlineData("Seatbelt", ShellConfinementMode.Seatbelt)]
+    [InlineData("AppContainer", ShellConfinementMode.AppContainer)]
+    public void ShouldBindTheConfinementModeByName_WithAutoByDefault(string? configured, ShellConfinementMode expected)
+    {
+        var settings = new Dictionary<string, string?>();
+        if (configured is not null)
+            settings["Orkeon:Tools:Shell:Confinement:Mode"] = configured;
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
+        services.AddOrkeonCodeTools();
+
+        var options = services.BuildServiceProvider().GetRequiredService<IOptions<ShellToolOptions>>().Value;
+
+        Assert.Equal(expected, options.Confinement.Mode);
     }
 }

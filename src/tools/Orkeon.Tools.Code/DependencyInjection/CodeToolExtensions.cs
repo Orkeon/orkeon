@@ -1,10 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Sessions;
 
 namespace Orkeon.Tools.Code.DependencyInjection;
 
@@ -50,6 +53,23 @@ public static class CodeToolExtensions
             .Configure<IServiceProvider>((options, provider) =>
                 provider.GetService<IConfiguration>()?.GetSection(ShellToolOptions.SectionName).Bind(options))
             .ValidateOnStart();
+        // One shell session per agent run: the manager is stateless (the sessions live in each run's
+        // AgentRunScope) and the sandboxes hold no session, so all of them are singletons.
+        services.TryAddSingleton<ShellSessionManager>();
+        services.TryAddSingleton<UnconfinedShellSandbox>();
+        services.TryAddSingleton<BubblewrapShellSandbox>();
+        services.TryAddSingleton<SeatbeltShellSandbox>();
+        services.TryAddSingleton<AppContainerShellSandbox>();
+        // Auto (the default) resolves once per host to the platform's backend, or to none inside a
+        // container, which the selector logs once.
+        services.TryAddSingleton(sp => new ShellSandboxSelector(
+            sp.GetRequiredService<UnconfinedShellSandbox>(),
+            sp.GetRequiredService<BubblewrapShellSandbox>(),
+            sp.GetRequiredService<SeatbeltShellSandbox>(),
+            ContainerDetector.Host,
+            ShellConfinementResolver.CurrentPlatform,
+            sp.GetService<ILogger<ShellSandboxSelector>>(),
+            sp.GetRequiredService<AppContainerShellSandbox>()));
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
@@ -59,6 +79,8 @@ public static class CodeToolExtensions
                 allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands))
             {
                 Confinement = shell.Confinement,
+                Sessions = sp.GetRequiredService<ShellSessionManager>(),
+                Sandbox = sp.GetRequiredService<ShellSandboxSelector>().Select(shell.Confinement.Mode),
             };
         });
         // SecureCodeInterpreterTool is registered via AddOrkeonCodeSandbox() in InfrastructureExtensions

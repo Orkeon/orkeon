@@ -1,10 +1,10 @@
-using System.Diagnostics;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Code.Confinement;
 using Orkeon.Tools.Code.Constants.Shell;
+using Orkeon.Tools.Code.Sessions;
 using Microsoft.Extensions.Logging;
 
 namespace Orkeon.Tools.Code;
@@ -65,16 +65,20 @@ public sealed record ShellCommandResponse
 /// <summary>
 /// Tool for executing shell commands with allowlist security,
 /// configurable timeout, and output capture.
-/// Commands are executed directly via <see cref="ProcessStartInfo"/> without
-/// shell interpretation. On Windows, shell built-in commands (echo, dir, etc.)
-/// are routed through <c>cmd.exe /c</c> with arguments passed via
-/// <see cref="ProcessStartInfo.ArgumentList"/>.
+/// Each agent run keeps one shell session (<see cref="Sessions.ShellSessionManager"/>, held by the
+/// run's <see cref="Orkeon.Domain.Execution.AgentRunScope"/>): on Linux and macOS a <c>sh -s</c> the
+/// tool feeds one fragment per command, every word of it POSIX-quoted so the shell expands nothing
+/// (<see cref="Sessions.ShellScript"/>); on Windows each command is its own process inside the
+/// session's Job Object, its arguments quoted one by one, shell built-ins (echo, dir, etc.) routed
+/// through <c>cmd.exe /c</c> with every argument escaped for cmd. A timeout
+/// or the caller's cancellation kills the session and the next command opens a new one; nothing the
+/// session started outlives the run.
 /// </summary>
 /// <remarks>
 /// <para>
 /// <b>Scope of the no-shell-injection guarantee.</b> The forbidden-operator
-/// check (<c>;</c>, <c>|</c>, <c>$(</c>, backticks, <c>\n</c>, …) and the use of
-/// <see cref="ProcessStartInfo.ArgumentList"/> prevent <i>shell metacharacter
+/// check (<c>;</c>, <c>|</c>, <c>$(</c>, backticks, <c>\n</c>, …) and the quoting of every
+/// argument as one word prevent <i>shell metacharacter
 /// injection</i> only. They do <b>not</b> provide OS confinement: there is no
 /// sandbox, namespace, seccomp or network isolation. The executed process runs
 /// with the privileges of the host process.
@@ -111,13 +115,23 @@ public sealed record ShellCommandResponse
 /// <c>ICodeSandbox</c> (Docker <c>--network=none</c>) instead.
 /// </para>
 /// <para>
-/// <b>Confinement (opt-in, Linux).</b> With <see cref="Confinement"/> set to
-/// <see cref="ShellConfinementMode.Bubblewrap"/>, the process runs under <c>bwrap</c> in a view built from
-/// the VFS: each agent-facing mount bound at its virtual path (read-only when it lacks Write, a sub path
+/// <b>Confinement (on by default).</b> <see cref="Confinement"/> defaults to
+/// <see cref="ShellConfinementMode.Auto"/>, the backend of the platform, and to no confinement inside a
+/// container; <see cref="ShellConfinementMode.None"/> turns it off. Under
+/// <see cref="ShellConfinementMode.Bubblewrap"/> (Linux), the process runs under <c>bwrap</c> in a view built from
+/// the VFS (the session is <c>bwrap … -- /bin/sh -s</c>, reopened when the mounts change): each agent-facing mount bound at its virtual path (read-only when it lacks Write, a sub path
 /// without rights covered), the system directories read-only, nothing else of the host, the network off
 /// unless allowed. The process then works on virtual paths, so the arguments are checked but not
 /// rewritten, and the kernel enforces a read-only mount on whatever the process reaches by itself. When
-/// bubblewrap is unavailable the call fails with the reason; it never runs unconfined.
+/// the backend is unavailable the call fails with the reason and how to turn confinement off; it never
+/// runs unconfined.
+/// </para>
+/// <para>
+/// Under <see cref="ShellConfinementMode.Seatbelt"/> (macOS), the session is <c>sandbox-exec -p &lt;profile&gt; /bin/sh -s</c>:
+/// the profile denies everything but the system directories read-only, each mount read-only or
+/// read-write after its rights (a sub path without rights denied), a scratch directory of the session
+/// and the network when allowed. Seatbelt filters without moving anything, so the process works on
+/// physical paths and the arguments are rewritten as when unconfined.
 /// </para>
 /// </remarks>
 [ToolContract("shell_command",
@@ -130,13 +144,39 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     public override ToolAccess Access => ToolAccess.Execute;
 
     /// <summary>
-    /// How the process is confined: <see cref="ShellConfinementMode.None"/> (default) runs it on the
+    /// How the process is confined: <see cref="ShellConfinementMode.Auto"/> (default) picks the backend
+    /// of the platform, none inside a container; <see cref="ShellConfinementMode.None"/> runs it on the
     /// host; <see cref="ShellConfinementMode.Bubblewrap"/> runs it in a view built from the VFS.
     /// </summary>
     public ShellConfinementOptions Confinement { get; init; } = new();
 
     /// <summary>Whether bubblewrap works here; probed once per process. Replaced by the tests.</summary>
     internal Func<BubblewrapAvailability> Bubblewrap { get; init; } = BubblewrapProbe.Current;
+
+    /// <summary>Whether Seatbelt works here; probed once per process. Replaced by the tests.</summary>
+    internal Func<ShellSandboxAvailability> Seatbelt { get; init; } = SeatbeltProbe.Current;
+
+    /// <summary>Keeps the shell session of each agent run. Replaced by the tests.</summary>
+    internal ShellSessionManager Sessions { get; init; } = ShellSessionManager.Shared;
+
+    /// <summary>Whether the host runs in a container, read by <see cref="ShellConfinementMode.Auto"/>. Replaced by the tests.</summary>
+    internal IContainerDetector ContainerDetector { get; init; } = Orkeon.Tools.Code.Confinement.ContainerDetector.Host;
+
+    /// <summary>The platform the backend is chosen for. Replaced by the tests.</summary>
+    internal ShellPlatform Platform { get; init; } = ShellConfinementResolver.CurrentPlatform;
+
+    /// <summary>
+    /// How the session runs; null picks it from <see cref="Confinement"/> through
+    /// <see cref="ShellSandboxSelector"/> (bubblewrap over <see cref="Bubblewrap"/>, Seatbelt over <see cref="Seatbelt"/>, none, or a backend
+    /// that reports why it cannot run). Set by the dependency injection registration and the tests.
+    /// </summary>
+    internal IShellSandbox? Sandbox { get; init; }
+
+    private IShellSandbox? _defaultSandbox;
+
+    private IShellSandbox ActiveSandbox => Sandbox ?? (_defaultSandbox ??=
+        new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, _logger)
+            .Select(Confinement.Mode));
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
@@ -183,36 +223,6 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         "echo", "dir", "type", "cd", "copy", "del", "ren", "rename",
         "mkdir", "md", "rmdir", "rd", "cls", "set", "ver", "vol"
     };
-
-    /// <summary>
-    /// The only environment variables handed to the child process. Everything else the
-    /// runner holds is dropped, because that environment carries the crew's LLM API keys
-    /// (<c>ORKEON_Llm__ApiKey</c> and friends) and an allowed read-only command
-    /// (<c>cat /proc/self/environ</c>, <c>set</c>) would otherwise read them straight
-    /// back into the model's context.
-    /// <para>
-    /// Twin of <c>ProcessIsolationSandbox.ConfigureRestrictedEnvironment</c>
-    /// (<c>src/core/Orkeon.Infrastructure/Sandbox</c>), which does the same for the code
-    /// sandbox. The list is duplicated rather than shared: a tool project cannot reference
-    /// Infrastructure, and the shared kernel it could go through
-    /// (<c>Orkeon.Tools.Abstractions</c>) has no process-execution surface to hang it on.
-    /// </para>
-    /// </summary>
-    private static readonly string[] s_propagatedEnvironmentVariables =
-    [
-        // PATH is propagated, not rebuilt: the tool starts its child from a BARE executable
-        // name by design (see ExecuteCoreAsync), so the host lookup path is what makes git
-        // and the opt-in interpreters resolvable wherever an operator installed them.
-        "PATH",
-        // POSIX: git needs a HOME to find its own configuration, the locale decides how the
-        // child encodes what it prints, and TMPDIR gives it a writable scratch directory.
-        "HOME", "LANG", "LC_ALL", "TMPDIR",
-        // Windows: cmd.exe and the CLR resolve an executable through these.
-        "USERPROFILE", "SystemRoot", "SystemDrive", "PATHEXT", "TEMP", "TMP",
-        "APPDATA", "LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)",
-        // The .NET and NuGet locations, load-bearing once interpreters are opted in.
-        "DOTNET_ROOT", "NUGET_PACKAGES"
-    ];
 
     /// <summary>
     /// Default set of allowed executable commands. Read-only / non-interpreter only.
@@ -444,15 +454,18 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return ExecuteCoreAsync(request, cancellationToken);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup after a timeout kill: failures while draining the killed process's stdout/stderr must not mask the timeout result returned to the caller; external cancellation is rethrown by the OperationCanceledException filter.")]
+    /// <summary>What a result adds when the agent's shell session was killed after the command.</summary>
+    internal const string SessionResetNote = "\n[Shell session reset: the next command starts in a new session]";
+
     private async Task<ShellCommandResponse> ExecuteCoreAsync(
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
         var (executable, arguments) = ParseCommand(request.Command);
         var rights = RequiredPathRights(executable);
-        var confined = Confinement.Mode == ShellConfinementMode.Bubblewrap;
+        var sandbox = ActiveSandbox;
+        var confined = sandbox.UsesVirtualPaths;
 
-        // Virtual→physical: the child process only understands physical paths, unless it is
+        // Virtual→physical: the command only understands physical paths, unless its session is
         // confined and sees the virtual ones. Validation already vetoed denials; this re-run is
         // belt-and-braces against a scope swap, and the check a confined call keeps.
         var (rewrittenArguments, argumentDenial) = RewriteInboundArguments(arguments, rights);
@@ -477,162 +490,117 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 Completed = false
             };
 
-        var startInfo = new ProcessStartInfo
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        // Validation proved the confinement works; it is checked again, never assumed (a session on the
+        // host is always available, a confined one on virtual or on physical paths may not be).
+        var availability = sandbox.Availability;
+        if (!availability.IsAvailable)
+            return ConfinementUnavailable(availability.Reason);
 
-        ConfigureRestrictedEnvironment(startInfo);
+        // A confined session sees the mounts at their virtual paths; an empty directory keeps the
+        // session's own (the root of the confined view, the host's directory otherwise).
+        var invocationDirectory = confined && workingDirectory.Length > 0
+            ? _fileSystem.ToVirtualPath(workingDirectory) ?? "/"
+            : workingDirectory;
 
-        if (confined)
-        {
-            // Validation proved bubblewrap works; the command runs in the view it builds.
-            var bubblewrap = Bubblewrap();
-            if (!bubblewrap.IsAvailable)
-                return ConfinementUnavailable(bubblewrap.Reason);
+        // NOSONAR — the executable is a bare, allowlisted name (validated in ValidateTypedRequest),
+        // resolved on the session's PATH by design: the allowed commands (git, dotnet, npm, etc.)
+        // may be installed in different locations across environments.
+        // On Windows, shell built-in commands (echo, dir, etc.) are not standalone executables:
+        // the Windows session runs them through `cmd.exe /d /v:off /s /c`, inside its job (and its
+        // AppContainer when confined), every argument escaped so that cmd reads no operator in it
+        // (WindowsCommandLine.CmdBuiltin). Forbidden operators and '%' were already rejected in
+        // ValidateTypedRequest.
+        var windowsBuiltin = !confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable);
+        var invocation = new ShellInvocation(
+            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin);
 
-            startInfo.FileName = bubblewrap.ExecutablePath!;
-            var virtualWorkingDirectory = workingDirectory.Length == 0
-                ? "/"
-                : _fileSystem.ToVirtualPath(workingDirectory) ?? "/";
-            foreach (var argument in BubblewrapCommandLine.Build(
-                         BuildConfinedPaths(), Confinement.ReadOnlyPaths, Confinement.AllowNetwork, virtualWorkingDirectory))
-                startInfo.ArgumentList.Add(argument);
-            startInfo.ArgumentList.Add(executable);
-        }
-        else if (OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable))
-        {
-            // On Windows, shell built-in commands (echo, dir, etc.) are not standalone
-            // executables. Route them through cmd.exe /c to make them functional.
-            // Security is preserved: forbidden operators were already rejected in
-            // ValidateTypedRequest, and arguments are passed individually through
-            // ArgumentList (no shell interpretation of special characters).
-            startInfo.FileName = ShellDefaults.WindowsShell; // NOSONAR — cmd.exe is a Windows system binary resolved via SystemRoot
-            startInfo.ArgumentList.Add(ShellDefaults.WindowsCommandSwitch);
-            startInfo.ArgumentList.Add(executable);
-        }
-        else
-        {
-            // NOSONAR — FileName is intentionally set to a user-supplied executable name
-            // (validated against the allowlist in ValidateTypedRequest). Using a bare name
-            // rather than an absolute path is by design: the allowed commands (git, dotnet,
-            // npm, etc.) may be installed in different locations across environments.
-            startInfo.FileName = executable;
-        }
-
-        foreach (var arg in arguments)
-        {
-            startInfo.ArgumentList.Add(arg);
-        }
-
-        // Physical→virtual table for the output, built per call: mounts can be swapped
-        // per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
+        // Physical→virtual table for the output and the view of the session, built per call: mounts
+        // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
         var outboundReplacements = BuildOutboundReplacements();
+        var view = new ShellSessionView(BuildConfinedPaths(), [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork);
 
-        using var process = new Process { StartInfo = startInfo };
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(request.TimeoutSeconds));
-
+        ShellRunResult result;
         try
         {
-            process.Start();
+            result = await Sessions.RunAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
-            // The message names the working directory, and the working directory is now a
-            // RESOLVED PHYSICAL path — so a command that is simply not installed on the host
-            // (npm, dotnet, git) put a disk path in front of the model, through the one field
-            // the outbound rewrite below never touched. Ordinary trigger, ADR-008 violation.
+            // The message names the working directory, a RESOLVED PHYSICAL path — so a command
+            // that is simply not installed on the host (npm, dotnet, git) put a disk path in front
+            // of the model. Ordinary trigger, ADR-008 violation: it is rewritten like the output.
             throw new InvalidOperationException(
                 RewriteOutboundPaths(ex.Message, outboundReplacements), ex);
         }
-
-        // Read stdout and stderr concurrently to avoid deadlocks
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(timeoutCts.Token);
-        var stderrTask = process.StandardError.ReadToEndAsync(timeoutCts.Token);
-
-        try
+        catch (ShellSessionException ex)
         {
-            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(false);
-
-            var stdout = await stdoutTask.ConfigureAwait(false);
-            var stderr = await stderrTask.ConfigureAwait(false);
-
-            LogCommandCompleted(request.Command, process.ExitCode);
-
-            return new ShellCommandResponse
-            {
-                ExitCode = process.ExitCode,
-                Stdout = Truncate(RewriteOutboundPaths(stdout, outboundReplacements)),
-                Stderr = Truncate(RewriteOutboundPaths(stderr, outboundReplacements)),
-                Completed = true
-            };
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // Timeout occurred (not external cancellation)
-            KillProcess(process);
-
-            var stdout = "";
-            var stderr = "";
-
-            try
-            {
-                // Try to read what we can from the streams
-                stdout = await ReadWithFallbackAsync(process.StandardOutput).ConfigureAwait(false);
-                stderr = await ReadWithFallbackAsync(process.StandardError).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Ignore read errors after kill
-            }
-
-            LogCommandTimedOut(request.Command, request.TimeoutSeconds);
-
             return new ShellCommandResponse
             {
                 ExitCode = -1,
-                Stdout = Truncate(RewriteOutboundPaths(stdout, outboundReplacements)),
-                Stderr = Truncate(RewriteOutboundPaths(stderr, outboundReplacements) + "\n[Command timed out]"),
+                Stdout = "",
+                Stderr = Truncate(RewriteOutboundPaths(ex.Message, outboundReplacements)) + SessionResetNote,
                 Completed = false
             };
         }
+
+        if (result.TimedOut)
+        {
+            LogCommandTimedOut(request.Command, request.TimeoutSeconds);
+            return new ShellCommandResponse
+            {
+                ExitCode = -1,
+                Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
+                Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]")
+                    + (result.SessionReset ? SessionResetNote : ""),
+                Completed = false
+            };
+        }
+
+        LogCommandCompleted(request.Command, result.ExitCode);
+        return new ShellCommandResponse
+        {
+            ExitCode = result.ExitCode,
+            Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
+            Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements)),
+            Completed = true
+        };
     }
 
     // ── Confinement ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Null when the call may run: no confinement, or bubblewrap works and the extra read-only paths
-    /// are absolute. Otherwise the reason the call fails.
+    /// Null when the call may run: no confinement, or the confining backend works and the extra
+    /// read-only paths are absolute. Otherwise the reason the call fails.
     /// </summary>
     private string? ValidateConfinement()
     {
-        if (Confinement.Mode != ShellConfinementMode.Bubblewrap)
-            return null;
-
-        var relative = Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/'));
+        var sandbox = ActiveSandbox;
+        var relative = sandbox switch
+        {
+            { UsesVirtualPaths: true } or SeatbeltShellSandbox => Confinement.ReadOnlyPaths.FirstOrDefault(p => !p.StartsWith('/')),
+            AppContainerShellSandbox => AppContainerShellSandbox.FirstUnqualifiedPath(Confinement.ReadOnlyPaths),
+            _ => null,
+        };
         if (relative is not null)
             return $"Confinement misconfigured: {ShellToolOptions.SectionName}:Confinement:ReadOnlyPaths holds '{relative}', "
                 + "which is not an absolute path. The command did not run.";
 
-        var bubblewrap = Bubblewrap();
-        if (bubblewrap.IsAvailable)
+        var availability = sandbox.Availability;
+        if (availability.IsAvailable)
             return null;
 
-        LogConfinementUnavailable(bubblewrap.Reason ?? "");
-        return ConfinementUnavailable(bubblewrap.Reason).Stderr;
+        LogConfinementUnavailable(availability.Reason ?? "");
+        return ConfinementUnavailable(availability.Reason).Stderr;
     }
 
-    private static ShellCommandResponse ConfinementUnavailable(string? reason) => new()
+    /// <summary>The failure of a call whose confinement cannot run, with the way to turn it off.</summary>
+    private ShellCommandResponse ConfinementUnavailable(string? reason) => new()
     {
         ExitCode = -1,
         Stdout = "",
-        Stderr = $"Confinement unavailable: {ShellToolOptions.SectionName}:Confinement:Mode is Bubblewrap, "
-            + $"but {reason}. The command did not run.",
+        Stderr = $"Confinement unavailable: {ShellToolOptions.SectionName}:Confinement:Mode is {Confinement.Mode}, "
+            + $"but {reason}. The command did not run. Install the backend, or set "
+            + $"{ShellToolOptions.SectionName}:Confinement:Mode = None to run shell commands unconfined.",
         Completed = false
     };
 
@@ -1042,28 +1010,6 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         => char.IsWhiteSpace(c) || c is '"' or '\'' or '(' or ')' or ':' or ';' or ',';
 
     /// <summary>
-    /// Replaces the inherited environment of the child process with
-    /// <see cref="s_propagatedEnvironmentVariables"/>, so a command the allowlist permits
-    /// can read its own environment without reading the runner's secrets.
-    /// </summary>
-    private static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
-    {
-        startInfo.Environment.Clear();
-
-        foreach (var name in s_propagatedEnvironmentVariables)
-        {
-            var value = Environment.GetEnvironmentVariable(name);
-            if (!string.IsNullOrEmpty(value))
-                startInfo.Environment[name] = value;
-        }
-
-        // Set, not propagated: the child must stay quiet and must not start a telemetry
-        // upload of its own on the first `dotnet` invocation of a crew run.
-        startInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-        startInfo.Environment["DOTNET_NOLOGO"] = "1";
-    }
-
-    /// <summary>
     /// Validates that a <c>git</c> command uses a read-only subcommand
     /// (<c>status</c>/<c>log</c>/<c>diff</c>/<c>show</c>) AND that none of its options
     /// breaks that promise. The first non-option token after <c>git</c> is treated as the
@@ -1167,27 +1113,6 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return value;
 
         return value[..MaxOutputLength] + "\n[Output truncated]";
-    }
-
-    /// <summary>Attempts to kill a process and its children.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup: Process.Kill can throw if the process has already exited or is inaccessible; a failed kill must not propagate over the primary result.")]
-    private static void KillProcess(Process process)
-    {
-        try
-        {
-            process.Kill(entireProcessTree: true);
-        }
-        catch
-        {
-            // Process may have already exited
-        }
-    }
-
-    /// <summary>Reads remaining stream content with a short timeout fallback.</summary>
-    private static async Task<string> ReadWithFallbackAsync(StreamReader reader)
-    {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        return await reader.ReadToEndAsync(cts.Token).ConfigureAwait(false);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shell command completed: {Command} (exit code: {ExitCode})")]

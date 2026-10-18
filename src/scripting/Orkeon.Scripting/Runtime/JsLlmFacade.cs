@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
@@ -40,6 +41,11 @@ public sealed partial class JsLlmFacade
     private readonly string _crewName;
     private readonly string _agentName;
     private readonly UnknownAgentTools? _unknownTools;
+
+    // The run scope of the agent body this facade belongs to (JsAgentContext), attached once and
+    // ended by the context's Dispose; null for a context outside any agent body (a crew hook, a
+    // script's top level), where each act() opens and ends its own.
+    private AgentRunScope? _agentRunScope;
 
     /// <summary>Builds the facade of one execution context.</summary>
     /// <param name="engine">The engine the facade's JS functions belong to.</param>
@@ -101,6 +107,13 @@ public sealed partial class JsLlmFacade
 
     /// <summary>Releases the linked interrupt source. Called by <see cref="JsAgentContext.Dispose"/>.</summary>
     internal void DisposeInterruptSource() => _cts.Dispose();
+
+    /// <summary>
+    /// Attaches the run scope of the agent body that owns this facade: every <c>act</c> of the body
+    /// runs its tools inside it, so what they register lives until the body's attempt closes.
+    /// Called by the <see cref="JsAgentContext"/> constructor.
+    /// </summary>
+    internal void AttachRunScope(AgentRunScope scope) => _agentRunScope = scope;
 
     // chat {model} spans with the gen_ai.* attributes (Orkeon.Constants.Llm.GenAiAttributes),
     // like the C# execution loop: one backend view for both runtimes.
@@ -893,12 +906,18 @@ public sealed partial class JsLlmFacade
     /// the deltas it observes go to the native sink and the session's channel, never to the
     /// script directly.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000", Justification = "The act-owned run scope is ended in the finally on every path; the analyzer does not follow the conditional ownership (null when the agent body owns the scope).")]
     private async Task<object> RunActAsync(ActSession session)
     {
         var completedIterations = 0;
         using var usage = BeginUsageScope("act");
+        // The tools this loop runs see the agent's run scope (AgentRunScope.Current): the agent
+        // body's when there is one, else a scope of this act() alone, ended in the finally.
+        var ownedRunScope = _agentRunScope is null ? AgentRunScope.Create(agentRole: _agentName) : null;
+        IDisposable? enteredRunScope = null;
         try
         {
+            enteredRunScope = (_agentRunScope ?? ownedRunScope!).Enter();
             if (_provider is null)
                 return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0 };
 
@@ -959,6 +978,9 @@ public sealed partial class JsLlmFacade
             // Return, interrupt, throw or cancellation: the pump reading `deltas` must always
             // see the end of the channel, or `act` would never settle.
             session.CompleteDeltas();
+            enteredRunScope?.Dispose();
+            if (ownedRunScope is not null)
+                await ownedRunScope.DisposeAsync().ConfigureAwait(false);
         }
 
         return new

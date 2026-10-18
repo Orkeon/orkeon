@@ -4,6 +4,7 @@ using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Telemetry;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.Task;
 
 namespace Orkeon.Application.Agent
@@ -122,6 +123,13 @@ namespace Orkeon.Application.Agent
 
             using var hubCallerScope = _hubCallerContext?.Push(
                 new EventHub.EventHubCaller(context.CrewId, agent.Id));
+
+            // The run's own scope: what the agent creates while it runs (a shell session) is
+            // released when this method leaves, on success, failure and cancellation alike. A
+            // coworker delegated from inside this run reaches here again and gets its own scope,
+            // nested in this one.
+            var runScope = AgentRunScope.Begin(agent.Id.ToString(), agent.Role.Value);
+            await using var runScopeEnd = runScope.ConfigureAwait(false);
 
             var startTime = DateTime.UtcNow;
             var domainTask = CastToDomainTask(task);
