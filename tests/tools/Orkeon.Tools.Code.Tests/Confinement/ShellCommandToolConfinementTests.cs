@@ -4,6 +4,7 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Code.Confinement;
 
 namespace Orkeon.Tools.Code.Tests.Confinement;
@@ -127,30 +128,35 @@ public sealed class ShellCommandToolConfinementTests : IDisposable
     }
 
     /// <summary>
-    /// The whole wiring, with a stand-in for <c>bwrap</c> that records the arguments it is given: each
-    /// mount at its virtual path with its rights, the folder without rights covered, the virtual working
-    /// directory, then the command with its virtual arguments untouched.
+    /// The whole wiring, with a stand-in for <c>bwrap</c> that records the arguments it is given, then
+    /// runs the session's shell on the host while keeping a copy of what the tool writes to it: each
+    /// mount at its virtual path with its rights, the folder without rights covered, the shell reading
+    /// its input; then the command, its virtual working directory and arguments quoted, untouched.
     /// </summary>
     [Fact]
     public async Task ShouldStartBubblewrapWithTheViewOfTheMountsAndTheVirtualCommand()
     {
         Assert.SkipWhen(s_isWindows, "The stand-in for bwrap is a POSIX shell script.");
         var recorded = Path.Combine(_tempDir, "bwrap-arguments.txt");
+        var input = Path.Combine(_tempDir, "bwrap-input.txt");
         var standIn = Path.Combine(_tempDir, "bwrap");
-        await File.WriteAllTextAsync(standIn, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{recorded}'\n", Ct);
+        await File.WriteAllTextAsync(standIn, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{recorded}'\ntee '{input}' | /bin/sh -s\n", Ct);
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(standIn, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         using var tool = Confined(() => BubblewrapAvailability.Available(standIn));
 
+        // The stand-in does not build the view: what the command does on the host is not the point.
         var dict = Unpack(await tool.CallAsync(Request("cat /docs/a.txt", workingDirectory: "/workspace"), Ct));
 
-        Assert.Equal(0, (int)dict["exit_code"]!);
+        Assert.True((bool)dict["completed"]!);
         var arguments = (await File.ReadAllLinesAsync(recorded, Ct)).ToList();
-        Assert.Equal(["--", "cat", "/docs/a.txt"], arguments.TakeLast(3));
+        Assert.Equal(["--", "/bin/sh", "-s"], arguments.TakeLast(3));
         Assert.Contains($"--ro-bind-try|{_docs}|/docs", Joined(arguments), StringComparison.Ordinal);
         Assert.Contains($"--bind-try|{_workspace}|/workspace", Joined(arguments), StringComparison.Ordinal);
         Assert.Contains("--tmpfs|/workspace/secrets|--remount-ro|/workspace/secrets", Joined(arguments), StringComparison.Ordinal);
-        Assert.Contains("--chdir|/workspace|--", Joined(arguments), StringComparison.Ordinal);
+        Assert.Contains("--chdir|/|--", Joined(arguments), StringComparison.Ordinal);
+        await Polling.WaitUntilAsync(() => File.ReadAllText(input).Contains("exec 'cat'", StringComparison.Ordinal));
+        Assert.Contains("( cd '/workspace' && exec 'cat' '/docs/a.txt' )", await File.ReadAllTextAsync(input, Ct), StringComparison.Ordinal);
     }
 
     private static string Joined(IEnumerable<string> arguments) => string.Join('|', arguments);

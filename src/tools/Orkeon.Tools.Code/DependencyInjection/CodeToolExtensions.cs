@@ -1,10 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Tools.Code.Sessions;
 
 namespace Orkeon.Tools.Code.DependencyInjection;
 
@@ -50,6 +52,11 @@ public static class CodeToolExtensions
             .Configure<IServiceProvider>((options, provider) =>
                 provider.GetService<IConfiguration>()?.GetSection(ShellToolOptions.SectionName).Bind(options))
             .ValidateOnStart();
+        // One shell session per agent run: the manager is stateless (the sessions live in each run's
+        // AgentRunScope) and the sandboxes hold no session, so all three are singletons.
+        services.TryAddSingleton<ShellSessionManager>();
+        services.TryAddSingleton<UnconfinedShellSandbox>();
+        services.TryAddSingleton<BubblewrapShellSandbox>();
         services.AddTransient<IBaseTool>(sp =>
         {
             var fs = sp.GetRequiredService<IFileSystemService>();
@@ -59,6 +66,10 @@ public static class CodeToolExtensions
                 allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands))
             {
                 Confinement = shell.Confinement,
+                Sessions = sp.GetRequiredService<ShellSessionManager>(),
+                Sandbox = shell.Confinement.Mode == ShellConfinementMode.Bubblewrap
+                    ? sp.GetRequiredService<BubblewrapShellSandbox>()
+                    : sp.GetRequiredService<UnconfinedShellSandbox>(),
             };
         });
         // SecureCodeInterpreterTool is registered via AddOrkeonCodeSandbox() in InfrastructureExtensions

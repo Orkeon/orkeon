@@ -12,3 +12,7 @@ Orkeon.Tools.Code.ShellConfinementOptions.Mode.set -> void
 Orkeon.Tools.Code.ShellConfinementOptions.ReadOnlyPaths.get -> System.Collections.ObjectModel.Collection<string!>!
 Orkeon.Tools.Code.ShellConfinementOptions.ShellConfinementOptions() -> void
 Orkeon.Tools.Code.ShellToolOptions.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!
+Orkeon.Tools.Code.Sessions.ShellSessionException
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException() -> void
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message) -> void
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message, System.Exception! innerException) -> void
