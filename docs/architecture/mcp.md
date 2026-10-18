@@ -128,6 +128,11 @@ The client introduces itself as `Orkeon` `1.0.0`. The HTTP transport sends no
 `Authorization` header, so a server behind authentication is out of reach (see the
 limitations below).
 
+**Nothing is expanded in the section.** `Command`, `Args` and `Env` pass as written, and the
+server inherits the environment Orkeon runs in: a `${NAME}` or `%NAME%` reference in `Command`,
+`Args`, `Url` or an `Env` value refuses the start, before any server connects, with its correction
+([a variable reference is never expanded](../reference/configuration.md#a-variable-reference-is-never-expanded)).
+
 **The shared runner host honours the section on its own (STUDIO-21).** `orkeon run`
 — and every runner built on `RunnerHost` — calls `AddOrkeonMcp` when `MCP:Servers`
 declares at least one server and `MCP:Enabled` is not `false`, then connects every

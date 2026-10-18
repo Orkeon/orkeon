@@ -1,3 +1,4 @@
+using Orkeon.Application.Configuration;
 using System.Globalization;
 using System.Text.Json;
 
@@ -238,7 +239,7 @@ internal sealed class SettingsFileGuard
     private static string Unknown(string? parent, string name, Node node)
     {
         var known = node.Keys();
-        var closest = SettingsValidation.Closest(name, node.Named.Keys);
+        var closest = ClosestName.Of(name, node.Named.Keys);
         if (parent is null)
         {
             return $"{name} is no section of the settings catalogue."

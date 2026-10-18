@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Tests.Doubles;
 using Orkeon.Studio.Core.Validation;
@@ -43,16 +44,38 @@ public sealed class McpValidationTests
         Assert.Contains("grpc", Find(messages, ValidationCodes.McpTransportUnknown)!.Text, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void A_secret_written_in_the_environment_block_is_reported_as_information_unless_it_names_a_variable()
+    [Theory]
+    [Trait("BR", "CH-15")]
+    [InlineData("${GITHUB_TOKEN}")]
+    [InlineData("%APPDATA%")]
+    public void ShouldReportAnError_WhenAnMcpEnvEntryIsAReference(string value)
     {
-        var clear = Validate("""{ "MCP": { "Servers": { "s": { "Command": "x", "Env": { "GITHUB_TOKEN": "ghp_abc", "NODE_ENV": "production" } } } } }""");
-        var named = Validate("""{ "MCP": { "Servers": { "s": { "Command": "x", "Env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" } } } } }""");
+        const string path = "MCP:Servers:s:Env:GITHUB_TOKEN";
+        var json = $$"""{ "MCP": { "Servers": { "s": { "Command": "x", "Env": { "GITHUB_TOKEN": "{{value}}" } } } } }""";
 
-        var message = Assert.Single(clear, m => m.Code == ValidationCodes.McpEnvLooksSecret);
+        var messages = Validate(json).Where(m => m.Path == path).ToList();
+
+        var error = Assert.Single(messages);
+        Assert.Equal(ValidationSeverity.Error, error.Severity);
+        Assert.Contains(
+            OperatorMessages.SettingPlaceholderRefused(path, SettingPlaceholders.CorrectionFor(path)!),
+            error.Text,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(messages, m => m.Code == ValidationCodes.McpEnvLooksSecret);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-15")]
+    [InlineData("ghp_abc")]
+    [InlineData("env:X")]
+    [InlineData("ORKEON_X")]
+    public void ShouldReportThePlainTextInformation_WhenAnEnvValueLooksLikeASecret(string value)
+    {
+        var messages = Validate($$"""{ "MCP": { "Servers": { "s": { "Command": "x", "Env": { "GITHUB_TOKEN": "{{value}}", "NODE_ENV": "production" } } } } }""");
+
+        var message = Assert.Single(messages, m => m.Code == ValidationCodes.McpEnvLooksSecret);
         Assert.Equal(ValidationSeverity.Information, message.Severity);
         Assert.Equal("MCP:Servers:s:Env:GITHUB_TOKEN", message.Path);
-        Assert.Null(Find(named, ValidationCodes.McpEnvLooksSecret));
     }
 
     [Fact]

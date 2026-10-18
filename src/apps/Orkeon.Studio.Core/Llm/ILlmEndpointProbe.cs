@@ -91,6 +91,9 @@ public enum LlmProbeFailure
     /// <summary>The base URL is not http(s) (<see cref="LlmProbeResult.Detail"/> holds it).</summary>
     NotHttpUrl,
 
+    /// <summary>The run's reading refuses the address (a vendor's /anthropic path).</summary>
+    AddressRefused,
+
     /// <summary>Azure OpenAI: deployments, no catalogue to probe.</summary>
     NoCatalogue,
 
@@ -143,6 +146,9 @@ public sealed record LlmProbeResult
     /// innermost cause, or the reason a caller gave to <see cref="Unreachable"/>.
     /// </summary>
     public string? Detail { get; init; }
+
+    /// <summary>The vendor the run's reading names for <see cref="LlmProbeFailure.AddressRefused"/>.</summary>
+    public string? Vendor { get; init; }
 
     /// <summary>
     /// How many models the catalogue listed, when its answer could be parsed; derived from the names

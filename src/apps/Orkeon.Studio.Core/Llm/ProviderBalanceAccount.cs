@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
@@ -13,7 +14,7 @@ namespace Orkeon.Studio.Core.Llm;
 /// part of it because a provider can run two platforms whose keys do not cross: a key of Kimi's
 /// .cn platform is refused by the .ai host.
 /// </summary>
-/// <param name="Provider">The provider <see cref="LlmProviderDetector"/> infers from the endpoint.</param>
+/// <param name="Provider">The provider <see cref="LlmEndpointReading"/> reads from the endpoint.</param>
 /// <param name="Host">The endpoint's host, as <see cref="Uri"/> normalizes it; empty when the endpoint does not parse.</param>
 /// <param name="KeyVariable">
 /// The variable the key is read from: the profile's own; empty when the profile names none — an
@@ -27,7 +28,7 @@ public sealed record ProviderBalanceAccount(string Provider, string Host, string
         Justification = "The input is the raw 'BaseUrl' field of a profile, which may be half-typed; " +
                         "an endpoint that does not parse is an account with no host, not an exception.")]
     public static ProviderBalanceAccount For(string? baseUrl, string? keyVariable) => new(
-        LlmProviderDetector.Detect(baseUrl),
+        StudioEndpointReading.ProviderOf(baseUrl),
         Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint) ? endpoint.Host : string.Empty,
         string.IsNullOrWhiteSpace(keyVariable) ? string.Empty : keyVariable.Trim());
 
@@ -48,13 +49,8 @@ public sealed record ProviderBalanceAccount(string Provider, string Host, string
         Justification = "The input is the raw 'BaseUrl' field of a profile, which may be half-typed.")]
     public static bool HasAccount(string? baseUrl)
     {
-        if (!Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint))
-            return false;
-
-        if (endpoint.IsLoopback || string.Equals(endpoint.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        return LlmProviderDetector.Detect(baseUrl) is not (LlmProviderKeys.Ollama or LlmProviderKeys.DockerModelRunner);
+        return StudioEndpointReading.Of(baseUrl) is { IsLocal: false, Notice: not LlmEndpointNotice.Refused } reading
+            && reading.ProviderKey is not (LlmProviderKeys.Ollama or LlmProviderKeys.DockerModelRunner);
     }
 }
 

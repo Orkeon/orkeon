@@ -137,6 +137,7 @@ public static partial class RunnerExecution
                 {
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
+                    InputDirectories = target.IsScript ? [target.ConfigDir] : [],
                     SelectedMountIds = selection.SelectedMountIds,
                     CrewMountReferences = selection.CrewMountReferences,
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
@@ -631,7 +632,8 @@ public static partial class RunnerExecution
             ids,
             references,
             settingsLabel,
-            offered);
+            offered,
+            withdrawsAmbiguousRoots: offered == OfferedMountSelectors.None);
 
         foreach (var warning in resolved.Warnings)
             error.WriteLine("WARNING: " + warning);

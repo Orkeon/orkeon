@@ -711,6 +711,15 @@ public static class StudioStringKeys
     /// <summary>"The custom preset requires both a base URL and a model."</summary>
     public const string PresetErrorCustomIncomplete = "Studio.Settings.ErrorCustomIncomplete";
 
+    /// <summary>"The '{0}' preset contradicts the base URL, which a run reads as '{1}'. ..."</summary>
+    public const string PresetErrorReadingContradicts = "Studio.Settings.ErrorReadingContradicts";
+
+    /// <summary>"Read as: {0}" — the line under a model address.</summary>
+    public const string ProfileEndpointReadAs = "Studio.Settings.EndpointReadAs";
+
+    /// <summary>"This address is read as {0}, not as Ollama: ..." — an Ollama card pointing elsewhere.</summary>
+    public const string ProfileOllamaReadElsewhere = "Studio.Settings.OllamaReadElsewhere";
+
     /// <summary>"Unknown preset '{0}'. Supported: {1}."</summary>
     public const string PresetErrorUnknown = "Studio.Settings.ErrorUnknown";
 
@@ -2517,6 +2526,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT"] = "An added folder line is empty.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-INPUTS"] = "Two conflicting input sources are set — keep one.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER"] = "The API key is written ${NAME}, which the engine never replaces: name its variable in ApiKeyEnvVar.",
+        ["Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER"] = "A setting holds a variable reference (${NAME} or %NAME%), which the engine never replaces: it would use the text as written. Write the value, or the name alone, as the message says.",
+        ["Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT"] = "A model address is refused or left silent: an address under another vendor's /anthropic path is refused, and one with no path is read as an OpenAI-compatible server at its root.",
         ["Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME"] = "A model profile is named 'default', the Llm section's own name: the engine refuses to start. Rename it.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-ID"] = "Two folders carry the same identifier: an identifier names one folder.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED"] = "Several entries share one internal name: a team picks one per run, and the same folder twice is one too many.",
@@ -2592,6 +2603,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProviderCustomShortDescription] = "any endpoint: type the URL and the model",
         [StudioStringKeys.ProviderNoneShortDescription] = "test the install, no model",
         [StudioStringKeys.PresetErrorCustomIncomplete] = "The custom preset requires both a base URL and a model.",
+        [StudioStringKeys.PresetErrorReadingContradicts] = "The '{0}' preset contradicts the base URL, which a run reads as '{1}'. Choose the preset that matches the address, or change the address.",
+        [StudioStringKeys.ProfileEndpointReadAs] = "Read as: {0}",
+        [StudioStringKeys.ProfileOllamaReadElsewhere] = "This address is read as {0}, not as Ollama: a run would not talk to Ollama here. Use the Ollama port 11434, or pick another card.",
         [StudioStringKeys.PresetErrorUnknown] = "Unknown preset '{0}'. Supported: {1}.",
         [StudioStringKeys.PresetGuidanceNone] =
             "No LLM configured: runs will use the <undefined-llm> echo provider. " +

@@ -13,7 +13,7 @@ using Orkeon.Tools.Email.Administration;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options shared by the <c>orkeon email</c> verbs.</summary>
-internal abstract class EmailCommandOptionsBase
+internal abstract class EmailCommandOptionsBase : CliOptions
 {
     /// <summary>Path to appsettings.json holding <c>Orkeon:Tools:Email</c>.</summary>
     [Option('s', "settings", Required = false,
@@ -92,20 +92,14 @@ internal static class EmailCommand
     public static async Task<int> DispatchAsync(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        using var parser = new Parser(s =>
+        return await CliGrammar.DispatchAsync("email", args, [typeof(EmailAccountsCommandOptions), typeof(EmailLoginCommandOptions), typeof(EmailLogoutCommandOptions), typeof(EmailCheckCommandOptions)], options => options switch
         {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<EmailAccountsCommandOptions, EmailLoginCommandOptions, EmailLogoutCommandOptions, EmailCheckCommandOptions>(args)
-            .MapResult(
-                (EmailAccountsCommandOptions o) => ExecuteAccountsAsync(o),
-                (EmailLoginCommandOptions o) => ExecuteLoginAsync(o),
-                (EmailLogoutCommandOptions o) => ExecuteLogoutAsync(o),
-                (EmailCheckCommandOptions o) => ExecuteCheckAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            EmailAccountsCommandOptions o => ExecuteAccountsAsync(o),
+            EmailLoginCommandOptions o => ExecuteLoginAsync(o),
+            EmailLogoutCommandOptions o => ExecuteLogoutAsync(o),
+            EmailCheckCommandOptions o => ExecuteCheckAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     /// <summary>Lists the accounts.</summary>

@@ -652,6 +652,15 @@
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve">
     <value>El preset personalizado requiere a la vez una URL base y un modelo.</value>
   </data>
+  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve">
+    <value>El preset «{0}» contradice la URL base, que una ejecución lee como «{1}». Elija el preset que corresponde a la dirección, o cambie la dirección.</value>
+  </data>
+  <data name="Studio.Settings.EndpointReadAs" xml:space="preserve">
+    <value>Leída como: {0}</value>
+  </data>
+  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve">
+    <value>Esta dirección se lee como {0}, no como Ollama: una ejecución no hablaría con Ollama aquí. Use el puerto 11434 de Ollama, o elija otra tarjeta.</value>
+  </data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve">
     <value>Preset «{0}» desconocido. Compatibles: {1}.</value>
   </data>
@@ -1589,6 +1598,12 @@
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>La clave de API está escrita ${NOMBRE}, que el motor nunca sustituye: indique su variable en ApiKeyEnvVar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve">
+    <value>Un ajuste contiene una referencia de variable (${NOMBRE} o %NOMBRE%), que el motor nunca sustituye: usaría el texto tal cual. Escriba el valor, o solo el nombre, como indica el mensaje.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
+    <value>Una dirección de modelo se rechaza o queda muda: una dirección bajo la ruta /anthropic de otro proveedor se rechaza, y una dirección sin ruta se lee como un servidor compatible con OpenAI en su raíz.</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
     <value>Un perfil de modelo se llama «default», el nombre propio de la sección Llm: el motor se niega a arrancar. Cámbiele el nombre.</value>

@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Hosting;
 
@@ -116,13 +118,17 @@ internal static class SettingsValidation
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var references = ReferenceRefusals(configuration);
+        if (references.Count > 0)
+            return references;
+
         var declarations = services.GetServices<SettingsDeclaration>().ToList();
         var refusals = new List<string>();
         EvaluateDeclaredOptions(services, declarations, refusals);
         if (refusals.Count == 0)
             RunStartupValidator(services, refusals);
 
-        var configuration = services.GetRequiredService<IConfiguration>();
         refusals.AddRange(UnknownSectionNames(configuration));
         refusals.AddRange(UnknownKeys(configuration, declarations));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
@@ -284,6 +290,33 @@ internal static class SettingsValidation
     }
 
     /// <summary>
+    /// The settings of <see cref="SettingPlaceholders.Settings"/> that hold a variable reference in the
+    /// configuration as it is read: a value a higher layer covers is not the one read, so not judged.
+    /// </summary>
+    private static List<string> ReferenceRefusals(IConfiguration configuration)
+    {
+        var pending = new Stack<IConfigurationSection>(configuration.GetChildren());
+        var refusals = new List<string>();
+        while (pending.Count > 0)
+        {
+            var section = pending.Pop();
+            var children = section.GetChildren().ToList();
+            if (children.Count > 0)
+            {
+                foreach (var child in children)
+                    pending.Push(child);
+            }
+            else if (SettingReference.Phrase(section.Path, section.Value) is { } refusal)
+            {
+                refusals.Add(refusal);
+            }
+        }
+
+        refusals.Sort(StringComparer.Ordinal);
+        return refusals;
+    }
+
+    /// <summary>
     /// A child of a container of <see cref="SettingsSections"/> that is no section Orkeon reads —
     /// <c>Orkeon:Guardain</c> —, with the closest known name. The root stays open: it also holds the
     /// environment variables without a prefix.
@@ -308,7 +341,7 @@ internal static class SettingsValidation
                 if (known.Contains(child.Key, StringComparer.OrdinalIgnoreCase))
                     continue;
 
-                var closest = Closest(child.Key, known);
+                var closest = ClosestName.Of(child.Key, known);
                 yield return $"{child.Path} is not a section Orkeon reads: {container} holds {string.Join(", ", known)}."
                              + (closest is null ? string.Empty : $" Did you mean {container}:{closest}?");
             }
@@ -417,7 +450,7 @@ internal static class SettingsValidation
             return $"{child.Path} is not a setting: {section.Path} is a single value.";
 
         var known = shape.Named.Keys.ToList();
-        var closest = Closest(child.Key, known);
+        var closest = ClosestName.Of(child.Key, known);
         return $"{child.Path} is not a setting: {section.Path} carries {string.Join(", ", known)}."
                + (closest is null ? string.Empty : $" Did you mean {section.Path}:{closest}?")
                + ListedBy(section.Path);
@@ -432,53 +465,4 @@ internal static class SettingsValidation
         SettingsCatalog.Complete.SectionCovering(path) is { } section
             ? $" `orkeon settings {section.Path}` lists its keys."
             : string.Empty;
-
-    /// <summary>
-    /// The known name <paramref name="name"/> is likely a misspelling of — two edits away at most, a
-    /// third of its length for a long one, a swap of two neighbours counting as one —, or null.
-    /// </summary>
-    internal static string? Closest(string name, IEnumerable<string> known)
-    {
-        var budget = Math.Max(2, name.Length / 3);
-        string? best = null;
-        var bestDistance = int.MaxValue;
-        foreach (var candidate in known)
-        {
-            var distance = Distance(name.ToUpperInvariant(), candidate.ToUpperInvariant());
-            if (distance <= budget && distance < bestDistance)
-            {
-                best = candidate;
-                bestDistance = distance;
-            }
-        }
-
-        return best;
-    }
-
-    /// <summary>The optimal string alignment distance: insertions, deletions, substitutions, adjacent swaps.</summary>
-    private static int Distance(string a, string b)
-    {
-        var d = new int[a.Length + 1][];
-        for (var i = 0; i <= a.Length; i++)
-        {
-            d[i] = new int[b.Length + 1];
-            d[i][0] = i;
-        }
-
-        for (var j = 0; j <= b.Length; j++)
-            d[0][j] = j;
-
-        for (var i = 1; i <= a.Length; i++)
-        {
-            for (var j = 1; j <= b.Length; j++)
-            {
-                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
-                d[i][j] = Math.Min(Math.Min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
-                if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1])
-                    d[i][j] = Math.Min(d[i][j], d[i - 2][j - 2] + 1);
-            }
-        }
-
-        return d[a.Length][b.Length];
-    }
 }

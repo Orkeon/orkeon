@@ -108,6 +108,7 @@ public sealed class MountSelectionGuardTests : IDisposable
 
     /// <summary>D-04: two ids, no choice — one line, before "Using settings", naming both.</summary>
     [Fact]
+    [Trait("BR", "CH-12")]
     public async Task Two_entries_of_one_root_with_nothing_selecting_one_are_refused_in_one_line_before_using_settings()
     {
         var a = SubDir("a");
@@ -134,6 +135,7 @@ public sealed class MountSelectionGuardTests : IDisposable
     /// the two ways it has - <c>--mount-id</c> and <c>--mount</c> - and not the crew's.
     /// </summary>
     [Fact]
+    [Trait("BR", "CH-12")]
     public async Task For_a_script_the_selection_line_names_the_mount_id_and_the_mount_only()
     {
         var a = SubDir("a");

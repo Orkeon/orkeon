@@ -12,6 +12,11 @@ using static Orkeon.Tests.Shared.Constants.TestUrlConstants;
 
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
+// OLLAMA_BASE_URL is process-wide: this class never runs beside another test touching it.
+[CollectionDefinition("OllamaBaseUrlEnvironment", DisableParallelization = true)]
+public sealed class OllamaBaseUrlEnvironmentCollection;
+
+[Collection("OllamaBaseUrlEnvironment")]
 public class OllamaLlmProviderTests
 {
     #region Test Doubles
@@ -463,6 +468,53 @@ public class OllamaLlmProviderTests
 
         // Act & Assert
         Assert.Equal(ProviderOllama, provider.Name);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ShouldCallOllamaAtItsRoot_WhenTheAddressEndsWithV1(bool fromEnvironment, bool chat)
+    {
+        // Arrange
+        const string address = "http://localhost:11434/v1";
+        using var handler = new TestHttpMessageHandler();
+        handler.SetupResponse(HttpStatusCode.OK, CreateOllamaSuccessResponse("Response"));
+        var httpClientFactory = new TestHttpClientFactory();
+        httpClientFactory.RegisterClient("OllamaLlmProvider", new HttpClient(handler));
+
+        var config = LlmConfig.Create(ModelLlama2) with
+        {
+            MaxRetries = 0,
+            BaseUrl = fromEnvironment ? null : new Uri(address),
+        };
+        var previous = Environment.GetEnvironmentVariable("OLLAMA_BASE_URL");
+        Environment.SetEnvironmentVariable("OLLAMA_BASE_URL", fromEnvironment ? address : null);
+        try
+        {
+            using var provider = new OllamaLlmProvider(config, httpClientFactory);
+
+            // Act
+            if (chat)
+            {
+                await provider.ChatAsync([new LlmMessage { Role = "user", Content = TestPrompt }, new LlmMessage { Role = "tool", Content = "42", ToolCallId = "call-1" }], cancellationToken: TestContext.Current.CancellationToken);
+            }
+            else
+            {
+                await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OLLAMA_BASE_URL", previous);
+        }
+
+        // Assert
+        Assert.Single(handler.Requests);
+        Assert.Equal(chat ? "http://localhost:11434/api/chat" : "http://localhost:11434/api/generate",
+            handler.Requests[0].RequestUri?.ToString());
     }
 
     [Fact]

@@ -18,7 +18,7 @@ using Orkeon.Tools.Rag;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options shared by the <c>orkeon rag</c> verbs (host bootstrap surface).</summary>
-internal abstract class RagCommandOptionsBase
+internal abstract class RagCommandOptionsBase : CliOptions
 {
     /// <summary>Path to appsettings.json (provides Llm/Embedding sections).</summary>
     [Option('s', "settings", Required = false,
@@ -183,19 +183,13 @@ internal static class RagCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(s =>
+        return await CliGrammar.DispatchAsync("rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions), typeof(RagEvalCommandOptions)], options => options switch
         {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<RagIngestCommandOptions, RagSearchCommandOptions, RagEvalCommandOptions>(args)
-            .MapResult(
-                (RagIngestCommandOptions o) => ExecuteIngestAsync(o),
-                (RagSearchCommandOptions o) => ExecuteSearchAsync(o),
-                (RagEvalCommandOptions o) => ExecuteEvalAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            RagIngestCommandOptions o => ExecuteIngestAsync(o),
+            RagSearchCommandOptions o => ExecuteSearchAsync(o),
+            RagEvalCommandOptions o => ExecuteEvalAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     /// <summary>Runs the ingestion described by <paramref name="options"/>; returns the CLI exit code.</summary>
@@ -500,20 +494,14 @@ internal static class RagCommand
 
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
-        // The corpus root is the verb's primary input (parity with the run verb's
-        // /script mount): when it lives outside the process cwd (tests, `--mount`
-        // scenarios), it must be whitelisted regardless of --allow-external-mounts.
-        var processCwd = Directory.GetCurrentDirectory();
-        // Containment, not spelling — see RunCommand: ~/proj-old is not inside ~/proj.
-        var implicitlyAllow = options.EffectiveAllowExternalMounts
-            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(cwd, processCwd);
-
         return RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan
             {
                 CliMounts = cliMounts,
-                AllowExternalMounts = implicitlyAllow,
+                // The corpus root is the verb's input: read without the flag.
+                InputDirectories = [cwd],
+                AllowExternalMounts = options.EffectiveAllowExternalMounts,
             },
             configureLogging: verbosity > 0
                 ? (ctx, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity, ctx.Configuration)

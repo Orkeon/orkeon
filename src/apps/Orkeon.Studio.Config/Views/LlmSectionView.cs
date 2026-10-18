@@ -35,6 +35,7 @@ internal sealed class LlmSectionView : SectionView
     private readonly TextField _streamIdle;
     private readonly TextField _thinking;
     private readonly Label _provider;
+    private readonly Label _notice;
     private readonly Label _apiKeyWarning;
     private readonly Button _testConnection;
     private readonly Label _testResult;
@@ -57,7 +58,8 @@ internal sealed class LlmSectionView : SectionView
 
         _model = FormLayout.AddField(this, 0, "Model", _form.Model);
         _baseUrl = FormLayout.AddField(this, 1, "Base URL", _form.BaseUrl);
-        _provider = FormLayout.AddText(this, 2, ProviderLine(_form.DetectedProvider));
+        _provider = FormLayout.AddText(this, 2, _form.ReadAsLine);
+        _notice = FormLayout.AddText(this, 3, _form.NoticeLine ?? "");
         _apiKeyEnvVar = FormLayout.AddField(this, 4, "API key variable (Llm:ApiKeyEnvVar)", _form.ApiKeyEnvVar);
         _apiKey = FormLayout.AddField(this, 5, "API key (stored in the file)", _form.ApiKey, secret: true);
         FormLayout.AddNote(this, 6, LlmForm.ApiKeyRecommendation);
@@ -84,7 +86,7 @@ internal sealed class LlmSectionView : SectionView
         _baseUrl.TextChanged += (_, _) =>
         {
             _form.BaseUrl = _baseUrl.Text ?? "";
-            _provider.Text = ProviderLine(_form.DetectedProvider);
+            ShowReading();
         };
 
         _apiKey.TextChanged += (_, _) =>
@@ -108,7 +110,7 @@ internal sealed class LlmSectionView : SectionView
         _timeout.Text = _form.TimeoutSeconds;
         _streamIdle.Text = _form.StreamIdleSeconds;
         _thinking.Text = _form.ThinkingEnabled;
-        _provider.Text = ProviderLine(_form.DetectedProvider);
+        ShowReading();
         ProfileLines = ProfileLinesOf(_form);
         FormLayout.SetItems(_profiles, ProfileLines);
         _ragLlmProfile.Text = _form.RagLlmProfileLine;
@@ -211,8 +213,11 @@ internal sealed class LlmSectionView : SectionView
             ? "WARNING: this key will be written in clear text into the saved file."
             : "";
 
-    private static string ProviderLine(string provider) =>
-        string.Create(CultureInfo.InvariantCulture, $"Detected provider: {provider}  (read-only — inferred from the base URL)");
+    private void ShowReading()
+    {
+        _provider.Text = _form.ReadAsLine;
+        _notice.Text = _form.NoticeLine ?? "";
+    }
 
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
@@ -231,6 +236,7 @@ internal sealed class LlmSectionView : SectionView
             _streamIdle.Dispose();
             _thinking.Dispose();
             _provider.Dispose();
+            _notice.Dispose();
             _apiKeyWarning.Dispose();
             _testConnection.Dispose();
             _testResult.Dispose();

@@ -77,6 +77,22 @@ public class DriveAccountResolverTests
         Assert.Contains(DriveAccountResolver.Resolve("a", noSecret).Problems, problem => problem.StartsWith("Auth:ClientSecretEnvVar is required", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [Trait("BR", "CH-15")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldSetTheAccountAside_WhenItsClientSecretVariableIsAReference(bool google)
+    {
+        var options = google ? TestDriveAccounts.Google() : TestDriveAccounts.OneDrive();
+        options.Auth.ClientSecretEnvVar = "${GOOGLE_CLIENT_SECRET}";
+
+        var resolution = DriveAccountResolver.Resolve("a", options);
+
+        Assert.Null(resolution.Account);
+        Assert.Contains(resolution.Problems, problem => problem.StartsWith("Auth:ClientSecretEnvVar holds a variable reference", StringComparison.Ordinal));
+        Assert.DoesNotContain(resolution.Problems, problem => problem.Contains("GOOGLE_CLIENT_SECRET", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Should_refuse_a_tenant_on_a_Google_account_and_a_malformed_tenant()
     {

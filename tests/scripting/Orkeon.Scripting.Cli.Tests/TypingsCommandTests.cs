@@ -75,6 +75,33 @@ public sealed class TypingsCommandTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(_workspace, ".orkeon")));
     }
 
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldWriteIntoTheFolder_WhenOutIsAttachedWithEquals()
+    {
+        var target = Path.Combine(_workspace, "attached");
+        using var console = new TestConsole();
+
+        var exit = await TypingsCommand.DispatchAsync(["--out=" + target], _workspace);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.True(File.Exists(Path.Combine(target, "orkeon.d.ts")));
+        Assert.True(File.Exists(Path.Combine(target, "orkeon-cli.d.ts")));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldRefuse_WhenOutIsAttachedEmpty()
+    {
+        using var console = new TestConsole();
+
+        var exit = await TypingsCommand.DispatchAsync(["--out="], _workspace);
+
+        Assert.NotEqual(Program.ExitOk, exit);
+        Assert.Contains("--out needs", console.Stderr, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(_workspace, ".orkeon")));
+    }
+
     /// <summary>The verb is reachable from the top-level dispatch.</summary>
     [Fact]
     public async Task The_verb_is_dispatched()

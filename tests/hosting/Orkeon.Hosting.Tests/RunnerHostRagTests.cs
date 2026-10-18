@@ -91,7 +91,7 @@ public sealed class RunnerHostRagTests : IDisposable
     {
         using var host = RunnerHost.Build(
             Path.Combine(_root, "appsettings.json"),
-            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_kb)}:/kb:ro"] });
+            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_kb)}:/kb:ro"], AllowExternalMounts = true });
 
         Assert.NotNull(host.Services.GetService<IRagCollectionsBootstrapper>());
         Assert.NotNull(host.Services.GetService<IKnowledgeContextAugmenter>());

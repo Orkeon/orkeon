@@ -56,6 +56,24 @@ public sealed class TelemetrySettingsRefusalTests
     }
 
     [Fact]
+    [Trait("BR", "CH-14")]
+    public void ShouldRefuseTheReference_WhenTheOtlpEndpointIsWrittenAsOne()
+    {
+        const string path = "Telemetry:OtlpEndpoint";
+        var correction = Orkeon.Constants.Configuration.SettingPlaceholders.CorrectionFor(path);
+        Assert.NotNull(correction);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>
+            {
+                [path] = "${OTLP}",
+            }));
+
+        Assert.Contains(Orkeon.Constants.Configuration.OperatorMessages.SettingPlaceholderRefused(path, correction), error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("${OTLP}", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_absolute_endpoint_is_accepted()
     {
         var services = OpenTelemetryIntegrationTestsFixture.CreateServicesWithTelemetry(new Dictionary<string, string?>

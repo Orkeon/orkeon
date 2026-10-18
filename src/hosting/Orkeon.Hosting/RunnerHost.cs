@@ -18,6 +18,7 @@ using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Telemetry;
@@ -38,6 +39,7 @@ using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.EventHub.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Rag.DependencyInjection;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Tools.Rag.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
 
@@ -61,10 +63,14 @@ public sealed record RunnerMountPlan
     /// </summary>
     public IReadOnlyList<string> InternalMounts { get; init; } = [];
 
+    /// <summary>Folders a command reads as its inputs, readable without the external-mounts opt-in.</summary>
+    public IReadOnlyList<string> InputDirectories { get; init; } = [];
+
     /// <summary>
-    /// When <see langword="true"/>, mount base paths are added to the PathSecurity whitelist
+    /// When <see langword="true"/> (<c>--allow-external-mounts</c> or the variable), the base paths of
+    /// <see cref="CliMounts"/> and <see cref="InternalMounts"/> are added to the PathSecurity whitelist
     /// (<c>AdditionalAllowedDirectories</c>), allowing mounts from directories outside the
-    /// workspace root.
+    /// workspace root. <see cref="InputDirectories"/> are whitelisted either way.
     /// </summary>
     public bool AllowExternalMounts { get; init; }
 
@@ -74,6 +80,13 @@ public sealed record RunnerMountPlan
     /// declare one virtual root; the other entries of that root are withdrawn for the run.
     /// </summary>
     public IReadOnlyList<MountId> SelectedMountIds { get; init; } = [];
+
+    /// <summary>
+    /// When <see langword="true"/>, a virtual root the settings declare several times with nothing
+    /// selecting one is withdrawn (no entry of it is mounted) instead of refusing the host: the
+    /// plan of a command that offers no selector. The runners and the REPL leave it <see langword="false"/>.
+    /// </summary>
+    public bool WithdrawsAmbiguousRoots { get; init; }
 
     /// <summary>
     /// The mounts the crew names in its definition (<c>mounts:</c>, VFS-90 D-02): each a virtual
@@ -165,6 +178,8 @@ public static partial class RunnerHost
             if (ValidateSettings(host.Services) is [var refusal, ..])
                 throw new RunnerSettingsException(refusal);
 
+            EnsureMountsAreReachable(host.Services, mounts.CliMounts);
+
             LogMountDecisions(host, decisions);
             WarnIfTokensUnavailable(host, decisions);
             AnnounceSettingsNotices(host.Services, WarnOnStderr);
@@ -178,6 +193,46 @@ public static partial class RunnerHost
             // console logger, so the refusal the caller writes next is the last line.
             host.Dispose();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// CH-10: a mount the run would refuse at access is refused at start. The registry is resolved
+    /// (a malformed mount, a missing folder or a root declared twice raises the parser's or the
+    /// registry's message), then the host's path validator is asked, for each agent-facing mount,
+    /// the question a file access asks: a path under the folder, without extension, never created.
+    /// The line names the virtual root and the remedy of the mount's origin.
+    /// </summary>
+    /// <param name="services">The built host's services.</param>
+    /// <param name="cliMounts">The mounts given on the command line; any other mount comes from the settings.</param>
+    /// <exception cref="RunnerSettingsException">A mount the registry cannot hold or the validator refuses.</exception>
+    internal static void EnsureMountsAreReachable(IServiceProvider services, IReadOnlyList<string> cliMounts)
+    {
+        FileSystemRegistry? registry;
+        try
+        {
+            registry = services.GetService<FileSystemRegistry>();
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException or InvalidOperationException or IOException)
+        {
+            throw new RunnerSettingsException(ex.Message, ex);
+        }
+
+        // A host composed without a file system has no mount to judge.
+        if (registry is null || services.GetService<IPathValidator>() is not { } validator)
+            return;
+
+        var cliRoots = cliMounts.Select(MountSelection.TryGetVirtualRoot).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        foreach (var mount in registry.GetMounts().Where(m => m.Visibility != MountVisibility.Internal))
+        {
+            if (validator.ValidatePath(Path.Combine(mount.BasePath, "orkeon-probe")).IsAllowed)
+                continue;
+
+            var remedy = cliRoots.Contains(mount.VirtualPath)
+                ? $"pass --allow-external-mounts (or set {RunnerEnvironment.AllowExternalMountsVariable}=1), or mount a folder under the working directory"
+                : $"add the folder to {PathSecurityWhitelistSection}, or mount a folder under the working directory";
+            throw new RunnerSettingsException(
+                $"The mount {mount.VirtualPath} ({mount.BasePath}) is outside the directories this run may read: {remedy}.");
         }
     }
 
@@ -537,8 +592,10 @@ public static partial class RunnerHost
             LogLlmProfileElected(logger, electedProfile);
         LogOfferedProfileKeys(logger, profilesSection, offered, defined);
         WarnUnresolvedApiKeyReferences(logger, configuration, profilesSection, hidden, electedProfile);
+        var hasDefault = LlmSettings.HasDefault(configuration);
+        WarnSilentAddresses(logger, hasDefault ? llmSection : null, profilesSection, offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)));
 
-        if (LlmSettings.HasDefault(configuration))
+        if (hasDefault)
         {
             LogResolvedDefault(logger, llmSection, keySection);
             return;
@@ -547,6 +604,31 @@ public static partial class RunnerHost
         Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
+
+    /// <summary>
+    /// A <c>custom</c> address with no path, once per section offered: logger and stderr, by the
+    /// section's path and its address as written, read by the Domain reading alone.
+    /// </summary>
+    private static void WarnSilentAddresses(
+        ILogger logger, IConfigurationSection? defaultSection, IConfigurationSection profilesSection, IEnumerable<string> profiles)
+    {
+        var sections = profiles.Select(profilesSection.GetSection);
+        if (defaultSection is not null)
+            sections = sections.Prepend(defaultSection);
+        foreach (var section in sections)
+        {
+            var address = section["BaseUrl"];
+            if (string.IsNullOrWhiteSpace(address) || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
+                continue;
+
+            var warning = OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address);
+            Console.Error.WriteLine("WARNING: " + warning);
+            LogLlmBaseUrlSilent(logger, warning);
+        }
+    }
+
+    private static LlmEndpointReading ReadEndpoint(IConfigurationSection section) =>
+        LlmEndpointReading.Of(section["BaseUrl"], section["Model"], section["ApiKey"]);
 
     /// <summary>Where each offered profile of the file takes its key from, one line per profile.</summary>
     private static void LogOfferedProfileKeys(
@@ -560,7 +642,8 @@ public static partial class RunnerHost
         foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
         {
             var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
-            LogLlmProfileKey(logger, profile, source);
+            var provider = ReadEndpoint(profilesSection.GetSection(profile)).ProviderKey;
+            LogLlmProfileKey(logger, profile, provider, source);
         }
     }
 
@@ -608,7 +691,8 @@ public static partial class RunnerHost
         var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
         var streamIdle = Shown(llmSection["StreamIdleSeconds"], "(unset)");
         var source = LlmSettings.DescribeApiKey(keySection);
-        LogLlmResolved(logger, model, baseUrl, temperature, timeout, streamIdle, source);
+        var provider = ReadEndpoint(llmSection).ProviderKey;
+        LogLlmResolved(logger, model, baseUrl, provider, temperature, timeout, streamIdle, source);
     }
 
     /// <summary>
@@ -637,12 +721,15 @@ public static partial class RunnerHost
     private static partial void LogLlmNotConfigured(ILogger logger);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message =
-        "LLM resolved: model={Model} baseUrl={BaseUrl} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}")]
+        "LLM resolved: model={Model} baseUrl={BaseUrl} provider={Provider} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}")]
     private static partial void LogLlmResolved(
-        ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds, string streamIdleSeconds, string apiKey);
+        ILogger logger, string model, string baseUrl, string provider, string temperature, string timeoutSeconds, string streamIdleSeconds, string apiKey);
 
-    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: apiKey={ApiKey}")]
-    private static partial void LogLlmProfileKey(ILogger logger, string profile, string apiKey);
+    [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: provider={Provider} apiKey={ApiKey}")]
+    private static partial void LogLlmProfileKey(ILogger logger, string profile, string provider, string apiKey);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Warning}")]
+    private static partial void LogLlmBaseUrlSilent(ILogger logger, string warning);
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogApiKeyReferenceUnresolved(ILogger logger, string warning);
@@ -837,7 +924,9 @@ public static partial class RunnerHost
             mounts.CliMounts,
             mounts.SelectedMountIds,
             mounts.CrewMountReferences,
-            settingsLabel);
+            settingsLabel,
+            OfferedMountSelectors.All,
+            mounts.WithdrawsAmbiguousRoots);
         if (plan.Errors.Count > 0)
             throw new RunnerSettingsException(string.Join(Environment.NewLine, plan.Errors));
 
@@ -867,9 +956,15 @@ public static partial class RunnerHost
         nextWhitelistIndex = WhitelistBases(overrides, inForce, nextWhitelistIndex);
         nextWhitelistIndex = WhitelistBases(overrides, declaredInternal.Select(entry => entry.Value), nextWhitelistIndex);
 
+        // CH-11: the inputs of a command are always readable, flag or not.
+        foreach (var input in mounts.InputDirectories)
+        {
+            if (TryFullPath(input) is { } inputPath)
+                nextWhitelistIndex = WhitelistDirectory(overrides, inputPath, nextWhitelistIndex);
+        }
+
         // --allow-external-mounts: the --mount arguments (and the runner's own internal
-        // mounts) may point outside the working directory. Unchanged: a folder named on the
-        // command line is still gated behind the explicit opt-in.
+        // mounts) may point outside the working directory only on the explicit opt-in.
         if (mounts.AllowExternalMounts)
             nextWhitelistIndex = WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
 
@@ -975,10 +1070,44 @@ public static partial class RunnerHost
         foreach (var mount in mountStrings)
         {
             if (TryExtractMountBasePath(mount) is { } basePath)
-                overrides[$"{PathSecurityWhitelistSection}:{nextIndex++}"] = basePath;
+                nextIndex = WhitelistDirectory(overrides, basePath, nextIndex);
         }
 
         return nextIndex;
+    }
+
+    /// <summary>
+    /// Whitelists <paramref name="directory"/> and, when it is a symbolic link, its target too (CH-11):
+    /// the validator judges the resolved path. Returns the next free whitelist index.
+    /// </summary>
+    private static int WhitelistDirectory(Dictionary<string, string?> overrides, string directory, int nextIndex)
+    {
+        overrides[$"{PathSecurityWhitelistSection}:{nextIndex++}"] = directory;
+
+        // EXCEPTION-BOOTSTRAP: resolves a link before the container, and so the VFS, exists.
+        try
+        {
+            if (new DirectoryInfo(directory).ResolveLinkTarget(returnFinalTarget: true) is { } target)
+                overrides[$"{PathSecurityWhitelistSection}:{nextIndex++}"] = target.FullName;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Not readable as a link: the folder alone is whitelisted.
+        }
+
+        return nextIndex;
+    }
+
+    private static string? TryFullPath(string path)
+    {
+        try
+        {
+            return Path.GetFullPath(path);
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -1360,6 +1489,7 @@ public static partial class RunnerHost
         services.AddSingleton(BraveKeySetting);
         var braveKey = context.Configuration[EnvironmentVariableNames.BraveApiKey]
             ?? Environment.GetEnvironmentVariable(EnvironmentVariableNames.BraveApiKey);
+        SettingReference.Refuse(EnvironmentVariableNames.BraveApiKey, braveKey);
         if (!string.IsNullOrEmpty(braveKey))
             services.AddOrkeonBraveSearchTool(braveKey);
 
@@ -1606,6 +1736,8 @@ public static partial class RunnerHost
         // Default to on-device local embeddings (zero-config BGE-micro-v2, no network) so
         // codebase_search works out of the box; a host can override to OpenAI/Ollama via config.
         var provider = EmbeddingProvider(embeddingSection);
+        SettingReference.Refuse("RaggableTree:Embedding:ApiKey", embeddingSection["ApiKey"]);
+        SettingReference.Refuse("RaggableTree:Embedding:BaseUrl", embeddingSection["BaseUrl"]);
         var embedding = new EmbeddingOptions
         {
             Provider = provider,

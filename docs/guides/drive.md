@@ -153,7 +153,7 @@ refresh tokens that expire after 7 days. Publish it (**In production**) to keep 
 | `Accounts:<name>:Rights` | Of `Read, Write, Organize, Share, Delete, Purge` — mandatory |
 | `Accounts:<name>:Root` | The folder the account is confined to, as a path from the root of the drive (`Orkeon/agents`); unset: the whole drive |
 | `Accounts:<name>:Auth:ClientId` | The Google Cloud or Microsoft Entra application — mandatory |
-| `Accounts:<name>:Auth:ClientSecretEnvVar` | The **name** of the variable holding the Google client secret — mandatory for Google Drive |
+| `Accounts:<name>:Auth:ClientSecretEnvVar` | The **name** of the variable holding the Google client secret — mandatory for Google Drive. Write the name alone: Orkeon expands no variable, and an account whose `Auth:ClientSecretEnvVar` holds a `${NAME}` or `%NAME%` reference is set aside, with that problem |
 | `Accounts:<name>:Auth:Tenant` | Microsoft only: `consumers` (default), `organizations`, `common` or a tenant id |
 | `Accounts:<name>:Share:AllowedRecipients` | Who an agent may share with: an address, `*@domain` or `*`; empty: nobody |
 | `Accounts:<name>:Share:AllowPublicLinks` | Whether an agent may create a link anyone holding it can open (default `false`) |

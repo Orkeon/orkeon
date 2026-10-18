@@ -180,6 +180,34 @@ public sealed class LlmSettingsApiKeyReferenceTests
         }
     }
 
+    [Theory]
+    [Trait("BR", "CH-14")]
+    [InlineData("ApiKeyEnvVar", "${OPENAI_API_KEY}")]
+    [InlineData("ApiKeyEnvVar", "%OPENAI_API_KEY%")]
+    [InlineData("ApiKey", "%DEEPSEEK_API_KEY%")]
+    [InlineData("ApiKey", "sk-${X}")]
+    [InlineData("ApiKey", "${input:github_token}", true)]
+    [InlineData("ApiKey", "${OPENAI_API_KEY?missing}", true)]
+    [InlineData("BaseUrl", "http://${OLLAMA_HOST}:11434/v1")]
+    public void ShouldRefuseTheReference_WhenTheApiKeyOrItsVariableNameIsWrittenAsOne(string key, string value, bool namesNoVariable = false)
+    {
+        var path = "Llm:" + key;
+        var correction = Orkeon.Constants.Configuration.SettingPlaceholders.CorrectionFor(path);
+        Assert.NotNull(correction);
+        var phrase = Orkeon.Constants.Configuration.OperatorMessages.SettingPlaceholderRefused(path, correction);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            LlmSettings.ReadDefault(Configuration(("Llm:Model", "m"), (path, value)), Empty));
+
+        Assert.Contains(phrase, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(value, error.Message, StringComparison.Ordinal);
+        if (namesNoVariable)
+        {
+            Assert.DoesNotContain("That is", error.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"ApiKeyEnvVar\": \"input\"", error.Message, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public void An_ApiKey_written_as_a_template_refuses_the_start_and_names_the_fix()
     {

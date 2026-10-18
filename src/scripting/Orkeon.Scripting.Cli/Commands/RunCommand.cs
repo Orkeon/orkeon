@@ -19,7 +19,7 @@ using Orkeon.Scripting.Toolchain;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Parsed CLI options for the <c>run</c> verb.</summary>
-internal sealed class RunCommandOptions
+internal sealed class RunCommandOptions : CliOptions
 {
     /// <summary>
     /// Path to the crew definition: a script (.ork.ts/.js), a YAML crew (.yaml/.yml), or a
@@ -679,14 +679,6 @@ internal static partial class RunCommand
             Directory.CreateDirectory(llmLogPath);
             internalMounts = [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw"];
         }
-        // The script directory always needs to be on the security whitelist so the VFS
-        // can resolve /script/* even when the user didn't pass --allow-external-mounts.
-        // Containment, not spelling: a bare StartsWith reads ~/proj-old as inside ~/proj, so
-        // the sibling directory never reached the whitelist and PathValidator — which does ask
-        // the boundary-correct question — then refused every read under /script.
-        var implicitlyAllow = options.EffectiveAllowExternalMounts
-            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(scriptDir, cwd);
-
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
@@ -695,9 +687,11 @@ internal static partial class RunCommand
             {
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
+                // The script is the input: its folder is read without the flag.
+                InputDirectories = [scriptDir],
                 SelectedMountIds = selection.SelectedMountIds,
                 CrewMountReferences = selection.CrewMountReferences,
-                AllowExternalMounts = implicitlyAllow,
+                AllowExternalMounts = options.EffectiveAllowExternalMounts,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
             },
             configureLogging: verbosity > 0

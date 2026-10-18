@@ -155,13 +155,16 @@ public sealed class AppSettingsValidatorRunRulesTests
     }
 
     [Fact]
-    public void A_key_holding_a_placeholder_among_other_text_is_a_key_in_clear_as_the_run_reads_it()
+    [Trait("BR", "CH-15")]
+    public void ShouldRefuse_WhenTheApiKeyIsSkPrefixedReference()
     {
         var messages = Validator().Validate(With("Llm:ApiKey", "\"sk-${X}\""))
             .Where(message => message.Path == "Llm:ApiKey")
             .ToList();
 
-        Assert.Equal(ValidationCodes.InlineApiKey, Assert.Single(messages).Code);
+        var error = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.LlmApiKeyPlaceholder, error.Code);
+        Assert.Equal(ValidationSeverity.Error, error.Severity);
     }
 
     [Fact]
@@ -197,7 +200,7 @@ public sealed class AppSettingsValidatorRunRulesTests
     public void The_placeholder_rule_and_the_variable_rule_are_studio_core_functions()
     {
         Assert.True(LlmSection.IsKeyPlaceholder(" ${X} "));
-        Assert.False(LlmSection.IsKeyPlaceholder("sk-${X}"));
+        Assert.True(LlmSection.IsKeyPlaceholder("sk-${X}"));
         Assert.True(LlmSection.IsVariableName("DEEPSEEK_API_KEY"));
         Assert.False(LlmSection.IsVariableName("MY KEY"));
         Assert.False(LlmSection.IsVariableName("A=B"));

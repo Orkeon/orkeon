@@ -1354,8 +1354,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private bool ReachesOutsideTheTeam()
     {
-        var teamDirectory = TeamDirectory();
-        return _team.Mounts.Any(mount => !DeclaredMounts.IsInsideTeam(mount, teamDirectory));
+        return DeclaredMounts.ReachesOutsideTheTeam(_team.Mounts, TeamDirectory());
     }
 
     private void RaiseRunStateChanged()

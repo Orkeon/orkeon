@@ -1013,7 +1013,7 @@ public sealed class TeamCatalogTests : IDisposable
         }
 
         Assert.Contains("exec orkeon \\\n  run \"$DIR/crew\" \\\n", posix, StringComparison.Ordinal);
-        Assert.Contains("  --mount \"\\\"$DIR/output\\\":/output:rw\" \\\n", posix, StringComparison.Ordinal);
+        Assert.Contains("  --mount \"\\\"$DIRQ/output\\\":/output:rw\" \\\n", posix, StringComparison.Ordinal);
         Assert.Contains($"  --mount-id '{docs}' \\\n", posix, StringComparison.Ordinal);
         Assert.Contains("  --var 'supplier_url=https://exemple.fr/offres' \\\n", posix, StringComparison.Ordinal);
         Assert.EndsWith("  --initial-context='Premier essai'\n", posix, StringComparison.Ordinal);

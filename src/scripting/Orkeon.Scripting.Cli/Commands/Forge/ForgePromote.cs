@@ -424,15 +424,16 @@ internal static class ForgePromoter
         // expands to a path nobody controls at generation time. On Windows it always contains a
         // ':' — %~dp0 is C:\… — so the unquoted spec split into four segments and EVERY promoted
         // team died at start with a grammar error naming a path the user never typed. A team
-        // folder whose path holds a '"' — Linux only — is the one the grammar's quotes cannot
-        // carry; the CLI's own --mount does.
+        // folder whose path holds a '"' is carried too: run.sh doubles each quote, as the grammar
+        // reads it back.
         if (writeMounts.Count > 0)
         {
             segments.Add(
             [
                 TeamLauncherArgument.Word(RunOptionNames.Flag(RunOptionNames.Mount)),
-                .. writeMounts.Select(mount => TeamLauncherArgument.InTeam(
-                    "\"", mount.Folder, $"\":{mount.VirtualRoot}:{(mount.ReadOnly ? "ro" : "rw")}")),
+                .. writeMounts.Select(mount => TeamLauncherArgument.InTeamMount(
+                    mount.Folder,
+                    $":{FileSystemMount.Quote(mount.VirtualRoot)}:{FileSystemMount.FormatRights(mount.ReadOnly ? FileAccessRights.ReadOnly : FileAccessRights.ReadWrite)}")),
             ]);
         }
 

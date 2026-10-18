@@ -12,7 +12,7 @@ namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>Options for <c>orkeon llm probe</c>.</summary>
 [Verb("probe", HelpText = "Exercise the LLM test protocol against a live provider and archive the trace.")]
-internal sealed class LlmProbeCommandOptions
+internal sealed class LlmProbeCommandOptions : CliOptions
 {
     /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
     [Option('p', "provider", Required = true,
@@ -100,7 +100,7 @@ internal sealed class LlmProbeCommandOptions
 
 /// <summary>Options for <c>orkeon llm models</c>.</summary>
 [Verb("models", HelpText = "List the models a provider currently serves, optionally filtered by a glob.")]
-internal sealed class LlmModelsCommandOptions
+internal sealed class LlmModelsCommandOptions : CliOptions
 {
     /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
     [Option('p', "provider", Required = true, HelpText = "Provider key.")]
@@ -139,18 +139,12 @@ internal static class LlmCommand
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        using var parser = new Parser(s =>
+        return await CliGrammar.DispatchAsync("llm", args, [typeof(LlmProbeCommandOptions), typeof(LlmModelsCommandOptions)], options => options switch
         {
-            s.HelpWriter = Console.Out;
-            s.CaseInsensitiveEnumValues = true;
-        });
-
-        return await parser.ParseArguments<LlmProbeCommandOptions, LlmModelsCommandOptions>(args)
-            .MapResult(
-                (LlmProbeCommandOptions o) => ExecuteProbeAsync(o),
-                (LlmModelsCommandOptions o) => ExecuteModelsAsync(o),
-                _ => Task.FromResult(Program.ExitScriptError))
-            .ConfigureAwait(false);
+            LlmProbeCommandOptions o => ExecuteProbeAsync(o),
+            LlmModelsCommandOptions o => ExecuteModelsAsync(o),
+            _ => Task.FromResult(Program.ExitScriptError),
+        }).ConfigureAwait(false);
     }
 
     // ── orkeon llm models ───────────────────────────────────────────────────

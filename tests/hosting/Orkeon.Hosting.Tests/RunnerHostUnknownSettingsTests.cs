@@ -53,6 +53,18 @@ public sealed class RunnerHostUnknownSettingsTests : IDisposable
         Assert.Contains(proposed, error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldNameTheClosestKey_WhenTheCallerOfSettingsValidationAsks()
+    {
+        // A section name under a container, and a key a section does not carry: the two callers of Closest.
+        var section = Refusal(Settings(("Orkeon:Guardain:Enabled", "true")));
+        var key = Refusal(Settings(("Orkeon:Guardian:Enabeld", "true")));
+
+        Assert.Contains("Did you mean Orkeon:Guardian?", section.Message, StringComparison.Ordinal);
+        Assert.Contains("Did you mean Orkeon:Guardian:Enabled?", key.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("Orkeon:Rag:ConnectionString", "Data Source=/output/rag.db", "Orkeon:Rag:ConnectionString", "Orkeon:Sqlite:ConnectionString")]
     [InlineData("Orkeon:Rag:ProviderOptions:Host", "localhost", "Orkeon:Rag:ProviderOptions", "Orkeon:Sqlite")]

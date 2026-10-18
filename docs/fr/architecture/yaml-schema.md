@@ -9,9 +9,14 @@ Ce document est la **source unique de vérité** pour le schéma YAML d'Orkeon. 
 La structure YAML suit ce schéma. **Nommage des clés** : le loader (`YamlDotNetSerializer`)
 reconnaît les clés en camelCase (la forme canonique, celle qu'écrit `YamlCrewExporter` — voir
 [Export](#export)) et se rabat sur le snake_case pour la même propriété — `expectedOutput` et `expected_output`,
-`llm_override` et `llmOverride` sont équivalents partout. Une clé qui ne correspond à aucune
-propriété est **ignorée en silence** (une clé mal orthographiée se lit comme absente), sauf dans
-les entrées `knowledge:`, qui émettent un warning. Les mêmes modèles servent le format mono-fichier
+`llm_override` et `llmOverride` sont équivalents partout. Toute clé est lue ou refusée au
+chargement : une clé qu'aucun modèle ne porte (ou une clé retirée) fait échouer le chargement avec
+son fichier, sa ligne et son chemin, et la clé la plus proche (`Did you mean 'expectedOutput'?`) ;
+`CrewYamlKeyCheck` s'exécute avant la désérialisation. Seuls les noms que vous choisissez restent libres :
+les identifiants sous `agents:` et `tasks:`, les noms d'outils sous `toolRules:`, et les clés et
+valeurs de `context:`.
+Une clé de fusion (`<<:`) est refusée, de même qu'une ancre sur une clé inconnue : partagez le texte
+sous `anchors:`. Les mêmes modèles servent le format mono-fichier
 et les formats multi-fichiers (`crew.yaml` + `agents.yaml` + `tasks.yaml`, ou `config.yaml` +
 `agents/` + `tasks/`) décrits dans [YAML et Builders](../getting-started/yaml-and-builders.md) ;
 un mapping `anchors:` de premier niveau (chaînes multi-lignes nommées) est développé avant le
@@ -93,7 +98,7 @@ agents:
       rules: [string]     # Règles globales numérotées
       toolRules:          # Règles rendues seulement quand l'agent possède l'outil ; un nom d'outil ignore la casse, et un outil écrit sous deux clés fait échouer le chargement
         <tool_name>: [string]
-    knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel)
+    knowledge:            # Collections de connaissance (RAG) attachées à l'agent (optionnel) ; une clé inconnue d'une entrée est refusée, une valeur mal formée reste un warning
       - string            # Forme courte : nom de collection avec options par défaut
       - collection: string       # Forme longue (clé requise)
         top_k: int               # default: 5 — chunks retenus par requête
@@ -192,8 +197,8 @@ enregistre (`orkeon run` sous toutes ses formes, `orkeon-host`) : à la **créat
 `--validate`). Sur un hôte sans le sous-système, un bloc `rag:` déclaré et les `knowledge:` de
 chaque agent journalisent un warning et n'injectent rien. Le parsing du YAML lui-même ne
 déclenche jamais d'ingestion. Le document store relève de l'hôte (`Orkeon:Rag:Provider`, voir
-[Pipeline RAG](./rag-pipeline.md)) ; l'ancienne clé `rag.provider` a disparu et provoque un
-warning au chargement.
+[Pipeline RAG](./rag-pipeline.md)) ; l'ancienne clé `rag.provider` a disparu et est refusée au
+chargement, avec la phrase qui renvoie à `Orkeon:Rag:Provider`.
 
 Ce que veut dire une entrée de `sources` (GAP-27) : un chemin qui ne commence pas par `/` est
 relatif au dossier de la crew — `/crew` sous `orkeon run crew.yaml` ou un répertoire de crew,

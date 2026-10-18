@@ -1,10 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Infrastructure.LLMs.Profiles;
 
@@ -26,7 +26,7 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// reads as absent: a Studio launch blanks the default fields its team's setting does not set.
 /// </para>
 /// </summary>
-public static partial class LlmSettings
+public static class LlmSettings
 {
     /// <summary>
     /// Whether the host configures a default provider: an <c>Llm</c> section with at least one
@@ -226,7 +226,7 @@ public static partial class LlmSettings
         var inline = section["ApiKey"];
         if (!string.IsNullOrWhiteSpace(inline))
         {
-            RefusePlaceholder(section, inline);
+            SettingReference.Refuse($"{section.Path}:ApiKey", inline);
             return new ResolvedApiKey(inline, ApiKeySource.Configuration);
         }
 
@@ -251,6 +251,8 @@ public static partial class LlmSettings
         if (string.IsNullOrWhiteSpace(reference))
             return null;
 
+        SettingReference.Refuse($"{section.Path}:{ConfigurationKeys.LlmApiKeyEnvVar}", reference);
+
         if (reference.Any(c => c == '=' || char.IsWhiteSpace(c) || char.IsControl(c)))
         {
             throw new InvalidOperationException(
@@ -261,30 +263,6 @@ public static partial class LlmSettings
 
         return reference;
     }
-
-    /// <summary>
-    /// An <c>ApiKey</c> written <c>${NAME}</c> — the shape the old settings templates carried —
-    /// was never expanded: copied as is, the text went out as the key and came back a 401 at the
-    /// first call. It refuses the start instead, with the setting that does what it meant.
-    /// </summary>
-    private static void RefusePlaceholder(IConfigurationSection section, string inline)
-    {
-        var placeholder = PlaceholderPattern().Match(inline.Trim());
-        if (!placeholder.Success)
-            return;
-
-        var name = placeholder.Groups["name"].Value.Trim();
-        var suggestion = name.Length > 0 && !name.Any(c => c == '=' || char.IsWhiteSpace(c) || char.IsControl(c))
-            ? name
-            : "<the variable's name>";
-        throw new InvalidOperationException(
-            $"{section.Path}:ApiKey is a ${{…}} placeholder, which Orkeon never expands — the text itself would be " +
-            $"sent as the key. Name the variable that holds the key instead, in place of ApiKey: " +
-            $"\"{ConfigurationKeys.LlmApiKeyEnvVar}\": \"{suggestion}\".");
-    }
-
-    [GeneratedRegex(@"^\$\{(?<name>[^{}]*)\}$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex PlaceholderPattern();
 
     /// <summary>
     /// The user scope, read only. A scope that cannot be read — the registry refused, a virtual
@@ -315,10 +293,13 @@ public static partial class LlmSettings
         if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        return Uri.TryCreate(raw, UriKind.Absolute, out var url)
-            ? url
-            : throw new InvalidOperationException(
-                $"{section.Path}:BaseUrl is not an absolute URL: '{raw}'.");
+        SettingReference.Refuse($"{section.Path}:BaseUrl", raw);
+
+        // The Domain reading is the only test of the address.
+        if (LlmEndpointReading.Of(raw, null, null).Notice == LlmEndpointNotice.Refused)
+            throw new InvalidOperationException(OperatorMessages.LlmBaseUrlRefused($"{section.Path}:BaseUrl", raw));
+
+        return new Uri(raw.Trim(), UriKind.Absolute);
     }
 
     /// <summary>

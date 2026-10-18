@@ -1,2 +1,7 @@
 #nullable enable
 static Orkeon.Hosting.RunnerExecution.ConfigureVerboseLogging(Microsoft.Extensions.Logging.ILoggingBuilder! b, int verbosity, Microsoft.Extensions.Configuration.IConfiguration? configuration) -> void
+static Orkeon.Hosting.RunnerArguments.Parse(CommandLine.Parser! parser, System.Collections.Generic.IEnumerable<string!>! args, params System.Type![]! verbs) -> CommandLine.ParserResult<object!>!
+Orkeon.Hosting.RunnerMountPlan.InputDirectories.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Hosting.RunnerMountPlan.InputDirectories.init -> void
+Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.get -> bool
+Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.init -> void

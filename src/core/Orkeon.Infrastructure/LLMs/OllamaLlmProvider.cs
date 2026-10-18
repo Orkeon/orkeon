@@ -126,9 +126,9 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// </summary>
     private static string ResolveBaseUrl(LlmConfig config)
     {
-        return config.BaseUrl?.ToString().TrimEnd('/')
-            ?? Environment.GetEnvironmentVariable(OllamaBaseUrlEnvVar)?.TrimEnd('/')
-            ?? DefaultOllamaBaseUrl;
+        var address = config.BaseUrl?.ToString()
+            ?? Environment.GetEnvironmentVariable(OllamaBaseUrlEnvVar);
+        return address is null ? DefaultOllamaBaseUrl : LlmEndpointReading.NativeOllamaRoot(address);
     }
 
     /// <summary>

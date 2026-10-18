@@ -32,19 +32,37 @@ public abstract class TeamLauncherArgument
     /// <summary>
     /// <paramref name="before"/>, the launcher's own folder, <paramref name="relative"/> and
     /// <paramref name="after"/>, as one argument — the team stays relocatable: <c>("", "crew", "")</c>,
-    /// or a mount between the mount grammar's quotes, <c>("\"", "output", "\":/output:rw")</c>.
-    /// <paramref name="relative"/> is never empty and never starts with a backslash or a quote: the
-    /// folder's trailing backslash would escape it for the runner.
+    /// or <c>("--dir=", "crew", "")</c>. <paramref name="relative"/> is never empty and never starts
+    /// with a backslash or a quote: the folder's trailing backslash would escape it for the runner.
+    /// None of the three holds a quote: a mount between the mount grammar's quotes is an
+    /// <see cref="InTeamMount"/>.
     /// </summary>
     public static TeamLauncherArgument InTeam(string before, string relative, string after)
     {
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         ArgumentException.ThrowIfNullOrEmpty(relative);
+        if (before.Contains('"', StringComparison.Ordinal) || after.Contains('"', StringComparison.Ordinal))
+            throw new ArgumentException("A path inside the team holds no quote: a mount is an InTeamMount.", nameof(before));
         if (relative[0] is '\\' or '"')
             throw new ArgumentException("A path inside the team starts with neither a backslash nor a quote.", nameof(relative));
 
         return new InTeamArgument(before, relative, after);
+    }
+
+    /// <summary>
+    /// An anchored mount: the team folder, <paramref name="folder"/> and <paramref name="tail"/>
+    /// (<c>:/output:rw</c>), between the mount grammar's quotes. <c>run.sh</c> doubles each quote of
+    /// the team folder's path, as the grammar reads it back.
+    /// </summary>
+    public static TeamLauncherArgument InTeamMount(string folder, string tail)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(folder);
+        ArgumentNullException.ThrowIfNull(tail);
+        if (folder[0] is '\\' or '"')
+            throw new ArgumentException("A path inside the team starts with neither a backslash nor a quote.", nameof(folder));
+
+        return new InTeamMountArgument(folder, tail);
     }
 
     /// <summary>
@@ -58,7 +76,7 @@ public abstract class TeamLauncherArgument
     public static TeamLauncherArgument Assign(string option, TeamLauncherArgument value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        if (value is not (LiteralArgument or InTeamArgument))
+        if (value is not (LiteralArgument or InTeamArgument or InTeamMountArgument))
             throw new ArgumentException("An option's value is a literal or a path inside the team.", nameof(value));
         if (value is LiteralArgument { Text.Length: 0 })
             throw new ArgumentException("An option's value is never empty: the runner refuses '--option='.", nameof(value));
@@ -106,6 +124,19 @@ public abstract class TeamLauncherArgument
         public string Relative { get; }
 
         public string After { get; }
+    }
+
+    internal sealed class InTeamMountArgument : TeamLauncherArgument
+    {
+        public InTeamMountArgument(string folder, string tail)
+        {
+            Folder = folder;
+            Tail = tail;
+        }
+
+        public string Folder { get; }
+
+        public string Tail { get; }
     }
 
     internal sealed class AssignArgument : TeamLauncherArgument
@@ -346,6 +377,19 @@ public static class TeamLauncherScript
         // Run FROM the team's folder: the runner reads a crew and mounts folders under the working
         // directory, and a scheduler starts the launcher anywhere.
         Line("cd \"$DIR\" || exit 1");
+        if (segments.Any(segment => segment.Any(HoldsAnchoredMount)))
+        {
+            // The mount grammar reads a quote inside a quoted path doubled: DIRQ is the folder so written.
+            Line("DIRQ=\"\"");
+            Line("REST=\"$DIR\"");
+            Line("while :; do");
+            Line("  case \"$REST\" in");
+            Line("    *\\\"*) HEAD=${REST%%\\\"*}; DIRQ=\"$DIRQ$HEAD\\\"\\\"\"; REST=${REST#*\\\"} ;;");
+            Line("    *) DIRQ=\"$DIRQ$REST\"; break ;;");
+            Line("  esac");
+            Line("done");
+        }
+
         text.Append("exec orkeon");
         foreach (var segment in segments)
             text.Append(" \\\n  ").Append(string.Join(' ', segment.Select(PosixToken)));
@@ -496,6 +540,15 @@ public static class TeamLauncherScript
                     new Piece(OneLine(inTeam.After, ref lineBreaks)),
                 ]);
 
+            case TeamLauncherArgument.InTeamMountArgument mount:
+                return BatchQuoted(
+                [
+                    new Piece("\""),
+                    Piece.Folder,
+                    new Piece(OneLine(mount.Folder, ref lineBreaks)),
+                    new Piece(OneLine("\"" + mount.Tail, ref lineBreaks)),
+                ]);
+
             default:
                 throw new ArgumentException("Unknown launcher argument.", nameof(argument));
         }
@@ -568,8 +621,17 @@ public static class TeamLauncherScript
         TeamLauncherArgument.LiteralArgument literal => QuoteForPosixShell(literal.Text),
         TeamLauncherArgument.InTeamArgument inTeam =>
             $"\"{DoubleQuoted(inTeam.Before)}$DIR/{DoubleQuoted(inTeam.Relative)}{DoubleQuoted(inTeam.After)}\"",
+        TeamLauncherArgument.InTeamMountArgument mount =>
+            $"\"\\\"$DIRQ/{DoubleQuoted(mount.Folder.Replace("\"", "\"\"", StringComparison.Ordinal))}\\\"{DoubleQuoted(mount.Tail)}\"",
         TeamLauncherArgument.AssignArgument assign => assign.Option + "=" + PosixToken(assign.Value),
         _ => throw new ArgumentException("Unknown launcher argument.", nameof(argument)),
+    };
+
+    private static bool HoldsAnchoredMount(TeamLauncherArgument argument) => argument switch
+    {
+        TeamLauncherArgument.InTeamMountArgument => true,
+        TeamLauncherArgument.AssignArgument assign => HoldsAnchoredMount(assign.Value),
+        _ => false,
     };
 
     /// <summary>Text inside a POSIX double-quoted word: what the shell would expand or end the word on, escaped.</summary>

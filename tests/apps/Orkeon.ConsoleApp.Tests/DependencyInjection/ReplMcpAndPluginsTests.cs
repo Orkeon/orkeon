@@ -32,7 +32,7 @@ public sealed class ReplMcpAndPluginsTests : IDisposable
         var settings = Path.Combine(_root, "repl.json");
         File.WriteAllText(settings, json);
         var launch = ReplStartup.Prepare(
-            ["--settings", settings, "--mount", $"{_root}:/workspace:ro"], UiMode.Plain, replWordWrap: false, _reported.Add);
+            ["--settings", settings, "--mount", $"{_root}:/workspace:ro", "--allow-external-mounts"], UiMode.Plain, replWordWrap: false, _reported.Add);
         Assert.True(launch.Host is not null, string.Join(Environment.NewLine, _reported));
         return launch.Host;
     }

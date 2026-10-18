@@ -1,10 +1,12 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Constants.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Scripting.Cli.Commands;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -668,5 +670,81 @@ public sealed class InitCommandTests
         Assert.Contains("Llm:ApiKeyEnvVar is not the name of an environment variable", stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("   at ", stderr, StringComparison.Ordinal);
         Assert.Empty(server.Authorizations);
+    }
+
+    // CH-08 / CH-09: init reads the address as the run does
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldProbeTheOllamaCatalogue_WhenACustomPresetPointsAtPort11434()
+    {
+        using var scratch = new ScriptScratch();
+        using var console = new TestConsole();
+        using var handler = new StubHttpMessageHandler("""{"models":[{"name":"llama3.2:latest"}]}""");
+
+        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        {
+            Provider = "custom",
+            BaseUrl = "http://gpu-box:11434",
+            Model = "llama3.2",
+            OutputPath = Path.Combine(scratch.Root, "appsettings.json"),
+            HttpHandler = handler,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("http://gpu-box:11434/api/tags", request.RequestUri?.ToString());
+    }
+
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("ollama", "http://localhost:8080", "--provider custom --base-url")]
+    [InlineData("ollama", "http://localhost:8080", "/v1")]
+    [InlineData("ollama", "http://localhost:8080/v1", "--base-url http://localhost:8080/v1")]
+    [InlineData("openai", "http://gpu-box:11434", "--provider ollama")]
+    public async Task ShouldRefuseWithoutWriting_WhenOllamaIsChosenForANonOllamaAddress(
+        string provider, string baseUrl, string expectedInLine)
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        using var console = new TestConsole();
+
+        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        {
+            Provider = provider,
+            BaseUrl = baseUrl,
+            Model = "some-model",
+            OutputPath = target,
+            NoProbe = true,
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.False(File.Exists(target));
+        Assert.Contains(expectedInLine, console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("/v1/v1", console.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-09")]
+    public async Task ShouldWarnAfterWriting_WhenTheAddressHasNoPath()
+    {
+        using var scratch = new ScriptScratch();
+        var target = Path.Combine(scratch.Root, "appsettings.json");
+        using var console = new TestConsole();
+
+        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        {
+            Provider = "custom",
+            BaseUrl = "http://localhost:8080",
+            Model = "some-model",
+            OutputPath = target,
+            NoProbe = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.True(File.Exists(target));
+        Assert.Contains(
+            OperatorMessages.LlmBaseUrlSilent("Llm:BaseUrl", "http://localhost:8080"),
+            console.Stderr, StringComparison.Ordinal);
     }
 }

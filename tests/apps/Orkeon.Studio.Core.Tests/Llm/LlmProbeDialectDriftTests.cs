@@ -51,6 +51,6 @@ public sealed class LlmProbeDialectDriftTests
             ? adapter.UnderlyingProvider.Capabilities
             : ((ILlmProvider)built).Capabilities;
 
-        Assert.Equal(declared.Thinking, LlmProbeDialect.ThinkingSupportOf(LlmProviderDetector.Detect(endpoint)));
+        Assert.Equal(declared.Thinking, LlmProbeDialect.ThinkingSupportOf(LlmEndpointReading.Of(endpoint, null, null).ProviderKey));
     }
 }

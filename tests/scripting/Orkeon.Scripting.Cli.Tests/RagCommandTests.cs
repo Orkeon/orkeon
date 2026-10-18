@@ -59,6 +59,53 @@ public sealed class RagCommandTests
         Assert.Contains("2 added", console.Stdout, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-11")]
+    public async Task ShouldRefuseTheMount_WhenTheCorpusRootIsOutsideTheProcess()
+    {
+        using var scratch = new ScriptScratch();
+        using var other = new ScriptScratch();
+        Directory.CreateDirectory(Path.Combine(scratch.Root, "docs"));
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "docs", "a.md"), "alpha", TestContext.Current.CancellationToken);
+        var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
+
+        var refusedPipeline = new FakeIngestionPipeline();
+        int refused;
+        string refusedErr;
+        using (var console = new TestConsole())
+        {
+            refused = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+            {
+                Collection = "docs",
+                Sources = ["./docs/**/*.md"],
+                Mounts = [$"{other.OutDir}:/data:ro"],
+                SettingsPath = settings,
+                WorkingDirectoryOverride = scratch.Root,
+                ConfigureTestServices = (_, s) => s.AddSingleton<IIngestionPipeline>(refusedPipeline),
+            });
+            refusedErr = console.Stderr;
+        }
+
+        Assert.NotEqual(Program.ExitOk, refused);
+        Assert.Contains(other.OutDir, refusedErr, StringComparison.Ordinal);
+        Assert.Contains("--allow-external-mounts", refusedErr, StringComparison.Ordinal);
+        Assert.Null(refusedPipeline.LastRequest);
+
+        var pipeline = new FakeIngestionPipeline();
+        using var console2 = new TestConsole();
+        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        {
+            Collection = "docs",
+            Sources = ["./docs/**/*.md"],
+            SettingsPath = settings,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureTestServices = (_, s) => s.AddSingleton<IIngestionPipeline>(pipeline),
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Equal(["/workspace/docs/a.md"], pipeline.LastRequest!.Sources.Select(s => s.Location));
+    }
+
     /// <summary>
     /// GAP-49, decision 2: a <c>/workspace</c> the <c>ORKEON_</c> environment declares is a
     /// declared root, and the verb yields to it as it yields to one of the file. It mounted its own

@@ -25,7 +25,9 @@ or drop an `appsettings.json` next to the crew's `config.yaml`.
 The provider is **auto-detected from the `Llm.BaseUrl` host** — there is no `Provider`
 key. `api.deepseek.com` → DeepSeek, `api.z.ai` → Z.AI GLM, `api.openai.com` → OpenAI,
 `openrouter.ai` → OpenRouter, `api.mammouth.ai` → Mammouth, `.../engines/...` (Docker
-Model Runner) → OpenAI-compatible, etc. The two aggregators are the case where the host
+Model Runner) → OpenAI-compatible, port `11434` → Ollama at its root, and any other address →
+an OpenAI-compatible server (an address with no path is reported as silent; one that is not an
+absolute `http(s)` URL, or a vendor host under `/anthropic`, refuses the start), etc. The two aggregators are the case where the host
 matters most: Mammouth serves the vendors' own model names, so a `Model` copied from
 another profile without its `BaseUrl` talks to that vendor, not to Mammouth.
 

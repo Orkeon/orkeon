@@ -72,3 +72,6 @@ Orkeon.Infrastructure.Memory.Cognitive.CognitiveMemoryOptions.AnalysisTemperatur
 Orkeon.Infrastructure.Security.ModePermissionGate.ModePermissionGate(Orkeon.Application.Interfaces.Security.IToolApprovalChannel! approvalChannel) -> void
 Orkeon.Infrastructure.Security.ModePermissionGate.Rules.get -> Orkeon.Application.Interfaces.Security.IToolPermissionRules?
 Orkeon.Infrastructure.Security.ModePermissionGate.Rules.init -> void
+Orkeon.Infrastructure.Configuration.SettingReference
+static Orkeon.Infrastructure.Configuration.SettingReference.Phrase(string! settingPath, string? value) -> string?
+static Orkeon.Infrastructure.Configuration.SettingReference.Refuse(string! settingPath, string? value) -> void

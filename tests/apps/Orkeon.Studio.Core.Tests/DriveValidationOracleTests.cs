@@ -73,6 +73,10 @@ public sealed class DriveValidationOracleTests
         ["google without a client id"] = (Google with { ClientId = null }, [ValidationCodes.DriveAuth]),
         ["google without a client secret"] = (Google with { ClientSecretEnvVar = null }, [ValidationCodes.DriveAuth]),
         ["google with a tenant"] = (Google with { Tenant = "organizations" }, [ValidationCodes.DriveAuth]),
+        // GAP-55: the engine sets an account aside when its variable is written as a ${NAME} reference,
+        // and Studio warns on it.
+        ["a client secret variable written as a reference"] = (Google with { ClientSecretEnvVar = "${DRIVE_WORK_CLIENT_SECRET}" }, [ValidationCodes.DriveAuth]),
+        ["a onedrive client secret variable written as a reference"] = (OneDrive with { ClientSecretEnvVar = "%WORK_SECRET%" }, [ValidationCodes.DriveAuth]),
         ["onedrive without a client id"] = (OneDrive with { ClientId = null, Tenant = "my tenant" }, [ValidationCodes.DriveAuth]),
         ["onedrive with a tenant that is no alias"] = (OneDrive with { Tenant = "my tenant" }, [ValidationCodes.DriveAuth]),
         ["recipients that are no pattern"] = (Google with { AllowedRecipients = ["me", "*.example.com", "*@", "a@b@c"] },
@@ -146,6 +150,7 @@ public sealed class DriveValidationOracleTests
 
     public static TheoryData<string> FileRows() => new(Files.Keys);
 
+    [Trait("BR", "CH-15")]
     [Theory]
     [MemberData(nameof(DefinitionRows))]
     public void Studio_and_the_engine_say_the_same_of_an_account_studio_writes(string row)

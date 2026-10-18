@@ -1,3 +1,5 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -349,7 +351,7 @@ public static class LlmPresets
                         "an endpoint that does not parse simply has no console.")]
     public static Uri? KeyConsoleFor(string? baseUrl)
     {
-        var provider = LlmProviderDetector.Detect(baseUrl);
+        var provider = StudioEndpointReading.ProviderOf(baseUrl);
         var card = ProviderCatalogFor(EnglishStudioStrings.Instance)
             .FirstOrDefault(c => string.Equals(c.Name, provider, StringComparison.Ordinal));
 
@@ -370,7 +372,7 @@ public static class LlmPresets
     /// which the language of the moment changes. A setting keeps that name
     /// (<see cref="ModelProfile.Provider"/>); any other value is recognised here, in this order: a
     /// card's name, whatever its case; a card's English title — sixteen of the eighteen are brand
-    /// names, the same in every language —; the endpoint, through <see cref="LlmProviderDetector"/>.
+    /// names, the same in every language —; the endpoint, through <see cref="LlmEndpointReading"/>.
     /// An endpoint no card carries — Azure OpenAI's among them — is « Other OpenAI-compatible », and
     /// neither an endpoint nor a model is « no model ». A setting therefore always has a card: one
     /// written in another language, or whose provider was blanked, opens on the card its endpoint
@@ -392,7 +394,7 @@ public static class LlmPresets
         if (string.IsNullOrWhiteSpace(profile.BaseUrl))
             return string.IsNullOrWhiteSpace(profile.Model) ? None : Custom;
 
-        var detected = LlmProviderDetector.Detect(profile.BaseUrl);
+        var detected = StudioEndpointReading.ProviderOf(profile.BaseUrl);
         return EnglishCards.Any(card => string.Equals(card.Name, detected, StringComparison.Ordinal)) ? detected : Custom;
     }
 
@@ -431,7 +433,7 @@ public static class LlmPresets
     public static bool NeedsApiKey(string? baseUrl) =>
         Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint)
         && (endpoint.Scheme == Uri.UriSchemeHttp || endpoint.Scheme == Uri.UriSchemeHttps)
-        && !string.Equals(LlmProviderDetector.Detect(baseUrl), Ollama, StringComparison.Ordinal);
+        && !string.Equals(StudioEndpointReading.ProviderOf(baseUrl), Ollama, StringComparison.Ordinal);
 
     /// <summary>
     /// The placeholder key a setting on the card named <paramref name="card"/> carries where it holds
@@ -483,6 +485,21 @@ public static class LlmPresets
         var model = Blank(overrides?.Model);
         var apiKey = Blank(overrides?.ApiKey);
         var apiKeyEnv = Blank(overrides?.ApiKeyEnv);
+
+        // A preset the run's own reading of the address contradicts is refused before any probe; an
+        // address the reading refuses is left to the existing paths.
+        if (StudioEndpointReading.Of(baseUrl) is { Notice: not LlmEndpointNotice.Refused } reading
+            && Describe(name) is not null
+            && name is not (None or Custom)
+            && (name == Ollama) != (reading.ProviderKey == Ollama))
+        {
+            error = strings.Format(
+                CultureInfo.InvariantCulture,
+                StudioStringKeys.PresetErrorReadingContradicts,
+                name,
+                reading.ProviderKey);
+            return false;
+        }
 
         switch (name)
         {

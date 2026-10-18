@@ -86,7 +86,9 @@ reference for whoever writes the file by hand.
    them off — use [Gmail with OAuth2](#gmail-with-oauth2) instead.
 3. Put the password in an environment variable — not in a file. Any name works: the account
    names it (`PasswordEnvVar`). A run reads the variable in its own process environment, then,
-   under Windows, in the user's environment, where `setx` puts it.
+   under Windows, in the user's environment, where `setx` puts it. Write the name alone: Orkeon
+   expands no variable, and an account whose `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` or
+   `Auth:ClientSecretEnvVar` holds a `${NAME}` or `%NAME%` reference is set aside, with that problem.
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh

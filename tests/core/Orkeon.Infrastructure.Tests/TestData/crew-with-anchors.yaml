@@ -40,9 +40,6 @@ anchors:
 name: analysis-crew
 process: sequential
 
-settings:
-  manager_agent: analyst
-
 agents:
   analyst:
     role: Analyst

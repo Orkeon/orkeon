@@ -251,13 +251,14 @@ public sealed partial class EmailCommandTests
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
     public async Task Dispatch_KnowsTheFourVerbs()
     {
         using var console = new TestConsole();
 
         var exit = await EmailCommand.DispatchAsync(["--help"]);
 
-        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Equal(Program.ExitOk, exit);
         foreach (var verb in new[] { "accounts", "login", "logout", "check" })
             Assert.Contains(verb, console.Stdout, StringComparison.Ordinal);
     }

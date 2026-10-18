@@ -81,7 +81,8 @@ export DEEPSEEK_API_KEY=sk-...
 > no copy — skip straight to step 4 without `--settings`.
 
 There is no `Provider` field to set: the provider is auto-detected from the
-`Llm.BaseUrl` host in the profile (failing that, from the model name, then from the
+`Llm.BaseUrl` in the profile — the vendor host, port `11434` for Ollama, otherwise an
+OpenAI-compatible server (failing a base URL, from the model name, then from the
 key prefix), so switching providers is just a matter of pointing at the right profile.
 
 ## 4. Run it
@@ -118,7 +119,7 @@ The `orkeon` CLI options you will actually reach for:
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
 | `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro`, `rw` or `rwnd` (read-write, no delete); `;<subpath>:<rights>` segments override the rights below the mount. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
 | `--mount-id <id>` | | When several `Orkeon:FileSystem:Mounts` entries of the settings declare the same virtual root, keep the one whose id (the 26-character prefix before its `\|`) is given. Several ids go space-separated after a single flag. |
-| `--allow-external-mounts` | | Permit mounts (and a `<config>` path or `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
+| `--allow-external-mounts` | | Permit mounts (and a `<config>` path or `--llm-log-path`) located **outside** the current working directory. Without it, a `--mount` outside the working directory is refused at start (exit `1`); the script's folder and every settings entry in force (one chosen by id included) need no flag. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
 | `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Several variables go space-separated after a single `-V` (a repeated flag is rejected). **YAML crews only** — ignored for `.ork.ts` scripts, which take `--inputs`. |
 | `--initial-context <text>` | | A free-form context string passed to the crew input. **YAML crews only** — ignored for `.ork.ts` scripts. |
 | `--inputs <json>` | | Inline JSON inputs forwarded to a script as the global `inputs` variable (`.ork.ts` path). |

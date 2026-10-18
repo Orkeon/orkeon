@@ -443,6 +443,39 @@ public sealed class SettingsCommandTests
         Assert.EndsWith("reference/configuration.html", Lines(stdout)[^1], StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldReadTheHost_WhenItIsAttachedWithEquals()
+    {
+        var read = Complete.ForHost(SettingsHosts.Repl);
+
+        var (exit, stdout, _) = await RunAsync("settings", "--host=repl", "--all");
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains($"{read.Settings.Count} keys in {read.Sections.Count} sections", stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldWriteUsageOnStdoutWithZero_WhenHelpIsAsked()
+    {
+        var (exit, stdout, stderr) = await RunAsync("settings", "--help");
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("--host", stdout, StringComparison.Ordinal);
+        Assert.Empty(stderr);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-04")]
+    public async Task ShouldLookTheWordUp_WhenItFollowsADoubleDash()
+    {
+        var (_, _, stderr) = await RunAsync("settings", "--", "-rate");
+
+        Assert.DoesNotContain("unknown option", stderr, StringComparison.Ordinal);
+        Assert.Contains("'-rate'", stderr, StringComparison.Ordinal);
+    }
+
     private static async Task<(int Exit, string Stdout, string Stderr)> RunAsync(params string[] args)
     {
         using var console = new TestConsole();

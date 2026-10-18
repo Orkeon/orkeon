@@ -40,7 +40,8 @@ tasks:
     }
 
     [Fact]
-    public async Task LoadFromString_TaskLevelCircuitBreaker_IsRefusedAndNamesTheTask()
+    [Trait("BR", "CH-02")]
+    public async Task ShouldRefuseCircuitBreakerAtItsPath_WhenATaskWritesIt()
     {
         var yaml = """
 name: c
@@ -60,7 +61,7 @@ tasks:
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => BuildLoader().LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
 
-        Assert.Contains("'tasks.review.circuitBreaker'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("tasks[review].circuitBreaker", ex.Message, StringComparison.Ordinal);
         Assert.Contains("graphConfig", ex.Message, StringComparison.Ordinal);
     }
 
@@ -75,7 +76,7 @@ tasks:
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => BuildLoader(fs).LoadFromDirectoryAsync("/crews/c", TestContext.Current.CancellationToken));
 
-        Assert.Contains("'tasks.t.circuitBreaker'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("tasks[t].circuitBreaker", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ tasks:
             () => BuildLoader(fs).LoadFromDirectoryAsync("/crews/f", TestContext.Current.CancellationToken));
 
         Assert.Contains("'circuitBreaker'", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("'tasks.t.circuitBreaker'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("tasks[t].circuitBreaker", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -173,12 +173,13 @@ public partial class CreateTeamWizardTests
 
         var arguments = processes.LastRequest!.Arguments;
         Assert.Equal("forge", arguments[0]);
+        var brief = arguments[arguments.ToList().IndexOf("--") + 1];
         Assert.Equal(
             "trier mes factures Standing instruction for every agent: toujours en français",
-            arguments[1]);
-        Assert.DoesNotContain("How often", arguments[1], StringComparison.Ordinal);
-        Assert.DoesNotContain("Where the information lives", arguments[1], StringComparison.Ordinal);
-        Assert.DoesNotContain("Expected result", arguments[1], StringComparison.Ordinal);
+            brief);
+        Assert.DoesNotContain("How often", brief, StringComparison.Ordinal);
+        Assert.DoesNotContain("Where the information lives", brief, StringComparison.Ordinal);
+        Assert.DoesNotContain("Expected result", brief, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -222,6 +223,23 @@ public partial class CreateTeamWizardTests
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
+    public async Task ShouldStartTheEngineWithTheText_WhenTheNeedIsABulletedList()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+        vm.Need = "- veille\n- résumé";
+        await Compose(vm);
+
+        var arguments = processes.LastRequest!.Arguments;
+        var separator = arguments.ToList().IndexOf("--");
+        Assert.True(separator >= 0, "the need must come after a double dash");
+        Assert.Equal("- veille\n- résumé", arguments[separator + 1]);
+    }
+
+    [Fact]
     public async Task Composing_sends_the_brief_under_the_assistants_profile_and_follows_the_milestones()
     {
         var (vm, processes, _) = Build();
@@ -238,7 +256,8 @@ public partial class CreateTeamWizardTests
         await Compose(vm);
 
         // The brief is the need, verbatim: no precision sentence rides along any more (STUDIO-45)…
-        Assert.Equal("une veille documentaire", processes.LastRequest!.Arguments[1]);
+        var composeArguments = processes.LastRequest!.Arguments;
+        Assert.Equal("une veille documentaire", composeArguments[composeArguments.ToList().IndexOf("--") + 1]);
         // …and the child runs under the assistant's model, by environment, never by file.
         Assert.Equal("qwen2.5:14b", processes.LastRequest.Environment["ORKEON_Llm__Model"]);
 

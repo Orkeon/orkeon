@@ -214,10 +214,19 @@ public static partial class RunnerExecution
         }
 
         var hasFileSystem = cliMounts.Count > 0
-            || RunnerSettings.ReadDeclaredMounts(layers).Count > 0;
+            || RunnerSettings.ReadDeclaredMounts(layers).Count > selection.Withdrawn.Count;
         string[] internalMounts = hasFileSystem
             ? []
             : [$"{FileSystemMount.Quote(workingDirectory)}:{RunnerVirtualRoots.Crew}:ro"];
+        // An Internal mount is out of the tools' reach: when the withdrawal left nothing, the working
+        // directory is mounted agent-facing (CH-12), as the server's tools can only read what is.
+        IReadOnlyList<string> inputDirectories = [];
+        if (!hasFileSystem && selection.Withdrawn.Count > 0)
+        {
+            inputDirectories = [workingDirectory];
+            cliMounts = [.. internalMounts];
+            internalMounts = [];
+        }
 
         IHost host;
         try
@@ -229,6 +238,8 @@ public static partial class RunnerExecution
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
                     SelectedMountIds = selection.SelectedMountIds,
+                    InputDirectories = inputDirectories,
+                    WithdrawsAmbiguousRoots = offered == OfferedMountSelectors.None,
                     CrewMountReferences = selection.CrewMountReferences,
                     AllowExternalMounts = allowExternalMounts,
                 },

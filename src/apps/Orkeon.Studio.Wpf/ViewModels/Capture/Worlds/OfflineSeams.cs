@@ -43,7 +43,7 @@ internal sealed class OfflineBalanceProbe(TimeProvider clock) : IProviderBalance
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var provider = LlmProviderDetector.Detect(request.BaseUrl);
+        var provider = StudioEndpointReading.ProviderOf(request.BaseUrl);
         var readable = HttpProviderBalanceProbe.ReadableProviders.Contains(provider, StringComparer.Ordinal);
         // DeepSeek's reference answers in yuan; the other two readable providers bill in dollars.
         var currency = provider == LlmProviderKeys.DeepSeek ? "CNY" : "USD";

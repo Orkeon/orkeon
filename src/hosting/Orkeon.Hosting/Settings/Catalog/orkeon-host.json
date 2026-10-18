@@ -109,7 +109,7 @@
       "section": "Orkeon:Host",
       "type": "list of string",
       "default": [],
-      "description": "The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`): a mount namespace of its own for each run, so two hosted crews may both address `/output` over two different folders. Empty (the default) keeps the host's mounts for that crew. A granted folder must lie under the workspace root, or under `PathSecurity:AdditionalAllowedDirectories`."
+      "description": "The folders this host grants THIS crew, as mount strings (`<physical>:<virtual>:<rights>`): a mount namespace of its own for each run, so two hosted crews may both address `/output` over two different folders. Empty (the default) keeps the host's mounts for that crew. A granted folder is an input of the daemon: readable wherever it lies, without `--allow-external-mounts`."
     },
     {
       "path": "Orkeon:Host:Crews:<i>:Name",

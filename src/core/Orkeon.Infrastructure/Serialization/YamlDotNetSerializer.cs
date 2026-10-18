@@ -11,8 +11,8 @@ namespace Orkeon.Infrastructure.Serialization
     ///
     /// Serialization is camelCase (canonical form), without the properties nobody set.
     /// Deserialization tolerates both camelCase (canonical) and snake_case (legacy dialect parity)
-    /// keys, and ignores unknown properties so that forward-compatible YAML extensions do not crash
-    /// the loader.
+    /// keys, and stays tolerant of unknown properties: it is the crew loader, not this serializer, that
+    /// judges the keys of a crew definition and refuses an unknown one.
     /// </summary>
     public class YamlDotNetSerializer : IYamlSerializer
     {

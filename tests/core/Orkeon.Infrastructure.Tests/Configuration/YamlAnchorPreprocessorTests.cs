@@ -271,7 +271,7 @@ public class YamlAnchorPreprocessorTests
 
         // Everything that is not an anchor or an alias comes through unchanged.
         Assert.Contains("name: analysis-crew", processed);
-        Assert.Contains("manager_agent: analyst", processed);
+        Assert.Contains("process: sequential", processed);
         Assert.Contains("expected_output: A report citing every symbol it names.", processed);
     }
 
@@ -292,5 +292,19 @@ public class YamlAnchorPreprocessorTests
         var result = YamlAnchorPreprocessor.Preprocess(yaml);
 
         Assert.Contains("      To write a literal alias, use \\*name.", result);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-03")]
+    public void ShouldExpandAliases_WhenTheFileUsesWindowsLineEndings()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "TestData", "crew-with-anchors.yaml");
+        var yaml = File.ReadAllText(path).ReplaceLineEndings("\r\n");
+
+        var processed = YamlAnchorPreprocessor.Preprocess(yaml);
+
+        Assert.DoesNotContain("*fqn_sourcing", processed);
+        Assert.DoesNotContain("*verbatim_citation", processed);
+        Assert.DoesNotContain("anchors:", processed);
     }
 }

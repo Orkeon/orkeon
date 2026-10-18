@@ -1,14 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 
 namespace Orkeon.Studio.Core.Configuration;
 
 /// <summary>
 /// Typed view over the <c>Llm</c> section of an <see cref="AppSettingsDocument"/>.
 /// There is deliberately no <c>Provider</c> key: the runtime infers the dialect from
-/// the endpoint, so Studio exposes <see cref="DetectedProvider"/> read-only.
+/// the endpoint, so Studio shows how the endpoint is read (<see cref="Orkeon.Studio.Core.Llm.StudioEndpointReading"/>) and writes no provider.
 /// </summary>
 public sealed partial class LlmSection
 {
@@ -139,14 +139,13 @@ public sealed partial class LlmSection
     }
 
     /// <summary>
-    /// Whether <paramref name="apiKey"/>, trimmed, is a <c>${NAME}</c> placeholder — the run's own
-    /// pattern (<c>LlmSettings.RefusePlaceholder</c>), which refuses the start on it: Orkeon never
-    /// expands it, and the text itself would be sent as the key (STUDIO-55). <c>sk-${X}</c> is no
-    /// placeholder: a key in clear, as the run reads it.
+    /// Whether <paramref name="apiKey"/> holds a variable reference — the Domain's recognition
+    /// (<see cref="SettingPlaceholder"/>), which the run refuses the start on: Orkeon never
+    /// expands it, and the text itself would be sent as the key (STUDIO-55, CH-15). <c>sk-${X}</c>
+    /// is one too.
     /// </summary>
     /// <param name="apiKey">The <c>ApiKey</c> as the file holds it.</param>
-    public static bool IsKeyPlaceholder(string? apiKey) =>
-        apiKey is not null && PlaceholderPattern().IsMatch(apiKey.Trim());
+    public static bool IsKeyPlaceholder(string? apiKey) => SettingPlaceholder.TryMatch(apiKey, out _);
 
     /// <summary>
     /// What the run's refusal of a placeholder key says to write instead: the name inside the braces
@@ -156,8 +155,9 @@ public sealed partial class LlmSection
     public static string PlaceholderVariable(string apiKey)
     {
         ArgumentNullException.ThrowIfNull(apiKey);
-        var name = PlaceholderPattern().Match(apiKey.Trim()).Groups["name"].Value.Trim();
-        return name.Length > 0 && IsVariableName(name) ? name : "<the variable's name>";
+        return SettingPlaceholder.TryMatch(apiKey, out var name) && !string.IsNullOrWhiteSpace(name) && IsVariableName(name)
+            ? name.Trim()
+            : "<the variable's name>";
     }
 
     /// <summary>
@@ -180,15 +180,6 @@ public sealed partial class LlmSection
     public static bool IsAbsoluteHttpUrl(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var parsed)
         && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
-
-    [GeneratedRegex(@"^\$\{(?<name>[^{}]*)\}$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex PlaceholderPattern();
-
-    /// <summary>
-    /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written
-    /// to the file. See <see cref="LlmProviderDetector"/>.
-    /// </summary>
-    public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
 
     /// <summary>
     /// Writes what a model setting pins into the default section, field by field (STUDIO-49,

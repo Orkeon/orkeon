@@ -197,13 +197,20 @@ internal sealed record ForgeCommandOptions
 
         for (var i = 0; i < args.Length; i++)
         {
+            // `--` ends the options: everything after it is the need, whatever it looks like.
+            if (args[i] == "--")
+            {
+                needWords.AddRange(args.Skip(i + 1));
+                break;
+            }
+
             // A verb is positional: only the first argument can be one, anything later with
             // the same spelling is part of the need.
             options = i == 0 && IsVerb(args[0])
                 ? ParseVerb(args, ref i, options)
                 : ParseOption(args, ref i, options, needWords);
 
-            // `list` takes no argument and an error stops the parse where it happened.
+            // An error stops the parse where it happened; `list` reads nothing after it.
             if (options.Error is not null || options.List)
                 return options;
         }
@@ -222,7 +229,11 @@ internal sealed record ForgeCommandOptions
     {
         var verb = args[i];
         if (verb == "list")
-            return options with { List = true };
+        {
+            return i + 1 < args.Length
+                ? options with { Error = "list takes no argument." }
+                : options with { List = true };
+        }
 
         // The words that follow are the request to rewrite, collected like a need.
         if (verb == "rephrase")
@@ -267,6 +278,9 @@ internal sealed record ForgeCommandOptions
     {
         var arg = args[i];
 
+        if (arg.StartsWith("--", StringComparison.Ordinal) && arg.IndexOf('=', StringComparison.Ordinal) is var eq and > 0)
+            return ParseAttached(arg[..eq], arg[(eq + 1)..], arg, options);
+
         if (arg == "--events")
         {
             // The only stream format is jsonl, and the value is optional: it is consumed only
@@ -292,6 +306,27 @@ internal sealed record ForgeCommandOptions
 
         needWords.Add(arg);
         return options;
+    }
+
+    /// <summary>One <c>--option=value</c>, cut at the first <c>=</c>: the same options as the spaced form.</summary>
+    private static ForgeCommandOptions ParseAttached(string name, string value, string arg, ForgeCommandOptions options)
+    {
+        if (name == "--events")
+        {
+            return string.Equals(value, EventsFormat, StringComparison.OrdinalIgnoreCase)
+                ? options with { Events = true }
+                : options with { Error = $"--events takes only the value {EventsFormat}." };
+        }
+
+        if (ApplyFlag(name, options) is not null)
+            return options with { Error = $"{name} takes no value." };
+
+        if (!ValueOptionErrors.TryGetValue(name, out var missing))
+            return options with { Error = $"Unknown option '{arg}'." };
+
+        return value.Length > 0
+            ? ApplyValue(options, name, value, missing)
+            : options with { Error = missing };
     }
 
     /// <summary>The valueless switches; <see langword="null"/> when the argument is not one.</summary>
@@ -364,6 +399,8 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     private static readonly (Func<ForgeCommandOptions, int, bool> Broken, string Error)[] ReconcileRules =
     [
+        ((o, needWords) => (o.PromoteSlug is not null || o.ResumeSlug is not null) && needWords > 0,
+            "promote and resume take the session slug only: no other word."),
         ((o, _) => o.PromoteSlug is not null && o.Destination is null,
             "promote needs --to <directory>."),
         ((o, _) => o.RenameDirectory is not null && o.TeamName is null,
@@ -652,8 +689,14 @@ internal static class ForgeCommand
         // run by the test stage. Everything else the crew sees is read-only.
         Directory.CreateDirectory(OutputDirectoryOf(session));
 
-        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan))
+        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan, out var mountWarnings))
             return 1;
+
+        // Disposing the renderer never touches Console.Out — it only wraps it.
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        foreach (var warning in mountWarnings)
+            events.Warning(ForgeErrorCodes.MountAmbiguous, warning);
 
         using var host = BuildEngineHost(settingsPath, mountPlan, box, tally, observer);
 
@@ -677,9 +720,6 @@ internal static class ForgeCommand
             .Select(tool => tool.Name)
             .ToHashSet(StringComparer.Ordinal);
 
-        // Disposing the renderer never touches Console.Out — it only wraps it.
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
             ? new JsonLinesUserChannel(Console.In)
@@ -764,14 +804,22 @@ internal static class ForgeCommand
     /// </para>
     /// </summary>
     private static bool TryPlanMounts(
-        string workspace, string? readRoot, ForgeSession session, string? settingsPath, out RunnerMountPlan mountPlan)
+        string workspace, string? readRoot, ForgeSession session, string? settingsPath,
+        out RunnerMountPlan mountPlan, out IReadOnlyList<string> warnings)
     {
         mountPlan = BuildMountPlan(workspace, readRoot, session);
-        // The forge takes no --mount, no --mount-id, no crew: a root declared twice has one remedy
-        // left, in the settings, and the line says that one (GAP-49, decision 3).
-        return RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
-            && RunnerExecution.EnsureMountSelectionIsResolvable(
-                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out _);
+        warnings = [];
+        // The forge takes no --mount, no --mount-id, no crew: a root declared twice is withdrawn
+        // and said so (CH-12), on stderr here and as an event once the writer exists.
+        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
+            || !RunnerExecution.EnsureMountSelectionIsResolvable(
+                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out var selection))
+        {
+            return false;
+        }
+
+        warnings = selection.Warnings;
+        return true;
     }
 
     /// <summary>
@@ -831,11 +879,9 @@ internal static class ForgeCommand
     /// the session stays under <see cref="ForgeSession.RootFor"/> of the workspace and the
     /// settings still resolve next to it — <c>--read</c> moves the documents, not the atelier.
     /// <para>
-    /// A read folder outside the process working directory is whitelisted the way
-    /// <c>orkeon run</c> whitelists its script directory and <c>orkeon rag</c> its corpus:
-    /// the mounts register either way, but the path validator behind every file tool refuses
-    /// a physical path outside the cwd unless the plan allows it — and the plan is the forge's
-    /// own three roots, nothing a user typed, so allowing it grants exactly those.
+    /// The folders the forge reads are inputs of the plan, as the script directory of
+    /// <c>orkeon run</c> and the corpus of <c>orkeon rag</c> are: the path validator behind every
+    /// file tool opens them without the external-mounts flag, which the forge never sets.
     /// </para>
     /// <para>
     /// Built here, apart from the host, so it can be asserted without an LLM.
@@ -856,11 +902,6 @@ internal static class ForgeCommand
             : [];
         var claimed = folders.Select(m => m.Folder.Path).ToHashSet(StringComparer.Ordinal);
 
-        // Containment, not spelling, like the run and rag verbs: ~/proj-old is not inside ~/proj.
-        var cwd = Directory.GetCurrentDirectory();
-        var readsOutsideCwd = (readRoot is not null && !PhysicalPathContainment.IsUnder(readRoot, cwd))
-            || folders.Any(m => !PhysicalPathContainment.IsUnder(m.PhysicalPath, cwd));
-
         // Quoted, like every other spec the framework builds: a session, workspace or
         // read-folder path carrying a ':' or ';' would otherwise split into the wrong
         // segments and the forge would die at host build with a grammar error about
@@ -877,7 +918,15 @@ internal static class ForgeCommand
         return new RunnerMountPlan
         {
             CliMounts = mounts,
-            AllowExternalMounts = readsOutsideCwd,
+            WithdrawsAmbiguousRoots = true,
+            // The folders the forge reads and writes are its own inputs: open without the flag.
+            InputDirectories =
+            [
+                readRoot ?? workspace,
+                session.Directory,
+                OutputDirectoryOf(session),
+                .. folders.Select(m => m.PhysicalPath),
+            ],
         };
     }
 

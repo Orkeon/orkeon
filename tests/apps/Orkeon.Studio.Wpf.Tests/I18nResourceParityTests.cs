@@ -48,6 +48,7 @@ public sealed partial class I18nResourceParityTests
     }
 
     [Theory]
+    [Trait("BR", "CH-09")]
     [MemberData(nameof(SatelliteCultures))]
     public void Should_Have_Same_Keys_When_Comparing_A_Satellite_To_The_Neutral_Culture(string satellite)
     {
@@ -198,6 +199,7 @@ public sealed partial class I18nResourceParityTests
     /// machine that is not the developer's.
     /// </summary>
     [Theory]
+    [Trait("BR", "CH-09")]
     [MemberData(nameof(SatelliteCultures))]
     public void Should_Keep_Every_Placeholder_When_Comparing_A_Satellite_To_The_Neutral_Culture(string satellite)
     {

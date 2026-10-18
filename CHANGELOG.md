@@ -166,6 +166,77 @@ and Orkeon Code — whose own `global.json` carries the same pin — follow it t
 action installs the newest 10.0 SDK, as `10.0.x` did, so the builds are unchanged. The .NET 11 preview job keeps
 its own `11.0.x`.
 
+### Fixed — a `${NAME}` or `%NAME%` reference in a setting a host passes as written refuses the start **[breaking]**
+
+A setting a host hands to a process as written is never expanded: `${NAME}` and `%NAME%` reached the MCP servers,
+the e-mail accounts and the paths of a run as literal text and failed late, far from their cause. `orkeon`, the REPL,
+`doctor` and `orkeon-host` now refuse the start, before any MCP server (exit 1; 78 for `orkeon-host`), with the
+correction and never the value. `$NAME` passes. An e-mail or drive account holding one is reported misconfigured (the problem names the field) and is not used. Studio
+refuses the same values before saving (`STUDIO-SETTING-PLACEHOLDER`, one error at its path); `Llm:ApiKey` keeps
+`STUDIO-LLM-APIKEY-PLACEHOLDER` and now refuses `sk-${X}`; the four indirection prefixes go, so `env:X` and
+`ORKEON_X` are judged as values (GAP-55). See `docs/reference/configuration.md`.
+
+- **Breaking**: a settings file carrying a `${NAME}` or `%NAME%` reference in one of these settings no longer starts.
+- **Migration**: write the value, or set it in the environment (`ORKEON_<path>`); for the variable of an MCP server,
+  remove the entry.
+
+### Fixed — a crew key no model reads refuses the load **[breaking]**
+
+A crew YAML key that no model reads, a retired key (`rag.provider` included), a duplicate, a merge key `<<:` or a
+wrong shape was ignored silently and the crew ran without the setting. Each now refuses the load, situated at its
+file and line, with its path and the nearest key ("is not a key Orkeon reads. Did you mean ..."). The `.yml` files of a one-folder-per-entity layout are read, and `anchors:`
+expands with CRLF line ends (GAP-50). See `docs/architecture/yaml-schema.md`.
+
+- **Breaking**: a crew file holding an unknown or retired key, a duplicate, a `<<:` merge key or a wrongly shaped
+  value no longer loads.
+- **Migration**: correct or remove the key the message names; `rag.provider` becomes `Orkeon:Rag:Provider` in the
+  settings.
+
+### Fixed — every `orkeon` command reads an argument as it is written **[breaking]**
+
+`--option=value` is read as written in every command (a value that holds a line break, a space or ends with one
+included), `--` ends the options, and a word no command reads is refused instead of lost. A usage error goes to
+stderr with a non-zero exit, while help asked for (`orkeon <command> --help`) prints and exits 0. `forge`, the
+typings command and `settings` follow the same rule; `orkeon-host` refuses an unread argument, or a repeated
+`--settings` or `--working-dir`, with exit 78; the AppHost writes `--settings=<path>`, and Studio passes the need
+after `--` (GAP-51). See `docs/reference/cli.md`.
+
+- **Breaking**: an extra word that was ignored is now refused.
+- **Migration**: a value that begins with `-` or holds a space goes between quotes or after `--`; an option that takes
+  no value (`takes no value.`) is written without one.
+- **Migration**: `forge list` ("list takes no argument."), `promote` and `resume` ("take the session slug only: no
+  other word.") refuse extra words; drop them.
+- **Migration**: `orkeon-host` exits 78 on an unknown argument or a repeated `--settings` / `--working-dir`; remove them.
+- **Migration**: read a usage error on stderr, not stdout.
+- **Migration**: `orkeon <command> --help` exits 0; a script that relied on a non-zero help exit must stop doing so.
+
+### Changed — one reading of a model address for the run, the CLI and Studio
+
+The run, `doctor`, the init command and Studio read a model address the same way, from one Domain reading: Ollama on
+port 11434 at its root, OpenAI-compatible elsewhere; the address alone decides (a gateway to Anthropic says
+`anthropic` in its address). An address no run serves (no `http://`, a vendor `/anthropic` path) is refused at start;
+a silent address is reported; `LLM resolved:` names the provider; `doctor` names the one the run builds; the init
+command refuses a preset the address contradicts, without writing; Studio reports it as `STUDIO-LLM-ENDPOINT`.
+`LlmProviderDetector` is removed (GAP-53). See `docs/architecture/llm-providers.md`.
+
+- **Breaking**: `localhost` outside port 11434 is no longer Ollama, and `…:11434/v1` reaches Ollama.
+- **Migration**: for an Ollama elsewhere, use its `/v1` address and `"ApiKey": "not-needed"`; add `http://` to an
+  address that lacks it; drop the `/anthropic` path of a vendor address.
+
+### Fixed — a mount the run would refuse is refused at start **[breaking]**
+
+A malformed mount, a missing folder or one outside the whitelist was accepted and then unusable. Run and the REPL
+now refuse it at start (exit 1), `orkeon-host` with 78 naming the crew. The whitelist opens the inputs of a command
+without the flag, and a `--mount` only with `--allow-external-mounts` or `ORKEON_ALLOW_EXTERNAL_MOUNTS`; the implicit
+flags of run, rag, forge and the daemon go, and a linked folder is whitelisted with its target. `mcp serve` and
+`forge` withdraw a root declared twice without a choice, with a warning. A team's `run.sh` doubles a `"` in its
+folders, and Studio's launchers carry `--allow-external-mounts` when a folder leaves the team (GAP-54). See
+`docs/architecture/vfs-compliance.md`.
+
+- **Breaking**: a `--mount` outside the working directory, accepted before without the flag, is refused.
+- **Migration**: add `--allow-external-mounts` or set `ORKEON_ALLOW_EXTERNAL_MOUNTS`; for `orkeon-host`, an
+  operator `--mount` outside the working folder asks for the flag, with crews as well; declare each root once.
+
 ### Fixed — MessagePack is pinned to 2.5.303 (GHSA-qhrr-8q5h-9q3h)
 
 An advisory published on 2026-10-15 (moderate: nested arrays can blow past buffer length limits) flags

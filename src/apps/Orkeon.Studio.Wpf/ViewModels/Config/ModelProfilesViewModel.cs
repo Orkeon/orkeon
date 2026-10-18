@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
@@ -443,6 +444,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowFields));
             OnPropertyChanged(nameof(UrlAlwaysVisible));
             OnPropertyChanged(nameof(ShowLocalNote));
+            OnPropertyChanged(nameof(EndpointReadingLine));
             OnPropertyChanged(nameof(ShowNoneNote));
             OnPropertyChanged(nameof(ShowTestRow));
             OnPropertyChanged(nameof(ShowBalanceRow));
@@ -469,6 +471,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
             OnHostProfileChanged();
             SaveCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(EndpointReadingLine));
+            OnPropertyChanged(nameof(ShowLocalNote));
             ClearConnectionTestResult();   // the verdict was about the previous endpoint
             ReplaceAvailableModels([]);
         }
@@ -535,8 +539,38 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>The catch-all card needs the URL from every user, not only experts.</summary>
     public bool UrlAlwaysVisible => _selectedProvider?.Kind == LlmPresetKind.Other;
 
+    /// <summary>
+    /// The line under the address: how a run reads it, with the reading's notice when it has one — or,
+    /// on an Ollama card whose address is read otherwise, why that card cannot serve it (CH-08, CH-09).
+    /// Empty for a blank address.
+    /// </summary>
+    public string EndpointReadingLine
+    {
+        get
+        {
+            if (StudioEndpointReading.Of(BaseUrl) is not { } reading)
+                return string.Empty;
+
+            if (OllamaReadElsewhere)
+                return _strings.Format(StudioStringKeys.ProfileOllamaReadElsewhere, reading.ProviderKey);
+
+            var line = _strings.Format(StudioStringKeys.ProfileEndpointReadAs, reading.ProviderKey);
+            return reading.Notice == LlmEndpointNotice.None
+                ? line
+                : line + " " + _strings[EndpointNoticeKey];
+        }
+    }
+
+    private const string EndpointNoticeKey = "Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT";
+
+    /// <summary>True when an Ollama card holds an address a run reads as another provider: nothing is probed.</summary>
+    private bool OllamaReadElsewhere =>
+        _selectedProvider?.Name == LlmPresets.Ollama
+        && StudioEndpointReading.Of(BaseUrl) is { Notice: not LlmEndpointNotice.Refused } reading
+        && reading.ProviderKey != LlmPresets.Ollama;
+
     /// <summary>"No key needed — the model runs on your machine."</summary>
-    public bool ShowLocalNote => _selectedProvider?.Kind == LlmPresetKind.Local;
+    public bool ShowLocalNote => _selectedProvider?.Kind == LlmPresetKind.Local && !OllamaReadElsewhere;
 
     /// <summary>"Without a model, runs answer as an echo."</summary>
     public bool ShowNoneNote => IsNone;
@@ -690,6 +724,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         null => null,
         { Result: { } result } => LlmProbeText.Describe(result, _strings),
         { KeyMissing: true } => _strings[StudioStringKeys.ProfileKeyMissingTest],
+        { ReadElsewhere: true } => EndpointReadingLine,
         _ => _strings[StudioStringKeys.LlmTesting],
     };
 
@@ -1043,6 +1078,13 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         if (_isTestingConnection)
             return;
 
+        if (OllamaReadElsewhere)
+        {
+            // A run would not reach Ollama there: nothing is sent, the line says why.
+            ShowVerdict(ProbeVerdict.OllamaElsewhere);
+            return;
+        }
+
         var apiKey = SettingKey;
         if (RequiresApiKey && apiKey is null)
         {
@@ -1160,15 +1202,17 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             nameof(KeyStatusText), nameof(KeyBlockTitle), nameof(KeyConsoleUrl), nameof(KeyStoreError),
             nameof(HostIdText), nameof(HostIdRenamedText), nameof(HostKeyHint),
             nameof(TimeoutHint), nameof(ThinkingHint), nameof(MaxTokensHint),
-            nameof(ConnectionTestResult), nameof(ModelListNote), nameof(BalanceResult));
+            nameof(ConnectionTestResult), nameof(ModelListNote), nameof(BalanceResult), nameof(EndpointReadingLine));
     }
 
     /// <summary>The state of the last connection test: in progress, refused for a missing key, or the probe's result.</summary>
-    private sealed record ProbeVerdict(LlmProbeResult? Result, bool KeyMissing)
+    private sealed record ProbeVerdict(LlmProbeResult? Result, bool KeyMissing, bool ReadElsewhere = false)
     {
         public static ProbeVerdict InProgress { get; } = new(null, false);
 
         public static ProbeVerdict MissingKey { get; } = new(null, true);
+
+        public static ProbeVerdict OllamaElsewhere { get; } = new(null, false, true);
 
         public static ProbeVerdict Of(LlmProbeResult result) => new(result, false);
     }

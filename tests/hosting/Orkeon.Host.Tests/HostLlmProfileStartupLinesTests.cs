@@ -92,7 +92,7 @@ public sealed class HostLlmProfileStartupLinesTests : IDisposable
             """);
 
         Assert.Contains("LLM profiles offered to crews besides the default: a", lines);
-        Assert.Contains(lines, l => l.StartsWith("LLM profile a: apiKey=", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.StartsWith("LLM profile a: provider=", StringComparison.Ordinal) && l.Contains(" apiKey=", StringComparison.Ordinal));
         Assert.DoesNotContain(lines, l => l.StartsWith("LLM profile b:", StringComparison.Ordinal));
 
         Assert.Single(warnings, w => w.Contains("Llm:Profiles:a:ApiKeyEnvVar", StringComparison.Ordinal));
@@ -110,8 +110,8 @@ public sealed class HostLlmProfileStartupLinesTests : IDisposable
         var (lines, warnings, stderr) = Build("");
 
         Assert.Contains("LLM profiles offered to crews besides the default: a, b", lines);
-        Assert.Contains(lines, l => l.StartsWith("LLM profile a: apiKey=", StringComparison.Ordinal));
-        Assert.Contains(lines, l => l.StartsWith("LLM profile b: apiKey=", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.StartsWith("LLM profile a: provider=", StringComparison.Ordinal) && l.Contains(" apiKey=", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.StartsWith("LLM profile b: provider=", StringComparison.Ordinal) && l.Contains(" apiKey=", StringComparison.Ordinal));
         Assert.Single(warnings, w => w.Contains("Llm:Profiles:a:ApiKeyEnvVar", StringComparison.Ordinal));
         Assert.Single(warnings, w => w.Contains("Llm:Profiles:b:ApiKeyEnvVar", StringComparison.Ordinal));
         Assert.Equal(2, CountUnresolvedLines(stderr));

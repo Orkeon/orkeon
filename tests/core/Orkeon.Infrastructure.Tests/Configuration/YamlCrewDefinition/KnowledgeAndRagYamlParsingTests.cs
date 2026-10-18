@@ -326,13 +326,11 @@ rag:
     }
 
     [Fact]
-    public async Task LoadFromString_RetiredRagProviderKey_DrawsAWarningAndIsIgnored()
+    [Trait("BR", "CH-02")]
+    public async Task ShouldRefuseRagProvider_WhenACrewStillWritesIt()
     {
-        // GAP-02: rag.provider was parsed and read by nobody — the store is the host's
-        // choice (Orkeon:Rag:Provider). The key is gone; a crew that still writes it is
-        // told so instead of being ignored in silence.
-        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<YamlCrewDefinitionLoader>();
-        var loader = BuildLoader(logger);
+        // GAP-02: rag.provider is gone, the store is the host's choice (Orkeon:Rag:Provider).
+        var loader = BuildLoader();
         var yaml = """
 name: rag-crew
 goal: x
@@ -342,12 +340,12 @@ rag:
     docs: { sources: ["./docs/"] }
 """;
 
-        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken));
 
-        Assert.True(config.Rag!.Collections.ContainsKey("docs"));
-        var warning = Assert.Single(logger.LogEntries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
-        Assert.Contains("rag.provider", warning.Message, StringComparison.Ordinal);
-        Assert.Contains("Orkeon:Rag:Provider", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("rag.provider", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Rag:Provider", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("line 4", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

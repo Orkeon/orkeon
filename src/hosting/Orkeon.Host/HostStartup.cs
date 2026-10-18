@@ -14,10 +14,12 @@ namespace Orkeon.Host;
 /// <param name="SettingsPath">The <c>--settings</c> file the operator named, or null.</param>
 /// <param name="Mounts">The operator's own <c>--mount</c> specs, in the order given.</param>
 /// <param name="WorkingDirectory">The <c>--working-dir</c> the process must move to, or null.</param>
+/// <param name="AllowExternalMounts">Whether <c>--allow-external-mounts</c> was given.</param>
 internal sealed record HostCommandLine(
     string? SettingsPath,
     IReadOnlyList<string> Mounts,
-    string? WorkingDirectory);
+    string? WorkingDirectory,
+    bool AllowExternalMounts = false);
 
 /// <summary>
 /// The outcome of the reserved-root guard: a refusal to report, warnings to re-emit, or
@@ -53,7 +55,7 @@ internal static class HostStartup
     orkeon-host — the Orkeon service host: hosts crews as a daemon and answers chat channels
     and, when enabled, A2A peers.
 
-    Usage:
+    Usage (a long option takes its value as '--name value' or '--name=value'):
       orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
 
     Options:
@@ -139,13 +141,22 @@ internal static class HostStartup
         // (ADR-008), never identity-mapped: the loader reads through the VFS, and a crew path that
         // only exists on the physical disk would pass the startup probe and then fail on every
         // message. The crew definitions are the host's primary input — declared by the operator in
-        // the configuration — so their mounts do not require the external-mounts opt-in any more
-        // than the CLI's own config directory does.
+        // the configuration — and so are the folders it grants its crews: all are inputs of the daemon,
+        // readable without the external-mounts opt-in. Only an operator --mount outside the working
+        // directory needs --allow-external-mounts (or ORKEON_ALLOW_EXTERNAL_MOUNTS=1).
         HostCrewMountPlan crewPlan;
+        List<string> inputs;
         try
         {
             var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
-            crewPlan = HostCrewMounts.For(ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews);
+            var crews = ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews;
+            crewPlan = HostCrewMounts.For(crews);
+            inputs = [.. crewPlan.Mounts.Concat(crews.SelectMany(crew => crew.Mounts))
+                .Where(mount => !string.IsNullOrWhiteSpace(mount))
+                .Select(FileSystemMount.TryGetBasePath)
+                .OfType<string>()];
+            if (GrantedFolderRefusal(crews) is { } grantError)
+                return Refused(report, grantError);
         }
         catch (HostConfigurationException ex)
         {
@@ -184,7 +195,8 @@ internal static class HostStartup
                 new RunnerMountPlan
                 {
                     CliMounts = mounts,
-                    AllowExternalMounts = crewPlan.Mounts.Count > 0 || args.Contains("--allow-external-mounts", StringComparer.Ordinal),
+                    InputDirectories = inputs,
+                    AllowExternalMounts = command.AllowExternalMounts || RunnerEnvironment.AllowExternalMounts,
                 },
                 configureLogging: null,
                 // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a
@@ -230,15 +242,16 @@ internal static class HostStartup
         return new HostLaunch(null, HostConfigurationException.ExitCode);
     }
 
-    /// <summary>Reads the flags the daemon understands out of the raw argument array.</summary>
+    /// <summary>
+    /// Reads the flags the daemon understands out of the raw argument array. A long name is read
+    /// as <c>--name value</c> or <c>--name=value</c> (cut at the first '='); a short name takes the
+    /// next argument whole, '=' included (STUDIO-51).
+    /// </summary>
     public static HostCommandLine Read(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return new HostCommandLine(
-            SettingsPath: ArgumentValue(args, "--settings") ?? ArgumentValue(args, "-s"),
-            Mounts: [.. ArgumentValues(args, "--mount"), .. ArgumentValues(args, "-m")],
-            WorkingDirectory: ArgumentValue(args, "--working-dir"));
+        return ScanLine(args).Command;
     }
 
     /// <summary>
@@ -265,8 +278,8 @@ internal static class HostStartup
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(command);
 
-        if (IsLastArgument(args, "--working-dir"))
-            return "orkeon-host: --working-dir requires a path.";
+        if (ScanLine(args).Error is { } scanError)
+            return scanError;
 
         if (command.WorkingDirectory is not null
             && StartupProbes.TryApplyWorkingDirectory(command.WorkingDirectory) is { } workingDirError)
@@ -274,11 +287,34 @@ internal static class HostStartup
             return $"orkeon-host: {workingDirError}";
         }
 
-        if (IsLastArgument(args, "--settings") || IsLastArgument(args, "-s"))
-            return "orkeon-host: --settings requires a path.";
-
         if (command.SettingsPath is not null && !StartupProbes.SettingsFileExists(command.SettingsPath))
             return $"orkeon-host: settings file not found: {command.SettingsPath}";
+
+        return null;
+    }
+
+    /// <summary>
+    /// CH-10: the first folder granted to a crew that is malformed or missing, the line naming the crew.
+    /// </summary>
+    [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: probes operator-granted folders on the physical disk at start, before the VFS exists.")]
+    private static string? GrantedFolderRefusal(IEnumerable<HostedCrewOptions> crews)
+    {
+        foreach (var crew in crews)
+        {
+            foreach (var grant in crew.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)))
+            {
+                try
+                {
+                    var mount = FileSystemMount.Parse(grant);
+                    if (!Directory.Exists(mount.BasePath))
+                        return $"orkeon-host: crew '{crew.Name}' is granted a folder that does not exist: '{grant}'.";
+                }
+                catch (Exception ex) when (ex is FormatException or ArgumentException)
+                {
+                    return $"orkeon-host: crew '{crew.Name}' is granted an invalid mount '{grant}': {ex.Message}";
+                }
+            }
+        }
 
         return null;
     }
@@ -352,32 +388,86 @@ internal static class HostStartup
         return new ReservedRootsOutcome(null, written.Length > 0 ? written : null);
     }
 
+    private static readonly string[] ValueFlags = ["--settings", "-s", "--working-dir", "--mount", "-m"];
+    private static readonly string[] SwitchFlags = ["--allow-external-mounts", "--help", "-h", "--version"];
+
     /// <summary>
-    /// Whether <paramref name="name"/> is present AND is the last argument — a flag that needs
-    /// a value and was given none. Only when it is actually present: <c>Array.LastIndexOf</c>
-    /// answers -1 for an absent flag, and with no arguments at all <c>-1 == args.Length - 1</c>
-    /// was true, so a bare <c>orkeon-host</c> exited 78 complaining about a flag nobody typed —
-    /// and the unit's RestartPreventExitStatus then made sure it was never retried.
+    /// The one pass over the line: what was read, and the first refusal, if any (an unknown
+    /// argument, a flag without its value, an empty or attached value, a repeated --settings or
+    /// --working-dir). A bare invocation has no flag, so no refusal.
     /// </summary>
-    private static bool IsLastArgument(string[] args, string name)
+    private static (HostCommandLine Command, string? Error) ScanLine(string[] args)
     {
-        var last = Array.LastIndexOf(args, name);
-        return last >= 0 && last == args.Length - 1;
-    }
+        string? settings = null;
+        string? workingDirectory = null;
+        var mounts = new List<string>();
+        var allowExternalMounts = false;
+        string? error = null;
 
-    private static string? ArgumentValue(string[] args, string name)
-    {
-        var index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
-    }
-
-    private static IEnumerable<string> ArgumentValues(string[] args, string name)
-    {
-        for (var index = 0; index < args.Length - 1; index++)
+        for (var index = 0; index < args.Length && error is null; index++)
         {
-            if (string.Equals(args[index], name, StringComparison.Ordinal))
-                yield return args[index + 1];
+            var argument = args[index];
+            var name = argument;
+            string? value = null;
+            var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
+            if (equals >= 0)
+            {
+                name = argument[..equals];
+                value = argument[(equals + 1)..];
+            }
+
+            if (SwitchFlags.Contains(name, StringComparer.Ordinal))
+            {
+                if (value is not null)
+                    error = $"orkeon-host: {name} takes no value.";
+                else if (name == "--allow-external-mounts")
+                    allowExternalMounts = true;
+                continue;
+            }
+
+            if (!ValueFlags.Contains(name, StringComparer.Ordinal))
+            {
+                error = $"orkeon-host: unknown argument '{argument}'; see orkeon-host --help";
+                continue;
+            }
+
+            if (value is null)
+            {
+                if (index + 1 >= args.Length)
+                {
+                    error = name is "--mount" or "-m"
+                        ? $"orkeon-host: {name} requires a value."
+                        : $"orkeon-host: {(name == "-s" ? "--settings" : name)} requires a path.";
+                    continue;
+                }
+
+                value = args[++index];
+            }
+            else if (value.Length == 0)
+            {
+                error = $"orkeon-host: {name}= has an empty value.";
+                continue;
+            }
+
+            switch (name)
+            {
+                case "--settings" or "-s":
+                    if (settings is not null)
+                        error = "orkeon-host: --settings given twice.";
+                    settings = value;
+                    break;
+                case "--working-dir":
+                    if (workingDirectory is not null)
+                        error = "orkeon-host: --working-dir given twice.";
+                    workingDirectory = value;
+                    break;
+                default:
+                    mounts.Add(value);
+                    break;
+            }
         }
+
+        return (new HostCommandLine(settings, mounts, workingDirectory, allowExternalMounts), error);
     }
 }
 

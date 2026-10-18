@@ -80,7 +80,7 @@ public class ChatThreadViewModelTests
         // The click IS the run, and the brief carries the wizard's own words — nothing
         // is spliced in from a questionnaire that no longer exists.
         var request = Assert.Single(processes.Requests);
-        Assert.Contains("une veille documentaire", request.Arguments[1], StringComparison.Ordinal);
+        Assert.Contains("une veille documentaire", request.Arguments[request.Arguments.ToList().IndexOf("--") + 1], StringComparison.Ordinal);
         Assert.True(open);
 
         // The model's question is a bubble in the thread and nowhere else.

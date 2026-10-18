@@ -36,16 +36,16 @@ public sealed class ConstantDriftTests
     /// The neighbouring test asserts the constant was <i>copied</i>, and its own comment says
     /// a missing copy "would silently be detected as 'custom'". That is the property one step
     /// away from the one that matters: <c>LlmProviderEndpoints.Gemini</c> was copied, was pinned
-    /// by that test, and <c>LlmProviderDetector</c> never registered it — so Studio reported
+    /// by that test, and the endpoint reading never registered it — so Studio reported
     /// "custom" for the endpoint its own preset catalogue writes, with a green drift suite.
-    /// Ask the detector.
+    /// Ask the reading.
     /// </para>
     /// </summary>
     [Fact]
     public void Every_copied_cloud_endpoint_is_recognised_by_the_detector()
     {
         // Local endpoints are told apart by port and path, not by host, and are covered by
-        // LlmProviderDetectorTests; vector stores are not LLM endpoints at all.
+        // the endpoint reading tests; vector stores are not LLM endpoints at all.
         string[] notCloudLlmEndpoints =
         [
             LlmEndpoints.ChromaDbDefault,
@@ -62,8 +62,8 @@ public sealed class ConstantDriftTests
         Assert.NotEmpty(cloudEndpoints);
         Assert.All(cloudEndpoints, endpoint =>
             Assert.True(
-                LlmProviderDetector.Detect(endpoint) != LlmProviderDetector.Custom,
-                $"LlmProviderDetector reports 'custom' for '{endpoint}' — an endpoint Orkeon itself writes."));
+                Orkeon.Domain.SharedKernel.ValueObjects.LlmEndpointReading.Of(endpoint, null, null).ProviderKey != LlmProviderKeys.Custom,
+                $"The endpoint reading reports 'custom' for '{endpoint}' — an endpoint Orkeon itself writes."));
     }
 
     [Fact]

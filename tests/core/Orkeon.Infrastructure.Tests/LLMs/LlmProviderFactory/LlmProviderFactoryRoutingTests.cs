@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Tests.Shared.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.Tests.TestDoubles;
@@ -157,5 +158,47 @@ public class LlmProviderFactoryRoutingTests
     public void ShouldRouteToTheAggregator_WhenTheProviderKeyIsExplicit(string providerKey)
     {
         Assert.Equal(providerKey, CreateFactory().Create(providerKey, LlmConfig.Create("gemini-3.7-flash")).Name);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-08")]
+    [MemberData(nameof(ReadingRows))]
+    public void ShouldBuildTheProviderOfTheReading_WhenTheAddressIsLocalButNotOllama(
+        string address, string providerKey, string? ollamaRoot, bool isLocal)
+    {
+        _ = ollamaRoot;
+        _ = isLocal;
+        foreach (var model in new[] { "llama3.2", "qwen3" })
+        {
+            Assert.Equal(BuiltName(providerKey), RoutedProviderName(model, address), ignoreCase: true);
+        }
+    }
+
+    // custom and docker-model-runner are served by the OpenAI-compatible provider, whose Name is "OpenAI".
+    private static string BuiltName(string key) => key is "custom" or "docker-model-runner" ? "OpenAI" : key;
+
+    public static TheoryData<string, string, string?, bool> ReadingRows => LlmEndpointCases.Rows;
+
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("localhost:11434")]
+    [InlineData("ftp://x")]
+    [InlineData("https://api.z.ai/api/anthropic")]
+    public void ShouldThrow_WhenTheReadingRefusesTheAddress(string address)
+    {
+        Assert.Throws<NotSupportedException>(() => RoutedProviderName("llama3.2", address));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-09")]
+    [InlineData("https://u:tok@api.deepseek.com/anthropic?k=s", "api.deepseek.com")]
+    [InlineData("ftp://u:tok@x/?k=s", "x")]
+    public void ShouldRefuseWithoutUserInfoOrQuery_WhenTheReadingRefusesTheAddress(string address, string host)
+    {
+        var exception = Assert.Throws<NotSupportedException>(() => RoutedProviderName("llama3.2", address));
+
+        Assert.DoesNotContain("u:tok", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("k=s", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(host, exception.Message, StringComparison.Ordinal);
     }
 }

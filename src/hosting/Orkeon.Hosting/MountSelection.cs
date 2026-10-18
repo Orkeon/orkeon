@@ -195,13 +195,15 @@ public static class MountSelection
     /// <param name="crewReferences">The crew's <c>mounts:</c> block, already parsed.</param>
     /// <param name="settingsLabel">What the messages name the entries' source by: the file, or the files separated by a comma; null for the configuration alone.</param>
     /// <param name="offered">What the command offers to choose with.</param>
+    /// <param name="withdrawsAmbiguousRoots">A root declared several times with nothing selecting one is withdrawn and warned about instead of refused.</param>
     internal static MountSelectionPlan Resolve(
         IReadOnlyList<DeclaredMountEntry> declared,
         IReadOnlyList<string> cliMounts,
         IReadOnlyList<MountId> selectedIds,
         IReadOnlyList<MountReference> crewReferences,
         string? settingsLabel,
-        OfferedMountSelectors offered)
+        OfferedMountSelectors offered,
+        bool withdrawsAmbiguousRoots = false)
     {
         ArgumentNullException.ThrowIfNull(declared);
         ArgumentNullException.ThrowIfNull(cliMounts);
@@ -212,6 +214,7 @@ public static class MountSelection
         var resolution = new Resolution
         {
             Offered = offered,
+            WithdrawsAmbiguousRoots = withdrawsAmbiguousRoots,
             SettingsLabel = Where(settingsLabel),
             Errors = new List<string>(ValidateDeclared(declared, settingsLabel)),
             ById = entries
@@ -255,6 +258,9 @@ public static class MountSelection
 
         /// <summary>What the command offers to choose between the entries of one root.</summary>
         public required OfferedMountSelectors Offered { get; init; }
+
+        /// <summary>A root declared several times with nothing selecting one is withdrawn and warned about, not refused (CH-12).</summary>
+        public bool WithdrawsAmbiguousRoots { get; init; }
 
         public required List<string> Errors { get; init; }
 
@@ -399,7 +405,14 @@ public static class MountSelection
             // D-04: several entries, all with ids (else ValidateDeclared already refused),
             // and no one said which. The message names every candidate so the operator can
             // pick without opening the file, and the ways THIS command offers to pick one.
-            if (group.Count > 1 && group.All(entry => entry.Id is not null))
+            if (group.Count > 1 && group.All(entry => entry.Id is not null) && resolution.WithdrawsAmbiguousRoots)
+            {
+                resolution.Warnings.Add(
+                    $"'{root}' is claimed by {JoinAnd(group.Select(entry => entry.Id!.ToString()))} in {resolution.SettingsLabel} "
+                    + "and nothing selects one: no entry of it is mounted for this run.");
+                withdrawn.AddRange(group.Select(entry => new WithdrawnMountEntry(entry.Index, root, entry.Id)));
+            }
+            else if (group.Count > 1 && group.All(entry => entry.Id is not null))
             {
                 resolution.Errors.Add(
                     $"'{root}' is declared {Times(group.Count)} in {resolution.SettingsLabel} "

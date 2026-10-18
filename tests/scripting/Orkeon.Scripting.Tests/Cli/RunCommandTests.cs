@@ -51,6 +51,7 @@ public sealed class RunCommandTests : IDisposable
         {
             ScriptPath = scriptPath,
             Mounts = new[] { $"{_outDir}:/output:rw" },
+            AllowExternalMounts = true,
         });
 
         Assert.Equal(0, exit);
@@ -91,6 +92,7 @@ public sealed class RunCommandTests : IDisposable
         {
             ScriptPath = entryPath,
             Mounts = new[] { $"{_outDir}:/output:rw" },
+            AllowExternalMounts = true,
         });
 
         Assert.Equal(0, exit);

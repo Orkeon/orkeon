@@ -652,6 +652,15 @@
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve">
     <value>自定义预设同时需要基础 URL 和模型。</value>
   </data>
+  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve">
+    <value>预设“{0}”与基础 URL 相矛盾，运行会将其读作“{1}”。请选择与该地址相符的预设，或更改地址。</value>
+  </data>
+  <data name="Studio.Settings.EndpointReadAs" xml:space="preserve">
+    <value>读作：{0}</value>
+  </data>
+  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve">
+    <value>该地址被读作 {0}，而不是 Ollama：运行不会在此处与 Ollama 通信。请使用 Ollama 端口 11434，或选择其他卡片。</value>
+  </data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve">
     <value>未知预设「{0}」。支持：{1}。</value>
   </data>
@@ -1589,6 +1598,12 @@
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve">
     <value>API 密钥写成了 ${名称}，引擎从不替换它：请在 ApiKeyEnvVar 中填写其变量名。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve">
+    <value>某项设置含有变量引用（${名称} 或 %名称%），引擎从不替换它：会按原文使用。请按提示填写值或仅填写名称。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve">
+    <value>模型地址被拒绝或保持沉默：位于其他供应商 /anthropic 路径下的地址会被拒绝，没有路径的地址会被当作根路径上的 OpenAI 兼容服务器。</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve">
     <value>有一个模型配置名为“default”，这是 Llm 节自身的名称：引擎拒绝启动。请重命名它。</value>

@@ -1,2 +1,23 @@
 #nullable enable
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlRefused(string! settingPath, string! address) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmVendorAnthropicPathRefused(string! settingPath, string! address, string! vendor) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent(string! settingPath, string! address) -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.SettingPlaceholderSetting(string! Path, string! Correction) -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Path.get -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Path.init -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Correction.get -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Correction.init -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Deconstruct(out string! Path, out string! Correction) -> void
+Orkeon.Constants.Configuration.SettingPlaceholders
+static Orkeon.Constants.Configuration.SettingPlaceholders.Settings.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.SettingPlaceholderSetting!>!
+static Orkeon.Constants.Configuration.SettingPlaceholders.CorrectionFor(string! settingPath) -> string?
+static Orkeon.Constants.Configuration.OperatorMessages.SettingPlaceholderRefused(string! settingPath, string! correction) -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.<Clone>$() -> Orkeon.Constants.Configuration.SettingPlaceholderSetting!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Equals(Orkeon.Constants.Configuration.SettingPlaceholderSetting? other) -> bool
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.Equals(object? obj) -> bool
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.GetHashCode() -> int
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.ToString() -> string!
+static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator !=(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
+static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator ==(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
 const Orkeon.Constants.Configuration.ConfigurationKeys.ToolsDrive = "Orkeon:Tools:Drive" -> string!

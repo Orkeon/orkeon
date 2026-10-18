@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Constants.Llm;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,8 @@ namespace Orkeon.Infrastructure.LLMs;
 /// </remarks>
 public sealed class LlmProviderFactory : ILlmProviderFactory
 {
+    private const string LlmBaseUrlSetting = "Llm:BaseUrl";
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILlmUsageSink? _usageSink;
@@ -136,218 +139,34 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
             LlmProviderKeys.OpenRouter => CreateOpenRouterProvider(config),
             LlmProviderKeys.Mammouth => CreateMammouthProvider(config),
+            LlmProviderKeys.Custom or LlmProviderKeys.DockerModelRunner => CreateOpenAIProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
     }
 
     /// <summary>
-    /// Infers provider type from configuration.
-    /// Pure logic - no business rules.
+    /// The provider key the Domain reading names for the configuration; a refused address throws.
     /// </summary>
     private static string InferProviderType(LlmConfig config)
     {
-        var fromBaseUrl = InferFromBaseUrl(config.BaseUrl?.ToString());
-        if (fromBaseUrl != null)
-            return fromBaseUrl;
-
-        var fromModel = InferFromModel(config.Model);
-        if (fromModel != null)
-            return fromModel;
-
+        var baseUrl = config.BaseUrl?.ToString();
 #pragma warning disable CS0618 // Type or member is obsolete
-        var fromApiKey = InferFromApiKey(config.ApiKey);
+        var reading = LlmEndpointReading.Of(baseUrl, config.Model, config.ApiKey);
 #pragma warning restore CS0618
-        if (fromApiKey != null)
-            return fromApiKey;
+        if (reading.Notice == LlmEndpointNotice.Refused)
+            throw new NotSupportedException(RefusalMessage(config.BaseUrl?.OriginalString, reading.ProviderKey));
 
-        return LlmProviderKeys.OpenAI; // Default
+        return reading.ProviderKey;
     }
 
     /// <summary>
-    /// Infers the provider type from the base URL patterns.
+    /// Names the refusal the reading decided: a refused address read as a vendor's is that vendor's
+    /// <c>/anthropic</c> path; any other is unreadable. Neither message carries user info or query.
     /// </summary>
-    private static string? InferFromBaseUrl(string? baseUrl)
-    {
-        if (string.IsNullOrEmpty(baseUrl))
-            return null;
-
-#pragma warning disable CA1308 // normalized lowercase URL reused as the comparison-key form for all subsequent ordinal host matches
-        var url = baseUrl.ToLowerInvariant();
-#pragma warning restore CA1308
-
-        return InferFromKnownHostPatterns(url) ?? InferFromGenericPatterns(url);
-    }
-
-    /// <summary>
-    /// The known-host table, in evaluation order: the first entry with a matching substring
-    /// wins, and its optional guard runs before the key is returned. Order is load-bearing —
-    /// Docker Model Runner must be recognized BEFORE the generic localhost rule that would
-    /// otherwise claim it for Ollama.
-    /// </summary>
-    private static readonly (string Provider, string[] Hosts, Action<string>? Guard)[] KnownHostRules =
-    [
-        // Docker Model Runner exposes an OpenAI-dialect endpoint on a local host.
-        (LlmProviderKeys.OpenAI, ["/engines/", "model-runner.docker.internal"], null),
-        (LlmProviderKeys.AzureOpenAI, [LlmProviderKeys.AzureShort, ".cognitiveservices."], null),
-        (LlmProviderKeys.Together, ["together.xyz"], null),
-        // Qwen / Alibaba Model Studio: the mainland host (dashscope.aliyuncs.com), the
-        // international host (dashscope-intl.aliyuncs.com — note it does NOT contain the
-        // mainland string), and the per-workspace regional hosts
-        // ({workspace}.{region}.maas.aliyuncs.com).
-        (LlmProviderKeys.Qwen, ["dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com", "maas.aliyuncs.com"], null),
-        (LlmProviderKeys.DeepSeek, ["deepseek.com"], GuardAgainstDeepSeekAnthropicEndpoint),
-        // Kimi: mainland (moonshot.cn) and international (moonshot.ai) hosts.
-        (LlmProviderKeys.Kimi, ["moonshot.cn", "moonshot.ai"], null),
-        (LlmProviderKeys.Mistral, ["mistral.ai"], null),
-        // Google Gemini: the OpenAI-compatible host (Vertex AI endpoints are a separate,
-        // OAuth-authenticated surface and are deliberately NOT matched here).
-        (LlmProviderKeys.Gemini, ["generativelanguage.googleapis.com"], null),
-        // x.AI (Grok): match the full host - "x.ai" bare would also hit any *x.ai domain.
-        (LlmProviderKeys.Grok, ["api.x.ai"], null),
-        // MiniMax: international (minimax.io) and mainland (minimaxi.com) hosts.
-        (LlmProviderKeys.MiniMax, ["api.minimax.io", "api.minimaxi.com"], null),
-        (LlmProviderKeys.HuggingFace, ["huggingface.co", "hf.co"], null),
-        // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
-        // (which would also hit any *z.ai domain), plus the mainland bigmodel.cn twin.
-        (LlmProviderKeys.Zai, ["api.z.ai", "bigmodel.cn"], null),
-        // The two aggregators (LLM-09, D-02): reached by host or by an explicit provider key.
-        // Neither host contains "openai", "anthropic" or "localhost", so the generic rules
-        // below never claim them.
-        (LlmProviderKeys.OpenRouter, ["openrouter.ai"], null),
-        (LlmProviderKeys.Mammouth, ["mammouth.ai"], null),
-    ];
-
-    private static string? InferFromKnownHostPatterns(string url)
-    {
-        foreach (var (provider, hosts, guard) in KnownHostRules)
-        {
-            if (!Array.Exists(hosts, host => url.Contains(host, StringComparison.Ordinal)))
-                continue;
-
-            guard?.Invoke(url);
-            return provider;
-        }
-
-        return null;
-    }
-
-    private static string? InferFromGenericPatterns(string url)
-    {
-        if (url.Contains(LlmProviderKeys.OpenAI, StringComparison.Ordinal))
-            return LlmProviderKeys.OpenAI;
-        if (url.Contains(LlmProviderKeys.Anthropic, StringComparison.Ordinal))
-            return LlmProviderKeys.Anthropic;
-        if (url.Contains("localhost", StringComparison.Ordinal) || url.Contains("11434", StringComparison.Ordinal))
-            return LlmProviderKeys.Ollama;
-        return null;
-    }
-
-    /// <summary>
-    /// The model-name prefixes that name a vendor, in the order they are tried. A plain
-    /// <c>vendor/model</c> identifier is NOT a claim: HuggingFace and Together use the same
-    /// shape, so <c>anthropic/claude-sonnet-5</c> without a base URL keeps its historical route
-    /// (the OpenAI default), and the vendor prefixes listed here (<c>deepseek/…</c>,
-    /// <c>qwen/…</c>) keep going to the direct vendor (D-02, §9). OpenRouter's own router slugs
-    /// (<c>openrouter/auto</c>, <c>openrouter/free</c>) exist nowhere else; Mammouth's
-    /// identifiers are the vendors' own bare strings and are never inferred from.
-    /// </summary>
-    private static readonly (string Prefix, string Provider)[] ModelPrefixRoutes =
-    [
-        ("gpt", LlmProviderKeys.OpenAI),
-        ("claude", LlmProviderKeys.Anthropic),
-        ("llama", LlmProviderKeys.Ollama),
-        ("codellama", LlmProviderKeys.Ollama),
-        (LlmProviderKeys.Mistral, LlmProviderKeys.Mistral),
-        ("ministral", LlmProviderKeys.Mistral),
-        (LlmProviderKeys.Qwen, LlmProviderKeys.Qwen),
-        (LlmProviderKeys.DeepSeek, LlmProviderKeys.DeepSeek),
-        (LlmProviderKeys.MoonshotAlias, LlmProviderKeys.Kimi),
-        (LlmProviderKeys.GlmAlias, LlmProviderKeys.Zai),
-        (LlmProviderKeys.Gemini, LlmProviderKeys.Gemini),
-        (LlmProviderKeys.Grok, LlmProviderKeys.Grok),
-        (LlmProviderKeys.MiniMax, LlmProviderKeys.MiniMax),
-        (LlmProviderKeys.OpenRouter + "/", LlmProviderKeys.OpenRouter),
-    ];
-
-    /// <summary>
-    /// Infers the provider type from the model name patterns: the Ollama spelling of a Mistral
-    /// tag first (<see cref="IsOllamaMistralTag"/>), then <see cref="ModelPrefixRoutes"/>.
-    /// </summary>
-    private static string? InferFromModel(string? model)
-    {
-        if (string.IsNullOrEmpty(model))
-            return null;
-
-#pragma warning disable CA1308 // normalized lowercase model name reused as the comparison-key form for all subsequent ordinal prefix matches
-        var m = model.ToLowerInvariant();
-#pragma warning restore CA1308
-
-        if (IsOllamaMistralTag(m))
-            return LlmProviderKeys.Ollama;
-
-        return ModelPrefixRoutes
-            .Where(route => m.StartsWith(route.Prefix, StringComparison.Ordinal))
-            .Select(route => route.Provider)
-            .FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Rejects <c>api.deepseek.com/anthropic</c>, which speaks the Anthropic Messages API and
-    /// not the OpenAI dialect the DeepSeek provider builds (G-22).
-    /// </summary>
-    /// <remarks>
-    /// Host-based inference matches <c>deepseek.com</c> and would happily route this endpoint
-    /// to the OpenAI-compatible provider, producing malformed requests whose error surfaces
-    /// far from its cause. Failing here names the cause instead. Orkeon has no reason to use
-    /// this alternate path — the standard DeepSeek endpoint exposes the same models.
-    /// </remarks>
-    private static void GuardAgainstDeepSeekAnthropicEndpoint(string normalizedUrl)
-    {
-        if (!normalizedUrl.Contains("/anthropic", StringComparison.Ordinal))
-            return;
-
-        throw new NotSupportedException(
-            "The DeepSeek base URL points at the /anthropic path, which speaks the Anthropic " +
-            "Messages API dialect, not the OpenAI dialect this provider builds. Use the " +
-            "standard endpoint (https://api.deepseek.com) — it serves the same models.");
-    }
-
-    /// <summary>
-    /// True for the two model-name shapes that unambiguously designate the <em>local</em>
-    /// Mistral pulled by Ollama: the bare name <c>mistral</c> and a tagged
-    /// <c>mistral:&lt;tag&gt;</c> (e.g. <c>mistral:7b</c>).
-    /// </summary>
-    /// <remarks>
-    /// LLM-01 / G-14: the previous rule routed <em>every</em> <c>mistral*</c> model to Ollama,
-    /// so a cloud identifier such as <c>mistral-medium-2604</c> was sent to
-    /// <c>localhost:11434</c>. Versioned identifiers now reach the Mistral cloud instead. The
-    /// arbitration of MISTRAL-PROVIDER-PLAN §0 is preserved for the bare name. Ollama users who
-    /// run a hyphenated local tag (<c>mistral-nemo</c>, <c>mistral-small3.2</c>) set
-    /// <see cref="LlmConfig.BaseUrl"/> to their server — base-URL inference runs first and wins.
-    /// </remarks>
-    private static bool IsOllamaMistralTag(string normalizedModel) =>
-        string.Equals(normalizedModel, LlmProviderKeys.Mistral, StringComparison.Ordinal)
-        || normalizedModel.StartsWith("mistral:", StringComparison.Ordinal);
-
-    /// <summary>
-    /// Infers the provider type from the API key prefix.
-    /// </summary>
-    private static string? InferFromApiKey(string? apiKey)
-    {
-        if (string.IsNullOrEmpty(apiKey))
-            return null;
-
-        if (apiKey.StartsWith("hf_", StringComparison.Ordinal))
-            return LlmProviderKeys.HuggingFace;
-
-        // x.AI keys carry the vendor's own prefix (measured 2026-08-30: refused by
-        // api.groq.com, served by api.x.ai) - the "grok"/"groq" near-homograph is exactly
-        // the confusion this inference exists to absorb.
-        if (apiKey.StartsWith("xai-", StringComparison.Ordinal))
-            return LlmProviderKeys.Grok;
-
-        return null;
-    }
+    private static string RefusalMessage(string? baseUrl, string providerKey) =>
+        providerKey == LlmProviderKeys.Custom
+            ? OperatorMessages.LlmBaseUrlRefused(LlmBaseUrlSetting, baseUrl ?? string.Empty)
+            : OperatorMessages.LlmVendorAnthropicPathRefused(LlmBaseUrlSetting, baseUrl ?? string.Empty, providerKey);
 
     /// <summary>
     /// Meters and limits a freshly built provider (<see cref="LlmProviderEntrance"/>) and wraps it in

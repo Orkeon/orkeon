@@ -52,22 +52,30 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
 - `Create(config)` déduit le provider — c'est ce que fait un run, puisque la section `Llm` du
   fichier de settings ne porte aucune clé de provider. La première règle qui correspond
   l'emporte :
-  1. **URL de base, hôtes connus** — `/engines/` ou `model-runner.docker.internal` (Docker
-     Model Runner, dialecte OpenAI — testé en premier, avant la règle localhost), `azure` /
-     `.cognitiveservices.`, `together.xyz`, les hôtes DashScope, `deepseek.com` (refusé quand
-     le chemin est `/anthropic`), `moonshot.cn` / `moonshot.ai`, `mistral.ai`,
-     `generativelanguage.googleapis.com`, `api.x.ai`, `api.minimax.io` / `api.minimaxi.com`,
-     `huggingface.co` / `hf.co`, `api.z.ai` / `bigmodel.cn`, `openrouter.ai`, `mammouth.ai`.
-  2. **URL de base, générique** — contient `openai` → OpenAI, `anthropic` → Anthropic,
-     `localhost` ou `11434` → Ollama.
-  3. **Préfixe du modèle** — `gpt`, `claude`, `llama` / `codellama` (Ollama), `mistral` /
+  1. **Avec une URL de base, l'adresse seule décide** (`LlmEndpointReading`, la lecture unique
+     que partagent le run, la CLI et Studio ; ni le modèle ni la clé ne sont consultés) :
+
+     | Adresse | Provider |
+     |---|---|
+     | un hôte de vendeur connu — `azure` / `.cognitiveservices.`, `together.xyz`, les hôtes DashScope, `deepseek.com`, `moonshot.cn` / `moonshot.ai`, `mistral.ai`, `generativelanguage.googleapis.com`, `api.x.ai`, `api.minimax.io` / `api.minimaxi.com`, `huggingface.co` / `hf.co`, `api.z.ai` / `bigmodel.cn`, `openrouter.ai`, `mammouth.ai`, `openai.com`, `anthropic.com` | ce vendeur |
+     | `/engines/` dans le chemin, `model-runner.docker.internal` ou le port `12434` | Docker Model Runner (dialecte OpenAI) |
+     | le port `11434` | Ollama, à sa racine native (un `/v1` ou `/api` final est retiré) |
+     | `anthropic` dans l'hôte ou dans le chemin | Anthropic |
+     | toute autre adresse | serveur compatible OpenAI (`custom`), au chemin écrit |
+     | un hôte de vendeur sous un chemin `/anthropic`, ou une adresse qui n'est pas une URL `http(s)` absolue | refusée au démarrage, avec le chemin du réglage et la correction |
+
+     Un serveur n'est Ollama que sur le port `11434`, où qu'il tourne. Une
+     adresse `custom` sans chemin (`http://hote:8000`) est lue comme un serveur compatible OpenAI
+     qui répond à sa racine, et signalée une fois par section (`LlmEndpointNotice.Silent`, un
+     avertissement sur stderr et dans le journal) : ajoutez le chemin de ses routes, souvent `/v1`.
+  2. **Préfixe du modèle** (seulement sans adresse) — `gpt`, `claude`, `llama` / `codellama` (Ollama), `mistral` /
      `ministral` (le `mistral` nu et `mistral:<tag>` vont à Ollama), `qwen`, `deepseek`,
      `moonshot`, `glm`, `gemini`, `grok`, `minimax`, `openrouter/`. Mammouth n'est jamais
      déduit d'un nom de modèle : ses identifiants sont ceux des vendeurs.
-  4. **Préfixe de la clé API** — `hf_` → HuggingFace, `xai-` → Grok.
-  5. Sinon **OpenAI**.
+  3. **Préfixe de la clé API** — `hf_` → HuggingFace, `xai-` → Grok.
+  4. Sinon **OpenAI**.
 
-Une section qui ne nomme aucun modèle saute la règle 3. **Le modèle d'un appel** est ensuite
+Une section qui ne nomme aucun modèle saute la règle 2. **Le modèle d'un appel** est ensuite
 résolu par le provider, de la même façon pour les seize (`HttpLlmProviderBase.ResolveModel`) :
 celui de l'appel quand sa configuration en nomme un, sinon celui avec lequel le provider est
 configuré — celui de son profil —, sinon son `DefaultModel` (son entrée de

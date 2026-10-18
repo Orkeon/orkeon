@@ -200,6 +200,16 @@ public static class DeclaredMounts
     }
 
     /// <summary>
+    /// Whether one of the team's mounts is a real folder outside the team. A mount that does
+    /// not read names no folder.
+    /// </summary>
+    public static bool ReachesOutsideTheTeam(IReadOnlyList<string> mounts, string? teamDirectory) =>
+        mounts.Any(mount => Reads(mount) && !IsInsideTeam(mount, teamDirectory));
+
+    private static bool Reads(string mountString) =>
+        MountDefinition.TryParse(mountString, out _, out _);
+
+    /// <summary>
     /// Whether the folder behind <paramref name="mountString"/> is the team's own: recorded
     /// team-relative (<c>./output:/output:rw</c>), or absolute under
     /// <paramref name="teamDirectory"/> — the spelling of an older sidecar.

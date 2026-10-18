@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Profiles;
@@ -127,6 +128,20 @@ internal static partial class ConfiguredLlmProviderBootstrapper
             var warning = string.Format(CultureInfo.InvariantCulture, UnresolvedApiKeyReferenceFormat, reference);
             LogApiKeyReferenceUnresolved(logger, warning);
         }
+
+        var profileSections = section.GetSection(ConfigurationKeys.LlmProfiles);
+        var sections = LlmSettings.ProfileNames(configuration).Select(profileSections.GetSection);
+        if (LlmSettings.HasDefault(configuration))
+            sections = sections.Prepend(section);
+        foreach (var candidate in sections)
+        {
+            var address = candidate["BaseUrl"];
+            if (string.IsNullOrWhiteSpace(address)
+                || LlmEndpointReading.Of(address, null, null).Notice != LlmEndpointNotice.Silent)
+                continue;
+
+            LogLlmBaseUrlSilent(logger, OperatorMessages.LlmBaseUrlSilent($"{candidate.Path}:BaseUrl", address));
+        }
     }
 
     private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
@@ -140,6 +155,9 @@ internal static partial class ConfiguredLlmProviderBootstrapper
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogApiKeyReferenceUnresolved(ILogger logger, string warning);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Warning, Message = "{Warning}")]
+    private static partial void LogLlmBaseUrlSilent(ILogger logger, string warning);
 
     /// <summary>The echo provider, once the warning that says the REPL runs on it is logged.</summary>
     private static UndefinedLlmProvider Announced(IServiceProvider services, UndefinedLlmProvider echo)

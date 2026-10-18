@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Constants.Configuration;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Host.Tests.Doubles;
@@ -29,6 +30,7 @@ public sealed class HostA2ATests : IDisposable
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan s_wait = TimeSpan.FromSeconds(30);
     private static readonly string[] s_apiKeyScheme = ["ApiKey"];
+    private static readonly string[] s_referencedKeyName = ["PEER_KEY"];
     private static readonly string[] s_peerKeyName = ["A2A_PEER_KEY"];
     private static readonly string[] s_veilleAndAnUndeclaredCrew = ["veille", "billing"];
     private static readonly string[] s_bearerScheme = ["Bearer"];
@@ -373,6 +375,20 @@ public sealed class HostA2ATests : IDisposable
 
         Assert.Contains("A2A:Security:Oidc:Authorty", error.Message, StringComparison.Ordinal);
         Assert.Contains("Authority", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-14")]
+    public void ShouldRefuseToStart_WhenAnA2ASecretIsAReference()
+    {
+        var error = Assert.Throws<RunnerSettingsException>(() => Build(new HeldLlmProvider("unused"), LoopbackPorts.Probe(), (root, _) =>
+        {
+            root["A2A"] = new { Security = new { AllowedAuthSchemes = s_apiKeyScheme, ApiKeySecretNames = s_referencedKeyName } };
+            root["Secrets"] = new { PEER_KEY = "${PEER_KEY}" };
+        }));
+
+        Assert.Contains("Secrets:PEER_KEY", error.Message, StringComparison.Ordinal);
+        Assert.Contains(SettingPlaceholders.CorrectionFor("Secrets:PEER_KEY")!, error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

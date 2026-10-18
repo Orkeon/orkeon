@@ -1,3 +1,4 @@
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tools.Drive.Constants;
 using Orkeon.Tools.Drive.Security;
@@ -106,6 +107,9 @@ internal static class DriveAccountResolver
             return null;
         }
 
+        if (IsReference(declared.ClientSecretEnvVar, "Auth:ClientSecretEnvVar", problems))
+            return null;
+
         var secretEnvVar = string.IsNullOrWhiteSpace(declared.ClientSecretEnvVar) ? null : declared.ClientSecretEnvVar.Trim();
         var scopes = Scopes(provider, options.Rights);
         if (provider == DriveProvider.GoogleDrive)
@@ -144,6 +148,15 @@ internal static class DriveAccountResolver
             Scopes = scopes,
             ScopesOnRefresh = true,
         };
+    }
+
+    // Orkeon expands no variable in a drive setting: the problem names the field, never the value.
+    private static bool IsReference(string? value, string field, List<string> problems)
+    {
+        if (!SettingPlaceholder.TryMatch(value, out _))
+            return false;
+        problems.Add($"{field} holds a variable reference, and Orkeon expands no variable here: write the NAME of the environment variable alone");
+        return true;
     }
 
     private static SharePolicy ResolveShare(DriveAccountOptions options, List<string> problems)

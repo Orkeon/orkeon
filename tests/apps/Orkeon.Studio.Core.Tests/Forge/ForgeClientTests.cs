@@ -24,10 +24,19 @@ public class ForgeClientTests
     }
 
     [Fact]
+    [Trait("BR", "CH-05")]
+    public void ShouldPlaceTheNeedAfterADoubleDash_WhenStudioStartsTheForge()
+    {
+        Assert.Equal(
+            ["forge", "--events", "jsonl", "--", "je veux une veille"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { Need = "je veux une veille" }));
+    }
+
+    [Fact]
     public void The_argv_follows_the_cli_grammar()
     {
         Assert.Equal(
-            ["forge", "je veux une veille", "--events", "jsonl"],
+            ["forge", "--events", "jsonl", "--", "je veux une veille"],
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { Need = "je veux une veille" }));
 
         Assert.Equal(
@@ -64,7 +73,7 @@ public class ForgeClientTests
             ["forge", "resume", "veille", "--events", "jsonl", "--lang", "fr"],
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Language = "fr" }));
         Assert.Equal(
-            ["forge", "je veux une veille", "--events", "jsonl", "--lang", "zh", "--dry"],
+            ["forge", "--events", "jsonl", "--lang", "zh", "--dry", "--", "je veux une veille"],
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { Need = "je veux une veille", Language = "zh", Dry = true }));
 
         Assert.DoesNotContain("--lang", ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Language = "en" }));
@@ -80,7 +89,7 @@ public class ForgeClientTests
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", ReadDirectory = "/data/notes" }));
 
         Assert.Equal(
-            ["forge", "je veux une veille", "--events", "jsonl", "--read", "/data/notes", "--dry"],
+            ["forge", "--events", "jsonl", "--read", "/data/notes", "--dry", "--", "je veux une veille"],
             ForgeArgumentsBuilder.Build(new ForgeStartRequest
             {
                 Need = "je veux une veille",
@@ -104,7 +113,7 @@ public class ForgeClientTests
     public void The_argv_carries_the_reference_of_a_new_session()
     {
         Assert.Equal(
-            ["forge", "trier mes e-mails", "--events", "jsonl", "--read", "/data/mails", "--reference", "03-email-pipeline", "--dry"],
+            ["forge", "--events", "jsonl", "--read", "/data/mails", "--reference", "03-email-pipeline", "--dry", "--", "trier mes e-mails"],
             ForgeArgumentsBuilder.Build(new ForgeStartRequest
             {
                 Need = "trier mes e-mails",
@@ -174,7 +183,7 @@ public class ForgeClientTests
         var request = Assert.Single(processes.Requests);
         Assert.Equal(BinaryPath, request.FileName);
         Assert.Equal("/ws", request.WorkingDirectory);
-        Assert.Equal(["forge", "veille", "--events", "jsonl"], request.Arguments);
+        Assert.Equal(["forge", "--events", "jsonl", "--", "veille"], request.Arguments);
         Assert.NotNull(request.OnInputReady);   // the stdin channel is always wired
     }
 

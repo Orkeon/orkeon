@@ -30,8 +30,10 @@ embarqués ciblent `host.docker.internal:12434` avec le modèle
 
 Aucun nom de provider n'apparaît dans ces fichiers : Orkeon choisit le provider d'après l'URL
 de base. Une URL contenant `/engines/` désigne Docker Model Runner, piloté par le dialecte
-OpenAI (`OpenAIProvider`) ; `11434` ou `localhost` va au provider Ollama natif
-(`OllamaLlmProvider`) — voir [la résolution du provider](../architecture/llm-providers.md#résolution-du-provider).
+OpenAI (`OpenAIProvider`) ; le port `11434` va au provider Ollama natif
+(`OllamaLlmProvider`) ; toute autre adresse est un serveur compatible OpenAI. Un autre serveur
+de ce type s'écrit avec son chemin `/v1` et, s'il ne vérifie
+aucune clé, `"ApiKey": "not-needed"` — une adresse sans chemin est signalée comme muette. Voir [la résolution du provider](../architecture/llm-providers.md#résolution-du-provider).
 
 Hors conteneur, `orkeon init --provider docker-model-runner` (ou `--provider ollama`) écrit
 les mêmes settings avec `localhost` à la place de `host.docker.internal`

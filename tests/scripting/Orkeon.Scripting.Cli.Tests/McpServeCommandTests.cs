@@ -130,22 +130,30 @@ public sealed class McpServeCommandTests
     }
 
     /// <summary>
-    /// GAP-49, decision 3: the server takes no <c>--mount-id</c>, no crew and no <c>--mount</c>, so
-    /// the line of a root declared twice says the one thing left: keep one of them in the settings.
+    /// CH-12: the server has no selector, so a root declared twice is withdrawn with a warning
+    /// instead of refusing the start.
     /// </summary>
     [Fact]
-    public async Task A_root_declared_twice_is_refused_with_the_one_remedy_the_server_has()
+    [Trait("BR", "CH-12")]
+    public async Task ShouldStartAndWarn_WhenTheSettingsDeclareARootTwice()
     {
         using var scratch = new ScriptScratch();
         var a = Directory.CreateDirectory(Path.Combine(scratch.Root, "a")).FullName;
         var b = Directory.CreateDirectory(Path.Combine(scratch.Root, "b")).FullName;
+        await File.WriteAllTextAsync(Path.Combine(a, "note.txt"), "from a", TestContext.Current.CancellationToken);
         var idA = Orkeon.Domain.Common.MountId.Create();
         var idB = Orkeon.Domain.Common.MountId.Create();
         var settings = scratch.WriteFile("appsettings.json",
             "{ \"RaggableTree\": { \"Enabled\": false }, \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
-            + JsonSerializer.Serialize($"{idA}|{a}:/data:ro") + ", "
-            + JsonSerializer.Serialize($"{idB}|{b}:/data:ro") + " ] } } }");
-        using var console = new TestConsole(stdin: ListTools + "\n");
+            + JsonSerializer.Serialize($"{idA}|{a}:/output:rw") + ", "
+            + JsonSerializer.Serialize($"{idB}|{b}:/output:rw") + " ] } } }");
+        const string read =
+            """{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"file_read","arguments":{"path":"/output/note.txt"}}}""";
+        await File.WriteAllTextAsync(Path.Combine(scratch.Root, "cwd-note.txt"), "from the cwd", TestContext.Current.CancellationToken);
+        var readCwd =
+            "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"file_read\",\"arguments\":{\"path\":\""
+            + "/crew/cwd-note.txt\"}}}";
+        using var console = new TestConsole(stdin: ListTools + "\n" + read + "\n" + readCwd + "\n");
 
         var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
         {
@@ -153,13 +161,21 @@ public sealed class McpServeCommandTests
             WorkingDirectoryOverride = scratch.Root,
         });
 
-        Assert.NotEqual(Program.ExitOk, exit);
-        Assert.Contains(
-            $"ERROR: '/data' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
-            + $"Keep one of them in {settings}.",
-            console.Stderr,
-            StringComparison.Ordinal);
-        Assert.Empty(console.Stdout);
+        Assert.Equal(Program.ExitOk, exit);
+        var warning = Assert.Single(Lines(console.Stderr), l => l.StartsWith("WARNING:", StringComparison.Ordinal) && l.Contains("/output", StringComparison.Ordinal));
+        Assert.Contains("/output", warning, StringComparison.Ordinal);
+        Assert.Contains(idA.ToString(), warning, StringComparison.Ordinal);
+        Assert.Contains(idB.ToString(), warning, StringComparison.Ordinal);
+        Assert.DoesNotContain("declared twice", console.Stderr, StringComparison.Ordinal);
+        var answers = Answers(console.Stdout);
+        Assert.Equal(3, answers.Count);
+        // Neither entry is mounted: the file of the first one is out of reach.
+        Assert.True(answers[1].GetProperty("result").GetProperty("isError").GetBoolean());
+        // Those were the only entries: the working directory is mounted and readable.
+        var cwdResult = answers[2].GetProperty("result");
+        var cwdText = cwdResult.GetProperty("content")[0].GetProperty("text").GetString();
+        Assert.False(cwdResult.GetProperty("isError").GetBoolean(), cwdText);
+        Assert.Contains("from the cwd", cwdText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -178,6 +194,7 @@ public sealed class McpServeCommandTests
     }
 
     [Fact]
+    [Trait("BR", "CH-07")]
     public async Task Help_names_the_options_on_stderr_and_leaves_stdout_to_the_protocol()
     {
         using var console = new TestConsole();

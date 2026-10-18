@@ -97,6 +97,16 @@ internal static class ReplStartup
             return Refused(report, refusal, scriptedOpts);
         }
 
+        try
+        {
+            RunnerHost.EnsureMountsAreReachable(host.Services, scriptedOpts.Mounts);
+        }
+        catch (RunnerSettingsException ex)
+        {
+            host.Dispose();
+            return Refused(report, ex.Message, scriptedOpts);
+        }
+
         // A --mount that took the place of a declared entry, or of every entry of its root: said
         // on the log, in the runners' words.
         RunnerHost.LogMountDecisions(host, decisions);

@@ -132,7 +132,7 @@ An options section follows the `Orkeon:*` convention (`services.AddOptions<Swarm
 
 ## Step 5 — YAML: the configuration block
 
-`process: swarm` needs nothing more (step 1). A crew-level block follows the `graphConfig` path; a task-level block follows the task `deliverable:` path — mapped in `MapTasks`, then applied to the task by `CrewFactory`: a block read and never applied is a bug, and a crew that writes a removed key is refused at load (`RetiredCrewYamlKeys`).
+`process: swarm` needs nothing more (step 1). A crew-level block follows the `graphConfig` path; a task-level block follows the task `deliverable:` path — mapped in `MapTasks`, then applied to the task by `CrewFactory`: a block read and never applied is a bug, and a crew that writes a key no model carries is refused at load (`CrewYamlKeyCheck`), so the model of this step must exist before the block is written.
 
 **Models** — `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`. The models carry **no** `[YamlMember]` attributes: keys resolve by convention (camelCase, with a snake_case fallback). Add a public class and the property on the models that need it:
 
@@ -205,7 +205,7 @@ The test runner is Microsoft.Testing.Platform: a `--filter` that matches no test
 name: "swarm-demo"
 goal: "…"
 process: swarm
-swarmConfig:
+swarmConfig:           # refused at load until SwarmYamlConfig carries it
   maxAgents: 5
 
 agents:

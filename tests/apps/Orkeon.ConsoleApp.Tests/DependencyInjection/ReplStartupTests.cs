@@ -27,7 +27,7 @@ public sealed class ReplStartupTests : IDisposable
     {
         var settings = Path.Combine(_root, "repl.json");
         File.WriteAllText(settings, json);
-        return ReplStartup.Prepare(["--settings", settings, "--mount", $"{_root}:/workspace:ro"], UiMode.Plain, replWordWrap: false, _reported.Add);
+        return ReplStartup.Prepare(["--settings", settings, "--mount", $"{_root}:/workspace:ro", "--allow-external-mounts"], UiMode.Plain, replWordWrap: false, _reported.Add);
     }
 
     [Theory]

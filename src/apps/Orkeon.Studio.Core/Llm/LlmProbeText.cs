@@ -58,6 +58,8 @@ public static class LlmProbeText
             LlmProbeFailure.NoBaseUrl => strings[StudioStringKeys.ProbeNoBaseUrl],
             LlmProbeFailure.NotAbsoluteUrl => strings.Format(culture, StudioStringKeys.ProbeNotAbsoluteUrl, result.Detail ?? ""),
             LlmProbeFailure.NotHttpUrl => strings.Format(culture, StudioStringKeys.ProbeNotHttpUrl, result.Detail ?? ""),
+            LlmProbeFailure.AddressRefused => Orkeon.Constants.Configuration.OperatorMessages
+                .LlmVendorAnthropicPathRefused("BaseUrl", result.Detail ?? "", result.Vendor ?? ""),
             LlmProbeFailure.NoCatalogue => strings[StudioStringKeys.ProbeNoCatalogue],
             LlmProbeFailure.Timeout => strings.Format(culture, StudioStringKeys.ProbeTimeout,
                 result.Timeout.TotalSeconds.ToString("0.#", culture)),

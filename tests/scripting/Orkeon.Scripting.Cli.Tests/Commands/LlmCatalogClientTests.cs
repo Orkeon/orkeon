@@ -143,6 +143,20 @@ public sealed class LlmCatalogClientTests
         Assert.Null(request.Headers.Authorization);
     }
 
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task ShouldAskTheRoot_WhenTheOllamaAddressEndsWithV1()
+    {
+        using var handler = new StubHttpMessageHandler(OllamaBody);
+        using var client = new HttpClient(handler);
+
+        await LlmCatalogClient.ListAsync(
+            client, "ollama", "http://gpu-box:11434/v1", null, TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("http://gpu-box:11434/api/tags", request.RequestUri?.ToString());
+    }
+
     /// <summary>
     /// Azure serves deployments an operator named, not a public catalogue. Returning an empty
     /// list would read as "this provider serves nothing"; the refusal has to name the reason

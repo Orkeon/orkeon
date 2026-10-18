@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Logging;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Security;
 
 namespace Orkeon.Infrastructure.Logging;
@@ -271,20 +272,7 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
     {
         if (uri == null) return "unknown";
 
-#pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
-        var host = uri.Host.ToLowerInvariant();
-#pragma warning restore CA1308
-        return host switch
-        {
-            _ when host.Contains("azure", StringComparison.Ordinal) => "azure-openai",
-            _ when host.Contains("openai", StringComparison.Ordinal) => "openai",
-            _ when host.Contains("anthropic", StringComparison.Ordinal) => "anthropic",
-            _ when host.Contains("together", StringComparison.Ordinal) => "together",
-            _ when host.Contains("deepseek", StringComparison.Ordinal) => "deepseek",
-            _ when host.Contains("localhost", StringComparison.Ordinal) || host == "127.0.0.1" => "ollama",
-            _ when host.Contains("huggingface", StringComparison.Ordinal) => "huggingface",
-            _ => host
-        };
+        return LlmEndpointReading.Of(uri.GetLeftPart(UriPartial.Path), null, null).ProviderKey;
     }
 
     /// <summary>

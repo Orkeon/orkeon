@@ -31,7 +31,8 @@ public sealed class OrkeonResourceBuilderExtensionsTests
     }
 
     [Fact]
-    public async Task AddOrkeonCrewRun_describes_an_orkeon_run_with_an_output_mount_and_the_otlp_exporter()
+    [Trait("BR", "CH-07")]
+    public async Task ShouldWriteSettingsAttached_WhenTheAppHostAddsACrewRun()
     {
         var builder = NewBuilder();
         var output = Path.Combine(Path.GetTempPath(), "orkeon-aspire-tests", Guid.NewGuid().ToString("N"));
@@ -46,7 +47,9 @@ public sealed class OrkeonResourceBuilderExtensionsTests
         Assert.True(Directory.Exists(resource.OutputDirectory));
 
         var (args, env) = await EvaluateAsync(app, resource);
-        Assert.Equal(["run", "crews/quickstart.yaml", "--mount", $"{resource.OutputDirectory}:/output:rw", "--allow-external-mounts", "--settings", "settings.json"], args);
+        Assert.Equal(["run", "crews/quickstart.yaml", "--mount", $"{resource.OutputDirectory}:/output:rw", "--allow-external-mounts", "--settings=settings.json"], args);
+        Assert.DoesNotContain("--settings", args);
+        Assert.DoesNotContain("settings.json", args);
         Assert.Equal("http://localhost:11434", env["ORKEON_Llm__BaseUrl"]);
         Assert.Equal("llama3.2:1b", env["ORKEON_Llm__Model"]);
         Assert.True(env.ContainsKey("OTEL_EXPORTER_OTLP_ENDPOINT"), "WithOtlpExporter must hand the runner the dashboard's OTLP endpoint");

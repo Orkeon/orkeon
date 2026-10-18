@@ -94,7 +94,7 @@ public sealed record FileSystemMount
             throw new FormatException(
                 $"Invalid mount format. Expected '<physical>:<virtual>:<rights>', got: '{mainPart}'. "
                 + "A path that contains a ':' or a ';', or ends with a backslash, is quoted: "
-                + "\"C:\\src\\\":/workspace:ro.");
+                + "\"C:\\src\\\":/workspace:ro; a quote inside a quoted path is doubled.");
 
         var basePath = Unquote(parts[0]);
         var virtualPath = Unquote(parts[1]);
@@ -209,7 +209,7 @@ public sealed record FileSystemMount
         var parts = SplitMainPart(segments[0]);
         if (parts.Count < 2)
             throw new FormatException(
-                $"Invalid mount format. Expected '<physical>:<virtual>:<rights>', got: '{segments[0]}'.");
+                $"Invalid mount format. Expected '<physical>:<virtual>:<rights>', got: '{segments[0]}'; a quote inside a quoted path is doubled.");
 
         parts[0] = Quote(basePath);
         segments[0] = string.Join(':', parts);

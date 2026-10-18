@@ -1,5 +1,6 @@
 using System.Net;
 using MimeKit;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tools.Email.Constants;
 
@@ -124,6 +125,9 @@ internal static class EmailAccountResolver
             return (protocol, null);
         }
 
+        if (IsReference(declared.Host, "Incoming:Host", problems))
+            return (protocol, null);
+
         var host = declared.Host?.Trim() ?? PresetIncomingHost(options.Provider, protocol);
         if (string.IsNullOrEmpty(host))
         {
@@ -154,6 +158,9 @@ internal static class EmailAccountResolver
             return (null, null);
         }
 
+        if (IsReference(declared.Host, "Outgoing:Host", problems))
+            return (null, null);
+
         var host = declared.Host?.Trim() ?? PresetSmtpHost(options.Provider);
         if (string.IsNullOrEmpty(host))
             return (null, null);
@@ -164,6 +171,15 @@ internal static class EmailAccountResolver
             ?? (security == TransportSecurity.SslOnConnect ? EmailDefaults.SmtpSslPort : EmailDefaults.SmtpStartTlsPort);
         CheckEndpoint("Outgoing", host, port, security, problems);
         return (OutgoingProtocol.Smtp, new MailEndpoint(host, port, security));
+    }
+
+    // Orkeon expands no variable in an e-mail setting: the problem names the field, never the value.
+    private static bool IsReference(string? value, string field, List<string> problems)
+    {
+        if (!SettingPlaceholder.TryMatch(value, out _))
+            return false;
+        problems.Add($"{field} holds a variable reference, and Orkeon expands no variable here: write the value itself (a host) or the NAME of the environment variable alone");
+        return true;
     }
 
     private static ResolvedAuth? ResolveAuth(
@@ -177,7 +193,8 @@ internal static class EmailAccountResolver
         {
             if (options.Provider == EmailProvider.Outlook)
                 problems.Add("Outlook.com and Microsoft 365 no longer accept passwords for mail clients: use Auth:Method OAuth2 with a ClientId");
-            if (string.IsNullOrWhiteSpace(declared.PasswordEnvVar))
+            if (!IsReference(declared.PasswordEnvVar, "Auth:PasswordEnvVar", problems)
+                && string.IsNullOrWhiteSpace(declared.PasswordEnvVar))
                 problems.Add("Auth:PasswordEnvVar is required: the NAME of the environment variable holding the password, never the password itself");
             return username is null ? null : new ResolvedAuth
             {
@@ -205,6 +222,9 @@ internal static class EmailAccountResolver
             problems.Add("Auth:ClientId is required for OAuth2 (the id of your Google Cloud or Microsoft Entra application)");
             return null;
         }
+
+        if (IsReference(declared.ClientSecretEnvVar, "Auth:ClientSecretEnvVar", problems))
+            return null;
 
         var secretEnvVar = string.IsNullOrWhiteSpace(declared.ClientSecretEnvVar) ? null : declared.ClientSecretEnvVar.Trim();
         switch (options.Provider)

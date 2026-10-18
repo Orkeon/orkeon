@@ -821,6 +821,9 @@
                 </StackPanel.Style>
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Common.BaseUrl], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap" Margin="0,5,0,0"
+                           Text="{Binding EndpointReadingLine}"
+                           Visibility="{Binding EndpointReadingLine, Converter={StaticResource StringPresentToVisibility}}"/>
               </StackPanel>
               <StackPanel Grid.Column="2">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Common.Model], Source={x:Static services:I18n.Instance}}"/>
