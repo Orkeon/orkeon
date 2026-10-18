@@ -147,7 +147,10 @@ clé collée par erreur dans `ApiKeyEnvVar` ne doit pas atteindre un journal —
 chemin de configuration (`Llm:Profiles:z-ai:ApiKeyEnvVar`). Une valeur qui ne peut pas être un nom
 de variable (un `=`, une espace, un saut de ligne) refuse le démarrage, par son chemin ; une
 `ApiKey` écrite comme un gabarit `${NOM}` — que rien n'a jamais développé, si bien que le texte
-partait comme clé — le refuse aussi.
+partait comme clé — le refuse aussi. Plus généralement Orkeon ne développe jamais une variable dans un réglage : une référence
+`${NOM}` ou `%NOM%` dans tout réglage qu'il transmet tel qu'il est écrit refuse le démarrage, en nommant le
+chemin et jamais la valeur — `run` sort en 1, `orkeon-host` en 78
+([la liste](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).
 
 ## Résilience
 

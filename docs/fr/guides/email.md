@@ -92,7 +92,9 @@ référence pour qui écrit le fichier à la main.
 3. Mettez le mot de passe dans une variable d'environnement — pas dans un fichier. N'importe
    quel nom convient : le compte le nomme (`PasswordEnvVar`). Un run lit la variable dans
    l'environnement de son propre processus, puis, sous Windows, dans l'environnement de
-   l'utilisateur, où `setx` la pose.
+   l'utilisateur, où `setx` la pose. Écrivez le nom seul : Orkeon ne développe aucune variable, et un compte
+   dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou `Auth:ClientSecretEnvVar` contient une
+   référence `${NOM}` ou `%NOM%` est mis de côté, avec ce problème.
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh

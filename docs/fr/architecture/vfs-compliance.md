@@ -217,11 +217,9 @@ Les gardes s'appliquent aux mounts scopés exactement comme aux mounts de démar
 s'exécutent à chaque opération sur le registre actif : le registre applique les droits de mount + le
 confinement contre la traversée de chemin, et `IPathValidator` applique indépendamment les contrôles
 racine-workspace / chemins bloqués / extensions (`PathSecurity:DefaultWorkspaceRoot`,
-`AdditionalAllowedDirectories`). Un mount scopé dont la base physique se situe hors de la racine
-workspace autorisée est refusé exactement comme le serait un mount de démarrage — accorder un
-dossier dans `Orkeon:Host:Crews:*:Mounts` ne suffit donc pas à soi seul, et
-`PathSecurity:AdditionalAllowedDirectories` est l'endroit où un opérateur élargit ce second
-portail. L'appelant possède
+`AdditionalAllowedDirectories`). Un dossier accordé dans
+`Orkeon:Host:Crews:*:Mounts` est une entrée du démon : il est lisible où qu'il soit, sans
+`--allow-external-mounts`. L'appelant possède
 la durée de vie du `FileSystemRegistry` scopé (`Enter` ne le dispose pas — le disposer soi-même,
 comme ci-dessus).
 

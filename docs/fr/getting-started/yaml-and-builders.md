@@ -213,6 +213,11 @@ Notes :
 - Mélanger les deux dispositions (par exemple `agents.yaml` **et** un répertoire
   `agents/`) lève `InvalidOperationException` au lieu d'appliquer une précédence
   silencieuse.
+- Les fichiers d'entité peuvent finir par `.yaml` ou `.yml` ; le même nom sous les deux
+  extensions lève `InvalidOperationException` (`Keep one.`).
+- Le fichier de réglages du dossier ne porte que les réglages de la crew : une clé `agents:` ou
+  `tasks:` y est refusée comme toute clé qu'aucun modèle ne lit, avec son fichier, sa ligne et la clé
+  la plus proche. Les agents et les tasks sont les fichiers des deux dossiers.
 - **Limite** : les ancres YAML ne peuvent pas traverser les fichiers — chaque fichier
   est prétraité indépendamment (c'était déjà le cas entre les trois fichiers plats).
 

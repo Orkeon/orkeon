@@ -206,6 +206,11 @@ Notes:
   "at least one agent/task" validation error then surfaces via `loader.Validate(config)`.
 - Mixing the two layouts (e.g. both `agents.yaml` *and* an `agents/` directory) raises
   `InvalidOperationException` rather than picking a silent precedence.
+- Entity files may end in `.yaml` or `.yml`; the same stem under both extensions raises
+  `InvalidOperationException` (`Keep one.`).
+- The folder's settings file carries crew settings only: an `agents:` or `tasks:` key in it is
+  refused like any key no model reads, with its file, line and the nearest key. The agents and
+  tasks are the files of the two folders.
 - **Limitation:** YAML anchors cannot span files — each file is preprocessed independently
   (this was already true across the three flat files).
 

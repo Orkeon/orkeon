@@ -9,8 +9,11 @@ This document is the **single source of truth** for the Orkeon YAML schema. The 
 The YAML structure follows this schema. **Key naming**: the loader (`YamlDotNetSerializer`)
 matches keys in camelCase (the canonical form, the one `YamlCrewExporter` writes — see
 [Export](#export)) and falls back to snake_case for the same property — `expectedOutput` and `expected_output`, `llm_override` and
-`llmOverride` are equivalent everywhere. Keys that match no property are **ignored silently**
-(a misspelt key reads as absent), except inside `knowledge:` entries, which warn. The same models
+`llmOverride` are equivalent everywhere. Every key is read or refused at load: a key no model carries (or a retired one) fails the
+load with its file, line and path, and the nearest key (`Did you mean 'expectedOutput'?`);
+`CrewYamlKeyCheck` runs before the deserialization. Only the names you choose stay free: the ids under
+`agents:` and `tasks:`, the tool names under `toolRules:`, and the keys and values of `context:`. A merge
+key (`<<:`) is refused, and so is an anchor on an unknown key: share text under `anchors:`. The same models
 serve the single-file layout and the multi-file layouts (`crew.yaml` + `agents.yaml` +
 `tasks.yaml`, or `config.yaml` + `agents/` + `tasks/`) described in
 [YAML and Builders](../getting-started/yaml-and-builders.md); a top-level `anchors:` mapping of
@@ -92,7 +95,7 @@ agents:
       rules: [string]     # Global numbered rules
       toolRules:          # Rules rendered only when the agent has the tool; a tool name ignores case, and one written under two keys fails the load
         <tool_name>: [string]
-    knowledge:            # Knowledge (RAG) collections attached to the agent (optional)
+    knowledge:            # Knowledge (RAG) collections attached to the agent (optional); an unknown key of an entry is refused, a malformed value stays a warning
       - string            # Short form: collection name with default options
       - collection: string       # Long form (required key)
         top_k: int               # default: 5 — chunks retained per query
@@ -185,7 +188,7 @@ every runner host registers (`orkeon run` in all its forms, `orkeon-host`): when
 without the subsystem, a declared `rag:` block and each agent's `knowledge:` log a warning and
 inject nothing. Parsing the YAML itself never triggers ingestion. The document store is the
 host's (`Orkeon:Rag:Provider`, see [RAG pipeline](./rag-pipeline.md)); the former `rag.provider`
-key is gone and draws a warning at load.
+key is gone and is refused at load, with the sentence that points to `Orkeon:Rag:Provider`.
 
 What a `sources` entry means (GAP-27): a path that does not start with `/` is relative to the
 crew's folder — `/crew` under `orkeon run crew.yaml` or a crew directory, so

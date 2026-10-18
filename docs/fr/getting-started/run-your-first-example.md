@@ -83,7 +83,8 @@ export DEEPSEEK_API_KEY=sk-...
 > passez directement à l'étape 4 sans `--settings`.
 
 Il n'y a pas de champ `Provider` à renseigner : le fournisseur est auto-détecté
-depuis l'hôte de `Llm.BaseUrl` du profil (à défaut, depuis le nom du modèle, puis le
+depuis `Llm.BaseUrl` du profil — l'hôte du fournisseur, le port `11434` pour Ollama, sinon
+un serveur compatible OpenAI (à défaut d'URL de base, depuis le nom du modèle, puis le
 préfixe de la clé) ; changer de fournisseur revient à pointer le bon profil.
 
 ## 4. L'exécuter
@@ -120,7 +121,7 @@ Les options de la CLI `orkeon` que vous utiliserez vraiment :
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = échanges LLM & outils, `2` = debug complet. |
 | `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro`, `rw` ou `rwnd` (lecture-écriture sans suppression) ; des segments `;<sous-chemin>:<droits>` surchargent les droits sous le montage. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
 | `--mount-id <id>` | | Quand plusieurs entrées `Orkeon:FileSystem:Mounts` des settings déclarent la même racine virtuelle, garde celle dont l'identifiant (le préfixe de 26 caractères avant son `\|`) est donné. Plusieurs identifiants se passent séparés par des espaces derrière un seul flag. |
-| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, les chemins externes sont refusés par garde-fou. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
+| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, un `--mount` hors du répertoire de travail est refusé au démarrage (code `1`) ; le dossier du script et toute entrée des settings en vigueur (une entrée choisie par id comprise) n'en demandent pas. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
 | `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
 | `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |

@@ -132,6 +132,11 @@ Le client se présente comme `Orkeon` `1.0.0`. Le transport HTTP n'envoie aucun 
 `Authorization` : un serveur protégé par authentification est hors de portée (voir les
 limites plus bas).
 
+**Rien n'est développé dans la section.** `Command`, `Args` et `Env` passent tels qu'ils sont écrits, et le
+serveur hérite de l'environnement où tourne Orkeon : une référence `${NOM}` ou `%NOM%` dans `Command`,
+`Args`, `Url` ou une valeur d'`Env` refuse le démarrage, avant la connexion d'un serveur, avec sa correction
+([une référence de variable n'est jamais développée](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).
+
 **L'hôte partagé des runners honore la section de lui-même (STUDIO-21).** `orkeon run`
 — et tout runner bâti sur `RunnerHost` — appelle `AddOrkeonMcp` dès que `MCP:Servers`
 déclare au moins un serveur et que `MCP:Enabled` n'est pas `false`, puis connecte chaque

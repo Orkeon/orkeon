@@ -210,10 +210,9 @@ runner keeps the boot mounts: one process per launch makes the question moot for
 The guards apply to scoped mounts exactly as to boot mounts, because they run per operation over
 whichever registry is active: the registry enforces mount rights + path-traversal containment, and
 `IPathValidator` independently enforces the workspace-root / blocked-path / extension checks
-(`PathSecurity:DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`). A scoped mount whose physical
-base sits outside the allowed workspace root is denied just like a boot mount would be — granting
-a folder in `Orkeon:Host:Crews:*:Mounts` is therefore not sufficient on its own, and
-`PathSecurity:AdditionalAllowedDirectories` is where an operator widens the second gate. The caller owns
+(`PathSecurity:DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`). A folder granted in
+`Orkeon:Host:Crews:*:Mounts` is an entry of the daemon: it is readable wherever it lies, without
+`--allow-external-mounts`. The caller owns
 the scoped `FileSystemRegistry`'s lifetime (`Enter` does not dispose it — dispose it yourself, as above).
 
 ## CI behaviour

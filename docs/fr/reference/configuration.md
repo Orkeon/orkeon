@@ -262,9 +262,12 @@ tokens. Les plafonds sur les appels eux-mêmes sont sous [Débit et budgets](#d�
 La section `Llm` est lue par `RunnerHost.RegisterLlmProvider` et transformée en
 `ILlmProvider` via `ILlmProviderFactory` ; le REPL la lit avec le même lecteur
 (`LlmSettings.ReadDefault`). **Le provider est inféré automatiquement**, dans
-l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
-`/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
-forme de la clé API ; défaut `openai`. Une section sans `Model` tourne sur le modèle par défaut de
+l'ordre : l'URL de base seule quand il y en a une — la même lecture pour le run, la CLI et
+Studio (un hôte de vendeur comme `deepseek.com` → DeepSeek ou `api.x.ai` → Grok ; `/engines/` ou
+le port `12434` → Docker Model Runner ; le port `11434` → Ollama à sa racine ; toute autre
+adresse → un serveur compatible OpenAI, signalé comme muet s'il n'a pas de chemin ; une adresse
+qu'aucun run ne sert — pas une URL `http(s)` absolue, ou un hôte de vendeur sous `/anthropic` —
+refuse le démarrage) — puis, sans URL de base, motifs du nom de modèle, puis forme de la clé API ; défaut `openai`. Une section sans `Model` tourne sur le modèle par défaut de
 ce fournisseur (la colonne *Défaut (code)* du
 [comparatif des fournisseurs](llm-providers-comparison.md#défauts-et-modèles-plus-récents--revue-des-catalogues-du-2026-09-19)),
 jamais sur celui d'OpenAI posé sur un autre vendeur. Sans
@@ -398,7 +401,7 @@ ligne — refuse le démarrage de l'hôte, en nommant le chemin de configuration
 qui peut être une clé collée dans le mauvais champ. Une `ApiKey` écrite comme un gabarit `${NOM}` —
 la forme que portaient les anciens gabarits d'`examples/appsettings`, que rien n'a jamais développée,
 si bien que le texte partait comme clé — refuse aussi le démarrage, avec la correction :
-`"ApiKeyEnvVar": "NOM"`. Au démarrage, l'hôte runner dit d'où vient chaque clé, jamais la clé ni le
+`"ApiKeyEnvVar": "NOM"` ([une référence n'est jamais développée](#une-référence-de-variable-nest-jamais-développée)). Au démarrage, l'hôte runner dit d'où vient chaque clé, jamais la clé ni le
 nom de la variable — `LLM resolved: … apiKey=from the variable named by Llm:ApiKeyEnvVar (user
 environment)`, puis une ligne `LLM profile <id>: apiKey=…` par profil offert aux crews (`from
 configuration (…:ApiKey)`, `from the variable named by … (process environment)`, `none`) — et
@@ -413,6 +416,31 @@ sont vides ne configure aucun défaut — le provider écho, avec son avertissem
 Studio l'écrit pour le réglage élu et pour chaque profil qu'il possède
 ([plus bas](#studio-écrit-cette-section)). La référence peut nommer n'importe quelle variable : un
 fichier de réglages est une configuration de confiance ([Sécurité](../architecture/security.md#clés-llm--le-fichier-de-réglages-nomme-la-variable)).
+
+### Une référence de variable n'est jamais développée
+
+Orkeon **ne développe jamais** (*never expands*) une variable dans un réglage : le texte part tel
+qu'il est écrit. Deux graphies sont reconnues comme une référence et refusées — `${NOM}` (aussi
+`${env:NOM}`, `${NOM:-défaut}` et tout `${…}`, seul ou dans une valeur plus longue comme `sk-${X}`)
+et `%NOM%` (la valeur entière). `$NOM`, sans accolades, n'est pas une référence : il passe tel
+qu'il est écrit. Le refus a lieu au démarrage, avant la connexion d'un serveur MCP, en nommant le
+chemin du réglage et jamais la valeur, avec sa correction : la commande `run`, le REPL et `doctor`
+s'arrêtent (`run` sort en 1), `orkeon-host` sort en 78. Une valeur qu'une couche supérieure couvre
+n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tirés de
+`Orkeon.Constants.Configuration` (`SettingPlaceholders`), clés comparées sans la casse :
+
+| Réglages | Correction énoncée |
+|---|---|
+| `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | écrire le nom seul, sans `${` ni `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
+| `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
+| `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
+| `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
+
+Un compte e-mail dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou
+`Auth:ClientSecretEnvVar` contient une référence ne refuse pas le démarrage : le compte est mis de
+côté, avec son problème ([guide e-mail](../guides/email.md)).
 
 ### Profils nommés (`Llm:Profiles`)
 
@@ -443,7 +471,7 @@ fournisseur de chaque profil est construit une fois, au premier usage, compté c
 défaut — les relevés `cost.updated` d'un run nomment le fournisseur de chaque appel, et la barre
 d'état de Studio ventile les jetons par fournisseur. Les profils sont validés au démarrage de
 l'hôte : `default` est un nom réservé (il désigne la section `Llm`, et une crew peut le nommer pour
-ramener un agent au défaut), et une `BaseUrl` invalide ou une valeur qui n'est pas un nombre fait
+ramener un agent au défaut), et une `BaseUrl` invalide (la même lecture la refuse) ou une valeur qui n'est pas un nombre fait
 échouer le démarrage en nommant la clé à corriger. Une crew qui nomme un profil que l'hôte ne
 définit pas **échoue au chargement**, et le message liste les profils offerts. **Un modèle non
 précisé est celui du profil, sur tous les chemins** : un bloc `llm:` YAML ou `.ork.ts` sans
@@ -1734,7 +1762,7 @@ Le démon (`Orkeon.Host`) :
 | `A2A:Host` | chaîne | `"http://localhost"` | Le schéma et le nom d'hôte de l'écoute : `http://localhost` par défaut, `http://+` pour toutes les interfaces. Ni port (c'est `Port`) ni chemin. |
 | `A2A:Port` | entier | `5002` | Le port de l'écoute. |
 | `Crews:<i>:Description` | chaîne | — | Ce que fait la crew, en une phrase : la description de sa compétence sur la carte d'agent A2A quand `Orkeon:Host:A2A` l'expose. Lue dans la configuration, jamais dans la définition de la crew — la carte se construit sans charger de crew. Facultative. |
-| `Crews:<i>:Mounts` | liste de chaînes | `[]` | Les dossiers que cet hôte accorde à CETTE crew, sous forme de chaînes de montage (`<physical>:<virtual>:<rights>`) : un espace de montages propre à chaque run, si bien que deux crews hébergées peuvent toutes deux adresser `/output` sur deux dossiers différents. Vide (le défaut) garde les montages de l'hôte pour cette crew. Un dossier accordé doit se trouver sous la racine de l'espace de travail, ou sous `PathSecurity:AdditionalAllowedDirectories`. |
+| `Crews:<i>:Mounts` | liste de chaînes | `[]` | Les dossiers que cet hôte accorde à CETTE crew, sous forme de chaînes de montage (`<physical>:<virtual>:<rights>`) : un espace de montages propre à chaque run, si bien que deux crews hébergées peuvent toutes deux adresser `/output` sur deux dossiers différents. Vide (le défaut) garde les montages de l'hôte pour cette crew. Un dossier accordé est une entrée du démon : lisible où qu'il se trouve, sans `--allow-external-mounts`. |
 | `Crews:<i>:Name` | chaîne | `""` | Le nom par lequel les canaux et l'opérateur la désignent. |
 | `Crews:<i>:Path` | chaîne | `""` | Chemin de la définition de la crew — un fichier YAML, un répertoire de crew multi-fichiers ou un script `.ork.ts`. Les mêmes cibles qu'accepte `orkeon run`. |
 | `Crews:<i>:Profile:MaxConcurrentRuns` | entier | `4` | Combien de runs de cette crew peuvent être en cours à la fois. Borné à dessein : un démon qui accepte un nombre illimité de runs simultanés est un démon qui meurt à sa première rafale. |

@@ -128,7 +128,7 @@ orkeon run crew.yaml --events jsonl --client mon-observateur
 Lisez stdout ligne par ligne, analysez chaque ligne en JSON, aiguillez sur `kind`. Écrivez réponses et commandes sur stdin, un document JSON par ligne, avec vidage du tampon. Trois faits sur lesquels un pilote peut compter :
 
 - **Les deux dialectes le parlent.** Une cible `.ork.ts` est observée par les mêmes coutures qu'une crew YAML — outils, compteur de jetons, pont du hub et fournisseur de réponses humaines arrivent tous jusqu'à l'hôte de script.
-- **stdout porte le protocole et rien d'autre.** Sur un run observé, chaque ligne de log part sur stderr ; un log entre deux documents JSONL serait une erreur de parsing chez vous.
+- **stdout porte le protocole et rien d'autre.** Sur un run observé, chaque ligne de log part sur stderr ; un log entre deux documents JSONL serait une erreur de parsing chez vous. Une ligne de commande que la CLI refuse n'écrit rien sur stdout : le flux ne s'ouvre pas, le refus tient en une ligne sur stderr et le code de sortie est `1`.
 - **`jsonl` est la seule valeur que `--events` accepte**, et il le dit plutôt que de deviner ; `--client` sans `--events` avertit au lieu d'être ignoré en silence.
 
 Un échange minimal :

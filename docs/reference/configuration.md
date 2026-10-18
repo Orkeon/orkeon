@@ -245,9 +245,12 @@ calls themselves are under [Rate and budgets](#rate-and-budgets).
 The `Llm` section is read by `RunnerHost.RegisterLlmProvider` and turned into an
 `ILlmProvider` via `ILlmProviderFactory`; the REPL reads it with the same reader
 (`LlmSettings.ReadDefault`). **The provider is inferred automatically**, in
-order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
-`/engines/` → Docker Model Runner/OpenAI-compatible), then model-name patterns, then
-API-key shape; default `openai`. A section without `Model` runs on that provider's own default
+order: the base URL alone when there is one — the same reading for the run, the CLI and
+Studio (a vendor host such as `deepseek.com` → DeepSeek or `api.x.ai` → Grok; `/engines/` or port
+`12434` → Docker Model Runner; port `11434` → Ollama at its root; any other address → an
+OpenAI-compatible server, reported as silent when it has no path; an address no run serves —
+not an absolute `http(s)` URL, or a vendor host under `/anthropic` — refuses the start) — then,
+without a base URL, model-name patterns, then API-key shape; default `openai`. A section without `Model` runs on that provider's own default
 model (the *Default (code)* column of the
 [provider comparison](llm-providers-comparison.md#defaults-and-newer-models--catalogue-review-of-2026-09-19)),
 never on OpenAI's pinned onto another vendor. Without an `Llm` section the
@@ -375,7 +378,7 @@ reference that cannot be a variable's name — an `=`, a space, a line break —
 start, naming the configuration path and never the value, which may be a key pasted in the wrong
 field. An `ApiKey` written as a `${NAME}` placeholder — the shape the old `examples/appsettings`
 templates carried, which nothing ever expanded, so the text went out as the key — refuses the start
-too, with the fix: `"ApiKeyEnvVar": "NAME"`. At startup the runner host says where each key came
+too, with the fix: `"ApiKeyEnvVar": "NAME"` ([a reference is never expanded](#a-variable-reference-is-never-expanded)). At startup the runner host says where each key came
 from, never the key nor the variable's name — `LLM resolved: … apiKey=from the variable named by
 Llm:ApiKeyEnvVar (user environment)`, then one `LLM profile <id>: apiKey=…` line per profile
 offered to crews (`from configuration (…:ApiKey)`, `from the variable named by … (process
@@ -389,6 +392,30 @@ configures no default — the echo provider, with its warning. `orkeon init --ap
 and `orkeon-studio-config` write `Llm:ApiKeyEnvVar`; Orkeon Studio writes it for the elected
 setting and for every profile it owns ([below](#studio-writes-this-section)). The reference may
 name any variable: a settings file is trusted configuration ([Security](../architecture/security.md#llm-keys-the-settings-file-names-the-variable)).
+
+### A variable reference is never expanded
+
+Orkeon **never expands** a variable in a setting: the text goes out as written. Two spellings are
+recognised as a reference and refused — `${NAME}` (also `${env:NAME}`, `${NAME:-default}` and any
+`${…}`, alone or inside a longer value such as `sk-${X}`) and `%NAME%` (the whole value). `$NAME`,
+without braces, is no reference: it passes as written. Refused at start, before any MCP server
+connects, naming the setting's path and never the value, with its correction: the `run` command, the
+REPL and `doctor` stop (`run` exits 1), `orkeon-host` exits 78. A value a higher layer
+covers is not the one read, so it is not judged. The settings judged, from
+`Orkeon.Constants.Configuration` (`SettingPlaceholders`), keys compared without case:
+
+| Settings | Correction stated |
+|---|---|
+| `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName` | write the name alone, without `${` and `}` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
+| `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
+| `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
+| `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
+
+An e-mail account holding a reference in `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` or
+`Auth:ClientSecretEnvVar` is not a start refusal: the account is set aside, with its problem
+([e-mail guide](../guides/email.md)).
 
 ### Named profiles (`Llm:Profiles`)
 
@@ -419,7 +446,7 @@ provider is built once, on first use, metered like the default one — the run's
 readings name each call's provider, and Studio's status bar breaks the tokens down per
 provider. The profiles are validated when the host starts: `default` is a reserved name (it
 designates the `Llm` section, and a crew may name it to bring an agent back to the default), and
-an invalid `BaseUrl` or a value that is not a number fails the start with the key to fix. A
+an invalid `BaseUrl` (the same reading refuses it) or a value that is not a number fails the start with the key to fix. A
 crew naming a profile the host does not define **fails to load**, and the message lists the
 profiles the host offers. **A model left unset is the profile's own, on every path**: a YAML or
 `.ork.ts` `llm:` block without `model`, a C# agent's `.Thinking()` or `.MaxOutputTokens(n)`,

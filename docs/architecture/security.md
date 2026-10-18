@@ -139,7 +139,9 @@ reference does guarantee is discretion: no message, log line or `orkeon doctor` 
 value — a key pasted into `ApiKeyEnvVar` by mistake must not reach a log —, they name its
 configuration path (`Llm:Profiles:z-ai:ApiKeyEnvVar`). A value that cannot be a variable's name (an
 `=`, a space, a line break) refuses the start, by its path; an `ApiKey` written as a `${NAME}`
-placeholder — which nothing ever expanded, so the text went out as the key — refuses it too.
+placeholder — which nothing ever expanded, so the text went out as the key — refuses it too. More generally Orkeon never expands a variable in a setting: a `${NAME}` or `%NAME%`
+reference in any setting it passes as written refuses the start, naming the path and never the value —
+`run` exits 1, `orkeon-host` 78 ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).
 
 ## Resilience
 
