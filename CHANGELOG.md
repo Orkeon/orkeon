@@ -15,8 +15,9 @@ reads `max_results`; every other tool fell through the index signature and type-
 cast. `Typings/tools.generated.d.ts` now declares the input and the result of every built-in tool a
 run registers (`OrkeonBuiltInTools`, which `OrkeonTools` extends), written by `BuiltInToolTypings`
 from each tool's request record (its `[JsonPropertyName]` names, its required members) and response
-record. `BuiltInToolTypingsTests` pins the committed file against the tools and type-checks a script
-that calls them: a parameter renamed on the .NET side, or misspelled in a script, fails `tsc`. The
+record; an optional member that is nullable takes `null` (`sessionStore({ operation: "set_state", key,
+value: null })` removes the key), a required one never does (the tool refuses it). `BuiltInToolTypingsTests`
+pins the committed file against the tools and type-checks a script that calls them: a parameter renamed on the .NET side, or misspelled in a script, fails `tsc`. The
 e-mail and drive families keep their hand-written declarations; the index signature remains for
 plugin and MCP tools. The hand-written `fileRead`, `fileWrite`, `directoryRead`, `webScrape`,
 `httpApi`, `searchTool`, `databaseQuery`, `delegateWork` and `askQuestion` are gone: the four
@@ -44,9 +45,10 @@ budget's clock, and `ctx.llm.act` holds it while the gate decides, as it already
 
 Without `Orkeon:Security:PermissionGate:Enabled = true` no gate is registered: every tool call of
 `ctx.llm.act` runs unchecked, and the `permissionMode` a script posed had no effect, with nothing to
-tell it so. `ctx.llm.permissionGate.enabled` (typed in `context.d.ts`) reports it, read-only, and an
-`act()` call that passes a `permissionMode` on a host without a gate logs one warning saying the mode
-checks nothing.
+tell it so. The state is now read-only for scripts: a crew reads it as `ctx.llm.permissionGate.enabled`
+(typed in `context.d.ts`), a scripted command as `ctx.services.get("permissions").enabled` (typed in
+`orkeon-cli.d.ts`; false, the session's rules and the modes check nothing). An `act()` call that passes
+a `permissionMode` on a host without a gate logs one warning saying the mode checks nothing.
 
 ### Changed — Shell commands are confined by default **[breaking]**
 

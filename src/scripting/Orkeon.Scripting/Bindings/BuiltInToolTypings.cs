@@ -179,7 +179,10 @@ internal static partial class BuiltInToolTypings
     /// The fields of a request record as the tool deserializes it: the <c>[JsonPropertyName]</c> name,
     /// else the snake_case of the property; required when the member is <c>required</c> or
     /// <c>[JsonRequired]</c> (deserialization refuses the call without it), or when its
-    /// <c>[FieldSchema]</c> makes it required (the schema check refuses it first).
+    /// <c>[FieldSchema]</c> makes it required (the schema check refuses it first); <c>| null</c> when an
+    /// optional member is nullable. A required member never takes null: the schema check lets a null
+    /// through as present, and the tool then refuses it (<c>web_scrape</c>: "URL cannot be empty"). A
+    /// result needs no <c>| null</c>: the serializer drops a null member.
     /// </summary>
     private static IEnumerable<Field> FieldsOf(Type request)
     {
@@ -197,9 +200,38 @@ internal static partial class BuiltInToolTypings
             var type = schema?.Enum is { Length: > 0 } choices
                 ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
                 : TypeOf(property.PropertyType);
+            // unknown already takes null.
+            if (!required && type != "unknown" && IsNullable(property))
+                type += " | null";
             yield return new Field(name, required, type, schema?.Description);
         }
     }
+
+    /// <summary>
+    /// Whether the member takes a JSON <c>null</c>: a <see cref="Nullable{T}"/>, or a reference type
+    /// annotated nullable (<c>SessionStoreRequest.Value</c>: null removes the key). Read on the
+    /// property itself, never on its elements.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Reflection fault barrier, as ToolSchemaGenerator.InferRequired: NullabilityInfoContext.Create can throw on edge-case metadata; the member is then rendered without null rather than aborting the rendering.")]
+    private static bool IsNullable(PropertyInfo property)
+    {
+        if (property.PropertyType.IsValueType)
+            return Nullable.GetUnderlyingType(property.PropertyType) is not null;
+
+        try
+        {
+            // Thread-static, as in ToolSchemaGenerator.InferRequired: NullabilityInfoContext is not thread-safe.
+            var context = t_nullability ??= new NullabilityInfoContext();
+            return context.Create(property).WriteState == NullabilityState.Nullable;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    [ThreadStatic]
+    private static NullabilityInfoContext? t_nullability;
 
     /// <summary>The fields a tool that reads its parameters itself declares in its schema.</summary>
     private static IEnumerable<Field> FieldsOf(ToolSchema schema) =>

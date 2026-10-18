@@ -463,7 +463,10 @@ mode (`IToolPermissionRules`, tenues par le REPL). Une commande les pose par
 à un motif, `*` valant n'importe quelle suite de caractères. Une règle de refus refuse l'appel dans
 tous les modes ; une règle d'autorisation le laisse passer sans demander dans tous les modes sauf
 `plan`, qui reste en lecture seule : `dontAsk` lance donc ce qu'une règle autorise et refuse le
-reste. Les règles durent jusqu'à la sortie du REPL.
+reste. Les règles durent jusqu'à la sortie du REPL. `enabled` (en lecture seule) dit si l'hôte a
+enregistré le contrôle (`Orkeon:Security:PermissionGate:Enabled = true`) : à false, les règles et les
+modes ne contrôlent rien et chaque appel d'outil passe, si bien qu'une commande qui affiche un mode
+peut le dire. Un crew lit le même fait par `ctx.llm.permissionGate.enabled`.
 
 ```typescript
 const permissions = ctx.services.get("permissions");

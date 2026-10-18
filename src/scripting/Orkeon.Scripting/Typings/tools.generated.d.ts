@@ -20,15 +20,15 @@ declare global {
             /** Maximum number of result records to return */
             max_results?: number;
             /** Query parameters as key-value pairs */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** Password for ArcadeDB authentication */
-            password?: string;
+            password?: string | null;
             /** Cypher or SQL query to execute */
             query: string;
             /** Query language: Cypher (default) or Sql */
             query_language?: string;
             /** Username for ArcadeDB authentication */
-            username?: string;
+            username?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly execution_time_ms: number;
             readonly nodes_created: number;
@@ -46,11 +46,11 @@ declare global {
             /** Natural-language query to search semantically against the cached content */
             query: string;
             /** Optional source tag filter (e.g. "web_scrape"). Empty = search all sources. */
-            source?: string;
+            source?: string | null;
             /** Maximum number of chunks to return (default 5) */
             top_k?: number;
             /** Optional URL substring filter — only matches chunks whose source URL contains this string. Empty = search all URLs. */
-            url_filter?: string;
+            url_filter?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly hit_count: number;
             readonly hits: readonly Record<string, unknown>[];
@@ -62,7 +62,7 @@ declare global {
             include_metrics?: boolean;
             level?: string;
             max_entries?: number;
-            root_fqn?: string;
+            root_fqn?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly entries: readonly Record<string, unknown>[];
             readonly level: string;
@@ -91,7 +91,7 @@ declare global {
         /** `complexity_report` - Top-N methods by complexity (Cyclomatic, NestingDepth, FanOut, LoC, Callers) with median and P95. */
         complexityReport(input?: {
             metric?: string;
-            root_fqn?: string;
+            root_fqn?: string | null;
             top_n?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly evaluated_count: number;
@@ -108,7 +108,7 @@ declare global {
             /** Return the matched substrings themselves (capped by max_matches_returned) */
             include_matches?: boolean;
             /** Cap on the returned matches list size (only applies when include_matches=true) */
-            max_matches_returned?: number;
+            max_matches_returned?: number | null;
             /** Apply RegexOptions.Multiline so ^/$ match line starts/ends */
             multiline?: boolean;
             /** Virtual file path to scan */
@@ -128,7 +128,7 @@ declare global {
             /** Whether the CSV file has a header row (default: true) */
             has_header?: boolean;
             /** Maximum number of rows to read (default: no limit) */
-            max_rows?: number;
+            max_rows?: number | null;
             /** The file path of the CSV file to read */
             path: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -148,7 +148,7 @@ declare global {
             /** Schema scope: Tables (default), Columns, Indexes, ForeignKeys, or All */
             schema_scope?: string;
             /** Optional table name filter with wildcard support (e.g. 'user*', '*order*') */
-            table_filter?: string;
+            table_filter?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly database_name: string;
             readonly foreign_keys?: readonly Record<string, unknown>[];
@@ -164,7 +164,7 @@ declare global {
             include_external?: boolean;
             include_mermaid?: boolean;
             max_nodes?: number;
-            root_fqn?: string;
+            root_fqn?: string | null;
             scope?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly dot?: string;
@@ -259,7 +259,7 @@ declare global {
             /** The text encoding to use (default: UTF-8) */
             encoding?: "UTF-8" | "ASCII" | "Unicode" | "UTF-32";
             /** Maximum number of characters to read (default: no limit) */
-            max_length?: number;
+            max_length?: number | null;
             /** The file path to read from */
             path: string;
             /** Serve from RaggableTree index when available (path + SHA-256 match); falls back to disk otherwise. */
@@ -299,7 +299,7 @@ declare global {
             include_all_paths?: boolean;
             max_depth?: number;
             max_paths?: number;
-            to?: string;
+            to?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly paths: readonly Record<string, unknown>[];
             readonly truncated: boolean;
@@ -308,7 +308,7 @@ declare global {
         /** `get_last_value` - Read the last retained payload for a given key (LastValueCache). */
         getLastValue(input: {
             /** Optional crew scope. Defaults to caller's crew. */
-            crew_scope?: string;
+            crew_scope?: string | null;
             /** Cache key */
             key: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -322,17 +322,17 @@ declare global {
             /** Action to perform: list_issues, create_issue, get_pr, search_repos, get_repo */
             action: string;
             /** Body content for create operations */
-            body?: string;
+            body?: string | null;
             /** Issue or PR number (for get operations) */
-            number?: number;
+            number?: number | null;
             /** Repository owner (GitHub username or organization) */
             owner?: string;
             /** Search query string for search operations */
-            query?: string;
+            query?: string | null;
             /** Repository name */
             repo?: string;
             /** Title for create operations */
-            title?: string;
+            title?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly action: string;
             readonly error?: string;
@@ -344,15 +344,15 @@ declare global {
         /** `graph_schema` - Inspect graph database schema (vertex labels, edge labels, properties, indexes) */
         graphSchema(input: {
             /** Database name (required for ArcadeDB) */
-            database?: string;
+            database?: string | null;
             /** Endpoint URI for the graph database (Bolt URI for ArcadeDB, WebSocket URI for JanusGraph) */
             endpoint: string;
             /** Graph database type: ArcadeDB or JanusGraph */
             graph_type: string;
             /** Password for authentication */
-            password?: string;
+            password?: string | null;
             /** Username for authentication */
-            username?: string;
+            username?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly edge_labels: readonly Record<string, unknown>[];
             readonly graph_type: string;
@@ -364,7 +364,7 @@ declare global {
         /** `http_api` - Make HTTP API calls with support for GET, POST, PUT, DELETE, PATCH methods. Returns response body, status code, and headers. */
         httpApi(input: {
             /** Optional request body (for POST, PUT, PATCH) */
-            body?: string;
+            body?: string | null;
             /** Content-Type header for request body (default: application/json) */
             content_type?: string;
             /** Optional HTTP headers as key-value pairs */
@@ -387,9 +387,9 @@ declare global {
             /** Allowed choices when input_type=choice */
             choices?: readonly string[];
             /** Default value returned if the user gives no answer */
-            default_value?: string;
+            default_value?: string | null;
             /** Optional virtual path the user may edit before approving. Capable providers open an inline editor when a choice whose value contains 'edit' is selected. Path semantics are owned by the caller; the provider routes I/O through IFileSystemService. */
-            edit_file_path?: string;
+            edit_file_path?: string | null;
             /** Input type: text (free text), approval (yes/no), or choice (one of options[]) */
             input_type?: string;
             /** The prompt text shown to the user */
@@ -414,7 +414,7 @@ declare global {
             /** Response format: url or b64_json */
             response_format?: string;
             /** Optional file path to save the generated image locally */
-            save_to_path?: string;
+            save_to_path?: string | null;
             /** Image size (e.g. 1024x1024, 1024x1792, 1792x1024) */
             size?: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -442,10 +442,10 @@ declare global {
         incrementalReindex(input?: {
             changed_files?: readonly string[];
             enrich_with_llm?: boolean;
-            from_commit?: string;
+            from_commit?: string | null;
             languages?: readonly string[];
             root_path?: string;
-            to_commit?: string;
+            to_commit?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly edge_count: number;
             readonly elapsed: string;
@@ -498,7 +498,7 @@ declare global {
         /** `janusgraph_query` - Execute Gremlin traversals on JanusGraph databases */
         janusgraphQuery(input: {
             /** Parameter bindings for the traversal as key-value pairs */
-            bindings?: Record<string, unknown>;
+            bindings?: Record<string, unknown> | null;
             /** Gremlin WebSocket endpoint URI */
             gremlin_endpoint: string;
             /** Maximum number of results to return */
@@ -521,7 +521,7 @@ declare global {
             /** The operation to perform: parse, query, or format */
             operation: string;
             /** Dot-notation path for query operation (e.g., 'data.items[0].name') */
-            query?: string;
+            query?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly formatted?: string;
             readonly info?: Record<string, unknown>;
@@ -540,9 +540,9 @@ declare global {
             /** Texts to embed. One vector is returned per entry, in the same order. */
             inputs: readonly string[];
             /** Optional model alias (e.g. "bge-micro-v2"). Ignored when the host has a single local model registered. */
-            model?: string;
+            model?: string | null;
             /** Hint for the desired vector dimensionality. Honoured only if the underlying model supports projection / truncation. Otherwise ignored and the model's native dimension is returned. */
-            requested_dimensions?: number;
+            requested_dimensions?: number | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly dimensions: number;
             readonly embeddings: readonly (readonly number[])[];
@@ -557,7 +557,7 @@ declare global {
             /** Maximum number of rows to return for SELECT queries */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** SQL query to execute */
@@ -600,8 +600,8 @@ declare global {
 
         /** `memory_store` - List, add, delete, and get typed memory entries (user/project/feedback/reference). */
         memoryStore(input?: {
-            category?: string;
-            content?: string;
+            category?: string | null;
+            content?: string | null;
             id?: number;
             operation?: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -621,23 +621,23 @@ declare global {
             /** Database name to operate on */
             database: string;
             /** JSON document to insert for InsertOne operations */
-            document?: string;
+            document?: string | null;
             /** JSON filter document for Find/Update/Delete/Count/Distinct operations */
-            filter?: string;
+            filter?: string | null;
             /** Maximum number of documents to return (default 100) */
             limit?: number;
             /** Operation to perform: Find, Aggregate, InsertOne, UpdateOne, DeleteOne, Count, Distinct */
             operation: string;
             /** JSON array of pipeline stages for Aggregate operations */
-            pipeline?: string;
+            pipeline?: string | null;
             /** JSON projection document for Find operations */
-            projection?: string;
+            projection?: string | null;
             /** Number of documents to skip */
             skip?: number;
             /** JSON sort document for Find operations */
-            sort?: string;
+            sort?: string | null;
             /** JSON update document for UpdateOne operations */
-            update?: string;
+            update?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly distinct_values?: readonly string[];
             readonly document_count: number;
@@ -652,7 +652,7 @@ declare global {
         /** `mongodb_schema` - Inspect MongoDB database schema by sampling documents */
         mongodbSchema(input: {
             /** Optional collection name to inspect (if omitted, inspects all collections) */
-            collection?: string;
+            collection?: string | null;
             /** MongoDB connection string */
             connection_string: string;
             /** Database name to inspect */
@@ -671,7 +671,7 @@ declare global {
             /** Maximum number of rows to return for SELECT queries */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** SQL query to execute */
@@ -713,7 +713,7 @@ declare global {
         /** `pdf_reader` - Extract text content from PDF files. Supports page range selection. */
         pdfReader(input: {
             /** Optional page range (e.g., '1-5', '1,3,5', '2-'). Default: all pages. */
-            page_range?: string;
+            page_range?: string | null;
             /** The file path of the PDF to read */
             path: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -729,7 +729,7 @@ declare global {
             /** Chunk size in characters for text splitting */
             chunk_size?: number;
             /** Optional page range (e.g., '1-5', '1,3,5', '2-'). Default: all pages. */
-            page_range?: string;
+            page_range?: string | null;
             /** Path to a PDF file or a directory of PDFs */
             path: string;
             /** The semantic search query */
@@ -750,7 +750,7 @@ declare global {
         /** `post_message` - Fire-and-forget a message to a mailbox (agent://, crew://, topic://, or client://). */
         postMessage(input: {
             /** Optional metadata key/value pairs, copied into the envelope the recipient reads */
-            metadata?: Record<string, string>;
+            metadata?: Record<string, string> | null;
             /** JSON payload */
             payload?: unknown;
             /** Mailbox URI (agent://, crew://, topic://, or client:// for an external client such as Studio) */
@@ -767,7 +767,7 @@ declare global {
             /** Maximum number of rows to return for SELECT queries */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** SQL query to execute */
@@ -792,10 +792,10 @@ declare global {
         progressReport(input?: {
             done?: boolean;
             label?: string;
-            message?: string;
-            percent?: number;
-            step?: number;
-            total?: number;
+            message?: string | null;
+            percent?: number | null;
+            step?: number | null;
+            total?: number | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly acknowledged: boolean;
         }>;
@@ -803,15 +803,15 @@ declare global {
         /** `publish_event` - Publish an event on a topic (broadcast 1→N). Optional crew scope and metadata. */
         publishEvent(input: {
             /** Cache key when retain_as_last_value is true */
-            last_value_key?: string;
+            last_value_key?: string | null;
             /** Optional metadata key/value pairs */
-            metadata?: Record<string, string>;
+            metadata?: Record<string, string> | null;
             /** JSON payload to publish */
             payload?: unknown;
             /** Retain the message in the LastValueCache (requires last_value_key) */
             retain_as_last_value?: boolean;
             /** Crew scope. Omit for global broadcast. */
-            target_crew_id?: string;
+            target_crew_id?: string | null;
             /** Topic name (must not start with _system.) */
             topic: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -862,9 +862,9 @@ declare global {
         /** `receive_message` - Pull the next message from a mailbox (default: current agent). Only mailboxes of the calling crew are readable — reading is destructive, and a mailbox belongs to its owner. Requires exactly one of timeout_ms / wait_forever. */
         receiveMessage(input?: {
             /** Optional mailbox URI, restricted to the calling crew's own mailboxes (agent:// or crew:// of this crew). Defaults to the calling agent's mailbox. */
-            mailbox?: string;
+            mailbox?: string | null;
             /** Wait timeout in ms (mutually exclusive with wait_forever) */
-            timeout_ms?: number;
+            timeout_ms?: number | null;
             /** Wait indefinitely (mutually exclusive with timeout_ms) */
             wait_forever?: boolean;
         }, ctx?: ExecutionContext): Promise<{
@@ -879,7 +879,7 @@ declare global {
             /** Maximum number of rows to return for SELECT queries */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** SQL query to execute */
@@ -933,13 +933,13 @@ declare global {
         /** `send_request` - Send a request to a mailbox and wait for a correlated reply (timeout_ms required). */
         sendRequest(input: {
             /** Optional metadata key/value pairs, copied into the envelope the responder reads */
-            metadata?: Record<string, string>;
+            metadata?: Record<string, string> | null;
             /** JSON payload for the request */
             payload?: unknown;
             /** Mailbox URI of the responder */
             target_mailbox: string;
             /** Timeout in milliseconds. Must be strictly positive. Forever not allowed. */
-            timeout_ms?: number;
+            timeout_ms?: number | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly response_payload?: unknown;
         }>;
@@ -972,13 +972,13 @@ declare global {
 
         /** `session_store` - Read, write, truncate, and annotate the current session conversation buffer and metadata. */
         sessionStore(input?: {
-            key?: string;
-            messages?: readonly unknown[];
-            note?: string;
+            key?: string | null;
+            messages?: readonly unknown[] | null;
+            note?: string | null;
             operation?: string;
             retain_count?: number;
-            title?: string;
-            value?: string;
+            title?: string | null;
+            value?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly messages?: readonly unknown[];
             readonly metadata?: unknown;
@@ -1009,7 +1009,7 @@ declare global {
             /** Maximum number of rows to return for SELECT queries */
             max_rows?: number;
             /** Optional named parameters for parameterized queries (e.g. {"active": true}) */
-            parameters?: Record<string, unknown>;
+            parameters?: Record<string, unknown> | null;
             /** ADO.NET provider name: Microsoft.Data.SqlClient, Npgsql, MySqlConnector, or Microsoft.Data.Sqlite */
             provider_name: string;
             /** SQL query to execute */
@@ -1034,7 +1034,7 @@ declare global {
         statementQuery(input?: {
             kinds?: readonly string[];
             parent_fqns?: readonly string[];
-            semantic_query?: string;
+            semantic_query?: string | null;
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
             readonly hits: readonly Record<string, unknown>[];
@@ -1087,7 +1087,7 @@ declare global {
             fqn?: string;
             max_lines?: number;
             mode?: string;
-            statement_id?: string;
+            statement_id?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly end_line: number;
             readonly fqn: string;
@@ -1133,9 +1133,9 @@ declare global {
         /** `wait_for_event` - Wait for the next event on a topic. Requires exactly one of timeout_ms / wait_forever. */
         waitForEvent(input: {
             /** Optional metadata match constraints */
-            metadata_match?: Record<string, string>;
+            metadata_match?: Record<string, string> | null;
             /** Wait timeout in ms (mutually exclusive with wait_forever) */
-            timeout_ms?: number;
+            timeout_ms?: number | null;
             /** Topic to wait on */
             topic: string;
             /** Wait indefinitely (mutually exclusive with timeout_ms) */
@@ -1152,7 +1152,7 @@ declare global {
             /** Maximum chunk size in characters when cached=true (default 1500) */
             chunk_size?: number;
             /** Optional CSS/XPath selector to filter content */
-            selector?: string;
+            selector?: string | null;
             /** The URL of the web page to scrape */
             url: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -1220,7 +1220,7 @@ declare global {
             /** Operation to perform: Parse or Query */
             operation?: string;
             /** Optional XPath expression to query specific elements */
-            xpath?: string;
+            xpath?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly attribute_count?: number;
             readonly attributes?: Record<string, unknown>;

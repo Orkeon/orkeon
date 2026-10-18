@@ -2,11 +2,16 @@ using Jint;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Commands;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.DependencyInjection;
+using Orkeon.Cli.Commands.Scripting.Loading;
 using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Scripting;
+using Orkeon.Scripting.Toolchain;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 
@@ -127,6 +132,74 @@ public sealed class PermissionRulesFacadeTests : IDisposable
 
         Assert.Equal("allow file_write|allow shell_command command=npm test*", listed.AsString());
     }
+
+    [Fact]
+    public void ShouldReportTheGateEnabled_WhenTheHostRegisteredOne()
+    {
+        Assert.True(Permissions().enabled);
+    }
+
+    [Fact]
+    public void ShouldReportTheGateDisabled_WhenTheHostRegisteredNone()
+    {
+        using var ungated = Ungated();
+        var locator = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), ungated);
+
+        var permissions = Assert.IsType<PermissionRulesFacade>(locator.get(ScriptServiceKeys.Permissions));
+
+        Assert.False(permissions.enabled);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldBeReadByAScriptRunAsACommand(bool gated)
+    {
+        using var ungated = gated ? null : Ungated();
+        IServiceProvider services = ungated ?? _services;
+        var directory = Path.Combine(Path.GetTempPath(), "orkeon-perm-cmd-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(directory, "gate.cmd.ts"), """
+                defineCommand({
+                  name: "gate",
+                  description: "Says whether the permission gate is on.",
+                  async handler(args, ctx) {
+                    ctx.writeLine("gate:" + ctx.services.get("permissions").enabled);
+                    return ctx.continue();
+                  },
+                });
+                """, Ct);
+            var loader = new ScriptCommandLoader(
+                new DiskBackedFileSystemService(directory, virtualRoot: "/cmd"),
+                PassThroughTranspiler.Instance,
+                new JsEngineFactory(),
+                Microsoft.Extensions.Options.Options.Create(new ScriptCommandLoaderOptions { Directories = ["/cmd"], EsbuildTranspile = false }),
+                new ScriptCommandLoaderDependencies
+                {
+                    Services = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), services),
+                });
+            var (registry, _) = await loader.LoadAndRegisterAsync(Ct);
+            var output = new ScriptedTestConsole();
+
+            await registry.ScriptCommands.Single(c => c.Name == "gate").ExecuteAsync(
+                new CommandContext { RawInput = "/gate", Args = [], Console = output, Scope = services }, Ct);
+
+            Assert.Contains($"gate:{(gated ? "true" : "false")}", output.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
+
+    /// <summary>The REPL's rules without the gate: <c>Orkeon:Security:PermissionGate:Enabled</c> is not true.</summary>
+    private ServiceProvider Ungated() => new ServiceCollection()
+        .AddSingleton<IConsoleAdapter>(_console)
+        .AddConsoleToolApproval()
+        .AddOrkeonPermissionGate(new ConfigurationBuilder().Build())
+        .BuildServiceProvider();
 
     [Fact]
     public void ShouldNotBeServed_WhenTheHostKeepsNoRules()

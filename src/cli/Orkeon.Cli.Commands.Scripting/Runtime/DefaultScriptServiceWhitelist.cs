@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
@@ -35,8 +36,10 @@ public static class DefaultScriptServiceWhitelist
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
             .AddOptional(ScriptServiceKeys.Commands, sp => sp.GetService<CommandDispatchService>())
             // Optional: the session's tool-call rules — present when the host keeps them (AddConsoleToolApproval).
+            // `enabled` reads whether a gate is registered at all: AddOrkeonPermissionGate registers none unless
+            // Orkeon:Security:PermissionGate:Enabled is true, and the rules then check nothing (#128).
             .AddOptional(ScriptServiceKeys.Permissions, sp => sp.GetService<SessionToolPermissionRules>() is { } rules
-                ? new PermissionRulesFacade(rules)
+                ? new PermissionRulesFacade(rules, gateEnabled: sp.GetService<IPermissionGate>() is not null)
                 : null)
             // Optional: the crew-launching facade — present when AddScriptCommands ran.
             .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>());

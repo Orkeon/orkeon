@@ -30,11 +30,12 @@ public sealed class BuiltInToolTypingsTests : IDisposable
             await tools.directoryRead({ path: "/workspace", max_results: 50 });
             await tools.shellCommand({ command: "dotnet --info" });
             await tools.sessionStore({ operation: "append_note", note: "hello" });
+            await tools.sessionStore({ operation: "set_state", key: "k", value: null });
             await tools.sessionSnip({ retain_count: 3 });
             await tools.sessionStats();
             await tools.sessionCost();
             await tools.tokenBudget();
-            await tools.memoryStore({ operation: "store", category: "plan", content: "ship it" });
+            await tools.memoryStore({ operation: "add", category: "plan", content: "ship it" });
             await tools.progressReport({ label: "Indexing", percent: 40 });
             await tools.listMounts();
             await tools.indexStatus();
@@ -71,12 +72,16 @@ public sealed class BuiltInToolTypingsTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldExposeTheReadLimitsTheFileToolsRead()
+    public async Task ShouldExposeTheReadLimitsAndTheNullableMembersTheToolsRead()
     {
         var rendered = BuiltInToolTypings.Render(await RegisteredTools.ReadAsync(_root));
 
-        Assert.Matches(@"fileRead\(input: \{[^}]*\bmax_length\?: number;", rendered);
+        Assert.Matches(@"fileRead\(input: \{[^}]*\bmax_length\?: number \| null;", rendered);
         Assert.Matches(@"directoryRead\(input: \{[^}]*\bmax_results\?: number;", rendered);
+        // An optional nullable member takes null: set_state with a null value removes the key. A required
+        // one does not, nullable or not: web_scrape refuses a null url ("URL cannot be empty").
+        Assert.Contains("value?: string | null;", rendered, StringComparison.Ordinal);
+        Assert.Matches(@"webScrape\(input: \{[^}]*\burl: string;", rendered);
     }
 
     [Fact]
