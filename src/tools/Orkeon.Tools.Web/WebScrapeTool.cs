@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Constants.Http;
 using Orkeon.Domain.Memory;
+using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Rag.Chunking;
 using Orkeon.Tools.Abstractions.Base;
@@ -165,6 +166,9 @@ public partial class WebScrapeTool : HttpToolBase<WebScrapeRequest, WebScrapeRes
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
         _memoryProvider = memoryProvider ?? throw new ArgumentNullException(nameof(memoryProvider));
     }
+
+    /// <summary>Fetching a page changes nothing in the workspace: the permission gate treats it as a read (#126).</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
     protected override string? ValidateTypedRequest(WebScrapeRequest request)

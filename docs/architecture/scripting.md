@@ -108,7 +108,7 @@ two script shapes actually honours each method**.
 | The version directive `/// <reference orkeon-script="1.0" />` or `// @orkeon-script 1.0` | `orkeon-script.d.ts` |
 | Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — answer dispatched CLI commands by name | [cli-ts-commands.md](./cli-ts-commands.md#the-agent-side--oncommand) |
-| Built-in `tools.X(...)` namespace | `tools.d.ts` |
+| Built-in `tools.X(...)` namespace | `tools.d.ts`, `tools.generated.d.ts` (written by `BuiltInToolTypings` from the tools a run registers, pinned by `BuiltInToolTypingsTests`) |
 | The agent's model settings (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
@@ -187,7 +187,8 @@ pin it:
   token fires. The sandbox's `ExecutionTimeout` (wall-clock, `Orkeon:Scripting:Limits`) bounds
   the evaluation itself and now spans a whole CLR-driven run, as it already spanned a whole
   script (so does `MemoryLimitBytes`). Its clock stops while the permission gate decides on a
-  `ctx.llm.act` tool call, since an approval channel may wait for an operator. A cancelled `RunAsync` leaves the loop a short grace to
+  `ctx.llm.act` tool call, since an approval channel may wait for an operator; so does the
+  agent's wall-time budget. A cancelled `RunAsync` leaves the loop a short grace to
   unwind — its `finally` blocks, `onCrewError` — before it abandons the run and releases what
   the CLR owns. A run a body opens without a `signal` of its own — `crew.runAgent`, a
   sub-crew's `run` — is a child of the run that opened it: cancelled with it, unwound inside

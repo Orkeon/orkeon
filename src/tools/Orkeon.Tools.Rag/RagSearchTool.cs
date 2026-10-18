@@ -41,6 +41,9 @@ public class RagSearchTool : IBaseTool
         "Search knowledge bases and retrieve answers grounded in documents. " +
         "Use this when you need factual information from the agent's knowledge sources.";
 
+    /// <summary>Querying the index changes nothing: a read for the permission gate (#126).</summary>
+    public ToolAccess Access => ToolAccess.Read;
+
     /// <inheritdoc />
     public ToolSchema Schema => new(
         Name: Name,

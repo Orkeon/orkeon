@@ -1344,3 +1344,4 @@ Orkeon.Domain.Execution.AgentRunScope.TryGet<T>(object! key, out T? resource) ->
 static Orkeon.Domain.Execution.AgentRunScope.Begin(string? agentId = null, string? agentRole = null) -> Orkeon.Domain.Execution.AgentRunScope!
 static Orkeon.Domain.Execution.AgentRunScope.Create(string? agentId = null, string? agentRole = null) -> Orkeon.Domain.Execution.AgentRunScope!
 static Orkeon.Domain.Execution.AgentRunScope.Current.get -> Orkeon.Domain.Execution.AgentRunScope?
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.PauseWallClock() -> System.IDisposable!

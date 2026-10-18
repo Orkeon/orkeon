@@ -109,7 +109,7 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 | La directive de version `/// <reference orkeon-script="1.0" />` ou `// @orkeon-script 1.0` | `orkeon-script.d.ts` |
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
-| Namespace intégré `tools.X(...)` | `tools.d.ts` |
+| Namespace intégré `tools.X(...)` | `tools.d.ts`, `tools.generated.d.ts` (écrit par `BuiltInToolTypings` depuis les outils qu'un run enregistre, épinglé par `BuiltInToolTypingsTests`) |
 | Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
@@ -193,7 +193,8 @@ désormais une règle, que les reproducteurs de
   (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même et couvre désormais un
   run entier piloté par le CLR, comme il couvrait déjà un script entier (`MemoryLimitBytes`
   aussi). Son horloge s'arrête pendant que le contrôle des permissions décide d'un appel d'outil
-  de `ctx.llm.act`, car un canal d'approbation peut attendre un opérateur. Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
+  de `ctx.llm.act`, car un canal d'approbation peut attendre un opérateur ; celle du budget de
+  temps mural de l'agent aussi. Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
   ses blocs `finally`, `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR
   possède. Un run qu'un corps ouvre sans `signal` propre — `crew.runAgent`, le `run` d'une
   sous-crew — est l'enfant du run qui l'a ouvert : annulé avec lui, déroulé dans son

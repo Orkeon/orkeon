@@ -454,7 +454,10 @@ does not handle the question itself. See
 `list()`. A rule covers every call of a tool, or the calls whose argument matches a pattern whole,
 `*` standing for any run of characters. A deny rule refuses a call in every mode; an allow rule lets
 it run without asking in every mode but `plan`, which stays read-only, so `dontAsk` runs what a rule
-allows and refuses the rest. The rules last until the REPL exits.
+allows and refuses the rest. The rules last until the REPL exits. `enabled` (read-only) says
+whether the host registered the gate (`Orkeon:Security:PermissionGate:Enabled = true`): false, the
+rules and the modes check nothing and every tool call runs, so a command that shows a mode can say
+so. A crew reads the same fact as `ctx.llm.permissionGate.enabled`.
 
 ```typescript
 const permissions = ctx.services.get("permissions");

@@ -1,14 +1,17 @@
 // Orkeon Scripting DSL — Built-in tools namespace
-// Surface mirrors `IBaseTool` implementations under `Orkeon.Tools.*`. The exhaustive
-// signatures land alongside each builtin tool in SCR-11.
+// Surface mirrors `IBaseTool` implementations under `Orkeon.Tools.*`; the inputs of the
+// built-ins are generated into tools.generated.d.ts (#125).
 
 declare global {
     /**
      * The `tools` object: every registered `IBaseTool`, reachable by name.
      *
-     * The named members below are the built-ins with a settled signature. Tools not
-     * enumerated are still reachable at runtime — hence the index signature, which is what
-     * forces this to be ONE interface rather than a namespace plus a fallback declaration.
+     * Every built-in tool is declared in `tools.generated.d.ts` (`OrkeonBuiltInTools`, which
+     * this interface extends): it is written from each tool's request and response records,
+     * so a renamed parameter fails the type check instead of the run (#125). The e-mail and drive families
+     * below are written by hand, results included. A plugin or MCP tool is still reachable at
+     * runtime — hence the index signature, which is what forces this to be ONE interface
+     * rather than a namespace plus a fallback declaration.
      *
      * It has been wrong twice. First as an index signature written inside a `namespace`,
      * which is not a declaration TypeScript accepts at all — the file did not parse, so the
@@ -18,17 +21,7 @@ declare global {
      * the only test over the shipped typings ran them through esbuild — a transpiler, which
      * strips types and reports neither error. The test type-checks now.
      */
-    interface OrkeonTools {
-        fileRead(input: { path: string; encoding?: string }, ctx?: ExecutionContext): Promise<{ content: string }>;
-        fileWrite(input: { path: string; content: string }, ctx?: ExecutionContext): Promise<{ bytes: number }>;
-        directoryRead(input: { path: string; recursive?: boolean }, ctx?: ExecutionContext): Promise<{ entries: readonly string[] }>;
-        webScrape(input: { url: string; selector?: string }, ctx?: ExecutionContext): Promise<{ html: string }>;
-        httpApi(input: { url: string; method?: string; body?: unknown; headers?: Record<string, string> }, ctx?: ExecutionContext): Promise<{ status: number; body: unknown }>;
-        searchTool(input: { query: string; topK?: number }, ctx?: ExecutionContext): Promise<{ results: readonly unknown[] }>;
-        databaseQuery(input: { connection: string; sql: string; params?: readonly unknown[] }, ctx?: ExecutionContext): Promise<{ rows: readonly Record<string, unknown>[] }>;
-        delegateWork(input: { agent: string; task: string }, ctx?: ExecutionContext): Promise<{ output: unknown }>;
-        askQuestion(input: { question: string }, ctx?: ExecutionContext): Promise<{ answer: string }>;
-
+    interface OrkeonTools extends OrkeonBuiltInTools {
         // The e-mail family (`email_*`). Its types, and the three runtime facts they follow, are
         // declared after `tools` below.
 
@@ -85,7 +78,7 @@ declare global {
         /** Shares an item with allowed addresses, or by a public link when the account allows one. Needs Share. */
         driveShare(input: DriveShareInput, ctx?: ExecutionContext): Promise<DriveShareResult>;
 
-        /** Any other registered tool, by name. */
+        /** A plugin or MCP tool, by name: its input is not known here. */
         [name: string]: (input: never, ctx?: ExecutionContext) => Promise<unknown>;
     }
 

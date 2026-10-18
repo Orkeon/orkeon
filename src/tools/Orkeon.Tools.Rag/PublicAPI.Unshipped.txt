@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Tools.Rag.RagIngestTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Tools.Rag.RagSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess

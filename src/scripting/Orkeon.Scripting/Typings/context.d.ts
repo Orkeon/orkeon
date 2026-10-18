@@ -67,6 +67,18 @@ declare global {
         interrupt(): void;
         /** Whether `interrupt()` was requested (or the host cancelled the run). */
         readonly isInterrupted: boolean;
+        /**
+         * The host's permission gate, read-only. `enabled` is false when the host registered none
+         * (`Orkeon:Security:PermissionGate:Enabled` is not `true`): every tool call of `act()` then
+         * runs unchecked, and a `permissionMode` passed to it only logs a warning.
+         */
+        readonly permissionGate: PermissionGateState;
+    }
+
+    /** What `ctx.llm.permissionGate` reports. */
+    interface PermissionGateState {
+        /** Whether a permission gate checks each tool call of `act()`. */
+        readonly enabled: boolean;
     }
 
     /**
@@ -134,7 +146,9 @@ declare global {
         system?: string;
         /**
          * Permission mode gating each autonomous tool call (when the host registered a
-         * permission gate). Default: "default" (ask; denied in non-interactive sessions).
+         * permission gate: `ctx.llm.permissionGate.enabled`). Default: "default" (ask; denied in
+         * non-interactive sessions). Without a gate the mode checks nothing, and the call logs one
+         * warning saying so.
          */
         permissionMode?: "default" | "acceptEdits" | "bypassPermissions" | "plan" | "dontAsk";
         /**

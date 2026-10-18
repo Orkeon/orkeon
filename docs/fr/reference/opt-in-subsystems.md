@@ -540,7 +540,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   lectures, refuser le reste sans jamais demander ; `acceptEdits` → accepter
   automatiquement les lectures + `file_write`, demander pour le shell ; `default` →
   accepter les lectures, demander pour tout le reste. Avec un canal d'approbation, une demande
-  attend l'opérateur, et l'`ExecutionTimeout` du script s'arrête pendant ce temps ; un refus se lit
+  attend l'opérateur, et l'`ExecutionTimeout` du script comme le budget de temps mural de l'agent
+  (`.budget({ wallTime })`) s'arrêtent pendant ce temps ; un refus se lit
   `DENIED: … The operator denied the call.` En headless, chaque demande dégrade en un `DENIED:` motivé renvoyé
   au modèle comme résultat d'outil (pas d'exception). Les outils inconnus sont
   classés comme écritures (fail-closed).
@@ -548,11 +549,15 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — une déclaration
   l'emporte sur les tables de noms de la barrière ; `Unspecified` (le défaut) se
   replie sur les tables. Les outils de lecture intégrés
-  (file/directory/session/memory/analysis), `file_write` (Edit) et
-  `shell_command`/`http_api` (Execute) se déclarent tous.
+  (file/directory/session/memory/analysis, `web_scrape`, `scrape_element`, `rag_search`),
+  `file_write` et `rag_ingest` (Edit : il écrit dans l'index de connaissances, jamais dans
+  l'espace de travail) et `shell_command`/`http_api` (Execute) se déclarent tous.
+  `BuiltInToolAccessTests` liste les outils intégrés encore laissés à `Unspecified`.
 - **Défaut rétro-compatible** : flag absent → aucune barrière enregistrée → `act` se
   comporte exactement comme avant. Les scripts optent pour un mode à l'appel via
-  l'option d'act `permissionMode`.
+  l'option d'act `permissionMode`. Un script lit si une barrière contrôle ses appels avec
+  `ctx.llm.permissionGate.enabled` ; un `permissionMode` passé à `act` sur un hôte sans barrière
+  journalise un avertissement (event id `2` de `JsLlmFacade`) au lieu d'être ignoré en silence.
 
 ## Shell : interpréteurs & git mutant — `Orkeon:Tools:Shell:AllowInterpreters`
 

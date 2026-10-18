@@ -526,18 +526,24 @@ No attribute carries an id of a crew, task or agent.
   non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
   `acceptEdits` → auto-accept reads + `file_write`, ask for shell;
   `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
-  waits for the operator, and the script's `ExecutionTimeout` stops meanwhile; a refusal reads
+  waits for the operator, and the script's `ExecutionTimeout` and the agent's wall-time budget
+  (`.budget({ wallTime })`) stop meanwhile; a refusal reads
   `DENIED: … The operator denied the call.` Headless, every ask degrades to a motivated
   `DENIED:` fed back to the model as the tool result (no exception). Unknown tools
   are classified as writes (fail-closed).
 - **Declarative classification**: tools can self-declare their class via
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — a declaration wins
   over the gate's name tables; `Unspecified` (the default) falls back to the tables.
-  The built-in read tools (file/directory/session/memory/analysis), `file_write`
-  (Edit) and `shell_command`/`http_api` (Execute) all declare themselves.
+  The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
+  `scrape_element`, `rag_search`), `file_write` and `rag_ingest` (Edit: it writes into the
+  knowledge index, never into the workspace) and `shell_command`/`http_api` (Execute) all
+  declare themselves. `BuiltInToolAccessTests` lists the built-in tools still left at
+  `Unspecified`.
 - **Backward-compatible default**: flag absent → no gate registered → `act`
   behaves exactly as before. Scripts opt into a mode per call via the
-  `permissionMode` act option.
+  `permissionMode` act option. A script reads whether a gate checks its calls with
+  `ctx.llm.permissionGate.enabled`; a `permissionMode` passed to `act` on a host without a gate
+  logs one warning (event id `2` of `JsLlmFacade`) instead of being dropped in silence.
 
 ## Shell interpreters & mutating git — `Orkeon:Tools:Shell:AllowInterpreters`
 

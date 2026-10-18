@@ -234,6 +234,12 @@ export interface ScriptHostFacade {
  * exits.
  */
 export interface PermissionRulesFacade {
+  /**
+   * Whether the host registered a permission gate (`Orkeon:Security:PermissionGate:Enabled = true`).
+   * False, the gate does not run: the session's rules and the permission modes check nothing, and every
+   * tool call runs. A crew reads the same fact as `ctx.llm.permissionGate.enabled`.
+   */
+  readonly enabled: boolean;
   /** Lets the calls run without asking: `allow("shell_command", "command", "npm test*")`. */
   allow(tool: string, argument?: string, pattern?: string): void;
   /** Refuses the calls in every mode: `deny("shell_command", "command", "git push*")`. */

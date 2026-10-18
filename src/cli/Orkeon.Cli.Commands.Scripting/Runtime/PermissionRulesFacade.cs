@@ -14,7 +14,18 @@ public sealed class PermissionRulesFacade
 {
     private readonly SessionToolPermissionRules _rules;
 
-    internal PermissionRulesFacade(SessionToolPermissionRules rules) => _rules = rules;
+    internal PermissionRulesFacade(SessionToolPermissionRules rules, bool gateEnabled = false)
+    {
+        _rules = rules;
+        enabled = gateEnabled;
+    }
+
+    /// <summary>
+    /// Whether the host registered a permission gate (<c>Orkeon:Security:PermissionGate:Enabled = true</c>),
+    /// read-only (#128). False, nothing reads these rules or the permission modes: every tool call runs
+    /// unchecked.
+    /// </summary>
+    public bool enabled { get; }
 
     /// <summary>Lets the tool's calls run without asking: every call, or those whose <paramref name="argument"/> matches <paramref name="pattern"/>.</summary>
     /// <param name="tool">The tool's registered name, e.g. <c>shell_command</c>.</param>
