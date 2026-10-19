@@ -560,6 +560,9 @@ public class ReplPaneViewTests
 
     private sealed class TaskRows
     {
+        /// <summary>When true, the row provider throws, as a registry that went away does.</summary>
+        public bool Fail { get; set; }
+
         public List<AgentRowInfo> Rows { get; } =
         [
             new() { Name = "main", IsActive = true },
@@ -572,7 +575,7 @@ public class ReplPaneViewTests
     {
         var rows = new TaskRows();
         var top = new SplitPaneToplevel(new TerminalGuiOptions { Glyphs = GlyphMode.Always }, InlineDispatcher.Instance);
-        top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Rows });
+        top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Fail ? throw new InvalidOperationException("registry gone") : rows.Rows });
         // A real frame, as CreatePane gives one: the soft-wrapped input needs a viewport width.
         top.Frame = new System.Drawing.Rectangle(0, 0, 100, 30);
         top.Layout();
@@ -1161,5 +1164,83 @@ public class ReplPaneViewTests
         Assert.Null(top.Repl.Navigation.RecipientTicket);
         Assert.Contains("@worker@crew finished · recipient is main", top.Repl.CurrentHistory, StringComparison.Ordinal);
         Assert.StartsWith("  ● main", top.Agents.CurrentText, StringComparison.Ordinal);
+    }
+    [Fact]
+    public void A_faulted_poll_keeps_the_recipient_and_the_rows_and_writes_no_line()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Equal("T-1", top.Repl.Navigation.RecipientTicket);
+        var history = top.Repl.CurrentHistory;
+
+        rows.Fail = true;
+        top.Agents.Refresh();
+
+        Assert.Equal("T-1", top.Repl.Navigation.RecipientTicket);
+        Assert.Equal(3, top.Agents.Rows.Count);
+        Assert.Equal(history, top.Repl.CurrentHistory);
+        Assert.DoesNotContain("finished", top.Repl.CurrentHistory, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_faulted_poll_leaves_the_focused_list_where_it_was()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        Assert.Equal(InputNavigationState.List, top.Repl.Navigation.State);
+        var selected = top.Agents.SelectedIndex;
+        Assert.True(selected > 0);
+
+        rows.Fail = true;
+        top.Agents.Refresh();
+
+        Assert.Equal(InputNavigationState.List, top.Repl.Navigation.State);
+        Assert.True(top.Agents.SelectionActive);
+        Assert.Equal(selected, top.Agents.SelectedIndex);
+    }
+
+    [Fact]
+    public void A_drag_selection_ending_on_a_row_leaves_the_focus_in_the_field()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        var frame = top.Agents.FrameToScreen();
+        var row = new System.Drawing.Point(frame.X + 10, frame.Y + 1);
+
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonPressed, ScreenPosition = new System.Drawing.Point(frame.X + 2, frame.Y - 3) });
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport, ScreenPosition = row });
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonReleased, ScreenPosition = row });
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonClicked, ScreenPosition = row });
+
+        Assert.NotEqual(InputNavigationState.List, top.Repl.Navigation.State);
+        Assert.False(top.Agents.SelectionActive);
+    }
+
+    [Fact]
+    public void A_click_pressed_and_released_on_a_row_focuses_the_list_on_it()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        var frame = top.Agents.FrameToScreen();
+        var row = new System.Drawing.Point(frame.X + 10, frame.Y + 1);
+
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonPressed, ScreenPosition = row });
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonReleased, ScreenPosition = row });
+        top.Agents.HandleMouse(new Mouse { Flags = MouseFlags.LeftButtonClicked, ScreenPosition = row });
+
+        Assert.Equal(InputNavigationState.List, top.Repl.Navigation.State);
+        Assert.Equal(1, top.Agents.SelectedIndex);
+    }
+
+    [Fact]
+    public void The_recipient_placeholder_takes_its_ellipsis_from_the_glyph_set()
+    {
+        Assert.Equal("Message @worker...", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Ascii));
+        Assert.Equal("Message @worker…", ReplPaneView.RecipientPlaceholder("worker", "base", GlyphSet.Unicode));
     }
 }

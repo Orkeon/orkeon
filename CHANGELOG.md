@@ -29,9 +29,10 @@ roles on the terminal's own background (the fixed `#0d0d0d` background is gone; 
   `● Agent "<name>" finished · <duration>`, `✗ … failed · …` or `⊘ … cancelled · …` when it ends, from the host's
   ended tasks (`TuiIntegration.FinishedAgentRows`), so a task that starts and ends between two polls gets both lines,
   in order; `@<task> finished · recipient is main` when the recipient ends while the prompt has focus;
-  `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`. A poll whose provider throws writes nothing.
+  `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`. A poll whose provider throws writes nothing and leaves the rows, the list and the recipient as they were.
 - **Glyphs.** `◯`, `✔`, `⏵⏵` and the new `⎿` (`GlyphSet.Elbow`), `↑` (`GlyphSet.Up`) and `…` (`GlyphSet.Ellipsis`);
-  ASCII `> * o v > | * - ^ ...`, the hint bar's arrows and the cut phrase included.
+  ASCII `> * o v > | * - ^ ...`, the hint bar's arrows, the cut phrase, the recipient label, the placeholder and the model
+  witness included.
 
 | Removed | Replacement |
 |---|---|
@@ -112,7 +113,7 @@ The shipped public API of the console moves with it (the owner allowed it; each 
 
 | Before | After |
 |---|---|
-| `HintBarModel.ConfigWitness` (`"/rc"`) | Removed: the witness is `HintBarModel.Witness(ModelWitnessInfo?)`, coloured by `HintBarModel.WitnessScheme(ModelAvailability)`, at most `HintBarModel.WitnessMaxWidth` (24) columns |
+| `HintBarModel.ConfigWitness` (`"/rc"`) | Removed: the witness is `HintBarModel.Witness(ModelWitnessInfo?, GlyphSet)`, coloured by `HintBarModel.WitnessScheme(ModelAvailability)`, at most `HintBarModel.WitnessMaxWidth` (24) columns |
 | `HintBarView.Bind(runner, integration, agentsAvailable, configUsable, …)` | `configUsable` is replaced by `Func<ModelWitnessInfo?>? modelWitness`, read at each refresh |
 | — | `TuiIntegration.PromptTurnRunning` (`Func<bool>?`) and `TuiIntegration.ModelWitness` (`Func<ModelWitnessInfo?>?`); a null delegate reads as "no turn" / the `Llm:Model` setting |
 | — | `ReplPaneView.InterruptRequested` (raised by the second `Esc`); `SchemeFactory.Warn()` and `SchemeFactory.Error()` |

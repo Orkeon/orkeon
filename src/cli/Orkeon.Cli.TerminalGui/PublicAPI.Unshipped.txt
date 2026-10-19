@@ -18,7 +18,7 @@ override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.ToString() -> string!
 static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator !=(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator ==(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
 const Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessMaxWidth = 24 -> int
-static Orkeon.Cli.TerminalGui.Layout.HintBarModel.Witness(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? info) -> string!
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.Witness(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? info, Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs) -> string!
 static Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Warn() -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Error() -> Terminal.Gui.Drawing.Scheme!

@@ -308,7 +308,7 @@ public class HintBarModelTests
     [Trait("BR", "CH-08")]
     public void Witness_names_the_model_and_never_starts_with_a_slash()
     {
-        var text = HintBarModel.Witness(Info("kimi-k2", Orkeon.Cli.Abstractions.ModelAvailability.Available));
+        var text = HintBarModel.Witness(Info("kimi-k2", Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode);
         Assert.Equal("kimi-k2", text);
         Assert.False(text.StartsWith('/'));
     }
@@ -333,10 +333,10 @@ public class HintBarModelTests
     [Trait("BR", "CH-08")]
     public void Witness_without_a_configured_model_is_unavailable()
     {
-        Assert.Equal("no model", HintBarModel.Witness(null));
-        Assert.Equal("no model", HintBarModel.Witness(Info("", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable)));
-        Assert.Equal("no model", HintBarModel.Witness(Info("   ", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable)));
-        Assert.Equal("gpt-5", HintBarModel.Witness(Info("gpt-5", Orkeon.Cli.Abstractions.ModelAvailability.Available)));
+        Assert.Equal("no model", HintBarModel.Witness(null, GlyphSet.Unicode));
+        Assert.Equal("no model", HintBarModel.Witness(Info("", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable), GlyphSet.Unicode));
+        Assert.Equal("no model", HintBarModel.Witness(Info("   ", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable), GlyphSet.Unicode));
+        Assert.Equal("gpt-5", HintBarModel.Witness(Info("gpt-5", Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode));
         Assert.Equal(
             SchemeFactory.Ok().Normal,
             HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Available).Normal);
@@ -347,9 +347,9 @@ public class HintBarModelTests
     public void Witness_long_name_is_truncated_with_an_ellipsis()
     {
         var exact = new string('m', HintBarModel.WitnessMaxWidth);
-        Assert.Equal(exact, HintBarModel.Witness(Info(exact, Orkeon.Cli.Abstractions.ModelAvailability.Available)));
+        Assert.Equal(exact, HintBarModel.Witness(Info(exact, Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode));
 
-        var shown = HintBarModel.Witness(Info(new string('m', 40), Orkeon.Cli.Abstractions.ModelAvailability.Available));
+        var shown = HintBarModel.Witness(Info(new string('m', 40), Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode);
         Assert.Equal(new string('m', 23) + "…", shown);
         Assert.Equal(24, shown.Length);
     }

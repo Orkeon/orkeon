@@ -455,7 +455,7 @@ glissement de souris sélectionne aussi) ; sans sélection il imprime une ligne 
 la saisie quelle que soit la vue qui a le focus, en mode runner comme en mode REPL, et s'efface
 tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le focus. Dans la
 liste des tâches (`↓` ou `F4`), `Échap` revient au prompt et n'annule rien, un tour en cours ou non ;
-il arme la paire comme un `Échap` sur le prompt, si bien que `Échap Échap` depuis la liste
+il arme la paire comme un `Échap` sur le prompt (`F4` et `Tab` non), si bien que `Échap Échap` depuis la liste
 interrompt un tour en cours. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
 tour s'exécute, comme pour une commande synchrone.
 
@@ -512,7 +512,7 @@ l'hôte (les tâches terminées qu'il conserve), si bien qu'une tâche qui déma
 sondages reçoit quand même ses deux lignes, dans l'ordre ; sans lui, une tâche qui quitte la liste
 se lit comme terminée. Un destinataire qui se termine pendant que le prompt a le focus imprime
 `@<tâche> finished · recipient is main`, et un sondage dont le fournisseur de lignes lève une
-exception n'écrit rien. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
+exception n'écrit rien et laisse les lignes, la liste et le destinataire tels quels. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
 (Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
 `truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change
 `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` en `> * o v x - > | * - ^ v ...`, les `↑/↓` de la barre d'aide et la

@@ -134,11 +134,12 @@ public sealed class HintBarView : View
 
     private void SetWitness(ModelWitnessInfo? info)
     {
-        var text = HintBarModel.Witness(info);
-        if (text.Length != _witnessLength)
+        var text = HintBarModel.Witness(info, _glyphs);
+        var columns = TerminalText.Columns(text);
+        if (columns != _witnessLength)
         {
-            _witnessLength = text.Length;
-            _witness.X = Pos.AnchorEnd(text.Length + 1);
+            _witnessLength = columns;
+            _witness.X = Pos.AnchorEnd(columns + 1);
         }
         _witness.Text = text;
         _witness.SetScheme(HintBarModel.WitnessScheme(info?.Availability ?? Orkeon.Cli.Abstractions.ModelAvailability.Unavailable));

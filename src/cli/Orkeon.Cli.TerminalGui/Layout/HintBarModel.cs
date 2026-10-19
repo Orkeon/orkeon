@@ -14,12 +14,13 @@ public static class HintBarModel
 
     private const string NoModel = "no model";
 
-    /// <summary>The witness text: the model's name, truncated with an ellipsis, or "no model".</summary>
-    public static string Witness(ModelWitnessInfo? info)
+    /// <summary>The witness text: the model's name, cut to <see cref="WitnessMaxWidth"/> columns with the glyph set's ellipsis, or "no model".</summary>
+    public static string Witness(ModelWitnessInfo? info, GlyphSet glyphs)
     {
+        ArgumentNullException.ThrowIfNull(glyphs);
         var model = info?.Model;
         if (string.IsNullOrWhiteSpace(model)) return NoModel;
-        return model.Length <= WitnessMaxWidth ? model : string.Concat(model.AsSpan(0, WitnessMaxWidth - 1), "…");
+        return TerminalText.Truncate(model, WitnessMaxWidth, glyphs.Ellipsis);
     }
 
     /// <summary>The witness colour: green available, amber reconnecting, red unavailable.</summary>

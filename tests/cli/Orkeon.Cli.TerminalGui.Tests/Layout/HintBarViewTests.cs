@@ -25,10 +25,10 @@ public class HintBarViewTests
         var current = new ModelWitnessInfo { Model = "model-a", Availability = Orkeon.Cli.Abstractions.ModelAvailability.Available };
         var integration = new TuiIntegration { ModelWitness = () => current };
 
-        Assert.Equal("model-a", HintBarModel.Witness(integration.ModelWitness!()));
+        Assert.Equal("model-a", HintBarModel.Witness(integration.ModelWitness!(), GlyphSet.Unicode));
         current = new ModelWitnessInfo { Model = "model-b", Availability = Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting };
-        Assert.Equal("model-b", HintBarModel.Witness(integration.ModelWitness!()));
+        Assert.Equal("model-b", HintBarModel.Witness(integration.ModelWitness!(), GlyphSet.Unicode));
 
-        Assert.Equal("no model", HintBarModel.Witness(new TuiIntegration().ModelWitness?.Invoke()));
+        Assert.Equal("no model", HintBarModel.Witness(new TuiIntegration().ModelWitness?.Invoke(), GlyphSet.Unicode));
     }
 }

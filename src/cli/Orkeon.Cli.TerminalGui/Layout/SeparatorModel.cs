@@ -21,11 +21,12 @@ internal static class SeparatorModel
         if (name.Length == 0 || room < 1)
             return [new RowSegment(Repeat(cell, width), PaletteRole.Dim)];
 
-        if (name.Length > room) name = room == 1 ? "…" : string.Concat(name.AsSpan(0, room - 1), "…");
+        // Measured in terminal columns over graphemes: a wide name is cut where the screen cuts it.
+        name = TerminalText.Truncate(name, room, glyphs.Ellipsis);
         var embedded = $"{cell}{cell} {name} {cell}";
         return
         [
-            new RowSegment(Repeat(cell, width - embedded.Length), PaletteRole.Dim),
+            new RowSegment(Repeat(cell, width - TerminalText.Columns(embedded)), PaletteRole.Dim),
             new RowSegment(embedded, PaletteRole.Accent),
         ];
     }

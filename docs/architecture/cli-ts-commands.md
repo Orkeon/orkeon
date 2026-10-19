@@ -444,7 +444,7 @@ one-line hint (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `C
 clipboard into the input whichever view has focus, in the runner and in the REPL modes, and stands
 down while a modal dialog (find, quit confirmation) has focus. In the tasks list (`↓` or `F4`), `Esc`
 returns to the prompt and cancels nothing, a turn running or not; it arms the pair like an `Esc` on
-the prompt, so `Esc Esc` from the list interrupts a running turn. `Ctrl+Q` quits at once when
+the prompt (`F4` and `Tab` do not), so `Esc Esc` from the list interrupts a running turn. `Ctrl+Q` quits at once when
 nothing runs, and asks for confirmation while a turn runs, as it does for a synchronous command.
 
 **Prompt, history and tasks list.** The prompt reads a key in one of three states, never twice:
@@ -494,7 +494,7 @@ the cursor. Between two polls, a new task prints `● <name>(<intent>)` then
 `TuiIntegration.FinishedAgentRows` (the ended tasks it retains), so a task that starts and ends
 between two polls still gets both lines, in order; without it, a task that leaves the list reads as
 finished. A recipient that ends while the prompt has focus prints
-`@<task> finished · recipient is main`, and a poll whose row provider throws writes nothing.
+`@<task> finished · recipient is main`, and a poll whose row provider throws writes nothing and leaves the rows, the list and the recipient as they were.
 `Esc Esc` prints `⎿  Interrupted · What should Orkeon do instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
 terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
 colours otherwise. `--glyphs ascii` turns

@@ -283,12 +283,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     }
 
     /// <summary>The placeholder the field shows for the current recipient.</summary>
-    internal static string RecipientPlaceholder(string? recipientName, string basePlaceholder)
-        => recipientName is null ? basePlaceholder : $"Message @{recipientName}…";
+    internal static string RecipientPlaceholder(string? recipientName, string basePlaceholder, GlyphSet glyphs)
+        => recipientName is null ? basePlaceholder : $"Message @{recipientName}{glyphs.Ellipsis}";
 
     private void SyncRecipientDisplay()
     {
-        _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder);
+        _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder, _glyphs);
         _ruleChip.SetLabel(_navigation.RecipientName);
         SyncPlaceholder();
     }

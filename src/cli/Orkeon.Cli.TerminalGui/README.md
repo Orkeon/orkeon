@@ -39,7 +39,7 @@ This project is no longer distributed as a NuGet package — reference it from s
 | `↑` (prompt, first visual row) | Enter the history: the typed text is kept as the draft, the newest entry is shown; in the history, `↑` older, `↓` newer, then the draft back; an edit leaves the history and keeps the text |
 | `↓` (prompt, last visual row) / `F4` | Focus the tasks list (only while it holds a task other than `main`) |
 | `↑` / `↓` / `Home` / `End` (tasks list) | Move the selection (no wrap); `↑` on the first row returns to the prompt |
-| `Esc` / `F4` / `Tab` (tasks list) | Return to the prompt, text and caret restored; a second `Esc` right after it interrupts the prompt's turn |
+| `Esc` / `F4` / `Tab` (tasks list) | Return to the prompt, text and caret restored; after `Esc` only (not `F4` or `Tab`), a second `Esc` right after it interrupts the prompt's turn |
 | `Ctrl+V` / right-click (tasks list) | Return to the prompt and paste at the restored caret |
 | click / double-click (tasks list row) | Focus the list on that row / and print its detail |
 | `Enter` (tasks list) | Print the selected task's detail; sends nothing |
@@ -245,7 +245,7 @@ the host retains), so a task that starts and ends between two polls still gets
 both lines, in order; without it, a task that leaves the list reads as finished.
 A recipient that ends while the prompt has focus prints
 `@<task> finished · recipient is main`. A poll whose row provider throws writes
-nothing. `Esc Esc` prints `  ⎿  Interrupted · What should Orkeon do instead?`.
+nothing and leaves the rows, the list and the recipient as they were. `Esc Esc` prints `  ⎿  Interrupted · What should Orkeon do instead?`.
 With `--glyphs ascii` the glyphs `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become
 `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut phrase included.
 

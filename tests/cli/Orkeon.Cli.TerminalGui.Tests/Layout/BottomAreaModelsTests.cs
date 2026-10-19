@@ -337,4 +337,28 @@ public class ColumnAwareRowsTests
         Assert.EndsWith("↓ tasks", Bar(GlyphSet.Unicode, focused: false), StringComparison.Ordinal);
         Assert.Equal("  ↑/↓ select · enter view", Bar(GlyphSet.Unicode, focused: true));
     }
+    [Fact]
+    public void The_separator_label_is_measured_in_columns_and_cut_with_the_glyph_set_ellipsis()
+    {
+        var ascii = RowSegment.Concat(SeparatorModel.Compose(GlyphSet.Ascii, 12, "a-very-long-task-name"));
+        Assert.Equal("-- a-ve... -", ascii);
+        Assert.DoesNotContain("…", ascii, StringComparison.Ordinal);
+
+        var wide = RowSegment.Concat(SeparatorModel.Compose(GlyphSet.Unicode, 12, "日本語タスク名"));
+        Assert.Equal(12, TerminalText.Columns(wide));
+        Assert.Equal("── 日本語… ─", wide);
+    }
+
+    [Fact]
+    public void The_model_witness_is_cut_in_columns_with_the_glyph_set_ellipsis()
+    {
+        var info = new ModelWitnessInfo { Model = new string('m', 40), Availability = Orkeon.Cli.Abstractions.ModelAvailability.Available };
+        var ascii = HintBarModel.Witness(info, GlyphSet.Ascii);
+        Assert.Equal(HintBarModel.WitnessMaxWidth, TerminalText.Columns(ascii));
+        Assert.EndsWith("...", ascii, StringComparison.Ordinal);
+
+        var wide = HintBarModel.Witness(new ModelWitnessInfo { Model = new string('模', 20), Availability = Orkeon.Cli.Abstractions.ModelAvailability.Available }, GlyphSet.Unicode);
+        Assert.True(TerminalText.Columns(wide) <= HintBarModel.WitnessMaxWidth);
+        Assert.EndsWith("…", wide, StringComparison.Ordinal);
+    }
 }

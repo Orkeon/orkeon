@@ -61,6 +61,8 @@ public sealed class AgentsPaneView : View
     private List<IReadOnlyList<RowSegment>> _painted = [];
     private int _paintedWidth;
     private readonly TaskTranscriptTracker _tracker;
+    private System.Drawing.Point? _pressedAt;
+    private bool _dragged;
 
     public AgentsPaneView(TerminalGuiOptions options)
         : this(options, TerminalGuiDispatcher.Instance) { }
@@ -250,17 +252,49 @@ public sealed class AgentsPaneView : View
         Application.MouseEvent += OnGlobalMouseEvent;
     }
 
-    private void OnGlobalMouseEvent(object? sender, Mouse e)
+    private void OnGlobalMouseEvent(object? sender, Mouse e) => HandleMouse(e);
+
+    /// <summary>One application-wide mouse event, screen-relative. Also used by tests.</summary>
+    internal void HandleMouse(Mouse e)
     {
+        ArgumentNullException.ThrowIfNull(e);
+        if (TrackDrag(e)) return;
         var single = e.Flags.HasFlag(MouseFlags.LeftButtonClicked);
         var doubleClick = e.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked);
         if (!single && !doubleClick) return;
+        // Terminal.Gui raises the click on release: a press elsewhere, or a drag between the
+        // two, is a drag-select (copy), not a click on the row it ends on.
+        if (single && (_dragged || (_pressedAt is { } pressedAt && pressedAt != e.ScreenPosition))) return;
         if (!Visible || _rows.Count == 0) return;
 
         var frame = FrameToScreen();
         if (!frame.Contains(e.ScreenPosition)) return;
 
         if (ClickRow(e.ScreenPosition.Y - frame.Y, doubleClick)) e.Handled = doubleClick;
+    }
+
+    /// <summary>
+    /// Records where the left button went down and whether it moved before its release.
+    /// </summary>
+    /// <returns>True when <paramref name="e"/> is a press or a drag report, which nothing else reads.</returns>
+    private bool TrackDrag(Mouse e)
+    {
+        if (e.Flags.HasFlag(MouseFlags.LeftButtonPressed))
+        {
+            if (!e.Flags.HasFlag(MouseFlags.PositionReport))
+            {
+                _pressedAt = e.ScreenPosition;
+                _dragged = false;
+            }
+            else if (_pressedAt is { } pressedAt && pressedAt != e.ScreenPosition)
+            {
+                _dragged = true;
+            }
+            return true;
+        }
+        if (e.Flags.HasFlag(MouseFlags.LeftButtonReleased) && _pressedAt is { } at && at != e.ScreenPosition)
+            _dragged = true;
+        return false;
     }
 
     /// <summary>
@@ -283,25 +317,24 @@ public sealed class AgentsPaneView : View
     }
 
     /// <summary>Re-polls the rows and repaints. Also used by tests.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing row provider collapses the pane, never crashes the UI timer.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing row provider leaves the pane as it was, never crashes the UI timer.")]
     public void Refresh()
     {
         IReadOnlyList<AgentRowInfo> rows;
-        var faulted = false;
         try
         {
             rows = _integration?.AgentRows?.Invoke() ?? [];
         }
         catch
         {
-            rows = [];
-            faulted = true;
+            // A faulted poll says nothing about the tasks: the rows, the tracker, the selection
+            // and the recipient keep what they knew, so it writes no line and moves no focus,
+            // and the next good poll reports neither a false end nor a false launch.
+            return;
         }
 
         _rows = rows.ToList();
-        // A faulted poll says nothing about the tasks: the tracker keeps what it knew, so the
-        // next good poll reports neither a false end nor a false launch.
-        if (TranscriptSink is { } sink && !faulted)
+        if (TranscriptSink is { } sink)
         {
             foreach (var line in _tracker.Observe(_rows, ReadFinished())) sink(line);
         }
