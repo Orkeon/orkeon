@@ -244,15 +244,29 @@ public class HintBarModelTests
     }
 
     [Fact]
-    public void Agents_entry_appears_only_while_the_pane_has_rows()
+    public void Tasks_entry_appears_only_while_the_pane_has_a_task()
     {
-        // F4 selection is real now, but the hint stays contextual: advertising it over
-        // an empty pane trains the eye to skip the bar.
+        // The hint stays contextual: advertising the list over an empty pane trains the
+        // eye to skip the bar.
         var with = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: true);
-        Assert.Contains(with, s => s.Contains("f4 agents", StringComparison.Ordinal));
+        Assert.Contains("↓ tasks", with);
 
         var without = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: false);
-        Assert.DoesNotContain(without, s => s.Contains("f4", StringComparison.Ordinal));
+        Assert.DoesNotContain(without, s => s.Contains("tasks", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_focused_list_shows_its_own_affordance()
+    {
+        var segments = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: true, taskListFocused: true);
+        Assert.Equal(["default (shift+tab to cycle)", "ctrl+g logs", "↑/↓ select", "enter view"], segments);
+    }
+
+    [Fact]
+    public void A_task_recipient_is_named_in_the_bar()
+    {
+        Assert.Equal("to @worker@crew", HintBarModel.LeftSegments("default", false, true, recipient: "worker@crew")[^1]);
+        Assert.DoesNotContain(HintBarModel.LeftSegments("default", false, true), s => s.StartsWith("to @", StringComparison.Ordinal));
     }
 
     [Theory]

@@ -47,6 +47,12 @@ public sealed class SplitPaneToplevel : Window
 
         Agents.RowsChanged += (_, _) => ApplyLayout();
 
+        // ↓ from the prompt reaches the tasks list, whose keys come back to the prompt's
+        // navigation machine; the hint bar shows that machine's affordance and recipient.
+        Repl.AttachTaskList(Agents);
+        HintBar.BindNavigation(() => Repl.Navigation);
+        Repl.NavigationChanged += (_, _) => HintBar.Refresh();
+
         // Right-click anywhere in the TUI pastes the OS clipboard into the
         // REPL input — the only editable surface in the layout. The subscription is
         // kept alive for the lifetime of this toplevel by the static

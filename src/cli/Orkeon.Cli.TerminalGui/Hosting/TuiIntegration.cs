@@ -110,4 +110,12 @@ public sealed class TuiIntegration
     /// the pane's Enter/double-click action. Null ⇒ selection shows no detail.
     /// </summary>
     public Func<string, string?>? DescribeAgent { get; set; }
+
+    /// <summary>
+    /// Delivers a prompt line to a task of the agents pane: <c>(ticket, text)</c>, true when the
+    /// task took it. Selecting a task in the list makes it the prompt's recipient; null (the
+    /// case while no task is addressable) ⇒ Enter prints that sending to a task is not
+    /// supported yet and keeps the text in the field.
+    /// </summary>
+    public Func<string, string, bool>? SendToTask { get; set; }
 }

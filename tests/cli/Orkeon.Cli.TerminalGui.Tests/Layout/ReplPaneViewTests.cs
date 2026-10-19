@@ -556,6 +556,298 @@ public class ReplPaneViewTests
         Assert.Equal("draft line one\ndraft line two", pane.CurrentInput);
     }
 
+    // ── Field / History / List navigation (the three-state machine, end to end) ───────────
+
+    private sealed class TaskRows
+    {
+        public List<AgentRowInfo> Rows { get; } =
+        [
+            new() { Name = "main", IsActive = true },
+            new() { Name = "worker@crew", Ticket = "T-1" },
+            new() { Name = "scout@crew", Ticket = "T-2" },
+        ];
+    }
+
+    private static (SplitPaneToplevel Top, TaskRows Rows) CreateTopWithTasks()
+    {
+        var rows = new TaskRows();
+        var top = new SplitPaneToplevel(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Rows });
+        // A real frame, as CreatePane gives one: the soft-wrapped input needs a viewport width.
+        top.Frame = new System.Drawing.Rectangle(0, 0, 100, 30);
+        top.Layout();
+        return (top, rows);
+    }
+
+    [Fact]
+    public void Down_from_the_field_reaches_the_list_and_up_on_its_first_row_restores_text_and_caret()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "draft text";
+        top.Repl.Input.InsertionPoint = new System.Drawing.Point(5, 0);
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        Assert.True(top.Agents.SelectionActive);
+        Assert.Equal(0, top.Agents.SelectedIndex);
+
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        Assert.Equal(1, top.Agents.SelectedIndex);
+        top.Agents.NewKeyDownEvent(Key.CursorUp);
+        top.Agents.NewKeyDownEvent(Key.CursorUp);
+
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("draft text", top.Repl.CurrentInput);
+        Assert.Equal(5, top.Repl.Input.CurrentColumn);
+    }
+
+    [Fact]
+    public void Escape_in_the_list_returns_to_the_field_and_keeps_the_selected_task_as_recipient()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "hello";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("hello", top.Repl.CurrentInput);
+        Assert.Equal("worker@crew", top.Repl.Navigation.RecipientName);
+        Assert.Equal("Message @worker@crew…", top.Repl.CurrentPlaceholder);
+        Assert.Contains("to @worker@crew", top.HintBar.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_hint_bar_shows_the_lists_affordance_while_it_has_focus()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        Assert.Contains("↑/↓ select", top.HintBar.CurrentText, StringComparison.Ordinal);
+        Assert.Contains("enter view", top.HintBar.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Enter_to_a_task_without_the_port_reports_and_keeps_the_text()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        var read = top.Repl.ReadLineAsync(CancellationToken.None);
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        top.Repl.CurrentInput = "for the worker";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal("for the worker", top.Repl.CurrentInput);
+        Assert.Contains("not supported yet", top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.False(read.IsCompleted);
+        Assert.Empty(top.Repl.Navigation.History);
+
+        // Selecting `main` again restores the default recipient: Enter submits.
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.Home);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Enter));
+        Assert.Equal("for the worker", await read);
+    }
+
+    [Fact]
+    public void Enter_to_a_task_with_the_port_hands_it_the_text()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        var sent = new List<(string Ticket, string Text)>();
+        top.Repl.BindIntegration(new TuiIntegration { SendToTask = (ticket, text) => { sent.Add((ticket, text)); return true; } });
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.End);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        top.Repl.CurrentInput = "scout this";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal([("T-2", "scout this")], sent);
+        Assert.Equal(string.Empty, top.Repl.CurrentInput);
+        Assert.Equal(["scout this"], top.Repl.Navigation.History);
+    }
+
+    [Fact]
+    public void Enter_in_the_list_opens_the_task_view_and_sends_nothing()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        string? opened = null;
+        top.Agents.RowActivated += (_, e) => opened = e.Ticket;
+        top.Repl.CurrentInput = "unsent";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Enter);
+
+        Assert.Equal("T-1", opened);
+        Assert.True(top.Agents.SelectionActive);
+        Assert.Equal("unsent", top.Repl.CurrentInput);
+        Assert.Empty(top.Repl.Navigation.History);
+    }
+
+    [Fact]
+    public void A_printable_key_in_the_list_returns_to_the_field_with_the_character()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "ab";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.C);
+
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("abc", top.Repl.CurrentInput);
+    }
+
+    [Fact]
+    public void A_list_emptied_while_focused_returns_to_the_field_with_main_as_recipient()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+
+        rows.Rows.Clear();
+        top.Agents.Refresh();
+
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+        Assert.Null(top.Repl.Navigation.RecipientName);
+    }
+
+    [Fact]
+    public void A_resort_of_the_rows_keeps_the_selection_on_its_task()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown); // worker@crew (T-1), index 1
+
+        (rows.Rows[1], rows.Rows[2]) = (rows.Rows[2], rows.Rows[1]);
+        top.Agents.Refresh();
+
+        Assert.Equal(2, top.Agents.SelectedIndex);
+        Assert.Equal("T-1", top.Repl.Navigation.SelectedTicket);
+    }
+
+    [Fact]
+    public void F4_still_toggles_the_list()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "kept";
+
+        top.Agents.EnterSelectionMode();
+        Assert.Equal(InputNavigationState.List, top.Repl.Navigation.State);
+        top.Agents.ExitSelectionMode();
+
+        Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("kept", top.Repl.CurrentInput);
+    }
+
+    [Fact]
+    public void Down_without_a_task_leaves_the_field_alone()
+    {
+        using var pane = CreatePane();
+        pane.CurrentInput = "alone";
+
+        pane.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        Assert.Equal(InputNavigationState.Field, pane.Navigation.State);
+        Assert.Equal("alone", pane.CurrentInput);
+    }
+
+    [Fact]
+    public void Down_from_the_newest_entry_returns_the_draft_then_reaches_the_list()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        Submit(top.Repl, "older");
+        top.Repl.CurrentInput = "draft";
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorUp));
+        Assert.Equal("older", top.Repl.CurrentInput);
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        Assert.Equal("draft", top.Repl.CurrentInput);
+        Assert.False(top.Agents.SelectionActive);
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        Assert.True(top.Agents.SelectionActive);
+    }
+
+    [Fact]
+    public void Editing_a_recalled_entry_leaves_the_history_and_keeps_the_text()
+    {
+        using var pane = CreatePane();
+        Submit(pane, "older");
+        pane.CurrentInput = "draft";
+        pane.RaiseKeyDown(new Key(KeyCode.CursorUp));
+
+        pane.Input.InsertText("!");
+
+        Assert.Equal(InputNavigationState.Field, pane.Navigation.State);
+        Assert.Equal("older!", pane.CurrentInput);
+        // ↓ now has no draft to return to: the edited text stays.
+        pane.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        Assert.Equal("older!", pane.CurrentInput);
+    }
+
+    [Fact]
+    public async Task Enter_on_a_recalled_entry_submits_it_and_drops_the_draft()
+    {
+        using var pane = CreatePane();
+        Submit(pane, "older");
+        pane.CurrentInput = "draft";
+        pane.RaiseKeyDown(new Key(KeyCode.CursorUp));
+        var read = pane.ReadLineAsync(CancellationToken.None);
+
+        pane.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal("older", await read);
+        Assert.Equal(string.Empty, pane.CurrentInput);
+        Assert.Equal(InputNavigationState.Field, pane.Navigation.State);
+        Assert.Equal(string.Empty, pane.Navigation.Draft);
+    }
+
+    [Fact]
+    public void Up_on_a_long_wrapped_line_moves_through_its_rows_before_the_history()
+    {
+        using var pane = CreatePane();
+        Submit(pane, "old command");
+        var longLine = new string('x', 250); // three visual rows in the ~98-column field
+        pane.CurrentInput = longLine;        // caret at the end: the last visual row
+
+        pane.RaiseKeyDown(new Key(KeyCode.CursorUp));
+
+        Assert.Equal(longLine, pane.CurrentInput);
+        Assert.Equal(InputNavigationState.Field, pane.Navigation.State);
+    }
+
+    [Theory]
+    [InlineData("", 0, 0, 1, 10, true, true)]
+    [InlineData("abcdefghijklmnopqrstuvwxy", 25, 0, 1, 10, false, true)]  // end of a 3-row line
+    [InlineData("abcdefghijklmnopqrstuvwxy", 5, 0, 1, 10, true, false)]   // first visual row
+    [InlineData("abcdefghijklmnopqrstuvwxy", 15, 0, 1, 10, false, false)] // middle visual row
+    [InlineData("ab\ncd", 1, 1, 2, 10, false, true)]                     // second logical line
+    [InlineData("abcdefghijklmnopqrstuvwxy", 3, 1, 3, 10, false, false)]  // live wrapped model, middle row
+    [InlineData("abcdefghijklmnopqrstuvwxy", 3, 2, 3, 10, false, true)]   // live wrapped model, last row
+    [InlineData("ab\ncd", 0, 0, 2, 0, true, false)]                      // width unknown: logical rows
+    public void CaretRowBounds_reads_visual_rows(string text, int column, int row, int fieldRows, int width, bool first, bool last)
+    {
+        Assert.Equal((first, last), ReplPaneView.CaretRowBounds(text, column, row, fieldRows, width));
+    }
+
     // ── Soft-wrap of long input lines ─────────────────────────────────────────────────────
 
     [Fact]

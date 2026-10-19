@@ -428,8 +428,8 @@ user quits.
 `LogsPaneTitle` (`Logs`), `LogsVisibleAtStartup` (`false`), `ReplWordWrap` (`true`),
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. The keys: `Ctrl+G` logs
 drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl+F` find in the logs,
-`Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `F4` agents
-pane, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
+`Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `↓` (from the
+prompt's last row) or `F4` tasks list, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
 (it asks first while a turn runs). `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
 **Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
@@ -445,6 +445,28 @@ clipboard into the input whichever view has focus, in the runner and in the REPL
 down while a modal dialog (find, quit confirmation) has focus. In the `F4` agents selection, `Esc`
 leaves the selection first and cancels nothing, a turn running or not. `Ctrl+Q` quits at once when
 nothing runs, and asks for confirmation while a turn runs, as it does for a synchronous command.
+
+**Prompt, history and tasks list.** The prompt reads a key in one of three states, never twice:
+the field, the history and the tasks list. In the field, `↑` on the first row (a visual row: a long
+line wraps, and `↑`/`↓` first move through its rows) enters the history, keeping the typed text as
+the draft and showing the newest entry, caret at the end; with no history it moves the caret as
+usual. `↓` on the last row focuses the tasks list when it holds a task other than `main` (the hint
+bar then reads `↓ tasks`), and does nothing otherwise. `Home` / `End` reach the start / end of the
+line, `Ctrl+Home` / `Ctrl+End` those of the text. In the history, `↑` shows the previous entry
+(nothing on the oldest), `↓` the next one, and from the newest gives the draft back and leaves the
+history; any edit leaves it and keeps the text; `Enter` sends the shown entry and drops the draft.
+Blank entries and a repeat of the newest one are not recorded. In the list (the hint bar reads
+`↑/↓ select · enter view`), `↓` moves down without wrapping, `↑` moves up and, on the first row,
+returns to the field; `Esc` returns to the field from any row, `F4` too, and the field gets its text
+and caret back; `Home` / `End` reach the first / last row; `Enter` prints the selected task's detail
+in the transcript and sends nothing; a printable key returns to the field with that character typed.
+The selected row is the recipient of the next message, and stays so back in the field: the
+placeholder reads `Message @<task>…` and the hint bar ends with `to @<task>`; selecting `main` gives
+the default recipient back. The selection follows its task when the list re-sorts, and the field
+takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
+host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
+with a task recipient prints that sending to a task is not supported yet, and the text stays in the
+field, neither sent nor recorded. These keys stand down while a modal dialog has focus.
 
 **The model witness.** The right-aligned witness of the hint bar names the selected model (24
 columns at most, longer names end with `…`) and is coloured by what the console has observed of that

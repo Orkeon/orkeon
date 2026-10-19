@@ -29,6 +29,7 @@ public sealed class HintBarView : View
     private bool _agentsAvailable;
     private Func<bool>? _agentsHasRows;
     private Func<ModelWitnessInfo?>? _modelWitness;
+    private Func<InputNavigationStateMachine?>? _navigation;
     private int _witnessLength = -1;
     private object? _timerToken;
 
@@ -80,6 +81,13 @@ public sealed class HintBarView : View
         Refresh();
     }
 
+    /// <summary>The prompt's navigation state, read at each refresh for the tasks affordance and the recipient label.</summary>
+    internal void BindNavigation(Func<InputNavigationStateMachine?> navigation)
+    {
+        ArgumentNullException.ThrowIfNull(navigation);
+        _navigation = navigation;
+    }
+
     internal static bool IsTurnRunning(IInteractiveRunner? runner, TuiIntegration? integration)
         => runner?.IsCommandRunning == true || integration?.PromptTurnRunning?.Invoke() == true;
 
@@ -107,7 +115,13 @@ public sealed class HintBarView : View
         }
         var running = IsTurnRunning(_runner, _integration);
         var agents = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
-        var segments = HintBarModel.LeftSegments(mode, running, agents);
+        var navigation = _navigation?.Invoke();
+        var segments = HintBarModel.LeftSegments(
+            mode,
+            running,
+            agents,
+            taskListFocused: navigation?.State == InputNavigationState.List,
+            recipient: navigation?.RecipientName);
 
         var postureText = $" {_glyphs.Chevrons} {segments[0]}";
         var rest = segments.Count > 1

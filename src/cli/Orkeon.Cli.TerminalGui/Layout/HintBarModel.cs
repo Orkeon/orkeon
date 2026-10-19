@@ -32,20 +32,38 @@ public static class HintBarModel
 
     /// <summary>
     /// The left segments, in display order. The posture segment is first and carries its
-    /// cycle hint; the rest are plain action hints joined by the glyph dot. The agents
-    /// entry appears only while the pane has rows — a hint for an action that would do
-    /// nothing trains the eye to skip the bar.
+    /// cycle hint; the rest are plain action hints joined by the glyph dot. The tasks entry
+    /// shows the affordance of the prompt's state: <c>↓ tasks</c> from the field while the
+    /// list has a task, <c>↑/↓ select · enter view</c> while the list has focus — a hint for
+    /// an action that would do nothing trains the eye to skip the bar. A task chosen as
+    /// recipient closes the bar with <c>to @task</c>.
     /// </summary>
+    /// <param name="permissionMode">The session's permission mode.</param>
+    /// <param name="commandRunning">True while the prompt's turn runs.</param>
+    /// <param name="agentsPaneAvailable">True while the tasks list has a task other than <c>main</c>.</param>
+    /// <param name="taskListFocused">True while the tasks list has focus.</param>
+    /// <param name="recipient">The recipient task's name; null for <c>main</c>.</param>
     public static IReadOnlyList<string> LeftSegments(
         string permissionMode,
         bool commandRunning,
-        bool agentsPaneAvailable)
+        bool agentsPaneAvailable,
+        bool taskListFocused = false,
+        string? recipient = null)
     {
         var mode = string.IsNullOrWhiteSpace(permissionMode) ? "default" : permissionMode.Trim();
-        var segments = new List<string>(4) { $"{mode} (shift+tab to cycle)" };
+        var segments = new List<string>(6) { $"{mode} (shift+tab to cycle)" };
         if (commandRunning) segments.Add("esc esc to interrupt");
         segments.Add("ctrl+g logs");
-        if (agentsPaneAvailable) segments.Add("f4 agents");
+        if (taskListFocused)
+        {
+            segments.Add("↑/↓ select");
+            segments.Add("enter view");
+        }
+        else if (agentsPaneAvailable)
+        {
+            segments.Add("↓ tasks");
+        }
+        if (!string.IsNullOrWhiteSpace(recipient)) segments.Add($"to @{recipient.Trim()}");
         return segments;
     }
 

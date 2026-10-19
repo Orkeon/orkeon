@@ -157,10 +157,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         if (!Layout.PaneClipboard.IsCtrl(key, Terminal.Gui.Drivers.KeyCode.V)) return false;
 
         // A modal dialog owns the keyboard: its own fields paste themselves.
-        for (var view = focused ?? Application.Navigation?.GetFocused(); view is not null; view = view.SuperView)
-        {
-            if (view is FindDialog or QuitConfirmDialog) return false;
-        }
+        if (Layout.ModalFocus.IsActive(focused)) return false;
 
         key.Handled = true;
         Layout.PaneClipboard.PasteInto(repl.Input);
@@ -283,6 +280,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         var top = _toplevel!;
         top.Repl.StatusLine.Bind(runner, _integration, _toolActivity);
         top.Repl.RuleChip.Bind(_integration);
+        top.Repl.BindIntegration(_integration);
         top.HintBar.Bind(
             runner,
             _integration,

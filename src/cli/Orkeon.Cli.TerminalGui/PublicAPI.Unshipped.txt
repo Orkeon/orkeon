@@ -25,3 +25,7 @@ static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Error() -> Terminal.Gui.Drawi
 *REMOVED*const Orkeon.Cli.TerminalGui.Layout.HintBarModel.ConfigWitness = "/rc" -> string!
 *REMOVED*Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, bool configUsable, System.Func<bool>? agentsHasRows = null) -> void
 Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, System.Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>? modelWitness, System.Func<bool>? agentsHasRows = null) -> void
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.HintBarModel.LeftSegments(string! permissionMode, bool commandRunning, bool agentsPaneAvailable) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.LeftSegments(string! permissionMode, bool commandRunning, bool agentsPaneAvailable, bool taskListFocused = false, string? recipient = null) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.get -> System.Func<string!, string!, bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.set -> void

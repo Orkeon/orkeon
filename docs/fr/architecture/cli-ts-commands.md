@@ -436,7 +436,8 @@ l'utilisateur quitte.
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. Les touches : `Ctrl+G`
 tiroir de logs, `Ctrl+R` volet REPL, `Ctrl+L` / `Ctrl+K` vident les logs / le REPL, `Ctrl+F`
 recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2` plus / moins de
-détail dans les logs, `F3` retour à la ligne, `F4` volet des agents, `Ctrl+C` copie la sélection,
+détail dans les logs, `F3` retour à la ligne, `↓` (depuis la dernière ligne
+du prompt) ou `F4` liste des tâches, `Ctrl+C` copie la sélection,
 `Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
 tant qu'un tour s'exécute). `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
@@ -456,6 +457,31 @@ tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le f
 sélection du volet des agents (`F4`), `Échap` quitte d'abord la sélection et n'annule rien, un tour
 en cours ou non. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
 tour s'exécute, comme pour une commande synchrone.
+
+**Prompt, historique et liste des tâches.** Le prompt lit une touche dans l'un de trois états, jamais
+deux fois : le champ, l'historique et la liste des tâches. Dans le champ, `↑` sur la première ligne
+(une ligne visuelle : une longue ligne se replie, et `↑`/`↓` en parcourent d'abord les lignes) entre
+dans l'historique, garde le texte tapé comme brouillon et affiche l'entrée la plus récente, curseur à
+la fin ; sans historique, il déplace le curseur comme d'habitude. `↓` sur la dernière ligne donne le
+focus à la liste des tâches quand elle contient une tâche autre que `main` (la barre d'aide affiche
+alors `↓ tasks`), et ne fait rien sinon. `Début` / `Fin` atteignent le début / la fin de la ligne,
+`Ctrl+Début` / `Ctrl+Fin` ceux du texte. Dans l'historique, `↑` affiche l'entrée précédente (rien sur
+la plus ancienne), `↓` la suivante, et depuis la plus récente rend le brouillon et quitte
+l'historique ; toute modification le quitte et garde le texte ; `Entrée` envoie l'entrée affichée et
+abandonne le brouillon. Les entrées vides et la répétition de la plus récente ne sont pas
+enregistrées. Dans la liste (la barre d'aide affiche `↑/↓ select · enter view`), `↓` descend sans
+boucler, `↑` remonte et, sur la première ligne, revient au champ ; `Échap` revient au champ depuis
+n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseur ; `Début` / `Fin`
+atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
+dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
+La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
+le texte indicatif affiche `Message @<tâche>…` et la barre d'aide se termine par `to @<tâche>` ;
+sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
+retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
+à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
+qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
+tâche n'est pas encore pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
+touches s'effacent tant qu'une boîte de dialogue modale a le focus.
 
 **Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
 (24 colonnes au plus, un nom plus long finit par `…`) et se colore selon ce que la console a observé

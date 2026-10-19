@@ -21,7 +21,7 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// and the console adapter still routes it here by heuristic — only the RENDERING maps
 /// it to the prompt glyph, so the plain (non-TUI) mode stays byte-exact (PLAN §2.1).
 /// </remarks>
-public sealed class ReplPaneView : View
+public sealed class ReplPaneView : View, ITaskListNavigator
 {
     private readonly TextView _history;
     private readonly Label _promptLabel;
@@ -47,11 +47,16 @@ public sealed class ReplPaneView : View
     // the runner's startup script load). Delivered FIFO to subsequent reads — see DeliverOrBuffer.
     private readonly Queue<string> _typeAhead = new();
 
-    // Cap 2 — submitted-line history. Newest at the end. _historyCursor walks it:
-    // [0.._lineHistory.Count) selects an entry, == Count means "the in-progress draft".
-    private readonly List<string> _lineHistory = new();
-    private int _historyCursor;
-    private string _draft = string.Empty;
+    // Field / History / List: the submitted entries, the draft and the tasks list's selection
+    // and recipient live in the pure machine; this view translates keys and applies its actions.
+    private readonly InputNavigationStateMachine _navigation = new();
+    private AgentsPaneView? _tasks;
+    private TuiIntegration? _integration;
+
+    // True while this view writes the field itself (history recall, restore, clear, submit):
+    // ContentsChanged then reports no user edit to the machine.
+    private bool _applyingNavigation;
+    private string _basePlaceholder = PlaceholderText;
 
     // Double-Escape clears the draft. Armed by the first Escape, fired (and reset) by a second
     // consecutive Escape; any other key disarms it. A single Escape is swallowed so it never quits.
@@ -146,7 +151,12 @@ public sealed class ReplPaneView : View
         _input.KeyConsumed += (_, _) => _escapeArmed = false;
         // Grow / shrink the input box (and the history above it) whenever the line count changes
         // — Shift+Enter, paste, history recall, or a backspace that merges two lines.
-        _input.ContentsChanged += (_, _) => { SyncInputHeight(); SyncPlaceholder(); };
+        _input.ContentsChanged += (_, _) =>
+        {
+            SyncInputHeight();
+            SyncPlaceholder();
+            if (!_applyingNavigation) _navigation.OnTextEdited(CurrentInput);
+        };
 
         // Simulated placeholder (Terminal.Gui exposes none on TextView): a dim label
         // OVER the input, shown only while the draft is empty. It is display chrome —
@@ -215,14 +225,49 @@ public sealed class ReplPaneView : View
         _dispatcher.Invoke(() => _promptLabel.Text = $"{_glyphs.Prompt} ");
     }
 
-    /// <summary>Placeholder shown while the draft is empty (contextual, e.g. a target hint).</summary>
+    /// <summary>
+    /// Placeholder shown while the draft is empty (contextual, e.g. a target hint). A task chosen
+    /// as recipient in the tasks list overrides it with <c>Message @task…</c> until <c>main</c> is
+    /// selected again.
+    /// </summary>
     public void SetPlaceholder(string text)
     {
         _dispatcher.Invoke(() =>
         {
-            _placeholder.Text = text ?? string.Empty;
-            SyncPlaceholder();
+            _basePlaceholder = text ?? string.Empty;
+            SyncRecipientDisplay();
         });
+    }
+
+    /// <summary>The prompt's key-interpretation state (Field, History, List) and its recipient.</summary>
+    internal InputNavigationStateMachine Navigation => _navigation;
+
+    /// <summary>Raised after a key or a rows change moved the state or the recipient (the hint bar refreshes).</summary>
+    internal event EventHandler? NavigationChanged;
+
+    /// <summary>Makes <paramref name="tasks"/> the list ↓ reaches from the field; its keys come back here.</summary>
+    internal void AttachTaskList(AgentsPaneView tasks)
+    {
+        ArgumentNullException.ThrowIfNull(tasks);
+        _tasks = tasks;
+        tasks.Navigator = this;
+    }
+
+    /// <summary>Gives the view the host's delegates (<see cref="TuiIntegration.SendToTask"/>), read at each Enter.</summary>
+    internal void BindIntegration(TuiIntegration integration)
+    {
+        ArgumentNullException.ThrowIfNull(integration);
+        _integration = integration;
+    }
+
+    /// <summary>The placeholder the field shows for the current recipient.</summary>
+    internal static string RecipientPlaceholder(string? recipientName, string basePlaceholder)
+        => recipientName is null ? basePlaceholder : $"Message @{recipientName}…";
+
+    private void SyncRecipientDisplay()
+    {
+        _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder);
+        SyncPlaceholder();
     }
 
     private void SyncPlaceholder()
@@ -343,7 +388,7 @@ public sealed class ReplPaneView : View
             if (key.IsShift)
                 _input.InsertText("\n");
             else
-                SubmitLine();
+                Navigate(InputNavigationKey.Enter, key);
             key.Handled = true;
             return;
         }
@@ -378,34 +423,210 @@ public sealed class ReplPaneView : View
     }
 
     /// <summary>
-    /// Handles the history-recall (↑/↓ at the text boundaries) and Tab-completion keys. ↑/↓ in the
-    /// middle of a multi-line draft are left unhandled so the native TextView moves the caret.
+    /// Routes ↑/↓, Home/End and Ctrl+Home/Ctrl+End through the navigation machine, and Tab to
+    /// completion. A key the machine leaves (↑/↓ inside a multi-line draft, Home/End) keeps its
+    /// native TextView effect.
     /// </summary>
     private void HandleNavigationKey(Key key)
     {
-        switch (key.KeyCode)
+        if (key.KeyCode == KeyCode.Tab)
         {
-            // ↑/↓ recall command history only at the text boundaries; in the middle of a multi-line
-            // draft they move the caret between lines (native TextView behaviour — left unhandled).
-            case KeyCode.CursorUp:
-                if (_input.CurrentRow == 0)
-                {
-                    NavigateHistory(-1);
-                    key.Handled = true;
-                }
-                return;
-            case KeyCode.CursorDown:
-                if (_input.CurrentRow >= _input.Lines - 1)
-                {
-                    NavigateHistory(+1);
-                    key.Handled = true;
-                }
-                return;
-            case KeyCode.Tab:
-                TryComplete();
-                key.Handled = true;
-                return;
+            TryComplete();
+            key.Handled = true;
+            return;
         }
+        if (MapFieldKey(key.KeyCode) is { } navigationKey)
+            Navigate(navigationKey, key);
+    }
+
+    private static InputNavigationKey? MapFieldKey(KeyCode code) => code switch
+    {
+        KeyCode.CursorUp => InputNavigationKey.Up,
+        KeyCode.CursorDown => InputNavigationKey.Down,
+        KeyCode.Home => InputNavigationKey.Home,
+        KeyCode.End => InputNavigationKey.End,
+        KeyCode.Home | KeyCode.CtrlMask => InputNavigationKey.CtrlHome,
+        KeyCode.End | KeyCode.CtrlMask => InputNavigationKey.CtrlEnd,
+        _ => null,
+    };
+
+    private void Navigate(InputNavigationKey navigationKey, Key key, string? character = null)
+    {
+        var action = _navigation.Handle(navigationKey, BuildContext(character));
+        if (action.Handled) key.Handled = true;
+        Apply(action);
+    }
+
+    private InputNavigationContext BuildContext(string? character = null)
+    {
+        var text = CurrentInput;
+        var (first, last) = CaretRowBounds(text, _input.CurrentColumn, _input.CurrentRow, _input.Lines, _input.Viewport.Width);
+        return new InputNavigationContext
+        {
+            Text = text,
+            Caret = new InputCaret(_input.CurrentColumn, _input.CurrentRow),
+            CaretOnFirstRow = first,
+            CaretOnLastRow = last,
+            Rows = _tasks?.Rows ?? [],
+            ModalFocused = ModalFocus.IsActive(),
+            CanSendToTask = _integration?.SendToTask is not null,
+            Character = character,
+        };
+    }
+
+    /// <summary>
+    /// Whether the caret sits on the first / last VISUAL row of the soft-wrapped field. When
+    /// Terminal.Gui's wrapped model is live (<paramref name="fieldRows"/> exceeds the logical line
+    /// count) the caret row is already a visual row; outside a draw cycle the field reports logical
+    /// coordinates, so the visual row is estimated from <paramref name="width"/> the way
+    /// <see cref="CountWrappedRows"/> counts them.
+    /// </summary>
+    internal static (bool First, bool Last) CaretRowBounds(string? text, int column, int row, int fieldRows, int width)
+    {
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        if (fieldRows > lines.Length)
+            return (row <= 0, row >= fieldRows - 1);
+
+        var logicalRow = Math.Clamp(row, 0, lines.Length - 1);
+        if (width <= 0)
+            return (logicalRow == 0, logicalRow >= lines.Length - 1);
+
+        var before = 0;
+        for (var i = 0; i < logicalRow; i++)
+            before += Math.Max(1, (lines[i].Length + width - 1) / width);
+        var rowsOfLine = Math.Max(1, (lines[logicalRow].Length + width - 1) / width);
+        var caret = before + Math.Min(Math.Max(0, column) / width, rowsOfLine - 1);
+        var total = CountWrappedRows(text, width);
+        return (caret == 0, caret >= total - 1);
+    }
+
+    /// <summary>Applies one machine instruction to the field and the tasks list.</summary>
+    private void Apply(InputNavigationAction action)
+    {
+        switch (action.Kind)
+        {
+            case InputNavigationActionKind.SetText:
+                SetInputText(action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.Submit:
+                Deliver(action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.SendToTask:
+                SendToTask(action.Ticket!, action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.RecipientUnsupported:
+                AppendOutputLine($"Sending to a task is not supported yet: nothing was sent to @{_navigation.RecipientName}, the text stays in the field.");
+                break;
+            case InputNavigationActionKind.FocusList:
+                _tasks?.ShowSelection(action.Ticket);
+                break;
+            case InputNavigationActionKind.MoveListSelection:
+                _tasks?.SelectTicket(action.Ticket);
+                break;
+            case InputNavigationActionKind.OpenTask:
+                _tasks?.ActivateTicket(action.Ticket!);
+                break;
+            case InputNavigationActionKind.FocusField:
+                RestoreField(action);
+                break;
+        }
+        SyncRecipientDisplay();
+        NavigationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RestoreField(InputNavigationAction action)
+    {
+        _tasks?.HideSelection();
+        _input.SetFocus();
+        var text = action.Text ?? string.Empty;
+        if (!string.Equals(CurrentInput, text, StringComparison.Ordinal))
+            SetInputText(text);
+        if (action.Caret is { } caret)
+            _input.InsertionPoint = new Point(caret.Column, caret.Row);
+        if (!string.IsNullOrEmpty(action.Insert))
+            _input.InsertText(action.Insert);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing sender keeps the text in the field, never crashes key dispatch.")]
+    private void SendToTask(string ticket, string text)
+    {
+        bool delivered;
+        try
+        {
+            delivered = _integration?.SendToTask?.Invoke(ticket, text) == true;
+        }
+        catch
+        {
+            delivered = false;
+        }
+        if (!delivered)
+        {
+            AppendOutputLine($"Could not deliver to @{_navigation.RecipientName}: the text stays in the field.");
+            return;
+        }
+        _navigation.RecordSubmitted(text);
+        SetInputText(string.Empty);
+        EchoSubmittedLine(text);
+    }
+
+    bool ITaskListNavigator.HandleListKey(Key key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (_navigation.State != InputNavigationState.List) return false;
+        var bare = PaneClipboard.BareKey(key);
+        InputNavigationKey? navigationKey = key.KeyCode switch
+        {
+            KeyCode.CursorUp => InputNavigationKey.Up,
+            KeyCode.CursorDown => InputNavigationKey.Down,
+            KeyCode.Home => InputNavigationKey.Home,
+            KeyCode.End => InputNavigationKey.End,
+            KeyCode.Enter => InputNavigationKey.Enter,
+            _ when bare == KeyCode.Esc => InputNavigationKey.Escape,
+            _ => null,
+        };
+        string? character = null;
+        if (navigationKey is null && PrintableText(key) is { } printable)
+        {
+            navigationKey = InputNavigationKey.Printable;
+            character = printable;
+        }
+        if (navigationKey is null) return false;
+        Navigate(navigationKey.Value, key, character);
+        return key.Handled;
+    }
+
+    void ITaskListNavigator.EnterList()
+    {
+        if (_navigation.State == InputNavigationState.List) return;
+        Apply(_navigation.Handle(InputNavigationKey.ToggleList, BuildContext()));
+    }
+
+    void ITaskListNavigator.LeaveList()
+    {
+        if (_navigation.State != InputNavigationState.List)
+        {
+            _tasks?.HideSelection();
+            return;
+        }
+        Apply(_navigation.Handle(InputNavigationKey.Escape, BuildContext()));
+    }
+
+    void ITaskListNavigator.RowsRefreshed(IReadOnlyList<AgentRowInfo> rows)
+    {
+        // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
+        var recipient = _navigation.RecipientTicket;
+        var action = _navigation.OnRowsChanged(rows);
+        if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
+            Apply(action);
+    }
+
+    /// <summary>The text a key types, or null for a control, modified or non-character key.</summary>
+    private static string? PrintableText(Key key)
+    {
+        if (key.IsCtrl || key.IsAlt) return null;
+        var rune = key.AsRune;
+        if (rune.Value < 0x20 || System.Text.Rune.IsControl(rune)) return null;
+        return rune.ToString();
     }
 
     /// <summary>
@@ -469,31 +690,22 @@ public sealed class ReplPaneView : View
     /// </summary>
     private void ClearInput()
     {
-        _input.Text = string.Empty;
-        _draft = string.Empty;
-        _historyCursor = _lineHistory.Count;
+        SetInputText(string.Empty);
+        _navigation.Reset();
+        NavigationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
-    /// Enter: record the (possibly multi-line) entry in history and complete the pending read.
-    /// Line endings are normalised to <c>\n</c> so downstream consumers never see Terminal.Gui's
+    /// Enter to <c>main</c>: the machine has recorded the (possibly multi-line) entry; clear the
+    /// field, echo the entry and complete the pending read. The context carries the text with its
+    /// line endings normalised to <c>\n</c>, so downstream consumers never see Terminal.Gui's
     /// internal <c>\r\n</c>.
     /// </summary>
-    private void SubmitLine()
+    private void Deliver(string text)
     {
-        var text = (_input.Text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal);
-        _input.Text = string.Empty;
-
-        var trimmed = text.Trim();
-        if (trimmed.Length > 0)
-        {
+        SetInputText(string.Empty);
+        if (text.Trim().Length > 0)
             EchoSubmittedLine(text);
-            if (_lineHistory.Count == 0 || !string.Equals(_lineHistory[^1], text, StringComparison.Ordinal))
-                _lineHistory.Add(text);
-        }
-        _historyCursor = _lineHistory.Count;
-        _draft = string.Empty;
-
         DeliverOrBuffer(text);
     }
 
@@ -535,21 +747,6 @@ public sealed class ReplPaneView : View
             AppendOutputLine(line);
     }
 
-    /// <summary>↑/↓ (cap 2): walk submitted-line history, preserving the in-progress draft slot.</summary>
-    private void NavigateHistory(int direction)
-    {
-        if (_lineHistory.Count == 0) return;
-
-        // Entering navigation from the live draft: stash it so ↓ can restore it.
-        if (_historyCursor == _lineHistory.Count)
-            _draft = _input.Text ?? string.Empty;
-
-        var next = Math.Clamp(_historyCursor + direction, 0, _lineHistory.Count);
-        _historyCursor = next;
-
-        SetInputText(next == _lineHistory.Count ? _draft : _lineHistory[next]);
-    }
-
     /// <summary>
     /// Tab (caps 3/4): complete the token at the cursor. A leading <c>/</c> on the first token
     /// completes command names; any <c>@</c> token completes virtual paths. Inert without a source.
@@ -581,10 +778,19 @@ public sealed class ReplPaneView : View
         _input.InsertionPoint = new Point(outcome.NewLeft.Length, row);
     }
 
+    /// <summary>Writes the field without reporting a user edit to the navigation machine.</summary>
     private void SetInputText(string value)
     {
-        _input.Text = value;
-        _input.MoveEnd();
+        _applyingNavigation = true;
+        try
+        {
+            _input.Text = value;
+            _input.MoveEnd();
+        }
+        finally
+        {
+            _applyingNavigation = false;
+        }
     }
 
     private void CompletePendingRead(TaskCompletionSource<string?>? expected, string? value)
@@ -620,6 +826,9 @@ public sealed class ReplPaneView : View
             _input.MoveEnd();
         }
     }
+
+    /// <summary>Test-only accessor for the placeholder text.</summary>
+    internal string CurrentPlaceholder => _placeholder.Text;
 
     /// <summary>Test-only accessor for the history text.</summary>
     // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip  —

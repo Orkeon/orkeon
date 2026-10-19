@@ -26,11 +26,13 @@ public sealed class AgentRowActivatedEventArgs : EventArgs
 /// <remarks>
 /// Selection: the pane stays NON-focusable at rest (the first live launch proved a
 /// focusable read-only pane is a focus thief — typed keys landed in it and vanished).
-/// F4 opts in explicitly: <see cref="EnterSelectionMode"/> makes the pane focusable,
-/// arrows move the cursor, Enter raises <see cref="RowActivated"/> with the row's
-/// ticket, Esc (or the pane collapsing) leaves and raises <see cref="SelectionExited"/>
-/// so the host can hand focus back to the prompt. A mouse click selects a row without
-/// stealing focus; a double-click activates it.
+/// ↓ from the prompt's last row, or F4, opts in explicitly: <see cref="EnterSelectionMode"/>
+/// makes the pane focusable, arrows move the cursor, Enter raises <see cref="RowActivated"/>
+/// with the row's ticket, ↑ on the first row, Esc (or the pane emptying) leaves and raises
+/// <see cref="SelectionExited"/> so the host can hand focus back to the prompt. Once the REPL
+/// pane is attached (<see cref="ReplPaneView.AttachTaskList"/>) the keys are read by its
+/// navigation machine, and the selection is kept by ticket so the poll's re-sort never moves
+/// it. A mouse click selects a row without stealing focus; a double-click activates it.
 /// </remarks>
 public sealed class AgentsPaneView : View
 {
@@ -44,7 +46,9 @@ public sealed class AgentsPaneView : View
     private object? _timerToken;
     private int _desiredRows;
     private List<AgentRowInfo> _rows = [];
-    private int _selected = -1;
+    private bool _selectionActive;
+    private string? _selectedTicket; // null names the `main` row
+    private int _lastIndex;
 
     public AgentsPaneView(TerminalGuiOptions options)
         : this(options, TerminalGuiDispatcher.Instance) { }
@@ -93,7 +97,13 @@ public sealed class AgentsPaneView : View
     public event EventHandler? SelectionExited;
 
     /// <summary>True while the pane owns the selection cursor (F4 mode).</summary>
-    public bool SelectionActive => _selected >= 0;
+    public bool SelectionActive => _selectionActive;
+
+    /// <summary>The prompt's navigation machine, once the REPL pane attached itself.</summary>
+    internal ITaskListNavigator? Navigator { get; set; }
+
+    /// <summary>The rows on screen, in display order.</summary>
+    internal IReadOnlyList<AgentRowInfo> Rows => _rows;
 
     /// <summary>Wires the row source and starts the 1 Hz poll.</summary>
     public void Bind(TuiIntegration integration)
@@ -111,28 +121,66 @@ public sealed class AgentsPaneView : View
     /// </summary>
     public void EnterSelectionMode()
     {
+        if (Navigator is { } navigator)
+        {
+            navigator.EnterList();
+            return;
+        }
         if (_rows.Count == 0) return;
-        _selected = 0;
-        CanFocus = true;
-        SetFocus();
-        Repaint();
+        ShowSelection(Ticket(_rows[0]));
     }
 
     /// <summary>Leaves selection mode and tells the host to restore the prompt focus.</summary>
     public void ExitSelectionMode()
     {
+        if (Navigator is { } navigator && SelectionActive)
+        {
+            navigator.LeaveList();
+            return;
+        }
+        HideSelection();
+    }
+
+    /// <summary>Takes the focus with the cursor on the row of <paramref name="ticket"/> (null: <c>main</c>).</summary>
+    internal void ShowSelection(string? ticket)
+    {
+        if (_rows.Count == 0) return;
+        _selectionActive = true;
+        _selectedTicket = ticket;
+        CanFocus = true;
+        SetFocus();
+        Repaint();
+    }
+
+    /// <summary>Moves the cursor to the row of <paramref name="ticket"/> (null: <c>main</c>).</summary>
+    internal void SelectTicket(string? ticket)
+    {
+        _selectedTicket = ticket;
+        Repaint();
+    }
+
+    /// <summary>Drops the cursor and the focus, and tells the host to restore the prompt focus.</summary>
+    internal void HideSelection()
+    {
         if (!SelectionActive && !CanFocus) return;
-        _selected = -1;
+        _selectionActive = false;
+        _selectedTicket = null;
         CanFocus = false;
         Repaint();
         SelectionExited?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Raises <see cref="RowActivated"/> for <paramref name="ticket"/>: the task's view.</summary>
+    internal void ActivateTicket(string ticket)
+        => RowActivated?.Invoke(this, new AgentRowActivatedEventArgs(ticket));
 
     /// <inheritdoc />
     protected override bool OnKeyDown(Key key)
     {
         ArgumentNullException.ThrowIfNull(key);
         if (!SelectionActive) return base.OnKeyDown(key);
+        if (Navigator is { } navigator)
+            return navigator.HandleListKey(key) || base.OnKeyDown(key);
 
         switch (key.KeyCode)
         {
@@ -156,17 +204,23 @@ public sealed class AgentsPaneView : View
     private void MoveSelection(int delta)
     {
         if (_rows.Count == 0) return;
-        _selected = Math.Clamp(_selected + delta, 0, _rows.Count - 1);
-        Repaint();
+        var index = Math.Clamp(Math.Max(0, SelectedIndex) + delta, 0, _rows.Count - 1);
+        SelectTicket(Ticket(_rows[index]));
     }
 
     private void ActivateSelected()
     {
-        if (_selected < 0 || _selected >= _rows.Count) return;
+        var index = SelectedIndex;
+        if (index < 0 || index >= _rows.Count) return;
         // `main` carries no ticket — there is nothing to inspect on the REPL itself.
-        if (_rows[_selected].Ticket is { Length: > 0 } ticket)
-            RowActivated?.Invoke(this, new AgentRowActivatedEventArgs(ticket));
+        if (_rows[index].Ticket is { Length: > 0 } ticket)
+            ActivateTicket(ticket);
     }
+
+    private static string? Ticket(AgentRowInfo row) => string.IsNullOrEmpty(row.Ticket) ? null : row.Ticket;
+
+    private int IndexOfTicket(string? ticket)
+        => _rows.FindIndex(r => string.Equals(Ticket(r), ticket, StringComparison.Ordinal));
 
     /// <summary>
     /// Mouse: a single click moves the selection cursor WITHOUT taking focus (typed keys
@@ -192,7 +246,8 @@ public sealed class AgentsPaneView : View
         var row = e.ScreenPosition.Y - frame.Y;
         if (row < 0 || row >= _rows.Count) return;
 
-        _selected = row;
+        _selectionActive = true;
+        _selectedTicket = Ticket(_rows[row]);
         Repaint();
         if (doubleClick)
         {
@@ -216,10 +271,20 @@ public sealed class AgentsPaneView : View
         }
 
         _rows = rows.Take(MaxRows).ToList();
-        if (_selected >= _rows.Count)
-            _selected = _rows.Count - 1; // clamp: rows aged out under the cursor
+        if (Navigator is { } navigator)
+        {
+            // The machine keeps the selection by ticket and decides what an emptied list does.
+            Repaint();
+            navigator.RowsRefreshed(_rows);
+            return;
+        }
         if (_rows.Count == 0 && (SelectionActive || CanFocus))
-            ExitSelectionMode();
+        {
+            HideSelection();
+            return;
+        }
+        if (SelectionActive && IndexOfTicket(_selectedTicket) < 0)
+            _selectedTicket = Ticket(_rows[Math.Min(_lastIndex, _rows.Count - 1)]); // the row aged out under the cursor
         Repaint();
     }
 
@@ -227,10 +292,12 @@ public sealed class AgentsPaneView : View
     private void Repaint()
     {
         var visible = _rows;
+        var selected = SelectedIndex;
+        if (selected >= 0) _lastIndex = selected;
         var width = Math.Max(20, Viewport.Width > 0 ? Viewport.Width : 80);
         var nameColumn = AgentsPaneModel.NameColumn(visible);
         var text = string.Join("\n", visible.Select(
-            (r, i) => AgentsPaneModel.FormatRow(_glyphs, r, width, nameColumn, selected: i == _selected)));
+            (r, i) => AgentsPaneModel.FormatRow(_glyphs, r, width, nameColumn, selected: i == selected)));
 
         var desired = visible.Count;
         _dispatcher.Invoke(() =>
@@ -277,7 +344,7 @@ public sealed class AgentsPaneView : View
     internal string CurrentText => _text.Text.Replace("\r\n", "\n", StringComparison.Ordinal);
 
     /// <summary>Test-only accessor for the selection cursor.</summary>
-    internal int SelectedIndex => _selected;
+    internal int SelectedIndex => _selectionActive ? IndexOfTicket(_selectedTicket) : -1;
 
     protected override void Dispose(bool disposing)
     {

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the prompt reads keys in three states: field, history, tasks list **[breaking]**
+
+In the Terminal.Gui console, `↑`/`↓` on the prompt walked the history in both directions, and the agents list was
+reached only with `F4`. A key is now read in one state, never twice:
+
+- **Field.** `↑` on the first visual row enters the history (the typed text is kept as the draft, the newest entry is
+  shown, caret at the end); with no history the caret moves as usual. `↓` on the last visual row focuses the tasks
+  list when it holds a task other than `main`, and does nothing otherwise. On a long wrapped line `↑`/`↓` first move
+  through its rows. `Home`/`End` reach the line's ends, `Ctrl+Home`/`Ctrl+End` the text's.
+- **History.** `↑` older (nothing on the oldest), `↓` newer, and from the newest the draft back; any edit leaves the
+  history and keeps the text; `Enter` sends the shown entry and drops the draft. Blank entries and a repeat of the
+  newest are still not recorded.
+- **Tasks list.** `↓` down without wrapping, `↑` up and back to the prompt from the first row, `Esc` or `F4` back to
+  the prompt (text and caret restored), `Home`/`End` first/last row, `Enter` prints the task's detail and sends
+  nothing, a printable key returns to the prompt with it typed. The selection is kept by ticket across the list's
+  re-sort; an emptied list gives the focus back to the prompt.
+- **Recipient.** The selected row is the recipient of the next message: the placeholder reads `Message @<task>…` and
+  the hint bar ends with `to @<task>`; `main` is the default. Until a host wires `TuiIntegration.SendToTask`, `Enter`
+  to a task prints that sending to a task is not supported yet and keeps the text in the field.
+- **Hint bar.** `f4 agents` becomes `↓ tasks` in the field and `↑/↓ select · enter view` in the list. `F4` and the
+  new keys stand down while a modal dialog has focus, as `Ctrl+V` does.
+
+Migration: `↓` on the prompt's last row no longer walks the history forward from the field: it focuses the tasks list
+when one runs. Walk the history with `↑`, then `↓` back to the draft; leave the list with `Esc`. See
+`docs/architecture/cli-ts-commands.md` and `src/cli/Orkeon.Cli.TerminalGui/README.md`.
+
+The console's public API moves with it (`src/cli/Orkeon.Cli.TerminalGui/PublicAPI.Unshipped.txt`):
+
+| Before | After |
+|---|---|
+| `HintBarModel.LeftSegments(permissionMode, commandRunning, agentsPaneAvailable)` | `LeftSegments(permissionMode, commandRunning, agentsPaneAvailable, bool taskListFocused = false, string? recipient = null)`; the `f4 agents` segment is `↓ tasks` |
+| — | `TuiIntegration.SendToTask` (`Func<string, string, bool>?`: ticket, text, true when delivered); null keeps the text in the field |
+
 ### Changed — the REPL interrupts with Esc Esc, and Ctrl+C only copies **[breaking]** (CH-02..CH-07)
 
 In the Terminal.Gui console, `Ctrl+C` cancelled the running command, and a second `Ctrl+C` quit the

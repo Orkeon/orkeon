@@ -36,6 +36,13 @@ This project is no longer distributed as a NuGet package — reference it from s
 | `Esc` `Esc` (prompt) | First `Esc` clears the draft; the second, right after it, interrupts the prompt's turn |
 | `Ctrl+C` | Copy the selection (never cancels, never quits; without a selection it prints a one-line hint) |
 | `Ctrl+V` | Paste the clipboard into the input |
+| `↑` (prompt, first visual row) | Enter the history: the typed text is kept as the draft, the newest entry is shown; in the history, `↑` older, `↓` newer, then the draft back; an edit leaves the history and keeps the text |
+| `↓` (prompt, last visual row) / `F4` | Focus the tasks list (only while it holds a task other than `main`) |
+| `↑` / `↓` / `Home` / `End` (tasks list) | Move the selection (no wrap); `↑` on the first row returns to the prompt |
+| `Esc` / `F4` (tasks list) | Return to the prompt, text and caret restored |
+| `Enter` (tasks list) | Print the selected task's detail; sends nothing |
+| printable key (tasks list) | Return to the prompt with the character typed |
+| `Home` / `End`, `Ctrl+Home` / `Ctrl+End` (prompt) | Start / end of the line, of the text |
 | `Ctrl+Q` | Quit (with confirmation dialog if a command or the prompt's turn is running) |
 
 The active log level is shown in the Logs pane title in real time
@@ -171,8 +178,14 @@ interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
 - **No key cancels a background crew** (a detached `runCrewAsync`, compaction,
   indexing): it keeps running and stays reachable through `/ps` and
   `/cancel <ticket>`.
-- **`Esc`** in the `F4` agents selection leaves the selection and cancels
-  nothing, a turn running or not.
+- **`Esc`** in the tasks list (reached with `↓` or `F4`) leaves the list and
+  cancels nothing, a turn running or not.
+- **The selected task is the recipient** of the next message: the placeholder
+  reads `Message @<task>…` and the hint bar ends with `to @<task>`; selecting
+  `main` gives the default recipient back. Sending to a task goes through
+  `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while the host leaves it
+  null, `Enter` prints that sending to a task is not supported yet and keeps the
+  text in the field.
 - **Ctrl+Q** without a running command or turn → quit immediately.
 - **Ctrl+Q** with a running command or prompt turn → modal dialog "Do you want
   to terminate the application?" via `MessageBox.Query`. Yes → host exits.

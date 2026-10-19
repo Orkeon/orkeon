@@ -69,7 +69,8 @@ public static class GlobalKeyBindings
             (k => k.KeyCode == Key.F2.WithShift.KeyCode || (k.KeyCode == Key.F2.KeyCode && k.IsShift), () => ApplyLevel(LessVerbose(logProvider.CurrentMinimumLevel))),
             // Agents-pane selection. F4, not Ctrl+A: the panes' select-all already owns
             // Ctrl+A when focused, and a global handler fires before view dispatch.
-            (k => k.KeyCode == Key.F4.KeyCode, () => ToggleAgentSelection(toplevel)),
+            // It stands down while a modal dialog has focus, as Ctrl+V does.
+            (k => k.KeyCode == Key.F4.KeyCode && !ModalFocus.IsActive(), () => ToggleAgentSelection(toplevel)),
             // Fidelity bindings (hint bar contract):
             (k => k.KeyCode == Key.Tab.WithShift.KeyCode, () => CycleMode(toplevel, integration)),
         };
