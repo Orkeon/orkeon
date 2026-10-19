@@ -271,7 +271,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
     /// <summary>
     /// Wires the fidelity views to their sources: status line (runner + tokens + tool
-    /// spans), hint bar (posture + contextual entries), rule/chip and agents rows. The
+    /// spans), status bar (permission mode + contextual entries) and the tasks list. The
     /// turn-completion hook flushes the aggregated tool-activity sentence into the
     /// transcript — the reference's "Read 1 file, ran 9 shell commands" line.
     /// </summary>
@@ -279,7 +279,6 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     {
         var top = _toplevel!;
         top.Repl.StatusLine.Bind(runner, _integration, _toolActivity);
-        top.Repl.RuleChip.Bind(_integration);
         top.Repl.BindIntegration(_integration);
         top.HintBar.Bind(
             runner,

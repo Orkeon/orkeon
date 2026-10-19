@@ -152,6 +152,18 @@ public static class StatusLineFormatter
         return $"{lead} ({string.Join($" {glyphs.Dot} ", parts)})";
     }
 
+    /// <summary>
+    /// Splits a composed line into its head — the glyph and the verb up to the ellipsis,
+    /// painted in the accent — and its tail — the parenthesised metrics or the progress bar,
+    /// painted dim. A line without an ellipsis is all head.
+    /// </summary>
+    internal static (string Head, string Tail) SplitHead(string line)
+    {
+        line ??= string.Empty;
+        var cut = line.IndexOf('…', StringComparison.Ordinal);
+        return cut < 0 ? (line, string.Empty) : (line[..(cut + 1)], line[(cut + 1)..]);
+    }
+
     private static string DescribeState(TurnState state) => state switch
     {
         TurnState.Streaming => "streaming",

@@ -73,9 +73,14 @@ or an SSH session has no xclip/X11 and no `powershell.exe`):
 > it never reaches the app; the pasted text arrives as bracketed-paste input,
 > which lands in the focused field. Both routes end up doing the right thing.
 
-Color scheme: `Orkeon.Cli.TerminalGui.Layout.SchemeFactory` builds explicit
-white-on-black schemes. Without this Terminal.Gui paints gray-on-gray
-(unreadable until you select with the mouse).
+Color scheme: `Orkeon.Cli.TerminalGui.Layout.SchemeFactory` builds the schemes
+from semantic roles (`PaletteRole`): Normal (the terminal's own foreground),
+Dim, Accent, Ok, Alert and Error, plus bold and italic. Every attribute keeps the
+terminal's background (`Color.None`), so the console follows the user's theme;
+only the selection keeps explicit black on white. A terminal announcing 24-bit
+colour through `COLORTERM` (`truecolor` or `24bit`) gets an RGB palette, any
+other a named 16-colour one. Main text carries no colour and a line holds at most
+one vivid role (the model witness keeps its own availability colour).
 
 ## How to wire it
 
@@ -181,8 +186,8 @@ interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
 - **`Esc`** in the tasks list (reached with `↓` or `F4`) leaves the list and
   cancels nothing, a turn running or not.
 - **The selected task is the recipient** of the next message: the placeholder
-  reads `Message @<task>…` and the hint bar ends with `to @<task>`; selecting
-  `main` gives the default recipient back. Sending to a task goes through
+  reads `Message @<task>…` and the separator above the prompt ends with
+  `── <task> ─`; selecting `main` gives the default recipient back. Sending to a task goes through
   `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while the host leaves it
   null, `Enter` prints that sending to a task is not supported yet and keeps the
   text in the field.
@@ -194,6 +199,35 @@ The status-bar shortcuts are also wired, but the source of truth for Ctrl+C,
 Ctrl+V and Ctrl+Q is a global `Application.KeyDown` handler (`TerminalGuiHost`
 installs it; the keys live in `GlobalKeyBindings`) that fires regardless of which
 view holds focus.
+
+## Bottom area
+
+From top to bottom, under the transcript:
+
+- the spinner line while a turn runs: glyph and verb in the accent, the
+  parenthesis dim;
+- a dim `─` rule across the full width; while the recipient is a task other
+  than `main`, it ends with `── <task> ─` in the accent (it replaces the former
+  session chip);
+- the prompt: `❯ ` in the accent and bold, the placeholder dim and italic;
+- a second, bare rule;
+- the status bar, indented by two columns, its parts joined by a dim ` · `: the
+  permission mode (`⏵⏵ bypass permissions on (shift+tab to cycle)`, in Alert for
+  `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise), the hints,
+  then `↓ tasks` while a task other than `main` exists; from the list it reads
+  `↑/↓ select · enter view` alone. The model witness stays right-aligned;
+- a blank line, then the tasks list: `main` first, then creation order. Column 0
+  holds the accent `❯` while the list has focus; column 2 holds `●` for the
+  recipient and `◯` for the others, green while running and dim otherwise; then
+  the name in bold, the activity phrase cut with `…`, and right-aligned, dim,
+  `<duration> · ↓ <tokens> tokens` (the task's total tokens, ticking with the
+  1 Hz poll). The list grows up to 6 rows, then scrolls with the cursor.
+
+The transcript records the list's changes from one poll to the next: a task that
+leaves the list prints `● Agent "<name>" finished · <duration>`, a new one prints
+`● <name>(<intent>)` then `  ⎿  Backgrounded agent (↓ tasks)`. `Esc Esc` prints
+`  ⎿  Interrupted · What should Orkeon do instead?`. With `--glyphs ascii` the
+glyphs `❯ ● ◯ ✔ ⏵ ⎿ ※ ─` become `> * o v > | * -`.
 
 ## Model witness
 

@@ -461,12 +461,30 @@ returns to the field; `Esc` returns to the field from any row, `F4` too, and the
 and caret back; `Home` / `End` reach the first / last row; `Enter` prints the selected task's detail
 in the transcript and sends nothing; a printable key returns to the field with that character typed.
 The selected row is the recipient of the next message, and stays so back in the field: the
-placeholder reads `Message @<task>…` and the hint bar ends with `to @<task>`; selecting `main` gives
+placeholder reads `Message @<task>…` and the rule above the prompt ends with `── <task> ─`; selecting `main` gives
 the default recipient back. The selection follows its task when the list re-sorts, and the field
 takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
 host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
 with a task recipient prints that sending to a task is not supported yet, and the text stays in the
 field, neither sent nor recorded. These keys stand down while a modal dialog has focus.
+
+**The bottom area.** Under the transcript come the spinner line (glyph and verb in the accent, the
+parenthesis dim), a dim `─` rule across the width, ending with `── <task> ─` in the accent while the
+recipient is a task other than `main`, the prompt (`❯ ` accent and bold, the placeholder dim and
+italic), a bare rule, the status bar, a blank line and the tasks list. The status bar is indented
+by two columns and joins its parts with a dim ` · `: the permission mode (`⏵⏵ bypass permissions on
+(shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise),
+the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
+`↑/↓ select · enter view` alone. The list shows `main` first, then the tasks in creation order: the
+accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
+(green while running, dim otherwise), the name in bold, the activity phrase cut with `…`, and
+right-aligned and dim `<duration> · ↓ <tokens> tokens`, the task's total, updated by the 1 Hz poll.
+It grows up to 6 rows, then scrolls with the cursor. Between two polls, a task that leaves the list
+prints `● Agent "<name>" finished · <duration>` in the transcript, a new one `● <name>(<intent>)`
+then `⎿  Backgrounded agent (↓ tasks)`; `Esc Esc` prints `⎿  Interrupted · What should Orkeon do
+instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
+terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
+colours otherwise. `--glyphs ascii` turns `❯ ● ◯ ✔ ⏵ ⎿ ※ ─` into `> * o v > | * -`.
 
 **The model witness.** The right-aligned witness of the hint bar names the selected model (24
 columns at most, longer names end with `…`) and is coloured by what the console has observed of that

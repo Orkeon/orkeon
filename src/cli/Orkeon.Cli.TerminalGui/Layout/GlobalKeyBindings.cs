@@ -134,7 +134,7 @@ public static class GlobalKeyBindings
         // is interrupted by the host's targeted cancel. Both run: both are cancelled.
         if (toplevel.Runner?.IsCommandRunning == true) toplevel.Runner.RequestCommandCancellation();
         if (integration?.PromptTurnRunning?.Invoke() == true) integration.InterruptCurrent?.Invoke();
-        toplevel.Repl.AppendOutputLine("⏹  interrupt requested (esc).");
+        toplevel.Repl.AppendOutputLine(TranscriptModel.Interrupted(toplevel.Repl.Glyphs));
     }
 
     private static void HandleQuit(SplitPaneToplevel toplevel, TuiIntegration? integration)

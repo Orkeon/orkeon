@@ -616,7 +616,10 @@ public class ReplPaneViewTests
         Assert.Equal("hello", top.Repl.CurrentInput);
         Assert.Equal("worker@crew", top.Repl.Navigation.RecipientName);
         Assert.Equal("Message @worker@crew…", top.Repl.CurrentPlaceholder);
-        Assert.Contains("to @worker@crew", top.HintBar.CurrentText, StringComparison.Ordinal);
+        // The recipient is named on the top separator, no longer in the status bar.
+        Assert.Equal("worker@crew", top.Repl.RuleChip.CurrentLabel);
+        Assert.DoesNotContain("worker@crew", top.HintBar.CurrentText, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, top.Repl.BottomRule.CurrentLabel);
     }
 
     [Fact]

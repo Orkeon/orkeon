@@ -18,6 +18,9 @@ internal interface ITaskListNavigator
     /// <summary>F4 (or the host) asked to leave the list.</summary>
     void LeaveList();
 
+    /// <summary>The ticket of the prompt's recipient; null for <c>main</c>.</summary>
+    string? RecipientTicket { get; }
+
     /// <summary>The 1 Hz poll replaced the rows.</summary>
     void RowsRefreshed(IReadOnlyList<AgentRowInfo> rows);
 }

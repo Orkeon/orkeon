@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.ConsoleApp.Services;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
+using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Infrastructure.Communication;
 
 namespace Orkeon.ConsoleApp.Tests.Services;
@@ -97,6 +98,41 @@ public sealed class TuiFidelityWiringAgentRowsTests
         Assert.Equal(118_300, Assert.Single(rows, r => r.Ticket == credited.Ticket).Tokens);
         // No usage observed ⇒ null, which the pane renders as the honest `—`.
         Assert.Null(Assert.Single(rows, r => r.Ticket == untouched.Ticket).Tokens);
+    }
+
+    [Fact]
+    public void Main_comes_first_then_the_tasks_in_creation_order_oldest_first()
+    {
+        // The registry lists newest first; the list reads top-down in the order tasks were launched.
+        var dispatch = NewDispatch();
+        var first = dispatch.Registry.Register(
+            "assistant", CommandInstanceKind.Async, "crew:main-loop", "first", Guid.NewGuid());
+        SpinWait.SpinUntil(() => DateTimeOffset.UtcNow > first.StartedAt);
+        var second = dispatch.Registry.Register(
+            "review", CommandInstanceKind.Async, "crew:code-review", "second", Guid.NewGuid());
+        SpinWait.SpinUntil(() => DateTimeOffset.UtcNow > second.StartedAt);
+        var third = dispatch.Registry.Register(
+            "compact", CommandInstanceKind.Async, "crew:session-compact", "third", Guid.NewGuid());
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        Assert.Equal(
+            new string?[] { null, first.Ticket, second.Ticket, third.Ticket },
+            rows.Select(r => r.Ticket).ToArray());
+        Assert.Equal("main", rows[0].Name);
+    }
+
+    [Fact]
+    public void A_running_task_reads_running_and_main_reads_idle_without_a_prompt_turn()
+    {
+        var dispatch = NewDispatch();
+        var instance = dispatch.Registry.Register(
+            "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
+
+        var rows = TuiFidelityWiring.BuildAgentRows(dispatch);
+
+        Assert.Equal(TaskRowState.Idle, Assert.Single(rows, r => r.Name == "main").State);
+        Assert.Equal(TaskRowState.Running, Assert.Single(rows, r => r.Ticket == instance.Ticket).State);
     }
 
     // ── BuildProgressReader (staleness guard) ───────────────────────────────

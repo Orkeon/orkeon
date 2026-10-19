@@ -15,7 +15,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </summary>
 public sealed class StatusLineView : View
 {
-    private readonly Label _label;
+    private readonly Label _head;
+    private readonly Label _tail;
     private readonly IUiDispatcher _dispatcher;
     private readonly TimeProvider _clock;
     private readonly GlyphSet _glyphs;
@@ -44,10 +45,13 @@ public sealed class StatusLineView : View
         _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
         Height = 1;
         Width = Dim.Fill();
-        SetScheme(SchemeFactory.Accent());
-        _label = new Label { X = 0, Y = 0, Width = Dim.Fill(), Height = 1, Text = string.Empty };
-        _label.SetScheme(SchemeFactory.Accent());
-        Add(_label);
+        SetScheme(SchemeFactory.Pane());
+        // Two attributes: the spinner glyph and verb in the accent, the parenthesis dim.
+        _head = new Label { X = 0, Y = 0, Height = 1, Text = string.Empty };
+        _head.SetScheme(SchemeFactory.Accent());
+        _tail = new Label { X = Pos.Right(_head), Y = 0, Width = Dim.Fill(), Height = 1, Text = string.Empty };
+        _tail.SetScheme(SchemeFactory.Dim());
+        Add(_head, _tail);
     }
 
     /// <summary>Raised on the running→idle transition — the transcript flushes tool activity on it.</summary>
@@ -71,7 +75,14 @@ public sealed class StatusLineView : View
     public void Refresh()
     {
         var text = ComposeText();
-        _dispatcher.Invoke(() => _label.Text = text);
+        _dispatcher.Invoke(() => Show(text));
+    }
+
+    private void Show(string text)
+    {
+        var (head, tail) = StatusLineFormatter.SplitHead(text);
+        _head.Text = head;
+        _tail.Text = tail;
     }
 
     private string ComposeText()
@@ -181,7 +192,7 @@ public sealed class StatusLineView : View
             // concatenations over already-polled state, so the extra ticks stay cheap.
             _timerToken = Application.AddTimeout(TimeSpan.FromMilliseconds(250), () =>
             {
-                _label.Text = ComposeText();
+                Show(ComposeText());
                 return true;
             });
         }
@@ -204,7 +215,7 @@ public sealed class StatusLineView : View
     }
 
     /// <summary>Test-only accessor for the rendered text.</summary>
-    internal string CurrentText => _label.Text;
+    internal string CurrentText => _head.Text + _tail.Text;
 
     protected override void Dispose(bool disposing)
     {
@@ -216,7 +227,8 @@ public sealed class StatusLineView : View
                 catch (InvalidOperationException) { /* Application already shut down */ }
                 _timerToken = null;
             }
-            _label.Dispose();
+            _head.Dispose();
+            _tail.Dispose();
         }
         base.Dispose(disposing);
     }

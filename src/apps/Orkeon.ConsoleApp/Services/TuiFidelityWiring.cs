@@ -152,15 +152,6 @@ internal static class TuiFidelityWiring
                 var idx = Array.IndexOf(ModeCycle, current);
                 buffer.SetState(DefaultModeStateKey, ModeCycle[(idx + 1 + ModeCycle.Length) % ModeCycle.Length]);
             };
-            // Chip: the session title (/rename) when set, else the workspace — session
-            // styling (blue). Agent-target styling waits on addressable sub-agents.
-            integration.ContextChip = () =>
-            {
-                var title = buffer.GetMetadata().Title;
-                return new ContextChipInfo(
-                    string.IsNullOrWhiteSpace(title) ? "workspace" : title!,
-                    IsAgentTarget: false);
-            };
         }
 
         integration.ModelWitness = BuildModelWitnessReader(
@@ -321,10 +312,12 @@ internal static class TuiFidelityWiring
         => s.Length <= max ? s : s[..max] + "…";
 
     /// <summary>
-    /// The agents rows, mirroring the reference's contract: LIVE work only. One row per
-    /// RUNNING async instance (hollow bullet), preceded by <c>● main</c> — which appears
-    /// only while at least one agent runs; with nothing delegated the list is empty and
-    /// the pane collapses. Finished agents leave the pane immediately — <c>idle</c> means
+    /// The tasks rows, mirroring the reference's contract: LIVE work only. <c>main</c> comes
+    /// first — and appears only while at least one task runs; with nothing delegated the list
+    /// is empty and collapses — then one row per running or dispatched async instance, in
+    /// creation order (oldest first, so a row never moves under the cursor). Each row carries
+    /// its state (<c>running</c> ⇒ running, <c>dispatched</c> ⇒ idle; <c>main</c> runs while the
+    /// prompt's turn does). Finished tasks leave the list immediately — <c>idle</c> means
     /// *waiting*, not *finished* (user ruling 2026-08-06) — and stay auditable via
     /// <c>ps</c>/<c>inspect</c>.
     /// </summary>
@@ -335,12 +328,17 @@ internal static class TuiFidelityWiring
 
         var rows = new List<AgentRowInfo>(instances.Count + 1)
         {
-            // The primary loop: filled bullet, no description, no metrics — `● main` alone.
-            new() { Name = "main", IsActive = true },
+            // The primary loop: no description, no metrics — `● main` alone.
+            new()
+            {
+                Name = "main",
+                IsActive = true,
+                State = dispatch.PromptTurnTickets().Count > 0 ? TaskRowState.Running : TaskRowState.Idle,
+            },
         };
 
         rows.AddRange(instances
-            .OrderByDescending(v => v.startedAt, StringComparer.Ordinal)
+            .OrderBy(v => v.startedAt, StringComparer.Ordinal)
             .Select(v =>
             {
                 // A live progress snapshot replaces the static intent while it runs —
@@ -355,6 +353,7 @@ internal static class TuiFidelityWiring
                     Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
                     Tokens = v.tokens > 0 ? v.tokens : null,
                     IsActive = false,
+                    State = v.state == "running" ? TaskRowState.Running : TaskRowState.Idle,
                     Ticket = v.ticket,
                 };
             }));

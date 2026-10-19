@@ -86,6 +86,27 @@ public sealed class MouseClipboardTextView : TextView
         return handled;
     }
 
+    /// <summary>
+    /// Per-cell attribute of the unselected text: <c>(row, column)</c> of the text model to the
+    /// attribute to paint, or null for the view's scheme. Lets a read-only view paint each
+    /// segment of a row in its own role while keeping the selection and copy of a text view.
+    /// </summary>
+    internal Func<int, int, Terminal.Gui.Drawing.Attribute?>? CellAttribute { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnDrawNormalColor(List<Cell> line, int idxCol, int idxRow)
+    {
+        if (CellAttribute?.Invoke(idxRow, idxCol) is { } attribute) SetAttribute(attribute);
+        else base.OnDrawNormalColor(line, idxCol, idxRow);
+    }
+
+    /// <inheritdoc />
+    protected override void OnDrawReadOnlyColor(List<Cell> line, int idxCol, int idxRow)
+    {
+        if (CellAttribute?.Invoke(idxRow, idxCol) is { } attribute) SetAttribute(attribute);
+        else base.OnDrawReadOnlyColor(line, idxCol, idxRow);
+    }
+
     /// <inheritdoc />
     protected override void OnDrawSelectionColor(List<Cell> line, int idxCol, int idxRow)
     {

@@ -475,13 +475,33 @@ n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseu
 atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
 dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
 La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
-le texte indicatif affiche `Message @<tâche>…` et la barre d'aide se termine par `to @<tâche>` ;
+le texte indicatif affiche `Message @<tâche>…` et le filet au-dessus de l'invite se termine par `── <tâche> ─` ;
 sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
 retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
 à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
 qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
 tâche n'est pas encore pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
 touches s'effacent tant qu'une boîte de dialogue modale a le focus.
+
+**La zone du bas.** Sous le transcript viennent la ligne du spinner (glyphe et verbe dans l'accent,
+la parenthèse atténuée), un filet `─` atténué sur toute la largeur, terminé par `── <tâche> ─` dans
+l'accent tant que le destinataire est une tâche autre que `main`, l'invite (`❯ ` accent et gras, le
+texte indicatif atténué et en italique), un filet nu, la barre d'état, une ligne vide et la liste des
+tâches. La barre d'état est indentée de deux colonnes et joint ses parties par un ` · ` atténué : le
+mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaune pour
+`bypassPermissions`, `dontAsk` et `acceptEdits`, atténué sinon), les aides, et `↓ tasks` tant
+qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
+La liste montre `main` d'abord, puis les tâches dans l'ordre de création : le `❯` de l'accent en
+colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
+cours, atténué sinon), le nom en gras, la phrase d'activité coupée par `…`, et alignés à droite et
+atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour par le sondage à 1 Hz. Elle
+grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une tâche qui quitte la
+liste imprime `● Agent "<nom>" finished · <durée>` dans le transcript, une nouvelle
+`● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` ; `Échap Échap` imprime
+`⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
+(Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
+`truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change
+`❯ ● ◯ ✔ ⏵ ⎿ ※ ─` en `> * o v > | * -`.
 
 **Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
 (24 colonnes au plus, un nom plus long finit par `…`) et se colore selon ce que la console a observé

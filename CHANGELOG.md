@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the console's bottom area takes a Claude-Code-like look **[breaking]**
+
+In the Terminal.Gui console (`Orkeon.Cli.TerminalGui`), the area under the transcript is redrawn from semantic colour
+roles on the terminal's own background (the fixed `#0d0d0d` background is gone; 24-bit colour when `COLORTERM` is
+`truecolor` or `24bit`, 16 named colours otherwise):
+
+- **Separators.** A dim `─` rule above and below the prompt; the top one ends with `── <task> ─` in the accent while the
+  recipient is not `main`. It replaces the session chip.
+- **Prompt.** `❯ ` accent and bold; the placeholder dim and italic.
+- **Status bar.** Indented, parts joined by a dim ` · `: the permission mode as a phrase
+  (`⏵⏵ bypass permissions on (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`), the
+  hints, `↓ tasks` when a task exists; `↑/↓ select · enter view` from the list. The recipient left the bar.
+- **Tasks list.** After a blank line: `main` first, then creation order (it was newest first); `❯` cursor while the
+  list has focus, `●` recipient / `◯` others coloured by state, bold name, phrase cut with `…`, dim right-aligned
+  `<duration> · ↓ <tokens> tokens` (the task's total). It grows to 6 rows, then scrolls instead of dropping rows.
+- **Transcript.** `● Agent "<name>" finished · <duration>` when a task leaves the list, `● <name>(<intent>)` then
+  `⎿  Backgrounded agent (↓ tasks)` when one appears, `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`.
+- **Glyphs.** `◯`, `✔`, `⏵⏵` and the new `⎿` (`GlyphSet.Elbow`); ASCII `> * o v > | * -`.
+
+| Removed | Replacement |
+|---|---|
+| `TuiIntegration.ContextChip`, `ContextChipInfo` | none: the top rule names the recipient (`RuleChipView.SetLabel`) |
+| `RuleChipView.Bind(TuiIntegration)` | `RuleChipView.SetLabel(string?)`, `Refresh()` |
+| `SchemeFactory.Chip()`, `Rule()`, `Posture()` | `SchemeFactory.Attr(PaletteRole, …)`, `Dim()`, `Accent()`, `Alert()`, `Uniform(Attribute)` |
+| `AgentsPaneModel.FormatRow(…, nameColumn)`, `NameColumn` | internal segment formatting; `AgentRowInfo.State` (`TaskRowState`) colours the bullet |
+| `HintBarModel.LeftSegments` | internal `HintBarModel.Segments` |
+
 ### Changed — the prompt reads keys in three states: field, history, tasks list **[breaking]**
 
 In the Terminal.Gui console, `↑`/`↓` on the prompt walked the history in both directions, and the agents list was
@@ -24,7 +51,7 @@ reached only with `F4`. A key is now read in one state, never twice:
   nothing, a printable key returns to the prompt with it typed. The selection is kept by ticket across the list's
   re-sort; an emptied list gives the focus back to the prompt.
 - **Recipient.** The selected row is the recipient of the next message: the placeholder reads `Message @<task>…` and
-  the hint bar ends with `to @<task>`; `main` is the default. Until a host wires `TuiIntegration.SendToTask`, `Enter`
+  the rule above the prompt ends with `── <task> ─`; `main` is the default. Until a host wires `TuiIntegration.SendToTask`, `Enter`
   to a task prints that sending to a task is not supported yet and keeps the text in the field.
 - **Hint bar.** `f4 agents` becomes `↓ tasks` in the field and `↑/↓ select · enter view` in the list. `F4` and the
   new keys stand down while a modal dialog has focus, as `Ctrl+V` does.

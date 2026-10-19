@@ -10,9 +10,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
 /// REPL pane of the fidelity layout: borderless transcript (read-only) on top, then the
-/// one-row status line, the rule + context chip, and the prompt (marker + soft-wrapping,
-/// auto-growing multi-line input) at the bottom — the vertical order of the reference
-/// captures (PLAN C1/C5/C6/C7).
+/// one-row spinner line, the top separator (carrying the recipient task's name), the prompt
+/// (marker + soft-wrapping, auto-growing multi-line input) and the bottom separator — the
+/// vertical order of the reference captures (PLAN C1/C5/C6/C7).
 /// <see cref="ReadLineAsync"/> bridges the event-driven UI to the synchronous-blocking
 /// <see cref="System.IO.TextReader.ReadLine"/> contract used by <see cref="Orkeon.Cli.Abstractions.Console.IConsoleAdapter"/>.
 /// </summary>
@@ -29,11 +29,15 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private readonly MouseClipboardTextView _input;
     private readonly StatusLineView _statusLine;
     private readonly RuleChipView _ruleChip;
+    private readonly RuleChipView _bottomRule;
     private readonly IUiDispatcher _dispatcher;
     private readonly GlyphSet _glyphs;
 
-    // Rows reserved between the transcript and the prompt: status line + rule/chip.
+    // Rows reserved between the transcript and the prompt: spinner line + top separator.
     private const int BandRows = 2;
+
+    // Rows under the prompt: the bottom separator.
+    private const int BelowRows = 1;
 
     // Cap on how many rows the multi-line input may grow to before it scrolls internally,
     // so a long paste / many Shift+Enter lines never swallow the whole REPL pane.
@@ -85,7 +89,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(1 + BandRows),
+            Height = Dim.Fill(1 + BandRows + BelowRows),
             ReadOnly = true,
             Multiline = true,
             // Display-only soft-wrap when enabled: Terminal.Gui keeps the original unwrapped model
@@ -106,28 +110,34 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _statusLine = new StatusLineView(options, dispatcher, TimeProvider.System)
         {
             X = 0,
-            Y = Pos.AnchorEnd(1 + BandRows),
+            Y = Pos.AnchorEnd(1 + BandRows + BelowRows),
             Width = Dim.Fill(),
         };
         _ruleChip = new RuleChipView(options, dispatcher)
         {
             X = 0,
-            Y = Pos.AnchorEnd(2),
+            Y = Pos.AnchorEnd(2 + BelowRows),
+            Width = Dim.Fill(),
+        };
+        _bottomRule = new RuleChipView(options, dispatcher)
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(BelowRows),
             Width = Dim.Fill(),
         };
 
         _promptLabel = new Label
         {
             X = 0,
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Height = 1,
             Text = $"{_glyphs.Prompt} ",
         };
-        _promptLabel.SetScheme(SchemeFactory.Accent());
+        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
         _input = new MouseClipboardTextView
         {
             X = Pos.Right(_promptLabel),
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Width = Dim.Fill(),
             Height = 1,
             CanFocus = true,
@@ -164,14 +174,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _placeholder = new Label
         {
             X = Pos.Right(_promptLabel),
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Height = 1,
             Text = PlaceholderText,
             CanFocus = false,
         };
-        _placeholder.SetScheme(SchemeFactory.Dim());
+        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
-        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder);
+        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -267,6 +277,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     private void SyncRecipientDisplay()
     {
         _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder);
+        _ruleChip.SetLabel(_navigation.RecipientName);
         SyncPlaceholder();
     }
 
@@ -278,8 +289,14 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// <summary>The status line band (bound by the host to the runner + integration).</summary>
     public StatusLineView StatusLine => _statusLine;
 
-    /// <summary>The rule + context chip band (bound by the host to the integration).</summary>
+    /// <summary>The top separator: it names the recipient task while it is not <c>main</c>.</summary>
     public RuleChipView RuleChip => _ruleChip;
+
+    /// <summary>The bottom separator, under the prompt.</summary>
+    internal RuleChipView BottomRule => _bottomRule;
+
+    /// <summary>The glyph set this pane resolved (the transcript lines written about it use the same).</summary>
+    internal GlyphSet Glyphs => _glyphs;
 
     private static bool OutputIsUtf8()
     {
@@ -611,6 +628,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         Apply(_navigation.Handle(InputNavigationKey.Escape, BuildContext()));
     }
 
+    string? ITaskListNavigator.RecipientTicket => _navigation.RecipientTicket;
+
     void ITaskListNavigator.RowsRefreshed(IReadOnlyList<AgentRowInfo> rows)
     {
         // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
@@ -640,12 +659,12 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         if (rows == _inputRows) return;
         _inputRows = rows;
 
-        _history.Height = Dim.Fill(rows + BandRows);
-        _statusLine.Y = Pos.AnchorEnd(rows + BandRows);
-        _ruleChip.Y = Pos.AnchorEnd(rows + 1);
-        _promptLabel.Y = Pos.AnchorEnd(rows);
-        _placeholder.Y = Pos.AnchorEnd(rows);
-        _input.Y = Pos.AnchorEnd(rows);
+        _history.Height = Dim.Fill(rows + BandRows + BelowRows);
+        _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
+        _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
+        _promptLabel.Y = Pos.AnchorEnd(rows + BelowRows);
+        _placeholder.Y = Pos.AnchorEnd(rows + BelowRows);
+        _input.Y = Pos.AnchorEnd(rows + BelowRows);
         _input.Height = rows;
         SetNeedsLayout();
     }
@@ -850,6 +869,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             _history.Dispose();
             _statusLine.Dispose();
             _ruleChip.Dispose();
+            _bottomRule.Dispose();
             _promptLabel.Dispose();
             _placeholder.Dispose();
             _input.Dispose();

@@ -64,6 +64,16 @@ public static class TranscriptModel
     }
 
     /// <summary>
+    /// The line an Esc Esc interrupt leaves under the interrupted turn:
+    /// <c>  ⎿  Interrupted · What should Orkeon do instead?</c>.
+    /// </summary>
+    internal static string Interrupted(GlyphSet glyphs)
+    {
+        ArgumentNullException.ThrowIfNull(glyphs);
+        return $"{Indent}{glyphs.Elbow}  Interrupted {glyphs.Dot} What should Orkeon do instead?";
+    }
+
+    /// <summary>
     /// Splits an assistant message into (first paragraph, continuations) so the bullet
     /// lands once. Paragraphs are blank-line separated, like the reference's prose.
     /// </summary>

@@ -17,8 +17,8 @@ public sealed class AgentRowActivatedEventArgs : EventArgs
 }
 
 /// <summary>
-/// The agents list under the hint bar (PLAN C9): one row per in-flight or recent
-/// async command instance, plus <c>main</c>. Rows come from the host through
+/// The tasks list under the status bar (PLAN C9): <c>main</c> first, then one row per
+/// in-flight async command instance in creation order. Rows come from the host through
 /// <see cref="TuiIntegration.AgentRows"/> and are re-polled at 1 Hz — the command
 /// registry emits no change events, so polling is the mechanism, same as the
 /// pre-fidelity bandeau.
@@ -33,10 +33,15 @@ public sealed class AgentRowActivatedEventArgs : EventArgs
 /// pane is attached (<see cref="ReplPaneView.AttachTaskList"/>) the keys are read by its
 /// navigation machine, and the selection is kept by ticket so the poll's re-sort never moves
 /// it. A mouse click selects a row without stealing focus; a double-click activates it.
+/// Rendering: each row is drawn segment by segment (<see cref="AgentsPaneModel.Segments"/>)
+/// through the text view's per-cell attribute, so drag-select and copy keep working. The
+/// list grows with its rows up to <see cref="MaxRows"/>, then scrolls with the cursor. A
+/// ticket that appears or leaves between two polls is written to the transcript
+/// (<see cref="TaskTranscriptTracker"/>).
 /// </remarks>
 public sealed class AgentsPaneView : View
 {
-    /// <summary>Cap so a burst of tickets cannot swallow the transcript.</summary>
+    /// <summary>Rows shown before the list scrolls, so a burst of tickets cannot swallow the transcript.</summary>
     internal const int MaxRows = 6;
 
     private readonly MouseClipboardTextView _text;
@@ -49,6 +54,9 @@ public sealed class AgentsPaneView : View
     private bool _selectionActive;
     private string? _selectedTicket; // null names the `main` row
     private int _lastIndex;
+    private int _top;
+    private List<IReadOnlyList<RowSegment>> _painted = [];
+    private readonly TaskTranscriptTracker _tracker;
 
     public AgentsPaneView(TerminalGuiOptions options)
         : this(options, TerminalGuiDispatcher.Instance) { }
@@ -58,6 +66,7 @@ public sealed class AgentsPaneView : View
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
         _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        _tracker = new TaskTranscriptTracker(_glyphs);
         Width = Dim.Fill();
         Height = 0;
         SetScheme(SchemeFactory.Pane());
@@ -80,7 +89,8 @@ public sealed class AgentsPaneView : View
             CanFocus = false,
             ScrollBars = false,
         };
-        _text.SetScheme(SchemeFactory.Dim());
+        _text.SetScheme(SchemeFactory.Pane());
+        _text.CellAttribute = AttributeAt;
         Add(_text);
     }
 
@@ -102,8 +112,11 @@ public sealed class AgentsPaneView : View
     /// <summary>The prompt's navigation machine, once the REPL pane attached itself.</summary>
     internal ITaskListNavigator? Navigator { get; set; }
 
-    /// <summary>The rows on screen, in display order.</summary>
+    /// <summary>The rows of the list, in display order (the window shows up to <see cref="MaxRows"/> of them).</summary>
     internal IReadOnlyList<AgentRowInfo> Rows => _rows;
+
+    /// <summary>Receives the transcript lines of tasks launched or finished between two polls.</summary>
+    internal Action<string>? TranscriptSink { get; set; }
 
     /// <summary>Wires the row source and starts the 1 Hz poll.</summary>
     public void Bind(TuiIntegration integration)
@@ -243,7 +256,7 @@ public sealed class AgentsPaneView : View
         var frame = FrameToScreen();
         if (!frame.Contains(e.ScreenPosition)) return;
 
-        var row = e.ScreenPosition.Y - frame.Y;
+        var row = _top + e.ScreenPosition.Y - frame.Y;
         if (row < 0 || row >= _rows.Count) return;
 
         _selectionActive = true;
@@ -270,7 +283,11 @@ public sealed class AgentsPaneView : View
             rows = [];
         }
 
-        _rows = rows.Take(MaxRows).ToList();
+        _rows = rows.ToList();
+        if (TranscriptSink is { } sink)
+        {
+            foreach (var line in _tracker.Observe(_rows)) sink(line);
+        }
         if (Navigator is { } navigator)
         {
             // The machine keeps the selection by ticket and decides what an emptied list does.
@@ -288,20 +305,30 @@ public sealed class AgentsPaneView : View
         Repaint();
     }
 
-    /// <summary>Renders <see cref="_rows"/> into the text view and relayouts on row-count change.</summary>
+    /// <summary>Renders the window of <see cref="_rows"/> into the text view and relayouts on row-count change.</summary>
     private void Repaint()
     {
-        var visible = _rows;
         var selected = SelectedIndex;
         if (selected >= 0) _lastIndex = selected;
+        var visibleCount = Math.Min(_rows.Count, MaxRows);
+        _top = AgentsPaneModel.WindowTop(_rows.Count, visibleCount, selected, _top);
         var width = Math.Max(20, Viewport.Width > 0 ? Viewport.Width : 80);
-        var nameColumn = AgentsPaneModel.NameColumn(visible);
-        var text = string.Join("\n", visible.Select(
-            (r, i) => AgentsPaneModel.FormatRow(_glyphs, r, width, nameColumn, selected: i == selected)));
+        var recipient = Navigator?.RecipientTicket;
+        var painted = new List<IReadOnlyList<RowSegment>>(visibleCount);
+        for (var i = _top; i < _top + visibleCount; i++)
+        {
+            var row = _rows[i];
+            painted.Add(AgentsPaneModel.Segments(
+                _glyphs, row, width,
+                cursor: i == selected,
+                recipient: string.Equals(Ticket(row), recipient, StringComparison.Ordinal)));
+        }
+        var text = string.Join("\n", painted.Select(RowSegment.Concat));
 
-        var desired = visible.Count;
+        var desired = visibleCount;
         _dispatcher.Invoke(() =>
         {
+            _painted = painted;
             _text.Text = text;
             if (desired != _desiredRows)
             {
@@ -309,6 +336,21 @@ public sealed class AgentsPaneView : View
                 RowsChanged?.Invoke(this, EventArgs.Empty);
             }
         });
+    }
+
+    /// <summary>The attribute of one cell of the window: its segment's role, or null past the row.</summary>
+    private Terminal.Gui.Drawing.Attribute? AttributeAt(int row, int column)
+    {
+        var painted = _painted;
+        if (row < 0 || row >= painted.Count || column < 0) return null;
+        var x = 0;
+        foreach (var segment in painted[row])
+        {
+            if (column < x + segment.Text.Length)
+                return SchemeFactory.Attr(segment.Role, segment.Bold, segment.Italic);
+            x += segment.Text.Length;
+        }
+        return null;
     }
 
     private void StartTimer()
