@@ -274,6 +274,59 @@ public class HintBarModelTests
         var segments = HintBarModel.LeftSegments("  ", commandRunning: false, agentsPaneAvailable: false);
         Assert.StartsWith("default", segments[0], StringComparison.Ordinal);
     }
+
+    private static ModelWitnessInfo Info(string model, Orkeon.Cli.Abstractions.ModelAvailability availability)
+        => new() { Model = model, Availability = availability };
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_names_the_model_and_never_starts_with_a_slash()
+    {
+        var text = HintBarModel.Witness(Info("kimi-k2", Orkeon.Cli.Abstractions.ModelAvailability.Available));
+        Assert.Equal("kimi-k2", text);
+        Assert.False(text.StartsWith('/'));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_availability_maps_to_green_amber_red()
+    {
+        var green = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Available).Normal;
+        var amber = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting).Normal;
+        var red = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Unavailable).Normal;
+
+        Assert.Equal(SchemeFactory.Ok().Normal, green);
+        Assert.Equal(SchemeFactory.Warn().Normal, amber);
+        Assert.Equal(SchemeFactory.Error().Normal, red);
+        Assert.NotEqual(green, amber);
+        Assert.NotEqual(green, red);
+        Assert.NotEqual(amber, red);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_without_a_configured_model_is_unavailable()
+    {
+        Assert.Equal("no model", HintBarModel.Witness(null));
+        Assert.Equal("no model", HintBarModel.Witness(Info("", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable)));
+        Assert.Equal("no model", HintBarModel.Witness(Info("   ", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable)));
+        Assert.Equal("gpt-5", HintBarModel.Witness(Info("gpt-5", Orkeon.Cli.Abstractions.ModelAvailability.Available)));
+        Assert.Equal(
+            SchemeFactory.Ok().Normal,
+            HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Available).Normal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_long_name_is_truncated_with_an_ellipsis()
+    {
+        var exact = new string('m', HintBarModel.WitnessMaxWidth);
+        Assert.Equal(exact, HintBarModel.Witness(Info(exact, Orkeon.Cli.Abstractions.ModelAvailability.Available)));
+
+        var shown = HintBarModel.Witness(Info(new string('m', 40), Orkeon.Cli.Abstractions.ModelAvailability.Available));
+        Assert.Equal(new string('m', 23) + "…", shown);
+        Assert.Equal(24, shown.Length);
+    }
 }
 
 public class TranscriptModelTests

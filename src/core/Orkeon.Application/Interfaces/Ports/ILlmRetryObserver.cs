@@ -24,6 +24,19 @@ public sealed record LlmRetryEvent
 
     /// <summary>Why the last attempt failed (exception message or HTTP status); empty when unknown.</summary>
     public string Reason { get; init; } = "";
+
+    /// <summary>Effective model of the call being retried; null when unknown.</summary>
+    public string? Model { get; init; }
+}
+
+/// <summary>How a call settled: the effective model and whether it succeeded.</summary>
+public sealed record LlmCallSettlement
+{
+    /// <summary>Effective model of the call.</summary>
+    public required string Model { get; init; }
+
+    /// <summary>True for a final 2xx response.</summary>
+    public required bool Succeeded { get; init; }
 }
 
 /// <summary>
@@ -47,4 +60,7 @@ public interface ILlmRetryObserver
     /// "reconnecting" banner it raised. Also called for calls that never retried.
     /// </summary>
     void OnCallSettled();
+
+    /// <summary>The call settled with a known model and outcome; defaults to <see cref="OnCallSettled()"/>.</summary>
+    void OnCallSettled(LlmCallSettlement settlement) => OnCallSettled();
 }

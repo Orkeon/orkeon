@@ -189,14 +189,176 @@ public sealed class HttpLlmProviderStreamingRetryTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Settled_call_reports_the_effective_model_and_success()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("data: ok") });
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 2);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        using var response = await provider.SendStreaming(client, Endpoint, "{}", CancellationToken.None);
+
+        var settlement = Assert.Single(observer.Settlements);
+        Assert.Equal("probe-model", settlement.Model);
+        Assert.True(settlement.Succeeded);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Call_failing_after_its_retries_reports_failure()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponseFactory(_ => throw new HttpRequestException("connection refused", new SocketException(111)));
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 0);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => provider.SendStreaming(client, Endpoint, "{}", CancellationToken.None));
+
+        var settlement = Assert.Single(observer.Settlements);
+        Assert.Equal("probe-model", settlement.Model);
+        Assert.False(settlement.Succeeded);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Final_non_success_status_without_exception_reports_failure()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent("bad key") });
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 2);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        using var response = await provider.SendStreaming(client, Endpoint, "{}", CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var settlement = Assert.Single(observer.Settlements);
+        Assert.Equal("probe-model", settlement.Model);
+        Assert.False(settlement.Succeeded);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Timeout_cancellation_with_a_live_caller_token_reports_failure()
+    {
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponseFactory(_ => throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout"));
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 0);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => provider.SendStreaming(client, Endpoint, "{}", CancellationToken.None));
+
+        var settlement = Assert.Single(observer.Settlements);
+        Assert.Equal("probe-model", settlement.Model);
+        Assert.False(settlement.Succeeded);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Cancelled_by_the_caller_leaves_the_colour_unchanged()
+    {
+        using var cts = new CancellationTokenSource();
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponseFactory(_ =>
+        {
+            cts.Cancel();
+            throw new OperationCanceledException(cts.Token);
+        });
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 2);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => provider.SendStreaming(client, Endpoint, "{}", cts.Token));
+
+        Assert.Empty(observer.Settlements);
+        Assert.Equal(1, observer.ParameterlessSettledCount);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Retry_event_carries_the_effective_model()
+    {
+        using var handler = new MockHttpMessageHandler();
+        var calls = 0;
+        handler.SetResponseFactory(_ =>
+        {
+            calls++;
+            if (calls == 1)
+                throw new HttpRequestException("hiccup", new SocketException(11));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("data: ok") };
+        });
+        using var client = new HttpClient(handler);
+        using var provider = new ProbeProvider(maxRetries: 2);
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+
+        using var response = await provider.SendStreaming(client, Endpoint, "{}", CancellationToken.None);
+
+        var retry = Assert.Single(observer.Retries);
+        Assert.Equal("probe-model", retry.Model);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public async Task Retry_event_carries_the_model_of_the_call_config()
+    {
+        using var provider = new ProbeProvider(maxRetries: 2, model: "A");
+        var handler = provider.SetupHandler();
+        var calls = 0;
+        handler.SetResponseFactory(_ =>
+        {
+            calls++;
+            if (calls == 1)
+                throw new HttpRequestException("hiccup", new SocketException(11));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("ok") };
+        });
+        var observer = new RecordingRetryObserver();
+        provider.RetryObserver = observer;
+        using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint) { Content = new StringContent("{}") };
+
+        using var response = await provider.Execute(
+            request, LlmConfig.OnProfile() with { Model = "B" }, CancellationToken.None);
+
+        var retry = Assert.Single(observer.Retries);
+        Assert.Equal("B", retry.Model);
+        var settlement = Assert.Single(observer.Settlements);
+        Assert.Equal("B", settlement.Model);
+        Assert.True(settlement.Succeeded);
+    }
+
     // ── doubles ──────────────────────────────────────────────────────────────
 
     private sealed class RecordingRetryObserver : ILlmRetryObserver
     {
         public List<LlmRetryEvent> Retries { get; } = [];
+        public List<LlmCallSettlement> Settlements { get; } = [];
         public int SettledCount { get; private set; }
+        public int ParameterlessSettledCount { get; private set; }
         public void OnRetryScheduled(LlmRetryEvent retry) => Retries.Add(retry);
-        public void OnCallSettled() => SettledCount++;
+        public void OnCallSettled()
+        {
+            SettledCount++;
+            ParameterlessSettledCount++;
+        }
+
+        public void OnCallSettled(LlmCallSettlement settlement)
+        {
+            SettledCount++;
+            Settlements.Add(settlement);
+        }
     }
 
     private sealed class ThrowingRetryObserver : ILlmRetryObserver
@@ -211,13 +373,13 @@ public sealed class HttpLlmProviderStreamingRetryTests
         private readonly MockHttpClientFactory _factory;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000", Justification = "Ownership transferred: the factory is stored by the chained constructor and disposed by Dispose(bool).")]
-        public ProbeProvider(int maxRetries)
-            : this(new MockHttpClientFactory(), maxRetries)
+        public ProbeProvider(int maxRetries, string? model = null)
+            : this(new MockHttpClientFactory(), maxRetries, model)
         {
         }
 
-        private ProbeProvider(MockHttpClientFactory factory, int maxRetries)
-            : base(LlmConfig.OnProfile() with { MaxRetries = maxRetries, BaseUrl = new Uri("https://api.example.test") }, factory)
+        private ProbeProvider(MockHttpClientFactory factory, int maxRetries, string? model)
+            : base(LlmConfig.OnProfile() with { MaxRetries = maxRetries, Model = model, BaseUrl = new Uri("https://api.example.test") }, factory)
         {
             _factory = factory;
         }
@@ -235,6 +397,12 @@ public sealed class HttpLlmProviderStreamingRetryTests
         public override Task<LlmResponse> GenerateAsync(
             string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)
             => Task.FromResult(new LlmResponse { Content = "" });
+
+        public MockHttpMessageHandler SetupHandler() => _factory.SetupDefaultHandler();
+
+        public Task<HttpResponseMessage> Execute(
+            HttpRequestMessage request, LlmConfig config, CancellationToken ct)
+            => ExecuteHttpRequestAsync(request, config, ct);
 
         public Task<HttpResponseMessage> SendStreaming(
             HttpClient client, Uri endpoint, string payload, CancellationToken ct)

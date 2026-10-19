@@ -1,3 +1,4 @@
 #nullable enable
 Orkeon.Constants.Cli.SessionStateKeys
 const Orkeon.Constants.Cli.SessionStateKeys.DefaultPermissionMode = "default_permission_mode" -> string!
+const Orkeon.Constants.Cli.SessionStateKeys.SelectedModel = "selected_model" -> string!

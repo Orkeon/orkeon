@@ -11,7 +11,7 @@ namespace Orkeon.Cli.Commands.Scripting.Progress;
 /// so <c>ps</c>/<c>inspect</c>/the agents pane show the same state.
 /// </summary>
 /// <remarks>
-/// <see cref="OnCallSettled"/> clears only the banner this observer raised (label-guarded),
+/// <see cref="OnCallSettled()"/> clears only the banner this observer raised (label-guarded),
 /// never a crew's own progress published under the same ticket. The single remembered label
 /// matches the broker's single-slot display model; with concurrent LLM calls the last writer
 /// wins, same as every other publisher.
@@ -47,13 +47,58 @@ public sealed class LlmRetryProgressObserver : ILlmRetryObserver
             Ticket = instance?.Ticket,
         });
         _lastLabel = label;
+        lock (_gate)
+        {
+            _pendingRetry = true;
+            _retryModel = retry.Model;
+        }
 
         instance?.ReportProgress(new Dispatch.CommandProgress(step: null, percent: null, message: label + " — " + message));
+    }
+
+    /// <summary>The model the host reads and its availability.</summary>
+    public (string? Model, Orkeon.Cli.Abstractions.ModelAvailability State) Current
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _pendingRetry
+                    ? (_retryModel, Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting)
+                    : _settled;
+            }
+        }
+    }
+
+    private readonly object _gate = new();
+    private bool _pendingRetry;
+    private string? _retryModel;
+    private (string? Model, Orkeon.Cli.Abstractions.ModelAvailability State) _settled
+        = (null, Orkeon.Cli.Abstractions.ModelAvailability.Available);
+
+    /// <inheritdoc />
+    public void OnCallSettled(LlmCallSettlement settlement)
+    {
+        ArgumentNullException.ThrowIfNull(settlement);
+        lock (_gate)
+        {
+            _settled = (settlement.Model, settlement.Succeeded
+                ? Orkeon.Cli.Abstractions.ModelAvailability.Available
+                : Orkeon.Cli.Abstractions.ModelAvailability.Unavailable);
+        }
+        OnCallSettled();
+    }
+
+    /// <summary>Clears the last settlement; a pending retry stays.</summary>
+    public void Reset()
+    {
+        lock (_gate) _settled = (null, Orkeon.Cli.Abstractions.ModelAvailability.Available);
     }
 
     /// <inheritdoc />
     public void OnCallSettled()
     {
+        lock (_gate) _pendingRetry = false;
         var label = _lastLabel;
         if (label is null) return;
         _lastLabel = null;

@@ -28,7 +28,8 @@ public sealed class HintBarView : View
     private TuiIntegration? _integration;
     private bool _agentsAvailable;
     private Func<bool>? _agentsHasRows;
-    private bool _configUsable;
+    private Func<ModelWitnessInfo?>? _modelWitness;
+    private int _witnessLength = -1;
     private object? _timerToken;
 
     public HintBarView(TerminalGuiOptions options)
@@ -49,12 +50,10 @@ public sealed class HintBarView : View
         _hints.SetScheme(SchemeFactory.Dim());
         _witness = new Label
         {
-            X = Pos.AnchorEnd(HintBarModel.ConfigWitness.Length + 1),
             Y = 0,
             Height = 1,
-            Text = HintBarModel.ConfigWitness,
         };
-        _witness.SetScheme(SchemeFactory.Ok());
+        SetWitness(null);
         Add(_posture, _hints, _witness);
     }
 
@@ -67,7 +66,7 @@ public sealed class HintBarView : View
         IInteractiveRunner runner,
         TuiIntegration integration,
         bool agentsAvailable,
-        bool configUsable,
+        Func<ModelWitnessInfo?>? modelWitness,
         Func<bool>? agentsHasRows = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
@@ -76,7 +75,7 @@ public sealed class HintBarView : View
         _integration = integration;
         _agentsAvailable = agentsAvailable;
         _agentsHasRows = agentsHasRows;
-        _configUsable = configUsable;
+        _modelWitness = modelWitness;
         StartTimer();
         Refresh();
     }
@@ -97,6 +96,15 @@ public sealed class HintBarView : View
         {
             mode = "default";
         }
+        ModelWitnessInfo? witness;
+        try
+        {
+            witness = _modelWitness?.Invoke();
+        }
+        catch
+        {
+            witness = null;
+        }
         var running = IsTurnRunning(_runner, _integration);
         var agents = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
         var segments = HintBarModel.LeftSegments(mode, running, agents);
@@ -111,8 +119,20 @@ public sealed class HintBarView : View
             _posture.Text = postureText;
             _posture.SetScheme(HintBarModel.IsLoudPosture(mode) ? SchemeFactory.Posture() : SchemeFactory.Dim());
             _hints.Text = rest;
-            _witness.SetScheme(_configUsable ? SchemeFactory.Ok() : SchemeFactory.Accent());
+            SetWitness(witness);
         });
+    }
+
+    private void SetWitness(ModelWitnessInfo? info)
+    {
+        var text = HintBarModel.Witness(info);
+        if (text.Length != _witnessLength)
+        {
+            _witnessLength = text.Length;
+            _witness.X = Pos.AnchorEnd(text.Length + 1);
+        }
+        _witness.Text = text;
+        _witness.SetScheme(HintBarModel.WitnessScheme(info?.Availability ?? Orkeon.Cli.Abstractions.ModelAvailability.Unavailable));
     }
 
     private void StartTimer()

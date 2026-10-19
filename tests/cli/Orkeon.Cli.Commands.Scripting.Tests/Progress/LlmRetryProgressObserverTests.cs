@@ -1,3 +1,4 @@
+using Orkeon.Cli.Abstractions;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
@@ -15,7 +16,7 @@ public sealed class LlmRetryProgressObserverTests
         => new CommandInstanceRegistry().Register(
             "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
 
-    private static LlmRetryEvent Retry(int attempt = 4, int max = 10)
+    private static LlmRetryEvent Retry(int attempt = 4, int max = 10, string? model = null)
         => new()
         {
             Provider = "Kimi",
@@ -24,6 +25,7 @@ public sealed class LlmRetryProgressObserverTests
             MaxRetries = max,
             Delay = TimeSpan.FromSeconds(8),
             Reason = "Resource temporarily unavailable (api.moonshot.ai:443)",
+            Model = model,
         };
 
     [Fact]
@@ -102,5 +104,62 @@ public sealed class LlmRetryProgressObserverTests
         Assert.NotNull(snapshot);
         Assert.Null(snapshot.Ticket);
         Assert.Contains("retry 1/10", snapshot.Message, StringComparison.Ordinal);
+    }
+
+    private static LlmCallSettlement Settled(string model, bool succeeded)
+        => new() { Model = model, Succeeded = succeeded };
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Observer_reads_reconnecting_between_a_retry_and_the_settlement()
+    {
+        var observer = new LlmRetryProgressObserver(new ProgressBroker());
+
+        observer.OnRetryScheduled(Retry(model: "kimi-k2"));
+        Assert.Equal(("kimi-k2", ModelAvailability.Reconnecting), observer.Current);
+
+        observer.OnCallSettled(Settled("kimi-k2", succeeded: true));
+        Assert.Equal(("kimi-k2", ModelAvailability.Available), observer.Current);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Failed_settlement_reads_unavailable_for_its_model()
+    {
+        var observer = new LlmRetryProgressObserver(new ProgressBroker());
+
+        observer.OnCallSettled(Settled("kimi-k2", succeeded: false));
+
+        Assert.Equal(("kimi-k2", ModelAvailability.Unavailable), observer.Current);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Parameterless_settlement_keeps_the_last_colour()
+    {
+        var red = new LlmRetryProgressObserver(new ProgressBroker());
+        red.OnCallSettled(Settled("kimi-k2", succeeded: false));
+        red.OnRetryScheduled(Retry(model: "kimi-k2"));
+        red.OnCallSettled();
+        Assert.Equal(("kimi-k2", ModelAvailability.Unavailable), red.Current);
+
+        var green = new LlmRetryProgressObserver(new ProgressBroker());
+        green.OnCallSettled(Settled("glm-5", succeeded: true));
+        green.OnRetryScheduled(Retry(model: "glm-5"));
+        green.OnCallSettled();
+        Assert.Equal(("glm-5", ModelAvailability.Available), green.Current);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Reset_returns_to_available_without_a_model()
+    {
+        var observer = new LlmRetryProgressObserver(new ProgressBroker());
+        observer.OnCallSettled(Settled("kimi-k2", succeeded: false));
+        Assert.Equal(("kimi-k2", ModelAvailability.Unavailable), observer.Current);
+
+        observer.Reset();
+
+        Assert.Equal(((string?)null, ModelAvailability.Available), observer.Current);
     }
 }

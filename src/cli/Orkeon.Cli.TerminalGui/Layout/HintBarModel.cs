@@ -9,8 +9,26 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </summary>
 public static class HintBarModel
 {
-    /// <summary>Right-aligned config witness. Green when a usable LLM config was loaded.</summary>
-    public const string ConfigWitness = "/rc";
+    /// <summary>Widest witness text, in columns.</summary>
+    public const int WitnessMaxWidth = 24;
+
+    private const string NoModel = "no model";
+
+    /// <summary>The witness text: the model's name, truncated with an ellipsis, or "no model".</summary>
+    public static string Witness(ModelWitnessInfo? info)
+    {
+        var model = info?.Model;
+        if (string.IsNullOrWhiteSpace(model)) return NoModel;
+        return model.Length <= WitnessMaxWidth ? model : string.Concat(model.AsSpan(0, WitnessMaxWidth - 1), "…");
+    }
+
+    /// <summary>The witness colour: green available, amber reconnecting, red unavailable.</summary>
+    public static Terminal.Gui.Drawing.Scheme WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) => availability switch
+    {
+        Orkeon.Cli.Abstractions.ModelAvailability.Available => SchemeFactory.Ok(),
+        Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting => SchemeFactory.Warn(),
+        _ => SchemeFactory.Error(),
+    };
 
     /// <summary>
     /// The left segments, in display order. The posture segment is first and carries its

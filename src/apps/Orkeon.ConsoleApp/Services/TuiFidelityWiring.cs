@@ -4,9 +4,11 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Cli.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.ConsoleApp.Services;
@@ -93,6 +95,44 @@ internal static class TuiFidelityWiring
     }
 
     /// <summary>
+    /// The hint bar's model witness: the selected model (session state, else <c>Llm:Model</c>) and
+    /// the availability the retry observer reports for it. A change of the displayed model resets
+    /// the observer, so the colour never carries over from another model.
+    /// </summary>
+    private static Func<ModelWitnessInfo?> BuildModelWitnessReader(
+        ISessionBufferService? buffer,
+        IConfiguration? configuration,
+        LlmRetryProgressObserver? observer)
+    {
+        var gate = new object();
+        string? previous = null;
+        return () =>
+        {
+            var displayed = buffer?.GetState(Orkeon.Constants.Cli.SessionStateKeys.SelectedModel);
+            if (string.IsNullOrWhiteSpace(displayed)) displayed = configuration?["Llm:Model"];
+            if (string.IsNullOrWhiteSpace(displayed))
+                return new ModelWitnessInfo { Model = string.Empty, Availability = ModelAvailability.Unavailable };
+
+            var availability = ModelAvailability.Available;
+            lock (gate)
+            {
+                if (previous is not null && !string.Equals(previous, displayed, StringComparison.Ordinal))
+                {
+                    observer?.Reset();
+                }
+                else if (observer is not null)
+                {
+                    var (model, state) = observer.Current;
+                    if (model is null || string.Equals(model, displayed, StringComparison.OrdinalIgnoreCase))
+                        availability = state;
+                }
+                previous = displayed;
+            }
+            return new ModelWitnessInfo { Model = displayed, Availability = availability };
+        };
+    }
+
+    /// <summary>
     /// Fills the delegate bag from the built provider. Every closure is defensive:
     /// a missing service leaves its delegate null and the view omits the readout.
     /// </summary>
@@ -122,6 +162,11 @@ internal static class TuiFidelityWiring
                     IsAgentTarget: false);
             };
         }
+
+        integration.ModelWitness = BuildModelWitnessReader(
+            buffer,
+            services.GetService<IConfiguration>(),
+            services.GetService<LlmRetryProgressObserver>());
 
         if (cost is not null)
             integration.SessionTokens = () => cost.GetReport().TotalTokens;

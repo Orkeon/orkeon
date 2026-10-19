@@ -92,6 +92,9 @@ public sealed class TuiIntegration
     /// <summary>True while a dispatched prompt turn runs.</summary>
     public Func<bool>? PromptTurnRunning { get; set; }
 
+    /// <summary>The selected model and its availability. Null result shows "no model".</summary>
+    public Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>? ModelWitness { get; set; }
+
     /// <summary>The long operation currently reporting progress. Null ⇒ no bar.</summary>
     public Func<ProgressInfo?>? Progress { get; set; }
 

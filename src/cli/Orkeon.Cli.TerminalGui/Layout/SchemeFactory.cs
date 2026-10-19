@@ -38,6 +38,8 @@ public static class SchemeFactory
     private static readonly Color AccentFg = new(0xe8, 0x65, 0x4a);   // ✱ gerund, ❯ prompt
     private static readonly Color PostureFg = new(0xd3, 0x3f, 0xb0);  // ▶▶ bypass permissions
     private static readonly Color OkFg = new(0x3f, 0xb9, 0x50);       // /rc, notification ●
+    private static readonly Color WarnFg = new(0xd4, 0xa7, 0x2c);
+    private static readonly Color ErrorFg = new(0xf8, 0x51, 0x49);
     private static readonly Color ChipAgentBg = new(0xd4, 0xa7, 0x2c);   // @agent target
     private static readonly Color ChipSessionBg = new(0x58, 0xa6, 0xff); // session/branch
 
@@ -52,6 +54,12 @@ public static class SchemeFactory
 
     /// <summary>Green accents: /rc, completion notices.</summary>
     public static Scheme Ok() => Uniform(OkFg, Bg);
+
+    /// <summary>Amber: the model is reconnecting.</summary>
+    public static Scheme Warn() => Uniform(WarnFg, Bg);
+
+    /// <summary>Red: the model is unavailable.</summary>
+    public static Scheme Error() => Uniform(ErrorFg, Bg);
 
     /// <summary>Context chip + its rule: agent-target (yellow) or session (blue).</summary>
     public static Scheme Chip(bool agentTarget)

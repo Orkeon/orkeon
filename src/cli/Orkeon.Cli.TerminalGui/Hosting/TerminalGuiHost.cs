@@ -266,7 +266,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             runner,
             _integration,
             agentsAvailable: _integration.AgentRows is not null,
-            configUsable: !string.IsNullOrWhiteSpace(_options.Banner?.ModelLine),
+            modelWitness: _integration.ModelWitness,
             agentsHasRows: () => top.Agents.DesiredRows > 0);
         if (_integration.AgentRows is not null)
             top.Agents.Bind(_integration);

@@ -2367,3 +2367,19 @@ static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator !=(Ork
 static Orkeon.Application.Interfaces.Security.ToolPermissionRule.operator ==(Orkeon.Application.Interfaces.Security.ToolPermissionRule? left, Orkeon.Application.Interfaces.Security.ToolPermissionRule? right) -> bool
 Orkeon.Application.Configuration.ClosestName
 static Orkeon.Application.Configuration.ClosestName.Of(string! written, System.Collections.Generic.IEnumerable<string!>! known) -> string?
+Orkeon.Application.Interfaces.Ports.ILlmRetryObserver.OnCallSettled(Orkeon.Application.Interfaces.Ports.LlmCallSettlement! settlement) -> void
+Orkeon.Application.Interfaces.Ports.LlmRetryEvent.Model.get -> string?
+Orkeon.Application.Interfaces.Ports.LlmRetryEvent.Model.init -> void
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.LlmCallSettlement() -> void
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Model.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Model.init -> void
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Succeeded.get -> bool
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Succeeded.init -> void
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.<Clone>$() -> Orkeon.Application.Interfaces.Ports.LlmCallSettlement!
+Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Equals(Orkeon.Application.Interfaces.Ports.LlmCallSettlement? other) -> bool
+override Orkeon.Application.Interfaces.Ports.LlmCallSettlement.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.LlmCallSettlement.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.LlmCallSettlement.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.LlmCallSettlement.operator !=(Orkeon.Application.Interfaces.Ports.LlmCallSettlement? left, Orkeon.Application.Interfaces.Ports.LlmCallSettlement? right) -> bool
+static Orkeon.Application.Interfaces.Ports.LlmCallSettlement.operator ==(Orkeon.Application.Interfaces.Ports.LlmCallSettlement? left, Orkeon.Application.Interfaces.Ports.LlmCallSettlement? right) -> bool

@@ -275,9 +275,11 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                 contentType = request.Content.Headers.ContentType?.ToString();
             }
 
+            var succeeded = false;
+            _callModel.Value = ResolveModel(config);
             try
             {
-                return await ResiliencePolicy.ExecuteAsync(async (ct) =>
+                var result = await ResiliencePolicy.ExecuteAsync(async (ct) =>
                 {
                     // The clone is owned by this attempt: its body is buffered below, so the
                     // request (and its content) can be disposed once SendAsync returns — the
@@ -292,6 +294,8 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                     }
                     return response;
                 }, cancellationToken).ConfigureAwait(false);
+                succeeded = result.IsSuccessStatusCode;
+                return result;
             }
             catch (BrokenCircuitException ex)
             {
@@ -305,7 +309,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             }
             finally
             {
-                NotifyCallSettled();
+                NotifyCallSettled(ResolveModel(config), succeeded, cancellationToken);
             }
         }
     }
@@ -345,6 +349,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         "turn thinking off: Llm:Thinking:Enabled = false in the settings, `thinking: { enabled: false }` under `llm:` " +
         "in the crew, or the profile's thinking switch in Studio.";
 
+    // Effective model of the buffered call in flight: the policy's retry hook is built once, in the constructor.
+    private readonly AsyncLocal<string?> _callModel = new();
+
     /// <summary>Best-effort retry notification — never allowed to fail the call.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a faulty host observer must degrade to unobserved retries, never to a failed LLM call.")]
     private void NotifyRetryScheduled(int attempt, TimeSpan delay, string reason, string? host = null)
@@ -361,6 +368,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                 MaxRetries = Config.MaxRetries,
                 Delay = delay,
                 Reason = reason,
+                Model = _callModel.Value ?? ResolveModel(null),
             });
         }
         catch { /* observer fault barrier */ }
@@ -368,9 +376,17 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
     /// <summary>Best-effort settle notification — never allowed to fail the call.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a faulty host observer must degrade to unobserved retries, never to a failed LLM call.")]
-    private void NotifyCallSettled()
+    private void NotifyCallSettled(string model, bool succeeded, CancellationToken cancellationToken)
     {
-        try { RetryObserver?.OnCallSettled(); }
+        try
+        {
+            var observer = RetryObserver;
+            if (observer is null) return;
+            if (!succeeded && cancellationToken.IsCancellationRequested)
+                observer.OnCallSettled();
+            else
+                observer.OnCallSettled(new LlmCallSettlement { Model = model, Succeeded = succeeded });
+        }
         catch { /* observer fault barrier */ }
     }
 
@@ -791,6 +807,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         async Task<HttpResponseMessage> SendStreamingRequestCoreAsync()
         {
             var maxAttempts = Math.Max(1, Config.MaxRetries + 1);
+            var succeeded = false;
             try
             {
                 for (var attempt = 1; ; attempt++)
@@ -808,7 +825,10 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
                         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                         if (attempt >= maxAttempts || !IsRetriableStreamingStatus(response.StatusCode))
+                        {
+                            succeeded = response.IsSuccessStatusCode;
                             return response;
+                        }
 
                         var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
                         var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
@@ -843,7 +863,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             }
             finally
             {
-                NotifyCallSettled();
+                NotifyCallSettled(ResolveModel(null), succeeded, cancellationToken);
             }
         }
     }
