@@ -2,6 +2,7 @@ using Jint;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -16,7 +17,7 @@ public sealed class JsLlmFacadeInterruptTests
     [Fact]
     public async Task Interrupt_before_act_settles_gracefully_without_any_llm_call()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new CountingProvider(_ => new LlmResponse { Content = "never" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
@@ -33,7 +34,7 @@ public sealed class JsLlmFacadeInterruptTests
     [Fact]
     public async Task Interrupt_during_chat_stops_the_loop_at_the_next_iteration()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         JsLlmFacade? facadeRef = null;
         // The provider interrupts its own facade mid-call, then keeps asking for tools:
         // the loop must stop at the next iteration's cancellation check.
@@ -59,7 +60,7 @@ public sealed class JsLlmFacadeInterruptTests
     [Fact]
     public async Task Host_cancellation_still_throws_OperationCanceledException()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         using var hostCts = new CancellationTokenSource();
         var provider = new CountingProvider(_ => new LlmResponse { Content = "never" });
         var facade = new JsLlmFacade(engine, provider, hostCts.Token);

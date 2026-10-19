@@ -8,6 +8,7 @@ using Orkeon.Infrastructure.LLMs;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -60,7 +61,7 @@ public sealed class LlmDefaultsTests
         Assert.Equal("deepseek", def.provider);
         Assert.Equal(string.Empty, def.model);
 
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         await new JsLlmFacade(engine, provider, TestContext.Current.CancellationToken).complete("hello", null);
 
         using var sent = JsonDocument.Parse(Assert.Single(handler.Bodies));

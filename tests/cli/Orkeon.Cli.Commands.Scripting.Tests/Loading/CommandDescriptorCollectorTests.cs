@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Orkeon.Cli.Commands.Scripting.Bindings;
 using Orkeon.Cli.Commands.Scripting.Loading;
@@ -12,7 +13,7 @@ public sealed class CommandDescriptorCollectorTests
 
     private static (Engine Engine, CommandDescriptorCollector Collector) NewBoundEngine()
     {
-        var engine = new Engine();
+        var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var collector = new CommandDescriptorCollector(VirtualPath);
         DefineCommandBinding.Register(engine, collector);
         return (engine, collector);

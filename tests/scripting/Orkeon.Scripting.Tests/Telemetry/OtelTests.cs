@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Telemetry;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Telemetry;
 
@@ -96,7 +97,7 @@ public sealed class OtelTests
         try
         {
             var provider = new StubLlmProvider().RespondWith(new LlmResponse { Content = "ok", TokensUsed = 7 });
-            using var engine = new Engine();
+            using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
             var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
             // A prompt whose LENGTH no other test in this assembly produces: the

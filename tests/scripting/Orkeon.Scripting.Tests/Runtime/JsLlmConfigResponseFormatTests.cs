@@ -1,5 +1,6 @@
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -10,7 +11,7 @@ public sealed class JsLlmConfigResponseFormatTests
     {
         // Arrange — start from an existing JsLlmConfig (any provider)
         var seed = new JsLlmConfig("openai", LlmConfig.Create("gpt-4o-mini"));
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var overrides = engine.Evaluate("({ responseFormat: 'json_object' })");
 
         // Act
@@ -28,7 +29,7 @@ public sealed class JsLlmConfigResponseFormatTests
         {
             ResponseFormat = LlmResponseFormat.JsonObject()
         });
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var overrides = engine.Evaluate("({ temperature: 0.1 })");
 
         var updated = seed.with(overrides);
@@ -44,7 +45,7 @@ public sealed class JsLlmConfigResponseFormatTests
         {
             ResponseFormat = LlmResponseFormat.JsonObject()
         });
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var overrides = engine.Evaluate("({ responseFormat: 'text' })");
 
         var updated = seed.with(overrides);

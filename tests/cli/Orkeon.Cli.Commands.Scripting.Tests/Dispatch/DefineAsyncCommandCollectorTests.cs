@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Orkeon.Cli.Commands.Scripting.Bindings;
 using Orkeon.Cli.Commands.Scripting.Loading;
@@ -8,7 +9,7 @@ public sealed class DefineAsyncCommandCollectorTests
 {
     private static (Engine, CommandDescriptorCollector) NewEngine()
     {
-        var engine = new Engine();
+        var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var collector = new CommandDescriptorCollector("/test.cmd.ts");
         DefineCommandBinding.Register(engine, collector);
         DefineAsyncCommandBinding.Register(engine, collector);

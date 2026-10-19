@@ -5,6 +5,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -27,7 +28,7 @@ public sealed class JsLlmFacadeBudgetTests
     [Fact]
     public async Task Act_with_toolCalls_budget_1_throws_at_second_iteration_gate()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("echo_tool");
         // Single looping response: the model would call the tool forever.
         var provider = new SequencedProvider(new[]
@@ -50,7 +51,7 @@ public sealed class JsLlmFacadeBudgetTests
     [Fact]
     public async Task Act_with_token_budget_throws_when_response_usage_exceeds_it()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new SequencedProvider(new[]
         {
             new LlmResponse { Content = "big answer", RawResponseBody = null, TokensUsed = 9_000 },
@@ -67,7 +68,7 @@ public sealed class JsLlmFacadeBudgetTests
     [Fact]
     public async Task Act_with_exceeded_wall_time_throws_before_any_llm_call()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new SequencedProvider(new[]
         {
             new LlmResponse { Content = "never reached", RawResponseBody = null },
@@ -91,7 +92,7 @@ public sealed class JsLlmFacadeBudgetTests
     [Fact]
     public async Task Act_within_budget_completes_and_accounts_usage()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("echo_tool");
         var provider = new SequencedProvider(new[]
         {

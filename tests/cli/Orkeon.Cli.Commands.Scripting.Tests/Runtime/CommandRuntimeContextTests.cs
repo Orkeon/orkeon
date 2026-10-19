@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Runtime;
@@ -9,7 +10,7 @@ public sealed class CommandRuntimeContextTests
 {
     private static (Engine engine, ScriptedTestConsole console, CommandRuntimeContext ctx) Build(CancellationToken ct = default)
     {
-        var engine = new Engine();
+        var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var console = new ScriptedTestConsole();
         var ctx = new CommandRuntimeContext(
             engine, console,

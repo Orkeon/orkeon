@@ -6,6 +6,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -504,7 +505,7 @@ public sealed class EngineThreadingContractTests
                 """);
 
             var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
-                .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+                .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
 
             var parts = res.output!.Split('|');
             Assert.Equal("d0d1d2", parts[2]);
@@ -568,7 +569,7 @@ public sealed class EngineThreadingContractTests
             """);
 
         var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+            .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
 
         Assert.Equal("ok", res.output);
         Assert.Equal([false, false], readings);

@@ -2,6 +2,7 @@ using Jint;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -9,7 +10,7 @@ public sealed class LlmFacadeTests
 {
     private static (Engine, StubLlmProvider) NewFacade(out JsLlmFacade facade)
     {
-        var engine = new Engine(opt => JsEngineFactory.ApplyInteropPolicy(opt));
+        var engine = new Engine(opt => { JsEngineFactory.ApplyInteropPolicy(opt); opt.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
         var provider = new StubLlmProvider();
         facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         return (engine, provider);
@@ -29,7 +30,7 @@ public sealed class LlmFacadeTests
     [Fact]
     public async Task complete_falls_back_to_undefined_llm_when_no_provider_is_injected()
     {
-        using var engine = new Engine(opt => JsEngineFactory.ApplyInteropPolicy(opt));
+        using var engine = new Engine(opt => { JsEngineFactory.ApplyInteropPolicy(opt); opt.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
         var facade = new JsLlmFacade(engine, null, CancellationToken.None);
 
         var result = await facade.complete("ping", null);

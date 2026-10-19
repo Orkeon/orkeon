@@ -56,7 +56,7 @@ public sealed class EventsTests
     [Fact]
     public async Task Queue_kick_wakes_pending_waiters_with_WaiterKickedException()
     {
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var queue = new JsEventQueue(engine, "test");
 
         var popTask = queue.PopAsync(null);
@@ -371,7 +371,7 @@ public sealed class EventsTests
     {
         // Direct C# stress test: 10 producers + 10 consumers running in parallel against
         // the same JsEventQueue. Every pushed value must be popped exactly once.
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var queue = new JsEventQueue(engine, "stress");
         const int n = 10;
 

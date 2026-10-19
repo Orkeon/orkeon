@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Commands.Scripting.Bindings;
@@ -30,7 +31,7 @@ public sealed class ConsoleShimTests
     [Fact]
     public void ApplyForLoad_routes_console_log_to_supplied_logger()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var logger = new RecordingLogger();
         ConsoleShimBinding.ApplyForLoad(engine, logger);
 
@@ -43,7 +44,7 @@ public sealed class ConsoleShimTests
     [Fact]
     public void ApplyForInvocation_routes_console_info_warn_error_debug_to_ctx_log()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var logger = new RecordingLogger();
         ConsoleShimBinding.ApplyForInvocation(engine, new JsLogShim(logger));
 
@@ -63,7 +64,7 @@ public sealed class ConsoleShimTests
     [Fact]
     public void Console_log_accepts_object_data_argument()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var logger = new RecordingLogger();
         ConsoleShimBinding.ApplyForInvocation(engine, new JsLogShim(logger));
 

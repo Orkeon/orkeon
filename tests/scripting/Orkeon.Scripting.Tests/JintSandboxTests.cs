@@ -1,6 +1,7 @@
 using Jint.Runtime;
 using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests;
 
@@ -89,7 +90,7 @@ public sealed class JintSandboxTests
             """, cancellationToken: TestContext.Current.CancellationToken)).ToObject()!;
 
         var ex = await Assert.ThrowsAnyAsync<Exception>(
-            () => crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken));
+            () => crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
 
         var chain = new List<Exception>();
         for (var e = ex; e is not null; e = e.InnerException) chain.Add(e);

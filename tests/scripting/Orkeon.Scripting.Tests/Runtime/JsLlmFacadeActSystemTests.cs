@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -31,7 +32,7 @@ public sealed class JsLlmFacadeActSystemTests
     [Fact]
     public async Task System_option_seeds_a_system_first_message()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[]
         {
             new LlmResponse { Content = "done", RawResponseBody = null },
@@ -55,7 +56,7 @@ public sealed class JsLlmFacadeActSystemTests
     {
         // Non-regression pin: the historical shape must stay byte-identical when the
         // option is absent — every existing script relies on it.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[]
         {
             new LlmResponse { Content = "done", RawResponseBody = null },
@@ -73,7 +74,7 @@ public sealed class JsLlmFacadeActSystemTests
     [Fact]
     public async Task Blank_system_is_treated_as_absent()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[]
         {
             new LlmResponse { Content = "done", RawResponseBody = null },
@@ -92,7 +93,7 @@ public sealed class JsLlmFacadeActSystemTests
     {
         // The system prompt is part of the conversation list, so every later turn of the
         // loop re-sends it in position 0 — the model never loses its instructions mid-loop.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new EchoTool("probe_tool");
         var provider = new MessageCapturingProvider(new[]
         {

@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Jint.Runtime;
 using Orkeon.Scripting.Internal;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Internal;
 
@@ -14,8 +15,6 @@ public sealed class JsHostErrorTests
 {
     private sealed class TypedException(string message) : Exception(message);
 
-    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
-
     private static Engine NewEngine() => new JsEngineFactory().Create();
 
     /// <summary>
@@ -25,7 +24,7 @@ public sealed class JsHostErrorTests
     /// </summary>
     private static Task<JsValue> RunAsync(Engine engine, string source)
         => engine.EvaluateAsync(source, cancellationToken: TestContext.Current.CancellationToken)
-            .WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+            .WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken);
 
     [Fact]
     public async Task A_bridged_exception_is_caught_by_the_script_and_runs_its_finally()

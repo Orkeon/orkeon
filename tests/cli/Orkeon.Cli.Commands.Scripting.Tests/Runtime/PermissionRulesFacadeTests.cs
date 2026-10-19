@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,7 +125,7 @@ public sealed class PermissionRulesFacadeTests : IDisposable
     [Fact]
     public void ShouldBeCalledFromAScript_WithItsOptionalArgumentsLeftOut()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         engine.SetValue("permissions", Permissions());
 
         var listed = engine.Evaluate(

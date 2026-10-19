@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using Jint;
 using Jint.Native;
 using Orkeon.Cli.Commands.Scripting.Args;
@@ -10,7 +11,7 @@ public sealed class ArgsSchemaParserTests : IDisposable
     private static readonly string[] AbArray = ["a", "b"];
     private static readonly string[] DeclarationOrder = ["target", "count", "flag"];
 
-    private readonly Engine _engine = new();
+    private readonly Engine _engine = new(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
 
     public void Dispose() => _engine.Dispose();
 

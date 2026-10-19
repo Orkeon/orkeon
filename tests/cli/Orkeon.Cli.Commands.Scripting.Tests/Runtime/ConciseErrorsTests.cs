@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using System.Net.Http;
 using System.Net.Sockets;
 using Jint;
@@ -21,7 +22,7 @@ public sealed class ConciseErrorsTests
     [Fact]
     public void A_js_rejection_carrying_a_clr_exception_reads_as_its_root_cause()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         engine.SetValue("boom", TransportFailure());
         var promise = engine.Evaluate("Promise.reject(boom)");
 
@@ -38,7 +39,7 @@ public sealed class ConciseErrorsTests
     [Fact]
     public void A_script_authored_rejection_shows_the_value_without_the_wrapper_sentence()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var promise = engine.Evaluate("Promise.reject('quota exceeded\\nsecond line')");
 
         var rejected = Assert.Throws<PromiseRejectedException>(() => promise.UnwrapIfPromise(TestContext.Current.CancellationToken));

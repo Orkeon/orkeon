@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using System.Runtime.CompilerServices;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -24,7 +25,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
     [Fact]
     public async Task Complete_names_the_missing_credential_instead_of_returning_empty_content()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var facade = new JsLlmFacade(engine, new UnconfiguredProvider(), CancellationToken.None);
 
         var answer = await facade.complete("hi", null);
@@ -35,7 +36,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
     [Fact]
     public async Task Stream_gives_the_same_explicit_answer_as_complete_never_an_empty_sequence()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new UnconfiguredProvider();
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
@@ -63,7 +64,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
     [Fact]
     public void Script_for_await_over_an_unconfigured_provider_receives_the_marker()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var facade = new JsLlmFacade(engine, new UnconfiguredProvider(), CancellationToken.None);
         engine.SetValue("llm", facade);
 
@@ -86,7 +87,7 @@ public sealed class JsLlmFacadeUnconfiguredProviderTests
     [Fact]
     public async Task A_configured_streaming_provider_still_streams_chunk_by_chunk()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new ConfiguredStreamingProvider();
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
