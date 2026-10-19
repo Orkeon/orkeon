@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the REPL interrupts with Esc Esc, and Ctrl+C only copies **[breaking]** (CH-02..CH-07)
+
+In the Terminal.Gui console, `Ctrl+C` cancelled the running command, and a second `Ctrl+C` quit the
+application, so a stray double press closed the whole session. The keys now say what they do:
+
+- **`Esc Esc` interrupts the prompt's turn.** The first `Esc` clears the draft (and arms the pair, on an empty
+  draft too); the second, right after it, cancels the turn submitted from the prompt, whether it runs as a
+  synchronous command or as a dispatched ticket, a retry backoff included (the `/ps` ticket shows cancelled). The hint
+  bar shows `esc esc to interrupt` while that turn runs.
+- **No key cancels a background crew.** A ticket started by anything else (a detached crew, compaction, indexing)
+  keeps running and stays reachable through `/cancel <ticket>`.
+- **`Ctrl+C` only copies.** With a selection it copies it; without one it prints a one-line hint. It never cancels
+  and never quits.
+- **`Esc` leaves the `F4` agents selection first**, and cancels nothing.
+- **`Ctrl+Q` asks before quitting during the prompt's turn**, as it already did during a synchronous command.
+
+Migration: interrupt a turn with `Esc Esc` on the prompt, quit with `Ctrl+Q` (confirm while a turn runs); a script or a
+habit that sent `Ctrl+C` to stop a command, or twice to leave, no longer does either. See
+`docs/architecture/cli-ts-commands.md` and `src/cli/Orkeon.Cli.TerminalGui/README.md`.
+
+The shipped public API of the console moves with it (the owner allowed it; each change is in the projects'
+`PublicAPI.Unshipped.txt`):
+
+| Before | After |
+|---|---|
+| `HintBarModel.ConfigWitness` (`"/rc"`) | Removed: the witness is `HintBarModel.Witness(ModelWitnessInfo?)`, coloured by `HintBarModel.WitnessScheme(ModelAvailability)`, at most `HintBarModel.WitnessMaxWidth` (24) columns |
+| `HintBarView.Bind(runner, integration, agentsAvailable, configUsable, …)` | `configUsable` is replaced by `Func<ModelWitnessInfo?>? modelWitness`, read at each refresh |
+| — | `TuiIntegration.PromptTurnRunning` (`Func<bool>?`) and `TuiIntegration.ModelWitness` (`Func<ModelWitnessInfo?>?`); a null delegate reads as "no turn" / the `Llm:Model` setting |
+| — | `ReplPaneView.InterruptRequested` (raised by the second `Esc`); `SchemeFactory.Warn()` and `SchemeFactory.Error()` |
+| `CommandDispatchService.BeginCommand(name, ct, timeout)` | `BeginCommand(name, ct, timeout, string? promptLine = null)`; `PromptTurnTickets()` returns the prompt turn's tickets still running |
+
+### Added — the console's witness names the selected model, coloured by what its calls did (CH-08)
+
+The right-aligned `/rc` of the hint bar, which only said whether a config was loaded, is replaced by the name of
+the selected model, truncated to 24 columns with `…`. Its colour follows the calls the console has observed, never
+a probe: green on a final 2xx (and before any call), amber during a retry backoff of that model, red after a final
+non-2xx, a timeout, or when no model is configured (`no model`). Only the displayed model's calls colour it, a
+change of model resets it, and a call ended by the caller leaves it unchanged. The name is the `selected_model`
+key of the session state (`SessionStateKeys.SelectedModel`, beside `default_permission_mode`); Orkeon Code's
+`/model` does not write it yet, so the witness reads `Llm:Model` meanwhile.
+
+- `ILlmRetryObserver.OnCallSettled(LlmCallSettlement)` is new (a default body calls the parameterless
+  `OnCallSettled()`, so existing observers still compile); `LlmCallSettlement` carries the effective `Model` and
+  `Succeeded`, and `LlmRetryEvent.Model` names the model of a retry.
+- `ModelAvailability` (`Available`, `Reconnecting`, `Unavailable`) is new in `Orkeon.Cli.Abstractions`, and
+  `ModelWitnessInfo` in `Orkeon.Cli.TerminalGui`.
+- `LlmRetryProgressObserver` gains `Current`, `Reset()` and `OnCallSettled(LlmCallSettlement)`; a host registering its
+  own `ILlmRetryObserver` gets a witness that stays green.
+
+### Fixed — Ctrl+V pastes into the input, and a drag selects in it (CH-09, CH-10)
+
+`Ctrl+V` did not paste into the input in Windows Terminal and the PowerShell session on WSL, while a right-click did.
+A global key handler now pastes the clipboard into the input in the runner and in the REPL modes, and stands down
+while a modal dialog has focus. A mouse drag in the input highlights text and copies it on release, as in the
+transcript.
+
+### Fixed — the banner shows the built version without build metadata (CH-01)
+
+The banner's product line carried the `+<sha>` build metadata of the informational version. It shows the version of
+`src/Directory.Build.props` only (`1.0.0-rc.5`).
+
 ### Added — every built-in tool is typed in the shipped typings (#125)
 
 `OrkeonTools` declared a handful of tools by hand, and three of them did not match the tools:

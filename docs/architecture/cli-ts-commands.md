@@ -429,15 +429,40 @@ user quits.
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. The keys: `Ctrl+G` logs
 drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl+F` find in the logs,
 `Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `F4` agents
-pane, `Ctrl+C` cancel the running command (twice within two seconds to force-quit), `Ctrl+Q`
-quit. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+pane, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
+(it asks first while a turn runs). `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
-**Session state shared with the commands.** The console reads and writes one key of the session
+**Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
+between disarms the pair, and it arms on an empty draft too) interrupts the turn submitted from the
+prompt, whether it runs as a synchronous command or as a dispatched ticket, a retry backoff
+(`Reconnecting to …`) included. The hint bar shows `esc esc to interrupt` for as long as that turn
+runs. Only the prompt's turn is interrupted: a crew started by anything else (a detached
+`runCrewAsync`, compaction, indexing) keeps running, and stays reachable through `/ps` and
+`/cancel <ticket>`; no key cancels it. `Ctrl+C` never cancels and never quits: with a selection it
+copies it (the transcript, or the input, where a mouse drag selects too); without one it prints a
+one-line hint (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` pastes the
+clipboard into the input whichever view has focus, in the runner and in the REPL modes, and stands
+down while a modal dialog (find, quit confirmation) has focus. In the `F4` agents selection, `Esc`
+leaves the selection first and cancels nothing, a turn running or not. `Ctrl+Q` quits at once when
+nothing runs, and asks for confirmation while a turn runs, as it does for a synchronous command.
+
+**The model witness.** The right-aligned witness of the hint bar names the selected model (24
+columns at most, longer names end with `…`) and is coloured by what the console has observed of that
+model's calls, never by a probe: green while the model is usable, on a final 2xx included; amber
+during a retry backoff of that model; red after a final non-2xx, a timeout, or when no model is
+configured (the label then reads `no model`). Only the displayed model's calls colour it, and a
+change of model resets it to green. A call ended by the caller (`Esc Esc`) is not a failure and
+leaves the colour unchanged.
+
+**Session state shared with the commands.** The console reads and writes two keys of the session
 state (`ISessionBufferService`, which a command reaches with `session_store`'s `get_state` and
 `set_state`): `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
 `Orkeon.Constants.Cli`), the permission mode it shows and cycles on `Shift+Tab` (`default` →
-`acceptEdits` → `plan` → `bypassPermissions`). A product's `/mode` command writes that key, so the
-console shows its choice: the key is a contract and keeps its name.
+`acceptEdits` → `plan` → `bypassPermissions`), and `selected_model`
+(`SessionStateKeys.SelectedModel`), the model the witness names. A product's `/mode` command writes
+the first key, so the console shows its choice: the keys are a contract and keep their names.
+Orkeon Code's `/model` does not write `selected_model` yet; until it does, the witness falls back to
+the `Llm:Model` setting.
 
 **Tool-call approvals.** With the permission gate on, `orkeon-repl` registers an approval channel
 (`AddConsoleToolApproval`): a call the mode asks about is put to the operator, whose next line

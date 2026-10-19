@@ -436,16 +436,45 @@ l'utilisateur quitte.
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. Les touches : `Ctrl+G`
 tiroir de logs, `Ctrl+R` volet REPL, `Ctrl+L` / `Ctrl+K` vident les logs / le REPL, `Ctrl+F`
 recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2` plus / moins de
-détail dans les logs, `F3` retour à la ligne, `F4` volet des agents, `Ctrl+C` annule la commande
-en cours (deux fois en deux secondes pour forcer la sortie), `Ctrl+Q` quitte. `orkeon-repl`
+détail dans les logs, `F3` retour à la ligne, `F4` volet des agents, `Ctrl+C` copie la sélection,
+`Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
+tant qu'un tour s'exécute). `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
 
-**État de session partagé avec les commandes.** La console lit et écrit une clé de l'état de
+**Touches sur le prompt.** `Échap` efface le brouillon ; un second `Échap` aussitôt après (toute
+autre touche entre les deux désarme la paire, et elle s'arme aussi sur un brouillon vide)
+interrompt le tour soumis depuis le prompt, qu'il s'exécute comme commande synchrone ou comme ticket
+détaché, y compris pendant une attente de nouvelle tentative (`Reconnecting to …`). La barre d'aide
+affiche `esc esc to interrupt` tant que ce tour s'exécute. Seul le tour du prompt est interrompu :
+un crew lancé par autre chose (un `runCrewAsync` détaché, la compaction, l'indexation) continue, et
+reste atteignable par `/ps` et `/cancel <ticket>` ; aucune touche ne l'annule. `Ctrl+C` n'annule
+jamais et ne quitte jamais : avec une sélection il la copie (le transcript, ou la saisie, où un
+glissement de souris sélectionne aussi) ; sans sélection il imprime une ligne d'aide
+(`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` colle le presse-papiers dans
+la saisie quelle que soit la vue qui a le focus, en mode runner comme en mode REPL, et s'efface
+tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le focus. Dans la
+sélection du volet des agents (`F4`), `Échap` quitte d'abord la sélection et n'annule rien, un tour
+en cours ou non. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
+tour s'exécute, comme pour une commande synchrone.
+
+**Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
+(24 colonnes au plus, un nom plus long finit par `…`) et se colore selon ce que la console a observé
+des appels de ce modèle, jamais par une sonde : vert tant que le modèle est utilisable, une réponse
+finale 2xx comprise ; ambre pendant une attente de nouvelle tentative de ce modèle ; rouge après un
+non-2xx final, un délai dépassé, ou quand aucun modèle n'est configuré (l'étiquette dit alors
+`no model`). Seuls les appels du modèle affiché le colorent, et un changement de modèle le remet au
+vert. Un appel arrêté par l'appelant (`Échap Échap`) n'est pas un échec et laisse la couleur
+inchangée.
+
+**État de session partagé avec les commandes.** La console lit et écrit deux clés de l'état de
 session (`ISessionBufferService`, qu'une commande atteint par `get_state` et `set_state` de
 `session_store`) : `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
 `Orkeon.Constants.Cli`), le mode de permission qu'elle affiche et fait tourner sur `Maj+Tab`
-(`default` → `acceptEdits` → `plan` → `bypassPermissions`). La commande `/mode` d'un produit écrit
-cette clé, et la console affiche son choix : la clé est un contrat et garde son nom.
+(`default` → `acceptEdits` → `plan` → `bypassPermissions`), et `selected_model`
+(`SessionStateKeys.SelectedModel`), le modèle que nomme le témoin. La commande `/mode` d'un produit
+écrit la première clé, et la console affiche son choix : les clés sont un contrat et gardent leur
+nom. La commande `/model` d'Orkeon Code n'écrit pas encore `selected_model` ; d'ici là, le témoin
+retombe sur le réglage `Llm:Model`.
 
 **Approbations des appels d'outils.** Avec le contrôle des permissions activé, `orkeon-repl`
 enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour lequel le mode demande
