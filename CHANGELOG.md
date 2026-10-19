@@ -137,6 +137,16 @@ key of the session state (`SessionStateKeys.SelectedModel`, beside `default_perm
 - `LlmRetryProgressObserver` gains `Current`, `Reset()` and `OnCallSettled(LlmCallSettlement)`; a host registering its
   own `ILlmRetryObserver` gets a witness that stays green.
 
+### Fixed — the script and crew pumps no longer hold a thread-pool worker (GAP-57)
+
+A root pump blocks its thread until the engine's promise settles; started on the thread pool, it held a worker for the
+whole run, and the Scripting test module hung when the pool was capped at 6 workers. `ScriptHost.EvaluateAsync` and
+`JsCrew.RunAsync` now start theirs on a dedicated thread (`RootPump.Start`): one thread per script and per crew run
+driven from C#, with no bound on their number. `JsTool.CallAsync` stays on the pool: a dedicated thread per tool call
+cost 145 to 164 µs per spawn against about 10 µs for the call. In the tests, every engine awaited asynchronously waits
+under `HangGuards.EnginePromise` (2 minutes) instead of Jint's implicit 10 seconds; the product default is unchanged.
+See [scripting.md](docs/architecture/scripting.md#threading-model).
+
 ### Fixed — Ctrl+V pastes into the input, and a drag selects in it (CH-09, CH-10)
 
 `Ctrl+V` did not paste into the input in Windows Terminal and the PowerShell session on WSL, while a right-click did.

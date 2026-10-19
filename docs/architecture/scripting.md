@@ -182,6 +182,16 @@ pin it:
   orchestrator calls. From C#, `JsCrew.run`, `runAgent` and `runStream` are the JS functions
   themselves (`JsValue`); `RunAsync` is the CLR entry, and it refuses to start from inside a
   CLR callback the script invoked — from a script, call `crew.run()`.
+- **The script and crew pumps run on a dedicated thread, not on a pool worker.** A pump blocks
+  its thread until the promise settles, so on the pool it held a worker for the whole run and a
+  capped pool starved. `ScriptHost.EvaluateAsync` and `JsCrew.RunAsync` start theirs through
+  `RootPump.Start` (`TaskCreationOptions.LongRunning | DenyChildAttach`): one thread per script
+  and per crew run driven from C#, with no bound on their number, released when the run ends.
+  `JsTool.CallAsync` is the exception and stays on a pool worker through `Task.Run`: a tool call
+  is short, and a dedicated thread per call cost 145 to 164 µs per spawn against about 10 µs
+  for the call (median +1491 % against a 1 % threshold). The permanent guard
+  `EngineThreadingGuardTests` names that exemption (comment `GAP-57 CH-03`; its
+  `task-run-around-pump` rule skips that lambda) and refuses a `Task.Run` around any other pump.
 - **Cancellation is the only bound on a wait; `ExecutionTimeout` bounds execution.** No
   promise timeout remains in the runtime: a root pump drains until its promise settles or its
   token fires. The sandbox's `ExecutionTimeout` (wall-clock, `Orkeon:Scripting:Limits`) bounds
@@ -195,6 +205,13 @@ pin it:
   its unwind. The parent is the most recently opened attempt still open on the engine, exact
   under sequential nesting and best-effort under runs interleaved on one event loop;
   `{ signal: ctx.signal }` is the explicit form.
+- **Tests wait on an engine under a named hang guard.** The runtime has no promise timeout, so
+  a test that awaits an engine would otherwise inherit Jint's implicit 10 seconds. It waits under
+  `HangGuards.EnginePromise` (2 minutes, `Orkeon.Tests.Shared.Timing`): set on each `new Engine`
+  options lambda of a test, and, for the engines the factory and `ScriptHost` build, once per
+  test project by a `[ModuleInitializer]` on the internal `JsEngineFactory.PromiseTimeout`. The
+  product default is unchanged (Jint's). The sweep `TestEngineHangGuardTests` fails a test engine
+  that carries no guard.
 
 ## Configuration and toolchain
 

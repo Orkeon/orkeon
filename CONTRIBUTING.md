@@ -268,6 +268,9 @@ refuses carries `<!-- settings-check:off -->` on the line above its fence.
   or on a tag only it carries; a delay the test must not reach is a hang guard
   (`Polling.DefaultTimeout`), and no unit test bounds a duration — a timestamp is checked between
   two readings of the clock, and two concurrent ends come in the order a rendezvous forces
+* A test that awaits a script engine waits under `HangGuards.EnginePromise`
+  (`Orkeon.Tests.Shared.Timing`), never under Jint's implicit 10 seconds — see the threading model of
+  [`docs/architecture/scripting.md`](docs/architecture/scripting.md#threading-model)
 
 ```csharp
 [Fact]

@@ -278,6 +278,9 @@ ce qu'un hôte refuse porte `<!-- settings-check:off -->` sur la ligne au-dessus
   pas atteindre est une garde contre le blocage (`Polling.DefaultTimeout`), et aucun test
   unitaire ne borne une durée — un horodatage se vérifie entre deux lectures de l'horloge, et
   deux fins concurrentes viennent dans l'ordre qu'impose un rendez-vous
+* Un test qui attend un moteur de script attend sous `HangGuards.EnginePromise`
+  (`Orkeon.Tests.Shared.Timing`), jamais sous les 10 secondes implicites de Jint — voir le modèle de
+  threading de [`docs/fr/architecture/scripting.md`](docs/fr/architecture/scripting.md#modèle-de-threading)
 
 ```csharp
 [Fact]
