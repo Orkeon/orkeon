@@ -10,6 +10,7 @@ namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 /// the test writer hook. Sequential by nature (shared static cache, and a driver clipboard
 /// that survives whichever test class ran <c>Application.Init</c>): every test resets both.
 /// </summary>
+[Collection(TerminalGuiApplicationCollection.Name)]
 public sealed class TuiClipboardTests : IDisposable
 {
     public TuiClipboardTests() => TuiClipboard.Reset();

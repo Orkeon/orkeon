@@ -8,6 +8,7 @@ namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 
 // These run live under Terminal.Gui 2.4.4 (the 2.1.0 ModuleInitializer crash that forced
 // xUnit skips — TUI-12 — is fixed; verified by un-skipping under 2.4.4).
+[Collection(TerminalGuiApplicationCollection.Name)]
 public class ReplPaneViewTests
 {
     private static readonly string[] ExitCommand = ["exit"];
@@ -583,6 +584,109 @@ public class ReplPaneViewTests
         // width <= 0 (view not laid out yet): wrap is unknown, so count logical lines only.
         Assert.Equal(1, ReplPaneView.CountWrappedRows("a very long line with no width", 0));
         Assert.Equal(2, ReplPaneView.CountWrappedRows("one\ntwo", 0));
+    }
+
+    // ── CH-10: the input is a MouseClipboardTextView ──────────────────────────────────────
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void Input_is_a_mouse_clipboard_text_view()
+    {
+        using var pane = CreatePane();
+        Assert.IsType<MouseClipboardTextView>(pane.Input);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void Releasing_a_drag_in_the_input_copies_the_selection()
+    {
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        try
+        {
+            using var pane = CreatePane();
+            pane.CurrentInput = "alpha beta";
+            pane.Input.SelectAll();
+
+            pane.Input.NewMouseEvent(new Mouse { Flags = MouseFlags.LeftButtonReleased, Position = new System.Drawing.Point(0, 0) });
+
+            Assert.True(TuiClipboard.TryGetText(out var text));
+            Assert.Equal("alpha beta", text);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriterOverride = null;
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void Dragging_in_the_input_highlights_text_in_the_multiline_wrapped_input()
+    {
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        try
+        {
+            using var pane = CreatePane();
+            var text = new string('x', 150);
+            pane.Input.Height = 5;
+            pane.Layout();
+            pane.CurrentInput = text;
+
+            pane.Input.NewMouseEvent(new Mouse { Flags = MouseFlags.LeftButtonPressed, Position = new System.Drawing.Point(0, 0) });
+            pane.Input.NewMouseEvent(new Mouse { Flags = MouseFlags.LeftButtonPressed | MouseFlags.PositionReport, Position = new System.Drawing.Point(10, 1) });
+
+            var selected = pane.Input.SelectedText;
+            pane.Input.NewMouseEvent(new Mouse { Flags = MouseFlags.LeftButtonReleased, Position = new System.Drawing.Point(10, 1) });
+            Assert.True(TuiClipboard.TryGetText(out var copied));
+            Assert.Equal(selected, copied);
+            Assert.True(pane.Input.WordWrap);
+            Assert.True(selected.Length > 10);
+            Assert.StartsWith(selected, text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriterOverride = null;
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void KeyCaptured_still_raises_for_ordinary_keys_after_the_input_change()
+    {
+        // Ctrl+A and Ctrl+C-with-selection are consumed by MouseClipboardTextView.OnKeyDown before the
+        // KeyDown event: they are not asserted to raise KeyCaptured (Ctrl+A is asserted NOT to).
+        using var pane = CreatePane();
+        var raised = new List<KeyCode>();
+        pane.KeyCaptured += (_, e) => raised.Add(e.Key.KeyCode);
+
+        pane.Input.NewKeyDownEvent(Key.A.WithCtrl);
+        Assert.Empty(raised);
+
+        pane.Input.NewKeyDownEvent(new Key('x'));
+        pane.Input.NewKeyDownEvent(new Key(KeyCode.Tab));
+        pane.Input.NewKeyDownEvent(new Key(KeyCode.Enter));
+
+        Assert.Equal(3, raised.Count);
+        Assert.IsType<MouseClipboardTextView>(pane.Input);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-10")]
+    public void Esc_then_Ctrl_A_then_Esc_does_not_interrupt_the_turn()
+    {
+        using var pane = CreatePane();
+        var raised = 0;
+        pane.InterruptRequested += (_, _) => raised++;
+
+        // Through the view's own key path, as in the running app (Ctrl+A reaches the view's OnKeyDown).
+        pane.Input.NewKeyDownEvent(new Key(KeyCode.Esc));
+        pane.Input.NewKeyDownEvent(Key.A.WithCtrl);
+        pane.Input.NewKeyDownEvent(new Key(KeyCode.Esc));
+
+        Assert.Equal(0, raised);
     }
 
     private static void Submit(ReplPaneView pane, string text)

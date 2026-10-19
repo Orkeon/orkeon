@@ -26,7 +26,7 @@ public sealed class ReplPaneView : View
     private readonly TextView _history;
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
-    private readonly TextView _input;
+    private readonly MouseClipboardTextView _input;
     private readonly StatusLineView _statusLine;
     private readonly RuleChipView _ruleChip;
     private readonly IUiDispatcher _dispatcher;
@@ -119,7 +119,7 @@ public sealed class ReplPaneView : View
             Text = $"{_glyphs.Prompt} ",
         };
         _promptLabel.SetScheme(SchemeFactory.Accent());
-        _input = new TextView
+        _input = new MouseClipboardTextView
         {
             X = Pos.Right(_promptLabel),
             Y = Pos.AnchorEnd(1),
@@ -142,6 +142,8 @@ public sealed class ReplPaneView : View
         };
         _input.SetScheme(SchemeFactory.Editable());
         _input.KeyDown += OnInputKeyDown;
+        // Ctrl+A / Ctrl+C-with-selection are consumed by the view before KeyDown: they still disarm Esc-Esc.
+        _input.KeyConsumed += (_, _) => _escapeArmed = false;
         // Grow / shrink the input box (and the history above it) whenever the line count changes
         // — Shift+Enter, paste, history recall, or a backspace that merges two lines.
         _input.ContentsChanged += (_, _) => { SyncInputHeight(); SyncPlaceholder(); };

@@ -152,6 +152,21 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         return RunReplCoreAsync(repl, ct);
     }
 
+    internal static bool HandleCtrlV(Terminal.Gui.Input.Key key, ReplPaneView repl, Terminal.Gui.ViewBase.View? focused = null)
+    {
+        if (!Layout.PaneClipboard.IsCtrl(key, Terminal.Gui.Drivers.KeyCode.V)) return false;
+
+        // A modal dialog owns the keyboard: its own fields paste themselves.
+        for (var view = focused ?? Application.Navigation?.GetFocused(); view is not null; view = view.SuperView)
+        {
+            if (view is FindDialog or QuitConfirmDialog) return false;
+        }
+
+        key.Handled = true;
+        Layout.PaneClipboard.PasteInto(repl.Input);
+        return true;
+    }
+
     internal static void HandleCtrlC(Terminal.Gui.Input.Key key, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, ReplPaneView repl)
     {
         var stripped = key.KeyCode & ~(Terminal.Gui.Drivers.KeyCode.CtrlMask
@@ -182,7 +197,9 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // Belt-and-suspenders Ctrl+C handler: the status-bar Shortcut is swallowed by focused
         // TextField bindings in real terminals (TUI-20); Application.KeyDown is focus-independent.
         EventHandler<Terminal.Gui.Input.Key> ctrlCHandler = (_, key) => HandleCtrlC(key, runner, _toplevel!.Repl);
+        EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
         Application.KeyDown += ctrlCHandler;
+        Application.KeyDown += ctrlVHandler;
         try
         {
             await RunAsync(runner.RunAsync, ct).ConfigureAwait(false);
@@ -190,6 +207,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         finally
         {
             Application.KeyDown -= ctrlCHandler;
+            Application.KeyDown -= ctrlVHandler;
         }
     }
 
@@ -211,6 +229,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             }
         }, linkedCts.Token);
 
+        EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
+        Application.KeyDown += ctrlVHandler;
         try
         {
             // Blocks the calling thread (the runner's main thread) until RequestStop fires.
@@ -225,6 +245,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         }
         finally
         {
+            Application.KeyDown -= ctrlVHandler;
             await linkedCts.CancelAsync().ConfigureAwait(false);
             // The runner is likely blocked in one of two places when Ctrl+Q fires:
             //   (a) IConsoleAdapter.ReadLine() — sync-over-async wrapper around

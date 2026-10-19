@@ -379,7 +379,7 @@ public sealed class HttpLlmProviderStreamingRetryTests
         }
 
         private ProbeProvider(MockHttpClientFactory factory, int maxRetries, string? model)
-            : base(LlmConfig.OnProfile() with { MaxRetries = maxRetries, Model = model, BaseUrl = new Uri("https://api.example.test") }, factory)
+            : base(LlmConfig.OnProfile() with { MaxRetries = maxRetries, Model = model!, BaseUrl = new Uri("https://api.example.test") }, factory)
         {
             _factory = factory;
         }

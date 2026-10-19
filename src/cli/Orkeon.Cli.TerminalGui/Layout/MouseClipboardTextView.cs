@@ -36,6 +36,9 @@ public sealed class MouseClipboardTextView : TextView
     private static readonly Color SelectionBg = new(ColorName16.White);
     private static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
 
+    /// <summary>Raised when this view consumed a key itself, so <c>KeyDown</c> subscribers never see it.</summary>
+    internal event EventHandler? KeyConsumed;
+
     /// <summary>
     /// Keyboard clipboard support for the active (focused) pane. These views are read-only, so only
     /// Ctrl+A (select all) and Ctrl+C (copy selection → OS clipboard) apply; paste is handled on the
@@ -53,11 +56,15 @@ public sealed class MouseClipboardTextView : TextView
         if (PaneClipboard.IsCtrl(key, KeyCode.A))
         {
             SelectAll();
+            KeyConsumed?.Invoke(this, EventArgs.Empty);
             return true;
         }
 
         if (PaneClipboard.IsCtrl(key, KeyCode.C) && PaneClipboard.CopySelection(this))
+        {
+            KeyConsumed?.Invoke(this, EventArgs.Empty);
             return true;
+        }
 
         return base.OnKeyDown(key);
     }
