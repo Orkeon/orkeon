@@ -77,6 +77,7 @@ public sealed class JsToolTests
     /// the cancellation on its first idle check.
     /// </summary>
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task CallAsync_propagates_cancellation_instead_of_a_failed_response()
     {
         var engine = NewEngine();
@@ -174,6 +175,7 @@ public sealed class JsToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-03")]
     public async Task CallAsync_serializes_concurrent_calls_on_the_same_engine()
     {
         // The engine is single-threaded; a parallel crew fires tool calls concurrently.

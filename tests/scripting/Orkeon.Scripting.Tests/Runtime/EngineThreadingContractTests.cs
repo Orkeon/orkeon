@@ -70,7 +70,7 @@ public sealed class EngineThreadingContractTests
         }
     }
 
-    private static async Task<IDictionary<string, object?>> RunScriptAsync(string source)
+    private static async Task<IDictionary<string, object?>> RunScriptAsync(string source, ILlmProvider? provider = null)
     {
         var dir = Path.Combine(Path.GetTempPath(), "orkeon-threading-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -78,7 +78,7 @@ public sealed class EngineThreadingContractTests
         {
             await File.WriteAllTextAsync(Path.Combine(dir, "probe.ork.ts"), source);
             var fs = new DiskBackedFileSystemService(dir, "/scripts");
-            var host = new ScriptHost(fs, new JsEngineFactory(llmProvider: new SlowLlmProvider()));
+            var host = new ScriptHost(fs, new JsEngineFactory(llmProvider: provider ?? new SlowLlmProvider()));
 
             // The guard cancels the pump itself, so a hang fails here instead of leaving the drain
             // blocked for good; the WaitAsync is the deterministic backstop behind it.
@@ -485,6 +485,7 @@ public sealed class EngineThreadingContractTests
     /// thread the stream resumes on is the one a regression would surface.
     /// </summary>
     [Fact]
+    [Trait("BR", "CH-02")]
     public async Task Act_onDelta_runs_on_the_thread_that_drains_the_engine()
     {
         await Contend(24, async () =>
@@ -510,6 +511,67 @@ public sealed class EngineThreadingContractTests
             Assert.Equal(3, parts[1].Split(',').Length);
             Assert.All(parts[1].Split(','), tid => Assert.Equal(parts[0], tid));
         });
+    }
+
+    /// <summary>
+    /// GAP-57: the script pump drains the engine on a dedicated thread, not on a pool worker (the
+    /// cap of 6 workers starved the module). The probe reads the thread of the provider's synchronous
+    /// entry: the first call is made before any CLR await, the second after the awaited CLR delay of
+    /// the first.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task Script_pump_drains_off_the_thread_pool_before_and_after_a_CLR_await()
+    {
+        var probe = new FakeThreadProbeLlmProvider();
+        var r = await RunScriptAsync("""
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const a = await ctx.llm.complete("one");
+                    const b = await ctx.llm.complete("two");
+                    return a + "|" + b;
+                }).build();
+            const res = await crewBuilder().name("c").withAgent(worker).build().run();
+            result = { out: res.output };
+            """, probe);
+
+        Assert.Equal("R:one|R:two", r["out"]);
+        Assert.Equal([false, false], probe.OnThreadPool);
+    }
+
+    /// <summary>
+    /// GAP-57: the crew pump drains the engine on a dedicated thread. Two host functions planted on
+    /// the engine read the thread of the drain, one before and one after a host function that returns
+    /// a CLR Task.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task Crew_pump_drains_off_the_thread_pool_before_and_after_a_CLR_await()
+    {
+        var readings = new List<bool>();
+        var engine = new JsEngineFactory(llmProvider: new SlowLlmProvider()).Create();
+        engine.SetValue("__record", new Action(() => { lock (readings) readings.Add(Thread.CurrentThread.IsThreadPoolThread); }));
+        engine.SetValue("__clrDelay", new Func<Task<string>>(async () =>
+        {
+            await Task.Delay(5).ConfigureAwait(false);
+            return "done";
+        }));
+        var crew = BuildCrew(engine, """
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    __record();
+                    await __clrDelay();
+                    __record();
+                    return "ok";
+                }).build();
+            crewBuilder().name("c").withAgent(worker).build();
+            """);
+
+        var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", res.output);
+        Assert.Equal([false, false], readings);
     }
 
     /// <summary>

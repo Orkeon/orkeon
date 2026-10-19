@@ -205,7 +205,7 @@ public sealed partial class ScriptHost
         JsValue completion;
         try
         {
-            // Root pump. The pool thread Task.Run hands us is the only thread that ever runs this script's
+            // Root pump. The dedicated thread RootPump.Start hands us is the only thread that ever runs this script's
             // JavaScript: the `inputs` injection, the evaluation (with the top-level-await fallback) and every
             // event-loop job the drain runs afterwards. One thread is what lets a span started before the
             // script's first await parent the spans of the jobs after it (Activity.Current is an AsyncLocal),
@@ -214,7 +214,7 @@ public sealed partial class ScriptHost
             // plain JS under this pump. The host token is the only bound: on cancellation the script is
             // abandoned mid-flight and the engine discarded with it — nothing outlives the engine, so no
             // cooperative grace is needed here.
-            completion = await Task.Run(() =>
+            completion = await Runtime.RootPump.Start(() =>
             {
                 using var draining = Runtime.JsEngineGate.MarkDraining(engine);
                 if (!string.IsNullOrWhiteSpace(inputsJson))
