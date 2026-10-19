@@ -39,7 +39,9 @@ This project is no longer distributed as a NuGet package — reference it from s
 | `↑` (prompt, first visual row) | Enter the history: the typed text is kept as the draft, the newest entry is shown; in the history, `↑` older, `↓` newer, then the draft back; an edit leaves the history and keeps the text |
 | `↓` (prompt, last visual row) / `F4` | Focus the tasks list (only while it holds a task other than `main`) |
 | `↑` / `↓` / `Home` / `End` (tasks list) | Move the selection (no wrap); `↑` on the first row returns to the prompt |
-| `Esc` / `F4` (tasks list) | Return to the prompt, text and caret restored |
+| `Esc` / `F4` / `Tab` (tasks list) | Return to the prompt, text and caret restored; a second `Esc` right after it interrupts the prompt's turn |
+| `Ctrl+V` / right-click (tasks list) | Return to the prompt and paste at the restored caret |
+| click / double-click (tasks list row) | Focus the list on that row / and print its detail |
 | `Enter` (tasks list) | Print the selected task's detail; sends nothing |
 | printable key (tasks list) | Return to the prompt with the character typed |
 | `Home` / `End`, `Ctrl+Home` / `Ctrl+End` (prompt) | Start / end of the line, of the text |
@@ -183,8 +185,14 @@ interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
 - **No key cancels a background crew** (a detached `runCrewAsync`, compaction,
   indexing): it keeps running and stays reachable through `/ps` and
   `/cancel <ticket>`.
-- **`Esc`** in the tasks list (reached with `↓` or `F4`) leaves the list and
-  cancels nothing, a turn running or not.
+- **`Esc`** in the tasks list (`↓` or `F4`) returns to the prompt and cancels
+  nothing, a turn running or not. It arms the pair like an `Esc` on the
+  prompt, so `Esc Esc` from the list interrupts a running turn.
+- **The list's state follows the focus.** `Tab` leaves the list like `Esc`;
+  `Ctrl+V` or a right-click leaves it and pastes at the restored caret; a click
+  on a row focuses the list on that row (the `❯` cursor is never drawn while
+  the keys go to the prompt); focus reaching the prompt any other way leaves
+  the list and keeps the current text.
 - **The selected task is the recipient** of the next message: the placeholder
   reads `Message @<task>…` and the separator above the prompt ends with
   `── <task> ─`; selecting `main` gives the default recipient back. Sending to a task goes through
@@ -218,16 +226,28 @@ From top to bottom, under the transcript:
   `↑/↓ select · enter view` alone. The model witness stays right-aligned;
 - a blank line, then the tasks list: `main` first, then creation order. Column 0
   holds the accent `❯` while the list has focus; column 2 holds `●` for the
-  recipient and `◯` for the others, green while running and dim otherwise; then
-  the name in bold, the activity phrase cut with `…`, and right-aligned, dim,
-  `<duration> · ↓ <tokens> tokens` (the task's total tokens, ticking with the
-  1 Hz poll). The list grows up to 6 rows, then scrolls with the cursor.
+  recipient and `◯` for the others:
+  - green while running, red when failed or cancelled, dim otherwise;
 
-The transcript records the list's changes from one poll to the next: a task that
-leaves the list prints `● Agent "<name>" finished · <duration>`, a new one prints
-`● <name>(<intent>)` then `  ⎿  Backgrounded agent (↓ tasks)`. `Esc Esc` prints
-`  ⎿  Interrupted · What should Orkeon do instead?`. With `--glyphs ascii` the
-glyphs `❯ ● ◯ ✔ ⏵ ⎿ ※ ─` become `> * o v > | * -`.
+  then the name in bold, the activity phrase cut with `…`, and right-aligned, dim,
+  `<duration> · ↓ <tokens> tokens` (the task's total tokens, ticking with the
+  1 Hz poll). Widths are terminal columns measured over graphemes (an emoji or a
+  CJK character counts two); on a narrow pane the phrase gives way first, then
+  the name, then the metrics, and a resize rebuilds the rows at the new width.
+  The list grows up to 6 rows, then scrolls with the cursor.
+
+The transcript records the list's changes from one poll to the next: a new task
+prints `● <name>(<intent>)` then `  ⎿  Backgrounded agent (↓ tasks)`; a task
+that ends prints `● Agent "<name>" finished · <duration>`,
+`✗ Agent "<name>" failed · <duration>` or `⊘ Agent "<name>" cancelled · <duration>`.
+The final state comes from `TuiIntegration.FinishedAgentRows` (the ended tasks
+the host retains), so a task that starts and ends between two polls still gets
+both lines, in order; without it, a task that leaves the list reads as finished.
+A recipient that ends while the prompt has focus prints
+`@<task> finished · recipient is main`. A poll whose row provider throws writes
+nothing. `Esc Esc` prints `  ⎿  Interrupted · What should Orkeon do instead?`.
+With `--glyphs ascii` the glyphs `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become
+`> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut phrase included.
 
 ## Model witness
 

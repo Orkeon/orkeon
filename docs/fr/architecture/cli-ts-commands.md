@@ -454,8 +454,9 @@ glissement de souris sélectionne aussi) ; sans sélection il imprime une ligne 
 (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` colle le presse-papiers dans
 la saisie quelle que soit la vue qui a le focus, en mode runner comme en mode REPL, et s'efface
 tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le focus. Dans la
-sélection du volet des agents (`F4`), `Échap` quitte d'abord la sélection et n'annule rien, un tour
-en cours ou non. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
+liste des tâches (`↓` ou `F4`), `Échap` revient au prompt et n'annule rien, un tour en cours ou non ;
+il arme la paire comme un `Échap` sur le prompt, si bien que `Échap Échap` depuis la liste
+interrompt un tour en cours. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
 tour s'exécute, comme pour une commande synchrone.
 
 **Prompt, historique et liste des tâches.** Le prompt lit une touche dans l'un de trois états, jamais
@@ -474,6 +475,11 @@ boucler, `↑` remonte et, sur la première ligne, revient au champ ; `Échap` r
 n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseur ; `Début` / `Fin`
 atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
 dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
+`Tab` revient au champ comme `Échap` ; `Ctrl+V` ou un clic droit y revient et colle au curseur
+restauré. L'état suit le focus : un clic sur une ligne donne le focus à la liste sur cette ligne (un
+double-clic imprime aussi son détail), et le focus qui atteint le champ par un autre chemin quitte
+la liste et garde le texte courant ; le curseur `❯` n'est jamais dessiné tant que les touches vont
+au prompt.
 La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
 le texte indicatif affiche `Message @<tâche>…` et le filet au-dessus de l'invite se termine par `── <tâche> ─` ;
 sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
@@ -493,15 +499,24 @@ mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaun
 qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
 La liste montre `main` d'abord, puis les tâches dans l'ordre de création : le `❯` de l'accent en
 colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
-cours, atténué sinon), le nom en gras, la phrase d'activité coupée par `…`, et alignés à droite et
-atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour par le sondage à 1 Hz. Elle
-grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une tâche qui quitte la
-liste imprime `● Agent "<nom>" finished · <durée>` dans le transcript, une nouvelle
-`● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` ; `Échap Échap` imprime
-`⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
+cours, rouge en échec ou annulée, atténué sinon), le nom en gras, la phrase d'activité coupée par
+`…`, et alignés à droite et atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour
+par le sondage à 1 Hz. Les largeurs sont des colonnes de terminal mesurées sur les graphèmes (un
+emoji ou un caractère CJK en compte deux) ; sur un volet étroit la phrase cède d'abord, puis le nom,
+puis les métriques, et un redimensionnement reconstruit les lignes à la nouvelle largeur. Elle
+grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une nouvelle tâche
+imprime `● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` dans le transcript, et une
+tâche terminée `● Agent "<nom>" finished · <durée>`, `✗ Agent "<nom>" failed · <durée>` ou
+`⊘ Agent "<nom>" cancelled · <durée>` : l'état final vient du `TuiIntegration.FinishedAgentRows` de
+l'hôte (les tâches terminées qu'il conserve), si bien qu'une tâche qui démarre et finit entre deux
+sondages reçoit quand même ses deux lignes, dans l'ordre ; sans lui, une tâche qui quitte la liste
+se lit comme terminée. Un destinataire qui se termine pendant que le prompt a le focus imprime
+`@<tâche> finished · recipient is main`, et un sondage dont le fournisseur de lignes lève une
+exception n'écrit rien. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
 (Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
 `truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change
-`❯ ● ◯ ✔ ⏵ ⎿ ※ ─` en `> * o v > | * -`.
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` en `> * o v x - > | * - ^ v ...`, les `↑/↓` de la barre d'aide et la
+phrase coupée compris.
 
 **Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
 (24 colonnes au plus, un nom plus long finit par `…`) et se colore selon ce que la console a observé

@@ -571,7 +571,7 @@ public class ReplPaneViewTests
     private static (SplitPaneToplevel Top, TaskRows Rows) CreateTopWithTasks()
     {
         var rows = new TaskRows();
-        var top = new SplitPaneToplevel(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        var top = new SplitPaneToplevel(new TerminalGuiOptions { Glyphs = GlyphMode.Always }, InlineDispatcher.Instance);
         top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Rows });
         // A real frame, as CreatePane gives one: the soft-wrapped input needs a viewport width.
         top.Frame = new System.Drawing.Rectangle(0, 0, 100, 30);
@@ -1012,5 +1012,154 @@ public class ReplPaneViewTests
                     .StartsWith(leaf, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
+    }
+
+    // ── Review fixes: the list state is tied to the real focus ─────────────────────────────
+
+    [Fact]
+    public void A_paste_while_the_list_has_focus_returns_to_the_field_and_inserts_at_the_restored_caret()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        try
+        {
+            TuiClipboard.Copy("XY");
+            top.Repl.CurrentInput = "abcd";
+            top.Repl.Input.InsertionPoint = new System.Drawing.Point(2, 0);
+            top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+            Assert.True(top.Agents.SelectionActive);
+
+            Assert.True(TerminalGuiHost.HandleCtrlV(new Key(KeyCode.V | KeyCode.CtrlMask), top.Repl));
+
+            Assert.False(top.Agents.SelectionActive);
+            Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+            Assert.Equal("abXYcd", top.Repl.CurrentInput);
+            // ↑ no longer restores a saved text over the paste.
+            top.Repl.RaiseKeyDown(new Key(KeyCode.CursorUp));
+            Assert.Equal("abXYcd", top.Repl.CurrentInput);
+        }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+    }
+
+    [Fact]
+    public void Tab_in_the_list_returns_to_the_field_and_Enter_then_submits_instead_of_opening_the_task()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        string? opened = null;
+        top.Agents.RowActivated += (_, e) => opened = e.Ticket;
+        var read = top.Repl.ReadLineAsync(CancellationToken.None);
+        top.Repl.CurrentInput = "hello";
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        Assert.True(top.Agents.NewKeyDownEvent(Key.Tab));
+
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+        Assert.Equal("hello", top.Repl.CurrentInput);
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Enter));
+        Assert.Null(opened);
+        Assert.True(read.IsCompleted);
+    }
+
+    [Fact]
+    public void Focus_moving_to_the_input_while_in_the_list_leaves_the_list_and_keeps_the_text()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "kept";
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        Assert.True(top.Agents.HasFocus);
+
+        top.Repl.Input.SetFocus();
+
+        Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("kept", top.Repl.CurrentInput);
+    }
+
+    [Fact]
+    public void An_edit_of_the_field_while_in_the_list_leaves_the_list_and_keeps_the_edit()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "ab";
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        top.Repl.Input.InsertText("c");
+
+        Assert.Equal(InputNavigationState.Field, top.Repl.Navigation.State);
+        Assert.False(top.Agents.SelectionActive);
+        Assert.Equal("abc", top.Repl.CurrentInput);
+    }
+
+    [Fact]
+    public void Esc_that_leaves_the_list_arms_the_pair_so_a_second_Esc_interrupts()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        var interrupts = 0;
+        top.Repl.InterruptRequested += (_, _) => interrupts++;
+        top.Repl.CurrentInput = "draft";
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Equal(0, interrupts);
+        Assert.Equal("draft", top.Repl.CurrentInput);
+
+        top.Repl.RaiseKeyDown(new Key(KeyCode.Esc));
+        Assert.Equal(1, interrupts);
+    }
+
+    [Fact]
+    public void A_click_on_a_row_enters_the_list_on_it_and_the_cursor_is_drawn_with_the_focus()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.CurrentInput = "typed";
+
+        top.Agents.ClickRow(2, doubleClick: false);
+
+        Assert.Equal(InputNavigationState.List, top.Repl.Navigation.State);
+        Assert.Equal("T-2", top.Repl.Navigation.RecipientTicket);
+        Assert.True(top.Agents.SelectionActive);
+        Assert.True(top.Agents.HasFocus);
+        Assert.StartsWith("❯", top.Agents.CurrentText.Split('\n')[2], StringComparison.Ordinal);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Equal("typed", top.Repl.CurrentInput);
+        Assert.DoesNotContain("❯", top.Agents.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_double_click_on_a_row_opens_the_task()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        string? opened = null;
+        top.Agents.RowActivated += (_, e) => opened = e.Ticket;
+
+        top.Agents.ClickRow(1, doubleClick: true);
+
+        Assert.Equal("T-1", opened);
+    }
+
+    [Fact]
+    public void A_recipient_that_finishes_while_the_field_has_focus_leaves_a_transcript_line_and_main_gets_the_bullet()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Equal("T-1", top.Repl.Navigation.RecipientTicket);
+
+        rows.Rows.RemoveAt(1);
+        top.Agents.Refresh();
+
+        Assert.Null(top.Repl.Navigation.RecipientTicket);
+        Assert.Contains("@worker@crew finished · recipient is main", top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.StartsWith("  ● main", top.Agents.CurrentText, StringComparison.Ordinal);
     }
 }

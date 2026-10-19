@@ -41,7 +41,7 @@ public static class HintBarModel
     /// <c>↑/↓ select · enter view</c> and nothing else — a hint for an action that would do
     /// nothing trains the eye to skip the bar.
     /// </summary>
-    /// <param name="glyphs">The glyph set (chevrons, dot).</param>
+    /// <param name="glyphs">The glyph set (chevrons, arrows, dot).</param>
     /// <param name="permissionMode">The session's permission mode.</param>
     /// <param name="commandRunning">True while the prompt's turn runs.</param>
     /// <param name="tasksAvailable">True while the tasks list has a task other than <c>main</c>.</param>
@@ -57,7 +57,7 @@ public static class HintBarModel
         var entries = new List<RowSegment>(4);
         if (taskListFocused)
         {
-            entries.Add(new RowSegment("↑/↓ select", PaletteRole.Dim));
+            entries.Add(new RowSegment($"{glyphs.Up}/{glyphs.Down} select", PaletteRole.Dim));
             entries.Add(new RowSegment("enter view", PaletteRole.Dim));
         }
         else
@@ -68,7 +68,7 @@ public static class HintBarModel
                 IsLoudPosture(mode) ? PaletteRole.Alert : PaletteRole.Dim));
             if (commandRunning) entries.Add(new RowSegment("esc esc to interrupt", PaletteRole.Dim));
             entries.Add(new RowSegment("ctrl+g logs", PaletteRole.Dim));
-            if (tasksAvailable) entries.Add(new RowSegment("↓ tasks", PaletteRole.Dim));
+            if (tasksAvailable) entries.Add(new RowSegment($"{glyphs.Down} tasks", PaletteRole.Dim));
         }
 
         var segments = new List<RowSegment>(entries.Count * 2) { new(Indent, PaletteRole.Normal) };

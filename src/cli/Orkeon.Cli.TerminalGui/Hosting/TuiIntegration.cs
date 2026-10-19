@@ -132,4 +132,14 @@ public sealed class TuiIntegration
     /// supported yet and keeps the text in the field.
     /// </summary>
     public Func<string, string, bool>? SendToTask { get; set; }
+
+    /// <summary>
+    /// The background tasks that reached an end (done, failed, cancelled), with their final
+    /// <see cref="AgentRowInfo.State"/> and frozen <see cref="AgentRowInfo.Elapsed"/>, oldest
+    /// first. Read after <see cref="AgentRows"/> at each poll: the transcript says how each task
+    /// ended, and a task that started and ended between two polls still gets its launch and end
+    /// lines. Null ⇒ a task that leaves the list reads as finished, and one too short for a poll
+    /// leaves no line.
+    /// </summary>
+    public Func<IReadOnlyList<AgentRowInfo>>? FinishedAgentRows { get; set; }
 }

@@ -23,17 +23,23 @@ public static class MouseClipboardBehavior
     public static IDisposable AttachRightClickPaste(Func<TextView?> getReplInput)
     {
         ArgumentNullException.ThrowIfNull(getReplInput);
+        // Same OS-clipboard paste path as the Ctrl+V keyboard shortcut.
+        return AttachRightClickPaste(() => getReplInput() is { } input && PaneClipboard.PasteInto(input));
+    }
+
+    /// <summary>
+    /// Subscribes to <see cref="Application.MouseEvent"/> and runs <paramref name="paste"/> on a
+    /// right-click (the REPL pane's <see cref="ReplPaneView.PasteClipboard"/>, which leaves the
+    /// tasks list first); the click is handled when it returns true.
+    /// </summary>
+    internal static IDisposable AttachRightClickPaste(Func<bool> paste)
+    {
+        ArgumentNullException.ThrowIfNull(paste);
 
         EventHandler<Mouse> handler = (_, e) =>
         {
             if (!e.Flags.HasFlag(MouseFlags.RightButtonClicked)) return;
-
-            var input = getReplInput();
-            if (input is null) return;
-
-            // Same OS-clipboard paste path as the Ctrl+V keyboard shortcut.
-            if (PaneClipboard.PasteInto(input))
-                e.Handled = true;
+            if (paste()) e.Handled = true;
         };
 
         Application.MouseEvent += handler;

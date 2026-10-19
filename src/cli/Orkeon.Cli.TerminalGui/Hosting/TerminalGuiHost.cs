@@ -160,7 +160,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         if (Layout.ModalFocus.IsActive(focused)) return false;
 
         key.Handled = true;
-        Layout.PaneClipboard.PasteInto(repl.Input);
+        repl.PasteClipboard();
         return true;
     }
 

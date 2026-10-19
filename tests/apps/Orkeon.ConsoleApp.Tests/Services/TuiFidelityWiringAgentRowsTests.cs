@@ -186,4 +186,37 @@ public sealed class TuiFidelityWiringAgentRowsTests
         Assert.NotNull(info);
         Assert.False(info!.FromLiveInstance); // the view renders it only while running
     }
+    // ── The finished feed: what left the list since the last poll, with its final state ──
+
+    [Fact]
+    public void The_finished_feed_carries_each_ended_background_task_with_its_final_state_oldest_first()
+    {
+        var dispatch = NewDispatch();
+        var done = dispatch.Registry.Register("review", CommandInstanceKind.Async, "reviewer", "check the PR", Guid.NewGuid());
+        var failed = dispatch.Registry.Register("build", CommandInstanceKind.Async, "", "build it", Guid.NewGuid());
+        var cancelled = dispatch.Registry.Register("index", CommandInstanceKind.Async, "indexer", "index", Guid.NewGuid());
+        var running = dispatch.Registry.Register("scan", CommandInstanceKind.Async, "scanner", "scan", Guid.NewGuid());
+        done.Complete(new CommandResponse("reviewer", "check the PR", success: true, payload: "ok", error: null));
+        failed.Fail("boom");
+        cancelled.Cancel();
+
+        var rows = TuiFidelityWiring.BuildFinishedAgentRows(dispatch);
+
+        Assert.Equal([done.Ticket, failed.Ticket, cancelled.Ticket], rows.Select(r => r.Ticket));
+        Assert.Equal([TaskRowState.Done, TaskRowState.Failed, TaskRowState.Cancelled], rows.Select(r => r.State));
+        Assert.Equal(["review@reviewer", "build", "index@indexer"], rows.Select(r => r.Name));
+        Assert.Equal("check the PR", rows[0].Description);
+        Assert.DoesNotContain(rows, r => r.Ticket == running.Ticket);
+    }
+
+    [Fact]
+    public void The_finished_feed_leaves_out_synchronous_requests_and_rejected_commands()
+    {
+        var dispatch = NewDispatch();
+        var sync = dispatch.Registry.Register("request", CommandInstanceKind.Sync, "assistant", "answer", Guid.NewGuid());
+        sync.Complete(new CommandResponse("assistant", "answer", success: true, payload: "ok", error: null));
+        dispatch.Registry.Register("broken", CommandInstanceKind.Async, "—", "—", Guid.NewGuid()).Reject("bad arguments");
+
+        Assert.Empty(TuiFidelityWiring.BuildFinishedAgentRows(dispatch));
+    }
 }

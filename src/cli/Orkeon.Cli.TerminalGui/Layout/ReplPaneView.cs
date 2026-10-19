@@ -165,7 +165,19 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         {
             SyncInputHeight();
             SyncPlaceholder();
-            if (!_applyingNavigation) _navigation.OnTextEdited(CurrentInput);
+            if (_applyingNavigation) return;
+            // Text that lands in the field while the list holds the keys (a paste path the host
+            // missed, a writer of its own) ends the list first: the field keeps what it now shows.
+            if (_navigation.State == InputNavigationState.List) Apply(_navigation.OnFieldFocused());
+            _navigation.OnTextEdited(CurrentInput);
+        };
+        // The list state follows the real focus: the field taking it back by any way the machine did
+        // not order (a mouse click, a focus move) leaves the list with the field's text and caret as
+        // they are now, so a later ↑ or Esc never restores a stale draft over them.
+        _input.HasFocusChanged += (_, _) =>
+        {
+            if (_input.HasFocus && _navigation.State == InputNavigationState.List)
+                Apply(_navigation.OnFieldFocused());
         };
 
         // Simulated placeholder (Terminal.Gui exposes none on TextView): a dim label
@@ -197,7 +209,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     /// <summary>
     /// The editable multi-line input field. Exposed so the global right-click
-    /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste"/>)
+    /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste(Func{bool})"/>)
     /// can target the only writable surface in the split-pane.
     /// </summary>
     public TextView Input => _input;
@@ -555,8 +567,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         _tasks?.HideSelection();
         _input.SetFocus();
-        var text = action.Text ?? string.Empty;
-        if (!string.Equals(CurrentInput, text, StringComparison.Ordinal))
+        // No text in the action: the field keeps what it shows (the focus came back on its own).
+        if (action.Text is { } text && !string.Equals(CurrentInput, text, StringComparison.Ordinal))
             SetInputText(text);
         if (action.Caret is { } caret)
             _input.InsertionPoint = new Point(caret.Column, caret.Row);
@@ -586,6 +598,19 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         EchoSubmittedLine(text);
     }
 
+    /// <summary>
+    /// Pastes the clipboard into the field — the one path of <c>Ctrl+V</c> and the right-click. From
+    /// the tasks list it first returns to the field (text and caret restored, as <c>Esc</c> does),
+    /// so the paste lands where the caret was and nothing restores a saved text over it afterwards.
+    /// </summary>
+    /// <returns>True when something was pasted.</returns>
+    internal bool PasteClipboard()
+    {
+        if (_navigation.State == InputNavigationState.List)
+            Apply(_navigation.Handle(InputNavigationKey.Paste, BuildContext()));
+        return PaneClipboard.PasteInto(_input);
+    }
+
     bool ITaskListNavigator.HandleListKey(Key key)
     {
         ArgumentNullException.ThrowIfNull(key);
@@ -598,9 +623,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             KeyCode.Home => InputNavigationKey.Home,
             KeyCode.End => InputNavigationKey.End,
             KeyCode.Enter => InputNavigationKey.Enter,
+            KeyCode.Tab => InputNavigationKey.Tab,
             _ when bare == KeyCode.Esc => InputNavigationKey.Escape,
             _ => null,
         };
+        // The Esc that leaves the list arms the pair, as the field's first Esc does: Esc Esc from
+        // the list interrupts the prompt's turn. Any other key of the list disarms it.
+        _escapeArmed = navigationKey == InputNavigationKey.Escape;
         string? character = null;
         if (navigationKey is null && PrintableText(key) is { } printable)
         {
@@ -615,7 +644,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     void ITaskListNavigator.EnterList()
     {
         if (_navigation.State == InputNavigationState.List) return;
+        _escapeArmed = false;
         Apply(_navigation.Handle(InputNavigationKey.ToggleList, BuildContext()));
+    }
+
+    void ITaskListNavigator.SelectRow(string? ticket)
+    {
+        var action = _navigation.SelectRow(ticket, BuildContext());
+        if (action.Kind == InputNavigationActionKind.None) return;
+        _escapeArmed = false;
+        Apply(action);
     }
 
     void ITaskListNavigator.LeaveList()
@@ -635,9 +673,15 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
         var recipient = _navigation.RecipientTicket;
         var action = _navigation.OnRowsChanged(rows);
+        if (action.DepartedRecipient is { } departed)
+            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
         if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
             Apply(action);
     }
+
+    /// <summary><c>@alpha finished · recipient is main</c>: the recipient task left the list.</summary>
+    internal static string DepartedRecipientLine(GlyphSet glyphs, string name)
+        => $"@{name} finished {glyphs.Dot} recipient is main";
 
     /// <summary>The text a key types, or null for a control, modified or non-character key.</summary>
     private static string? PrintableText(Key key)

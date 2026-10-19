@@ -20,11 +20,18 @@ roles on the terminal's own background (the fixed `#0d0d0d` background is gone; 
   (`⏵⏵ bypass permissions on (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`), the
   hints, `↓ tasks` when a task exists; `↑/↓ select · enter view` from the list. The recipient left the bar.
 - **Tasks list.** After a blank line: `main` first, then creation order (it was newest first); `❯` cursor while the
-  list has focus, `●` recipient / `◯` others coloured by state, bold name, phrase cut with `…`, dim right-aligned
-  `<duration> · ↓ <tokens> tokens` (the task's total). It grows to 6 rows, then scrolls instead of dropping rows.
-- **Transcript.** `● Agent "<name>" finished · <duration>` when a task leaves the list, `● <name>(<intent>)` then
-  `⎿  Backgrounded agent (↓ tasks)` when one appears, `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`.
-- **Glyphs.** `◯`, `✔`, `⏵⏵` and the new `⎿` (`GlyphSet.Elbow`); ASCII `> * o v > | * -`.
+  list has focus (never while the keys go to the prompt), `●` recipient / `◯` others coloured by state (green while
+  running, red when failed or cancelled, dim otherwise), bold name, phrase cut with `…`, dim right-aligned
+  `<duration> · ↓ <tokens> tokens` (the task's total). Widths are terminal columns over graphemes (an emoji or a CJK
+  character counts two); on a narrow pane the phrase gives way, then the name, then the metrics. A resize rebuilds the
+  rows at the new width. It grows to 6 rows, then scrolls instead of dropping rows.
+- **Transcript.** `● <name>(<intent>)` then `⎿  Backgrounded agent (↓ tasks)` when a task appears;
+  `● Agent "<name>" finished · <duration>`, `✗ … failed · …` or `⊘ … cancelled · …` when it ends, from the host's
+  ended tasks (`TuiIntegration.FinishedAgentRows`), so a task that starts and ends between two polls gets both lines,
+  in order; `@<task> finished · recipient is main` when the recipient ends while the prompt has focus;
+  `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`. A poll whose provider throws writes nothing.
+- **Glyphs.** `◯`, `✔`, `⏵⏵` and the new `⎿` (`GlyphSet.Elbow`), `↑` (`GlyphSet.Up`) and `…` (`GlyphSet.Ellipsis`);
+  ASCII `> * o v > | * - ^ ...`, the hint bar's arrows and the cut phrase included.
 
 | Removed | Replacement |
 |---|---|
@@ -33,6 +40,15 @@ roles on the terminal's own background (the fixed `#0d0d0d` background is gone; 
 | `SchemeFactory.Chip()`, `Rule()`, `Posture()` | `SchemeFactory.Attr(PaletteRole, …)`, `Dim()`, `Accent()`, `Alert()`, `Uniform(Attribute)` |
 | `AgentsPaneModel.FormatRow(…, nameColumn)`, `NameColumn` | internal segment formatting; `AgentRowInfo.State` (`TaskRowState`) colours the bullet |
 | `HintBarModel.LeftSegments` | internal `HintBarModel.Segments` |
+| `HintBarModel.ComposeLeft` | none: internal segments |
+
+Added: `GlyphSet.Up` and `GlyphSet.Ellipsis` (`required`: a hand-built `GlyphSet` sets them), and
+`TuiIntegration.FinishedAgentRows` (`Func<IReadOnlyList<AgentRowInfo>>?`: the ended tasks the host retains, oldest
+first, with their final `State`; null keeps the rows-only `finished` line).
+
+Migration: a host drops `TuiIntegration.ContextChip` (the tasks list gives the recipient); callers of the removed
+members move to the replacements above; a host that builds its own `GlyphSet` adds `Up` and `Ellipsis`, and one that
+wants the failed and cancelled lines wires `FinishedAgentRows`.
 
 ### Changed — the prompt reads keys in three states: field, history, tasks list **[breaking]**
 
@@ -48,8 +64,11 @@ reached only with `F4`. A key is now read in one state, never twice:
   newest are still not recorded.
 - **Tasks list.** `↓` down without wrapping, `↑` up and back to the prompt from the first row, `Esc` or `F4` back to
   the prompt (text and caret restored), `Home`/`End` first/last row, `Enter` prints the task's detail and sends
-  nothing, a printable key returns to the prompt with it typed. The selection is kept by ticket across the list's
-  re-sort; an emptied list gives the focus back to the prompt.
+  nothing, a printable key returns to the prompt with it typed. `Tab` leaves the list like `Esc`; `Ctrl+V` or a
+  right-click leaves it and pastes at the restored caret; `Esc Esc` from the list interrupts the prompt's turn. The
+  state follows the focus: a click on a row enters the list on that row (a double-click also opens it), and focus
+  reaching the prompt by any other way leaves the list and keeps the current text. The selection is kept by ticket
+  across the list's re-sort; an emptied list gives the focus back to the prompt.
 - **Recipient.** The selected row is the recipient of the next message: the placeholder reads `Message @<task>…` and
   the rule above the prompt ends with `── <task> ─`; `main` is the default. Until a host wires `TuiIntegration.SendToTask`, `Enter`
   to a task prints that sending to a task is not supported yet and keeps the text in the field.
@@ -64,7 +83,7 @@ The console's public API moves with it (`src/cli/Orkeon.Cli.TerminalGui/PublicAP
 
 | Before | After |
 |---|---|
-| `HintBarModel.LeftSegments(permissionMode, commandRunning, agentsPaneAvailable)` | `LeftSegments(permissionMode, commandRunning, agentsPaneAvailable, bool taskListFocused = false, string? recipient = null)`; the `f4 agents` segment is `↓ tasks` |
+| `HintBarModel.LeftSegments(permissionMode, commandRunning, agentsPaneAvailable)` | removed (see the bottom-area entry); the `f4 agents` segment is `↓ tasks` |
 | — | `TuiIntegration.SendToTask` (`Func<string, string, bool>?`: ticket, text, true when delivered); null keeps the text in the field |
 
 ### Changed — the REPL interrupts with Esc Esc, and Ctrl+C only copies **[breaking]** (CH-02..CH-07)
@@ -80,7 +99,8 @@ application, so a stray double press closed the whole session. The keys now say 
   keeps running and stays reachable through `/cancel <ticket>`.
 - **`Ctrl+C` only copies.** With a selection it copies it; without one it prints a one-line hint. It never cancels
   and never quits.
-- **`Esc` leaves the `F4` agents selection first**, and cancels nothing.
+- **In the tasks list (`↓` or `F4`), `Esc` returns to the prompt** and cancels nothing, a turn running or not; a second
+  `Esc` right after it interrupts the prompt's turn.
 - **`Ctrl+Q` asks before quitting during the prompt's turn**, as it already did during a synchronous command.
 
 Migration: interrupt a turn with `Esc Esc` on the prompt, quit with `Ctrl+Q` (confirm while a turn runs); a script or a

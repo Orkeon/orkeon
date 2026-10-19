@@ -32,12 +32,15 @@ public sealed class AgentRowActivatedEventArgs : EventArgs
 /// <see cref="SelectionExited"/> so the host can hand focus back to the prompt. Once the REPL
 /// pane is attached (<see cref="ReplPaneView.AttachTaskList"/>) the keys are read by its
 /// navigation machine, and the selection is kept by ticket so the poll's re-sort never moves
-/// it. A mouse click selects a row without stealing focus; a double-click activates it.
+/// it. A mouse click enters the list on its row through that machine (the list takes the focus,
+/// so the <c>❯</c> cursor is never drawn while the keys go to the prompt); a double-click also
+/// activates the row.
 /// Rendering: each row is drawn segment by segment (<see cref="AgentsPaneModel.Segments"/>)
 /// through the text view's per-cell attribute, so drag-select and copy keep working. The
-/// list grows with its rows up to <see cref="MaxRows"/>, then scrolls with the cursor. A
-/// ticket that appears or leaves between two polls is written to the transcript
-/// (<see cref="TaskTranscriptTracker"/>).
+/// list grows with its rows up to <see cref="MaxRows"/>, then scrolls with the cursor, and the
+/// rows are rebuilt at the pane's width whenever its viewport changes. A ticket that appears or
+/// leaves between two polls, or that ended in between (<see cref="TuiIntegration.FinishedAgentRows"/>),
+/// is written to the transcript (<see cref="TaskTranscriptTracker"/>).
 /// </remarks>
 public sealed class AgentsPaneView : View
 {
@@ -56,6 +59,7 @@ public sealed class AgentsPaneView : View
     private int _lastIndex;
     private int _top;
     private List<IReadOnlyList<RowSegment>> _painted = [];
+    private int _paintedWidth;
     private readonly TaskTranscriptTracker _tracker;
 
     public AgentsPaneView(TerminalGuiOptions options)
@@ -256,17 +260,26 @@ public sealed class AgentsPaneView : View
         var frame = FrameToScreen();
         if (!frame.Contains(e.ScreenPosition)) return;
 
-        var row = _top + e.ScreenPosition.Y - frame.Y;
-        if (row < 0 || row >= _rows.Count) return;
+        if (ClickRow(e.ScreenPosition.Y - frame.Y, doubleClick)) e.Handled = doubleClick;
+    }
 
-        _selectionActive = true;
-        _selectedTicket = Ticket(_rows[row]);
-        Repaint();
-        if (doubleClick)
-        {
-            ActivateSelected();
-            e.Handled = true;
-        }
+    /// <summary>
+    /// A click on the <paramref name="visibleRow"/>-th row of the window: the list takes the focus
+    /// on that row — through the navigation machine once attached, so its state, the recipient and
+    /// the hint bar follow — and a double-click then opens the row's task.
+    /// </summary>
+    /// <returns>True when the click landed on a row.</returns>
+    internal bool ClickRow(int visibleRow, bool doubleClick)
+    {
+        var row = _top + visibleRow;
+        if (row < 0 || row >= _rows.Count) return false;
+
+        var ticket = Ticket(_rows[row]);
+        if (Navigator is { } navigator) navigator.SelectRow(ticket);
+        else if (SelectionActive) SelectTicket(ticket);
+        else ShowSelection(ticket);
+        if (doubleClick) ActivateSelected();
+        return true;
     }
 
     /// <summary>Re-polls the rows and repaints. Also used by tests.</summary>
@@ -274,6 +287,7 @@ public sealed class AgentsPaneView : View
     public void Refresh()
     {
         IReadOnlyList<AgentRowInfo> rows;
+        var faulted = false;
         try
         {
             rows = _integration?.AgentRows?.Invoke() ?? [];
@@ -281,18 +295,22 @@ public sealed class AgentsPaneView : View
         catch
         {
             rows = [];
+            faulted = true;
         }
 
         _rows = rows.ToList();
-        if (TranscriptSink is { } sink)
+        // A faulted poll says nothing about the tasks: the tracker keeps what it knew, so the
+        // next good poll reports neither a false end nor a false launch.
+        if (TranscriptSink is { } sink && !faulted)
         {
-            foreach (var line in _tracker.Observe(_rows)) sink(line);
+            foreach (var line in _tracker.Observe(_rows, ReadFinished())) sink(line);
         }
         if (Navigator is { } navigator)
         {
-            // The machine keeps the selection by ticket and decides what an emptied list does.
-            Repaint();
+            // The machine keeps the selection by ticket and decides what an emptied list does;
+            // the repaint comes after it, so the recipient's ● follows a recipient that changed.
             navigator.RowsRefreshed(_rows);
+            Repaint();
             return;
         }
         if (_rows.Count == 0 && (SelectionActive || CanFocus))
@@ -305,6 +323,28 @@ public sealed class AgentsPaneView : View
         Repaint();
     }
 
+    /// <summary>The ended tasks the host reports, read after the rows; null when not wired or faulted.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing feed degrades to the rows-only transcript lines.")]
+    private IReadOnlyList<AgentRowInfo>? ReadFinished()
+    {
+        try
+        {
+            return _integration?.FinishedAgentRows?.Invoke();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnViewportChanged(DrawEventArgs e)
+    {
+        base.OnViewportChanged(e);
+        // The rows are cut and padded to the width: a resize rebuilds them at the new one.
+        if (_integration is not null && Viewport.Width > 0 && Viewport.Width != _paintedWidth) Repaint();
+    }
+
     /// <summary>Renders the window of <see cref="_rows"/> into the text view and relayouts on row-count change.</summary>
     private void Repaint()
     {
@@ -312,7 +352,9 @@ public sealed class AgentsPaneView : View
         if (selected >= 0) _lastIndex = selected;
         var visibleCount = Math.Min(_rows.Count, MaxRows);
         _top = AgentsPaneModel.WindowTop(_rows.Count, visibleCount, selected, _top);
-        var width = Math.Max(20, Viewport.Width > 0 ? Viewport.Width : 80);
+        // Before the first layout the width is unknown: 80 columns, rebuilt once the viewport is set.
+        var width = Viewport.Width > 0 ? Viewport.Width : 80;
+        _paintedWidth = Viewport.Width;
         var recipient = Navigator?.RecipientTicket;
         var painted = new List<IReadOnlyList<RowSegment>>(visibleCount);
         for (var i = _top; i < _top + visibleCount; i++)
@@ -338,19 +380,14 @@ public sealed class AgentsPaneView : View
         });
     }
 
-    /// <summary>The attribute of one cell of the window: its segment's role, or null past the row.</summary>
-    private Terminal.Gui.Drawing.Attribute? AttributeAt(int row, int column)
+    /// <summary>The attribute of one cell (one grapheme) of the window: its segment's role, or null past the row.</summary>
+    private Terminal.Gui.Drawing.Attribute? AttributeAt(int row, int cell)
     {
         var painted = _painted;
-        if (row < 0 || row >= painted.Count || column < 0) return null;
-        var x = 0;
-        foreach (var segment in painted[row])
-        {
-            if (column < x + segment.Text.Length)
-                return SchemeFactory.Attr(segment.Role, segment.Bold, segment.Italic);
-            x += segment.Text.Length;
-        }
-        return null;
+        if (row < 0 || row >= painted.Count) return null;
+        return AgentsPaneModel.SegmentAtCell(painted[row], cell) is { } segment
+            ? SchemeFactory.Attr(segment.Role, segment.Bold, segment.Italic)
+            : null;
     }
 
     private void StartTimer()

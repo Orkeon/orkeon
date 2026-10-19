@@ -432,4 +432,125 @@ public class InputNavigationStateMachineTests
             Assert.False(machine.Handle(key, Ctx("x", rows: Tasks, modal: true)).Handled);
         Assert.Equal(InputNavigationState.Field, machine.State);
     }
+
+    // ── Review fixes: the list state follows the real focus (N1), a click selects (N3), a departed recipient is said (N4) ──
+
+    [Fact]
+    public void Tab_in_the_list_returns_to_the_field_with_text_and_caret_restored()
+    {
+        var machine = InList("draft", new InputCaret(2, 0));
+
+        var action = machine.Handle(InputNavigationKey.Tab, Ctx("draft", rows: Tasks));
+
+        Assert.Equal(InputNavigationActionKind.FocusField, action.Kind);
+        Assert.Equal("draft", action.Text);
+        Assert.Equal(new InputCaret(2, 0), action.Caret);
+        Assert.Null(action.Insert);
+        Assert.Equal(InputNavigationState.Field, machine.State);
+    }
+
+    [Fact]
+    public void Tab_in_the_field_is_left_to_completion()
+    {
+        var machine = new InputNavigationStateMachine();
+        Assert.False(machine.Handle(InputNavigationKey.Tab, Ctx("/he", rows: Tasks)).Handled);
+    }
+
+    [Fact]
+    public void A_paste_in_the_list_returns_to_the_field_first_with_text_and_caret_restored()
+    {
+        var machine = InList("ab", new InputCaret(1, 0));
+
+        var action = machine.Handle(InputNavigationKey.Paste, Ctx("ab", rows: Tasks));
+
+        Assert.Equal(InputNavigationActionKind.FocusField, action.Kind);
+        Assert.Equal("ab", action.Text);
+        Assert.Equal(new InputCaret(1, 0), action.Caret);
+        Assert.Equal(InputNavigationState.Field, machine.State);
+        Assert.False(new InputNavigationStateMachine().Handle(InputNavigationKey.Paste, Ctx("ab")).Handled);
+    }
+
+    [Fact]
+    public void Focus_reaching_the_field_while_in_the_list_leaves_it_and_keeps_the_fields_text_and_caret()
+    {
+        var machine = InList("typed");
+
+        var action = machine.OnFieldFocused();
+
+        Assert.Equal(InputNavigationActionKind.FocusField, action.Kind);
+        Assert.Null(action.Text);
+        Assert.Null(action.Caret);
+        Assert.Equal(InputNavigationState.Field, machine.State);
+        Assert.Null(machine.SelectedTicket);
+        Assert.Equal(InputNavigationActionKind.None, machine.OnFieldFocused().Kind);
+    }
+
+    [Fact]
+    public void Focus_reaching_the_field_returns_to_the_history_the_list_was_entered_from()
+    {
+        var machine = WithHistory("old");
+        machine.Handle(InputNavigationKey.Up, Ctx("draft"));
+        machine.Handle(InputNavigationKey.ToggleList, Ctx("old", rows: Tasks));
+
+        machine.OnFieldFocused();
+
+        Assert.Equal(InputNavigationState.History, machine.State);
+    }
+
+    [Fact]
+    public void A_click_on_a_row_from_the_field_enters_the_list_on_that_row()
+    {
+        var machine = new InputNavigationStateMachine();
+
+        var action = machine.SelectRow("T-2", Ctx("typed", rows: Tasks, caret: new InputCaret(3, 0)));
+
+        Assert.Equal(InputNavigationActionKind.FocusList, action.Kind);
+        Assert.Equal("T-2", action.Ticket);
+        Assert.Equal(InputNavigationState.List, machine.State);
+        Assert.Equal("T-2", machine.RecipientTicket);
+
+        var back = machine.Handle(InputNavigationKey.Escape, Ctx("typed", rows: Tasks));
+        Assert.Equal("typed", back.Text);
+        Assert.Equal(new InputCaret(3, 0), back.Caret);
+    }
+
+    [Fact]
+    public void A_click_on_a_row_in_the_list_moves_the_selection_and_an_unknown_row_changes_nothing()
+    {
+        var machine = InList();
+
+        Assert.Equal(InputNavigationActionKind.MoveListSelection, machine.SelectRow("T-1", Ctx(rows: Tasks)).Kind);
+        Assert.Equal("T-1", machine.SelectedTicket);
+        Assert.Equal(InputNavigationActionKind.None, machine.SelectRow("T-9", Ctx(rows: Tasks)).Kind);
+        Assert.Equal("T-1", machine.SelectedTicket);
+        Assert.Equal(InputNavigationActionKind.None, new InputNavigationStateMachine().SelectRow(null, Ctx(rows: [Main])).Kind);
+    }
+
+    [Fact]
+    public void A_recipient_that_leaves_the_rows_while_the_field_has_focus_is_named()
+    {
+        var machine = InList();
+        machine.Handle(InputNavigationKey.Down, Ctx(rows: Tasks));
+        machine.Handle(InputNavigationKey.Escape, Ctx(rows: Tasks));
+        Assert.Equal("T-1", machine.RecipientTicket);
+
+        var action = machine.OnRowsChanged([Main, Beta]);
+
+        Assert.Equal("alpha@crew", action.DepartedRecipient);
+        Assert.Null(machine.RecipientTicket);
+        Assert.Null(machine.OnRowsChanged([Main, Beta]).DepartedRecipient);
+    }
+
+    [Fact]
+    public void A_list_emptied_under_a_task_recipient_names_it_and_under_main_names_nothing()
+    {
+        var onTask = InList();
+        onTask.Handle(InputNavigationKey.Down, Ctx(rows: Tasks));
+        var left = onTask.OnRowsChanged([]);
+        Assert.Equal(InputNavigationActionKind.FocusField, left.Kind);
+        Assert.Equal("alpha@crew", left.DepartedRecipient);
+
+        var onMain = InList();
+        Assert.Null(onMain.OnRowsChanged([]).DepartedRecipient);
+    }
 }

@@ -74,6 +74,12 @@ public sealed record GlyphSet
     /// <summary>Result elbow under a transcript line (`⎿`).</summary>
     public required string Elbow { get; init; }
 
+    /// <summary>Up arrow of the tasks list's <c>↑/↓ select</c> hint (`↑`).</summary>
+    public required string Up { get; init; }
+
+    /// <summary>Ellipsis ending a cut name, phrase or metric block (`…`).</summary>
+    public required string Ellipsis { get; init; }
+
     /// <summary>The Unicode variant — what the reference captures show.</summary>
     public static GlyphSet Unicode { get; } = new()
     {
@@ -93,6 +99,8 @@ public sealed record GlyphSet
         Cross = "✗",
         Slashed = "⊘",
         Elbow = "⎿",
+        Up = "↑",
+        Ellipsis = "…",
     };
 
     /// <summary>The ASCII fallback — every marker stays one column wide and 7-bit.</summary>
@@ -114,6 +122,8 @@ public sealed record GlyphSet
         Cross = "x",
         Slashed = "-",
         Elbow = "|",
+        Up = "^",
+        Ellipsis = "...",
     };
 
     /// <summary>Resolves the set for a mode and an observed UTF-8 capability.</summary>

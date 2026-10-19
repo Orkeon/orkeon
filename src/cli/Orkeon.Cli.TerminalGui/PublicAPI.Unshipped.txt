@@ -76,3 +76,9 @@ static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Foreground(Orkeon.Cli.Termina
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool bold = false, bool italic = false) -> Terminal.Gui.Drawing.Attribute
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Normal() -> Terminal.Gui.Drawing.Scheme!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.set -> void

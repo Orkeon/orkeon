@@ -442,8 +442,9 @@ runs. Only the prompt's turn is interrupted: a crew started by anything else (a 
 copies it (the transcript, or the input, where a mouse drag selects too); without one it prints a
 one-line hint (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` pastes the
 clipboard into the input whichever view has focus, in the runner and in the REPL modes, and stands
-down while a modal dialog (find, quit confirmation) has focus. In the `F4` agents selection, `Esc`
-leaves the selection first and cancels nothing, a turn running or not. `Ctrl+Q` quits at once when
+down while a modal dialog (find, quit confirmation) has focus. In the tasks list (`↓` or `F4`), `Esc`
+returns to the prompt and cancels nothing, a turn running or not; it arms the pair like an `Esc` on
+the prompt, so `Esc Esc` from the list interrupts a running turn. `Ctrl+Q` quits at once when
 nothing runs, and asks for confirmation while a turn runs, as it does for a synchronous command.
 
 **Prompt, history and tasks list.** The prompt reads a key in one of three states, never twice:
@@ -460,6 +461,10 @@ Blank entries and a repeat of the newest one are not recorded. In the list (the 
 returns to the field; `Esc` returns to the field from any row, `F4` too, and the field gets its text
 and caret back; `Home` / `End` reach the first / last row; `Enter` prints the selected task's detail
 in the transcript and sends nothing; a printable key returns to the field with that character typed.
+`Tab` returns to the field like `Esc`; `Ctrl+V` or a right-click returns to it and pastes at the
+restored caret. The state follows the focus: a click on a row focuses the list on that row (a
+double-click also prints its detail), and focus reaching the field any other way leaves the list
+and keeps the current text; the `❯` cursor is never drawn while the keys go to the prompt.
 The selected row is the recipient of the next message, and stays so back in the field: the
 placeholder reads `Message @<task>…` and the rule above the prompt ends with `── <task> ─`; selecting `main` gives
 the default recipient back. The selection follows its task when the list re-sorts, and the field
@@ -477,14 +482,24 @@ by two columns and joins its parts with a dim ` · `: the permission mode (`⏵�
 the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
 `↑/↓ select · enter view` alone. The list shows `main` first, then the tasks in creation order: the
 accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
-(green while running, dim otherwise), the name in bold, the activity phrase cut with `…`, and
-right-aligned and dim `<duration> · ↓ <tokens> tokens`, the task's total, updated by the 1 Hz poll.
-It grows up to 6 rows, then scrolls with the cursor. Between two polls, a task that leaves the list
-prints `● Agent "<name>" finished · <duration>` in the transcript, a new one `● <name>(<intent>)`
-then `⎿  Backgrounded agent (↓ tasks)`; `Esc Esc` prints `⎿  Interrupted · What should Orkeon do
-instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
+(green while running, red when failed or cancelled, dim otherwise), the name in bold, the activity
+phrase cut with `…`, and right-aligned and dim `<duration> · ↓ <tokens> tokens`, the task's total,
+updated by the 1 Hz poll. Widths are terminal columns measured over graphemes (an emoji or a CJK
+character counts two); on a narrow pane the phrase gives way first, then the name, then the
+metrics, and a resize rebuilds the rows at the new width. It grows up to 6 rows, then scrolls with
+the cursor. Between two polls, a new task prints `● <name>(<intent>)` then
+`⎿  Backgrounded agent (↓ tasks)` in the transcript, and a task that ended
+`● Agent "<name>" finished · <duration>`, `✗ Agent "<name>" failed · <duration>` or
+`⊘ Agent "<name>" cancelled · <duration>`: the final state comes from the host's
+`TuiIntegration.FinishedAgentRows` (the ended tasks it retains), so a task that starts and ends
+between two polls still gets both lines, in order; without it, a task that leaves the list reads as
+finished. A recipient that ends while the prompt has focus prints
+`@<task> finished · recipient is main`, and a poll whose row provider throws writes nothing.
+`Esc Esc` prints `⎿  Interrupted · What should Orkeon do instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
 terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
-colours otherwise. `--glyphs ascii` turns `❯ ● ◯ ✔ ⏵ ⎿ ※ ─` into `> * o v > | * -`.
+colours otherwise. `--glyphs ascii` turns
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` into `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut
+phrase included.
 
 **The model witness.** The right-aligned witness of the hint bar names the selected model (24
 columns at most, longer names end with `…`) and is coloured by what the console has observed of that

@@ -188,6 +188,67 @@ public class TaskTranscriptTrackerTests
         var finished = Assert.Single(tracker.Observe([]));
         Assert.Equal("* Agent \"worker@crew\" finished - 2m 15s", finished);
     }
+
+    // ── Review fixes: the finished feed (L1), the final state (L3), ASCII hints (L7) ─────
+
+    private static AgentRowInfo Ended(string ticket, TaskRowState state, string name = "worker@crew", string intent = "checks the design", int seconds = 135)
+        => new() { Name = name, Description = intent, Ticket = ticket, Elapsed = TimeSpan.FromSeconds(seconds), State = state };
+
+    [Fact]
+    public void A_task_that_starts_and_ends_between_two_polls_gets_both_lines_in_order()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Unicode);
+        tracker.Observe([Main], []);
+        var quick = Ended("T-9", TaskRowState.Done, name: "quick", intent: "one shot", seconds: 3);
+
+        var lines = tracker.Observe([], [quick]);
+
+        Assert.Equal(["● quick(one shot)", "  ⎿  Backgrounded agent (↓ tasks)", "● Agent \"quick\" finished · 3s"], lines);
+        Assert.Empty(tracker.Observe([], [quick]));
+    }
+
+    [Fact]
+    public void Tasks_already_finished_at_the_first_poll_are_not_reported()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Unicode);
+
+        Assert.Empty(tracker.Observe([], [Ended("T-0", TaskRowState.Done)]));
+    }
+
+    [Fact]
+    public void A_task_that_failed_or_was_cancelled_says_so_with_the_glyph_of_its_state()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Unicode);
+        tracker.Observe([Main, Task("T-1", name: "a"), Task("T-2", name: "b")], []);
+
+        var lines = tracker.Observe([], [Ended("T-1", TaskRowState.Failed, name: "a"), Ended("T-2", TaskRowState.Cancelled, name: "b", seconds: 4)]);
+
+        Assert.Equal(["✗ Agent \"a\" failed · 2m 15s", "⊘ Agent \"b\" cancelled · 4s"], lines);
+    }
+
+    [Fact]
+    public void A_task_still_in_the_rows_but_already_finished_is_reported_finished_once()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Unicode);
+        tracker.Observe([Main, Task("T-1")], []);
+
+        // It completed between the rows read and the finished read of the same poll.
+        var lines = tracker.Observe([Main, Task("T-1")], [Ended("T-1", TaskRowState.Done)]);
+
+        Assert.Equal(["● Agent \"worker@crew\" finished · 2m 15s"], lines);
+        Assert.Empty(tracker.Observe([], [Ended("T-1", TaskRowState.Done)]));
+    }
+
+    [Fact]
+    public void The_ascii_set_writes_ascii_state_glyphs_and_hints()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Ascii);
+        tracker.Observe([], []);
+
+        var lines = tracker.Observe([], [Ended("T-1", TaskRowState.Failed)]);
+
+        Assert.Equal(["* worker@crew(checks the design)", "  |  Backgrounded agent (v tasks)", "x Agent \"worker@crew\" failed - 2m 15s"], lines);
+    }
 }
 
 public class InterruptedLineTests
@@ -197,5 +258,83 @@ public class InterruptedLineTests
     {
         Assert.Equal("  ⎿  Interrupted · What should Orkeon do instead?", TranscriptModel.Interrupted(GlyphSet.Unicode));
         Assert.Equal("  |  Interrupted - What should Orkeon do instead?", TranscriptModel.Interrupted(GlyphSet.Ascii));
+    }
+}
+
+public class ColumnAwareRowsTests
+{
+    private static readonly AgentRowInfo Wide = new()
+    {
+        Name = "日本語のタスク",
+        Description = "レビュー中です、長い説明文",
+        Elapsed = TimeSpan.FromSeconds(135),
+        Tokens = 1200,
+        Ticket = "T-1",
+    };
+
+    [Fact]
+    public void A_row_of_wide_characters_fills_exactly_the_width_in_columns_and_keeps_the_metrics()
+    {
+        var text = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Wide, 50);
+
+        Assert.Equal(50, TerminalText.Columns(text));
+        Assert.EndsWith(AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, Wide), text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_emoji_in_the_name_does_not_shift_the_colour_of_the_cells_after_it()
+    {
+        var row = new AgentRowInfo { Name = "🚀 rocket", Elapsed = TimeSpan.FromSeconds(5), Ticket = "T-1" };
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, row, 40);
+        var text = RowSegment.Concat(segments);
+        var metrics = AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, row);
+        var firstMetricCell = TerminalText.Graphemes(text[..text.IndexOf(metrics, StringComparison.Ordinal)]).Count;
+
+        Assert.Equal(PaletteRole.Dim, AgentsPaneModel.SegmentAtCell(segments, firstMetricCell)?.Role);
+        Assert.Equal(PaletteRole.Normal, AgentsPaneModel.SegmentAtCell(segments, firstMetricCell - 1)?.Role);
+        Assert.True(AgentsPaneModel.SegmentAtCell(segments, 4)?.Bold);
+        Assert.Null(AgentsPaneModel.SegmentAtCell(segments, TerminalText.Graphemes(text).Count));
+    }
+
+    [Fact]
+    public void On_a_tiny_width_the_name_goes_first_then_the_metrics_are_cut_with_an_ellipsis()
+    {
+        var text = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Wide, 12);
+
+        Assert.Equal(12, TerminalText.Columns(text));
+        Assert.StartsWith("  ◯ 2m", text, StringComparison.Ordinal);
+        Assert.EndsWith("…", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("日", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_ascii_set_cuts_with_three_dots()
+    {
+        var row = new AgentRowInfo { Name = "worker", Description = new string('x', 80), Ticket = "T-1" };
+
+        var text = AgentsPaneModel.FormatRow(GlyphSet.Ascii, row, 30);
+
+        Assert.Equal(30, text.Length);
+        Assert.EndsWith("...", text.TrimEnd(), StringComparison.Ordinal);
+        Assert.DoesNotContain("…", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_glyph_set_carries_the_up_arrow_and_the_ellipsis_with_ascii_fallbacks()
+    {
+        Assert.Equal(("↑", "^"), (GlyphSet.Unicode.Up, GlyphSet.Ascii.Up));
+        Assert.Equal(("…", "..."), (GlyphSet.Unicode.Ellipsis, GlyphSet.Ascii.Ellipsis));
+    }
+
+    [Fact]
+    public void The_hint_bar_builds_its_arrows_from_the_glyph_set()
+    {
+        static string Bar(GlyphSet glyphs, bool focused)
+            => RowSegment.Concat(HintBarModel.Segments(glyphs, "default", commandRunning: false, tasksAvailable: true, taskListFocused: focused));
+
+        Assert.EndsWith("v tasks", Bar(GlyphSet.Ascii, focused: false), StringComparison.Ordinal);
+        Assert.Equal("  ^/v select - enter view", Bar(GlyphSet.Ascii, focused: true));
+        Assert.EndsWith("↓ tasks", Bar(GlyphSet.Unicode, focused: false), StringComparison.Ordinal);
+        Assert.Equal("  ↑/↓ select · enter view", Bar(GlyphSet.Unicode, focused: true));
     }
 }

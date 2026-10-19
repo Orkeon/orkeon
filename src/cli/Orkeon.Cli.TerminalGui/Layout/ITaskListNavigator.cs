@@ -18,6 +18,9 @@ internal interface ITaskListNavigator
     /// <summary>F4 (or the host) asked to leave the list.</summary>
     void LeaveList();
 
+    /// <summary>A click on the row of <paramref name="ticket"/> (null: <c>main</c>): enter the list on it, or move there.</summary>
+    void SelectRow(string? ticket);
+
     /// <summary>The ticket of the prompt's recipient; null for <c>main</c>.</summary>
     string? RecipientTicket { get; }
 

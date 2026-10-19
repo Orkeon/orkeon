@@ -172,7 +172,7 @@ public sealed class SplitPaneToplevel : Window
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "The returned IDisposable only unsubscribes the static Application.MouseEvent handler; its lifetime is intentionally bound to that static event for the toplevel's entire lifetime (production never unsubscribes — only tests do). It owns no unmanaged or scarce resource, so deterministic disposal in this scope is neither needed nor correct.")]
     private void AttachRightClickPaste()
-        => _ = MouseClipboardBehavior.AttachRightClickPaste(() => Repl.Input);
+        => _ = MouseClipboardBehavior.AttachRightClickPaste(() => Repl.PasteClipboard());
 
     private static double ClampRatio(double ratio)
         => Math.Clamp(ratio, 0.1, 0.9);

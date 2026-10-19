@@ -28,6 +28,12 @@ internal enum InputNavigationKey
     Escape,
     Printable,
     ToggleList,
+
+    /// <summary>Tab: completion in the field; from the list, back to the field.</summary>
+    Tab,
+
+    /// <summary>A paste (Ctrl+V, right-click) is about to land in the field.</summary>
+    Paste,
 }
 
 /// <summary>A caret position in the input field (column, row), as the field reports it.</summary>
@@ -111,6 +117,9 @@ internal sealed record InputNavigationAction(InputNavigationActionKind Kind)
 
     /// <summary>Text to insert once the field has focus again (a key typed in the list).</summary>
     public string? Insert { get; init; }
+
+    /// <summary>The name of the recipient task that left the rows and gave way to <c>main</c>; null otherwise.</summary>
+    public string? DepartedRecipient { get; init; }
 
     /// <summary>True when the key was the machine's (anything but <see cref="InputNavigationActionKind.NotHandled"/>).</summary>
     public bool Handled => Kind != InputNavigationActionKind.NotHandled;
@@ -215,7 +224,8 @@ internal sealed class InputNavigationStateMachine
     /// <summary>
     /// The list's rows changed (1 Hz poll). An emptied list hands the focus back to the field with
     /// <c>main</c> as recipient; a vanished selection moves to the row now at its place; a recipient
-    /// task that left the list gives way to <c>main</c>.
+    /// task that left the list gives way to <c>main</c>. When the recipient falls back to <c>main</c>
+    /// that way, the action names the departed task (<see cref="InputNavigationAction.DepartedRecipient"/>).
     /// </summary>
     public InputNavigationAction OnRowsChanged(IReadOnlyList<AgentRowInfo> rows)
     {
@@ -224,8 +234,9 @@ internal sealed class InputNavigationStateMachine
         {
             if (!ListAvailable(rows))
             {
+                var departed = RecipientName;
                 SetRecipient(null, null);
-                return LeaveList(null);
+                return LeaveList(null) with { DepartedRecipient = departed };
             }
             var index = IndexOf(rows, _selectedTicket);
             if (index >= 0)
@@ -236,9 +247,40 @@ internal sealed class InputNavigationStateMachine
             return Select(rows, Math.Clamp(_selectedIndex, 0, rows.Count - 1));
         }
 
-        if (RecipientTicket is not null && IndexOf(rows, RecipientTicket) < 0)
-            SetRecipient(null, null);
-        return InputNavigationAction.None;
+        if (RecipientTicket is null || IndexOf(rows, RecipientTicket) >= 0) return InputNavigationAction.None;
+        var name = RecipientName;
+        SetRecipient(null, null);
+        return new InputNavigationAction(InputNavigationActionKind.None) { DepartedRecipient = name };
+    }
+
+    /// <summary>
+    /// The field took the focus by another way than the machine's own (a mouse click, a focus
+    /// move, an edit landing in it): the list is left, and the field keeps the text and the caret
+    /// it has now (the returned action carries neither). Outside the list, nothing happens.
+    /// </summary>
+    public InputNavigationAction OnFieldFocused()
+    {
+        if (State != InputNavigationState.List) return InputNavigationAction.None;
+        State = _returnState;
+        _selectedTicket = null;
+        return new InputNavigationAction(InputNavigationActionKind.FocusField);
+    }
+
+    /// <summary>
+    /// A click on the row of <paramref name="ticket"/> (null: <c>main</c>): from the field it enters
+    /// the list (the text and caret are saved as ↓ saves them) on that row; in the list it moves the
+    /// selection there. A ticket the rows do not hold, or a list with no task, changes nothing.
+    /// </summary>
+    public InputNavigationAction SelectRow(string? ticket, InputNavigationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.ModalFocused || !ListAvailable(context.Rows)) return InputNavigationAction.None;
+        var index = IndexOf(context.Rows, NormaliseTicket(ticket));
+        if (index < 0) return InputNavigationAction.None;
+        if (State == InputNavigationState.List) return Select(context.Rows, index);
+        EnterList(context);
+        Select(context.Rows, index);
+        return new InputNavigationAction(InputNavigationActionKind.FocusList) { Ticket = _selectedTicket };
     }
 
     private InputNavigationAction HandleField(InputNavigationKey key, InputNavigationContext context)
@@ -312,6 +354,8 @@ internal sealed class InputNavigationStateMachine
                 return Select(rows, rows.Count - 1);
             case InputNavigationKey.Escape:
             case InputNavigationKey.ToggleList:
+            case InputNavigationKey.Tab:
+            case InputNavigationKey.Paste:
                 return LeaveList(null);
             case InputNavigationKey.Printable:
                 return string.IsNullOrEmpty(context.Character) ? InputNavigationAction.None : LeaveList(context.Character);

@@ -165,6 +165,7 @@ internal static class TuiFidelityWiring
         if (dispatch is not null)
         {
             integration.AgentRows = () => BuildAgentRows(dispatch);
+            integration.FinishedAgentRows = () => BuildFinishedAgentRows(dispatch);
             integration.InterruptCurrent = () =>
             {
                 // "esc to interrupt" acts on the prompt turn in flight: every ticket of it.
@@ -348,7 +349,7 @@ internal static class TuiFidelityWiring
                     : v.intent ?? "";
                 return new AgentRowInfo
                 {
-                    Name = string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}",
+                    Name = RowName(v),
                     Description = description,
                     Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
                     Tokens = v.tokens > 0 ? v.tokens : null,
@@ -359,6 +360,37 @@ internal static class TuiFidelityWiring
             }));
         return rows;
     }
+
+    /// <summary>
+    /// The background tasks that ended and the registry still retains, oldest end first, with
+    /// their final state (done, failed, cancelled) and duration: the tasks list's transcript lines
+    /// read them, so a task that starts and ends between two polls is still reported, and a
+    /// failure reads as one. Sync requests and rejected launches are not tasks of the list.
+    /// </summary>
+    internal static List<AgentRowInfo> BuildFinishedAgentRows(CommandDispatchService dispatch) =>
+        dispatch.list()
+            .Where(v => v.kind == "async" && v.state is "done" or "failed" or "cancelled")
+            .OrderBy(v => v.completedAt ?? v.startedAt, StringComparer.Ordinal)
+            .ThenBy(v => v.ticket.Length)
+            .ThenBy(v => v.ticket, StringComparer.Ordinal)
+            .Select(v => new AgentRowInfo
+            {
+                Name = RowName(v),
+                Description = v.intent ?? "",
+                Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
+                Tokens = v.tokens > 0 ? v.tokens : null,
+                State = v.state switch
+                {
+                    "failed" => TaskRowState.Failed,
+                    "cancelled" => TaskRowState.Cancelled,
+                    _ => TaskRowState.Done,
+                },
+                Ticket = v.ticket,
+            })
+            .ToList();
+
+    private static string RowName(CommandInstanceView v) =>
+        string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}";
 
     private static bool IsRunning(CommandInstanceView v) => v.state is "running" or "dispatched";
 

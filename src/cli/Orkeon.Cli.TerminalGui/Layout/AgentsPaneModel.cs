@@ -21,9 +21,10 @@ public static class AgentsPaneModel
     private const string NameGap = "  ";
 
     /// <summary>
-    /// The segments of one row, exactly <paramref name="width"/> columns wide (padded or cut).
-    /// The metric block is reserved first, so on a narrow terminal the phrase gives way, then
-    /// the name — never the numbers.
+    /// The segments of one row, exactly <paramref name="width"/> terminal columns wide (padded or
+    /// cut), measured over graphemes so an emoji or a CJK character counts its two columns. The
+    /// metric block is reserved first, so on a narrow terminal the phrase gives way, then the
+    /// name; only when the metrics alone overflow are they cut too, with the ellipsis.
     /// </summary>
     /// <param name="glyphs">The glyph set.</param>
     /// <param name="row">The row.</param>
@@ -36,13 +37,15 @@ public static class AgentsPaneModel
         ArgumentNullException.ThrowIfNull(row);
         if (width <= 0) return [];
 
-        var metrics = ComposeMetrics(glyphs, row);
-        var reserved = metrics.Length > 0 ? metrics.Length + ColumnGap : 0;
+        var metrics = TerminalText.Truncate(ComposeMetrics(glyphs, row), Math.Max(0, width - LeadWidth), glyphs.Ellipsis);
+        var metricsColumns = TerminalText.Columns(metrics);
+        var reserved = metricsColumns > 0 ? metricsColumns + ColumnGap : 0;
         var nameRoom = Math.Max(0, width - LeadWidth - reserved);
-        var name = Truncate(row.Name, nameRoom);
-        var phraseRoom = width - LeadWidth - name.Length - NameGap.Length - reserved;
+        var name = TerminalText.Truncate(row.Name, nameRoom, glyphs.Ellipsis);
+        var nameColumns = TerminalText.Columns(name);
+        var phraseRoom = width - LeadWidth - nameColumns - NameGap.Length - reserved;
         var phrase = phraseRoom > 0 && !string.IsNullOrWhiteSpace(row.Description)
-            ? NameGap + Truncate(row.Description.Trim(), phraseRoom)
+            ? NameGap + TerminalText.Truncate(row.Description.Trim(), phraseRoom, glyphs.Ellipsis)
             : string.Empty;
 
         var segments = new List<RowSegment>(8)
@@ -54,8 +57,8 @@ public static class AgentsPaneModel
             new(name, PaletteRole.Normal, Bold: true),
             new(phrase, PaletteRole.Normal),
         };
-        var used = LeadWidth + name.Length + phrase.Length;
-        var padding = width - used - metrics.Length;
+        var used = LeadWidth + nameColumns + TerminalText.Columns(phrase);
+        var padding = width - used - metricsColumns;
         if (padding > 0) segments.Add(new RowSegment(new string(' ', padding), PaletteRole.Normal));
         if (metrics.Length > 0) segments.Add(new RowSegment(metrics, PaletteRole.Dim));
         return Fit(segments, width);
@@ -110,6 +113,23 @@ public static class AgentsPaneModel
         return elapsed.Length > 0 ? $"{elapsed} {glyphs.Dot} {tokens}" : tokens;
     }
 
+    /// <summary>
+    /// The segment drawn at <paramref name="cell"/> of a row: a text view holds one grapheme per
+    /// cell, so the segments are walked by grapheme count, not by UTF-16 unit. Null past the row.
+    /// </summary>
+    internal static RowSegment? SegmentAtCell(IReadOnlyList<RowSegment> segments, int cell)
+    {
+        ArgumentNullException.ThrowIfNull(segments);
+        if (cell < 0) return null;
+        var x = 0;
+        foreach (var segment in segments)
+        {
+            x += TerminalText.Graphemes(segment.Text).Count;
+            if (cell < x) return segment;
+        }
+        return null;
+    }
+
     private static List<RowSegment> Fit(List<RowSegment> segments, int width)
     {
         var result = new List<RowSegment>(segments.Count);
@@ -118,19 +138,12 @@ public static class AgentsPaneModel
         {
             if (x >= width) break;
             if (segment.Text.Length == 0) continue;
-            var text = segment.Text.Length > width - x ? segment.Text[..(width - x)] : segment.Text;
+            var text = TerminalText.TakeColumns(segment.Text, width - x);
+            if (text.Length == 0) break; // a wide grapheme straddling the edge: pad instead
             result.Add(segment with { Text = text });
-            x += text.Length;
+            x += TerminalText.Columns(text);
         }
         if (x < width) result.Add(new RowSegment(new string(' ', width - x), PaletteRole.Normal));
         return result;
-    }
-
-    private static string Truncate(string text, int max)
-    {
-        text ??= string.Empty;
-        if (max <= 0) return string.Empty;
-        if (text.Length <= max) return text;
-        return max == 1 ? "…" : text[..(max - 1)] + "…";
     }
 }

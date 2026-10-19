@@ -39,6 +39,60 @@ public class AgentsPaneViewTests
         Assert.Equal("T-1", ticket);
     }
 
+    [Fact]
+    public void A_faulted_poll_reports_no_task_as_finished_nor_relaunched()
+    {
+        var fail = false;
+        var lines = new List<string>();
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance) { TranscriptSink = lines.Add };
+        pane.Bind(new TuiIntegration
+        {
+            AgentRows = () => fail
+                ? throw new InvalidOperationException("registry gone")
+                : [new AgentRowInfo { Name = "main", IsActive = true }, new AgentRowInfo { Name = "worker@crew", Ticket = "T-1" }],
+        });
+        lines.Clear();
+
+        fail = true;
+        pane.Refresh();
+        fail = false;
+        pane.Refresh();
+
+        Assert.Empty(lines);
+    }
+
+    [Fact]
+    public void A_task_finished_between_two_polls_is_written_from_the_finished_feed()
+    {
+        var finished = new List<AgentRowInfo>();
+        var lines = new List<string>();
+        using var pane = new AgentsPaneView(new TerminalGuiOptions { Glyphs = GlyphMode.Always }, InlineDispatcher.Instance) { TranscriptSink = lines.Add };
+        pane.Bind(new TuiIntegration { AgentRows = () => [], FinishedAgentRows = () => finished });
+
+        finished.Add(new AgentRowInfo { Name = "quick", Ticket = "T-9", Elapsed = TimeSpan.FromSeconds(2), State = TaskRowState.Failed });
+        pane.Refresh();
+
+        Assert.Equal(["● quick", "  ⎿  Backgrounded agent (↓ tasks)", "✗ Agent \"quick\" failed · 2s"], lines);
+    }
+
+    [Fact]
+    public void The_rows_follow_the_width_of_the_pane_down_to_a_tiny_one()
+    {
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        pane.Bind(new TuiIntegration
+        {
+            AgentRows = () => [new AgentRowInfo { Name = "worker@crew", Ticket = "T-1", Elapsed = TimeSpan.FromSeconds(135), Tokens = 1200 }],
+        });
+
+        pane.Frame = new System.Drawing.Rectangle(0, 0, 50, 1);
+        pane.Layout();
+        Assert.Equal(50, TerminalText.Columns(pane.CurrentText));
+
+        pane.Frame = new System.Drawing.Rectangle(0, 0, 12, 1);
+        pane.Layout();
+        Assert.Equal(12, TerminalText.Columns(pane.CurrentText));
+    }
+
 #pragma warning disable CS0618 // Terminal.Gui legacy static Application: the only route a headless key reaches Application.KeyDown handlers then the focused view
     [Fact]
     [Trait("BR", "CH-05")]
