@@ -46,6 +46,14 @@ public sealed class SplitPaneToplevel : Window
         Add(Logs, Repl, HintBar, Agents);
 
         Agents.RowsChanged += (_, _) => ApplyLayout();
+        // A task launched or finished between two polls leaves its line in the transcript.
+        Agents.TranscriptSink = line => Repl.AppendOutputLine(line);
+
+        // ↓ from the prompt reaches the tasks list, whose keys come back to the prompt's
+        // navigation machine; the hint bar shows that machine's affordance and recipient.
+        Repl.AttachTaskList(Agents);
+        HintBar.BindNavigation(() => Repl.Navigation);
+        Repl.NavigationChanged += (_, _) => HintBar.Refresh();
 
         // Right-click anywhere in the TUI pastes the OS clipboard into the
         // REPL input — the only editable surface in the layout. The subscription is
@@ -110,7 +118,9 @@ public sealed class SplitPaneToplevel : Window
 
         const int hintRows = 1;
         var agentsRows = Math.Min(Agents.DesiredRows, AgentsPaneView.MaxRows);
-        var available = Math.Max(0, totalRows - hintRows - agentsRows);
+        // A blank row separates the status bar from the tasks list while the list shows.
+        var gapRows = agentsRows > 0 ? 1 : 0;
+        var available = Math.Max(0, totalRows - hintRows - gapRows - agentsRows);
 
         int logsRows;
         int replRows;
@@ -153,7 +163,7 @@ public sealed class SplitPaneToplevel : Window
         HintBar.Height = hintRows;
 
         Agents.X = 0;
-        Agents.Y = logsRows + replRows + hintRows;
+        Agents.Y = logsRows + replRows + hintRows + gapRows;
         Agents.Width = Dim.Fill();
         Agents.Height = agentsRows;
         Agents.Visible = agentsRows > 0;
@@ -162,7 +172,7 @@ public sealed class SplitPaneToplevel : Window
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "The returned IDisposable only unsubscribes the static Application.MouseEvent handler; its lifetime is intentionally bound to that static event for the toplevel's entire lifetime (production never unsubscribes — only tests do). It owns no unmanaged or scarce resource, so deterministic disposal in this scope is neither needed nor correct.")]
     private void AttachRightClickPaste()
-        => _ = MouseClipboardBehavior.AttachRightClickPaste(() => Repl.Input);
+        => _ = MouseClipboardBehavior.AttachRightClickPaste(() => Repl.PasteClipboard());
 
     private static double ClampRatio(double ratio)
         => Math.Clamp(ratio, 0.1, 0.9);

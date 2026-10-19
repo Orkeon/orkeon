@@ -1,10 +1,5 @@
 namespace Orkeon.Cli.TerminalGui.Hosting;
 
-/// <summary>The context chip's content: what the prompt is currently "at".</summary>
-/// <param name="Text">Chip label, e.g. <c>@verif-proxy</c> or the session title.</param>
-/// <param name="IsAgentTarget">True ⇒ agent-target styling (yellow); false ⇒ session (blue).</param>
-public sealed record ContextChipInfo(string Text, bool IsAgentTarget);
-
 /// <summary>
 /// A host-resolved progress readout for the status line: what long operation runs and
 /// how far along it is. <see cref="Ratio"/> null ⇒ indeterminate (spinner + message,
@@ -32,6 +27,25 @@ public sealed record ProgressInfo
     public bool FromLiveInstance { get; init; }
 }
 
+/// <summary>The state of a task row, which colours its bullet in the tasks list.</summary>
+public enum TaskRowState
+{
+    /// <summary>Waiting or queued: dim.</summary>
+    Idle,
+
+    /// <summary>Working: green.</summary>
+    Running,
+
+    /// <summary>Finished: dim.</summary>
+    Done,
+
+    /// <summary>Failed: red.</summary>
+    Failed,
+
+    /// <summary>Cancelled: red.</summary>
+    Cancelled,
+}
+
 /// <summary>One row of the agents pane, already host-resolved.</summary>
 public sealed record AgentRowInfo
 {
@@ -48,10 +62,13 @@ public sealed record AgentRowInfo
     public long? Tokens { get; init; }
 
     /// <summary>
-    /// True ⇒ filled bullet (<c>●</c>). The reference reserves it for the primary loop's
-    /// <c>main</c> row; delegated agents render hollow (<c>○</c>) even while running.
+    /// True for the primary loop's <c>main</c> row. The bullet no longer follows it: the
+    /// filled <c>●</c> marks the prompt's current recipient, every other row is hollow (<c>◯</c>).
     /// </summary>
     public bool IsActive { get; init; }
+
+    /// <summary>The task's state: the bullet's colour (green running, dim idle or done, red failed or cancelled).</summary>
+    public TaskRowState State { get; init; }
 
     /// <summary>Instance ticket, for selection → detail lookups. Null for <c>main</c>.</summary>
     public string? Ticket { get; init; }
@@ -80,14 +97,17 @@ public sealed class TuiIntegration
     /// <summary>Cumulated session tokens (real usage, cost tracker). Null ⇒ segment omitted.</summary>
     public Func<long?>? SessionTokens { get; set; }
 
-    /// <summary>What the context chip shows. Null ⇒ chip omitted (bare rule).</summary>
-    public Func<ContextChipInfo?>? ContextChip { get; set; }
-
     /// <summary>Rows for the agents pane. Null/empty ⇒ pane collapses to zero rows.</summary>
     public Func<IReadOnlyList<AgentRowInfo>>? AgentRows { get; set; }
 
     /// <summary>Cancel the in-flight async work (hint bar's Esc during a turn).</summary>
     public Action? InterruptCurrent { get; set; }
+
+    /// <summary>True while a dispatched prompt turn runs.</summary>
+    public Func<bool>? PromptTurnRunning { get; set; }
+
+    /// <summary>The selected model and its availability. Null result shows "no model".</summary>
+    public Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>? ModelWitness { get; set; }
 
     /// <summary>The long operation currently reporting progress. Null ⇒ no bar.</summary>
     public Func<ProgressInfo?>? Progress { get; set; }
@@ -104,4 +124,22 @@ public sealed class TuiIntegration
     /// the pane's Enter/double-click action. Null ⇒ selection shows no detail.
     /// </summary>
     public Func<string, string?>? DescribeAgent { get; set; }
+
+    /// <summary>
+    /// Delivers a prompt line to a task of the agents pane: <c>(ticket, text)</c>, true when the
+    /// task took it. Selecting a task in the list makes it the prompt's recipient; null (the
+    /// case while no task is addressable) ⇒ Enter prints that sending to a task is not
+    /// supported yet and keeps the text in the field.
+    /// </summary>
+    public Func<string, string, bool>? SendToTask { get; set; }
+
+    /// <summary>
+    /// The background tasks that reached an end (done, failed, cancelled), with their final
+    /// <see cref="AgentRowInfo.State"/> and frozen <see cref="AgentRowInfo.Elapsed"/>, oldest
+    /// first. Read after <see cref="AgentRows"/> at each poll: the transcript says how each task
+    /// ended, and a task that started and ended between two polls still gets its launch and end
+    /// lines. Null ⇒ a task that leaves the list reads as finished, and one too short for a poll
+    /// leaves no line.
+    /// </summary>
+    public Func<IReadOnlyList<AgentRowInfo>>? FinishedAgentRows { get; set; }
 }

@@ -33,7 +33,7 @@ public class GlyphSetTests
             GlyphSet.Ascii.Asterisk, GlyphSet.Ascii.Recap, GlyphSet.Ascii.Chevrons,
             GlyphSet.Ascii.RuleCell, GlyphSet.Ascii.Down, GlyphSet.Ascii.Dot,
             GlyphSet.Ascii.BarFilled, GlyphSet.Ascii.BarEmpty,
-            GlyphSet.Ascii.Check, GlyphSet.Ascii.Cross, GlyphSet.Ascii.Slashed,
+            GlyphSet.Ascii.Check, GlyphSet.Ascii.Cross, GlyphSet.Ascii.Slashed, GlyphSet.Ascii.Elbow,
         };
         markers.AddRange(GlyphSet.Ascii.SpinnerFrames);
         foreach (var s in markers)
@@ -216,34 +216,62 @@ public class StatusLineFormatterTests
 
 public class HintBarModelTests
 {
+    private static string Text(IReadOnlyList<RowSegment> segments) => RowSegment.Concat(segments);
+
     [Fact]
     public void Idle_bar_has_no_interrupt_entry()
     {
-        var segments = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: true);
-        Assert.DoesNotContain(segments, s => s.Contains("interrupt", StringComparison.Ordinal));
-        Assert.Contains(segments, s => s.Contains("shift+tab", StringComparison.Ordinal));
-        Assert.Contains(segments, s => s.Contains("ctrl+g logs", StringComparison.Ordinal));
+        var text = Text(HintBarModel.Segments(GlyphSet.Unicode, "default", commandRunning: false, tasksAvailable: true));
+        Assert.DoesNotContain("interrupt", text, StringComparison.Ordinal);
+        Assert.Contains("shift+tab", text, StringComparison.Ordinal);
+        Assert.Contains("ctrl+g logs", text, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Running_bar_gains_the_interrupt_entry()
+    [Trait("BR", "CH-07")]
+    public void Running_bar_names_the_escape_pair()
     {
-        // The contextuality IS the observed behaviour: capture 2's bar grows
-        // "esc to interrupt" only while a turn is in flight.
-        var segments = HintBarModel.LeftSegments("default", commandRunning: true, agentsPaneAvailable: true);
-        Assert.Contains(segments, s => s.Contains("esc to interrupt", StringComparison.Ordinal));
+        var text = Text(HintBarModel.Segments(GlyphSet.Unicode, "default", commandRunning: true, tasksAvailable: true));
+        Assert.Contains("esc esc to interrupt", text, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Agents_entry_appears_only_while_the_pane_has_rows()
+    public void The_bar_is_indented_by_two_columns_and_separated_by_dim_dots()
     {
-        // F4 selection is real now, but the hint stays contextual: advertising it over
-        // an empty pane trains the eye to skip the bar.
-        var with = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: true);
-        Assert.Contains(with, s => s.Contains("f4 agents", StringComparison.Ordinal));
+        var segments = HintBarModel.Segments(GlyphSet.Unicode, "plan", commandRunning: false, tasksAvailable: true);
+        Assert.Equal("  ⏵⏵ plan mode on (shift+tab to cycle) · ctrl+g logs · ↓ tasks", Text(segments));
+        Assert.All(segments.Where(s => s.Text.Trim() == "·"), s => Assert.Equal(PaletteRole.Dim, s.Role));
+    }
 
-        var without = HintBarModel.LeftSegments("default", commandRunning: false, agentsPaneAvailable: false);
-        Assert.DoesNotContain(without, s => s.Contains("f4", StringComparison.Ordinal));
+    [Fact]
+    public void Tasks_entry_appears_only_while_a_task_other_than_main_exists()
+    {
+        var with = HintBarModel.Segments(GlyphSet.Unicode, "default", commandRunning: false, tasksAvailable: true);
+        var tasks = Assert.Single(with, s => s.Text == "↓ tasks");
+        Assert.Equal(PaletteRole.Dim, tasks.Role);
+
+        var without = HintBarModel.Segments(GlyphSet.Unicode, "default", commandRunning: false, tasksAvailable: false);
+        Assert.DoesNotContain("tasks", Text(without), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_focused_list_replaces_every_other_entry_with_its_own_affordance()
+    {
+        var segments = HintBarModel.Segments(GlyphSet.Unicode, "bypassPermissions", commandRunning: true, tasksAvailable: true, taskListFocused: true);
+        Assert.Equal("  ↑/↓ select · enter view", Text(segments));
+        Assert.DoesNotContain(segments, s => s.Role == PaletteRole.Alert);
+    }
+
+    [Theory]
+    [InlineData("default", "default permissions")]
+    [InlineData("acceptEdits", "accept edits on")]
+    [InlineData("plan", "plan mode on")]
+    [InlineData("bypassPermissions", "bypass permissions on")]
+    [InlineData("dontAsk", "don't ask on")]
+    [InlineData("custom", "custom")]
+    public void Every_permission_mode_reads_as_a_label(string mode, string label)
+    {
+        Assert.Equal(label, HintBarModel.PostureLabel(mode));
     }
 
     [Theory]
@@ -252,18 +280,78 @@ public class HintBarModelTests
     [InlineData("acceptEdits", true)]
     [InlineData("default", false)]
     [InlineData("plan", false)]
-    public void Loud_styling_marks_the_relaxed_postures_only(string mode, bool loud)
+    public void Only_a_permissive_mode_is_painted_in_the_alert_role(string mode, bool alert)
     {
-        // The magenta exists to make a relaxed posture impossible to miss,
-        // not to decorate the bar.
-        Assert.Equal(loud, HintBarModel.IsLoudPosture(mode));
+        Assert.Equal(alert, HintBarModel.IsLoudPosture(mode));
+        var posture = HintBarModel.Segments(GlyphSet.Unicode, mode, commandRunning: false, tasksAvailable: false)[1];
+        Assert.Equal(alert ? PaletteRole.Alert : PaletteRole.Dim, posture.Role);
+    }
+
+    [Fact]
+    public void Bypass_mode_reads_as_the_reference_label()
+    {
+        var posture = HintBarModel.Segments(GlyphSet.Unicode, "bypassPermissions", commandRunning: false, tasksAvailable: false)[1];
+        Assert.Equal("⏵⏵ bypass permissions on (shift+tab to cycle)", posture.Text);
     }
 
     [Fact]
     public void Blank_mode_reads_default()
     {
-        var segments = HintBarModel.LeftSegments("  ", commandRunning: false, agentsPaneAvailable: false);
-        Assert.StartsWith("default", segments[0], StringComparison.Ordinal);
+        var text = Text(HintBarModel.Segments(GlyphSet.Unicode, "  ", commandRunning: false, tasksAvailable: false));
+        Assert.StartsWith("  ⏵⏵ default permissions", text, StringComparison.Ordinal);
+    }
+
+    private static ModelWitnessInfo Info(string model, Orkeon.Cli.Abstractions.ModelAvailability availability)
+        => new() { Model = model, Availability = availability };
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_names_the_model_and_never_starts_with_a_slash()
+    {
+        var text = HintBarModel.Witness(Info("kimi-k2", Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode);
+        Assert.Equal("kimi-k2", text);
+        Assert.False(text.StartsWith('/'));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_availability_maps_to_green_amber_red()
+    {
+        var green = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Available).Normal;
+        var amber = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting).Normal;
+        var red = HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Unavailable).Normal;
+
+        Assert.Equal(SchemeFactory.Ok().Normal, green);
+        Assert.Equal(SchemeFactory.Warn().Normal, amber);
+        Assert.Equal(SchemeFactory.Error().Normal, red);
+        Assert.NotEqual(green, amber);
+        Assert.NotEqual(green, red);
+        Assert.NotEqual(amber, red);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_without_a_configured_model_is_unavailable()
+    {
+        Assert.Equal("no model", HintBarModel.Witness(null, GlyphSet.Unicode));
+        Assert.Equal("no model", HintBarModel.Witness(Info("", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable), GlyphSet.Unicode));
+        Assert.Equal("no model", HintBarModel.Witness(Info("   ", Orkeon.Cli.Abstractions.ModelAvailability.Unavailable), GlyphSet.Unicode));
+        Assert.Equal("gpt-5", HintBarModel.Witness(Info("gpt-5", Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode));
+        Assert.Equal(
+            SchemeFactory.Ok().Normal,
+            HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability.Available).Normal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-08")]
+    public void Witness_long_name_is_truncated_with_an_ellipsis()
+    {
+        var exact = new string('m', HintBarModel.WitnessMaxWidth);
+        Assert.Equal(exact, HintBarModel.Witness(Info(exact, Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode));
+
+        var shown = HintBarModel.Witness(Info(new string('m', 40), Orkeon.Cli.Abstractions.ModelAvailability.Available), GlyphSet.Unicode);
+        Assert.Equal(new string('m', 23) + "…", shown);
+        Assert.Equal(24, shown.Length);
     }
 }
 
@@ -390,49 +478,64 @@ public class AgentsPaneModelTests
         };
 
     [Fact]
-    public void Active_row_gets_the_filled_bullet()
+    public void The_recipient_row_gets_the_filled_bullet_and_the_others_the_hollow_one()
     {
-        // The first column is the F4 selection cursor (blank at rest) — rows stay
-        // aligned whether or not one of them carries the chevron.
-        var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(active: true), 100, 20);
+        // Column 0 is the list cursor (blank at rest), column 2 the bullet.
+        var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, recipient: true);
         Assert.StartsWith("  ● ", line, StringComparison.Ordinal);
-        var other = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20);
-        Assert.StartsWith("  ○ ", other, StringComparison.Ordinal);
+        var other = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100);
+        Assert.StartsWith("  ◯ ", other, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Metrics_are_right_aligned_and_the_prose_gives_way()
+    public void Metrics_are_right_aligned_and_dim_and_the_phrase_gives_way()
     {
-        // On a narrow terminal it is the description that truncates, never the numbers.
-        var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 60, 20);
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, Row(), 60);
+        var line = RowSegment.Concat(segments);
         Assert.Equal(60, line.Length);
         Assert.EndsWith("3m 44s · ↓ 101.1k tokens", line, StringComparison.Ordinal);
         Assert.Contains("…", line, StringComparison.Ordinal);
+        Assert.Equal(PaletteRole.Dim, segments[^1].Role);
+    }
+
+    [Fact]
+    public void The_name_is_bold_and_followed_by_two_spaces_then_the_phrase_in_normal_text()
+    {
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, Row(name: "worker", desc: "reads the plan"), 80);
+        var name = Assert.Single(segments, s => s.Text == "worker");
+        Assert.True(name.Bold);
+        Assert.Equal(PaletteRole.Normal, name.Role);
+        var phrase = Assert.Single(segments, s => s.Text == "  reads the plan");
+        Assert.Equal(PaletteRole.Normal, phrase.Role);
+        Assert.False(phrase.Bold);
+    }
+
+    [Theory]
+    [InlineData(TaskRowState.Running, PaletteRole.Ok)]
+    [InlineData(TaskRowState.Idle, PaletteRole.Dim)]
+    [InlineData(TaskRowState.Done, PaletteRole.Dim)]
+    [InlineData(TaskRowState.Failed, PaletteRole.Error)]
+    [InlineData(TaskRowState.Cancelled, PaletteRole.Error)]
+    public void The_bullet_takes_the_colour_of_the_tasks_state(TaskRowState state, PaletteRole role)
+    {
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, Row() with { State = state }, 80);
+        Assert.Equal(role, segments[2].Role);
     }
 
     [Fact]
     public void A_row_with_nothing_to_report_renders_no_metrics()
     {
         // The reference's `main` line is just `● main` — no `idle` label, no numbers.
-        // (`idle` means *waiting*, not *finished*; no waiting state exists today.)
         var main = new AgentRowInfo { Name = "main", IsActive = true };
         Assert.Equal(string.Empty, AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, main));
+        Assert.Equal("  ● main", AgentsPaneModel.FormatRow(GlyphSet.Unicode, main, 40, recipient: true).TrimEnd());
     }
 
     [Fact]
     public void Unattributable_tokens_render_a_dash_not_a_number()
     {
-        // Usage the host could not attribute to this instance — a dash is honest,
-        // a number would lie.
         var metrics = AgentsPaneModel.ComposeMetrics(GlyphSet.Unicode, Row(tokens: null));
         Assert.EndsWith("↓ —", metrics, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void NameColumn_tracks_the_widest_name_with_floor_and_cap()
-    {
-        Assert.Equal(4, AgentsPaneModel.NameColumn([Row(name: "ab")]));
-        Assert.Equal(24, AgentsPaneModel.NameColumn([Row(name: new string('x', 60))]));
     }
 
     [Fact]
@@ -442,11 +545,30 @@ public class AgentsPaneModelTests
     }
 
     [Fact]
-    public void Selected_row_leads_with_the_prompt_chevron()
+    public void The_focused_cursor_row_leads_with_the_prompt_chevron_in_the_accent()
     {
-        var line = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20, selected: true);
-        Assert.StartsWith("❯ ○ ", line, StringComparison.Ordinal);
-        var unselected = AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100, 20);
-        Assert.StartsWith("  ○ ", unselected, StringComparison.Ordinal);
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, Row(), 100, cursor: true);
+        Assert.Equal("❯", segments[0].Text);
+        Assert.Equal(PaletteRole.Accent, segments[0].Role);
+        Assert.StartsWith("  ◯ ", AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 100), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_very_narrow_list_cuts_the_row_to_its_width()
+    {
+        Assert.Equal(10, AgentsPaneModel.FormatRow(GlyphSet.Unicode, Row(), 10).Length);
+        Assert.Empty(AgentsPaneModel.Segments(GlyphSet.Unicode, Row(), 0));
+    }
+
+    [Theory]
+    [InlineData(3, 6, -1, 0, 0)]
+    [InlineData(10, 6, -1, 0, 0)]
+    [InlineData(10, 6, 7, 0, 2)]
+    [InlineData(10, 6, 1, 3, 1)]
+    [InlineData(10, 6, 4, 3, 3)]
+    [InlineData(10, 6, -1, 9, 4)]
+    public void The_window_follows_the_cursor_and_stays_inside_the_list(int count, int visible, int cursor, int previousTop, int expectedTop)
+    {
+        Assert.Equal(expectedTop, AgentsPaneModel.WindowTop(count, visible, cursor, previousTop));
     }
 }

@@ -131,8 +131,9 @@ public static class ScriptingCliServiceCollectionExtensions
         // ambient instance (ps/inspect/agents pane) instead of stalling in silence. The
         // host's provider bootstrap hands this observer to the provider (RetryObserver).
         // TryAdd so a host with its own ILlmRetryObserver wins.
-        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.ILlmRetryObserver>(sp =>
-            new LlmRetryProgressObserver(sp.GetRequiredService<ProgressBroker>()));
+        services.TryAddSingleton(sp => new LlmRetryProgressObserver(sp.GetRequiredService<ProgressBroker>()));
+        services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.ILlmRetryObserver>(
+            sp => sp.GetRequiredService<LlmRetryProgressObserver>());
 
         services.TryAddSingleton(sp =>
         {

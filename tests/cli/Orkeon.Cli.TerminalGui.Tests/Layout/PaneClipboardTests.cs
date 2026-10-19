@@ -59,6 +59,19 @@ public class PaneClipboardTests
     }
 
     [Fact]
+    [Trait("BR", "CH-04")]
+    public void CopySelection_copies_the_selected_text_of_a_text_view()
+    {
+        TuiClipboard.Reset();
+        using var view = new MouseClipboardTextView { Text = "alpha beta" };
+        Assert.True(PaneClipboard.SelectAll(view));
+        Assert.True(PaneClipboard.CopySelection(view));
+        Assert.True(TuiClipboard.TryGetText(out var copied));
+        Assert.Equal("alpha beta", copied);
+        TuiClipboard.Reset();
+    }
+
+    [Fact]
     public void PasteInto_is_noop_for_readonly_input()
     {
         // Read-only guard returns before touching the OS clipboard ⇒ deterministic on headless CI.

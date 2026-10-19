@@ -428,16 +428,96 @@ user quits.
 `LogsPaneTitle` (`Logs`), `LogsVisibleAtStartup` (`false`), `ReplWordWrap` (`true`),
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. The keys: `Ctrl+G` logs
 drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl+F` find in the logs,
-`Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `F4` agents
-pane, `Ctrl+C` cancel the running command (twice within two seconds to force-quit), `Ctrl+Q`
-quit. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+`Ctrl+↑` / `Ctrl+↓` resize, `F2` / `Shift+F2` more / less log detail, `F3` wrap, `↓` (from the
+prompt's last row) or `F4` tasks list, `Ctrl+C` copy the selection, `Ctrl+V` and right-click paste into the input, `Ctrl+Q` quit
+(it asks first while a turn runs). `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
-**Session state shared with the commands.** The console reads and writes one key of the session
+**Keys on the prompt.** `Esc` clears the draft; a second `Esc` right after it (any other key in
+between disarms the pair, and it arms on an empty draft too) interrupts the turn submitted from the
+prompt, whether it runs as a synchronous command or as a dispatched ticket, a retry backoff
+(`Reconnecting to …`) included. The hint bar shows `esc esc to interrupt` for as long as that turn
+runs. Only the prompt's turn is interrupted: a crew started by anything else (a detached
+`runCrewAsync`, compaction, indexing) keeps running, and stays reachable through `/ps` and
+`/cancel <ticket>`; no key cancels it. `Ctrl+C` never cancels and never quits: with a selection it
+copies it (the transcript, or the input, where a mouse drag selects too); without one it prints a
+one-line hint (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` pastes the
+clipboard into the input whichever view has focus, in the runner and in the REPL modes, and stands
+down while a modal dialog (find, quit confirmation) has focus. In the tasks list (`↓` or `F4`), `Esc`
+returns to the prompt and cancels nothing, a turn running or not; it arms the pair like an `Esc` on
+the prompt (`F4` and `Tab` do not), so `Esc Esc` from the list interrupts a running turn. `Ctrl+Q` quits at once when
+nothing runs, and asks for confirmation while a turn runs, as it does for a synchronous command.
+
+**Prompt, history and tasks list.** The prompt reads a key in one of three states, never twice:
+the field, the history and the tasks list. In the field, `↑` on the first row (a visual row: a long
+line wraps, and `↑`/`↓` first move through its rows) enters the history, keeping the typed text as
+the draft and showing the newest entry, caret at the end; with no history it moves the caret as
+usual. `↓` on the last row focuses the tasks list when it holds a task other than `main` (the hint
+bar then reads `↓ tasks`), and does nothing otherwise. `Home` / `End` reach the start / end of the
+line, `Ctrl+Home` / `Ctrl+End` those of the text. In the history, `↑` shows the previous entry
+(nothing on the oldest), `↓` the next one, and from the newest gives the draft back and leaves the
+history; any edit leaves it and keeps the text; `Enter` sends the shown entry and drops the draft.
+Blank entries and a repeat of the newest one are not recorded. In the list (the hint bar reads
+`↑/↓ select · enter view`), `↓` moves down without wrapping, `↑` moves up and, on the first row,
+returns to the field; `Esc` returns to the field from any row, `F4` too, and the field gets its text
+and caret back; `Home` / `End` reach the first / last row; `Enter` prints the selected task's detail
+in the transcript and sends nothing; a printable key returns to the field with that character typed.
+`Tab` returns to the field like `Esc`; `Ctrl+V` or a right-click returns to it and pastes at the
+restored caret. The state follows the focus: a click on a row focuses the list on that row (a
+double-click also prints its detail), and focus reaching the field any other way leaves the list
+and keeps the current text; the `❯` cursor is never drawn while the keys go to the prompt.
+The selected row is the recipient of the next message, and stays so back in the field: the
+placeholder reads `Message @<task>…` and the rule above the prompt ends with `── <task> ─`; selecting `main` gives
+the default recipient back. The selection follows its task when the list re-sorts, and the field
+takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
+host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
+with a task recipient prints that sending to a task is not supported yet, and the text stays in the
+field, neither sent nor recorded. These keys stand down while a modal dialog has focus.
+
+**The bottom area.** Under the transcript come the spinner line (glyph and verb in the accent, the
+parenthesis dim), a dim `─` rule across the width, ending with `── <task> ─` in the accent while the
+recipient is a task other than `main`, the prompt (`❯ ` accent and bold, the placeholder dim and
+italic), a bare rule, the status bar, a blank line and the tasks list. The status bar is indented
+by two columns and joins its parts with a dim ` · `: the permission mode (`⏵⏵ bypass permissions on
+(shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise),
+the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
+`↑/↓ select · enter view` alone. The list shows `main` first, then the tasks in creation order: the
+accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
+(green while running, red when failed or cancelled, dim otherwise), the name in bold, the activity
+phrase cut with `…`, and right-aligned and dim `<duration> · ↓ <tokens> tokens`, the task's total,
+updated by the 1 Hz poll. Widths are terminal columns measured over graphemes (an emoji or a CJK
+character counts two); on a narrow pane the phrase gives way first, then the name, then the
+metrics, and a resize rebuilds the rows at the new width. It grows up to 6 rows, then scrolls with
+the cursor. Between two polls, a new task prints `● <name>(<intent>)` then
+`⎿  Backgrounded agent (↓ tasks)` in the transcript, and a task that ended
+`● Agent "<name>" finished · <duration>`, `✗ Agent "<name>" failed · <duration>` or
+`⊘ Agent "<name>" cancelled · <duration>`: the final state comes from the host's
+`TuiIntegration.FinishedAgentRows` (the ended tasks it retains), so a task that starts and ends
+between two polls still gets both lines, in order; without it, a task that leaves the list reads as
+finished. A recipient that ends while the prompt has focus prints
+`@<task> finished · recipient is main`, and a poll whose row provider throws writes nothing and leaves the rows, the list and the recipient as they were.
+`Esc Esc` prints `⎿  Interrupted · What should Orkeon do instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
+terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
+colours otherwise. `--glyphs ascii` turns
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` into `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut
+phrase included.
+
+**The model witness.** The right-aligned witness of the hint bar names the selected model (24
+columns at most, longer names end with `…`) and is coloured by what the console has observed of that
+model's calls, never by a probe: green while the model is usable, on a final 2xx included; amber
+during a retry backoff of that model; red after a final non-2xx, a timeout, or when no model is
+configured (the label then reads `no model`). Only the displayed model's calls colour it, and a
+change of model resets it to green. A call ended by the caller (`Esc Esc`) is not a failure and
+leaves the colour unchanged.
+
+**Session state shared with the commands.** The console reads and writes two keys of the session
 state (`ISessionBufferService`, which a command reaches with `session_store`'s `get_state` and
 `set_state`): `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
 `Orkeon.Constants.Cli`), the permission mode it shows and cycles on `Shift+Tab` (`default` →
-`acceptEdits` → `plan` → `bypassPermissions`). A product's `/mode` command writes that key, so the
-console shows its choice: the key is a contract and keeps its name.
+`acceptEdits` → `plan` → `bypassPermissions`), and `selected_model`
+(`SessionStateKeys.SelectedModel`), the model the witness names. A product's `/mode` command writes
+the first key, so the console shows its choice: the keys are a contract and keep their names.
+Orkeon Code's `/model` does not write `selected_model` yet; until it does, the witness falls back to
+the `Llm:Model` setting.
 
 **Tool-call approvals.** With the permission gate on, `orkeon-repl` registers an approval channel
 (`AddConsoleToolApproval`): a call the mode asks about is put to the operator, whose next line

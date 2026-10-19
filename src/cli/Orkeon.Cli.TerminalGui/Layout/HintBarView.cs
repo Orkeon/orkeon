@@ -7,28 +7,28 @@ using Terminal.Gui.Views;
 namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
-/// The one-row bottom hint bar (PLAN C8), replacing Terminal.Gui's StatusBar:
-/// <c> ▶▶ default (shift+tab to cycle) · esc to interrupt · ctrl+g logs · ↓ to manage   /rc</c>.
-/// Contextual like the reference — the interrupt/agents entries appear only mid-turn.
+/// The one-row status bar under the prompt's bottom separator, replacing Terminal.Gui's
+/// StatusBar: <c>  ⏵⏵ bypass permissions on (shift+tab to cycle) · ctrl+g logs · ↓ tasks    model</c>,
+/// or <c>  ↑/↓ select · enter view</c> while the tasks list has focus.
 /// </summary>
 /// <remarks>
-/// Three labels, three attributes: the chevrons+posture (magenta when the posture is
-/// loud), the action hints (dim), and the right-aligned config witness (green when a
-/// usable LLM config was loaded, red-leaning accent otherwise). A single-label rendering
-/// would flatten the reference's most recognisable line into one color.
+/// The left part is drawn segment by segment from <see cref="HintBarModel"/> (the permission
+/// mode in yellow when permissive, every other segment dim); the model witness stays a
+/// right-aligned label coloured by the model's availability.
 /// </remarks>
 public sealed class HintBarView : View
 {
-    private readonly Label _posture;
-    private readonly Label _hints;
     private readonly Label _witness;
+    private IReadOnlyList<RowSegment> _left = [];
     private readonly IUiDispatcher _dispatcher;
     private readonly GlyphSet _glyphs;
     private IInteractiveRunner? _runner;
     private TuiIntegration? _integration;
     private bool _agentsAvailable;
     private Func<bool>? _agentsHasRows;
-    private bool _configUsable;
+    private Func<ModelWitnessInfo?>? _modelWitness;
+    private Func<InputNavigationStateMachine?>? _navigation;
+    private int _witnessLength = -1;
     private object? _timerToken;
 
     public HintBarView(TerminalGuiOptions options)
@@ -43,19 +43,13 @@ public sealed class HintBarView : View
         Width = Dim.Fill();
         SetScheme(SchemeFactory.Pane());
 
-        _posture = new Label { X = 0, Y = 0, Height = 1, Text = string.Empty };
-        _posture.SetScheme(SchemeFactory.Dim());
-        _hints = new Label { X = Pos.Right(_posture), Y = 0, Height = 1, Text = string.Empty };
-        _hints.SetScheme(SchemeFactory.Dim());
         _witness = new Label
         {
-            X = Pos.AnchorEnd(HintBarModel.ConfigWitness.Length + 1),
             Y = 0,
             Height = 1,
-            Text = HintBarModel.ConfigWitness,
         };
-        _witness.SetScheme(SchemeFactory.Ok());
-        Add(_posture, _hints, _witness);
+        SetWitness(null);
+        Add(_witness);
     }
 
     /// <summary>
@@ -67,7 +61,7 @@ public sealed class HintBarView : View
         IInteractiveRunner runner,
         TuiIntegration integration,
         bool agentsAvailable,
-        bool configUsable,
+        Func<ModelWitnessInfo?>? modelWitness,
         Func<bool>? agentsHasRows = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
@@ -76,10 +70,20 @@ public sealed class HintBarView : View
         _integration = integration;
         _agentsAvailable = agentsAvailable;
         _agentsHasRows = agentsHasRows;
-        _configUsable = configUsable;
+        _modelWitness = modelWitness;
         StartTimer();
         Refresh();
     }
+
+    /// <summary>The prompt's navigation state, read at each refresh for the tasks affordance and the recipient label.</summary>
+    internal void BindNavigation(Func<InputNavigationStateMachine?> navigation)
+    {
+        ArgumentNullException.ThrowIfNull(navigation);
+        _navigation = navigation;
+    }
+
+    internal static bool IsTurnRunning(IInteractiveRunner? runner, TuiIntegration? integration)
+        => runner?.IsCommandRunning == true || integration?.PromptTurnRunning?.Invoke() == true;
 
     /// <summary>Recomposes the bar from the current mode + turn state.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing mode provider degrades the posture to 'default', never crashes the UI.")]
@@ -94,22 +98,51 @@ public sealed class HintBarView : View
         {
             mode = "default";
         }
-        var running = _runner?.IsCommandRunning == true;
-        var agents = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
-        var segments = HintBarModel.LeftSegments(mode, running, agents);
-
-        var postureText = $" {_glyphs.Chevrons} {segments[0]}";
-        var rest = segments.Count > 1
-            ? $" {_glyphs.Dot} " + string.Join($" {_glyphs.Dot} ", segments.Skip(1))
-            : string.Empty;
+        ModelWitnessInfo? witness;
+        try
+        {
+            witness = _modelWitness?.Invoke();
+        }
+        catch
+        {
+            witness = null;
+        }
+        var running = IsTurnRunning(_runner, _integration);
+        var tasks = _agentsAvailable && (_agentsHasRows?.Invoke() ?? true);
+        var navigation = _navigation?.Invoke();
+        var segments = HintBarModel.Segments(
+            _glyphs,
+            mode,
+            running,
+            tasks,
+            taskListFocused: navigation?.State == InputNavigationState.List);
 
         _dispatcher.Invoke(() =>
         {
-            _posture.Text = postureText;
-            _posture.SetScheme(HintBarModel.IsLoudPosture(mode) ? SchemeFactory.Posture() : SchemeFactory.Dim());
-            _hints.Text = rest;
-            _witness.SetScheme(_configUsable ? SchemeFactory.Ok() : SchemeFactory.Accent());
+            _left = segments;
+            SetWitness(witness);
+            SetNeedsDraw();
         });
+    }
+
+    /// <inheritdoc />
+    protected override bool OnDrawingContent(DrawContext? context)
+    {
+        SegmentPainter.Paint(this, 0, _left);
+        return true;
+    }
+
+    private void SetWitness(ModelWitnessInfo? info)
+    {
+        var text = HintBarModel.Witness(info, _glyphs);
+        var columns = TerminalText.Columns(text);
+        if (columns != _witnessLength)
+        {
+            _witnessLength = columns;
+            _witness.X = Pos.AnchorEnd(columns + 1);
+        }
+        _witness.Text = text;
+        _witness.SetScheme(HintBarModel.WitnessScheme(info?.Availability ?? Orkeon.Cli.Abstractions.ModelAvailability.Unavailable));
     }
 
     private void StartTimer()
@@ -142,7 +175,7 @@ public sealed class HintBarView : View
     }
 
     /// <summary>Test-only accessor for the composed left text.</summary>
-    internal string CurrentText => _posture.Text + _hints.Text;
+    internal string CurrentText => RowSegment.Concat(_left);
 
     protected override void Dispose(bool disposing)
     {
@@ -154,8 +187,6 @@ public sealed class HintBarView : View
                 catch (InvalidOperationException) { /* Application already shut down */ }
                 _timerToken = null;
             }
-            _posture.Dispose();
-            _hints.Dispose();
             _witness.Dispose();
         }
         base.Dispose(disposing);

@@ -36,6 +36,9 @@ public sealed class MouseClipboardTextView : TextView
     private static readonly Color SelectionBg = new(ColorName16.White);
     private static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
 
+    /// <summary>Raised when this view consumed a key itself, so <c>KeyDown</c> subscribers never see it.</summary>
+    internal event EventHandler? KeyConsumed;
+
     /// <summary>
     /// Keyboard clipboard support for the active (focused) pane. These views are read-only, so only
     /// Ctrl+A (select all) and Ctrl+C (copy selection → OS clipboard) apply; paste is handled on the
@@ -53,11 +56,15 @@ public sealed class MouseClipboardTextView : TextView
         if (PaneClipboard.IsCtrl(key, KeyCode.A))
         {
             SelectAll();
+            KeyConsumed?.Invoke(this, EventArgs.Empty);
             return true;
         }
 
         if (PaneClipboard.IsCtrl(key, KeyCode.C) && PaneClipboard.CopySelection(this))
+        {
+            KeyConsumed?.Invoke(this, EventArgs.Empty);
             return true;
+        }
 
         return base.OnKeyDown(key);
     }
@@ -77,6 +84,27 @@ public sealed class MouseClipboardTextView : TextView
         }
 
         return handled;
+    }
+
+    /// <summary>
+    /// Per-cell attribute of the unselected text: <c>(row, column)</c> of the text model to the
+    /// attribute to paint, or null for the view's scheme. Lets a read-only view paint each
+    /// segment of a row in its own role while keeping the selection and copy of a text view.
+    /// </summary>
+    internal Func<int, int, Terminal.Gui.Drawing.Attribute?>? CellAttribute { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnDrawNormalColor(List<Cell> line, int idxCol, int idxRow)
+    {
+        if (CellAttribute?.Invoke(idxRow, idxCol) is { } attribute) SetAttribute(attribute);
+        else base.OnDrawNormalColor(line, idxCol, idxRow);
+    }
+
+    /// <inheritdoc />
+    protected override void OnDrawReadOnlyColor(List<Cell> line, int idxCol, int idxRow)
+    {
+        if (CellAttribute?.Invoke(idxRow, idxCol) is { } attribute) SetAttribute(attribute);
+        else base.OnDrawReadOnlyColor(line, idxCol, idxRow);
     }
 
     /// <inheritdoc />

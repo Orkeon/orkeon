@@ -152,65 +152,51 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         return RunReplCoreAsync(repl, ct);
     }
 
+    internal static bool HandleCtrlV(Terminal.Gui.Input.Key key, ReplPaneView repl, Terminal.Gui.ViewBase.View? focused = null)
+    {
+        if (!Layout.PaneClipboard.IsCtrl(key, Terminal.Gui.Drivers.KeyCode.V)) return false;
+
+        // A modal dialog owns the keyboard: its own fields paste themselves.
+        if (Layout.ModalFocus.IsActive(focused)) return false;
+
+        key.Handled = true;
+        repl.PasteClipboard();
+        return true;
+    }
+
+    internal static void HandleCtrlC(Terminal.Gui.Input.Key key, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, ReplPaneView repl)
+    {
+        var stripped = key.KeyCode & ~(Terminal.Gui.Drivers.KeyCode.CtrlMask
+                                     | Terminal.Gui.Drivers.KeyCode.AltMask
+                                     | Terminal.Gui.Drivers.KeyCode.ShiftMask);
+        if (!key.IsCtrl || stripped != Terminal.Gui.Drivers.KeyCode.C) return;
+
+        key.Handled = true; // always swallow Ctrl+C in TUI mode
+
+        // Ctrl+C only copies: with an active selection in the focused pane it goes to the OS
+        // clipboard; without one the hint names the key that interrupts the turn.
+        if (Layout.PaneClipboard.CopySelection(Application.Navigation?.GetFocused()))
+        {
+            Diag("Ctrl+C → copied focused selection to clipboard");
+            return;
+        }
+
+        Diag($"Ctrl+C without selection (running={runner.IsCommandRunning})");
+        repl.AppendOutputLine("Ctrl+C copies a selection — esc esc interrupts the turn.");
+    }
+
     private async Task RunRunnerCoreAsync(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, CancellationToken ct)
     {
         if (!_initialized) Initialize();
         _toplevel!.Runner = runner;
         BindFidelityViews(runner);
 
-        // Belt-and-suspenders Ctrl+C handler. The status-bar Shortcut(Key.C.WithCtrl)
-        // works in unit tests but is swallowed by focused TextField bindings in real
-        // terminals (TUI-20). Subscribing to Application.KeyDown here gives us a
-        // global, focus-independent path that fires before any view-level handler.
-        // Pattern:
-        //   1st Ctrl+C while command running → request cancellation + visible feedback
-        //   2nd Ctrl+C within 2s              → force-quit the whole TUI (escape hatch
-        //                                       when the command's call chain ignores CT)
-        DateTime lastCtrlCAt = DateTime.MinValue;
-        EventHandler<Terminal.Gui.Input.Key> ctrlCHandler = (_, key) =>
-        {
-            var stripped = key.KeyCode & ~(Terminal.Gui.Drivers.KeyCode.CtrlMask
-                                         | Terminal.Gui.Drivers.KeyCode.AltMask
-                                         | Terminal.Gui.Drivers.KeyCode.ShiftMask);
-            if (!key.IsCtrl || stripped != Terminal.Gui.Drivers.KeyCode.C) return;
-
-            key.Handled = true; // always swallow Ctrl+C in TUI mode
-
-            // Copy-on-selection: Ctrl+C with an active text selection in the focused pane copies that
-            // selection to the OS clipboard (standard terminal behaviour) instead of cancelling. With
-            // no selection it falls through to the cancel-command path below.
-            if (Layout.PaneClipboard.CopySelection(Application.Navigation?.GetFocused()))
-            {
-                Diag("Ctrl+C → copied focused selection to clipboard");
-                return;
-            }
-
-            Diag($"Ctrl+C captured (running={runner.IsCommandRunning})");
-
-            var now = DateTime.UtcNow;
-            var doubleHit = (now - lastCtrlCAt) < TimeSpan.FromSeconds(2);
-            lastCtrlCAt = now;
-
-            if (!runner.IsCommandRunning)
-            {
-                _toplevel!.Repl.AppendOutputLine("⏹  Ctrl+C — no command running.");
-                return;
-            }
-
-            if (doubleHit)
-            {
-                _toplevel!.Repl.AppendOutputLine("⏹  Ctrl+C twice — force-quitting the TUI...");
-                runner.RequestCommandCancellation();
-                Application.Invoke(() => Application.RequestStop(_toplevel!));
-                return;
-            }
-
-            _toplevel!.Repl.AppendOutputLine(
-                "⏹  Cancellation requested — waiting for the command to honour the CancellationToken. "
-                + "Press Ctrl+C again within 2s to force-quit.");
-            runner.RequestCommandCancellation();
-        };
+        // Belt-and-suspenders Ctrl+C handler: the status-bar Shortcut is swallowed by focused
+        // TextField bindings in real terminals (TUI-20); Application.KeyDown is focus-independent.
+        EventHandler<Terminal.Gui.Input.Key> ctrlCHandler = (_, key) => HandleCtrlC(key, runner, _toplevel!.Repl);
+        EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
         Application.KeyDown += ctrlCHandler;
+        Application.KeyDown += ctrlVHandler;
         try
         {
             await RunAsync(runner.RunAsync, ct).ConfigureAwait(false);
@@ -218,6 +204,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         finally
         {
             Application.KeyDown -= ctrlCHandler;
+            Application.KeyDown -= ctrlVHandler;
         }
     }
 
@@ -239,6 +226,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             }
         }, linkedCts.Token);
 
+        EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
+        Application.KeyDown += ctrlVHandler;
         try
         {
             // Blocks the calling thread (the runner's main thread) until RequestStop fires.
@@ -253,6 +242,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         }
         finally
         {
+            Application.KeyDown -= ctrlVHandler;
             await linkedCts.CancelAsync().ConfigureAwait(false);
             // The runner is likely blocked in one of two places when Ctrl+Q fires:
             //   (a) IConsoleAdapter.ReadLine() — sync-over-async wrapper around
@@ -281,7 +271,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
     /// <summary>
     /// Wires the fidelity views to their sources: status line (runner + tokens + tool
-    /// spans), hint bar (posture + contextual entries), rule/chip and agents rows. The
+    /// spans), status bar (permission mode + contextual entries) and the tasks list. The
     /// turn-completion hook flushes the aggregated tool-activity sentence into the
     /// transcript — the reference's "Read 1 file, ran 9 shell commands" line.
     /// </summary>
@@ -289,12 +279,12 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     {
         var top = _toplevel!;
         top.Repl.StatusLine.Bind(runner, _integration, _toolActivity);
-        top.Repl.RuleChip.Bind(_integration);
+        top.Repl.BindIntegration(_integration);
         top.HintBar.Bind(
             runner,
             _integration,
             agentsAvailable: _integration.AgentRows is not null,
-            configUsable: !string.IsNullOrWhiteSpace(_options.Banner?.ModelLine),
+            modelWitness: _integration.ModelWitness,
             agentsHasRows: () => top.Agents.DesiredRows > 0);
         if (_integration.AgentRows is not null)
             top.Agents.Bind(_integration);

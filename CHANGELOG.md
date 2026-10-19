@@ -7,6 +7,148 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the console's bottom area takes a Claude-Code-like look **[breaking]**
+
+In the Terminal.Gui console (`Orkeon.Cli.TerminalGui`), the area under the transcript is redrawn from semantic colour
+roles on the terminal's own background (the fixed `#0d0d0d` background is gone; 24-bit colour when `COLORTERM` is
+`truecolor` or `24bit`, 16 named colours otherwise):
+
+- **Separators.** A dim `─` rule above and below the prompt; the top one ends with `── <task> ─` in the accent while the
+  recipient is not `main`. It replaces the session chip.
+- **Prompt.** `❯ ` accent and bold; the placeholder dim and italic.
+- **Status bar.** Indented, parts joined by a dim ` · `: the permission mode as a phrase
+  (`⏵⏵ bypass permissions on (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`), the
+  hints, `↓ tasks` when a task exists; `↑/↓ select · enter view` from the list. The recipient left the bar.
+- **Tasks list.** After a blank line: `main` first, then creation order (it was newest first); `❯` cursor while the
+  list has focus (never while the keys go to the prompt), `●` recipient / `◯` others coloured by state (green while
+  running, red when failed or cancelled, dim otherwise), bold name, phrase cut with `…`, dim right-aligned
+  `<duration> · ↓ <tokens> tokens` (the task's total). Widths are terminal columns over graphemes (an emoji or a CJK
+  character counts two); on a narrow pane the phrase gives way, then the name, then the metrics. A resize rebuilds the
+  rows at the new width. It grows to 6 rows, then scrolls instead of dropping rows.
+- **Transcript.** `● <name>(<intent>)` then `⎿  Backgrounded agent (↓ tasks)` when a task appears;
+  `● Agent "<name>" finished · <duration>`, `✗ … failed · …` or `⊘ … cancelled · …` when it ends, from the host's
+  ended tasks (`TuiIntegration.FinishedAgentRows`), so a task that starts and ends between two polls gets both lines,
+  in order; `@<task> finished · recipient is main` when the recipient ends while the prompt has focus;
+  `⎿  Interrupted · What should Orkeon do instead?` on `Esc Esc`. A poll whose provider throws writes nothing and leaves the rows, the list and the recipient as they were.
+- **Glyphs.** `◯`, `✔`, `⏵⏵` and the new `⎿` (`GlyphSet.Elbow`), `↑` (`GlyphSet.Up`) and `…` (`GlyphSet.Ellipsis`);
+  ASCII `> * o v > | * - ^ ...`, the hint bar's arrows, the cut phrase, the recipient label, the placeholder and the model
+  witness included.
+
+| Removed | Replacement |
+|---|---|
+| `TuiIntegration.ContextChip`, `ContextChipInfo` | none: the top rule names the recipient (`RuleChipView.SetLabel`) |
+| `RuleChipView.Bind(TuiIntegration)` | `RuleChipView.SetLabel(string?)`, `Refresh()` |
+| `SchemeFactory.Chip()`, `Rule()`, `Posture()` | `SchemeFactory.Attr(PaletteRole, …)`, `Dim()`, `Accent()`, `Alert()`, `Uniform(Attribute)` |
+| `AgentsPaneModel.FormatRow(…, nameColumn)`, `NameColumn` | internal segment formatting; `AgentRowInfo.State` (`TaskRowState`) colours the bullet |
+| `HintBarModel.LeftSegments` | internal `HintBarModel.Segments` |
+| `HintBarModel.ComposeLeft` | none: internal segments |
+
+Added: `GlyphSet.Up` and `GlyphSet.Ellipsis` (`required`: a hand-built `GlyphSet` sets them), and
+`TuiIntegration.FinishedAgentRows` (`Func<IReadOnlyList<AgentRowInfo>>?`: the ended tasks the host retains, oldest
+first, with their final `State`; null keeps the rows-only `finished` line).
+
+Migration: a host drops `TuiIntegration.ContextChip` (the tasks list gives the recipient); callers of the removed
+members move to the replacements above; a host that builds its own `GlyphSet` adds `Up` and `Ellipsis`, and one that
+wants the failed and cancelled lines wires `FinishedAgentRows`.
+
+### Changed — the prompt reads keys in three states: field, history, tasks list **[breaking]**
+
+In the Terminal.Gui console, `↑`/`↓` on the prompt walked the history in both directions, and the agents list was
+reached only with `F4`. A key is now read in one state, never twice:
+
+- **Field.** `↑` on the first visual row enters the history (the typed text is kept as the draft, the newest entry is
+  shown, caret at the end); with no history the caret moves as usual. `↓` on the last visual row focuses the tasks
+  list when it holds a task other than `main`, and does nothing otherwise. On a long wrapped line `↑`/`↓` first move
+  through its rows. `Home`/`End` reach the line's ends, `Ctrl+Home`/`Ctrl+End` the text's.
+- **History.** `↑` older (nothing on the oldest), `↓` newer, and from the newest the draft back; any edit leaves the
+  history and keeps the text; `Enter` sends the shown entry and drops the draft. Blank entries and a repeat of the
+  newest are still not recorded.
+- **Tasks list.** `↓` down without wrapping, `↑` up and back to the prompt from the first row, `Esc` or `F4` back to
+  the prompt (text and caret restored), `Home`/`End` first/last row, `Enter` prints the task's detail and sends
+  nothing, a printable key returns to the prompt with it typed. `Tab` leaves the list like `Esc`; `Ctrl+V` or a
+  right-click leaves it and pastes at the restored caret; `Esc Esc` from the list interrupts the prompt's turn. The
+  state follows the focus: a click on a row enters the list on that row (a double-click also opens it), and focus
+  reaching the prompt by any other way leaves the list and keeps the current text. The selection is kept by ticket
+  across the list's re-sort; an emptied list gives the focus back to the prompt.
+- **Recipient.** The selected row is the recipient of the next message: the placeholder reads `Message @<task>…` and
+  the rule above the prompt ends with `── <task> ─`; `main` is the default. Until a host wires `TuiIntegration.SendToTask`, `Enter`
+  to a task prints that sending to a task is not supported yet and keeps the text in the field.
+- **Hint bar.** `f4 agents` becomes `↓ tasks` in the field and `↑/↓ select · enter view` in the list. `F4` and the
+  new keys stand down while a modal dialog has focus, as `Ctrl+V` does.
+
+Migration: `↓` on the prompt's last row no longer walks the history forward from the field: it focuses the tasks list
+when one runs. Walk the history with `↑`, then `↓` back to the draft; leave the list with `Esc`. See
+`docs/architecture/cli-ts-commands.md` and `src/cli/Orkeon.Cli.TerminalGui/README.md`.
+
+The console's public API moves with it (`src/cli/Orkeon.Cli.TerminalGui/PublicAPI.Unshipped.txt`):
+
+| Before | After |
+|---|---|
+| `HintBarModel.LeftSegments(permissionMode, commandRunning, agentsPaneAvailable)` | removed (see the bottom-area entry); the `f4 agents` segment is `↓ tasks` |
+| — | `TuiIntegration.SendToTask` (`Func<string, string, bool>?`: ticket, text, true when delivered); null keeps the text in the field |
+
+### Changed — the REPL interrupts with Esc Esc, and Ctrl+C only copies **[breaking]** (CH-02..CH-07)
+
+In the Terminal.Gui console, `Ctrl+C` cancelled the running command, and a second `Ctrl+C` quit the
+application, so a stray double press closed the whole session. The keys now say what they do:
+
+- **`Esc Esc` interrupts the prompt's turn.** The first `Esc` clears the draft (and arms the pair, on an empty
+  draft too); the second, right after it, cancels the turn submitted from the prompt, whether it runs as a
+  synchronous command or as a dispatched ticket, a retry backoff included (the `/ps` ticket shows cancelled). The hint
+  bar shows `esc esc to interrupt` while that turn runs.
+- **No key cancels a background crew.** A ticket started by anything else (a detached crew, compaction, indexing)
+  keeps running and stays reachable through `/cancel <ticket>`.
+- **`Ctrl+C` only copies.** With a selection it copies it; without one it prints a one-line hint. It never cancels
+  and never quits.
+- **In the tasks list (`↓` or `F4`), `Esc` returns to the prompt** and cancels nothing, a turn running or not; a second
+  `Esc` right after it interrupts the prompt's turn.
+- **`Ctrl+Q` asks before quitting during the prompt's turn**, as it already did during a synchronous command.
+
+Migration: interrupt a turn with `Esc Esc` on the prompt, quit with `Ctrl+Q` (confirm while a turn runs); a script or a
+habit that sent `Ctrl+C` to stop a command, or twice to leave, no longer does either. See
+`docs/architecture/cli-ts-commands.md` and `src/cli/Orkeon.Cli.TerminalGui/README.md`.
+
+The shipped public API of the console moves with it (the owner allowed it; each change is in the projects'
+`PublicAPI.Unshipped.txt`):
+
+| Before | After |
+|---|---|
+| `HintBarModel.ConfigWitness` (`"/rc"`) | Removed: the witness is `HintBarModel.Witness(ModelWitnessInfo?, GlyphSet)`, coloured by `HintBarModel.WitnessScheme(ModelAvailability)`, at most `HintBarModel.WitnessMaxWidth` (24) columns |
+| `HintBarView.Bind(runner, integration, agentsAvailable, configUsable, …)` | `configUsable` is replaced by `Func<ModelWitnessInfo?>? modelWitness`, read at each refresh |
+| — | `TuiIntegration.PromptTurnRunning` (`Func<bool>?`) and `TuiIntegration.ModelWitness` (`Func<ModelWitnessInfo?>?`); a null delegate reads as "no turn" / the `Llm:Model` setting |
+| — | `ReplPaneView.InterruptRequested` (raised by the second `Esc`); `SchemeFactory.Warn()` and `SchemeFactory.Error()` |
+| `CommandDispatchService.BeginCommand(name, ct, timeout)` | `BeginCommand(name, ct, timeout, string? promptLine = null)`; `PromptTurnTickets()` returns the prompt turn's tickets still running |
+
+### Added — the console's witness names the selected model, coloured by what its calls did (CH-08)
+
+The right-aligned `/rc` of the hint bar, which only said whether a config was loaded, is replaced by the name of
+the selected model, truncated to 24 columns with `…`. Its colour follows the calls the console has observed, never
+a probe: green on a final 2xx (and before any call), amber during a retry backoff of that model, red after a final
+non-2xx, a timeout, or when no model is configured (`no model`). Only the displayed model's calls colour it, a
+change of model resets it, and a call ended by the caller leaves it unchanged. The name is the `selected_model`
+key of the session state (`SessionStateKeys.SelectedModel`, beside `default_permission_mode`); Orkeon Code's
+`/model` does not write it yet, so the witness reads `Llm:Model` meanwhile.
+
+- `ILlmRetryObserver.OnCallSettled(LlmCallSettlement)` is new (a default body calls the parameterless
+  `OnCallSettled()`, so existing observers still compile); `LlmCallSettlement` carries the effective `Model` and
+  `Succeeded`, and `LlmRetryEvent.Model` names the model of a retry.
+- `ModelAvailability` (`Available`, `Reconnecting`, `Unavailable`) is new in `Orkeon.Cli.Abstractions`, and
+  `ModelWitnessInfo` in `Orkeon.Cli.TerminalGui`.
+- `LlmRetryProgressObserver` gains `Current`, `Reset()` and `OnCallSettled(LlmCallSettlement)`; a host registering its
+  own `ILlmRetryObserver` gets a witness that stays green.
+
+### Fixed — Ctrl+V pastes into the input, and a drag selects in it (CH-09, CH-10)
+
+`Ctrl+V` did not paste into the input in Windows Terminal and the PowerShell session on WSL, while a right-click did.
+A global key handler now pastes the clipboard into the input in the runner and in the REPL modes, and stands down
+while a modal dialog has focus. A mouse drag in the input highlights text and copies it on release, as in the
+transcript.
+
+### Fixed — the banner shows the built version without build metadata (CH-01)
+
+The banner's product line carried the `+<sha>` build metadata of the informational version. It shows the version of
+`src/Directory.Build.props` only (`1.0.0-rc.5`).
+
 ### Added — every built-in tool is typed in the shipped typings (#125)
 
 `OrkeonTools` declared a handful of tools by hand, and three of them did not match the tools:

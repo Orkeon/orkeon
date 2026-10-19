@@ -1,11 +1,14 @@
 using Orkeon.Constants.Configuration;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Cli.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.ConsoleApp.Services;
@@ -43,7 +46,7 @@ internal static class TuiFidelityWiring
     /// <summary>Builds the banner from what the host actually knows. Empty parts are omitted.</summary>
     public static BannerInfo BuildBannerInfo(IConfiguration configuration)
     {
-        var version = typeof(TuiFidelityWiring).Assembly.GetName().Version?.ToString(3) ?? "dev";
+        var version = ProductVersion();
         var model = configuration["Llm:Model"];
         var window = configuration[ConfigurationKeys.CliSessionContextWindowTokens];
         var baseUrl = configuration["Llm:BaseUrl"];
@@ -66,6 +69,20 @@ internal static class TuiFidelityWiring
         };
     }
 
+    /// <summary>The informational version of this assembly without build metadata; "dev" when absent.</summary>
+    internal static string ProductVersion()
+    {
+        var informational = typeof(TuiFidelityWiring).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrEmpty(informational))
+        {
+            return "dev";
+        }
+
+        var plus = informational.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? informational : informational[..plus];
+    }
+
     /// <summary>
     /// The banner's model line: the configured model, followed by the context window and the
     /// endpoint host whenever the configuration says enough for each of them.
@@ -75,6 +92,44 @@ internal static class TuiFidelityWiring
         var contextPart = long.TryParse(window, out var w) && w > 0 ? $" ({FormatWindow(w)} context)" : "";
         var hostPart = Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ? $" · {uri.Host}" : "";
         return model + contextPart + hostPart;
+    }
+
+    /// <summary>
+    /// The hint bar's model witness: the selected model (session state, else <c>Llm:Model</c>) and
+    /// the availability the retry observer reports for it. A change of the displayed model resets
+    /// the observer, so the colour never carries over from another model.
+    /// </summary>
+    private static Func<ModelWitnessInfo?> BuildModelWitnessReader(
+        ISessionBufferService? buffer,
+        IConfiguration? configuration,
+        LlmRetryProgressObserver? observer)
+    {
+        var gate = new object();
+        string? previous = null;
+        return () =>
+        {
+            var displayed = buffer?.GetState(Orkeon.Constants.Cli.SessionStateKeys.SelectedModel);
+            if (string.IsNullOrWhiteSpace(displayed)) displayed = configuration?["Llm:Model"];
+            if (string.IsNullOrWhiteSpace(displayed))
+                return new ModelWitnessInfo { Model = string.Empty, Availability = ModelAvailability.Unavailable };
+
+            var availability = ModelAvailability.Available;
+            lock (gate)
+            {
+                if (previous is not null && !string.Equals(previous, displayed, StringComparison.Ordinal))
+                {
+                    observer?.Reset();
+                }
+                else if (observer is not null)
+                {
+                    var (model, state) = observer.Current;
+                    if (model is null || string.Equals(model, displayed, StringComparison.OrdinalIgnoreCase))
+                        availability = state;
+                }
+                previous = displayed;
+            }
+            return new ModelWitnessInfo { Model = displayed, Availability = availability };
+        };
     }
 
     /// <summary>
@@ -97,16 +152,12 @@ internal static class TuiFidelityWiring
                 var idx = Array.IndexOf(ModeCycle, current);
                 buffer.SetState(DefaultModeStateKey, ModeCycle[(idx + 1 + ModeCycle.Length) % ModeCycle.Length]);
             };
-            // Chip: the session title (/rename) when set, else the workspace — session
-            // styling (blue). Agent-target styling waits on addressable sub-agents.
-            integration.ContextChip = () =>
-            {
-                var title = buffer.GetMetadata().Title;
-                return new ContextChipInfo(
-                    string.IsNullOrWhiteSpace(title) ? "workspace" : title!,
-                    IsAgentTarget: false);
-            };
         }
+
+        integration.ModelWitness = BuildModelWitnessReader(
+            buffer,
+            services.GetService<IConfiguration>(),
+            services.GetService<LlmRetryProgressObserver>());
 
         if (cost is not null)
             integration.SessionTokens = () => cost.GetReport().TotalTokens;
@@ -114,16 +165,14 @@ internal static class TuiFidelityWiring
         if (dispatch is not null)
         {
             integration.AgentRows = () => BuildAgentRows(dispatch);
+            integration.FinishedAgentRows = () => BuildFinishedAgentRows(dispatch);
             integration.InterruptCurrent = () =>
             {
-                // Cancel the most recent still-running async instance — the reference's
-                // "esc to interrupt" acts on the turn in flight.
-                var running = dispatch.list()
-                    .Where(v => v.state is "running" or "dispatched")
-                    .OrderByDescending(v => v.startedAt, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (running is not null) dispatch.cancel(running.ticket);
+                // "esc to interrupt" acts on the prompt turn in flight: every ticket of it.
+                foreach (var ticket in dispatch.PromptTurnTickets())
+                    dispatch.cancel(ticket);
             };
+            integration.PromptTurnRunning = () => dispatch.PromptTurnTickets().Count > 0;
             integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket));
         }
 
@@ -264,10 +313,12 @@ internal static class TuiFidelityWiring
         => s.Length <= max ? s : s[..max] + "…";
 
     /// <summary>
-    /// The agents rows, mirroring the reference's contract: LIVE work only. One row per
-    /// RUNNING async instance (hollow bullet), preceded by <c>● main</c> — which appears
-    /// only while at least one agent runs; with nothing delegated the list is empty and
-    /// the pane collapses. Finished agents leave the pane immediately — <c>idle</c> means
+    /// The tasks rows, mirroring the reference's contract: LIVE work only. <c>main</c> comes
+    /// first — and appears only while at least one task runs; with nothing delegated the list
+    /// is empty and collapses — then one row per running or dispatched async instance, in
+    /// creation order (oldest first, so a row never moves under the cursor). Each row carries
+    /// its state (<c>running</c> ⇒ running, <c>dispatched</c> ⇒ idle; <c>main</c> runs while the
+    /// prompt's turn does). Finished tasks leave the list immediately — <c>idle</c> means
     /// *waiting*, not *finished* (user ruling 2026-08-06) — and stay auditable via
     /// <c>ps</c>/<c>inspect</c>.
     /// </summary>
@@ -278,12 +329,17 @@ internal static class TuiFidelityWiring
 
         var rows = new List<AgentRowInfo>(instances.Count + 1)
         {
-            // The primary loop: filled bullet, no description, no metrics — `● main` alone.
-            new() { Name = "main", IsActive = true },
+            // The primary loop: no description, no metrics — `● main` alone.
+            new()
+            {
+                Name = "main",
+                IsActive = true,
+                State = dispatch.PromptTurnTickets().Count > 0 ? TaskRowState.Running : TaskRowState.Idle,
+            },
         };
 
         rows.AddRange(instances
-            .OrderByDescending(v => v.startedAt, StringComparer.Ordinal)
+            .OrderBy(v => v.startedAt, StringComparer.Ordinal)
             .Select(v =>
             {
                 // A live progress snapshot replaces the static intent while it runs —
@@ -293,16 +349,48 @@ internal static class TuiFidelityWiring
                     : v.intent ?? "";
                 return new AgentRowInfo
                 {
-                    Name = string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}",
+                    Name = RowName(v),
                     Description = description,
                     Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
                     Tokens = v.tokens > 0 ? v.tokens : null,
                     IsActive = false,
+                    State = v.state == "running" ? TaskRowState.Running : TaskRowState.Idle,
                     Ticket = v.ticket,
                 };
             }));
         return rows;
     }
+
+    /// <summary>
+    /// The background tasks that ended and the registry still retains, oldest end first, with
+    /// their final state (done, failed, cancelled) and duration: the tasks list's transcript lines
+    /// read them, so a task that starts and ends between two polls is still reported, and a
+    /// failure reads as one. Sync requests and rejected launches are not tasks of the list.
+    /// </summary>
+    internal static List<AgentRowInfo> BuildFinishedAgentRows(CommandDispatchService dispatch) =>
+        dispatch.list()
+            .Where(v => v.kind == "async" && v.state is "done" or "failed" or "cancelled")
+            .OrderBy(v => v.completedAt ?? v.startedAt, StringComparer.Ordinal)
+            .ThenBy(v => v.ticket.Length)
+            .ThenBy(v => v.ticket, StringComparer.Ordinal)
+            .Select(v => new AgentRowInfo
+            {
+                Name = RowName(v),
+                Description = v.intent ?? "",
+                Elapsed = v.elapsedMs is > 0 ? TimeSpan.FromMilliseconds(v.elapsedMs) : null,
+                Tokens = v.tokens > 0 ? v.tokens : null,
+                State = v.state switch
+                {
+                    "failed" => TaskRowState.Failed,
+                    "cancelled" => TaskRowState.Cancelled,
+                    _ => TaskRowState.Done,
+                },
+                Ticket = v.ticket,
+            })
+            .ToList();
+
+    private static string RowName(CommandInstanceView v) =>
+        string.IsNullOrEmpty(v.targetAgent) ? v.name : $"{v.name}@{v.targetAgent}";
 
     private static bool IsRunning(CommandInstanceView v) => v.state is "running" or "dispatched";
 

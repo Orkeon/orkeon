@@ -15,4 +15,7 @@ public static class SessionStateKeys
     /// the console and cycled on Shift+Tab.
     /// </summary>
     public const string DefaultPermissionMode = "default_permission_mode";
+
+    /// <summary>The model selected for the session; shown in the hint bar.</summary>
+    public const string SelectedModel = "selected_model";
 }

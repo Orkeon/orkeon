@@ -1,1 +1,84 @@
 #nullable enable
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.InterruptRequested -> System.EventHandler?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.get -> System.Func<bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ModelWitness.get -> System.Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ModelWitness.set -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo!
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Availability.get -> Orkeon.Cli.Abstractions.ModelAvailability
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Availability.init -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Equals(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? other) -> bool
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Model.get -> string!
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Model.init -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.ModelWitnessInfo() -> void
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Equals(object? obj) -> bool
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.GetHashCode() -> int
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.ToString() -> string!
+static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator !=(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
+static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator ==(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
+const Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessMaxWidth = 24 -> int
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.Witness(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? info, Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs) -> string!
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Warn() -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Error() -> Terminal.Gui.Drawing.Scheme!
+*REMOVED*const Orkeon.Cli.TerminalGui.Layout.HintBarModel.ConfigWitness = "/rc" -> string!
+*REMOVED*Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, bool configUsable, System.Func<bool>? agentsHasRows = null) -> void
+Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, System.Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>? modelWitness, System.Func<bool>? agentsHasRows = null) -> void
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.HintBarModel.LeftSegments(string! permissionMode, bool commandRunning, bool agentsPaneAvailable) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.get -> System.Func<string!, string!, bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.set -> void
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextChip.get -> System.Func<Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo?>?
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextChip.set -> void
+*REMOVED*Orkeon.Cli.TerminalGui.Layout.RuleChipView.Bind(Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration) -> void
+*REMOVED*override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.GetHashCode() -> int
+*REMOVED*override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.ToString() -> string!
+*REMOVED*static Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.operator !=(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? left, Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? right) -> bool
+*REMOVED*static Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.operator ==(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? left, Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? right) -> bool
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.FormatRow(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo! row, int width, int nameColumn, bool selected = false) -> string!
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.NameColumn(System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! rows) -> int
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.HintBarModel.ComposeLeft(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, System.Collections.Generic.IReadOnlyList<string!>! segments) -> string!
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Chip(bool agentTarget) -> Terminal.Gui.Drawing.Scheme!
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Posture() -> Terminal.Gui.Drawing.Scheme!
+*REMOVED*static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Rule(bool agentTarget) -> Terminal.Gui.Drawing.Scheme!
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo!
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.ContextChipInfo(string! Text, bool IsAgentTarget) -> void
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Deconstruct(out string! Text, out bool IsAgentTarget) -> void
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Equals(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? other) -> bool
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.IsAgentTarget.get -> bool
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.IsAgentTarget.init -> void
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Text.get -> string!
+*REMOVED*Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Text.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Idle = 0 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Running = 1 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Done = 2 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Failed = 3 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Cancelled = 4 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.State.get -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.State.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Elbow.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Elbow.init -> void
+Orkeon.Cli.TerminalGui.Layout.RuleChipView.SetLabel(string? label) -> void
+Orkeon.Cli.TerminalGui.Layout.PaletteRole
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Alert() -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Uniform(Terminal.Gui.Drawing.Attribute attr) -> Terminal.Gui.Drawing.Scheme!
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Normal = 0 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Dim = 1 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Accent = 2 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Ok = 3 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Alert = 4 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Error = 5 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.IsTrueColor(string? colorTerm) -> bool
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Foreground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool bold = false, bool italic = false) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Normal() -> Terminal.Gui.Drawing.Scheme!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.set -> void

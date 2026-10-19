@@ -43,6 +43,8 @@ public sealed partial class CommandDispatchService
 
     private static readonly AsyncLocal<CommandDispatchScope?> _ambient = new();
 
+    private static volatile CommandDispatchScope? _promptScope;
+
     public CommandDispatchService(
         IAgentChannel channel,
         AgentCommandDirectory directory,
@@ -73,13 +75,18 @@ public sealed partial class CommandDispatchService
     /// in this so <c>request</c>/<c>post</c> can read the command name + token and record the
     /// async instances created during <c>dispatch</c>.
     /// </summary>
-    public static CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null)
+    public static CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null)
     {
         var previous = _ambient.Value;
-        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct);
+        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner);
+        if (promptLine is not null) _promptScope = scope;
         _ambient.Value = scope;
         return scope;
     }
+
+    /// <summary>Tickets of the latest prompt scope that are still running.</summary>
+    public IReadOnlyList<string> PromptTurnTickets()
+        => _promptScope?.Turn.Select(i => _registry.Get(i.Ticket)).Where(i => i is { State: CommandInstanceState.Running }).Select(i => i!.Ticket).ToList() ?? new List<string>();
 
     // ---- JS surface -----------------------------------------------------------------------
 

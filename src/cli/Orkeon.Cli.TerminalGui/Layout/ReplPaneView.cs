@@ -10,9 +10,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 
 /// <summary>
 /// REPL pane of the fidelity layout: borderless transcript (read-only) on top, then the
-/// one-row status line, the rule + context chip, and the prompt (marker + soft-wrapping,
-/// auto-growing multi-line input) at the bottom — the vertical order of the reference
-/// captures (PLAN C1/C5/C6/C7).
+/// one-row spinner line, the top separator (carrying the recipient task's name), the prompt
+/// (marker + soft-wrapping, auto-growing multi-line input) and the bottom separator — the
+/// vertical order of the reference captures (PLAN C1/C5/C6/C7).
 /// <see cref="ReadLineAsync"/> bridges the event-driven UI to the synchronous-blocking
 /// <see cref="System.IO.TextReader.ReadLine"/> contract used by <see cref="Orkeon.Cli.Abstractions.Console.IConsoleAdapter"/>.
 /// </summary>
@@ -21,19 +21,23 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// and the console adapter still routes it here by heuristic — only the RENDERING maps
 /// it to the prompt glyph, so the plain (non-TUI) mode stays byte-exact (PLAN §2.1).
 /// </remarks>
-public sealed class ReplPaneView : View
+public sealed class ReplPaneView : View, ITaskListNavigator
 {
     private readonly TextView _history;
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
-    private readonly TextView _input;
+    private readonly MouseClipboardTextView _input;
     private readonly StatusLineView _statusLine;
     private readonly RuleChipView _ruleChip;
+    private readonly RuleChipView _bottomRule;
     private readonly IUiDispatcher _dispatcher;
     private readonly GlyphSet _glyphs;
 
-    // Rows reserved between the transcript and the prompt: status line + rule/chip.
+    // Rows reserved between the transcript and the prompt: spinner line + top separator.
     private const int BandRows = 2;
+
+    // Rows under the prompt: the bottom separator.
+    private const int BelowRows = 1;
 
     // Cap on how many rows the multi-line input may grow to before it scrolls internally,
     // so a long paste / many Shift+Enter lines never swallow the whole REPL pane.
@@ -47,11 +51,16 @@ public sealed class ReplPaneView : View
     // the runner's startup script load). Delivered FIFO to subsequent reads — see DeliverOrBuffer.
     private readonly Queue<string> _typeAhead = new();
 
-    // Cap 2 — submitted-line history. Newest at the end. _historyCursor walks it:
-    // [0.._lineHistory.Count) selects an entry, == Count means "the in-progress draft".
-    private readonly List<string> _lineHistory = new();
-    private int _historyCursor;
-    private string _draft = string.Empty;
+    // Field / History / List: the submitted entries, the draft and the tasks list's selection
+    // and recipient live in the pure machine; this view translates keys and applies its actions.
+    private readonly InputNavigationStateMachine _navigation = new();
+    private AgentsPaneView? _tasks;
+    private TuiIntegration? _integration;
+
+    // True while this view writes the field itself (history recall, restore, clear, submit):
+    // ContentsChanged then reports no user edit to the machine.
+    private bool _applyingNavigation;
+    private string _basePlaceholder = PlaceholderText;
 
     // Double-Escape clears the draft. Armed by the first Escape, fired (and reset) by a second
     // consecutive Escape; any other key disarms it. A single Escape is swallowed so it never quits.
@@ -80,7 +89,7 @@ public sealed class ReplPaneView : View
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(1 + BandRows),
+            Height = Dim.Fill(1 + BandRows + BelowRows),
             ReadOnly = true,
             Multiline = true,
             // Display-only soft-wrap when enabled: Terminal.Gui keeps the original unwrapped model
@@ -101,28 +110,34 @@ public sealed class ReplPaneView : View
         _statusLine = new StatusLineView(options, dispatcher, TimeProvider.System)
         {
             X = 0,
-            Y = Pos.AnchorEnd(1 + BandRows),
+            Y = Pos.AnchorEnd(1 + BandRows + BelowRows),
             Width = Dim.Fill(),
         };
         _ruleChip = new RuleChipView(options, dispatcher)
         {
             X = 0,
-            Y = Pos.AnchorEnd(2),
+            Y = Pos.AnchorEnd(2 + BelowRows),
+            Width = Dim.Fill(),
+        };
+        _bottomRule = new RuleChipView(options, dispatcher)
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(BelowRows),
             Width = Dim.Fill(),
         };
 
         _promptLabel = new Label
         {
             X = 0,
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Height = 1,
             Text = $"{_glyphs.Prompt} ",
         };
-        _promptLabel.SetScheme(SchemeFactory.Accent());
-        _input = new TextView
+        _promptLabel.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Accent, bold: true)));
+        _input = new MouseClipboardTextView
         {
             X = Pos.Right(_promptLabel),
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Width = Dim.Fill(),
             Height = 1,
             CanFocus = true,
@@ -142,9 +157,28 @@ public sealed class ReplPaneView : View
         };
         _input.SetScheme(SchemeFactory.Editable());
         _input.KeyDown += OnInputKeyDown;
+        // Ctrl+A / Ctrl+C-with-selection are consumed by the view before KeyDown: they still disarm Esc-Esc.
+        _input.KeyConsumed += (_, _) => _escapeArmed = false;
         // Grow / shrink the input box (and the history above it) whenever the line count changes
         // — Shift+Enter, paste, history recall, or a backspace that merges two lines.
-        _input.ContentsChanged += (_, _) => { SyncInputHeight(); SyncPlaceholder(); };
+        _input.ContentsChanged += (_, _) =>
+        {
+            SyncInputHeight();
+            SyncPlaceholder();
+            if (_applyingNavigation) return;
+            // Text that lands in the field while the list holds the keys (a paste path the host
+            // missed, a writer of its own) ends the list first: the field keeps what it now shows.
+            if (_navigation.State == InputNavigationState.List) Apply(_navigation.OnFieldFocused());
+            _navigation.OnTextEdited(CurrentInput);
+        };
+        // The list state follows the real focus: the field taking it back by any way the machine did
+        // not order (a mouse click, a focus move) leaves the list with the field's text and caret as
+        // they are now, so a later ↑ or Esc never restores a stale draft over them.
+        _input.HasFocusChanged += (_, _) =>
+        {
+            if (_input.HasFocus && _navigation.State == InputNavigationState.List)
+                Apply(_navigation.OnFieldFocused());
+        };
 
         // Simulated placeholder (Terminal.Gui exposes none on TextView): a dim label
         // OVER the input, shown only while the draft is empty. It is display chrome —
@@ -152,14 +186,14 @@ public sealed class ReplPaneView : View
         _placeholder = new Label
         {
             X = Pos.Right(_promptLabel),
-            Y = Pos.AnchorEnd(1),
+            Y = Pos.AnchorEnd(1 + BelowRows),
             Height = 1,
             Text = PlaceholderText,
             CanFocus = false,
         };
-        _placeholder.SetScheme(SchemeFactory.Dim());
+        _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
-        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder);
+        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -170,9 +204,12 @@ public sealed class ReplPaneView : View
     /// <summary>Emitted on every key down on the input field. Used by the console adapter's <c>ReadKey</c>.</summary>
     public event EventHandler<KeyCapturedEventArgs>? KeyCaptured;
 
+    /// <summary>Raised by the second consecutive Esc.</summary>
+    public event EventHandler? InterruptRequested;
+
     /// <summary>
     /// The editable multi-line input field. Exposed so the global right-click
-    /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste"/>)
+    /// paste handler (<see cref="MouseClipboardBehavior.AttachRightClickPaste(Func{bool})"/>)
     /// can target the only writable surface in the split-pane.
     /// </summary>
     public TextView Input => _input;
@@ -210,14 +247,50 @@ public sealed class ReplPaneView : View
         _dispatcher.Invoke(() => _promptLabel.Text = $"{_glyphs.Prompt} ");
     }
 
-    /// <summary>Placeholder shown while the draft is empty (contextual, e.g. a target hint).</summary>
+    /// <summary>
+    /// Placeholder shown while the draft is empty (contextual, e.g. a target hint). A task chosen
+    /// as recipient in the tasks list overrides it with <c>Message @task…</c> until <c>main</c> is
+    /// selected again.
+    /// </summary>
     public void SetPlaceholder(string text)
     {
         _dispatcher.Invoke(() =>
         {
-            _placeholder.Text = text ?? string.Empty;
-            SyncPlaceholder();
+            _basePlaceholder = text ?? string.Empty;
+            SyncRecipientDisplay();
         });
+    }
+
+    /// <summary>The prompt's key-interpretation state (Field, History, List) and its recipient.</summary>
+    internal InputNavigationStateMachine Navigation => _navigation;
+
+    /// <summary>Raised after a key or a rows change moved the state or the recipient (the hint bar refreshes).</summary>
+    internal event EventHandler? NavigationChanged;
+
+    /// <summary>Makes <paramref name="tasks"/> the list ↓ reaches from the field; its keys come back here.</summary>
+    internal void AttachTaskList(AgentsPaneView tasks)
+    {
+        ArgumentNullException.ThrowIfNull(tasks);
+        _tasks = tasks;
+        tasks.Navigator = this;
+    }
+
+    /// <summary>Gives the view the host's delegates (<see cref="TuiIntegration.SendToTask"/>), read at each Enter.</summary>
+    internal void BindIntegration(TuiIntegration integration)
+    {
+        ArgumentNullException.ThrowIfNull(integration);
+        _integration = integration;
+    }
+
+    /// <summary>The placeholder the field shows for the current recipient.</summary>
+    internal static string RecipientPlaceholder(string? recipientName, string basePlaceholder, GlyphSet glyphs)
+        => recipientName is null ? basePlaceholder : $"Message @{recipientName}{glyphs.Ellipsis}";
+
+    private void SyncRecipientDisplay()
+    {
+        _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder, _glyphs);
+        _ruleChip.SetLabel(_navigation.RecipientName);
+        SyncPlaceholder();
     }
 
     private void SyncPlaceholder()
@@ -228,8 +301,14 @@ public sealed class ReplPaneView : View
     /// <summary>The status line band (bound by the host to the runner + integration).</summary>
     public StatusLineView StatusLine => _statusLine;
 
-    /// <summary>The rule + context chip band (bound by the host to the integration).</summary>
+    /// <summary>The top separator: it names the recipient task while it is not <c>main</c>.</summary>
     public RuleChipView RuleChip => _ruleChip;
+
+    /// <summary>The bottom separator, under the prompt.</summary>
+    internal RuleChipView BottomRule => _bottomRule;
+
+    /// <summary>The glyph set this pane resolved (the transcript lines written about it use the same).</summary>
+    internal GlyphSet Glyphs => _glyphs;
 
     private static bool OutputIsUtf8()
     {
@@ -303,14 +382,19 @@ public sealed class ReplPaneView : View
 
         var bare = PaneClipboard.BareKey(key);
 
-        // Escape never quits the app from the prompt: a single Escape is swallowed, a second
-        // consecutive Escape clears the current draft (Esc-Esc). Any other key disarms the sequence.
+        // Escape never quits the app from the prompt: the first Escape clears the draft and arms,
+        // a second consecutive Escape requests an interrupt (Esc-Esc). Any other key disarms the sequence.
         if (bare == KeyCode.Esc)
         {
-            if (_escapeArmed)
-                ClearInput();
-            _escapeArmed = !_escapeArmed;
             key.Handled = true;
+            if (_escapeArmed)
+            {
+                _escapeArmed = false;
+                InterruptRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+            ClearInput();
+            _escapeArmed = true;
             return;
         }
         _escapeArmed = false;
@@ -333,7 +417,7 @@ public sealed class ReplPaneView : View
             if (key.IsShift)
                 _input.InsertText("\n");
             else
-                SubmitLine();
+                Navigate(InputNavigationKey.Enter, key);
             key.Handled = true;
             return;
         }
@@ -368,34 +452,244 @@ public sealed class ReplPaneView : View
     }
 
     /// <summary>
-    /// Handles the history-recall (↑/↓ at the text boundaries) and Tab-completion keys. ↑/↓ in the
-    /// middle of a multi-line draft are left unhandled so the native TextView moves the caret.
+    /// Routes ↑/↓, Home/End and Ctrl+Home/Ctrl+End through the navigation machine, and Tab to
+    /// completion. A key the machine leaves (↑/↓ inside a multi-line draft, Home/End) keeps its
+    /// native TextView effect.
     /// </summary>
     private void HandleNavigationKey(Key key)
     {
-        switch (key.KeyCode)
+        if (key.KeyCode == KeyCode.Tab)
         {
-            // ↑/↓ recall command history only at the text boundaries; in the middle of a multi-line
-            // draft they move the caret between lines (native TextView behaviour — left unhandled).
-            case KeyCode.CursorUp:
-                if (_input.CurrentRow == 0)
-                {
-                    NavigateHistory(-1);
-                    key.Handled = true;
-                }
-                return;
-            case KeyCode.CursorDown:
-                if (_input.CurrentRow >= _input.Lines - 1)
-                {
-                    NavigateHistory(+1);
-                    key.Handled = true;
-                }
-                return;
-            case KeyCode.Tab:
-                TryComplete();
-                key.Handled = true;
-                return;
+            TryComplete();
+            key.Handled = true;
+            return;
         }
+        if (MapFieldKey(key.KeyCode) is { } navigationKey)
+            Navigate(navigationKey, key);
+    }
+
+    private static InputNavigationKey? MapFieldKey(KeyCode code) => code switch
+    {
+        KeyCode.CursorUp => InputNavigationKey.Up,
+        KeyCode.CursorDown => InputNavigationKey.Down,
+        KeyCode.Home => InputNavigationKey.Home,
+        KeyCode.End => InputNavigationKey.End,
+        KeyCode.Home | KeyCode.CtrlMask => InputNavigationKey.CtrlHome,
+        KeyCode.End | KeyCode.CtrlMask => InputNavigationKey.CtrlEnd,
+        _ => null,
+    };
+
+    private void Navigate(InputNavigationKey navigationKey, Key key, string? character = null)
+    {
+        var action = _navigation.Handle(navigationKey, BuildContext(character));
+        if (action.Handled) key.Handled = true;
+        Apply(action);
+    }
+
+    private InputNavigationContext BuildContext(string? character = null)
+    {
+        var text = CurrentInput;
+        var (first, last) = CaretRowBounds(text, _input.CurrentColumn, _input.CurrentRow, _input.Lines, _input.Viewport.Width);
+        return new InputNavigationContext
+        {
+            Text = text,
+            Caret = new InputCaret(_input.CurrentColumn, _input.CurrentRow),
+            CaretOnFirstRow = first,
+            CaretOnLastRow = last,
+            Rows = _tasks?.Rows ?? [],
+            ModalFocused = ModalFocus.IsActive(),
+            CanSendToTask = _integration?.SendToTask is not null,
+            Character = character,
+        };
+    }
+
+    /// <summary>
+    /// Whether the caret sits on the first / last VISUAL row of the soft-wrapped field. When
+    /// Terminal.Gui's wrapped model is live (<paramref name="fieldRows"/> exceeds the logical line
+    /// count) the caret row is already a visual row; outside a draw cycle the field reports logical
+    /// coordinates, so the visual row is estimated from <paramref name="width"/> the way
+    /// <see cref="CountWrappedRows"/> counts them.
+    /// </summary>
+    internal static (bool First, bool Last) CaretRowBounds(string? text, int column, int row, int fieldRows, int width)
+    {
+        var lines = (text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        if (fieldRows > lines.Length)
+            return (row <= 0, row >= fieldRows - 1);
+
+        var logicalRow = Math.Clamp(row, 0, lines.Length - 1);
+        if (width <= 0)
+            return (logicalRow == 0, logicalRow >= lines.Length - 1);
+
+        var before = 0;
+        for (var i = 0; i < logicalRow; i++)
+            before += Math.Max(1, (lines[i].Length + width - 1) / width);
+        var rowsOfLine = Math.Max(1, (lines[logicalRow].Length + width - 1) / width);
+        var caret = before + Math.Min(Math.Max(0, column) / width, rowsOfLine - 1);
+        var total = CountWrappedRows(text, width);
+        return (caret == 0, caret >= total - 1);
+    }
+
+    /// <summary>Applies one machine instruction to the field and the tasks list.</summary>
+    private void Apply(InputNavigationAction action)
+    {
+        switch (action.Kind)
+        {
+            case InputNavigationActionKind.SetText:
+                SetInputText(action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.Submit:
+                Deliver(action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.SendToTask:
+                SendToTask(action.Ticket!, action.Text ?? string.Empty);
+                break;
+            case InputNavigationActionKind.RecipientUnsupported:
+                AppendOutputLine($"Sending to a task is not supported yet: nothing was sent to @{_navigation.RecipientName}, the text stays in the field.");
+                break;
+            case InputNavigationActionKind.FocusList:
+                _tasks?.ShowSelection(action.Ticket);
+                break;
+            case InputNavigationActionKind.MoveListSelection:
+                _tasks?.SelectTicket(action.Ticket);
+                break;
+            case InputNavigationActionKind.OpenTask:
+                _tasks?.ActivateTicket(action.Ticket!);
+                break;
+            case InputNavigationActionKind.FocusField:
+                RestoreField(action);
+                break;
+        }
+        SyncRecipientDisplay();
+        NavigationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RestoreField(InputNavigationAction action)
+    {
+        _tasks?.HideSelection();
+        _input.SetFocus();
+        // No text in the action: the field keeps what it shows (the focus came back on its own).
+        if (action.Text is { } text && !string.Equals(CurrentInput, text, StringComparison.Ordinal))
+            SetInputText(text);
+        if (action.Caret is { } caret)
+            _input.InsertionPoint = new Point(caret.Column, caret.Row);
+        if (!string.IsNullOrEmpty(action.Insert))
+            _input.InsertText(action.Insert);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing sender keeps the text in the field, never crashes key dispatch.")]
+    private void SendToTask(string ticket, string text)
+    {
+        bool delivered;
+        try
+        {
+            delivered = _integration?.SendToTask?.Invoke(ticket, text) == true;
+        }
+        catch
+        {
+            delivered = false;
+        }
+        if (!delivered)
+        {
+            AppendOutputLine($"Could not deliver to @{_navigation.RecipientName}: the text stays in the field.");
+            return;
+        }
+        _navigation.RecordSubmitted(text);
+        SetInputText(string.Empty);
+        EchoSubmittedLine(text);
+    }
+
+    /// <summary>
+    /// Pastes the clipboard into the field — the one path of <c>Ctrl+V</c> and the right-click. From
+    /// the tasks list it first returns to the field (text and caret restored, as <c>Esc</c> does),
+    /// so the paste lands where the caret was and nothing restores a saved text over it afterwards.
+    /// </summary>
+    /// <returns>True when something was pasted.</returns>
+    internal bool PasteClipboard()
+    {
+        if (_navigation.State == InputNavigationState.List)
+            Apply(_navigation.Handle(InputNavigationKey.Paste, BuildContext()));
+        return PaneClipboard.PasteInto(_input);
+    }
+
+    bool ITaskListNavigator.HandleListKey(Key key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (_navigation.State != InputNavigationState.List) return false;
+        var bare = PaneClipboard.BareKey(key);
+        InputNavigationKey? navigationKey = key.KeyCode switch
+        {
+            KeyCode.CursorUp => InputNavigationKey.Up,
+            KeyCode.CursorDown => InputNavigationKey.Down,
+            KeyCode.Home => InputNavigationKey.Home,
+            KeyCode.End => InputNavigationKey.End,
+            KeyCode.Enter => InputNavigationKey.Enter,
+            KeyCode.Tab => InputNavigationKey.Tab,
+            _ when bare == KeyCode.Esc => InputNavigationKey.Escape,
+            _ => null,
+        };
+        // The Esc that leaves the list arms the pair, as the field's first Esc does: Esc Esc from
+        // the list interrupts the prompt's turn. Any other key of the list disarms it.
+        _escapeArmed = navigationKey == InputNavigationKey.Escape;
+        string? character = null;
+        if (navigationKey is null && PrintableText(key) is { } printable)
+        {
+            navigationKey = InputNavigationKey.Printable;
+            character = printable;
+        }
+        if (navigationKey is null) return false;
+        Navigate(navigationKey.Value, key, character);
+        return key.Handled;
+    }
+
+    void ITaskListNavigator.EnterList()
+    {
+        if (_navigation.State == InputNavigationState.List) return;
+        _escapeArmed = false;
+        Apply(_navigation.Handle(InputNavigationKey.ToggleList, BuildContext()));
+    }
+
+    void ITaskListNavigator.SelectRow(string? ticket)
+    {
+        var action = _navigation.SelectRow(ticket, BuildContext());
+        if (action.Kind == InputNavigationActionKind.None) return;
+        _escapeArmed = false;
+        Apply(action);
+    }
+
+    void ITaskListNavigator.LeaveList()
+    {
+        if (_navigation.State != InputNavigationState.List)
+        {
+            _tasks?.HideSelection();
+            return;
+        }
+        Apply(_navigation.Handle(InputNavigationKey.Escape, BuildContext()));
+    }
+
+    string? ITaskListNavigator.RecipientTicket => _navigation.RecipientTicket;
+
+    void ITaskListNavigator.RowsRefreshed(IReadOnlyList<AgentRowInfo> rows)
+    {
+        // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
+        var recipient = _navigation.RecipientTicket;
+        var action = _navigation.OnRowsChanged(rows);
+        if (action.DepartedRecipient is { } departed)
+            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
+        if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
+            Apply(action);
+    }
+
+    /// <summary><c>@alpha finished · recipient is main</c>: the recipient task left the list.</summary>
+    internal static string DepartedRecipientLine(GlyphSet glyphs, string name)
+        => $"@{name} finished {glyphs.Dot} recipient is main";
+
+    /// <summary>The text a key types, or null for a control, modified or non-character key.</summary>
+    private static string? PrintableText(Key key)
+    {
+        if (key.IsCtrl || key.IsAlt) return null;
+        var rune = key.AsRune;
+        if (rune.Value < 0x20 || System.Text.Rune.IsControl(rune)) return null;
+        return rune.ToString();
     }
 
     /// <summary>
@@ -409,12 +703,12 @@ public sealed class ReplPaneView : View
         if (rows == _inputRows) return;
         _inputRows = rows;
 
-        _history.Height = Dim.Fill(rows + BandRows);
-        _statusLine.Y = Pos.AnchorEnd(rows + BandRows);
-        _ruleChip.Y = Pos.AnchorEnd(rows + 1);
-        _promptLabel.Y = Pos.AnchorEnd(rows);
-        _placeholder.Y = Pos.AnchorEnd(rows);
-        _input.Y = Pos.AnchorEnd(rows);
+        _history.Height = Dim.Fill(rows + BandRows + BelowRows);
+        _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
+        _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
+        _promptLabel.Y = Pos.AnchorEnd(rows + BelowRows);
+        _placeholder.Y = Pos.AnchorEnd(rows + BelowRows);
+        _input.Y = Pos.AnchorEnd(rows + BelowRows);
         _input.Height = rows;
         SetNeedsLayout();
     }
@@ -459,31 +753,22 @@ public sealed class ReplPaneView : View
     /// </summary>
     private void ClearInput()
     {
-        _input.Text = string.Empty;
-        _draft = string.Empty;
-        _historyCursor = _lineHistory.Count;
+        SetInputText(string.Empty);
+        _navigation.Reset();
+        NavigationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
-    /// Enter: record the (possibly multi-line) entry in history and complete the pending read.
-    /// Line endings are normalised to <c>\n</c> so downstream consumers never see Terminal.Gui's
+    /// Enter to <c>main</c>: the machine has recorded the (possibly multi-line) entry; clear the
+    /// field, echo the entry and complete the pending read. The context carries the text with its
+    /// line endings normalised to <c>\n</c>, so downstream consumers never see Terminal.Gui's
     /// internal <c>\r\n</c>.
     /// </summary>
-    private void SubmitLine()
+    private void Deliver(string text)
     {
-        var text = (_input.Text ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal);
-        _input.Text = string.Empty;
-
-        var trimmed = text.Trim();
-        if (trimmed.Length > 0)
-        {
+        SetInputText(string.Empty);
+        if (text.Trim().Length > 0)
             EchoSubmittedLine(text);
-            if (_lineHistory.Count == 0 || !string.Equals(_lineHistory[^1], text, StringComparison.Ordinal))
-                _lineHistory.Add(text);
-        }
-        _historyCursor = _lineHistory.Count;
-        _draft = string.Empty;
-
         DeliverOrBuffer(text);
     }
 
@@ -525,21 +810,6 @@ public sealed class ReplPaneView : View
             AppendOutputLine(line);
     }
 
-    /// <summary>↑/↓ (cap 2): walk submitted-line history, preserving the in-progress draft slot.</summary>
-    private void NavigateHistory(int direction)
-    {
-        if (_lineHistory.Count == 0) return;
-
-        // Entering navigation from the live draft: stash it so ↓ can restore it.
-        if (_historyCursor == _lineHistory.Count)
-            _draft = _input.Text ?? string.Empty;
-
-        var next = Math.Clamp(_historyCursor + direction, 0, _lineHistory.Count);
-        _historyCursor = next;
-
-        SetInputText(next == _lineHistory.Count ? _draft : _lineHistory[next]);
-    }
-
     /// <summary>
     /// Tab (caps 3/4): complete the token at the cursor. A leading <c>/</c> on the first token
     /// completes command names; any <c>@</c> token completes virtual paths. Inert without a source.
@@ -571,10 +841,19 @@ public sealed class ReplPaneView : View
         _input.InsertionPoint = new Point(outcome.NewLeft.Length, row);
     }
 
+    /// <summary>Writes the field without reporting a user edit to the navigation machine.</summary>
     private void SetInputText(string value)
     {
-        _input.Text = value;
-        _input.MoveEnd();
+        _applyingNavigation = true;
+        try
+        {
+            _input.Text = value;
+            _input.MoveEnd();
+        }
+        finally
+        {
+            _applyingNavigation = false;
+        }
     }
 
     private void CompletePendingRead(TaskCompletionSource<string?>? expected, string? value)
@@ -611,6 +890,9 @@ public sealed class ReplPaneView : View
         }
     }
 
+    /// <summary>Test-only accessor for the placeholder text.</summary>
+    internal string CurrentPlaceholder => _placeholder.Text;
+
     /// <summary>Test-only accessor for the history text.</summary>
     // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip  —
     // tests assert on the logical content we appended ("\n"), so strip the inserted CRs.
@@ -631,6 +913,7 @@ public sealed class ReplPaneView : View
             _history.Dispose();
             _statusLine.Dispose();
             _ruleChip.Dispose();
+            _bottomRule.Dispose();
             _promptLabel.Dispose();
             _placeholder.Dispose();
             _input.Dispose();

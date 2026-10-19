@@ -10,9 +10,11 @@ public sealed class CommandDispatchScope : IDisposable
 {
     private readonly Action _onDispose;
     private readonly List<CommandInstance> _captured = new();
+    private readonly List<CommandInstance> _turn = new();
 
-    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken)
+    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null)
     {
+        PromptOwner = isPrompt ? this : promptOwner;
         CommandName = commandName;
         CancellationToken = cancellationToken;
         Timeout = timeout;
@@ -31,7 +33,18 @@ public sealed class CommandDispatchScope : IDisposable
     /// <summary>Instances created by <c>post()</c> during this scope, in call order.</summary>
     public IReadOnlyList<CommandInstance> Captured => _captured;
 
-    internal void Capture(CommandInstance instance) => _captured.Add(instance);
+    /// <summary>The prompt scope this scope belongs to (itself when opened with a prompt line), or null.</summary>
+    internal CommandDispatchScope? PromptOwner { get; }
+
+    /// <summary>Instances registered under this prompt scope, nested scopes included.</summary>
+    internal IReadOnlyList<CommandInstance> Turn { get { lock (_turn) return _turn.ToArray(); } }
+
+    internal void Capture(CommandInstance instance)
+    {
+        _captured.Add(instance);
+        if (PromptOwner is { } owner)
+            lock (owner._turn) owner._turn.Add(instance);
+    }
 
     /// <inheritdoc />
     public void Dispose() => _onDispose();

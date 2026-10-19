@@ -436,16 +436,106 @@ l'utilisateur quitte.
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. Les touches : `Ctrl+G`
 tiroir de logs, `Ctrl+R` volet REPL, `Ctrl+L` / `Ctrl+K` vident les logs / le REPL, `Ctrl+F`
 recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2` plus / moins de
-détail dans les logs, `F3` retour à la ligne, `F4` volet des agents, `Ctrl+C` annule la commande
-en cours (deux fois en deux secondes pour forcer la sortie), `Ctrl+Q` quitte. `orkeon-repl`
+détail dans les logs, `F3` retour à la ligne, `↓` (depuis la dernière ligne
+du prompt) ou `F4` liste des tâches, `Ctrl+C` copie la sélection,
+`Ctrl+V` et le clic droit collent dans la saisie, `Ctrl+Q` quitte (il demande d'abord confirmation
+tant qu'un tour s'exécute). `orkeon-repl`
 choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
 
-**État de session partagé avec les commandes.** La console lit et écrit une clé de l'état de
+**Touches sur le prompt.** `Échap` efface le brouillon ; un second `Échap` aussitôt après (toute
+autre touche entre les deux désarme la paire, et elle s'arme aussi sur un brouillon vide)
+interrompt le tour soumis depuis le prompt, qu'il s'exécute comme commande synchrone ou comme ticket
+détaché, y compris pendant une attente de nouvelle tentative (`Reconnecting to …`). La barre d'aide
+affiche `esc esc to interrupt` tant que ce tour s'exécute. Seul le tour du prompt est interrompu :
+un crew lancé par autre chose (un `runCrewAsync` détaché, la compaction, l'indexation) continue, et
+reste atteignable par `/ps` et `/cancel <ticket>` ; aucune touche ne l'annule. `Ctrl+C` n'annule
+jamais et ne quitte jamais : avec une sélection il la copie (le transcript, ou la saisie, où un
+glissement de souris sélectionne aussi) ; sans sélection il imprime une ligne d'aide
+(`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` colle le presse-papiers dans
+la saisie quelle que soit la vue qui a le focus, en mode runner comme en mode REPL, et s'efface
+tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le focus. Dans la
+liste des tâches (`↓` ou `F4`), `Échap` revient au prompt et n'annule rien, un tour en cours ou non ;
+il arme la paire comme un `Échap` sur le prompt (`F4` et `Tab` non), si bien que `Échap Échap` depuis la liste
+interrompt un tour en cours. `Ctrl+Q` quitte aussitôt quand rien ne tourne, et demande confirmation tant qu'un
+tour s'exécute, comme pour une commande synchrone.
+
+**Prompt, historique et liste des tâches.** Le prompt lit une touche dans l'un de trois états, jamais
+deux fois : le champ, l'historique et la liste des tâches. Dans le champ, `↑` sur la première ligne
+(une ligne visuelle : une longue ligne se replie, et `↑`/`↓` en parcourent d'abord les lignes) entre
+dans l'historique, garde le texte tapé comme brouillon et affiche l'entrée la plus récente, curseur à
+la fin ; sans historique, il déplace le curseur comme d'habitude. `↓` sur la dernière ligne donne le
+focus à la liste des tâches quand elle contient une tâche autre que `main` (la barre d'aide affiche
+alors `↓ tasks`), et ne fait rien sinon. `Début` / `Fin` atteignent le début / la fin de la ligne,
+`Ctrl+Début` / `Ctrl+Fin` ceux du texte. Dans l'historique, `↑` affiche l'entrée précédente (rien sur
+la plus ancienne), `↓` la suivante, et depuis la plus récente rend le brouillon et quitte
+l'historique ; toute modification le quitte et garde le texte ; `Entrée` envoie l'entrée affichée et
+abandonne le brouillon. Les entrées vides et la répétition de la plus récente ne sont pas
+enregistrées. Dans la liste (la barre d'aide affiche `↑/↓ select · enter view`), `↓` descend sans
+boucler, `↑` remonte et, sur la première ligne, revient au champ ; `Échap` revient au champ depuis
+n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseur ; `Début` / `Fin`
+atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
+dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
+`Tab` revient au champ comme `Échap` ; `Ctrl+V` ou un clic droit y revient et colle au curseur
+restauré. L'état suit le focus : un clic sur une ligne donne le focus à la liste sur cette ligne (un
+double-clic imprime aussi son détail), et le focus qui atteint le champ par un autre chemin quitte
+la liste et garde le texte courant ; le curseur `❯` n'est jamais dessiné tant que les touches vont
+au prompt.
+La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
+le texte indicatif affiche `Message @<tâche>…` et le filet au-dessus de l'invite se termine par `── <tâche> ─` ;
+sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
+retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
+à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
+qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
+tâche n'est pas encore pris en charge, et le texte reste dans le champ, ni envoyé ni enregistré. Ces
+touches s'effacent tant qu'une boîte de dialogue modale a le focus.
+
+**La zone du bas.** Sous le transcript viennent la ligne du spinner (glyphe et verbe dans l'accent,
+la parenthèse atténuée), un filet `─` atténué sur toute la largeur, terminé par `── <tâche> ─` dans
+l'accent tant que le destinataire est une tâche autre que `main`, l'invite (`❯ ` accent et gras, le
+texte indicatif atténué et en italique), un filet nu, la barre d'état, une ligne vide et la liste des
+tâches. La barre d'état est indentée de deux colonnes et joint ses parties par un ` · ` atténué : le
+mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaune pour
+`bypassPermissions`, `dontAsk` et `acceptEdits`, atténué sinon), les aides, et `↓ tasks` tant
+qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
+La liste montre `main` d'abord, puis les tâches dans l'ordre de création : le `❯` de l'accent en
+colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
+cours, rouge en échec ou annulée, atténué sinon), le nom en gras, la phrase d'activité coupée par
+`…`, et alignés à droite et atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour
+par le sondage à 1 Hz. Les largeurs sont des colonnes de terminal mesurées sur les graphèmes (un
+emoji ou un caractère CJK en compte deux) ; sur un volet étroit la phrase cède d'abord, puis le nom,
+puis les métriques, et un redimensionnement reconstruit les lignes à la nouvelle largeur. Elle
+grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une nouvelle tâche
+imprime `● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` dans le transcript, et une
+tâche terminée `● Agent "<nom>" finished · <durée>`, `✗ Agent "<nom>" failed · <durée>` ou
+`⊘ Agent "<nom>" cancelled · <durée>` : l'état final vient du `TuiIntegration.FinishedAgentRows` de
+l'hôte (les tâches terminées qu'il conserve), si bien qu'une tâche qui démarre et finit entre deux
+sondages reçoit quand même ses deux lignes, dans l'ordre ; sans lui, une tâche qui quitte la liste
+se lit comme terminée. Un destinataire qui se termine pendant que le prompt a le focus imprime
+`@<tâche> finished · recipient is main`, et un sondage dont le fournisseur de lignes lève une
+exception n'écrit rien et laisse les lignes, la liste et le destinataire tels quels. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
+(Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
+`truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change
+`❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` en `> * o v x - > | * - ^ v ...`, les `↑/↓` de la barre d'aide et la
+phrase coupée compris.
+
+**Le témoin du modèle.** Le témoin aligné à droite de la barre d'aide nomme le modèle sélectionné
+(24 colonnes au plus, un nom plus long finit par `…`) et se colore selon ce que la console a observé
+des appels de ce modèle, jamais par une sonde : vert tant que le modèle est utilisable, une réponse
+finale 2xx comprise ; ambre pendant une attente de nouvelle tentative de ce modèle ; rouge après un
+non-2xx final, un délai dépassé, ou quand aucun modèle n'est configuré (l'étiquette dit alors
+`no model`). Seuls les appels du modèle affiché le colorent, et un changement de modèle le remet au
+vert. Un appel arrêté par l'appelant (`Échap Échap`) n'est pas un échec et laisse la couleur
+inchangée.
+
+**État de session partagé avec les commandes.** La console lit et écrit deux clés de l'état de
 session (`ISessionBufferService`, qu'une commande atteint par `get_state` et `set_state` de
 `session_store`) : `default_permission_mode` (`SessionStateKeys.DefaultPermissionMode`,
 `Orkeon.Constants.Cli`), le mode de permission qu'elle affiche et fait tourner sur `Maj+Tab`
-(`default` → `acceptEdits` → `plan` → `bypassPermissions`). La commande `/mode` d'un produit écrit
-cette clé, et la console affiche son choix : la clé est un contrat et garde son nom.
+(`default` → `acceptEdits` → `plan` → `bypassPermissions`), et `selected_model`
+(`SessionStateKeys.SelectedModel`), le modèle que nomme le témoin. La commande `/mode` d'un produit
+écrit la première clé, et la console affiche son choix : les clés sont un contrat et gardent leur
+nom. La commande `/model` d'Orkeon Code n'écrit pas encore `selected_model` ; d'ici là, le témoin
+retombe sur le réglage `Llm:Model`.
 
 **Approbations des appels d'outils.** Avec le contrôle des permissions activé, `orkeon-repl`
 enregistre un canal d'approbation (`AddConsoleToolApproval`) : un appel pour lequel le mode demande

@@ -32,7 +32,7 @@ public sealed record GlyphSet
     /// <summary>Turn bullet — assistant paragraphs and notices (`●`).</summary>
     public required string Bullet { get; init; }
 
-    /// <summary>Hollow bullet — non-selected agent rows (`○`).</summary>
+    /// <summary>Hollow bullet — tasks other than the prompt's recipient (`◯`).</summary>
     public required string BulletHollow { get; init; }
 
     /// <summary>Status-line spinner head (`✱`).</summary>
@@ -41,7 +41,7 @@ public sealed record GlyphSet
     /// <summary>Recap marker (`※`).</summary>
     public required string Recap { get; init; }
 
-    /// <summary>Permission-posture chevrons in the hint bar (`▶▶`).</summary>
+    /// <summary>Permission-mode chevrons in the status bar (`⏵⏵`).</summary>
     public required string Chevrons { get; init; }
 
     /// <summary>Horizontal-rule cell (`─`).</summary>
@@ -62,7 +62,7 @@ public sealed record GlyphSet
     /// <summary>Spinner animation frames, cycled while a turn or operation runs.</summary>
     public required IReadOnlyList<string> SpinnerFrames { get; init; }
 
-    /// <summary>Completion check for terminal agent rows (`✓`).</summary>
+    /// <summary>Completion check (`✔`).</summary>
     public required string Check { get; init; }
 
     /// <summary>Failure cross for terminal agent rows (`✗`).</summary>
@@ -71,24 +71,36 @@ public sealed record GlyphSet
     /// <summary>Cancellation marker for terminal agent rows (`⊘`).</summary>
     public required string Slashed { get; init; }
 
+    /// <summary>Result elbow under a transcript line (`⎿`).</summary>
+    public required string Elbow { get; init; }
+
+    /// <summary>Up arrow of the tasks list's <c>↑/↓ select</c> hint (`↑`).</summary>
+    public required string Up { get; init; }
+
+    /// <summary>Ellipsis ending a cut name, phrase or metric block (`…`).</summary>
+    public required string Ellipsis { get; init; }
+
     /// <summary>The Unicode variant — what the reference captures show.</summary>
     public static GlyphSet Unicode { get; } = new()
     {
         Prompt = "❯",
         Bullet = "●",
-        BulletHollow = "○",
+        BulletHollow = "◯",
         Asterisk = "✱",
         Recap = "※",
-        Chevrons = "▶▶",
+        Chevrons = "⏵⏵",
         RuleCell = "─",
         Down = "↓",
         Dot = "·",
         BarFilled = "▰",
         BarEmpty = "▱",
         SpinnerFrames = ["✢", "✳", "✶", "✻"],
-        Check = "✓",
+        Check = "✔",
         Cross = "✗",
         Slashed = "⊘",
+        Elbow = "⎿",
+        Up = "↑",
+        Ellipsis = "…",
     };
 
     /// <summary>The ASCII fallback — every marker stays one column wide and 7-bit.</summary>
@@ -98,7 +110,7 @@ public sealed record GlyphSet
         Bullet = "*",
         BulletHollow = "o",
         Asterisk = "*",
-        Recap = "#",
+        Recap = "*",
         Chevrons = ">>",
         RuleCell = "-",
         Down = "v",
@@ -106,9 +118,12 @@ public sealed record GlyphSet
         BarFilled = "=",
         BarEmpty = "-",
         SpinnerFrames = ["|", "/", "-", "\\"],
-        Check = "+",
+        Check = "v",
         Cross = "x",
         Slashed = "-",
+        Elbow = "|",
+        Up = "^",
+        Ellipsis = "...",
     };
 
     /// <summary>Resolves the set for a mode and an observed UTF-8 capability.</summary>
