@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -429,7 +430,9 @@ public sealed class TeamLaunchersTests : IDisposable
     {
         Assert.SkipWhen(OperatingSystem.IsWindows() || !File.Exists("/bin/sh"), "The POSIX launcher needs a POSIX shell at /bin/sh.");
 
-        var document = AppSettingsDocument.Parse("""{ "RaggableTree": { "Enabled": false } }""");
+        // run.sh changes into the team folder before it runs: the host's workspace root is that
+        // folder, not the test process's directory (issue #132).
+        var document = AppSettingsDocument.Parse($$"""{ "RaggableTree": { "Enabled": false }, "PathSecurity": { "DefaultWorkspaceRoot": {{JsonSerializer.Serialize(_team)}} } }""");
         HostLlmProfiles.Mirror(document, ModelProfileSet.Empty, Settings);
         HostLlmProfiles.ElectDefault(document, Settings.Default!);
         document.Mounts.Add(new MountDefinition { Id = Docs, PhysicalPath = Path.Combine(_root, "docs"), VirtualPath = "/docs", Rights = MountRights.ReadOnly });
