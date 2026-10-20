@@ -24,7 +24,7 @@ internal static class Program
     /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
     /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
     /// (FORGE-03), `orkeon usecases search` (STUDIO-38), `orkeon email login` (MAIL-05), `orkeon drive login` (DRIVE-05),
-    /// `orkeon typings` (GAP-13), `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
+    /// `orkeon typings` (GAP-13), `orkeon quickstart`, `orkeon mcp serve` (GAP-24), `orkeon settings` — so the
     /// option grammars never collide. A verb is looked up before a first word is taken for a crew
     /// to run: `orkeon settings` stays the verb where a `settings/` folder exists.
     /// </summary>
@@ -32,6 +32,7 @@ internal static class Program
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["run"] = RunAsync,
+            ["quickstart"] = QuickstartCommand.DispatchAsync,
             ["init"] = InitCommand.DispatchAsync,
             ["doctor"] = DoctorCommand.DispatchAsync,
             ["settings"] = SettingsCommand.DispatchAsync,

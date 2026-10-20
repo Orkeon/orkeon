@@ -1,9 +1,12 @@
-# The README's "Try it in two minutes -- no API key" block, executed literally.
+# The README's "Try it in two minutes -- no API key" blocks, executed literally.
 #
-# The job does not have its own copy of the commands: it cuts the fenced block between
-# the <!-- quickstart:begin --> / <!-- quickstart:end --> markers out of README.md,
-# checks that README.fr.md carries the identical block, and runs it. Change the
-# README and the job runs the new README; break the README and the job goes red.
+# The job does not have its own copy of the commands: it cuts the two fenced blocks out
+# of README.md -- the run between <!-- quickstart:begin --> / <!-- quickstart:end -->,
+# and the refused run between <!-- quickstart-refused:begin --> / <!-- quickstart-refused:end -->
+# -- checks that README.fr.md carries the identical blocks, and runs them in order. The
+# first must write orkeon-quickstart/out/hello.md; the second, the same crew on a
+# read-only mount, must be refused by the file-system service and leave the file as it
+# was. Change the README and the job runs the new README; break it and the job goes red.
 #
 # Everything the block needs is provided the way a reader would provide it, pinned:
 # the .NET 10 SDK, an Ollama binary downloaded from its GitHub release and checked
@@ -72,19 +75,22 @@ jobs:
           path: ~/.ollama/models
           key: ollama-models-qwen2.5-1.5b
 
-      - name: Cut the block out of README.md, and check README.fr.md carries the same one
+      - name: Cut the blocks out of README.md, and check README.fr.md carries the same ones
         run: |
-          extract() {
-            awk '/<!-- quickstart:begin -->/{on=1; next} /<!-- quickstart:end -->/{on=0} on' "$1" \
+          extract() {  # extract <marker> <file>
+            awk -v b="<!-- ${1}:begin -->" -v e="<!-- ${1}:end -->" \
+              'index($0, b){on=1; next} index($0, e){on=0} on' "$2" \
               | grep -v '^```'
           }
-          extract README.md    > quickstart.sh
-          extract README.fr.md > quickstart.fr.sh
-          if ! diff -u quickstart.sh quickstart.fr.sh; then
-            echo "::error::README.md and README.fr.md carry different quickstart blocks"; exit 1
-          fi
-          test -s quickstart.sh || { echo "::error::no quickstart block found between the markers"; exit 1; }
-          echo "--- the block that will run:"; cat quickstart.sh
+          for marker in quickstart quickstart-refused; do
+            extract "$marker" README.md    > "$marker.sh"
+            extract "$marker" README.fr.md > "$marker.fr.sh"
+            if ! diff -u "$marker.sh" "$marker.fr.sh"; then
+              echo "::error::README.md and README.fr.md carry different $marker blocks"; exit 1
+            fi
+            test -s "$marker.sh" || { echo "::error::no $marker block found between the markers"; exit 1; }
+            echo "--- the $marker block that will run:"; cat "$marker.sh"
+          done
 
       - name: Install Ollama (pinned release, checked against its published digest)
         run: |
@@ -122,18 +128,38 @@ jobs:
           </configuration>
           XML
 
-      - name: Run the README block
+      - name: Run the README's first block
         run: |
+          set -o pipefail
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           export PATH="$HOME/.dotnet/tools:$PATH"
-          bash -euxo pipefail quickstart.sh
+          bash -euxo pipefail quickstart.sh 2>&1 | tee quickstart.log
 
-      - name: The agent wrote where it was allowed to, and nowhere else
+      - name: The agent wrote where it was allowed to
         run: |
-          test -s out/hello.md || { echo "::error::out/hello.md was not written"; exit 1; }
-          grep -q "Hello from Orkeon" out/hello.md
+          test -s orkeon-quickstart/out/hello.md || { echo "::error::orkeon-quickstart/out/hello.md was not written"; exit 1; }
+          grep -q "Hello from Orkeon" orkeon-quickstart/out/hello.md
           orkeon --version
-          echo "--- out/hello.md"; cat out/hello.md
+          echo "--- orkeon-quickstart/out/hello.md"; cat orkeon-quickstart/out/hello.md
+
+      # The block runs from orkeon-quickstart/, where the first one left the reader. Its exit
+      # code is not the claim -- a model may report the refusal and still finish -- the
+      # refusal in the log and the untouched file are.
+      - name: Run the README's second block -- the same crew, the mount read-only
+        working-directory: orkeon-quickstart
+        run: |
+          sha256sum out/hello.md > ../hello.before.sha256
+          status=0
+          bash -eux ../quickstart-refused.sh > ../quickstart-refused.log 2>&1 || status=$?
+          cat ../quickstart-refused.log
+          echo "--- exit code of the refused run: $status"
+
+      - name: The write was refused, and the file is unchanged
+        run: |
+          grep -q "required Write, effective ReadOnly" quickstart-refused.log \
+            || { echo "::error::the read-only run did not log 'required Write, effective ReadOnly'"; exit 1; }
+          (cd orkeon-quickstart && sha256sum --check ../hello.before.sha256) \
+            || { echo "::error::orkeon-quickstart/out/hello.md changed under a read-only mount"; exit 1; }
 
       - name: Keep the run's evidence
         if: always()
@@ -141,8 +167,11 @@ jobs:
         with:
           name: quickstart-run
           path: |
-            out/
+            orkeon-quickstart/out/
             quickstart.sh
+            quickstart-refused.sh
+            quickstart.log
+            quickstart-refused.log
             ollama.log
           if-no-files-found: ignore
           retention-days: 14

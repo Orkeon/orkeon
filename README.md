@@ -2,373 +2,114 @@
 
 # Orkeon
 
-**AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
-
+[![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon?include_prereleases)](https://github.com/Orkeon/orkeon/releases)
 [![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
-[![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/documentation-orkeon.github.io-blue.svg)](https://orkeon.github.io/orkeon/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
 <p align="center">
-  <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="320">
+  <img src="docs/assets/orkeon-mascot.png" alt="Kama, the Orkeon chameleon" width="320">
 </p>
 
----
+**Give a team of AI agents real work — your files, your inbox, your drives, your code — and know exactly what it may touch.** Orkeon is a .NET runtime that executes teams of agents under rules declared up front and enforced on every call, and a suite of tools — Orkeon Studio, Orkeon Workshop, Orkeon Code, the `orkeon` CLI — to design, try, run and manage those teams. It runs as happily on a model on your own machine as on a cloud provider; no API key to start.
 
-## The problem
+Version **1.0.0-rc.5**, MIT, .NET 10. Three repositories: this one (the runtime, the CLI, Studio), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) and [orkeon-code](https://github.com/Orkeon/orkeon-code).
 
-You let a coding agent loose on a repository. It reads what it needs, then writes — a file two directories up, a `~/.config` it had no business in, a `/tmp` script it runs next. Nothing stopped it because nothing was there to stop it: the agent's tools called `File.WriteAllText` on whatever path the model produced.
+## What a team does for you
 
-Orkeon puts the boundary in front of the model, not behind it:
+- **Every morning, your inbox is triaged.** A team reads the mail, files the invoices, drafts the three answers that matter — and sends nothing until you say so.
+- **A folder of PDFs becomes a report.** Researcher, analyst, writer: three agents, one `/documents` folder they may read, one `/output` folder they may write.
+- **Your pull request gets a second pair of eyes.** Orkeon Code reviews it, under a permission mode you chose, inside the one project you mounted.
+- **A question lands on your documents, not on the web.** RAG over your files, a local model, nothing leaves the laptop.
 
-- **A virtual file system.** Agents only ever see virtual paths (`/workspace`, `/output`); each one is a mount you declared, with the rights you gave it (`ro`/`rw`). A path outside a mount is refused before any byte lands on disk.
-- **A sandbox for code**, an **execution budget** for autonomy — tool calls, depth, wall time, tokens, spawned agents — and **circuit breakers** for loops. The agent runs out of permission before it runs out of ideas.
-- **A Roslyn analyzer for your own code.** [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) is a standalone NuGet package with no Orkeon dependency: add it to any C# project and every direct `System.IO` call is a compile error — the line an agent (or a colleague) would have slipped in does not build.
+Each of these is a team you can describe in a sentence — `orkeon forge "a team that triages my inbox every morning"` — and each runs inside lines you drew.
 
-Around that boundary sits a complete agent-team framework: crews of agents with roles, goals and tools, six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, autonomous), 16 LLM providers, memory, RAG, semantic code analysis — typed end to end, Clean Architecture, .NET 10.
+## How it works
+
+```mermaid
+flowchart LR
+    you(["You"]) --> studio["Orkeon Studio<br/>describe · compose · try · adopt"]
+    you --> workshop["Orkeon Workshop<br/>build it with Claude Code,<br/>prove it works"]
+    you --> code["Orkeon Code<br/>a coding assistant<br/>on your repository"]
+    you --> cli["orkeon CLI<br/>YAML · TypeScript (.ork.ts)"]
+    you --> app["Your own .NET app<br/>C# builders, NuGet"]
+    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>102 tools · 16 LLM providers"]
+    runtime --> world(["Your files, mailboxes, drives, APIs<br/>— only the ones you mounted, with the rights you gave"])
+```
+
+**The boundary sits in front of the model, not behind it.** An agent sees virtual folders (`/workspace`, `/output`), each a mount you declared with the rights you gave; a path outside them is refused before any byte lands on disk. Sending mail and sharing a drive stay closed until an operator opens them. Code runs in a sandbox.
+
+**Autonomy has a budget.** Tool calls, depth, wall time, tokens, spawned agents: the run stops when the budget is spent, and circuit breakers catch the loops. A long run checkpoints and resumes where it stopped.
+
+**It ships like software.** The same runtime runs as the `orkeon-host` service daemon, as a container (`ghcr.io/orkeon/orkeon-runners`), as an apt package or a self-contained binary, or embedded in your own .NET service — OpenTelemetry on the .NET Aspire dashboard, Microsoft Agent Framework interop, MCP client and server, A2A between agents. And for your own C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md): a Roslyn analyzer after which raw `System.IO` no longer compiles.
 
 ## Try it in two minutes — no API key
 
-A local model, one agent, one writable mount. From a clone of this repository (`git clone --depth 1 https://github.com/Orkeon/orkeon && cd orkeon`), with [Ollama](https://ollama.com) installed and the .NET 10 SDK:
+One local model, one agent, one writable folder. With [Ollama](https://ollama.com) and the .NET 10 SDK installed:
 
 <!-- quickstart:begin -->
 ```bash
 ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
-mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
+orkeon quickstart && cd orkeon-quickstart
+orkeon run crew.yaml --mount ./out:/output:rw
 ```
 <!-- quickstart:end -->
 
-The tool comes from [nuget.org](https://www.nuget.org/packages/Orkeon.Scripting.Cli) — no extra feed, no token. The agent writes `./out/hello.md` — and only there: `/output` is the single mount, `rw`. Change the crew's task to write anywhere else and watch the file-system service refuse it. The block above is executed literally by CI on every change ([Quickstart workflow](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)): if it stops working, the build goes red before you find out. Everything about local models — Docker Model Runner, Ollama, a model baked into the container image — is in the [local models guide](docs/guides/local-models.md).
+`out/hello.md` appears — written by an agent that never saw `out/`: it saw `/output`, the only place this run let it write. Now the same crew, the same command, the mount read-only:
 
-To update the tool later: `dotnet tool update -g Orkeon.Scripting.Cli --prerelease`. To follow `main` between two releases, and for every other channel, see [Update Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#update-orkeon).
-
-## Forge a team from a need
-
-You do not have to write the crew. Describe the need; `orkeon forge` interviews you, drafts the team, renders it (YAML or `.ork.ts`), validates it, **runs it in a sandbox**, diagnoses the run and asks for your verdict — then promotes the result into your project when you say so:
-
+<!-- quickstart-refused:begin -->
 ```bash
-orkeon init                                  # once: pick a provider and a model (Ollama included)
-orkeon forge "a team that triages the issues of a GitHub repository every morning"
-orkeon forge list                            # every session on disk, resumable
-orkeon forge promote <slug> --to ./crews     # adopt the crew that passed
+orkeon run crew.yaml --mount ./out:/output:ro
+```
+<!-- quickstart-refused:end -->
+
+```
+file_write [FAIL]: Error: Access denied for '/output/hello.md': required Write, effective ReadOnly. Mounts granting Write: (none).
 ```
 
-The cycle is *brief → blueprint → render → validate → test → diagnose → verdict*, with sessions you can resume, edit and re-test. It needs a configured model: without one it stops at the door with `FORGE-LLM-UNAVAILABLE` and points you to `orkeon init`. Walkthrough: [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md).
+Refused before any byte lands. CI runs both blocks on every change, against a pinned Ollama: the README is the test.
 
----
+## Pick your door
 
-## Quick Start — one crew, three ways
-
-The same crew, written at three levels of abstraction. Pick the one that fits — or mix them: they all run on the same .NET execution engine.
-
-**1. Declarative YAML** — no code, no build: edit the file, run it again (`crew.yaml`):
-
-```yaml
-name: "research-crew"
-goal: "Research AI trends for 2026"
-process: "sequential"
-
-agents:
-  researcher:
-    role: "Researcher"
-    goal: "Find and summarize information about AI trends"
-    verbose: true
-
-tasks:
-  research:
-    description: "Search for the latest AI developments and trends"
-    expectedOutput: "A comprehensive summary report"
-    agent: "researcher"
-```
-
-```bash
-orkeon run crew.yaml
-```
-
-**2. Programmatic TypeScript** — scripting ergonomics (agent bodies, hooks, dynamic spawning, FSM/graph literals), .NET runtime underneath — and still no rebuild: scripts are transpiled on the fly (`crew.ork.ts`):
-
-```typescript
-/// <reference orkeon-script="1.0" />
-
-const researcher = agentBuilder()
-    .name("researcher").role("Researcher")
-    .goal("Find and summarize information about AI trends")
-    .build();
-
-const research = taskBuilder()
-    .name("research")
-    .agent(researcher)
-    .description("Search for the latest AI developments and trends")
-    .expectedOutput("A comprehensive summary report")
-    .build();
-
-const crew = crewBuilder()
-    .name("research-crew")
-    .goal("Research AI trends for 2026")
-    .process("sequential")
-    .withAgent(researcher)
-    .withTask(research)
-    .build();
-
-globalThis.crew = crew;   // hand the crew to the runner, which drives its tasks
-```
-
-```bash
-orkeon run crew.ork.ts
-```
-
-How a script ends picks its engine: `globalThis.crew = crew` runs the tasks, `await crew.run()` runs the agents' own `.body()` code and ignores every task — see [Write a crew in TypeScript](docs/guides/write-a-crew-in-typescript.md).
-
-**3. Pure C#** — the builder API embedded in your own application, strongly typed end-to-end:
-
-```csharp
-using Orkeon.Domain.Agent;
-using Orkeon.Domain.Crew;
-
-var agent = new AgentBuilder()
-    .Role("Researcher")
-    .Goal("Find and summarize information about AI trends")
-    .Verbose()
-    .Build();
-
-var crew = new CrewBuilder()
-    .Goal("Research AI trends for 2026")
-    .Sequential()
-    .WithAgent(agent)
-    .WithTask(t => t
-        .Description("Search for the latest AI developments and trends")
-        .ExpectedOutput("A comprehensive summary report"))
-    .Build();
-
-// wire the host and kick it off — see docs/getting-started/bootstrap.md
-```
-
-**No API key?** Run everything on a model on your own machine (Docker Model
-Runner, Ollama, or a model embedded in the container image) — see the
-[Local models guide](docs/guides/local-models.md). Full walkthroughs:
-[Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) ·
-[Run your first example](docs/getting-started/run-your-first-example.md).
-
----
-
-## Installation
-
-| You want to… | Do this | Details |
-|---|---|---|
-| **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 104 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
-| **Install the `orkeon` CLI** | Windows and Debian/Ubuntu (amd64, arm64): the quickstarts below. macOS: the CLI tarball below (`osx-arm64`, `osx-x64`). The Debian/Ubuntu package brings the REPL (`orkeon-repl`) too. Anyone who wants the service host, or the REPL elsewhere, takes the multi-app `orkeon-<version>-<rid>.tar.gz` from the [releases](https://github.com/Orkeon/orkeon/releases), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
-| **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package, from [nuget.org](https://www.nuget.org/packages/Orkeon) (the public feed: no extra source, no token). Optionally add [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — the latter pins a pre-release upstream, `SmartComponents.LocalEmbeddings`, and will keep doing so past 1.0: see [limitations](docs/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
-| **Verify what you download** | Every package and installer carries a GitHub-signed build provenance attestation and a `SHA256SUMS` line: `gh attestation verify <file> --repo Orkeon/orkeon` — no trust in this page required | [Verify what you install](docs/guides/verify-what-you-install.md) |
-| **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln`. To install what you built on your `PATH`: `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` on Windows) | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
-
-> **Clone without `--recursive`.** This repository declares **private maintainer
-> submodules**: they are not available in a public clone. Nothing in the
-> build, the tests or the contribution workflow needs them, and a failing
-> `git submodule update` on those paths is expected and harmless — see
-> [CONTRIBUTING.md](CONTRIBUTING.md).
-
-**Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed.:
-
-```powershell
-# Verify the download first: every release ships a SHA256SUMS asset (SHA256SUMS.msi for the .msi)
-(Get-FileHash orkeon-cli-<version>-win-x64.zip -Algorithm SHA256).Hash.ToLower()
-Select-String -Path SHA256SUMS -Pattern 'win-x64\.zip'   # the two hashes must match
-
-Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
-.\install.cmd        # or double-click it. Or: msiexec /i orkeon-<version>-win-x64.msi -- pick one channel, not both
-orkeon init          # in a NEW terminal: pick your LLM provider and model
-orkeon run crew.yaml
-```
-
-> **Nothing to set up first.** `install.cmd` runs `install.ps1` on the PowerShell that ships with Windows, under an execution policy that holds for that one command: no PowerShell 7 to install, no `Set-ExecutionPolicy`, no setting changed — each release installs the archive under Windows PowerShell 5.1 and under PowerShell 7. Windows may ask you to confirm a file a browser downloaded; `Unblock-File .\orkeon-cli-<version>-win-x64.zip` before extracting avoids the question. Running it again over an installation replaces it — close Orkeon Studio first, the installer refuses while it is open. A policy your organization sets overrules the launcher: only a signed script runs there. The `.msi` is not code-signed: SmartScreen shows *"Windows protected your PC"* — **More info** → **Run anyway**, once you have checked the file. Details: [Before you start](docs/getting-started/three-ways-to-run-orkeon.md#before-you-start).
-
-**Debian / Ubuntu** (amd64, arm64) — add the signed Orkeon apt source once: the block to copy, with its key check and its `stable` / `rc` / `dev` channels, is in [Install with apt](docs/guides/install-with-apt.md). Then Orkeon is a package like any other — self-contained too, no `dotnet-runtime` package pulled in:
-
-```bash
-sudo apt install orkeon orkeon-archive-keyring   # once
-sudo apt update && sudo apt upgrade              # every later version
-orkeon init          # writes ~/.config/Orkeon/appsettings.json
-orkeon run crew.yaml
-```
-
-A machine that cannot reach GitHub's raw content installs one release's `.deb` instead (`_arm64.deb` on an ARM machine: Raspberry Pi 5, Graviton, Ampere); it receives no updates. `<version>` is the release tag without its `v` — for example `1.0.0-rc.5`, hyphen included. (Releases up to 1.0.0-rc.4 name the file `orkeon_1.0.0.rc.N_amd64.deb` while their `SHA256SUMS` line reads `orkeon_1.0.0~rc.N_amd64.deb`: check those two by hand.) Then:
-
-```bash
-# SHA256SUMS is a release asset too — download it alongside the .deb and check
-grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # expect: OK (_arm64.deb on ARM)
-
-sudo apt install ./orkeon_<version>_amd64.deb
-```
-
-**macOS** — Homebrew becomes the recommended route once the `Orkeon/homebrew-tap` repository is published (not published yet; use the tarball meanwhile):
-
-```bash
-brew tap orkeon/tap && brew install orkeon    # once the tap is published
-orkeon init
-orkeon run crew.yaml
-```
-
-Until then (and on any machine), the self-contained tarball — `osx-arm64` for Apple Silicon, `osx-x64` for Intel. `install.sh` clears the Gatekeeper quarantine attribute for you:
-
-```bash
-# The asset name carries the version, and GitHub's `latest/download/` shortcut skips
-# prereleases — so resolve the newest tag first (or copy the asset link off the
-# releases page, which is the same thing done by hand). Only `v` tags are releases:
-# `apt-dev` holds the dev builds of the apt repository.
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
-VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
-
-curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 on Intel
-curl -fsSL -O "$BASE/SHA256SUMS"
-grep " orkeon-cli-$VER-osx-arm64.tar.gz$" SHA256SUMS | shasum -a 256 --check -   # expect: OK
-
-tar -xzf "orkeon-cli-$VER-osx-arm64.tar.gz" && cd "orkeon-cli-$VER-osx-arm64" && ./install.sh
-orkeon init
-```
-
-`orkeon doctor` checks the install (runtime, config, LLM reachability, esbuild, grammars) whenever something looks off.
-
----
-
-## Features
-
-Every number below is recomputed from the tree on each CI run — `bash scripts/count-surface.sh` prints them next to the rule that counts them, and a README that disagrees fails the build.
-
-| Capability | Details |
+| | |
 |---|---|
-| **102 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, e-mail, Google Drive and OneDrive, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
-| **E-mail** | Thirteen `email_*` tools give agents a mailbox: IMAP, POP3 and SMTP through MailKit, Outlook.com / Hotmail / Microsoft 365 through Microsoft Graph, Gmail and Outlook presets, OAuth2 signed in once with `orkeon email login`. Per-account rights, a send allow-list that is closed until an operator opens it, and every message read screened for prompt injection. Gmail was campaigned against a real account (2026-10-04 app password, 2026-10-05 OAuth2) and Hotmail through Microsoft Graph (2026-10-12); Outlook over IMAP and SMTP has not been run — start with [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md), then the [e-mail guide](docs/guides/email.md) |
-| **Google Drive & OneDrive** | Eleven `drive_*` tools give agents a cloud drive: list, search, read (Google documents through their text export), download into the VFS, upload from it, create folders, move, delete, share. Google Drive through the Drive API, OneDrive through Microsoft Graph, both in plain HTTP; OAuth2 signed in once with `orkeon drive login`. Per-account rights, a root folder an agent cannot leave, sharing closed until an operator opens it, and every text read screened for prompt injection. Not yet campaigned against real accounts — see the [drive guide](docs/guides/drive.md) |
-| **16 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) and MiniMax, plus two aggregators — OpenRouter (one key, a 445-model marketplace) and Mammouth AI (a subscription's included credits) — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
-| **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url` parts on the 14 OpenAI-compatible providers / Ollama `images`, for the models that see) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
-| **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — one `IMemoryProvider` port, composable decorators |
-| **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
-| **Microsoft Agent Framework interop** | `Orkeon.Interop.AgentFramework`: an Orkeon crew runs as a MAF `AIAgent`; a MAF `AIAgent` becomes the brain (`WithAgentFrameworkAgent`) or a tool (`WithAgentFrameworkTool`) of an Orkeon agent — see [ADR-010](docs/adr/ADR-010-agent-framework-interop.md) and `examples/interop/agent-framework/` |
-| **.NET Aspire** | `Orkeon.Hosting.Aspire`: `AddOrkeonHost` / `AddOrkeonCrewRun` put the daemon or a crew run in an AppHost; the runners honour `OTEL_EXPORTER_OTLP_ENDPOINT`, so the Aspire dashboard shows every `invoke_agent` / `chat` / `execute_tool` span, the token metrics and the logs — see [ADR-011](docs/adr/ADR-011-aspire-dashboard-observability.md) and `examples/aspire/AppHost/` |
-| **Plugin system** | Drop-in assemblies implementing `IOrkeonPlugin`, discovered in a plugin directory, loaded in isolated collectible `AssemblyLoadContext`s, activated explicitly via `AddOrkeonPlugins(...)` — see [plugins](docs/architecture/plugins.md) (in-repo project, not a NuGet package) |
-| **Host bootstrap & scripting** | `Orkeon.Hosting` (`RunnerHost`) wires the full stack for the in-repo runners and CLIs (appsettings, VFS mounts, providers, tools) — it ships inside the CLI, not as a NuGet package; the `orkeon` dotnet tool runs YAML crews and TypeScript-syntax `.ork.ts` crew scripts |
-| **Source generators** | `Orkeon.Generators` emits the `[TypedDictionary]` wrapper/builder plumbing, keeping the hand-written strongly typed APIs boilerplate-free |
-| **Typed pipeline architecture** | `ComponentBase<TRequest, TResponse>` eliminates `Dictionary<string, object>` throughout the stack |
-| **YAML configuration** | Full round-trip export/import for agents, tasks, crews, and tool schemas |
-| **Fluent Builder API** | `AgentBuilder`, `CrewBuilder`, `CrewTaskBuilder` for ergonomic, discoverable construction |
-| **Clean Architecture** | Strict Domain / Application / Infrastructure separation with no cross-layer leakage |
-| **CQRS pipeline** | Commands and queries for all aggregates; `ValidatingCommandHandler` decorator; `UnitOfWork` integration |
-| **Configurable agent selection** | A task that names no agent goes to the first available one (`FirstFit`, the default), to the best lexical skill match (`Skill`), or to the closest agent by embedding similarity (`Embedding`, which needs a real embedding provider) — `OrkeonApplicationOptions.AgentSelectionStrategy` |
-| **Checkpointing & resume** | Execution state persisted to pluggable state stores (InMemory, JSON file, SQLite, PostgreSQL); `CheckpointManager` time-travel (fork, replay, diff) and `ResumeEngine` to resume interrupted runs |
-| **A2A communication** | Agent-to-Agent protocol with discovery, `A2AClient`/`A2AServer`, a scoped agent repository over a shared registration store, and optional mTLS / credential enforcement (client certificate + server-side `RequireMutualTls`; `AllowedAuthSchemes` with validated `Bearer` tokens and `ApiKey` secrets) |
-| **Opt-in subsystems** | A2A, monitoring, tool rate-limiting ([`ToolRateLimiting`](docs/reference/configuration.md#toolratelimiting) — the limits on model calls, [`RateLimiting`](docs/reference/configuration.md#ratelimiting), apply in every host), benchmarking, multimodal, kickoff hooks and more — none registered by default, each enabled via its dedicated `AddOrkeonXxx()` extension — see the [opt-in reference](docs/reference/opt-in-subsystems.md) |
+| **Orkeon Studio** | The desktop app. **Describe → Compose → Try → Adopt**: say what the team should do, let the assistant propose the agents, their tasks and the folders they may touch — or start from one of the 104 use cases —, try it on a sample, adopt it on demand, hourly or daily. Then run it, follow what it costs, read the history, manage models, folders, mailboxes and drives from one settings screen. Novice or expert mode, five languages, no code. The desktop app is Windows; Linux gets two terminal apps, a settings editor and a run launcher — [Orkeon Studio](docs/architecture/studio.md). |
+| **Orkeon Workshop** | Claude Code, harnessed. A container image — Claude Code, the Orkeon CLI, local models on your GPU — and a method: need → tests → team → runs → accepted, every attempt and decision kept on disk, a paid run waiting for your approval. Teams come out ready for Studio; the same harness works on Orkeon itself — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
+| **Orkeon Code** | A coding assistant on the Orkeon runtime. Pair with it in the terminal under the permission mode you choose, or let it run a task to the end; `/review`, `/commit`, `/security-review`, `/analyze`; one mounted project, an allow-listed shell. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
+| **`orkeon` CLI** | `orkeon run` executes a team written in YAML or TypeScript (`.ork.ts`); `orkeon forge "…"` drafts, sandbox-tests and promotes one from a sentence; `orkeon quickstart` writes the two-minute crew above; `init`, `doctor`, `email login` and `drive login` do the plumbing — [CLI reference](docs/reference/cli.md). |
+| **The library** | `dotnet add package Orkeon --prerelease` — the same engine inside your product: C# builders, Clean Architecture, typed end to end — [Bootstrap and execution](docs/getting-started/bootstrap.md). |
 
----
+The team you compose in Studio is the YAML the CLI runs, and the crew your own .NET code loads. One runtime, same rules, whichever door you take.
 
-## Architecture
+## What's in the box
 
-Orkeon follows Clean Architecture with three concentric layers:
+102 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers, local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
 
-```
-+----------------------------------------------------------+
-|  Infrastructure  (outer)                                 |
-|  LLM providers, memory stores, tools, HTTP clients       |
-|                                                          |
-|  +------------------------------------------------+      |
-|  |  Application  (middle)                         |      |
-|  |  Use cases, orchestrators, service interfaces  |      |
-|  |                                                |      |
-|  |  +----------------------------------------+   |      |
-|  |  |  Domain  (inner)                       |   |      |
-|  |  |  Agents, Crews, Tasks, Tools, LLMs     |   |      |
-|  |  |  Pure business logic, one satellite of constants  |   |      |
-|  |  +----------------------------------------+   |      |
-|  +------------------------------------------------+      |
-+----------------------------------------------------------+
-```
+## Install
 
-- **Domain**: Core entities and value objects (`Agent`, `Crew`, `CrewTask`, `IBaseTool`, `ILlmProvider`). No external dependencies.
-- **Application**: Use cases and orchestration logic. Defines interfaces (ports) implemented by Infrastructure.
-- **Infrastructure**: LLM providers, memory stores, tool implementations, and all external integrations.
-
-Around the core, dedicated projects cover hosting (`Orkeon.Hosting`, plus the `orkeon-host` service daemon of `Orkeon.Host` and the `orkeon run --events jsonl` run event bus), plugins (`Orkeon.Plugins`), Roslyn source generators (`Orkeon.Generators`), the VFS-compliance analyzer (`Orkeon.Compliance.Vfs` — a standalone NuGet package with no Orkeon dependency: `<PackageReference Include="Orkeon.Compliance.Vfs" PrivateAssets="all" />` makes direct `System.IO` a compile error in any C# project), the TypeScript-syntax scripting DSL (`Orkeon.Scripting` plus the `orkeon` CLI tool), the tool families (`Orkeon.Tools.*`, shipped together as the `Orkeon.Tools` package), and the RaggableTree semantic code-analysis engine (`Orkeon.Analysis`, shipped inside the `Orkeon` package).
-
----
-
-## Documentation
-
-| You are looking for… | Go to |
+| | |
 |---|---|
-| **First run, step by step** | [Getting-started overview](docs/getting-started/overview.md) · [Run your first example](docs/getting-started/run-your-first-example.md) |
-| **The three ways to run Orkeon** (source / binary / container) | [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) |
-| **E-mail**: give agents a mailbox (Gmail, Outlook.com / Hotmail, your own IMAP/POP3/SMTP server) | [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md) · [E-mail guide](docs/guides/email.md) · [`orkeon email`](docs/reference/cli.md#orkeon-email) |
-| **Local models** (Docker Model Runner, Ollama, embedded, 128K contexts) | [Local models guide](docs/guides/local-models.md) |
-| **The 104 runnable examples** (9 themed categories + `orkeon-example`) | [Examples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Catalog](docs/reference/examples-catalog.md) |
-| **Writing crews**: YAML, builders, TypeScript, host wiring, execution | [YAML & builders](docs/getting-started/yaml-and-builders.md) · [Write a crew in TypeScript](docs/guides/write-a-crew-in-typescript.md) · [Bootstrap and execution](docs/getting-started/bootstrap.md) |
-| **Orchestration modes** (incl. FSM and graph deep dives) | [Process types](docs/orchestration/process-types.md) · [FSM](docs/orchestration/fsm.md) · [Graph](docs/orchestration/graph.md) |
-| **Writing your own tools** | [New tool pattern](docs/tools/new-tool-pattern.md) · [Tool inventory](docs/tools/inventory.md) |
-| **Architecture deep dives** (plugins, scripting, VFS, security, RaggableTree) | [Architecture docs](docs/INDEX.md) · [ADRs](docs/adr/README.md) |
-| **Everything else** | [Documentation index](docs/INDEX.md) *(also available [in French](docs/fr/INDEX.md))* |
+| **Windows** — CLI + Studio | `orkeon-cli-<version>-win-x64.zip` or the `.msi` from the [releases](https://github.com/Orkeon/orkeon/releases), then `install.cmd`. Self-contained. |
+| **Debian / Ubuntu** — CLI + Studio terminal apps | `sudo apt install orkeon` after adding the [signed apt source](docs/guides/install-with-apt.md). |
+| **macOS** — CLI | The `osx-arm64` / `osx-x64` tarball from the releases, then `./install.sh`. |
+| **Container** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — the examples bundled. |
+| **In your .NET app** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` for the built-in tools). |
+| **From source** | `git clone` **without** `--recursive` (the private maintainer submodules are not needed by anything public), then `dotnet build Orkeon.sln` — [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source). |
 
-These pages, together with the generated API reference, are published as a browsable site
-at **<https://orkeon.github.io/orkeon/>**. `docs.yml` deploys it on every `v*` tag, so the site
-always documents a tagged version.
+Then `orkeon init` to pick a provider and a model; `orkeon doctor` when something looks off. Checksums, signed attestations, updates: [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) · [Verify what you install](docs/guides/verify-what-you-install.md).
 
----
+## Learn more
 
-## Why Orkeon?
+[Getting started](docs/getting-started/overview.md) · [Write a team in YAML, TypeScript or C#](docs/getting-started/yaml-and-builders.md) · [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md) · [Give your agents a mailbox](docs/getting-started/give-your-agents-a-mailbox.md) · [Local models](docs/guides/local-models.md) · [Orchestration](docs/orchestration/process-types.md) · [Orkeon Studio](docs/architecture/studio.md) · [Examples](examples) · [Full index](docs/INDEX.md) *(also [in French](docs/fr/INDEX.md))* — published at **<https://orkeon.github.io/orkeon/>**.
 
-- **Three authoring surfaces, one engine** — the same crew can be a YAML file an analyst edits, a TypeScript script a developer iterates on (both run with zero rebuild), or C# embedded in your product. No rewrite when you graduate from one to the next.
-- **Orchestration beyond pipelines** — six strategies, including a graph mode backed by a LangGraph-style `StateGraph` engine (conditional edges and controlled cycles in its C# API) and an autonomous mode where a manager assigns the work, a failed task is handed to a peer, and agents talk over an A2A channel, all under a multi-dimensional execution budget (tool calls, depth, wall time, tokens, spawns).
-- **Batteries included** — 102 tools, 16 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
-- **Local-first** — every example runs against a model on your own machine (Docker Model Runner, Ollama, or llama.cpp embedded in the container image). No API key required to evaluate it.
-- **The boundary is the product** — a rights-audited virtual filesystem in front of every file access, a Roslyn analyzer that refuses raw `System.IO` in your own code, execution budgets and circuit breakers for autonomy, checkpoint and resume for long runs. Rate limiting, monitoring and the rest are one `AddOrkeonXxx()` away.
-- **Typed all the way down** — no `Dictionary<string, object>` plumbing; source generators keep the typed surface boilerplate-free.
+## Join in
 
----
+Show us what your team does: [Discussions](https://github.com/Orkeon/orkeon/discussions) is where questions and show-and-tell live. Bugs and ideas go through the [issue forms](https://github.com/Orkeon/orkeon/issues/new/choose), vulnerabilities through [private reporting](SECURITY.md). Contributions are welcome — [CONTRIBUTING.md](CONTRIBUTING.md) says how, the [Code of Conduct](CODE_OF_CONDUCT.md) says in what spirit.
 
-## Project Status
-
-The current version is **1.0.0-rc.5** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 104 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 16 — fourteen vendors, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax), plus the two aggregators OpenRouter and Mammouth AI, integrated documentation-first and campaigned on 2026-10-07 (LLM-08).
-
-Every pull request is gated in CI:
-
-- the build compiles with **`-warnaserror` and the full .NET analyzer set** — any new compiler, analyzer, or NuGet-audit warning fails the build
-- the **public API surface is frozen** (Microsoft.CodeAnalysis.PublicApiAnalyzers; undeclared API changes are build errors)
-- the unit and fast test suites (Integration/Slow suites run nightly in a dedicated workflow) and the EN/FR documentation parity gate; path-filtered gates add the examples linters on PRs touching `examples/`, and a strict docfx build (`--warningsAsErrors`) on PRs touching sources or docs
-
-**Line coverage is measured in public.** The [Coverage workflow](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml) runs the unit and fast suites under `dotnet-coverage` on every push to `main` (and weekly): the figure is on each run's summary page, the Cobertura file and an HTML report are its `coverage` artefact. No number is quoted here — a number typed into a README is a claim, a run is a measurement. Static analysis runs on a local SonarQube via `scripts/sonar-analyze.sh` under the [quality-gate policy](docs/guides/quality-gate.md); its reports are not tracked by the repository, so its figures are not quoted here either.
-
-Known constraints are tracked in [docs/reference/limitations.md](docs/reference/limitations.md). What happens if the project stops — MIT, a reproducible build, no private infrastructure, forkable by anyone — is written down in [SUPPORT.md](SUPPORT.md#if-the-project-stops).
-
----
-
-## Contributing
-
-Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request. Make sure the tests CI runs pass (`dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"` — [CONTRIBUTING.md](CONTRIBUTING.md) explains why the filter is not optional) and that new code follows the Clean Architecture conventions described in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-### Building from source
-
-The scripting layer (`.ork.ts` support) ships a small esbuild toolchain that is bootstrapped on the first `dotnet build`. On a fresh clone the `Orkeon.Scripting` project runs `npm ci` (strictly from the committed `tools/scripting-esbuild/package-lock.json`, so the lockfile is never mutated) under `tools/scripting-esbuild/` to provision `node_modules/`. This is a one-time, network-touching step per clone.
-
-To skip it entirely (e.g. in CI or when packaging NuGet consumers that do not need esbuild), pass the opt-out flag:
-
-```bash
-dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true
-```
-
-If npm is unavailable the build still succeeds; esbuild is then resolved from `PATH` at runtime.
-
-To install the `orkeon` you built — on your `PATH`, at the version of your checkout, the way a release archive installs it — run `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` on Windows, from PowerShell 7). It names every missing prerequisite before it compiles anything: [Install what you just cloned](docs/getting-started/three-ways-to-run-orkeon.md#install-what-you-just-cloned).
-
----
-
-## Community and support
-
-- **Getting help** — [SUPPORT.md](SUPPORT.md) names the venues: [GitHub Discussions](https://github.com/Orkeon/orkeon/discussions) for questions and show-and-tell, the [issue forms](https://github.com/Orkeon/orkeon/issues/new/choose) for bugs and feature requests. There is no Discord or Slack channel.
-- **Reporting a vulnerability** — [SECURITY.md](SECURITY.md). Never a public issue: use GitHub Private Vulnerability Reporting (repository → *Security* → *Report a vulnerability*).
-- **Community expectations** — the [Code of Conduct](CODE_OF_CONDUCT.md) (Contributor Covenant 2.1) applies to every space of the project.
-
----
+Coverage is [measured in public](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml), known constraints are in [limitations](docs/reference/limitations.md), and what happens if the project stops is written down in [SUPPORT.md](SUPPORT.md#if-the-project-stops): MIT, a reproducible build, no private infrastructure, forkable by anyone.
 
 ## License
 
 Orkeon is released under the [MIT License](LICENSE.md).
-

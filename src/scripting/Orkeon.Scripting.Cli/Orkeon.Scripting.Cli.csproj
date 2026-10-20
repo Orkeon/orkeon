@@ -66,6 +66,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The README's two-minute crew, written by `orkeon quickstart` so the block needs no clone.
+         Embedded byte for byte from examples/quickstart/, the folder the README and CI point at. -->
+    <EmbeddedResource Include="..\..\..\examples\quickstart\crew.yaml;..\..\..\examples\quickstart\appsettings.json"
+                      LogicalName="quickstart/%(Filename)%(Extension)" WithCulture="false" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- STUDIO-38: the example catalogue. The examples ship nowhere else, so the tool carries
          what `orkeon usecases` serves: the manifest, and for each catalogued example its crew
          file and its data/ folder, as usecases/<category>/<id>/<path>. The finance examples'

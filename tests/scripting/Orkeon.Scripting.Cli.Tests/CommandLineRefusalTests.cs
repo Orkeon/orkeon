@@ -37,7 +37,7 @@ public sealed class CommandLineRefusalTests
 
     private static readonly string[] RowNames =
     [
-        "run", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "rag eval",
+        "run", "quickstart", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "rag eval",
         "email accounts", "email login", "email logout", "email check",
         "drive accounts", "drive login", "drive logout", "drive check",
         "usecases list", "usecases show", "usecases export", "mcp serve",
@@ -75,6 +75,7 @@ public sealed class CommandLineRefusalTests
         string[] argv = row switch
         {
             "run" => ["run", crew, "--validate", "-s", settings, "--allow-external-mounts", Extra],
+            "quickstart" => ["quickstart", "--to", target, Extra],
             "init" => ["init", "--provider", "none", "--path", target, Extra],
             "doctor" => ["doctor", "--json", Extra],
             "llm probe" => ["llm", "probe", "-p", "ollama", Extra],

@@ -2,373 +2,114 @@
 
 # Orkeon
 
-**Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
-
+[![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon?include_prereleases)](https://github.com/Orkeon/orkeon/releases)
 [![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
-[![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/documentation-orkeon.github.io-blue.svg)](https://orkeon.github.io/orkeon/)
+[![Licence : MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.md)
 
 <p align="center">
-  <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="320">
+  <img src="docs/assets/orkeon-mascot.png" alt="Kama, le caméléon d'Orkeon" width="320">
 </p>
 
----
+**Confiez un vrai travail à une équipe d'agents IA — vos fichiers, votre boîte aux lettres, vos drives, votre code — en sachant exactement ce qu'elle a le droit de toucher.** Orkeon, c'est un runtime .NET qui exécute des équipes d'agents sous des règles déclarées à l'avance et appliquées à chaque appel, et une suite d'outils — Orkeon Studio, Orkeon Workshop, Orkeon Code, le CLI `orkeon` — pour concevoir, essayer, exécuter et gérer ces équipes. Il tourne aussi bien sur un modèle installé sur votre machine que chez un fournisseur cloud ; aucune clé d'API pour commencer.
 
-## Le problème
+Version **1.0.0-rc.5**, MIT, .NET 10. Trois dépôts : celui-ci (le runtime, le CLI, Studio), [orkeon-workshop](https://github.com/Orkeon/orkeon-workshop) et [orkeon-code](https://github.com/Orkeon/orkeon-code).
 
-Vous lâchez un agent de code sur un dépôt. Il lit ce dont il a besoin, puis il écrit — un fichier deux répertoires plus haut, un `~/.config` qui ne le regardait pas, un script dans `/tmp` qu'il exécute dans la foulée. Rien ne l'a arrêté parce que rien n'était là pour l'arrêter : ses outils appelaient `File.WriteAllText` sur le chemin que le modèle avait produit.
+## Ce qu'une équipe fait pour vous
 
-Orkeon place la frontière devant le modèle, pas derrière :
+- **Chaque matin, votre boîte aux lettres est triée.** Une équipe lit le courrier, classe les factures, prépare les trois réponses qui comptent — et n'envoie rien tant que vous ne l'avez pas dit.
+- **Un dossier de PDF devient un rapport.** Chercheur, analyste, rédacteur : trois agents, un dossier `/documents` qu'ils peuvent lire, un dossier `/output` qu'ils peuvent écrire.
+- **Votre pull request a droit à un second regard.** Orkeon Code la relit, sous le mode de permission que vous avez choisi, dans le seul projet que vous avez monté.
+- **Une question tombe sur vos documents, pas sur le web.** Du RAG sur vos fichiers, un modèle local, rien ne quitte le portable.
 
-- **Un système de fichiers virtuel.** Les agents ne voient jamais que des chemins virtuels (`/workspace`, `/output`) ; chacun est un montage que vous avez déclaré, avec les droits que vous lui avez donnés (`ro`/`rw`). Un chemin hors montage est refusé avant qu'un seul octet n'atteigne le disque.
-- **Un sandbox pour le code**, un **budget d'exécution** pour l'autonomie — appels d'outils, profondeur, temps, tokens, agents engendrés — et des **circuit breakers** contre les boucles. L'agent épuise sa permission avant d'épuiser ses idées.
-- **Un analyseur Roslyn pour votre propre code.** [`Orkeon.Compliance.Vfs`](docs/fr/architecture/vfs-compliance.md) est un paquet NuGet autonome sans dépendance à Orkeon : ajoutez-le à n'importe quel projet C# et tout appel direct à `System.IO` devient une erreur de compilation — la ligne qu'un agent (ou un collègue) aurait glissée ne compile pas.
+Chacune de ces équipes se décrit en une phrase — `orkeon forge "une équipe qui trie ma boîte aux lettres chaque matin"` — et chacune travaille dans les limites que vous avez tracées.
 
-Autour de cette frontière, un framework d'équipes d'agents complet : des crews d'agents avec rôles, objectifs et outils, six stratégies d'orchestration (séquentielle, hiérarchique, parallèle, consensuelle, graphe, autonome), 16 fournisseurs LLM, mémoire, RAG, analyse sémantique de code — typé de bout en bout, Clean Architecture, .NET 10.
+## Comment ça marche
 
-## Essayez-le en deux minutes — sans clé API
+```mermaid
+flowchart LR
+    you(["Vous"]) --> studio["Orkeon Studio<br/>décrire · composer · essayer · adopter"]
+    you --> workshop["Orkeon Workshop<br/>la construire avec Claude Code,<br/>prouver qu'elle fonctionne"]
+    you --> code["Orkeon Code<br/>un assistant de codage<br/>sur votre dépôt"]
+    you --> cli["CLI orkeon<br/>YAML · TypeScript (.ork.ts)"]
+    you --> app["Votre propre application .NET<br/>builders C#, NuGet"]
+    studio & workshop & code & cli & app --> runtime["Le runtime Orkeon<br/>système de fichiers virtuel · budgets · bac à sable<br/>102 outils · 16 fournisseurs LLM"]
+    runtime --> world(["Vos fichiers, boîtes aux lettres, drives, API<br/>— seulement ceux que vous avez montés, avec les droits que vous avez donnés"])
+```
 
-Un modèle local, un agent, un seul montage en écriture. Depuis un clone de ce dépôt (`git clone --depth 1 https://github.com/Orkeon/orkeon && cd orkeon`), avec [Ollama](https://ollama.com) installé et le SDK .NET 10 :
+**La frontière est devant le modèle, pas derrière.** Un agent voit des dossiers virtuels (`/workspace`, `/output`), chacun un montage que vous avez déclaré avec les droits que vous avez donnés ; un chemin en dehors est refusé avant qu'un seul octet n'atteigne le disque. L'envoi de mails et le partage d'un drive restent fermés tant qu'un opérateur ne les ouvre pas. Le code s'exécute dans un bac à sable.
+
+**L'autonomie a un budget.** Appels d'outils, profondeur, temps, tokens, agents engendrés : l'exécution s'arrête quand le budget est épuisé, et des disjoncteurs attrapent les boucles. Une longue exécution pose des points de reprise et repart là où elle s'était arrêtée.
+
+**Ça se livre comme du logiciel.** Le même runtime tourne en service `orkeon-host`, en conteneur (`ghcr.io/orkeon/orkeon-runners`), en paquet apt ou en binaire autonome, ou embarqué dans votre propre service .NET — OpenTelemetry sur le tableau de bord .NET Aspire, interopérabilité Microsoft Agent Framework, client et serveur MCP, A2A entre agents. Et pour votre propre C#, [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) : un analyseur Roslyn après lequel un `System.IO` brut ne compile plus.
+
+## Essayez-le en deux minutes — sans clé d'API
+
+Un modèle local, un agent, un dossier en écriture. Avec [Ollama](https://ollama.com) et le SDK .NET 10 installés :
 
 <!-- quickstart:begin -->
 ```bash
 ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
-mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
+orkeon quickstart && cd orkeon-quickstart
+orkeon run crew.yaml --mount ./out:/output:rw
 ```
 <!-- quickstart:end -->
 
-Le tool vient de [nuget.org](https://www.nuget.org/packages/Orkeon.Scripting.Cli) — aucun flux supplémentaire, aucun token. L'agent écrit `./out/hello.md` — et seulement là : `/output` est l'unique montage, en `rw`. Changez la tâche du crew pour écrire ailleurs et regardez le service de fichiers refuser. Le bloc ci-dessus est exécuté littéralement par la CI à chaque changement ([workflow Quickstart](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)) : s'il cesse de fonctionner, le build passe au rouge avant que vous ne le découvriez. Tout sur les modèles locaux — Docker Model Runner, Ollama, un modèle embarqué dans l'image conteneur — est dans le [guide des modèles locaux](docs/fr/guides/local-models.md).
+`out/hello.md` apparaît — écrit par un agent qui n'a jamais vu `out/` : il a vu `/output`, le seul endroit où cette exécution l'autorisait à écrire. Maintenant la même équipe, la même commande, le montage en lecture seule :
 
-Pour mettre le tool à jour plus tard : `dotnet tool update -g Orkeon.Scripting.Cli --prerelease`. Pour suivre `main` entre deux releases, et pour tous les autres canaux, voir [Mettre à jour Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md#mettre-à-jour-orkeon).
-
-## Forger une équipe à partir d'un besoin
-
-Vous n'avez pas à écrire le crew. Décrivez le besoin ; `orkeon forge` vous interroge, ébauche l'équipe, la rend (YAML ou `.ork.ts`), la valide, **l'exécute dans un sandbox**, diagnostique le run et demande votre verdict — puis promeut le résultat dans votre projet quand vous le dites :
-
+<!-- quickstart-refused:begin -->
 ```bash
-orkeon init                                  # une fois : choisir un fournisseur et un modèle (Ollama inclus)
-orkeon forge "une équipe qui trie les issues d'un dépôt GitHub chaque matin"
-orkeon forge list                            # chaque session sur disque, reprenable
-orkeon forge promote <slug> --to ./crews     # adopter le crew qui a réussi
+orkeon run crew.yaml --mount ./out:/output:ro
+```
+<!-- quickstart-refused:end -->
+
+```
+file_write [FAIL]: Error: Access denied for '/output/hello.md': required Write, effective ReadOnly. Mounts granting Write: (none).
 ```
 
-Le cycle est *brief → blueprint → render → validate → test → diagnose → verdict*, avec des sessions que vous pouvez reprendre, éditer et retester. Il exige un modèle configuré : sans lui il s'arrête à la porte avec `FORGE-LLM-UNAVAILABLE` et vous renvoie vers `orkeon init`. Pas à pas : [Forger une équipe à partir d'un besoin](docs/fr/getting-started/forge-a-team-from-a-need.md).
+Refusé avant qu'un octet n'atteigne le disque. La CI exécute les deux blocs à chaque changement, contre une Ollama épinglée : le README est le test.
 
----
+## Choisissez votre porte
 
-## Démarrage rapide — un crew, trois écritures
-
-Le même crew, écrit à trois niveaux d'abstraction. Choisissez celui qui vous va — ou mélangez-les : tous s'exécutent sur le même moteur .NET.
-
-**1. YAML déclaratif** — zéro code, zéro build : éditez le fichier, relancez (`crew.yaml`) :
-
-```yaml
-name: "research-crew"
-goal: "Research AI trends for 2026"
-process: "sequential"
-
-agents:
-  researcher:
-    role: "Researcher"
-    goal: "Find and summarize information about AI trends"
-    verbose: true
-
-tasks:
-  research:
-    description: "Search for the latest AI developments and trends"
-    expectedOutput: "A comprehensive summary report"
-    agent: "researcher"
-```
-
-```bash
-orkeon run crew.yaml
-```
-
-**2. TypeScript programmatique** — l'ergonomie d'un langage de script (bodies d'agents, hooks, spawn dynamique, littéraux FSM/graphe), le runtime .NET dessous — et toujours zéro rebuild : les scripts sont transpilés à la volée (`crew.ork.ts`) :
-
-```typescript
-/// <reference orkeon-script="1.0" />
-
-const researcher = agentBuilder()
-    .name("researcher").role("Researcher")
-    .goal("Find and summarize information about AI trends")
-    .build();
-
-const research = taskBuilder()
-    .name("research")
-    .agent(researcher)
-    .description("Search for the latest AI developments and trends")
-    .expectedOutput("A comprehensive summary report")
-    .build();
-
-const crew = crewBuilder()
-    .name("research-crew")
-    .goal("Research AI trends for 2026")
-    .process("sequential")
-    .withAgent(researcher)
-    .withTask(research)
-    .build();
-
-globalThis.crew = crew;   // remet la crew au runner, qui pilote ses tâches
-```
-
-```bash
-orkeon run crew.ork.ts
-```
-
-La fin du script choisit son moteur : `globalThis.crew = crew` exécute les tâches, `await crew.run()` exécute le code `.body()` propre aux agents et ignore toutes les tâches — voir [Écrire une crew en TypeScript](docs/fr/guides/write-a-crew-in-typescript.md).
-
-**3. C# pur** — l'API builder embarquée dans votre propre application, fortement typée de bout en bout :
-
-```csharp
-using Orkeon.Domain.Agent;
-using Orkeon.Domain.Crew;
-
-var agent = new AgentBuilder()
-    .Role("Researcher")
-    .Goal("Find and summarize information about AI trends")
-    .Verbose()
-    .Build();
-
-var crew = new CrewBuilder()
-    .Goal("Research AI trends for 2026")
-    .Sequential()
-    .WithAgent(agent)
-    .WithTask(t => t
-        .Description("Search for the latest AI developments and trends")
-        .ExpectedOutput("A comprehensive summary report"))
-    .Build();
-
-// câbler l'hôte et lancer l'exécution — voir docs/fr/getting-started/bootstrap.md
-```
-
-**Pas de clé API ?** Tout tourne sur un modèle installé sur votre machine
-(Docker Model Runner, Ollama, ou un modèle embarqué dans l'image conteneur) —
-voir le [guide des modèles locaux](docs/fr/guides/local-models.md). Guides
-complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) ·
-[Lancez votre premier exemple](docs/fr/getting-started/run-your-first-example.md).
-
----
-
-## Installation
-
-| Vous voulez… | Faites | Détails |
-|---|---|---|
-| **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 104 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
-| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu (amd64, arm64) : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Le paquet Debian/Ubuntu apporte aussi le REPL (`orkeon-repl`). Pour qui veut le host de service, ou le REPL ailleurs, c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
-| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet, depuis [nuget.org](https://www.nuget.org/packages/Orkeon) (le flux public : aucune source à ajouter, aucun token). Ajoutez au besoin [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — ce dernier épingle un amont en préversion, `SmartComponents.LocalEmbeddings`, et continuera après la 1.0 : voir les [limitations](docs/fr/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
-| **Vérifier ce que vous téléchargez** | Chaque paquet et installeur porte une attestation de provenance de build signée par GitHub et une ligne `SHA256SUMS` : `gh attestation verify <fichier> --repo Orkeon/orkeon` — aucune confiance en cette page n'est requise | [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md) |
-| **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln`. Pour installer sur votre `PATH` ce que vous avez compilé : `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` sous Windows) | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
-
-> **Clonez sans `--recursive`.** Ce dépôt déclare des **sous-modules privés de
-> mainteneurs** : ils ne sont pas disponibles dans un clone
-> public. Ni le build, ni les tests, ni le workflow de contribution n'en ont besoin, et
-> un `git submodule update` en échec sur ces chemins est attendu et sans
-> conséquence — voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
-
-**Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis. :
-
-```powershell
-# Vérifiez d'abord le téléchargement : chaque release publie un asset SHA256SUMS (SHA256SUMS.msi pour le .msi)
-(Get-FileHash orkeon-cli-<version>-win-x64.zip -Algorithm SHA256).Hash.ToLower()
-Select-String -Path SHA256SUMS -Pattern 'win-x64\.zip'   # les deux empreintes doivent coïncider
-
-Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
-.\install.cmd        # ou double-cliquez-le. Ou : msiexec /i orkeon-<version>-win-x64.msi -- un seul canal, pas les deux
-orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM et le modèle
-orkeon run crew.yaml
-```
-
-> **Rien à préparer.** `install.cmd` lance `install.ps1` sur le PowerShell livré avec Windows, sous une politique d'exécution qui ne vaut que pour cette commande : pas de PowerShell 7 à installer, pas de `Set-ExecutionPolicy`, aucun réglage changé — chaque release installe l'archive sous Windows PowerShell 5.1 et sous PowerShell 7. Windows peut demander de confirmer un fichier téléchargé par un navigateur ; `Unblock-File .\orkeon-cli-<version>-win-x64.zip` avant d'extraire évite la question. Le relancer par-dessus une installation la remplace — fermez Orkeon Studio d'abord, l'installeur refuse tant qu'il est ouvert. Une politique imposée par votre organisation l'emporte sur le lanceur : là, seul un script signé tourne. Le `.msi` n'est pas signé : SmartScreen affiche *« Windows a protégé votre ordinateur »* — **Informations complémentaires** → **Exécuter quand même**, une fois le fichier vérifié. Détails : [Avant de commencer](docs/fr/getting-started/three-ways-to-run-orkeon.md#avant-de-commencer).
-
-**Debian / Ubuntu** (amd64, arm64) — ajoutez une fois la source apt signée d'Orkeon : le bloc à copier, avec la vérification de la clé et les canaux `stable` / `rc` / `dev`, est dans [Installer avec apt](docs/fr/guides/install-with-apt.md). Orkeon est ensuite un paquet comme un autre — self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
-
-```bash
-sudo apt install orkeon orkeon-archive-keyring   # une fois
-sudo apt update && sudo apt upgrade              # chaque version suivante
-orkeon init          # écrit ~/.config/Orkeon/appsettings.json
-orkeon run crew.yaml
-```
-
-Une machine qui n'atteint pas le contenu brut de GitHub installe à la place le `.deb` d'une release (`_arm64.deb` sur une machine ARM : Raspberry Pi 5, Graviton, Ampere) ; elle ne reçoit aucune mise à jour. `<version>` est le tag de la release sans son `v` — par exemple `1.0.0-rc.5`, tiret compris. (Les releases jusqu'à 1.0.0-rc.4 nomment le fichier `orkeon_1.0.0.rc.N_amd64.deb` alors que leur ligne `SHA256SUMS` porte `orkeon_1.0.0~rc.N_amd64.deb` : vérifiez ces deux-là à la main.) Puis :
-
-```bash
-# SHA256SUMS est un asset de release lui aussi — téléchargez-le à côté du .deb et vérifiez
-grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu : OK (_arm64.deb sur ARM)
-
-sudo apt install ./orkeon_<version>_amd64.deb
-```
-
-**macOS** — Homebrew deviendra la voie recommandée dès que le dépôt `Orkeon/homebrew-tap` sera publié (pas encore publié ; utilisez l'archive tarball en attendant) :
-
-```bash
-brew tap orkeon/tap && brew install orkeon    # une fois le tap publié
-orkeon init
-orkeon run crew.yaml
-```
-
-En attendant (et sur n'importe quelle machine), l'archive self-contained — `osx-arm64` pour Apple Silicon, `osx-x64` pour Intel. `install.sh` retire pour vous l'attribut de quarantaine Gatekeeper :
-
-```bash
-# Le nom de l'asset porte la version, et le raccourci `latest/download/` de GitHub
-# ignore les préversions — résolvez donc d'abord le tag le plus récent (ou copiez le
-# lien de l'asset depuis la page des releases, ce qui revient au même à la main). Seuls
-# les tags `v` sont des versions : `apt-dev` porte les builds de dev du dépôt apt.
-TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name": "v' | cut -d'"' -f4)
-VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
-
-curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 sur Intel
-curl -fsSL -O "$BASE/SHA256SUMS"
-grep " orkeon-cli-$VER-osx-arm64.tar.gz$" SHA256SUMS | shasum -a 256 --check -   # attendu : OK
-
-tar -xzf "orkeon-cli-$VER-osx-arm64.tar.gz" && cd "orkeon-cli-$VER-osx-arm64" && ./install.sh
-orkeon init
-```
-
-`orkeon doctor` diagnostique l'installation (runtime, config, joignabilité du LLM, esbuild, grammaires) dès que quelque chose cloche.
-
----
-
-## Fonctionnalités
-
-Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI — `bash scripts/count-surface.sh` les affiche à côté de la règle qui les compte, et un README en désaccord fait échouer le build.
-
-| Capacité | Détails |
+| | |
 |---|---|
-| **102 outils intégrés** | Système de fichiers, web scraping (AngleSharp), APIs HTTP, JSON/CSV/XML/PDF/Office (DOCX & XLSX lecture/écriture), bases de données, e-mail, Google Drive et OneDrive, exécution de code sécurisée, RAG et recherche sémantique, messagerie EventHub, analyse de code RaggableTree, délégation/collaboration — voir l'[inventaire des outils](docs/fr/tools/inventory.md) |
-| **E-mail** | Treize outils `email_*` donnent une boîte aux lettres aux agents : IMAP, POP3 et SMTP via MailKit, Outlook.com / Hotmail / Microsoft 365 via Microsoft Graph, préréglages Gmail et Outlook, connexion OAuth2 faite une fois avec `orkeon email login`. Droits par compte, une liste d'autorisation d'envoi fermée tant qu'un opérateur ne l'ouvre pas, et chaque message lu passé au filtre anti-injection de prompt. Gmail a été campagné sur un vrai compte (2026-10-04 mot de passe d'application, 2026-10-05 OAuth2) et Hotmail via Microsoft Graph (2026-10-12) ; Outlook en IMAP et SMTP n'a pas été joué — commencez par [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md), puis le [guide e-mail](docs/fr/guides/email.md) |
-| **Google Drive & OneDrive** | Onze outils `drive_*` donnent un drive dans le nuage aux agents : lister, chercher, lire (les documents Google via leur export texte), télécharger dans le VFS, charger depuis lui, créer des dossiers, déplacer, supprimer, partager. Google Drive via l'API Drive, OneDrive via Microsoft Graph, les deux en HTTP simple ; connexion OAuth2 faite une fois avec `orkeon drive login`. Droits par compte, un dossier racine qu'un agent ne peut pas quitter, un partage fermé tant qu'un opérateur ne l'ouvre pas, et chaque texte lu passé au filtre anti-injection de prompt. Pas encore campagné sur de vrais comptes — voir le [guide drive](docs/fr/guides/drive.md) |
-| **16 fournisseurs LLM** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) et MiniMax, plus deux agrégateurs — OpenRouter (une clé, une place de marché de 445 modèles) et Mammouth AI (les crédits inclus d'un abonnement) — tous basés sur HTTP, étendant `HttpLlmProviderBase` ; modèles locaux via Docker Model Runner, Ollama ou llama.cpp embarqué — voir le [guide des modèles locaux](docs/fr/guides/local-models.md) |
-| **Vision / multimodal** | Le contenu image circule de bout en bout (`MultiModalContent` → blocs image Anthropic / parts `image_url` OpenAI sur les 14 providers compatibles OpenAI / `images` Ollama, pour les modèles qui voient) avec un chargeur adossé au VFS ; opt-in via `AddOrkeonMultiModal(...)` — voir le [guide multimodal](docs/fr/guides/multimodal.md) |
-| **6 fournisseurs de mémoire** | Redis (recherche vectorielle), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (serveur REST distant) — un seul port `IMemoryProvider`, décorateurs composables |
-| **6 stratégies d'orchestration** | Sequential, Hierarchical, Parallel, Consensual (stratégies de vote Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount), Graph (style LangGraph), Autonomous (budget d'exécution multi-dimensionnel) — voir le [guide des process types](docs/fr/orchestration/process-types.md) |
-| **Interop Microsoft Agent Framework** | `Orkeon.Interop.AgentFramework` : un crew Orkeon tourne comme `AIAgent` MAF ; un `AIAgent` MAF devient le cerveau (`WithAgentFrameworkAgent`) ou un outil (`WithAgentFrameworkTool`) d'un agent Orkeon — voir [ADR-010](docs/fr/adr/ADR-010-agent-framework-interop.md) et `examples/interop/agent-framework/` |
-| **.NET Aspire** | `Orkeon.Hosting.Aspire` : `AddOrkeonHost` / `AddOrkeonCrewRun` placent le démon ou un run de crew dans un AppHost ; les runners honorent `OTEL_EXPORTER_OTLP_ENDPOINT`, si bien que le dashboard Aspire montre chaque span `invoke_agent` / `chat` / `execute_tool`, les métriques de tokens et les logs — voir [ADR-011](docs/fr/adr/ADR-011-aspire-dashboard-observability.md) et `examples/aspire/AppHost/` |
-| **Système de plugins** | Assemblies drop-in implémentant `IOrkeonPlugin`, découvertes dans un répertoire de plugins, chargées dans des `AssemblyLoadContext` collectables et isolés, activées explicitement via `AddOrkeonPlugins(...)` — voir [plugins](docs/fr/architecture/plugins.md) (projet du dépôt, pas un paquet NuGet) |
-| **Bootstrap d'hôte & scripting** | `Orkeon.Hosting` (`RunnerHost`) câble la pile complète pour les runners et CLI du dépôt (appsettings, montages VFS, providers, outils) — il est livré dans la CLI, pas comme paquet NuGet ; le dotnet tool `orkeon` exécute les crews YAML et les scripts de crew `.ork.ts` à syntaxe TypeScript |
-| **Générateurs de source** | `Orkeon.Generators` émet la plomberie wrapper/builder `[TypedDictionary]`, libérant de tout boilerplate les APIs fortement typées écrites à la main |
-| **Architecture en pipeline typé** | `ComponentBase<TRequest, TResponse>` élimine `Dictionary<string, object>` dans toute la pile |
-| **Configuration YAML** | Export/import aller-retour complet pour les agents, tâches, crews et schémas d'outils |
-| **API Fluent Builder** | `AgentBuilder`, `CrewBuilder`, `CrewTaskBuilder` pour une construction ergonomique et découvrable |
-| **Clean Architecture** | Séparation stricte Domain / Application / Infrastructure sans fuite entre couches |
-| **Pipeline CQRS** | Commandes et requêtes pour tous les agrégats ; décorateur `ValidatingCommandHandler` ; intégration `UnitOfWork` |
-| **Sélection d'agents configurable** | Une tâche qui ne nomme aucun agent va au premier disponible (`FirstFit`, le défaut), à la meilleure correspondance lexicale de compétences (`Skill`) ou à l'agent le plus proche par similarité d'embeddings (`Embedding`, qui exige un vrai fournisseur d'embeddings) — `OrkeonApplicationOptions.AgentSelectionStrategy` |
-| **Checkpointing & reprise** | État d'exécution persisté dans des state stores enfichables (InMemory, fichier JSON, SQLite, PostgreSQL) ; time-travel via `CheckpointManager` (fork, replay, diff) et `ResumeEngine` pour reprendre les exécutions interrompues |
-| **Communication A2A** | Protocole Agent-to-Agent avec découverte, `A2AClient`/`A2AServer`, un repository d'agents scopé au-dessus d'un store d'enregistrement partagé, et application optionnelle de mTLS / identifiants (certificat client + `RequireMutualTls` côté serveur ; `AllowedAuthSchemes` avec jetons `Bearer` validés et secrets `ApiKey`) |
-| **Sous-systèmes opt-in** | A2A, monitoring, rate-limiting des outils ([`ToolRateLimiting`](docs/fr/reference/configuration.md#toolratelimiting) — les limites sur les appels au modèle, [`RateLimiting`](docs/fr/reference/configuration.md#ratelimiting), s'appliquent dans tout hôte), benchmarking, multimodal, hooks de kickoff et d'autres — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
+| **Orkeon Studio** | L'application de bureau. **Décrire → Composer → Essayer → Adopter** : dites ce que l'équipe doit faire, laissez l'assistant proposer les agents, leurs tâches et les dossiers qu'ils peuvent toucher — ou partez d'un des 104 cas d'usage —, essayez-la sur un échantillon, adoptez-la à la demande, toutes les heures ou chaque jour. Puis lancez-la, suivez ce qu'elle coûte, relisez l'historique, gérez modèles, dossiers, boîtes aux lettres et drives depuis un seul écran de réglages. Mode novice ou expert, cinq langues, pas de code. L'application de bureau est Windows ; Linux a deux applications terminal, un éditeur de réglages et un lanceur d'exécution — [Orkeon Studio](docs/fr/architecture/studio.md). |
+| **Orkeon Workshop** | Claude Code, harnaché. Une image de conteneur — Claude Code, le CLI Orkeon, des modèles locaux sur votre GPU — et une méthode : besoin → tests → équipe → exécutions → acceptée, chaque tentative et chaque décision gardées sur disque, une exécution payante qui attend votre accord. Les équipes en sortent prêtes pour Studio ; le même harnais travaille sur Orkeon lui-même — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
+| **Orkeon Code** | Un assistant de codage sur le runtime Orkeon. Travaillez en binôme dans le terminal sous le mode de permission de votre choix, ou laissez-le mener une tâche jusqu'au bout ; `/review`, `/commit`, `/security-review`, `/analyze` ; un seul projet monté, un shell en liste blanche. Alpha — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
+| **Le CLI `orkeon`** | `orkeon run` exécute une équipe écrite en YAML ou en TypeScript (`.ork.ts`) ; `orkeon forge "…"` en rédige une à partir d'une phrase, la teste en bac à sable et la promeut ; `orkeon quickstart` écrit l'équipe « deux minutes » ci-dessus ; `init`, `doctor`, `email login` et `drive login` font la plomberie — [référence du CLI](docs/fr/reference/cli.md). |
+| **La bibliothèque** | `dotnet add package Orkeon --prerelease` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
 
----
+L'équipe que vous composez dans Studio est le YAML que le CLI exécute, et l'équipe que votre propre code .NET charge. Un seul runtime, les mêmes règles, quelle que soit la porte.
 
-## Architecture
+## Ce qu'il y a dans la boîte
 
-Orkeon suit la Clean Architecture avec trois couches concentriques :
+102 outils intégrés (mail en IMAP, SMTP et Microsoft Graph ; Google Drive et OneDrive ; web, HTTP, bases de données, Office et PDF, exécution de code sécurisée, analyse sémantique de code) · 16 fournisseurs LLM, modèles locaux compris (Ollama, Docker Model Runner, llama.cpp embarqué) · 6 fournisseurs de mémoire · 6 stratégies d'orchestration, de la simple séquence au graphe ou à l'équipe autonome sous budget · points de reprise · plugins dans des contextes de chargement isolés · 104 exemples exécutables. Chaque nombre de cette page est recalculé par la CI à chaque changement — un README qui s'en écarte fait échouer le build.
 
-```
-+----------------------------------------------------------+
-|  Infrastructure  (outer)                                 |
-|  LLM providers, memory stores, tools, HTTP clients       |
-|                                                          |
-|  +------------------------------------------------+      |
-|  |  Application  (middle)                         |      |
-|  |  Use cases, orchestrators, service interfaces  |      |
-|  |                                                |      |
-|  |  +----------------------------------------+   |      |
-|  |  |  Domain  (inner)                       |   |      |
-|  |  |  Agents, Crews, Tasks, Tools, LLMs     |   |      |
-|  |  |  Pure business logic, one satellite of constants  |   |      |
-|  |  +----------------------------------------+   |      |
-|  +------------------------------------------------+      |
-+----------------------------------------------------------+
-```
+## Installer
 
-- **Domain** : entités cœur et value objects (`Agent`, `Crew`, `CrewTask`, `IBaseTool`, `ILlmProvider`). Aucune dépendance externe.
-- **Application** : cas d'usage et logique d'orchestration. Définit les interfaces (ports) implémentées par l'Infrastructure.
-- **Infrastructure** : fournisseurs LLM, stores de mémoire, implémentations d'outils et toutes les intégrations externes.
-
-Autour du cœur, des projets dédiés couvrent l'hébergement (`Orkeon.Hosting`, plus le daemon de service `orkeon-host` d'`Orkeon.Host` et le bus d'événements de run `orkeon run --events jsonl`), les plugins (`Orkeon.Plugins`), les générateurs de source Roslyn (`Orkeon.Generators`), l'analyseur de conformité VFS (`Orkeon.Compliance.Vfs` — un paquet NuGet autonome sans dépendance à Orkeon : `<PackageReference Include="Orkeon.Compliance.Vfs" PrivateAssets="all" />` fait de tout `System.IO` direct une erreur de compilation dans n'importe quel projet C#), le DSL de scripting à syntaxe TypeScript (`Orkeon.Scripting` plus le tool CLI `orkeon`), les familles d'outils (`Orkeon.Tools.*`, livrées ensemble dans le paquet `Orkeon.Tools`) et le moteur d'analyse sémantique de code RaggableTree (`Orkeon.Analysis`, livré dans le paquet `Orkeon`).
-
----
-
-## Documentation
-
-| Vous cherchez… | Allez à |
+| | |
 |---|---|
-| **Le premier run, pas à pas** | [Vue d'ensemble getting-started](docs/fr/getting-started/overview.md) · [Lancez votre premier exemple](docs/fr/getting-started/run-your-first-example.md) |
-| **Les trois façons d'exécuter Orkeon** (source / binaire / conteneur) | [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) |
-| **L'e-mail** : donner une boîte aux lettres aux agents (Gmail, Outlook.com / Hotmail, votre propre serveur IMAP/POP3/SMTP) | [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md) · [Guide e-mail](docs/fr/guides/email.md) · [`orkeon email`](docs/fr/reference/cli.md#orkeon-email) |
-| **Les modèles locaux** (Docker Model Runner, Ollama, embarqué, contextes 128K) | [Guide des modèles locaux](docs/fr/guides/local-models.md) |
-| **Les 104 exemples exécutables** (9 catégories thématiques + `orkeon-example`) | [Exemples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Catalogue](docs/fr/reference/examples-catalog.md) |
-| **Écrire des crews** : YAML, builders, TypeScript, câblage de l'hôte, exécution | [YAML & builders](docs/fr/getting-started/yaml-and-builders.md) · [Écrire une crew en TypeScript](docs/fr/guides/write-a-crew-in-typescript.md) · [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
-| **Les modes d'orchestration** (dont FSM et graphe en profondeur) | [Process types](docs/fr/orchestration/process-types.md) · [FSM](docs/fr/orchestration/fsm.md) · [Graph](docs/fr/orchestration/graph.md) |
-| **Écrire vos propres outils** | [New tool pattern](docs/fr/tools/new-tool-pattern.md) · [Inventaire des outils](docs/fr/tools/inventory.md) |
-| **L'architecture en profondeur** (plugins, scripting, VFS, sécurité, RaggableTree) | [Docs d'architecture](docs/fr/INDEX.md) · [ADRs](docs/fr/adr/README.md) |
-| **Tout le reste** | [Index de la documentation](docs/fr/INDEX.md) *(aussi disponible [en anglais](docs/INDEX.md))* |
+| **Windows** — CLI + Studio | `orkeon-cli-<version>-win-x64.zip` ou le `.msi` depuis les [releases](https://github.com/Orkeon/orkeon/releases), puis `install.cmd`. Autonome. |
+| **Debian / Ubuntu** — CLI + applications terminal de Studio | `sudo apt install orkeon` après avoir ajouté la [source apt signée](docs/fr/guides/install-with-apt.md). |
+| **macOS** — CLI | L'archive `osx-arm64` / `osx-x64` depuis les releases, puis `./install.sh`. |
+| **Conteneur** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — les exemples embarqués. |
+| **Dans votre application .NET** | `dotnet add package Orkeon --prerelease` (+ `Orkeon.Tools` pour les outils intégrés). |
+| **Depuis les sources** | `git clone` **sans** `--recursive` (les sous-modules privés du mainteneur ne servent à rien de public), puis `dotnet build Orkeon.sln` — [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources). |
 
-Ces pages, avec la référence d'API générée, sont publiées sous forme de site consultable à
-l'adresse **<https://orkeon.github.io/orkeon/>**. `docs.yml` le déploie à chaque tag `v*` : le site
-documente donc toujours une version taguée.
+Puis `orkeon init` pour choisir un fournisseur et un modèle ; `orkeon doctor` quand quelque chose cloche. Sommes de contrôle, attestations signées, mises à jour : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) · [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).
 
----
+## Aller plus loin
 
-## Pourquoi Orkeon ?
+[Premiers pas](docs/fr/getting-started/overview.md) · [Écrire une équipe en YAML, TypeScript ou C#](docs/fr/getting-started/yaml-and-builders.md) · [Forger une équipe à partir d'un besoin](docs/fr/getting-started/forge-a-team-from-a-need.md) · [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md) · [Modèles locaux](docs/fr/guides/local-models.md) · [Orchestration](docs/fr/orchestration/process-types.md) · [Orkeon Studio](docs/fr/architecture/studio.md) · [Exemples](examples) · [Index complet](docs/fr/INDEX.md) *(aussi [en anglais](docs/INDEX.md))* — publié sur **<https://orkeon.github.io/orkeon/>**.
 
-- **Trois surfaces d'écriture, un moteur** — le même crew peut être un fichier YAML qu'édite un analyste, un script TypeScript qu'itère un développeur (tous deux exécutés sans aucun rebuild), ou du C# embarqué dans votre produit. Aucune réécriture en changeant de niveau.
-- **Une orchestration au-delà des pipelines** — six stratégies, dont un mode graphe adossé à un moteur `StateGraph` style LangGraph (arêtes conditionnelles et cycles contrôlés dans son API C#) et un mode autonome où un manager répartit le travail, une tâche en échec est confiée à un pair et les agents échangent sur un canal A2A, le tout sous un budget d'exécution multi-dimensionnel (appels d'outils, profondeur, temps, tokens, spawns).
-- **Batteries incluses** — 102 outils, 16 fournisseurs LLM, 6 stores de mémoire, vision, RAG, analyse de code : utilisables immédiatement, remplaçables via les ports de la Clean Architecture.
-- **Local d'abord** — chaque exemple tourne sur un modèle installé sur votre machine (Docker Model Runner, Ollama, ou llama.cpp embarqué dans l'image conteneur). Aucune clé API nécessaire pour évaluer.
-- **La frontière est le produit** — un système de fichiers virtuel audité par droits devant chaque accès fichier, un analyseur Roslyn qui refuse le `System.IO` brut dans votre propre code, des budgets d'exécution et des circuit breakers pour l'autonomie, checkpoint et reprise pour les longs runs. Rate limiting, monitoring et le reste sont à un `AddOrkeonXxx()` près.
-- **Typé jusqu'au bout** — pas de plomberie `Dictionary<string, object>` ; les générateurs de source gardent la surface typée sans boilerplate.
+## Rejoignez-nous
 
----
+Montrez-nous ce que fait votre équipe : les [Discussions](https://github.com/Orkeon/orkeon/discussions) accueillent les questions et les démonstrations. Les bugs et les idées passent par les [formulaires d'issue](https://github.com/Orkeon/orkeon/issues/new/choose), les vulnérabilités par le [signalement privé](SECURITY.fr.md). Les contributions sont bienvenues — [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) dit comment, le [code de conduite](CODE_OF_CONDUCT.fr.md) dans quel esprit.
 
-## État du projet
-
-La version courante est la **1.0.0-rc.5** sur .NET 10 — la release candidate de la V1 (`src/Directory.Build.props` est la seule source de vérité ; le badge Release ci-dessus et `git tag` disent ce qui est tagué). Jalons récents : la distribution NuGet consolidée en un seul paquet `Orkeon` (plus `Orkeon.Tools` et quelques opt-ins — voir la [matrice de publication](docs/fr/reference/publication-matrix.md)) ; la CLI `orkeon` et l'image conteneur `orkeon-runners` avec 104 exemples embarqués et les workflows de modèles locaux ; l'orchestration FSM et Graph ; le process Autonomous avec budgets d'exécution ; le DSL de scripting TypeScript ; l'analyse sémantique de code RaggableTree (15 outils agents) ; le système de plugins ; checkpoint/reprise ; le client et serveur MCP bi-ère ; la persistance des tâches A2A ; une surface d'API publique mécaniquement gelée ; et la flotte LLM portée à 16 fournisseurs — quatorze vendeurs, chacun sous preuve de campagne en exécution réelle (dernières arrivées : Google Gemini, Grok/x.AI, MiniMax), plus les deux agrégateurs OpenRouter et Mammouth AI, intégrés documentation d'abord et campagnés le 2026-10-07 (LLM-08).
-
-Chaque pull request est gardée en CI :
-
-- le build compile avec **`-warnaserror` et le jeu complet d'analyseurs .NET** — tout nouveau warning compilateur, analyseur ou audit NuGet fait échouer le build
-- la **surface d'API publique est gelée** (Microsoft.CodeAnalysis.PublicApiAnalyzers ; un changement d'API non déclaré est une erreur de build)
-- les suites de tests unitaires et rapides (les suites Integration/Slow tournent chaque nuit dans un workflow dédié) et la gate de parité documentaire EN/FR ; des gates filtrées par chemin ajoutent les linters d'exemples sur les PR touchant `examples/`, et un build docfx strict (`--warningsAsErrors`) sur les PR touchant les sources ou la doc
-
-**La couverture de lignes est mesurée en public.** Le [workflow Coverage](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml) exécute les suites unitaires et rapides sous `dotnet-coverage` à chaque push sur `main` (et chaque semaine) : le chiffre est sur la page de résumé de chaque run, le fichier Cobertura et un rapport HTML sont son artefact `coverage`. Aucun nombre n'est cité ici — un nombre tapé dans un README est une affirmation, un run est une mesure. L'analyse statique tourne sur un SonarQube local via `scripts/sonar-analyze.sh` selon la [politique de quality gate](docs/fr/guides/quality-gate.md) ; ses rapports ne sont pas versionnés, donc ses chiffres ne sont pas cités ici non plus.
-
-Les contraintes connues sont suivies dans [docs/fr/reference/limitations.md](docs/fr/reference/limitations.md). Ce qui se passe si le projet s'arrête — MIT, build reproductible, aucune infrastructure privée, forkable par quiconque — est écrit dans [SUPPORT.fr.md](SUPPORT.fr.md#si-le-projet-sarrête).
-
----
-
-## Contribuer
-
-Les contributions sont bienvenues. Ouvrez une issue pour discuter des changements significatifs avant de soumettre une pull request. Assurez-vous que les tests joués par la CI passent (`dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"` — [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) explique pourquoi le filtre n'est pas optionnel) et que le nouveau code suit les conventions de Clean Architecture décrites dans [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
-
-### Compiler depuis les sources
-
-La couche scripting (support `.ork.ts`) embarque une petite toolchain esbuild provisionnée au premier `dotnet build`. Sur un clone frais, le projet `Orkeon.Scripting` exécute `npm ci` (strictement depuis le `tools/scripting-esbuild/package-lock.json` commité, le lockfile n'est jamais modifié) sous `tools/scripting-esbuild/` pour créer `node_modules/`. C'est une étape unique par clone, qui touche le réseau.
-
-Pour la sauter entièrement (p. ex. en CI ou pour empaqueter des consommateurs NuGet qui n'ont pas besoin d'esbuild) :
-
-```bash
-dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true
-```
-
-Si npm est indisponible, le build réussit quand même ; esbuild est alors résolu depuis le `PATH` à l'exécution.
-
-Pour installer l'`orkeon` que vous avez compilé — sur votre `PATH`, à la version de votre checkout, comme l'installe une archive de release — lancez `./scripts/install-from-source.sh` (`.\scripts\install-from-source.ps1` sous Windows, depuis PowerShell 7). Il nomme chaque prérequis manquant avant de compiler quoi que ce soit : [Installer ce que vous venez de cloner](docs/fr/getting-started/three-ways-to-run-orkeon.md#installer-ce-que-vous-venez-de-cloner).
-
----
-
-## Communauté et support
-
-- **Obtenir de l'aide** — [SUPPORT.fr.md](SUPPORT.fr.md) nomme les lieux : les [GitHub Discussions](https://github.com/Orkeon/orkeon/discussions) pour les questions et les retours d'usage, les [formulaires d'issue](https://github.com/Orkeon/orkeon/issues/new/choose) pour les bugs et les demandes de fonctionnalité. Il n'y a ni Discord ni Slack.
-- **Signaler une vulnérabilité** — [SECURITY.fr.md](SECURITY.fr.md). Jamais d'issue publique : passez par le GitHub Private Vulnerability Reporting (dépôt → *Security* → *Report a vulnerability*).
-- **Règles de vie commune** — le [code de conduite](CODE_OF_CONDUCT.fr.md) (Contributor Covenant 2.1) s'applique à tous les espaces du projet.
-
----
+La couverture est [mesurée en public](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml), les limites connues sont dans [limitations](docs/fr/reference/limitations.md), et ce qui se passe si le projet s'arrête est écrit dans [SUPPORT.fr.md](SUPPORT.fr.md#si-le-projet-sarrête) : MIT, un build reproductible, aucune infrastructure privée, forkable par quiconque.
 
 ## Licence
 
 Orkeon est publié sous [licence MIT](LICENSE.md).
-

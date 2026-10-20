@@ -5,13 +5,21 @@ The crew behind the README's *Try it in two minutes*. One agent (`Scribe`), one 
 points at Ollama on `localhost:11434` with `qwen2.5:1.5b`, so nothing else has to be
 configured — the settings file next to the crew wins over every other source.
 
+Both files are embedded in the `orkeon` tool, byte for byte: `orkeon quickstart` writes them,
+with an empty `out/`, into `./orkeon-quickstart/` (`--to <dir>` for another folder; a folder
+that is not empty is refused). No clone needed:
+
 ```bash
 ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
-mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
+orkeon quickstart && cd orkeon-quickstart
+orkeon run crew.yaml --mount ./out:/output:rw
 ```
 
-`./out/hello.md` appears. That is the whole demo — except for what it demonstrates: the
+From a clone, the same crew runs in place:
+`mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw`.
+
+`out/hello.md` appears. That is the whole demo — except for what it demonstrates: the
 agent never saw `./out`. It saw `/output`, a virtual path, the only mount of this run,
 mounted `rw`. Ask it to write anywhere else and the file-system service answers before
 any byte reaches the disk (measured with this very crew, path changed to `/etc/hello.md`):
@@ -23,6 +31,16 @@ Tool result << file_write [FAIL]: Error: No mount found for virtual path '/etc/h
 ```
 
 Try it: edit `crew.yaml`, replace every `/output/hello.md` (three of them) with `/etc/hello.md`, run again.
+
+Or keep the path and take the right away — the same mount, read-only:
+
+```bash
+orkeon run crew.yaml --mount ./out:/output:ro
+```
+
+```
+file_write [FAIL]: Error: Access denied for '/output/hello.md': required Write, effective ReadOnly. Mounts granting Write: (none).
+```
 
 ## Why this model
 
@@ -40,7 +58,10 @@ of accepted as final), and the model changed. Any bigger model works too:
 
 ## Verified by CI
 
-`.github/workflows/quickstart.yml` extracts the fenced block between the
-`<!-- quickstart:begin -->` / `<!-- quickstart:end -->` markers of `README.md`, checks that
-`README.fr.md` carries the identical block, and runs it against a pinned Ollama binary on a
-GitHub runner. The README is the test; a README that stops working turns the build red.
+`.github/workflows/quickstart.yml` extracts two fenced blocks from `README.md` — the run,
+between the `<!-- quickstart:begin -->` / `<!-- quickstart:end -->` markers, and the refused
+run, between `<!-- quickstart-refused:begin -->` / `<!-- quickstart-refused:end -->` — checks
+that `README.fr.md` carries the identical blocks, and runs them in order against a pinned
+Ollama binary on a GitHub runner. The first must write `orkeon-quickstart/out/hello.md`; the
+second must log `required Write, effective ReadOnly` and leave that file unchanged. The README
+is the test; a README that stops working turns the build red.
