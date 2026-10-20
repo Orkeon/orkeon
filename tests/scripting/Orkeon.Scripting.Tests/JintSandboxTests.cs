@@ -1,6 +1,7 @@
 using Jint.Runtime;
 using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests;
 
@@ -70,6 +71,30 @@ public sealed class JintSandboxTests
 
         Assert.Throws<MemoryLimitExceededException>(() => engine.Evaluate(
             "var arr = []; for (var i = 0; i < 1_000_000; i++) { arr.push('x'.repeat(1000)); }"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task Memory_limit_trips_inside_a_crew_run_driven_from_the_CLR()
+    {
+        var factory = new JsEngineFactory(new ScriptingLimitsOptions
+        {
+            MemoryLimitBytes = 1L * 1024 * 1024,
+        });
+        var engine = factory.Create();
+        var crew = (JsCrew)(await engine.EvaluateAsync("""
+            const a = agentBuilder().name("Hog").role("R").goal("G")
+                .body(() => { var arr = []; for (var i = 0; i < 1_000_000; i++) { arr.push('x'.repeat(1000)); } return "no"; })
+                .build();
+            crewBuilder().name("memory-crew").withAgent(a).build();
+            """, cancellationToken: TestContext.Current.CancellationToken)).ToObject()!;
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(
+            () => crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
+
+        var chain = new List<Exception>();
+        for (var e = ex; e is not null; e = e.InnerException) chain.Add(e);
+        Assert.Contains(chain, e => e is MemoryLimitExceededException);
     }
 
     // --- R2.6 / SEC-009: strict "Untrusted-by-default" sandbox profile ---

@@ -187,6 +187,17 @@ désormais une règle, que les reproducteurs de
   fonctions JS elles-mêmes (`JsValue`) ; `RunAsync` est l'entrée CLR, et elle refuse de
   démarrer depuis un rappel CLR que le script a invoqué — depuis un script, appelez
   `crew.run()`.
+- **Les pompes du script et de la crew tournent sur un thread dédié, pas sur un worker du
+  pool.** Une pompe bloque son thread jusqu'à ce que la promesse se règle : sur le pool, elle
+  retenait un worker pendant tout le run, et un pool plafonné s'affamait. `ScriptHost.EvaluateAsync`
+  et `JsCrew.RunAsync` démarrent la leur par `RootPump.Start`
+  (`TaskCreationOptions.LongRunning | DenyChildAttach`) : un thread par script et par run de
+  crew piloté depuis C#, sans borne sur leur nombre, libéré à la fin du run. `JsTool.CallAsync`
+  fait exception et reste sur un worker du pool par `Task.Run` : un appel d'outil est court, et
+  un thread dédié par appel coûtait 145 à 164 µs par démarrage pour environ 10 µs l'appel
+  (médiane +1491 % contre un seuil de 1 %). La garde permanente `EngineThreadingGuardTests`
+  nomme cette exemption (commentaire `GAP-57 CH-03` ; sa règle `task-run-around-pump` saute
+  cette lambda) et refuse un `Task.Run` autour de toute autre pompe.
 - **L'annulation est la seule borne d'une attente ; `ExecutionTimeout` borne l'exécution.**
   Aucun timeout de promesse ne subsiste dans le runtime : une pompe racine draine jusqu'à ce
   que sa promesse se règle ou que son jeton se déclenche. L'`ExecutionTimeout` du bac à sable
@@ -201,6 +212,13 @@ désormais une règle, que les reproducteurs de
   déroulement. Le parent est la tentative ouverte la plus récente encore ouverte sur le
   moteur, exact en imbrication séquentielle et au mieux sous des runs entrelacés sur une même
   boucle d'événements ; `{ signal: ctx.signal }` est la forme explicite.
+- **Les tests attendent un moteur sous une garde nommée.** Le runtime n'a aucun timeout de
+  promesse : un test qui attend un moteur hériterait sinon des 10 secondes implicites de Jint. Il
+  attend sous `HangGuards.EnginePromise` (2 minutes, `Orkeon.Tests.Shared.Timing`) : posée sur
+  chaque lambda d'options `new Engine` d'un test, et, pour les moteurs que construisent la
+  fabrique et `ScriptHost`, une fois par projet de tests par un `[ModuleInitializer]` sur
+  `JsEngineFactory.PromiseTimeout` (interne). Le défaut du produit ne change pas (celui de
+  Jint). Le balayage `TestEngineHangGuardTests` échoue sur un moteur de test sans garde.
 
 ## Configuration et chaîne d'outils
 

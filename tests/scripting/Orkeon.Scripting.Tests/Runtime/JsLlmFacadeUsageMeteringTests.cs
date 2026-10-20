@@ -7,6 +7,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -51,7 +52,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     [Fact]
     public async Task A_complete_call_is_metered_once_for_the_contexts_crew_and_agent()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var provider = new ScriptedProvider(WithUsage("ok", 100, 20));
         var facade = Facade(engine, provider, sink);
@@ -72,7 +73,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     [Fact]
     public async Task Chat_extract_and_decide_are_each_metered_under_their_own_name()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var provider = new ScriptedProvider(WithUsage("chatted", 10, 1), WithUsage("{\"a\":1}", 10, 2), WithUsage("yes", 10, 3));
         var facade = Facade(engine, provider, sink);
@@ -91,7 +92,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     {
         // Two iterations — a tool call, then the final answer — are two calls: two events,
         // no more.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var provider = new ScriptedProvider(WithUsage("", 50, 5, raw: ToolCallBody("probe_tool")), WithUsage("final", 60, 6));
         var facade = Facade(engine, provider, sink, [new EchoTool("probe_tool")]);
@@ -110,7 +111,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     {
         // With a delta sink the act loop streams: the metered stream reports its final
         // response, and nothing else reports the turn a second time.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var provider = new OneTurnStreamingProvider(WithUsage("streamed final", 200, 30));
         var facade = Facade(engine, provider, sink, deltas: new NullDeltaSink());
@@ -128,7 +129,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     [Fact]
     public async Task A_stream_is_metered_once_under_the_stream_name_on_either_path()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var streaming = Facade(engine, new OneTurnStreamingProvider(WithUsage("streamed", 5, 7)), sink);
         var buffered = Facade(engine, new ScriptedProvider(WithUsage("buffered", 5, 7)), sink);
@@ -150,7 +151,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     {
         // The tokens were paid before the parse failed: the meter counts the call, not the
         // outcome.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var facade = Facade(engine, new ScriptedProvider(WithUsage("this is not JSON", 80, 8)), sink);
 
@@ -167,7 +168,7 @@ public sealed class JsLlmFacadeUsageMeteringTests
     {
         // The facade names the operation, the crew and the agent it knows; the task comes from
         // the scope the host opened around the script.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var sink = new RecordingUsageSink();
         var facade = Facade(engine, new ScriptedProvider(WithUsage("ok", 1, 1)), sink);
 

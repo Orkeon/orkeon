@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Telemetry;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Telemetry;
 
@@ -96,7 +97,7 @@ public sealed class OtelTests
         try
         {
             var provider = new StubLlmProvider().RespondWith(new LlmResponse { Content = "ok", TokensUsed = 7 });
-            using var engine = new Engine();
+            using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
             var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
             // A prompt whose LENGTH no other test in this assembly produces: the
@@ -179,6 +180,48 @@ public sealed class OtelTests
                 """, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.DoesNotContain("(stopped)", seen.AsString(), StringComparison.Ordinal);
+        }
+        finally { listener.Dispose(); }
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task Crew_run_driven_from_the_CLR_nests_its_spans_under_the_caller_activity()
+    {
+        var (spans, listener) = Capture();
+        using var callerSource = new ActivitySource("Orkeon.Scripting.Tests.CallerActivity");
+        using var callerListener = new ActivityListener
+        {
+            ShouldListenTo = src => src.Name == callerSource.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(callerListener);
+        try
+        {
+            var engine = new JsEngineFactory().Create();
+            var crew = (JsCrew)(await engine.EvaluateAsync("""
+                const a = agentBuilder().name("A-Caller").role("R").goal("G").body(() => "ok").build();
+                crewBuilder().name("caller-nest-crew").withAgent(a).build();
+                """, cancellationToken: TestContext.Current.CancellationToken)).ToObject()!;
+
+            using var caller = callerSource.StartActivity("caller");
+            Assert.NotNull(caller);
+
+            await crew.RunAsync(null, CancellationToken.None);
+
+            var all = Snapshot(spans);
+            var crewSpan = all
+                .Where(s => s.OperationName == ScriptingActivitySource.CrewRunSpan)
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "orkeon.crew.name" && kv.Value == "caller-nest-crew"));
+            Assert.NotNull(crewSpan);
+            Assert.Equal(caller!.TraceId, crewSpan!.TraceId);
+            Assert.Equal(caller.SpanId, crewSpan.ParentSpanId);
+
+            var agentSpan = all
+                .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.AgentRunSpan, StringComparison.Ordinal))
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.agent.name" && kv.Value == "A-Caller"));
+            Assert.NotNull(agentSpan);
+            Assert.Equal(caller.TraceId, agentSpan!.TraceId);
         }
         finally { listener.Dispose(); }
     }

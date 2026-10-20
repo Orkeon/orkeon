@@ -1,5 +1,6 @@
 using Jint;
 using Orkeon.Scripting.Internal;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Internal;
 
@@ -64,7 +65,7 @@ public sealed class JsTrampolineFactoriesTests
     [Fact]
     public void After_Prepare_no_factory_evaluates_at_its_first_use()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         JsTrampolineFactories.Prepare(engine);
         engine.SetValue("__touchAll", new Action(() =>
         {
@@ -104,7 +105,7 @@ public sealed class JsTrampolineFactoriesTests
     [Fact]
     public void A_bare_engine_evaluates_at_first_use_and_that_drains_the_queue()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         engine.SetValue("__touch", new Action(() => JsTrampolineFactories.Lock.For(engine)));
 
         Assert.Equal(["microtask", "prefix-done"], OrderAfter(engine, "__touch();"));
@@ -114,8 +115,8 @@ public sealed class JsTrampolineFactoriesTests
     [Fact]
     public void A_factory_is_evaluated_once_per_engine()
     {
-        using var engine = new Engine();
-        using var other = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        using var other = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
 
         var first = JsTrampolineFactories.HostError.For(engine);
 

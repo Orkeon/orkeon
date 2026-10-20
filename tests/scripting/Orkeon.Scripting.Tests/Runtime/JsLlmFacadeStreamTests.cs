@@ -8,6 +8,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
 using System.Runtime.CompilerServices;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -20,9 +21,6 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 public sealed class JsLlmFacadeStreamTests
 {
-    /// <summary>Turns a run that never settles into a failure; it bounds nothing a loaded pool can reach.</summary>
-    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
-
     private static readonly string[] HelloChunks = ["He", "llo"];
     private static readonly StreamedTurn[] NoTurns = [];
     private static readonly string[] NoChunks = [];
@@ -31,7 +29,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Stream_yields_provider_chunks_when_streaming_supported()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: HelloChunks,
             turns: NoTurns);
@@ -48,7 +46,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Stream_falls_back_to_single_chunk_for_non_streaming_provider()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new PlainProvider("full text");
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -63,7 +61,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Act_onDelta_receives_each_content_delta_and_final_output_is_assembled()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns:
@@ -87,7 +85,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Act_onDelta_composes_with_tool_calls_budget_and_gate()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_read");
         var toolCallBody =
             "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
@@ -123,7 +121,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Act_streamed_turn_runs_every_tool_use_block_of_an_Anthropic_body()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var read = new RecordingTool("file_read");
         var list = new RecordingTool("list_directory");
         // The body AnthropicLlmProvider rebuilds at the end of a streamed turn: one block per call.
@@ -157,13 +155,13 @@ public sealed class JsLlmFacadeStreamTests
         // A stream that never ends: act settles only if the run is abandoned once the callback
         // fails. The rejection is the callback's own error (the run's cancellation is superseded
         // by it), and leaving the stream mid-flight released the provider's enumeration.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new EndlessStreamingProvider();
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var options = BuildOptions(engine, "({ onDelta: d => { throw new Error('cb-boom:' + d); } })");
         var rejected = await Assert.ThrowsAsync<PromiseRejectedException>(
-            () => facade.ActAsync(engine, "go", options).WaitAsync(HangGuard, TestContext.Current.CancellationToken));
+            () => facade.ActAsync(engine, "go", options).WaitAsync(HangGuards.EnginePromise, TestContext.Current.CancellationToken));
 
         Assert.Equal("cb-boom:d0", rejected.RejectedValue.Get("message").AsString());
         Assert.True(provider.Released);
@@ -175,7 +173,7 @@ public sealed class JsLlmFacadeStreamTests
         // The pump reads the channel without the interrupt token on purpose: what streamed
         // before the interrupt reaches onDelta, and act resolves { interrupted: true } — the
         // pump's own cancellation would otherwise supersede that result from the finally.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         JsLlmFacade? facadeRef = null;
         var toolCallBody =
             "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
@@ -204,7 +202,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Act_without_onDelta_keeps_the_buffered_chat_path()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns: [new StreamedTurn(Deltas: ["x"], Final: new LlmResponse { Content = "x" })])
@@ -226,7 +224,7 @@ public sealed class JsLlmFacadeStreamTests
     {
         // F5 L3: a host-registered sink is enough to switch act() to the streaming path —
         // no script-side onDelta required (native REPL rendering).
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns: [new StreamedTurn(Deltas: ["Hel", "lo"], Final: new LlmResponse { Content = "Hello" })]);
@@ -248,7 +246,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Act_sink_and_onDelta_both_receive_every_delta()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns: [new StreamedTurn(Deltas: ["a", "b"], Final: new LlmResponse { Content = "ab" })]);
@@ -273,7 +271,7 @@ public sealed class JsLlmFacadeStreamTests
     {
         // A turn that streams no visible content (pure tool call) must not emit the line
         // terminator — otherwise every tool call would inject a blank line in the REPL.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_read");
         var toolCallBody =
             "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
@@ -302,7 +300,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Sink_with_non_streaming_provider_keeps_the_buffered_path()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new PlainProvider("buffered answer");
         var sink = new RecordingSink();
 
@@ -338,7 +336,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public async Task Stream_takes_the_chat_streaming_surface_not_the_plain_one()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
@@ -351,7 +349,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public void Stream_exposes_the_terminal_usage_on_the_returned_object()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns:
@@ -389,7 +387,7 @@ public sealed class JsLlmFacadeStreamTests
     {
         // A reasoning delta is not part of the answer. A caller writing chunks to a
         // file must not find the model's scratchpad in it.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns:
@@ -420,7 +418,7 @@ public sealed class JsLlmFacadeStreamTests
     {
         // The reasoning deltas must be dropped from the chunk sequence, not appended
         // to the text as a fallback.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(
             generateChunks: NoChunks,
             turns:
@@ -444,7 +442,7 @@ public sealed class JsLlmFacadeStreamTests
     {
         // "this provider reported no usage" and "this call used 0 tokens" must not be
         // the same observation — the same rule the cache-metrics reporting follows.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new PlainProvider("full text");
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         engine.SetValue("llm", facade);
@@ -466,7 +464,7 @@ public sealed class JsLlmFacadeStreamTests
     public void Stream_carries_usage_on_the_non_streaming_fallback_when_the_provider_reports_it()
     {
         // The side-channel must not quietly stop working on a provider without SSE.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new PlainProvider("full text") { Usage = new LlmResponse
         {
             Content = "full text", TokensUsed = 12, PromptTokens = 4, CompletionTokens = 8,
@@ -673,7 +671,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public void Stream_is_async_iterable_from_script_code()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         engine.SetValue("llm", facade);
@@ -693,7 +691,7 @@ public sealed class JsLlmFacadeStreamTests
     [Fact]
     public void Stream_stops_early_and_releases_the_iterator_on_break()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new FakeStreamingProvider(generateChunks: HelloChunks, turns: NoTurns);
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         engine.SetValue("llm", facade);

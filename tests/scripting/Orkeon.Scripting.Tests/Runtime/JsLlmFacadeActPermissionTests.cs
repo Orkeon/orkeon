@@ -32,7 +32,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Deny_of_one_call_answers_it_in_the_tool_role_and_still_runs_the_allowed_one()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var write = new RecordingTool("file_write");
         var read = new RecordingTool("file_read");
         var body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
@@ -65,7 +65,7 @@ public sealed class JsLlmFacadeActPermissionTests
     public async Task The_engine_clock_stops_while_the_gate_decides_and_runs_again_after()
     {
         var clock = new PausableTimeConstraint(TimeSpan.FromMinutes(5));
-        using var engine = new Engine(o => o.Constraint(clock));
+        using var engine = new Engine(o => { o.Constraint(clock); o.Constraints.PromiseTimeout = HangGuards.EnginePromise; });
         var tool = new RecordingTool("file_write");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -93,7 +93,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task An_approval_longer_than_the_wall_time_budget_does_not_end_the_turn()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var clock = new ManualTimeProvider();
         var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromSeconds(60), TimeProvider = clock };
         var tool = new RecordingTool("file_write");
@@ -123,7 +123,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task The_wall_time_budget_still_ends_an_agent_that_itself_runs_past_it()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var clock = new ManualTimeProvider();
         var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromSeconds(60), TimeProvider = clock };
         // The tool itself runs 90 s; the gate answers at once.
@@ -150,7 +150,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [InlineData(true)]
     public void A_script_reads_whether_the_host_registered_a_permission_gate(bool registered)
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var guards = registered ? new JsLlmActGuards { PermissionGate = new ScriptedGate((_, _) => PermissionVerdict.Allow()) } : null;
         var facade = new JsLlmFacade(engine, provider: null, CancellationToken.None, tools: null, guards);
         engine.SetValue("llm", facade);
@@ -161,7 +161,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task A_permissionMode_without_a_gate_logs_one_warning_and_the_tool_still_runs()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_write");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -186,7 +186,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Without_a_permissionMode_or_with_a_gate_no_warning_is_logged()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[] { new LlmResponse { Content = "done", RawResponseBody = null } });
         var logger = new RecordingLogger();
         var observability = new JsLlmObservability { Logger = logger };
@@ -204,7 +204,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Deny_skips_the_tool_and_feeds_a_DENIED_result_back_to_the_model()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_write");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -230,7 +230,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Allow_executes_the_tool_and_passes_the_act_permissionMode_option()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_read");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -253,7 +253,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Denied_calls_consume_no_tool_call_budget()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_write");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -274,7 +274,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Declared_tool_access_is_forwarded_to_the_gate()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("my_probe", ToolAccess.Read);
         var provider = new MessageCapturingProvider(new[]
         {
@@ -294,7 +294,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Unresolved_tool_reaches_the_gate_as_Unspecified()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[]
         {
             new LlmResponse { Content = "", RawResponseBody = ToolCallBody("ghost_tool", "{}") },
@@ -317,7 +317,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task Null_gate_keeps_the_ungated_behaviour()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_write");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -338,7 +338,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task An_allowed_call_goes_through_the_invocation_point_and_its_result_is_tagged()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("web_scrape");
         var provider = new MessageCapturingProvider(new[]
         {
@@ -365,7 +365,7 @@ public sealed class JsLlmFacadeActPermissionTests
     [Fact]
     public async Task A_guardian_block_feeds_a_DENIED_result_back_and_the_tool_never_runs()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("file_read");
         var provider = new MessageCapturingProvider(new[]
         {

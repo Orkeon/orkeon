@@ -5,6 +5,7 @@ using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using static Orkeon.Scripting.Tests.Testing.ScriptGlobals;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
@@ -28,8 +29,6 @@ namespace Orkeon.Scripting.Tests.Runtime;
 public sealed class JsCrewRunTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
-
-    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
 
     private static Engine NewEngine(ILoggerFactory? loggerFactory = null)
         => new JsEngineFactory(loggerFactory: loggerFactory).Create();
@@ -66,11 +65,11 @@ public sealed class JsCrewRunTests
             """);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
         AssertNotAbandoned(factory);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("fast", result.output);
     }
@@ -103,11 +102,11 @@ public sealed class JsCrewRunTests
             """);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
         AssertNotAbandoned(factory);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("fast", result.output);
     }
@@ -145,13 +144,13 @@ public sealed class JsCrewRunTests
         var semaphoreB = crew.GetInstanceSemaphore(crew.findByName("B")!);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
 
         AssertNotAbandoned(factory);
         Assert.Equal(1, semaphoreB.CurrentCount);
         Assert.Null(crew.EventBroker.CurrentAgentId);
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
         Assert.Equal("b", result.output);
     }
 
@@ -189,13 +188,13 @@ public sealed class JsCrewRunTests
         var semaphoreY = sub.GetInstanceSemaphore(sub.findByName("Y")!);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => outer.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => outer.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
 
         AssertNotAbandoned(factory);
         Assert.Equal(1, semaphoreY.CurrentCount);
         Assert.Null(sub.EventBroker.CurrentAgentId);
         engine.SetValue("quick", true);
-        var result = await sub.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await sub.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
         Assert.Equal("y", result.output);
     }
 
@@ -299,7 +298,7 @@ public sealed class JsCrewRunTests
         Assert.Empty(log);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("fast", result.output);
         Assert.Equal(["body", "complete:fast"], log);
@@ -334,7 +333,7 @@ public sealed class JsCrewRunTests
             """);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
 
         AssertNotAbandoned(factory);
         Assert.Contains("finally", log);
@@ -359,7 +358,7 @@ public sealed class JsCrewRunTests
             """);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuards.EnginePromise, Ct));
 
         AssertNotAbandoned(factory);
         Assert.Equal(0d, engine.GetValue("__onError").AsNumber());
@@ -395,7 +394,7 @@ public sealed class JsCrewRunTests
             crewBuilder().name("outer").withAgent(o).build();
             """);
 
-        var result = await outer.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await outer.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("bridged:OperationCanceledException|bridged:OperationCanceledException", result.output);
     }
@@ -510,7 +509,7 @@ public sealed class JsCrewRunTests
             """);
 
         var ex = await Assert.ThrowsAsync<RecursiveAgentInvocationException>(
-            () => crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct));
+            () => crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct));
 
         Assert.Contains("A", ex.Message, StringComparison.Ordinal);
     }
@@ -543,7 +542,7 @@ public sealed class JsCrewRunTests
             crew;
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal($"add:{nameof(DuplicateAgentNameException)},remove:{nameof(AgentNotInThisCrewException)},finally", result.output);
         Assert.Single(crew.agents);
@@ -589,7 +588,7 @@ public sealed class JsCrewRunTests
             crewBuilder().name("outer").withAgent(o).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("2", result.output);
         Assert.Equal(["agent.start", "i1", "i2", "complete:2"], log);
@@ -637,7 +636,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Null(result.tasks[0].output);
     }
@@ -669,7 +668,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal(nameof(InvalidOperationException), result.output);
     }
@@ -691,7 +690,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.StartsWith("receive_timeout|", result.output, StringComparison.Ordinal);
     }
@@ -741,7 +740,7 @@ public sealed class JsCrewRunTests
             crewBuilder().withAgent(mk("A")).withAgent(mk("B")).build();
             """);
 
-        await Assert.ThrowsAsync<TimeoutException>(() => crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct));
+        await Assert.ThrowsAsync<TimeoutException>(() => crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct));
     }
 
     /// <summary>
@@ -763,7 +762,7 @@ public sealed class JsCrewRunTests
             crew;
             """);
 
-        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuards.EnginePromise, Ct);
 
         Assert.Equal("fallback:b-boom", result.output);
     }

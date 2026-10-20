@@ -1,5 +1,6 @@
 using Jint;
 using Jint.Native;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -20,7 +21,7 @@ internal static class ClrResultExtensions
     public static JsValue Get(this object? result, string name)
     {
         Assert.NotNull(result);
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         return JsValue.FromObject(engine, result).Get(name);
     }
 }

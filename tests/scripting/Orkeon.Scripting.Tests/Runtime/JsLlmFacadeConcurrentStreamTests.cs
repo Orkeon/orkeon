@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using System.Runtime.CompilerServices;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -31,14 +32,7 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </remarks>
 public sealed class JsLlmFacadeConcurrentStreamTests
 {
-    /// <summary>
-    /// A hang guard, not a bound on the run: Jint rejects a promise still pending after
-    /// <c>PromiseTimeout</c> — ten seconds by default, which a loaded pool can spend on the hops
-    /// between the seven enumerations alone.
-    /// </summary>
-    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(60);
-
-    private static Engine NewEngine() => new(options => options.Constraints.PromiseTimeout = HangGuard);
+    private static Engine NewEngine() => new(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
 
     [Fact]
     public async Task Seven_concurrent_streams_report_their_own_usage_and_reasoning()

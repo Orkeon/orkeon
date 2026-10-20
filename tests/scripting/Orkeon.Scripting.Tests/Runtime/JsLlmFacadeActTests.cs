@@ -6,6 +6,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -28,7 +29,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_executes_tool_then_returns_final_answer()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("echo_tool");
         var provider = new SequencedProvider(new[]
         {
@@ -53,7 +54,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_without_tools_returns_first_completion()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new SequencedProvider(new[]
         {
             new LlmResponse { Content = "just an answer", RawResponseBody = null },
@@ -85,7 +86,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_runs_every_tool_use_block_of_an_Anthropic_turn_and_replays_them_in_the_tool_role()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var echo = new RecordingTool("echo_tool");
         var other = new RecordingTool("other_tool");
         var provider = new SequencedProvider(new[]
@@ -116,7 +117,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_runs_every_tool_call_of_an_OpenAI_turn_and_answers_each_by_its_id()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var echo = new RecordingTool("echo_tool");
         var other = new RecordingTool("other_tool");
         var provider = new SequencedProvider(new[]
@@ -141,7 +142,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_hands_a_file_read_result_whole_and_cuts_another_tool_once_at_the_framework_limit()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var big = new string('x', 20_000);
         var fileRead = new TextTool("file_read", big);
         var other = new TextTool("big_tool", big);
@@ -167,7 +168,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_does_not_cut_again_what_the_invocation_pipeline_returned()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var text = new string('y', 20_000);
         var pipeline = new StubToolInvocationPipeline(text);
         var provider = new SequencedProvider(new[]
@@ -189,7 +190,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_returns_the_provider_error_when_a_failed_turn_has_no_answer()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new SequencedProvider(new[]
         {
             new LlmResponse
@@ -209,7 +210,7 @@ public sealed class JsLlmFacadeActTests
     [Fact]
     public async Task Act_treats_a_tool_call_it_cannot_read_as_no_call()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var tool = new RecordingTool("echo_tool");
         var provider = new SequencedProvider(new[]
         {

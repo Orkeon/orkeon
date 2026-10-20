@@ -3,6 +3,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Bindings;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -12,7 +13,7 @@ public sealed class JsLlmConfigMaxTokensTests
 
     private static JsLlmConfig With(string maxTokensSource)
     {
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var overrides = engine.Evaluate($"({{ maxTokens: {maxTokensSource} }})");
         return Seed().with(overrides);
     }
@@ -63,7 +64,7 @@ public sealed class JsLlmConfigMaxTokensTests
     [Trait("BR", "CH-07")]
     public void ShouldThrowNamingMaxTokens_WhenModelGetsZeroInOverrides()
     {
-        using var engine = new Jint.Engine();
+        using var engine = new Jint.Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var ns = new JsLlmNamespace(NullLogger.Instance);
         var name = engine.Evaluate("'gpt-4o-mini'");
         var overrides = engine.Evaluate("({ maxTokens: 0 })");

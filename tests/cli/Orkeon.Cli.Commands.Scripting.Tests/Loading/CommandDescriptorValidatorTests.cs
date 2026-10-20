@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using System.Collections.Immutable;
 using Jint;
 using Jint.Native;
@@ -7,7 +8,7 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Loading;
 
 public sealed class CommandDescriptorValidatorTests
 {
-    private static readonly JsValue HandlerStub = new Engine().Evaluate("(function(){})");
+    private static readonly JsValue HandlerStub = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise).Evaluate("(function(){})");
 
     private static readonly string[] DeployAlias = ["deploy"];
     private static readonly string[] HelpAlias = ["help"];

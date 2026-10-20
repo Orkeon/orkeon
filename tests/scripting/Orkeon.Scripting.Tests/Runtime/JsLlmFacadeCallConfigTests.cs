@@ -3,6 +3,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Runtime;
 
@@ -43,7 +44,7 @@ public sealed class JsLlmFacadeCallConfigTests
     [Trait("BR", "CH-08")]
     public async Task complete_ResponseFormatOverride_KeepsCredentialsAndModel()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondWith(new LlmResponse { Content = "{}" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -60,7 +61,7 @@ public sealed class JsLlmFacadeCallConfigTests
     [Trait("BR", "CH-08")]
     public async Task chat_ModelOverride_ChangesOnlyTheModel()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondToChatWith(new LlmResponse { Content = "ok" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -79,7 +80,7 @@ public sealed class JsLlmFacadeCallConfigTests
     {
         // An interactive loop hot-swaps the model per turn by passing
         // `{ llm: { model } }` to act(); the agent's boot provider must keep its credentials.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondToChatWith(new LlmResponse { Content = "done" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -95,7 +96,7 @@ public sealed class JsLlmFacadeCallConfigTests
     [Trait("BR", "CH-08")]
     public async Task act_WithoutModelOverride_KeepsTheBootModel()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondToChatWith(new LlmResponse { Content = "done" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -112,7 +113,7 @@ public sealed class JsLlmFacadeCallConfigTests
     [Trait("BR", "CH-08")]
     public async Task complete_BothOverrides_ApplyOnTopOfTheSameBase()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondWith(new LlmResponse { Content = "{}" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -133,7 +134,7 @@ public sealed class JsLlmFacadeCallConfigTests
     {
         // Unchanged contract: an empty bag must not manufacture a config at all, otherwise
         // every provider would receive a patched copy of its own settings for nothing.
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = Configured();
         provider.RespondWith(new LlmResponse { Content = "ok" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -150,7 +151,7 @@ public sealed class JsLlmFacadeCallConfigTests
         // A third-party ILlmProvider that does not expose BaseConfig (the interface default is
         // null) must keep working — the override then applies to a config that names no model
         // (GAP-18: it named OpenAI's default model, whatever vendor the provider is).
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new StubLlmProvider();
         provider.RespondWith(new LlmResponse { Content = "{}" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);

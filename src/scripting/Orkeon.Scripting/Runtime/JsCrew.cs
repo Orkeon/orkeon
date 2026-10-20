@@ -286,9 +286,9 @@ public sealed partial class JsCrew
         }
         try
         {
-            // No token on Task.Run: a cancelled one would surface as TaskCanceledException, and every
+            // No token on the start: a cancelled one would surface as TaskCanceledException, and every
             // cancellation path of this run is normalised inside Pump.
-            return await Task.Run(() => Pump(options, externalCt)).ConfigureAwait(false);
+            return await RootPump.Start(() => Pump(options, externalCt), CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
@@ -297,7 +297,7 @@ public sealed partial class JsCrew
     }
 
     /// <summary>
-    /// Synchronous by design: one pool thread parses the options, invokes the JS run function and drains
+    /// Synchronous by design: one dedicated thread parses the options, invokes the JS run function and drains
     /// the engine until its promise settles or the run is abandoned. Draining on the run token itself
     /// would abandon the drain at the first idle wait after cancellation, before any JS <c>finally</c>
     /// or <c>onCrewError</c> ran; draining unbounded would hang on an unwind nobody settles. So the

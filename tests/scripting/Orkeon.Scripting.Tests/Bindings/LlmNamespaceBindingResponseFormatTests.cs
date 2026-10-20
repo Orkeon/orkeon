@@ -2,6 +2,7 @@ using Jint;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Tests.Bindings;
 
@@ -16,7 +17,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
     [Fact]
     public async Task complete_ForwardsResponseFormat_FromOpts()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new StubLlmProvider();
         provider.RespondWith(new LlmResponse { Content = "{}" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -32,7 +33,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
     [Fact]
     public async Task chat_ForwardsResponseFormat_FromOpts()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new StubLlmProvider();
         provider.RespondToChatWith(new LlmResponse { Content = "{}", TokensUsed = 0 });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
@@ -48,7 +49,7 @@ public sealed class LlmNamespaceBindingResponseFormatTests
     [Fact]
     public async Task complete_LeavesResponseFormatNull_WhenOptsOmitIt()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new StubLlmProvider();
         provider.RespondWith(new LlmResponse { Content = "ok" });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);

@@ -1,3 +1,4 @@
+using Orkeon.Tests.Shared.Timing;
 using System.Collections.Immutable;
 using Jint;
 using Jint.Native;
@@ -20,7 +21,7 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 public sealed class ScriptHostFacadeTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly Engine _engine = new();
+    private readonly Engine _engine = new(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
 
     public ScriptHostFacadeTests()
     {

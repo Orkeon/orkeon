@@ -37,6 +37,7 @@ public sealed class ExecutionContextTests
     }
 
     [Fact]
+    [Trait("BR", "CH-01")]
     public async Task ExecutionContext_delegate_awaits_body_past_Jint_default_10s_ceiling()
     {
         // Regression: ctx.delegate used to await the delegated body via Jint's
@@ -68,6 +69,7 @@ public sealed class ExecutionContextTests
     }
 
     [Fact]
+    [Trait("BR", "CH-01")]
     public async Task ExecutionContext_concurrent_delegate_fanout_settles_under_single_outer_pump()
     {
         // Regression (R28): the commands fan-out fired ~50 ctx.delegate calls

@@ -125,13 +125,31 @@ public sealed class JsEngineFactory
             : options;
 
     /// <summary>
+    /// The <c>PromiseTimeout</c> every engine <see cref="Create"/> builds is given. Test-side guard only:
+    /// the product leaves it null, which keeps Jint's default.
+    /// </summary>
+    internal static TimeSpan? PromiseTimeout { get; set; }
+
+    private static void ApplyPromiseTimeout(Jint.Options options)
+    {
+        if (PromiseTimeout is { } timeout)
+        {
+            options.Constraints.PromiseTimeout = timeout;
+        }
+    }
+
+    /// <summary>
     /// Creates a fresh, isolated <see cref="Engine"/> with the configured sandbox limits.
     /// </summary>
     public Engine Create()
     {
-        var engine = new Engine(opt => ApplyTimeLimit(ApplyInteropPolicy(opt)
-            .LimitMemory(_limits.MemoryLimitBytes)
-            .LimitRecursion(_limits.RecursionLimit), _limits.ExecutionTimeout));
+        var engine = new Engine(opt =>
+        {
+            ApplyTimeLimit(ApplyInteropPolicy(opt)
+                .LimitMemory(_limits.MemoryLimitBytes)
+                .LimitRecursion(_limits.RecursionLimit), _limits.ExecutionTimeout);
+            ApplyPromiseTimeout(opt);
+        });
 
         // Every JS trampoline factory is evaluated now, with the engine at rest and its job queue
         // empty: an Evaluate drains queued jobs on its way out, which a lazy evaluation from a

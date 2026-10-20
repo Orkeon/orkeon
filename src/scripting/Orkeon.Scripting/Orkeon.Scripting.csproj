@@ -129,6 +129,10 @@
          <AssemblyName>orkeon</AssemblyName>); InternalsVisibleTo matches the
          assembly name, not the project. -->
     <InternalsVisibleTo Include="orkeon" />
+    <!-- The test projects' module initializers set JsEngineFactory.PromiseTimeout. -->
+    <InternalsVisibleTo Include="Orkeon.Cli.Commands.Scripting.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
+    <InternalsVisibleTo Include="Orkeon.ConsoleApp.Tests" />
   </ItemGroup>
 
   <ItemGroup>

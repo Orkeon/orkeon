@@ -70,7 +70,26 @@ public sealed class EngineThreadingGuardTests
             "Violations:\n" + Report(violations));
     }
 
+    /// <summary>
+    /// GAP-57: a root pump drains on a dedicated thread, so it starts through <c>RootPump.Start</c> and
+    /// nothing wraps a drain, or a call to a pump, in <c>Task.Run</c>; each of the three pumps starts there.
+    /// </summary>
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void Sources_start_root_pumps_only_through_RootPump()
+    {
+        var violations = EngineThreadingAnalyzer.Analyze(Sources.Value)
+            .Where(v => v.Rule == EngineThreadingAnalyzer.TaskRunAroundPump).ToList();
+        var starters = EngineThreadingAnalyzer.RootPumpStarters(Sources.Value);
+
+        Assert.True(violations.Count == 0,
+            $"A lambda handed to Task.Run drains or calls a root pump: start it with RootPump.Start instead. Violations:\n" + Report(violations));
+        Assert.Contains(("Orkeon.Scripting.ScriptHost", "EvaluateAsync"), starters);
+        Assert.Contains(("Orkeon.Scripting.Runtime.JsCrew", "RunAsync"), starters);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
     public void Sources_drain_only_in_the_three_root_pumps()
     {
         var violations = EngineThreadingAnalyzer.Analyze(Sources.Value)
@@ -136,6 +155,11 @@ public sealed class EngineThreadingGuardTests
             using System.Threading.Tasks;
             using Jint;
             using Jint.Native;
+
+            static class RootPump
+            {
+                public static Task<T> Start<T>(Func<T> body, CancellationToken ct = default) => Task.FromResult(body());
+            }
 
             sealed class Probe
             {
@@ -217,12 +241,22 @@ public sealed class EngineThreadingGuardTests
                     private static async Task EvaluateAsync(JsValue p, CancellationToken ct)
                     {
                         await Task.Yield();
-                        await Task.Run(() => p.UnwrapIfPromise(TimeSpan.FromSeconds(1)), ct);                                    // expect: drain-outside-root-pump
-                        await Task.Run(() => p.UnwrapIfPromise(), ct);                                                           // expect: drain-outside-root-pump
+                        await Task.Run(() => p.UnwrapIfPromise(TimeSpan.FromSeconds(1)), ct);                                    // expect: drain-outside-root-pump, task-run-around-pump
+                        await Task.Run(() => p.UnwrapIfPromise(), ct);                                                           // expect: drain-outside-root-pump, task-run-around-pump
                         await p.UnwrapIfPromiseAsync(ct);                                                                        // expect: drain-outside-root-pump
-                        await Task.Run(async () => { await Task.Yield(); return p.UnwrapIfPromise(ct); }, ct);                   // expect: drain-outside-root-pump
-                        await Task.Run(() => { Func<JsValue> inner = () => p.UnwrapIfPromise(ct); return inner(); }, ct);        // expect: drain-outside-root-pump
+                        await Task.Run(async () => { await Task.Yield(); return p.UnwrapIfPromise(ct); }, ct);                   // expect: drain-outside-root-pump, task-run-around-pump
+                        await Task.Run(() => { Func<JsValue> inner = () => p.UnwrapIfPromise(ct); return inner(); }, ct);        // expect: drain-outside-root-pump, task-run-around-pump
                     }
+                }
+            }
+
+            namespace Orkeon.Scripting.Runtime
+            {
+                sealed class JsCrew
+                {
+                    public Task<object?> RunAsync(CancellationToken ct) => Task.Run(() => Pump(ct), ct);                          // expect: task-run-around-pump
+
+                    private static object? Pump(CancellationToken ct) => null;
                 }
             }
 
@@ -232,7 +266,7 @@ public sealed class EngineThreadingGuardTests
                 {
                     private static async Task EvaluateAsync(JsValue p, CancellationToken ct)
                     {
-                        await Task.Run(() => p.UnwrapIfPromise(ct), ct);                                                         // expect: drain-outside-root-pump
+                        await RootPump.Start(() => p.UnwrapIfPromise(ct), ct);                                                   // expect: drain-outside-root-pump
                     }
                 }
             }
@@ -262,6 +296,11 @@ public sealed class EngineThreadingGuardTests
             using System.Threading.Tasks;
             using Jint;
             using Jint.Native;
+
+            static class RootPump
+            {
+                public static Task<T> Start<T>(Func<T> body, CancellationToken ct = default) => Task.FromResult(body());
+            }
 
             sealed class Probe
             {
@@ -307,7 +346,7 @@ public sealed class EngineThreadingGuardTests
                     private static async Task<JsValue> EvaluateAsync(Engine engine, JsValue p, CancellationToken ct)
                     {
                         await Task.Yield();
-                        return await Task.Run(() =>
+                        return await RootPump.Start(() =>
                         {
                             engine.SetValue("x", 1);
                             var value = engine.Evaluate("x");
@@ -335,7 +374,7 @@ public sealed class EngineThreadingGuardTests
 
                 sealed class JsCrew
                 {
-                    public Task<object?> RunAsync(Engine engine, JsValue fn, CancellationToken ct) => Task.Run(() => Pump(engine, fn, ct), ct);
+                    public Task<object?> RunAsync(Engine engine, JsValue fn, CancellationToken ct) => RootPump.Start(() => Pump(engine, fn, ct), ct);
 
                     private static object? Pump(Engine engine, JsValue fn, CancellationToken ct)
                         => Jint.JsValueExtensions.UnwrapIfPromise(engine.Invoke(fn), ct).ToObject();
@@ -367,7 +406,9 @@ public sealed class EngineThreadingGuardTests
         => snippet.Split('\n')
             .Select((text, index) => (Text: text, Line: index + 1))
             .Where(l => l.Text.Contains("// expect: ", StringComparison.Ordinal))
-            .Select(l => (Rule: l.Text[(l.Text.IndexOf("// expect: ", StringComparison.Ordinal) + "// expect: ".Length)..].Trim(), l.Line))
+            .SelectMany(l => l.Text[(l.Text.IndexOf("// expect: ", StringComparison.Ordinal) + "// expect: ".Length)..]
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(rule => (Rule: rule, l.Line)))
             .OrderBy(v => v.Line).ThenBy(v => v.Rule)
             .ToArray();
 
@@ -493,6 +534,7 @@ internal static class EngineThreadingAnalyzer
     public const string EntryOffThread = "entry-off-thread";
     public const string DrainOutsideRootPump = "drain-outside-root-pump";
     public const string EvaluateOutsideStore = "evaluate-outside-store";
+    public const string TaskRunAroundPump = "task-run-around-pump";
 
     private static readonly HashSet<string> EntryNames = new(StringComparer.Ordinal) { "Invoke", "Evaluate", "FromObject", "SetValue", "Execute", "Construct", "Call" };
     private static readonly HashSet<string> DrainNames = new(StringComparer.Ordinal) { "UnwrapIfPromise", "UnwrapIfPromiseAsync" };
@@ -528,6 +570,7 @@ internal static class EngineThreadingAnalyzer
             {
                 if (DispatchOf(model, lambda) is { } dispatch && !IsRootPumpLambda(model, lambda))
                     CheckEntriesOffThread(model, lambda, dispatch, violations);
+                CheckTaskRunAroundPump(model, lambda, violations);
             }
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
@@ -614,9 +657,61 @@ internal static class EngineThreadingAnalyzer
             return false;
         if (lambda.Modifiers.Any(SyntaxKind.AsyncKeyword))
             return false;
-        if (call.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Run", Expression: IdentifierNameSyntax { Identifier.ValueText: "Task" } })
+        if (!IsRootPumpStart(call) && !IsJsToolTaskRunExemption(model, call))
             return false;
         return IsInRootPumpMember(model, node);
+    }
+
+    // GAP-57 CH-03: JsTool.CallAsync stays on Task.Run on purpose - a dedicated thread per call costs ~150 us against ~10 us for a minimal tool call (measured, median ratio ~1500 %, threshold 1 %); CH-01 is green without it.
+    private static bool IsJsToolTaskRunExemption(SemanticModel model, InvocationExpressionSyntax call)
+        => call.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Run", Expression: IdentifierNameSyntax { Identifier.ValueText: "Task" } }
+           && string.Equals(ContainingTypeName(model, call), "Orkeon.Scripting.Runtime.JsTool", StringComparison.Ordinal)
+           && call.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Identifier.ValueText == "CallAsync";
+
+    /// <summary>The call <c>RootPump.Start(...)</c>, qualified or not: the one way to start a root pump (GAP-57).</summary>
+    private static bool IsRootPumpStart(InvocationExpressionSyntax call)
+        => call.Expression is MemberAccessExpressionSyntax
+        {
+            Name.Identifier.ValueText: "Start",
+            Expression: IdentifierNameSyntax { Identifier.ValueText: "RootPump" } or MemberAccessExpressionSyntax { Name.Identifier.ValueText: "RootPump" },
+        };
+
+    /// <summary>The (containing type, enclosing method) of every <c>RootPump.Start</c> call of the compilation.</summary>
+    public static IReadOnlyList<(string Type, string Member)> RootPumpStarters(Compilation compilation)
+    {
+        var starters = new List<(string, string)>();
+        foreach (var tree in compilation.SyntaxTrees)
+        {
+            var model = compilation.GetSemanticModel(tree);
+            foreach (var call in tree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>().Where(IsRootPumpStart))
+            {
+                var type = ContainingTypeName(model, call);
+                var member = call.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Identifier.ValueText;
+                if (type is not null && member is not null) starters.Add((type, member));
+            }
+        }
+        return starters;
+    }
+
+    // ---- rule 5: a root pump starts through RootPump.Start, never around Task.Run ----
+
+    private static void CheckTaskRunAroundPump(SemanticModel model, AnonymousFunctionExpressionSyntax lambda, List<EngineThreadingViolation> violations)
+    {
+        if (DispatchOf(model, lambda) is not ("Task.Run" or "Run")) return;
+        if (IsRootPumpLambda(model, lambda)) return; // the JsTool exemption
+        foreach (var invocation in lambda.Body.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+        {
+            var name = InvokedName(invocation);
+            if (name is null) continue;
+            var drains = DrainNames.Contains(name);
+            var callsPump = ResolveMethod(model, invocation) is { } method
+                && RootPumps.Any(p => string.Equals(p.Member, method.Name, StringComparison.Ordinal)
+                                      && string.Equals(p.Type, method.ContainingType.ToDisplayString(), StringComparison.Ordinal));
+            if (!drains && !callsPump) continue;
+            violations.Add(Violation(TaskRunAroundPump, lambda,
+                $"{name} inside a lambda handed to Task.Run in {Location(model, lambda)}: a root pump starts through RootPump.Start, on a dedicated thread, never on a pool worker"));
+            return;
+        }
     }
 
     private static SyntaxNode? BodyOf(SyntaxNode owner) => owner switch
