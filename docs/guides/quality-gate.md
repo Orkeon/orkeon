@@ -83,7 +83,7 @@ condition whose threshold differs, and (re)associates the gate with the project.
 There is **no CI surface**: no GitHub workflow runs a SonarQube analysis (what
 CI does gate on every PR is the `-warnaserror` build with the full analyzer
 set, the API freeze, the test suites and the docs gates — see
-[Project status](../../README.md#project-status)). The verdict (status + each
+[the CI workflow](https://github.com/Orkeon/orkeon/blob/main/.github/workflows/ci.yml)). The verdict (status + each
 failed condition with actual value and threshold) is visible in the script
 logs.
 

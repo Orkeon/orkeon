@@ -48,6 +48,7 @@ internal static class CliUsage
     public static IReadOnlyList<CliVerb> Verbs { get; } =
     [
         new("run", "Run a crew: a YAML crew, a .ork.ts script, or a crew directory."),
+        new("quickstart", "Write the README's two-minute crew into ./orkeon-quickstart/, ready to run on a local model."),
         new("init", "Configure this machine: pick an LLM provider, write the settings file."),
         new("doctor", "Diagnose the installation: runtime, settings, esbuild, embeddings, tree-sitter."),
         new("settings", "List every setting a host reads, by category: type, default, meaning — offline."),

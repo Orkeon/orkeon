@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon quickstart` writes the README's two-minute crew, no clone needed
+
+`orkeon quickstart [--to <dir>]` writes `crew.yaml` and `appsettings.json` — embedded in the tool byte for byte from
+`examples/quickstart/` — and an empty `out/` into `./orkeon-quickstart/` by default, then prints the two runs to make
+from there: `orkeon run crew.yaml --mount ./out:/output:rw`, then the same with `:ro`. It never overwrites: a file or a
+folder that is not empty at the target is refused with exit `1`, as are an unknown option, a word too many and `--to`
+without a folder. The README (EN and FR) opens on that block, followed by a second, marked
+`<!-- quickstart-refused:begin/end -->`, the read-only run; `.github/workflows/quickstart.yml` runs both from the README
+and asserts `orkeon-quickstart/out/hello.md`, then `required Write, effective ReadOnly` in the second run's log and the
+file unchanged. Reference: [`orkeon quickstart`](docs/reference/cli.md#orkeon-quickstart).
+
 ### Changed — the console's bottom area takes a Claude-Code-like look **[breaking]**
 
 In the Terminal.Gui console (`Orkeon.Cli.TerminalGui`), the area under the transcript is redrawn from semantic colour

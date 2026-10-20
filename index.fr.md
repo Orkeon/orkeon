@@ -19,7 +19,7 @@ budget d'exécution pour l'autonomie — et un analyseur Roslyn autonome (`Orkeo
 qui fait du `System.IO` brut une erreur de compilation dans votre propre code. Autour, un
 framework .NET complet pour des crews d'agents : six stratégies d'orchestration, 16
 fournisseurs LLM, mémoire, RAG, analyse de code. Il tourne sur un modèle local sans clé API —
-voir le démarrage en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-api).
+voir le démarrage en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-dapi).
 
 ## Par où commencer
 
@@ -53,7 +53,7 @@ voir [Mettre à jour Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md
 
 ## Projet
 
-- [README](README.fr.md) — la présentation complète, avec le même crew écrit de trois façons
+- [README](README.fr.md) — la présentation complète : ce qu'une équipe fait, comment ça marche, quelle porte choisir
 - [CHANGELOG](CHANGELOG.md) — le contenu de chaque version (en anglais)
 - [Contribuer](CONTRIBUTING.fr.md) · [Support](SUPPORT.fr.md) · [Sécurité](SECURITY.fr.md)
 - [Sources sur GitHub](https://github.com/Orkeon/orkeon) · [Releases](https://github.com/Orkeon/orkeon/releases)
