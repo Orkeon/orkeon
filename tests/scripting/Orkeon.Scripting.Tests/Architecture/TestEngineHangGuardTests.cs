@@ -76,7 +76,6 @@ public sealed class TestEngineHangGuardTests
     private static void Analyse(SemanticModel model, SyntaxTree tree, List<(string, int, string)> violations, ProjectScan scan)
     {
         var path = tree.FilePath;
-        var covered = new HashSet<string>(StringComparer.Ordinal);
         var nodes = tree.GetRoot().DescendantNodes().ToList();
 
         void Add(SyntaxNode node, string reason)
@@ -105,7 +104,6 @@ public sealed class TestEngineHangGuardTests
                 {
                     var arguments = creation.ArgumentList?.ToString() ?? string.Empty;
                     if (!HasGuard(arguments)) Add(creation, "Jint.Engine built without `PromiseTimeout = HangGuards.EnginePromise`");
-                    else if (VariableOf(creation) is { } name) covered.Add(name);
                 }
                 else if (IsNamed(type!, "Orkeon.Scripting", "ScriptHost"))
                 {
@@ -125,7 +123,6 @@ public sealed class TestEngineHangGuardTests
                 }
                 if (!IsNamed(method.ContainingType, "Orkeon.Scripting", "JsEngineFactory")) continue;
                 Site(scan.CreateSites, invocation);
-                if (VariableOf(invocation) is { } name) covered.Add(name);
             }
         }
 
@@ -146,7 +143,6 @@ public sealed class TestEngineHangGuardTests
             var owner = method.ReducedFrom?.ContainingType ?? method.ContainingType;
             if (!IsJint(owner)) continue;
             if (receiver is null) { Add(invocation, "`" + invoked + "` on an engine of unknown origin"); continue; }
-            var receiverSymbol = model.GetSymbolInfo(receiver).Symbol;
             var receiverKind = model.GetTypeInfo(receiver).Type;
             if (receiverKind is null || receiverKind.TypeKind == TypeKind.Error)
             {
@@ -231,29 +227,6 @@ public sealed class TestEngineHangGuardTests
            && IsNamed(property.ContainingType, "Orkeon.Scripting", "JsEngineFactory")
            && model.GetSymbolInfo(a.Right).Symbol is IFieldSymbol { Name: "EnginePromise" } field
            && IsNamed(field.ContainingType, "Orkeon.Tests.Shared.Timing", "HangGuards");
-
-    /// <summary>A local whose initialiser calls a method declared in the same file (a helper like NewEngine()).</summary>
-    private static bool FromSameFileHelper(SemanticModel model, SyntaxTree tree, ILocalSymbol local)
-        => local.DeclaringSyntaxReferences
-            .Select(r => r.GetSyntax())
-            .OfType<VariableDeclaratorSyntax>()
-            .Select(d => d.Initializer?.Value)
-            .OfType<InvocationExpressionSyntax>()
-            .Select(i => ResolveMethod(model, i))
-            .Any(m => m is not null && m.Locations.Any(l => l.IsInSource && l.SourceTree == tree));
-
-    /// <summary>The local, field or property the expression is assigned to, or null when it is not assigned.</summary>
-    private static string? VariableOf(ExpressionSyntax expression)
-    {
-        var parent = expression.Parent;
-        while (parent is ParenthesizedExpressionSyntax) parent = parent.Parent;
-        return parent switch
-        {
-            EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax d } => d.Identifier.ValueText,
-            AssignmentExpressionSyntax a when a.Right == expression => a.Left.ToString().Split('.').Last(),
-            _ => null,
-        };
-    }
 
     private static string? InvokedName(InvocationExpressionSyntax invocation) => invocation.Expression switch
     {
