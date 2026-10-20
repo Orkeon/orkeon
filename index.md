@@ -53,7 +53,7 @@ update — to the latest release, or to the latest `main` between two releases �
 
 ## Project
 
-- [README](README.md) — the full presentation, with the same crew written three ways
+- [README](README.md) — the full presentation: what a team does, how it works, which door to take
 - [CHANGELOG](CHANGELOG.md) — what shipped in each version
 - [Contributing](CONTRIBUTING.md) · [Support](SUPPORT.md) · [Security](SECURITY.md)
 - [Source on GitHub](https://github.com/Orkeon/orkeon) · [Releases](https://github.com/Orkeon/orkeon/releases)

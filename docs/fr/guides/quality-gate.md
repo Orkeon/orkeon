@@ -85,7 +85,7 @@ dont le seuil diffère, et (ré)associe le gate au projet.
 Il n'y a **pas de surface CI** : aucun workflow GitHub n'exécute d'analyse
 SonarQube (ce que la CI garde sur chaque PR, c'est le build `-warnaserror`
 avec le jeu complet d'analyseurs, le gel d'API, les suites de tests et les
-gates documentaires — voir [État du projet](../../../README.fr.md#état-du-projet)).
+gates documentaires — voir [le workflow CI](https://github.com/Orkeon/orkeon/blob/main/.github/workflows/ci.yml)).
 Le verdict (statut + chaque condition échouée avec valeur réelle et seuil) est
 visible dans les logs du script.
 
