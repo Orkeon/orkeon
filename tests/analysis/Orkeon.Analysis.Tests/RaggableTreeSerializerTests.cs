@@ -169,6 +169,38 @@ public class RaggableTreeSerializerTests
         Assert.InRange(createdAt, before, after);
     }
 
+    [Fact]
+    [Trait("BR", "RT-35")]
+    public async Task ShouldRoundTripStatementReceiverAndFlags_WhenSerialized()
+    {
+        var node = BuildMinimalNode("sym::rt");
+        node.StatementsMutable.Add(new StatementNode
+        {
+            Id = "stmt::rt::call",
+            ParentSymbolId = "sym::rt",
+            Kind = StatementKind.MethodCall,
+            StartLine = 3,
+            Expression = "_repo.Save(x)",
+            Depth = 0,
+            Receiver = "_repo",
+            InLoop = true,
+            InLambda = true,
+        });
+        var tree = new RaggableTree([node], [], new Dictionary<string, RaggableNode>());
+        var serializer = new RaggableTreeSerializer();
+
+        await using var stream = new MemoryStream();
+        await serializer.SerializeAsync(tree, "idx", stream, CancellationToken.None);
+        stream.Position = 0;
+        var snapshot = await serializer.DeserializeAsync(stream, CancellationToken.None);
+
+        Assert.NotNull(snapshot);
+        var loaded = snapshot!.Tree.Nodes.Single().Statements.Single();
+        Assert.Equal("_repo", loaded.Receiver);
+        Assert.True(loaded.InLoop);
+        Assert.True(loaded.InLambda);
+    }
+
     // ----- Helpers -----
 
     private static RaggableTree BuildSampleTree()

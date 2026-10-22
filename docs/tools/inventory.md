@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **102 built-in tool classes**. The counting
+This page is the reference catalogue of the **103 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -226,6 +226,7 @@ Fifteen tools over the RaggableTree semantic code graph — the full guide is
 | `impact_analysis` | `ImpactAnalysisTool` | Direct and transitive callers affected by changing a symbol |
 | `complexity_report` | `ComplexityReportTool` | Top-N methods by complexity metrics, with median/P95 |
 | `statement_query` | `StatementQueryTool` | Query L4 statements by kind, parent FQN, or semantic similarity |
+| `access_cost` | `AccessCostTool` | Port-access cost of members selected by `fqns` or `changed_files` (default: the working-tree changes), restricted to `roots`; `receivers` overrides the port-receiver regex. Read-class |
 
 ## Mounts and local embeddings
 
@@ -242,7 +243,7 @@ Fifteen tools over the RaggableTree semantic code graph — the full guide is
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 102 built-in tool classes:
+Deliberately **not** part of the 103 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -264,7 +265,7 @@ number the README and the documentation index state, checked by
 | Package | Tool classes |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 15 |
+| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 16 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`) | 12 |
@@ -273,7 +274,7 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.FileSystem` | 5 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 each |
-| **Total** | **102** |
+| **Total** | **103** |
 
 ## Availability by composition root
 
@@ -375,6 +376,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 
 | YAML name | Class | Package |
 |----------|--------|---------|
+| `access_cost` | `AccessCostTool` | `Orkeon.Tools.Analysis` |
 | `arcadedb_query` | `ArcadeDbTool` | `Orkeon.Tools.Data` |
 | `ask_question_to_coworker` | `AskQuestionTool` | `Orkeon.Infrastructure` |
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |

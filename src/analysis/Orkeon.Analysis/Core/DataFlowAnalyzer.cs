@@ -35,6 +35,7 @@ public static class DataFlowAnalyzer
         foreach (var s in statements)
         {
             yield return s;
+            if (s.Kind is StatementKind.ArrowFunction or StatementKind.Closure) continue;
             foreach (var child in Flatten(s.Children)) yield return child;
         }
     }

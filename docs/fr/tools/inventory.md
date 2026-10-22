@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **102 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **103 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -230,6 +230,7 @@ Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet
 | `flow_trace` | `FlowTraceTool` | Tracer le flux d'appels depuis un symbole dans un budget de profondeur |
 | `impact_analysis` | `ImpactAnalysisTool` | Appelants directs et transitifs affectés par la modification d'un symbole |
 | `complexity_report` | `ComplexityReportTool` | Top-N des méthodes par métriques de complexité, avec médiane/P95 |
+| `access_cost` | `AccessCostTool` | Coût d'accès aux ports des membres choisis par `fqns` ou `changed_files` (par défaut : les changements de l'arbre de travail), restreint à `roots` ; `receivers` remplace la regex des récepteurs de ports. Classe lecture |
 | `statement_query` | `StatementQueryTool` | Requêter les statements L4 par genre, FQN parent, ou similarité sémantique |
 
 ## Montages et embeddings locaux
@@ -247,7 +248,7 @@ Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet
 
 ## Hors catalogue
 
-Délibérément **hors** des 102 classes de tools intégrées :
+Délibérément **hors** des 103 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -270,7 +271,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | Package | Classes de tools |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 15 |
+| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 16 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
@@ -279,7 +280,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.FileSystem` | 5 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
-| **Total** | **102** |
+| **Total** | **103** |
 
 ## Disponibilité par racine de composition
 
@@ -383,6 +384,7 @@ correspondance alphabétique complète :
 
 | Nom YAML | Classe | Package |
 |----------|--------|---------|
+| `access_cost` | `AccessCostTool` | `Orkeon.Tools.Analysis` |
 | `arcadedb_query` | `ArcadeDbTool` | `Orkeon.Tools.Data` |
 | `ask_question_to_coworker` | `AskQuestionTool` | `Orkeon.Infrastructure` |
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |

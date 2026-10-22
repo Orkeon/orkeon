@@ -64,6 +64,10 @@ public static class ControlFlowBuilder
             case StatementKind.TryCatch:
                 EmitTryCatchEdges(stmt, nextId, edges, exits);
                 break;
+            case StatementKind.ArrowFunction:
+            case StatementKind.Closure:
+                edges.Add(new ControlFlowEdge(stmt.Id, nextId, null));
+                break;
             default:
                 edges.Add(new ControlFlowEdge(stmt.Id, nextId, null));
                 RecurseChildren(stmt, nextId, edges, exits);
@@ -153,6 +157,7 @@ public static class ControlFlowBuilder
     {
         if (statements.Count == 0) return null;
         var last = statements[^1];
+        if (last.Kind is StatementKind.ArrowFunction or StatementKind.Closure) return last;
         return last.Children.Count > 0 ? LastDescendant(last.Children) ?? last : last;
     }
 }

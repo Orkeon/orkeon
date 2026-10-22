@@ -1,1 +1,36 @@
 #nullable enable
+Orkeon.Tools.Analysis.AccessCostRequest
+Orkeon.Tools.Analysis.AccessCostRequest.<Clone>$() -> Orkeon.Tools.Analysis.AccessCostRequest!
+Orkeon.Tools.Analysis.AccessCostRequest.AccessCostRequest() -> void
+Orkeon.Tools.Analysis.AccessCostRequest.ChangedFiles.get -> System.Collections.Immutable.ImmutableList<string!>?
+Orkeon.Tools.Analysis.AccessCostRequest.ChangedFiles.init -> void
+Orkeon.Tools.Analysis.AccessCostRequest.Equals(Orkeon.Tools.Analysis.AccessCostRequest? other) -> bool
+Orkeon.Tools.Analysis.AccessCostRequest.Fqns.get -> System.Collections.Immutable.ImmutableList<string!>?
+Orkeon.Tools.Analysis.AccessCostRequest.Fqns.init -> void
+Orkeon.Tools.Analysis.AccessCostRequest.Receivers.get -> string?
+Orkeon.Tools.Analysis.AccessCostRequest.Receivers.init -> void
+Orkeon.Tools.Analysis.AccessCostRequest.Roots.get -> System.Collections.Immutable.ImmutableList<string!>?
+Orkeon.Tools.Analysis.AccessCostRequest.Roots.init -> void
+Orkeon.Tools.Analysis.AccessCostResponse
+Orkeon.Tools.Analysis.AccessCostResponse.<Clone>$() -> Orkeon.Tools.Analysis.AccessCostResponse!
+Orkeon.Tools.Analysis.AccessCostResponse.AccessCostResponse() -> void
+Orkeon.Tools.Analysis.AccessCostResponse.Equals(Orkeon.Tools.Analysis.AccessCostResponse? other) -> bool
+Orkeon.Tools.Analysis.AccessCostResponse.Errors.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Analysis.AccessCostResponse.Errors.init -> void
+Orkeon.Tools.Analysis.AccessCostResponse.Report.get -> Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport?
+Orkeon.Tools.Analysis.AccessCostResponse.Report.init -> void
+Orkeon.Tools.Analysis.AccessCostTool
+Orkeon.Tools.Analysis.AccessCostTool.AccessCostTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider! gitDiff, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.AccessCostTool!>? logger = null) -> void
+override Orkeon.Tools.Analysis.AccessCostRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.AccessCostRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.AccessCostRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.AccessCostResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.AccessCostResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.AccessCostResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.AccessCostTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.AccessCostTool.Description.get -> string!
+override Orkeon.Tools.Analysis.AccessCostTool.Name.get -> string!
+static Orkeon.Tools.Analysis.AccessCostRequest.operator !=(Orkeon.Tools.Analysis.AccessCostRequest? left, Orkeon.Tools.Analysis.AccessCostRequest? right) -> bool
+static Orkeon.Tools.Analysis.AccessCostRequest.operator ==(Orkeon.Tools.Analysis.AccessCostRequest? left, Orkeon.Tools.Analysis.AccessCostRequest? right) -> bool
+static Orkeon.Tools.Analysis.AccessCostResponse.operator !=(Orkeon.Tools.Analysis.AccessCostResponse? left, Orkeon.Tools.Analysis.AccessCostResponse? right) -> bool
+static Orkeon.Tools.Analysis.AccessCostResponse.operator ==(Orkeon.Tools.Analysis.AccessCostResponse? left, Orkeon.Tools.Analysis.AccessCostResponse? right) -> bool

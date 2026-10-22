@@ -21,6 +21,9 @@ public sealed class StatementNode
     /// <summary>Appends a nested child statement.</summary>
     public void AddChild(StatementNode child) => _children.Add(child);
     public int Depth { get; init; }
+    public string? Receiver { get; init; }
+    public bool InLoop { get; init; }
+    public bool InLambda { get; init; }
     public ReadOnlyMemory<float>? Embedding { get; set; }
 }
 

@@ -81,6 +81,9 @@ internal sealed record StatementDto
     public List<SymbolReferenceDto> References { get; init; } = [];
     public List<StatementDto> Children { get; init; } = [];
     public int Depth { get; init; }
+    public string? Receiver { get; init; }
+    public bool InLoop { get; init; }
+    public bool InLambda { get; init; }
 
     [JsonConverter(typeof(EmbeddingJsonConverter))]
     public ReadOnlyMemory<float>? Embedding { get; init; }

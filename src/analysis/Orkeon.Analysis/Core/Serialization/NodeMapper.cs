@@ -71,6 +71,9 @@ internal static class NodeMapper
         References = [.. node.References.Select(r => new SymbolReferenceDto(r.Name, r.ResolvedId, r.Kind))],
         Children = [.. node.Children.Select(ToDto)],
         Depth = node.Depth,
+        Receiver = node.Receiver,
+        InLoop = node.InLoop,
+        InLambda = node.InLambda,
         Embedding = node.Embedding,
     };
 
@@ -153,6 +156,9 @@ internal static class NodeMapper
             Expression = dto.Expression,
             Condition = dto.Condition,
             Depth = dto.Depth,
+            Receiver = dto.Receiver,
+            InLoop = dto.InLoop,
+            InLambda = dto.InLambda,
         };
         stmt.Embedding = dto.Embedding;
         foreach (var r in dto.References)

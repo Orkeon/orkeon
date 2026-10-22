@@ -248,6 +248,7 @@ public static class ToolCatalog
             new("impact_analysis"),
             new("complexity_report"),
             new("statement_query"),
+            new("access_cost"),
         ]),
         new(CollaborationFamily,
         [

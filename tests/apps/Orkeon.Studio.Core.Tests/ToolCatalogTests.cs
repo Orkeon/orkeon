@@ -24,7 +24,7 @@ public sealed partial class ToolCatalogTests
     /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 15, collaboration 3
     /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 94;
+    private const int ToolsARunExposes = 95;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";
@@ -55,6 +55,7 @@ public sealed partial class ToolCatalogTests
     }
 
     [Fact]
+    [Trait("BR", "RT-35")]
     public void The_catalogue_lists_exactly_the_tools_a_run_exposes_once_each()
     {
         var names = ToolCatalog.All.Select(t => t.Name).ToList();

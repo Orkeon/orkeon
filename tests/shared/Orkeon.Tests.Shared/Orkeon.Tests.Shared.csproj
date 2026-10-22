@@ -11,6 +11,10 @@
     <PackageReference Include="xunit.v3.assert" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Fixtures\DevRepo\Goldens\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

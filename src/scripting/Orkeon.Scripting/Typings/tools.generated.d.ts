@@ -11,6 +11,17 @@
 declare global {
     /** The built-in tools, by their camelCase name: `tools` (`OrkeonTools`) extends this. */
     interface OrkeonBuiltInTools {
+        /** `access_cost` - Port-access cost of members, mirroring the access-cost.py script. */
+        accessCost(input?: {
+            changed_files?: readonly string[] | null;
+            fqns?: readonly string[] | null;
+            receivers?: string | null;
+            roots?: readonly string[] | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly errors: readonly string[];
+            readonly report?: Record<string, unknown>;
+        }>;
+
         /** `arcadedb_query` - Execute Cypher or SQL queries on ArcadeDB via Bolt protocol */
         arcadedbQuery(input: {
             /** Bolt protocol URI for ArcadeDB */

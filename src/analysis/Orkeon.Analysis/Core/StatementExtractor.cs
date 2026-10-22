@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -36,6 +37,10 @@ public sealed class StatementExtractor
         "anonymous_method_expression", "closure_expression", "func_literal",
     };
 
+    private static readonly Regex ReceiverPattern = new(
+        @"^(?:await\s+)?\(?\s*([\w.]+?)(?:\s*\.\w+\s*(?:<[^>]*>)?\s*\(|\s*\.\s*$)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
     private readonly ILanguageAdapter _adapter;
 
     public StatementExtractor(ILanguageAdapter adapter)
@@ -58,7 +63,7 @@ public sealed class StatementExtractor
         foreach (var child in body.Children)
         {
             if (!child.IsNamed) continue;
-            WalkInto(context, child, null, 0);
+            WalkInto(context, child, null, 0, false, false);
         }
 
         return new StatementExtractionResult(roots, context.IsPartial);
@@ -84,7 +89,8 @@ public sealed class StatementExtractor
         public bool IsPartial { get; set; }
     }
 
-    private void WalkInto(WalkContext context, TsNode node, StatementNode? parentStmt, int depth)
+    private void WalkInto(
+        WalkContext context, TsNode node, StatementNode? parentStmt, int depth, bool inLoop, bool inLambda)
     {
         if (node.IsError || node.IsMissing)
         {
@@ -101,35 +107,35 @@ public sealed class StatementExtractor
 
         if (kind == StatementKind.Unknown)
         {
-            WalkNamedChildren(context, node, parentStmt, depth);
+            WalkNamedChildren(context, node, parentStmt, depth, inLoop, inLambda);
             return;
         }
 
-        var stmt = CreateStatement(context, node, kind, depth);
+        var stmt = CreateStatement(context, node, kind, depth, inLoop, inLambda);
         CollectReferences(stmt, node);
 
         if (parentStmt is null) context.Roots.Add(stmt);
         else parentStmt.AddChild(stmt);
 
-        if (OpaqueStatementTypes.Contains(node.Type))
-        {
-            return;
-        }
-
-        WalkNamedChildren(context, node, stmt, depth + 1);
+        WalkNamedChildren(
+            context, node, stmt, depth + 1,
+            inLoop || kind is StatementKind.For or StatementKind.ForOf or StatementKind.ForIn
+                or StatementKind.While or StatementKind.DoWhile,
+            inLambda || kind is StatementKind.ArrowFunction or StatementKind.Closure);
     }
 
-    private void WalkNamedChildren(WalkContext context, TsNode node, StatementNode? parentStmt, int depth)
+    private void WalkNamedChildren(
+        WalkContext context, TsNode node, StatementNode? parentStmt, int depth, bool inLoop, bool inLambda)
     {
         foreach (var child in node.Children)
         {
             if (!child.IsNamed) continue;
-            WalkInto(context, child, parentStmt, depth);
+            WalkInto(context, child, parentStmt, depth, inLoop, inLambda);
         }
     }
 
     private static StatementNode CreateStatement(
-        WalkContext context, TsNode node, StatementKind kind, int depth)
+        WalkContext context, TsNode node, StatementKind kind, int depth, bool inLoop, bool inLambda)
     {
         var parentSymbolId = context.ParentSymbolId;
         var source = context.Source;
@@ -137,6 +143,7 @@ public sealed class StatementExtractor
         var endLine = node.EndPosition.Row + 1;
         var expression = ExtractExpression(node, source);
         var condition = ExtractCondition(node);
+        var isCall = kind is StatementKind.Await or StatementKind.FunctionCall;
         return new StatementNode
         {
             Id = $"{parentSymbolId}$s{context.Counter++}",
@@ -147,6 +154,9 @@ public sealed class StatementExtractor
             Expression = expression,
             Condition = condition,
             Depth = depth,
+            Receiver = isCall && ReceiverPattern.Match(expression) is { Success: true } m ? m.Groups[1].Value : null,
+            InLoop = isCall && inLoop,
+            InLambda = isCall && inLambda,
         };
     }
 

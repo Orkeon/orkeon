@@ -9,6 +9,7 @@ public static class RaggableToolsExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddTransient<IBaseTool, AccessCostTool>();
         services.AddTransient<IBaseTool, CodebaseMapTool>();
         services.AddTransient<IBaseTool, CodebaseSearchTool>();
         services.AddTransient<IBaseTool, ComplexityReportTool>();

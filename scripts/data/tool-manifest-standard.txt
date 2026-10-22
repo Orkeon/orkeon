@@ -1,6 +1,7 @@
 # Runtime tool manifest — standard `orkeon` CLI registry (one tool name per line).
 # Regenerate with neutral settings (an empty appsettings.json: no MCP server or API key of this machine may add a tool): dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run --list-tools --settings <empty appsettings.json> 2>/dev/null, then put these three header lines back on top.
 # Consumed by scripts/lint-example-configs.py as the manifest for every category.
+access_cost
 arcadedb_query
 cache_search
 codebase_map

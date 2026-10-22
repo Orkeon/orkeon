@@ -98,6 +98,8 @@ public record BodyMetrics
                 break;
         }
 
+        if (s.Kind is StatementKind.ArrowFunction or StatementKind.Closure) return;
+
         foreach (var child in s.Children) Walk(child, depth + 1, c);
     }
 }
