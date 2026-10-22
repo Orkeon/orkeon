@@ -2647,6 +2647,13 @@
       "description": "Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global)."
     },
     {
+      "path": "Orkeon:Cli:ScriptCommands:MaxChainDepth",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "integer",
+      "default": 8,
+      "description": "Maximum depth of a chain of async commands launched from completed handlers."
+    },
+    {
       "path": "Orkeon:Cli:ScriptCommands:MaxScripts",
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "integer",

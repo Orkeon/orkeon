@@ -315,6 +315,13 @@ defineAsyncCommand({
   (`✓ [t1] ask-bg → echo: done`) and runs `completed` on the script's engine, under
   its lock — no need to type another command.
 - For a value you want to read on demand, poll with `result --ticket=…` (below).
+- **Chaining from `completed`.** `completed` may call `runCrewAsync(name, input)`: it
+  returns a ticket at once, and the second crew's completion drains to its own
+  command (the same command name), whose `completed` runs in turn. The chain is
+  bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
+  the depth counts how many `completed` hops deep an instance was launched. A deeper
+  `runCrewAsync` is refused with `ChainDepthExceededException`, whose message gives
+  the depth and the limit.
 
 ### Admission quota — `maxConcurrent`
 

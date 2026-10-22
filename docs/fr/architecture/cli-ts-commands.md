@@ -318,6 +318,13 @@ defineAsyncCommand({
   concise (`✓ [t1] ask-bg → echo: done`) et exécute `completed` sur le moteur du
   script, sous son verrou — inutile de taper une autre commande.
 - Pour une valeur à lire à la demande, sondez avec `result --ticket=…` (ci-dessous).
+- **Chaînage depuis `completed`.** `completed` peut appeler `runCrewAsync(name, input)` :
+  il retourne aussitôt un ticket, et la fin du second crew est drainée vers sa propre
+  commande (le même nom de commande), dont le `completed` s'exécute à son tour. La
+  chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
+  la profondeur compte combien de sauts `completed` séparent une instance de son
+  lancement. Un `runCrewAsync` plus profond est refusé par une `ChainDepthExceededException`,
+  dont le message donne la profondeur et la limite.
 
 ### Quota d'admission — `maxConcurrent`
 

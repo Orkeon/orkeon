@@ -195,7 +195,8 @@ public static class ScriptingCliServiceCollectionExtensions
                 new AgentCommandDirectory(),
                 new CommandInstanceRegistry(),
                 lf.CreateLogger<CommandDispatchService>(),
-                sp.GetService<ProgressBroker>());
+                sp.GetService<ProgressBroker>(),
+                sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.MaxChainDepth);
         });
 
         // The loader needs a live service locator (so ctx.services.get("commands") resolves)

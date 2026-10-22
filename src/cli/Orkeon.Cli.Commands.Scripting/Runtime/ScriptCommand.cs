@@ -283,8 +283,12 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var view = item.Instance.Snapshot();
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
-            var ctxObj = PushContext(console, item.Instance.LaunchInput ?? _descriptor.Name, CancellationToken.None);
+            var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;
+            var ctxObj = PushContext(console, launchInput, CancellationToken.None);
 
+            // A completed() may launch more async work (runCrewAsync): give it an ambient scope of
+            // this command so the new instances are captured and wired to drain like any dispatch.
+            using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth) : null;
             try
             {
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });
@@ -302,6 +306,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {ConciseErrors.Message(rejected)}");
             }
+
+            if (scope is { Captured.Count: > 0 })
+                WireCompletions(console, launchInput, scope.Captured, gate: null);
         }
     }
 
