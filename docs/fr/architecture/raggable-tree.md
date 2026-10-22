@@ -112,6 +112,15 @@ Chaque phase rapporte sa progression (`IndexBuildPhase` : Discovery, Parse, Reso
 
 La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2 pour les fichiers changés uniquement, réutilise les nœuds des fichiers inchangés, et ne lance les phases 4-6 que sur les `newNodes`.
 
+### Documents Markdown
+
+Markdown est un langage de premier rang de l'index, hors du chemin Tree-sitter : les fichiers `.md` ou `.markdown` sont découverts comme langage `markdown` et analysés avec Markdig par `MarkdownDocumentMapper` (`Orkeon.Analysis.Adapters`), une lecture par fichier. Chaque fichier produit :
+
+- un nœud `Section` par titre (niveaux 1 à 6, FQN imbriqué `<fichier>::Titre/Sous`, niveau L3) dont la plage court jusqu'au titre suivant de même niveau ou supérieur ;
+- un nœud `CodeFence` par bloc délimité (le langage est son tag ; un bloc `mermaid` porte aussi le tag `mermaid`), un nœud `Link` par lien (tag `target:<cible brute>`, plus `resolved:<fqn>` quand `MarkdownDocumentMapper.ResolveLinksAsync` retrouve la cible dans le store, par chemin ou par nom local ; un lien non résolu ne garde que sa cible brute) et un nœud `FrontMatter` pour un bloc YAML initial (les clés de premier niveau sont ses tags), tous de niveau L4.
+
+Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`), comme pour les autres langages. Les quatre nouvelles valeurs de `UniversalNodeKind` (`Section`, `CodeFence`, `Link`, `FrontMatter`) sont ajoutées après `Unknown` car le graphe persisté stocke l'enum par nom. `codebase_search` restreint au langage `markdown` (son option `FilterLanguages`) renvoie les sections. Limites : un fichier `.md` n'a pas de nœud module dans l'arbre, donc un lien fichier vers fichier ne se résout que contre un store qui en contient un, et le build n'appelle pas encore `ResolveLinksAsync`.
+
 ## Catalogue de tools
 
 | Tool | Usage | Requête type |

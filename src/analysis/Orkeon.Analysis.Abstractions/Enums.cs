@@ -16,7 +16,12 @@ public enum UniversalNodeKind
 
     Decorator,
 
-    Unknown
+    Unknown,
+
+    Section,
+    CodeFence,
+    Link,
+    FrontMatter
 }
 
 [SuppressMessage("Naming", "CA1707", Justification = "The L<n>_ prefix encodes the graph stratification ordinal and is part of the public JSON serialization contract (e.g. \"L3_Symbol\"); renaming would break persisted RaggableTree data and round-tripping.")]

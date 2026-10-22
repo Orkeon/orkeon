@@ -119,4 +119,31 @@ public class FileSystemDiscovererTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    [Trait("BR", "RT-29")]
+    public async Task ShouldDiscoverMarkdownFiles_WhenLanguagesFilterIsMarkdown()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.md", "# A"),
+            ("b.markdown", "# B"),
+            ("c.cs", "class C {}"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot, Languages = ["markdown"] },
+                CancellationToken.None);
+
+            Assert.Equal(
+                ["a.md", "b.markdown"],
+                result.Files.Select(f => f.RelativePath).OrderBy(x => x, StringComparer.Ordinal).ToArray());
+            Assert.All(result.Files, f => Assert.Equal("markdown", f.Language));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

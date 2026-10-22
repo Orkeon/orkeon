@@ -240,6 +240,49 @@ public class IncrementalReindexEngineTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    [Fact]
+    [Trait("BR", "RT-29")]
+    public async Task ShouldKeepMarkdownNodes_WhenIncrementalReindexRunsOnAnotherFile()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/guide.md", "# Guide\ntext"),
+            ("src/a.ts", "export class A { run(): number { return 1; } }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            var guide = $"{TestFixtures.TestVirtualRoot}/docs/guide.md";
+            Assert.Contains(tree.Nodes, n => n.VirtualFilePath == guide && n.Kind == UniversalNodeKind.Section);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "src", "a.ts"),
+                "export class A { run(): number { return 2; } }",
+                TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/src/a.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.Contains(result.Tree.Nodes, n => n.VirtualFilePath == guide && n.Kind == UniversalNodeKind.Section && n.Name == "Guide");
+
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "docs", "guide.md"),
+                "# Guide\ntext\n## More\ntext",
+                TestContext.Current.CancellationToken);
+            var second = await new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir)).ReindexAsync(
+                result.Tree, TestFixtures.TestVirtualRoot, [guide],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var names = second.Tree.Nodes
+                .Where(n => n.VirtualFilePath == guide && n.Kind == UniversalNodeKind.Section)
+                .Select(n => n.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+            Assert.Equal(["Guide", "More"], names);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static async Task<(RaggableTree Tree, string IndexId)> BuildInitialAsync(string dir)
     {
         var fs = TestFixtures.CreateFs(dir);

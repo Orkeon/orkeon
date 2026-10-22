@@ -17,6 +17,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             [".cs"] = "csharp",
             [".go"] = "go",
             [".rs"] = "rust",
+            [".md"] = "markdown",
+            [".markdown"] = "markdown",
         };
 
     private static readonly IReadOnlySet<string> AlwaysExcludedFileSuffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

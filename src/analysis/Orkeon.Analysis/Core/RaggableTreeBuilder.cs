@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
+using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.TreeSitter;
@@ -24,6 +25,9 @@ public sealed class RaggableTreeBuilder
     private readonly IEmbeddingProvider? _embedder;
     private readonly IVectorStoreProvider? _vectorStore;
     private readonly IProgress<IndexBuildProgress>? _buildProgress;
+
+    internal const string MarkdownLanguage = "markdown";
+    internal static readonly MarkdownDocumentMapper MarkdownMapper = new();
 
     public RaggableTreeBuilder(ILanguageAdapter adapter, IFileSystemService fileSystem)
         : this(
@@ -113,6 +117,14 @@ public sealed class RaggableTreeBuilder
         {
             ct.ThrowIfCancellationRequested();
             _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
+            if (file.Language == MarkdownLanguage)
+            {
+                var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+                if (markdown is null) continue;
+                allNodes.AddRange(MarkdownMapper.Map(file.VirtualPath, markdown));
+                continue;
+            }
+
             if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
 
             var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);

@@ -1,1 +1,5 @@
 #nullable enable
+Orkeon.Analysis.Adapters.MarkdownDocumentMapper
+Orkeon.Analysis.Adapters.MarkdownDocumentMapper.MarkdownDocumentMapper() -> void
+Orkeon.Analysis.Adapters.MarkdownDocumentMapper.Map(string! virtualPath, string! content) -> System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!
+Orkeon.Analysis.Adapters.MarkdownDocumentMapper.ResolveLinksAsync(System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, string! virtualPath, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>!>!

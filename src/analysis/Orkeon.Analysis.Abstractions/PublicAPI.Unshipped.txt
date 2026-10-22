@@ -1,1 +1,5 @@
 #nullable enable
+Orkeon.Analysis.Abstractions.UniversalNodeKind.Section = 22 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.CodeFence = 23 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.Link = 24 -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Abstractions.UniversalNodeKind.FrontMatter = 25 -> Orkeon.Analysis.Abstractions.UniversalNodeKind

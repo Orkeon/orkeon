@@ -114,6 +114,15 @@ Each phase reports its progress (`IndexBuildPhase`: Discovery, Parse, Resolve, E
 
 Incremental reindexing (`IncrementalReindexEngine`) restarts from phase 2 for the changed files only, reuses the nodes of unchanged files, and runs phases 4-6 only on the `newNodes`.
 
+### Markdown documents
+
+Markdown is a first-class language of the index, outside the Tree-sitter path: files ending in `.md` or `.markdown` are discovered as language `markdown` and parsed with Markdig by `MarkdownDocumentMapper` (`Orkeon.Analysis.Adapters`), one file read each. Each file yields:
+
+- a `Section` node per heading (levels 1-6, nested FQN `<file>::Title/Sub`, level L3) whose range runs to the next heading of the same or a higher level;
+- a `CodeFence` node per fenced block (the language is its tag; a `mermaid` fence is also tagged `mermaid`), a `Link` node per link (tag `target:<raw target>`, plus `resolved:<fqn>` when `MarkdownDocumentMapper.ResolveLinksAsync` finds the target in the store, by path or by local name; an unresolved link keeps only its raw target) and a `FrontMatter` node for a leading YAML block (the top-level keys are its tags), all L4.
+
+Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the other languages. The four new `UniversalNodeKind` values (`Section`, `CodeFence`, `Link`, `FrontMatter`) are appended after `Unknown` because the persisted graph stores the enum by name. `codebase_search` restricted to the language `markdown` (its `FilterLanguages` option) returns the section hits. Limits: a `.md` file has no module node in the tree, so a file-to-file link resolves only against a store that holds one, and the build does not call `ResolveLinksAsync` yet.
+
 ## Tool catalogue
 
 | Tool | Usage | Typical request |

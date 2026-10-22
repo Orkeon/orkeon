@@ -127,6 +127,24 @@ public sealed class IncrementalReindexEngine
         foreach (var file in discovery.Files)
         {
             ct.ThrowIfCancellationRequested();
+            if (file.Language == RaggableTreeBuilder.MarkdownLanguage)
+            {
+                if (reusedByPath.TryGetValue(file.VirtualPath, out var keptNodes) && !changedVirtual.Contains(file.VirtualPath))
+                {
+                    allNodes.AddRange(keptNodes);
+                    reusedFileCount++;
+                    continue;
+                }
+
+                var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+                if (markdown is null) continue;
+                var markdownNodes = RaggableTreeBuilder.MarkdownMapper.Map(file.VirtualPath, markdown);
+                newNodes.AddRange(markdownNodes);
+                allNodes.AddRange(markdownNodes);
+                changedFileCount++;
+                continue;
+            }
+
             if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
 
             var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
