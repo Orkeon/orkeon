@@ -112,6 +112,22 @@ two script shapes actually honours each method**.
 | The agent's model settings (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
+## Autonomous tools in act
+
+A tool built with `toolBuilder()` and attached to an agent with `withAutonomousTool` is offered to
+the model in the REPL `act` loop. The permission gate treats it from what the script declared, and
+nothing else (pinned by `ReplAutonomousToolActTests`):
+
+- **Offered and executed.** A tool declared with `access("read")` is offered to the model; its
+  `execute` can call `tools.fileRead(...)` and the value it returns reaches the model JSON-encoded
+  in the tool result.
+- **The declared `access` is the only input of the gate.** `read` is allowed. An `edit` tool is
+  denied in `plan` mode and asked in `default` mode: the ask goes through the approval channel, and
+  under `orkeon run`, which has none, an Ask becomes a Deny (`ModePermissionGate.cs`). A tool that
+  declares no `access` counts as a write, fail-closed.
+- **One approval per model-initiated call.** The `tools.*` calls made inside `execute` are not asked
+  a second time: approving the script tool covers what its body does.
+
 ## Coexistence with YAML
 
 The YAML configuration path remains supported and unchanged. Scripts and YAML

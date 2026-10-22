@@ -113,6 +113,23 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 | Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
+## Outils autonomes dans act
+
+Un outil construit avec `toolBuilder()` et attaché à un agent par `withAutonomousTool` est proposé
+au modèle dans la boucle `act` du REPL. Le garde-fou de permissions le traite d'après ce que le
+script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`) :
+
+- **Proposé et exécuté.** Un outil déclaré avec `access("read")` est proposé au modèle ; son
+  `execute` peut appeler `tools.fileRead(...)` et la valeur retournée parvient au modèle encodée
+  en JSON dans le résultat de l'outil.
+- **L'`access` déclaré est la seule entrée du garde-fou.** `read` est autorisé. Un outil `edit` est
+  refusé en mode `plan` et soumis à confirmation en mode `default` : la demande passe par le canal
+  d'approbation, et sous `orkeon run`, qui n'en a pas, un Ask devient un Deny
+  (`ModePermissionGate.cs`). Un outil sans `access` déclaré compte comme une écriture, par défaut
+  restrictif.
+- **Une approbation par appel initié par le modèle.** Les appels `tools.*` faits dans `execute` ne
+  sont pas redemandés : approuver l'outil du script couvre ce que fait son corps.
+
 ## Coexistence avec YAML
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews
