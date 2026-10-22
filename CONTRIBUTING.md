@@ -268,6 +268,10 @@ refuses carries `<!-- settings-check:off -->` on the line above its fence.
   or on a tag only it carries; a delay the test must not reach is a hang guard
   (`Polling.DefaultTimeout`), and no unit test bounds a duration — a timestamp is checked between
   two readings of the clock, and two concurrent ends come in the order a rendezvous forces
+* A build copies the native libraries (Tree-sitter grammars, ONNX Runtime) of the machine's own
+  runtime only, through `OrkeonTrimForeignRuntimes` in the root `Directory.Build.targets`: a test
+  output weighs ~150 MB instead of ~1 GB, and a built worktree a few GB instead of 26. A `bin`
+  that must run on another machine is built with `-p:OrkeonAllRuntimes=true`
 * A test that awaits a script engine waits under `HangGuards.EnginePromise`
   (`Orkeon.Tests.Shared.Timing`), never under Jint's implicit 10 seconds — see the threading model of
   [`docs/architecture/scripting.md`](docs/architecture/scripting.md#threading-model)

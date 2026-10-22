@@ -1,4 +1,7 @@
 <Project>
+  <!-- The root Directory.Build.targets (native libraries of the current runtime only):
+       MSBuild stops at the first file found, so this one imports its parent. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
   <!-- Tree-sitter grammar pruning (WIN-04).
 
        TreeSitter.DotNet ships one native library per supported grammar (31 for
