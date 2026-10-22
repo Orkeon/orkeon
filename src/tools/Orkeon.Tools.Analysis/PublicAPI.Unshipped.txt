@@ -21,6 +21,68 @@ Orkeon.Tools.Analysis.AccessCostResponse.Report.get -> Orkeon.Analysis.Abstracti
 Orkeon.Tools.Analysis.AccessCostResponse.Report.init -> void
 Orkeon.Tools.Analysis.AccessCostTool
 Orkeon.Tools.Analysis.AccessCostTool.AccessCostTool(Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore! store, Orkeon.Analysis.Abstractions.Interfaces.IGitDiffProvider! gitDiff, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Analysis.AccessCostTool!>? logger = null) -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.<Clone>$() -> Orkeon.Tools.Analysis.NodeOutlineEntryDto!
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.EndByte.get -> int
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.EndByte.init -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.EndLine.get -> int
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.EndLine.init -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.Equals(Orkeon.Tools.Analysis.NodeOutlineEntryDto? other) -> bool
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.Kind.get -> string!
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.Kind.init -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.NodeOutlineEntryDto() -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.Selector.get -> string!
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.Selector.init -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.StartByte.get -> int
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.StartByte.init -> void
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.StartLine.get -> int
+Orkeon.Tools.Analysis.NodeOutlineEntryDto.StartLine.init -> void
+Orkeon.Tools.Analysis.NodeOutlineRequest
+Orkeon.Tools.Analysis.NodeOutlineRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeOutlineRequest!
+Orkeon.Tools.Analysis.NodeOutlineRequest.Equals(Orkeon.Tools.Analysis.NodeOutlineRequest? other) -> bool
+Orkeon.Tools.Analysis.NodeOutlineRequest.NodeOutlineRequest() -> void
+Orkeon.Tools.Analysis.NodeOutlineRequest.Path.get -> string!
+Orkeon.Tools.Analysis.NodeOutlineRequest.Path.init -> void
+Orkeon.Tools.Analysis.NodeOutlineResponse
+Orkeon.Tools.Analysis.NodeOutlineResponse.<Clone>$() -> Orkeon.Tools.Analysis.NodeOutlineResponse!
+Orkeon.Tools.Analysis.NodeOutlineResponse.Equals(Orkeon.Tools.Analysis.NodeOutlineResponse? other) -> bool
+Orkeon.Tools.Analysis.NodeOutlineResponse.Members.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.Analysis.NodeOutlineEntryDto!>!
+Orkeon.Tools.Analysis.NodeOutlineResponse.Members.init -> void
+Orkeon.Tools.Analysis.NodeOutlineResponse.NodeOutlineResponse() -> void
+Orkeon.Tools.Analysis.NodeOutlineTool
+Orkeon.Tools.Analysis.NodeOutlineTool.NodeOutlineTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
+Orkeon.Tools.Analysis.NodeReadRequest
+Orkeon.Tools.Analysis.NodeReadRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeReadRequest!
+Orkeon.Tools.Analysis.NodeReadRequest.Equals(Orkeon.Tools.Analysis.NodeReadRequest? other) -> bool
+Orkeon.Tools.Analysis.NodeReadRequest.NodeReadRequest() -> void
+Orkeon.Tools.Analysis.NodeReadRequest.Path.get -> string!
+Orkeon.Tools.Analysis.NodeReadRequest.Path.init -> void
+Orkeon.Tools.Analysis.NodeReadRequest.Selector.get -> string!
+Orkeon.Tools.Analysis.NodeReadRequest.Selector.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse
+Orkeon.Tools.Analysis.NodeReadResponse.<Clone>$() -> Orkeon.Tools.Analysis.NodeReadResponse!
+Orkeon.Tools.Analysis.NodeReadResponse.EndByte.get -> int
+Orkeon.Tools.Analysis.NodeReadResponse.EndByte.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.EndLine.get -> int
+Orkeon.Tools.Analysis.NodeReadResponse.EndLine.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.Equals(Orkeon.Tools.Analysis.NodeReadResponse? other) -> bool
+Orkeon.Tools.Analysis.NodeReadResponse.Kind.get -> string!
+Orkeon.Tools.Analysis.NodeReadResponse.Kind.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.NodeReadResponse() -> void
+Orkeon.Tools.Analysis.NodeReadResponse.Path.get -> string!
+Orkeon.Tools.Analysis.NodeReadResponse.Path.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.Selector.get -> string!
+Orkeon.Tools.Analysis.NodeReadResponse.Selector.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.Sha256.get -> string!
+Orkeon.Tools.Analysis.NodeReadResponse.Sha256.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.StartByte.get -> int
+Orkeon.Tools.Analysis.NodeReadResponse.StartByte.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.StartLine.get -> int
+Orkeon.Tools.Analysis.NodeReadResponse.StartLine.init -> void
+Orkeon.Tools.Analysis.NodeReadResponse.Text.get -> string!
+Orkeon.Tools.Analysis.NodeReadResponse.Text.init -> void
+Orkeon.Tools.Analysis.NodeReadTool
+Orkeon.Tools.Analysis.NodeReadTool.NodeReadTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
 override Orkeon.Tools.Analysis.AccessCostRequest.Equals(object? obj) -> bool
 override Orkeon.Tools.Analysis.AccessCostRequest.GetHashCode() -> int
 override Orkeon.Tools.Analysis.AccessCostRequest.ToString() -> string!
@@ -30,7 +92,38 @@ override Orkeon.Tools.Analysis.AccessCostResponse.ToString() -> string!
 override Orkeon.Tools.Analysis.AccessCostTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Analysis.AccessCostTool.Description.get -> string!
 override Orkeon.Tools.Analysis.AccessCostTool.Name.get -> string!
+override Orkeon.Tools.Analysis.NodeOutlineEntryDto.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeOutlineEntryDto.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeOutlineEntryDto.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeOutlineRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeOutlineRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeOutlineRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeOutlineResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeOutlineResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeOutlineResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeOutlineTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.NodeOutlineTool.Description.get -> string!
+override Orkeon.Tools.Analysis.NodeOutlineTool.Name.get -> string!
+override Orkeon.Tools.Analysis.NodeReadRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeReadRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeReadRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeReadResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeReadResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeReadResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeReadTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.NodeReadTool.Description.get -> string!
+override Orkeon.Tools.Analysis.NodeReadTool.Name.get -> string!
 static Orkeon.Tools.Analysis.AccessCostRequest.operator !=(Orkeon.Tools.Analysis.AccessCostRequest? left, Orkeon.Tools.Analysis.AccessCostRequest? right) -> bool
 static Orkeon.Tools.Analysis.AccessCostRequest.operator ==(Orkeon.Tools.Analysis.AccessCostRequest? left, Orkeon.Tools.Analysis.AccessCostRequest? right) -> bool
 static Orkeon.Tools.Analysis.AccessCostResponse.operator !=(Orkeon.Tools.Analysis.AccessCostResponse? left, Orkeon.Tools.Analysis.AccessCostResponse? right) -> bool
 static Orkeon.Tools.Analysis.AccessCostResponse.operator ==(Orkeon.Tools.Analysis.AccessCostResponse? left, Orkeon.Tools.Analysis.AccessCostResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineEntryDto.operator !=(Orkeon.Tools.Analysis.NodeOutlineEntryDto? left, Orkeon.Tools.Analysis.NodeOutlineEntryDto? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineEntryDto.operator ==(Orkeon.Tools.Analysis.NodeOutlineEntryDto? left, Orkeon.Tools.Analysis.NodeOutlineEntryDto? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineRequest.operator !=(Orkeon.Tools.Analysis.NodeOutlineRequest? left, Orkeon.Tools.Analysis.NodeOutlineRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineRequest.operator ==(Orkeon.Tools.Analysis.NodeOutlineRequest? left, Orkeon.Tools.Analysis.NodeOutlineRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineResponse.operator !=(Orkeon.Tools.Analysis.NodeOutlineResponse? left, Orkeon.Tools.Analysis.NodeOutlineResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeOutlineResponse.operator ==(Orkeon.Tools.Analysis.NodeOutlineResponse? left, Orkeon.Tools.Analysis.NodeOutlineResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeReadRequest.operator !=(Orkeon.Tools.Analysis.NodeReadRequest? left, Orkeon.Tools.Analysis.NodeReadRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeReadRequest.operator ==(Orkeon.Tools.Analysis.NodeReadRequest? left, Orkeon.Tools.Analysis.NodeReadRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeReadResponse.operator !=(Orkeon.Tools.Analysis.NodeReadResponse? left, Orkeon.Tools.Analysis.NodeReadResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeReadResponse.operator ==(Orkeon.Tools.Analysis.NodeReadResponse? left, Orkeon.Tools.Analysis.NodeReadResponse? right) -> bool

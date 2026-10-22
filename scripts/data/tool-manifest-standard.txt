@@ -63,6 +63,8 @@ memory_store
 mongodb_query
 mongodb_schema
 mysql_query
+node_outline
+node_read
 package_summary
 pdf_reader
 pdf_search

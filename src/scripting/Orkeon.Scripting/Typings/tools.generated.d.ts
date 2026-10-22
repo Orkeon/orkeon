@@ -706,6 +706,30 @@ declare global {
             readonly scalar_result?: unknown;
         }>;
 
+        /** `node_outline` - Outline of a file's members. */
+        nodeOutline(input?: {
+            path?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly members: readonly Record<string, unknown>[];
+        }>;
+
+        /** `node_read` - Reads one member of a file by selector: text, range and SHA-256, uncut. */
+        nodeRead(input: {
+            path?: string;
+            /** Member to read. Readable form: Ns.Type.Member(paramTypes), e.g. Demo.Calc.Add(int). Markdown form: Section/Sub; sibling headings of the same name take a 1-based ordinal, e.g. Section/Notes[2]. Fallback form: @ts:<node-path>, the tree-sitter path root/<index>/<kind>/... returned when a readable selector is ambiguous. */
+            selector: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly end_byte: number;
+            readonly end_line: number;
+            readonly kind: string;
+            readonly path: string;
+            readonly selector: string;
+            readonly sha256: string;
+            readonly start_byte: number;
+            readonly start_line: number;
+            readonly text: string;
+        }>;
+
         /** `package_summary` - Details about a package (L1): file count, symbol count, exports, dependencies. */
         packageSummary(input?: {
             fqn?: string;

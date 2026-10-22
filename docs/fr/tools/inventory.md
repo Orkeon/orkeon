@@ -211,7 +211,7 @@ pour les deux fournisseurs, modèle de sécurité et commandes `orkeon drive` :
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet est
+Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide complet est
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Classe | Cas d'usage |
@@ -232,6 +232,8 @@ Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet
 | `complexity_report` | `ComplexityReportTool` | Top-N des méthodes par métriques de complexité, avec médiane/P95 |
 | `access_cost` | `AccessCostTool` | Coût d'accès aux ports des membres choisis par `fqns` ou `changed_files` (par défaut : les changements de l'arbre de travail), restreint à `roots` ; `receivers` remplace la regex des récepteurs de ports. Classe lecture |
 | `statement_query` | `StatementQueryTool` | Requêter les statements L4 par genre, FQN parent, ou similarité sémantique |
+| `node_outline` | `NodeOutlineTool` | Lister les membres d'un fichier C# ou TypeScript avec sélecteurs, plages d'octets et de lignes |
+| `node_read` | `NodeReadTool` | Lire un membre par sélecteur : texte (commentaires et attributs de tête inclus), plage, SHA-256, sans coupure |
 
 ## Montages et embeddings locaux
 
@@ -366,7 +368,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddOrkeonDriveTools(configuration); // les 11 tools drive_* ; ils demandent un compte déclaré et connecté
-services.AddRaggableTreeTools();       // les 15 tools d'analyse
+services.AddRaggableTreeTools();       // les 17 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)
 services.AddOrkeonWebSearchTool();     // web_search
@@ -450,6 +452,8 @@ correspondance alphabétique complète :
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
+| `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
+| `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |
 | `package_summary` | `PackageSummaryTool` | `Orkeon.Tools.Analysis` |
 | `pdf_reader` | `PdfReaderTool` | `Orkeon.Tools.Data` |
 | `pdf_search` | `PdfSearchTool` | `Orkeon.Tools.Data` |

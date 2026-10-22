@@ -299,7 +299,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
 
     [Fact]
     [Trait("BR", "RT-35")]
-    public void AddRaggableTreeTools_registers_all_sixteen_tools()
+    public void AddRaggableTreeTools_registers_all_eighteen_tools()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
@@ -309,7 +309,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var tools = provider.GetServices<IBaseTool>().ToList();
 
-        Assert.Equal(16, tools.Count);
+        Assert.Equal(18, tools.Count);
         Assert.Contains(tools, t => t is CodebaseMapTool);
         Assert.Contains(tools, t => t is CodebaseSearchTool);
         Assert.Contains(tools, t => t is ComplexityReportTool);
@@ -325,6 +325,9 @@ public class RaggableTreeServiceCollectionExtensionsTests
         Assert.Contains(tools, t => t is IncrementalReindexTool);
         Assert.Contains(tools, t => t is IndexStatusTool);
         Assert.Contains(tools, t => t is IsPathIndexedTool);
+        Assert.Contains(tools, t => t is AccessCostTool);
+        Assert.Contains(tools, t => t is NodeOutlineTool);
+        Assert.Contains(tools, t => t is NodeReadTool);
     }
 
     private sealed class StubLlm : ILlmProvider

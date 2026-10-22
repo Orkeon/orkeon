@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.TreeSitter;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Analysis.Core;
@@ -9,17 +10,9 @@ namespace Orkeon.Analysis.Core;
 public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
 {
     private static readonly Dictionary<string, string> LanguageByExtension =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            [".ts"] = "typescript",
-            [".tsx"] = "typescript",
-            [".py"] = "python",
-            [".cs"] = "csharp",
-            [".go"] = "go",
-            [".rs"] = "rust",
-            [".md"] = "markdown",
-            [".markdown"] = "markdown",
-        };
+        LanguageRegistry.Shipped
+            .SelectMany(g => g.Extensions.Select(e => (Extension: e, g.Language)))
+            .ToDictionary(x => x.Extension, x => x.Language, StringComparer.OrdinalIgnoreCase);
 
     private static readonly IReadOnlySet<string> AlwaysExcludedFileSuffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {

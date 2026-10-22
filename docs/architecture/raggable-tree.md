@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 16 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
+Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 18 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
 
 ## Overview
 
@@ -143,8 +143,10 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `complexity_report` | Top-N by metric (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `access_cost` | Port-access cost (reads, writes, calls in loops, in-memory filters) of members by `fqns` or `changed_files`, restricted to `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | L4 structural queries (if, try, return...) — every index carries the statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
+| `node_outline` | Members of a C# or TypeScript file with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
+| `node_read` | One member by selector: text, range and SHA-256, read uncut | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 
-The 16 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+The 18 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` carries the build knobs per call (`IndexCodebaseRequest`):
 `root_path` (required, a virtual path), `languages` (empty = auto-detect),
@@ -201,6 +203,20 @@ was removed with the `IndexMode` key (GAP-15). The
 freshness design above replaces that fiction; `ICodebaseWatcher`
 (`FileSystemWatcherCodebaseWatcher`, which no shipped host registers) remains available for
 hosts that want push-based invalidation on top of the lazy pass.
+
+## Selectors
+
+`node_outline` and `node_read` address a declaration of one file by a selector, in one of three forms:
+
+- **Readable**: `Ns.Type.Member(paramTypes)`, e.g. `Demo.Calc.Add(int)`. The parameter types are optional and required only when overloads exist; an ambiguous overload is an error that lists the candidate selectors.
+- **Markdown**: `Section/Sub` (heading path), served for `.md` and `.markdown` files: a section runs from its heading to the line before the next heading of the same or a higher level. Sibling headings of the same name under one parent are told apart by a 1-based ordinal on any segment: `A/Notes[2]`, `A[2]/Notes[1]`. Without an ordinal, an ambiguous path is an error listing `A/Notes[1]`, `A/Notes[2]`; the outline shows the ordinal form for duplicates (and `A[2]/Notes` for their descendants) and the plain form for a unique name. An ordinal of 0 or beyond the siblings is a not-found error.
+- **Fallback**: `@ts:<node-path>`, the tree-sitter path `root/<index>/<kind>/...` (`index` the 0-based position among the named children), for a node the readable form cannot name.
+
+A selector resolves to exactly one node or fails listing candidates. A node's span includes its leading comments and its attributes or decorators.
+
+Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Declarations are addressable today in C# and TypeScript, sections in Markdown; the other shipped grammars are refused by name; a file whose extension no grammar claims is refused by name.
+
+`node_outline` lists the members with selector, kind, byte range and line range. `node_read` returns the text of one member, its range and the SHA-256 of its bytes, uncut: the tool carries its own result bound (`node_read` = 256 000 characters in `AgentDefaults`), so the default tool-result cut does not apply.
 
 ## Extensibility
 

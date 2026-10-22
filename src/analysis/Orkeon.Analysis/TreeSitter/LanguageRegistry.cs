@@ -2,8 +2,21 @@ using TsLanguage = TreeSitter.Language;
 
 namespace Orkeon.Analysis.TreeSitter;
 
+internal sealed record GrammarInfo(string Language, IReadOnlyList<string> Extensions);
+
 internal static class LanguageRegistry
 {
+    /// <summary>The languages the index serves and the file extensions each one claims.</summary>
+    public static IReadOnlyList<GrammarInfo> Shipped { get; } =
+    [
+        new("typescript", [".ts", ".tsx"]),
+        new("python", [".py"]),
+        new("csharp", [".cs"]),
+        new("go", [".go"]),
+        new("rust", [".rs"]),
+        new("markdown", [".md", ".markdown"]),
+    ];
+
     private static readonly Dictionary<string, (string Library, string Function)> Map =
         new(StringComparer.OrdinalIgnoreCase)
         {

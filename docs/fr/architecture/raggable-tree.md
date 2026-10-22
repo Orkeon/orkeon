@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 16 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
+Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 18 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
 
 ## Vue d'ensemble
 
@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // les 16 tools agents (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // les 18 tools agents (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les cinq
@@ -141,8 +141,10 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `complexity_report` | Top-N par métrique (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `access_cost` | Coût d'accès aux ports (lectures, écritures, appels en boucle, filtres en mémoire) des membres par `fqns` ou `changed_files`, restreint à `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | Requêtes structurelles L4 (if, try, return...) — chaque index porte les statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
+| `node_outline` | Membres d'un fichier C# ou TypeScript avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
+| `node_read` | Un membre par sélecteur : texte, plage et SHA-256, lu sans coupure | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 
-Les 16 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+Les 18 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
@@ -202,6 +204,20 @@ existait, rien ne la lisait, et elle a été supprimée avec la clé `IndexMode`
 `ICodebaseWatcher` (`FileSystemWatcherCodebaseWatcher`, qu'aucun hôte livré n'enregistre)
 reste disponible pour les hôtes qui veulent une invalidation en push
 par-dessus la passe paresseuse.
+
+## Sélecteurs
+
+`node_outline` et `node_read` adressent une déclaration d'un fichier par un sélecteur, sous l'une de trois formes :
+
+- **Lisible** : `Ns.Type.Member(paramTypes)`, p. ex. `Demo.Calc.Add(int)`. Les types de paramètres sont optionnels et requis seulement quand des surcharges existent ; une surcharge ambiguë est une erreur qui liste les sélecteurs candidats.
+- **Markdown** : `Section/Sub` (chemin de titres), servi pour les fichiers `.md` et `.markdown` : une section va de son titre à la ligne précédant le titre suivant de même niveau ou supérieur. Des titres frères de même nom sous un même parent se distinguent par un ordinal à partir de 1 sur n'importe quel segment : `A/Notes[2]`, `A[2]/Notes[1]`. Sans ordinal, un chemin ambigu est une erreur qui liste `A/Notes[1]`, `A/Notes[2]` ; le plan montre la forme avec ordinal pour les doublons (et `A[2]/Notes` pour leurs descendants) et la forme simple pour un nom unique. Un ordinal égal à 0 ou au-delà des frères est une erreur de sélecteur introuvable.
+- **Repli** : `@ts:<node-path>`, le chemin tree-sitter `root/<index>/<kind>/...` (`index` la position à partir de 0 parmi les enfants nommés), pour un nœud que la forme lisible ne peut pas nommer.
+
+Un sélecteur résout exactement un nœud ou échoue en listant les candidats. L'étendue d'un nœud inclut ses commentaires de tête et ses attributs ou décorateurs.
+
+Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
+
+`node_outline` liste les membres avec sélecteur, genre, plage d'octets et plage de lignes. `node_read` renvoie le texte d'un membre, sa plage et le SHA-256 de ses octets, sans coupure : l'outil porte sa propre borne de résultat (`node_read` = 256 000 caractères dans `AgentDefaults`), la coupure par défaut des résultats d'outil ne s'applique donc pas.
 
 ## Extensibilité
 

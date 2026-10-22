@@ -206,7 +206,7 @@ security model and the `orkeon drive` commands: [Drive tools](../guides/drive.md
 
 ## Codebase analysis tools (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Fifteen tools over the RaggableTree semantic code graph — the full guide is
+Seventeen tools over the RaggableTree semantic code graph — the full guide is
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Class | Use case |
@@ -227,6 +227,8 @@ Fifteen tools over the RaggableTree semantic code graph — the full guide is
 | `complexity_report` | `ComplexityReportTool` | Top-N methods by complexity metrics, with median/P95 |
 | `statement_query` | `StatementQueryTool` | Query L4 statements by kind, parent FQN, or semantic similarity |
 | `access_cost` | `AccessCostTool` | Port-access cost of members selected by `fqns` or `changed_files` (default: the working-tree changes), restricted to `roots`; `receivers` overrides the port-receiver regex. Read-class |
+| `node_outline` | `NodeOutlineTool` | List the members of a C# or TypeScript file with selectors, byte and line ranges |
+| `node_read` | `NodeReadTool` | Read one member by selector: text (leading comments and attributes included), range, SHA-256, uncut |
 
 ## Mounts and local embeddings
 
@@ -442,6 +444,8 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
+| `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
+| `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |
 | `package_summary` | `PackageSummaryTool` | `Orkeon.Tools.Analysis` |
 | `pdf_reader` | `PdfReaderTool` | `Orkeon.Tools.Data` |
 | `pdf_search` | `PdfSearchTool` | `Orkeon.Tools.Data` |
