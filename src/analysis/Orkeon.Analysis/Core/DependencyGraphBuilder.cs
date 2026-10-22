@@ -38,19 +38,41 @@ public sealed class DependencyGraphBuilder
         IReferenceResolver resolver, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(resolver);
-        return BuildDependenciesCoreAsync(resolver, ct);
+        return BuildDependenciesCoreAsync(resolver, [.. _files.Keys], ct);
+    }
+
+    /// <summary>
+    /// Builds the edges of <paramref name="files"/> only. The nodes of the unchanged files are
+    /// registered from the store (no source, no parse) so that references resolve against the
+    /// whole graph, and only the changed files are parsed.
+    /// </summary>
+    public Task<IReadOnlyList<RaggableEdge>> BuildForFilesAsync(
+        IEnumerable<string> files,
+        IEnumerable<RaggableNode> unchangedNodes,
+        IReferenceResolver resolver,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(unchangedNodes);
+        ArgumentNullException.ThrowIfNull(resolver);
+        foreach (var group in unchangedNodes.GroupBy(n => n.VirtualFilePath, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_files.ContainsKey(group.Key)) RegisterFile(group.Key, string.Empty, [.. group]);
+        }
+        return BuildDependenciesCoreAsync(resolver, [.. files], ct);
     }
 
     private async Task<IReadOnlyList<RaggableEdge>> BuildDependenciesCoreAsync(
-        IReferenceResolver resolver, CancellationToken ct)
+        IReferenceResolver resolver, IReadOnlyList<string> filePaths, CancellationToken ct)
     {
         var index = BuildGlobalIndex();
         var edges = new List<RaggableEdge>();
         var unresolvedCalls = new List<UnresolvedRef>();
 
-        foreach (var (filePath, ctx) in _files)
+        foreach (var filePath in filePaths)
         {
             ct.ThrowIfCancellationRequested();
+            var ctx = _files[filePath];
             var moduleNode = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (moduleNode is null) continue;
 
@@ -199,7 +221,7 @@ public sealed class DependencyGraphBuilder
         }
     }
 
-    private static void LinkNodes(EdgeKind kind, RaggableNode fromNode, RaggableNode toNode)
+    internal static void LinkNodes(EdgeKind kind, RaggableNode fromNode, RaggableNode toNode)
     {
         switch (kind)
         {

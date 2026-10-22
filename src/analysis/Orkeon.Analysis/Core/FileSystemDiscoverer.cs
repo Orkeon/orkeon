@@ -247,6 +247,23 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         return virtualPath.TrimStart('/');
     }
 
+    /// <summary>
+    /// The language a full index would give <paramref name="virtualPath"/>, or <c>null</c> when
+    /// the exclude set, the always-excluded suffixes, the supported extensions or the language
+    /// filter keep it out: the one rule a single-file reindex shares with discovery.
+    /// </summary>
+    internal static string? IndexableLanguage(
+        string virtualRoot, string virtualPath, IReadOnlyCollection<string> exclude, ImmutableArray<string> languages)
+    {
+        var relative = ToRelative(virtualRoot, virtualPath);
+        if (HasExcludedSegment(relative, new HashSet<string>(exclude, StringComparer.OrdinalIgnoreCase))) return null;
+
+        var fileName = Path.GetFileName(relative);
+        if (AlwaysExcludedFileSuffixes.Any(suffix => fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))) return null;
+        if (!LanguageByExtension.TryGetValue(Path.GetExtension(fileName), out var language)) return null;
+        return languages.IsDefaultOrEmpty || languages.Contains(language, StringComparer.OrdinalIgnoreCase) ? language : null;
+    }
+
     private static bool HasExcludedSegment(string relative, HashSet<string> excludeSet)
     {
         if (excludeSet.Count == 0) return false;

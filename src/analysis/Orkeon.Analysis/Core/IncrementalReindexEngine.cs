@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
@@ -11,7 +14,6 @@ namespace Orkeon.Analysis.Core;
 public sealed class IncrementalReindexEngine
 {
     private readonly Dictionary<string, ILanguageAdapter> _adaptersByLanguage;
-    private readonly IFileSystemDiscoverer _discoverer;
     private readonly IFileSystemService _fileSystem;
     private readonly TreeSitterParserPool _pool;
     private readonly IReferenceResolver _resolver;
@@ -49,7 +51,7 @@ public sealed class IncrementalReindexEngine
     {
         ArgumentNullException.ThrowIfNull(adapters);
         enrichment ??= RaggableEnrichmentServices.None;
-        _discoverer = discoverer ?? throw new ArgumentNullException(nameof(discoverer));
+        ArgumentNullException.ThrowIfNull(discoverer);
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _pool = pool ?? throw new ArgumentNullException(nameof(pool));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
@@ -90,99 +92,91 @@ public sealed class IncrementalReindexEngine
         IndexCodebaseRequest opts,
         CancellationToken ct)
     {
-        // Phase 1 — Discover via VFS. RootPath is a virtual path, FileSystemDiscoverer resolves it.
-        var discovery = await _discoverer.DiscoverAllAsync(new DiscoveryRequest
+        var started = Stopwatch.GetTimestamp();
+        var root = virtualRoot.TrimEnd('/');
+        var changedVirtual = NormalizeChangedPaths(changedFilePaths, root);
+
+        var (keptNodes, removedNodeIds) = PartitionNodes(currentTree, changedVirtual);
+        var removedIds = new HashSet<string>(removedNodeIds, StringComparer.Ordinal);
+        var packageNodes = keptNodes.Where(n => n.Level == NodeLevel.L1_Package).ToList();
+        var monorepo = keptNodes.FirstOrDefault(n => n.Level == NodeLevel.L0_Monorepo)
+            ?? TreeAssembly.BuildMonorepoNode(root);
+        foreach (var parent in keptNodes.Where(n => n.Level <= NodeLevel.L1_Package))
         {
-            RootPath = virtualRoot,
-            Languages = opts.Languages,
-            Exclude = opts.Exclude,
-        }, ct).ConfigureAwait(false);
+            parent.ChildrenIdsMutable.RemoveAll(removedIds.Contains);
+        }
 
-        var rootVirtual = discovery.RootPath;
-        var changedVirtual = NormalizeChangedPaths(changedFilePaths, rootVirtual);
-
-        var currentFiles = new HashSet<string>(
-            discovery.Files.Select(f => f.VirtualPath),
-            StringComparer.Ordinal);
-
-        var (reusedNodes, removedNodeIds) = PartitionNodes(currentTree, changedVirtual, currentFiles);
-        ClearEdgeState(reusedNodes);
-
-        var reusedByPath = GroupReusedByPath(reusedNodes);
-        var reusedModulePaths = new HashSet<string>(
-            reusedNodes.Where(n => n.Level == NodeLevel.L2_Module).Select(n => n.VirtualFilePath),
-            StringComparer.Ordinal);
-
-        var allNodes = new List<RaggableNode>();
-        var monorepo = TreeAssembly.BuildMonorepoNode(rootVirtual);
-        allNodes.Add(monorepo);
-        var packageNodes = TreeAssembly.BuildPackageNodes(monorepo, discovery.Packages, rootVirtual);
-        allNodes.AddRange(packageNodes);
+        var unchangedNodes = keptNodes.Where(n => n.Level > NodeLevel.L1_Package).ToList();
+        PurgeLinks(unchangedNodes, removedIds);
+        var reusedFileCount = unchangedNodes.Select(n => n.VirtualFilePath).Distinct(StringComparer.Ordinal).Count();
 
         var graphBuildersByLanguage = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
+        var changedByLanguage = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         var newNodes = new List<RaggableNode>();
-        var changedFileCount = 0;
-        var reusedFileCount = 0;
+        var filesParsed = 0;
 
-        foreach (var file in discovery.Files)
+        foreach (var path in changedVirtual)
         {
             ct.ThrowIfCancellationRequested();
-            if (file.Language == RaggableTreeBuilder.MarkdownLanguage)
-            {
-                if (reusedByPath.TryGetValue(file.VirtualPath, out var keptNodes) && !changedVirtual.Contains(file.VirtualPath))
-                {
-                    allNodes.AddRange(keptNodes);
-                    reusedFileCount++;
-                    continue;
-                }
+            var language = FileSystemDiscoverer.IndexableLanguage(root, path, opts.Exclude, opts.Languages);
+            if (language is null) continue;
+            var isMarkdown = language == RaggableTreeBuilder.MarkdownLanguage;
+            if (!isMarkdown && !_adaptersByLanguage.ContainsKey(language)) continue;
 
-                var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-                if (markdown is null) continue;
-                var markdownNodes = RaggableTreeBuilder.MarkdownMapper.Map(file.VirtualPath, markdown);
-                newNodes.AddRange(markdownNodes);
-                allNodes.AddRange(markdownNodes);
-                changedFileCount++;
+            var source = await _fileSystem.TryReadAllTextAsync(path, ct).ConfigureAwait(false);
+            if (source is null) continue;
+
+            filesParsed++;
+            if (isMarkdown)
+            {
+                newNodes.AddRange(RaggableTreeBuilder.MarkdownMapper.Map(path, source));
                 continue;
             }
 
-            if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
-
-            var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-            if (source is null) continue;
-
-            var reuse = reusedModulePaths.Contains(file.VirtualPath) && !changedVirtual.Contains(file.VirtualPath);
-            List<RaggableNode> fileNodes;
-            if (reuse)
-            {
-                fileNodes = reusedByPath[file.VirtualPath];
-                reusedFileCount++;
-            }
-            else
-            {
-                var mapper = new UniversalSemanticMapper(adapter, _pool);
-                fileNodes = [.. mapper.ExtractNodes(file.VirtualPath, source)];
-                newNodes.AddRange(fileNodes);
-                changedFileCount++;
-            }
-
+            var adapter = _adaptersByLanguage[language];
+            var fileNodes = new UniversalSemanticMapper(adapter, _pool).ExtractNodes(path, source).ToList();
+            newNodes.AddRange(fileNodes);
             TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
-            allNodes.AddRange(fileNodes);
-
-            GetOrCreateBuilder(graphBuildersByLanguage, adapter)
-                .RegisterFile(file.VirtualPath, source, fileNodes);
+            GetOrCreateBuilder(graphBuildersByLanguage, adapter).RegisterFile(path, source, fileNodes);
+            if (!changedByLanguage.TryGetValue(adapter.LanguageName, out var paths))
+            {
+                paths = [];
+                changedByLanguage[adapter.LanguageName] = paths;
+            }
+            paths.Add(path);
         }
 
-        var allEdges = new List<RaggableEdge>();
-        foreach (var gb in graphBuildersByLanguage.Values)
+        var newEdges = new List<RaggableEdge>();
+        foreach (var (language, gb) in graphBuildersByLanguage)
         {
-            var edges = await gb.BuildDependenciesAsync(_resolver, ct).ConfigureAwait(false);
-            allEdges.AddRange(edges);
+            var languageNodes = unchangedNodes.Where(n => string.Equals(n.Language, language, StringComparison.OrdinalIgnoreCase));
+            newEdges.AddRange(await gb.BuildForFilesAsync(changedByLanguage[language], languageNodes, _resolver, ct).ConfigureAwait(false));
         }
 
         foreach (var fp in _fingerprinters)
         {
-            fp.Apply(allNodes, allEdges);
+            fp.Apply(newNodes, newEdges);
         }
+
+        var allNodes = new List<RaggableNode>(keptNodes);
+        allNodes.AddRange(newNodes);
+        var nodesById = allNodes
+            .GroupBy(n => n.Id, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var newIds = new HashSet<string>(newNodes.Select(n => n.Id), StringComparer.Ordinal);
+
+        // Edges held by the other files survive when both ends still exist; the changed files' own
+        // outgoing edges are the ones just rebuilt.
+        var keptEdges = currentTree.Edges
+            .Where(e => nodesById.ContainsKey(e.FromId) && nodesById.ContainsKey(e.ToId) && !newIds.Contains(e.FromId))
+            .ToList();
+        foreach (var edge in keptEdges.Where(e => newIds.Contains(e.ToId)))
+        {
+            DependencyGraphBuilder.LinkNodes(edge.Kind, nodesById[edge.FromId], nodesById[edge.ToId]);
+        }
+
+        var allEdges = new List<RaggableEdge>(keptEdges);
+        allEdges.AddRange(newEdges);
 
         var index = allNodes
             .Where(n => !string.IsNullOrEmpty(n.Fqn))
@@ -195,14 +189,31 @@ public sealed class IncrementalReindexEngine
 
         await SyncVectorStoreAsync(newNodes, removedNodeIds, index, ct).ConfigureAwait(false);
 
-        var indexId = TreeAssembly.ComputeIndexId(discovery.Files);
         return new IncrementalReindexResult(
             tree,
-            indexId,
-            changedFileCount,
+            ComputeIndexId(unchangedNodes, newNodes),
+            filesParsed,
             reusedFileCount,
             newNodes.Count,
-            removedNodeIds.Count);
+            removedNodeIds.Count)
+        {
+            AddedEdgeCount = newEdges.Count,
+            RemovedEdgeCount = currentTree.Edges.Count - keptEdges.Count,
+            FilesParsed = filesParsed,
+            Elapsed = Stopwatch.GetElapsedTime(started),
+            TotalNodeCount = allNodes.Count,
+            TotalEdgeCount = allEdges.Count,
+        };
+    }
+
+    private static string ComputeIndexId(List<RaggableNode> unchangedNodes, List<RaggableNode> newNodes)
+    {
+        var sb = new StringBuilder();
+        foreach (var node in unchangedNodes.Concat(newNodes).OrderBy(n => n.Id, StringComparer.Ordinal))
+        {
+            sb.Append(node.Id).Append(':').Append(node.Sha256).Append('\n');
+        }
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())));
     }
 
     private async System.Threading.Tasks.Task EnrichNewNodesAsync(
@@ -279,50 +290,31 @@ public sealed class IncrementalReindexEngine
         return set;
     }
 
-    private static (List<RaggableNode> Reused, List<string> RemovedIds) PartitionNodes(
+    private static (List<RaggableNode> Kept, List<string> RemovedIds) PartitionNodes(
         RaggableTree currentTree,
-        HashSet<string> changedVirtual,
-        HashSet<string> currentFiles)
+        HashSet<string> changedVirtual)
     {
-        var reused = new List<RaggableNode>();
+        var kept = new List<RaggableNode>();
         var removed = new List<string>();
         foreach (var node in currentTree.Nodes)
         {
-            if (node.Level == NodeLevel.L0_Monorepo || node.Level == NodeLevel.L1_Package) continue;
-            var filePath = node.VirtualFilePath;
-            var drop = changedVirtual.Contains(filePath) || !currentFiles.Contains(filePath);
-            if (drop) removed.Add(node.Id);
-            else reused.Add(node);
+            if (node.Level > NodeLevel.L1_Package && changedVirtual.Contains(node.VirtualFilePath)) removed.Add(node.Id);
+            else kept.Add(node);
         }
-        return (reused, removed);
+        return (kept, removed);
     }
 
-    private static void ClearEdgeState(List<RaggableNode> nodes)
+    private static void PurgeLinks(List<RaggableNode> nodes, HashSet<string> removedIds)
     {
         foreach (var node in nodes)
         {
-            node.ImportIdsMutable.Clear();
-            node.ImportedByIdsMutable.Clear();
-            node.CallIdsMutable.Clear();
-            node.CalledByIdsMutable.Clear();
-            node.ExtendsIdsMutable.Clear();
-            node.ImplementsIdsMutable.Clear();
+            node.ImportIdsMutable.RemoveAll(removedIds.Contains);
+            node.ImportedByIdsMutable.RemoveAll(removedIds.Contains);
+            node.CallIdsMutable.RemoveAll(removedIds.Contains);
+            node.CalledByIdsMutable.RemoveAll(removedIds.Contains);
+            node.ExtendsIdsMutable.RemoveAll(removedIds.Contains);
+            node.ImplementsIdsMutable.RemoveAll(removedIds.Contains);
         }
-    }
-
-    private static Dictionary<string, List<RaggableNode>> GroupReusedByPath(List<RaggableNode> reused)
-    {
-        var map = new Dictionary<string, List<RaggableNode>>(StringComparer.Ordinal);
-        foreach (var node in reused)
-        {
-            if (!map.TryGetValue(node.VirtualFilePath, out var list))
-            {
-                list = [];
-                map[node.VirtualFilePath] = list;
-            }
-            list.Add(node);
-        }
-        return map;
     }
 }
 
@@ -332,4 +324,12 @@ public sealed record IncrementalReindexResult(
     int ChangedFileCount,
     int ReusedFileCount,
     int AddedNodeCount,
-    int RemovedNodeCount);
+    int RemovedNodeCount)
+{
+    public int AddedEdgeCount { get; init; }
+    public int RemovedEdgeCount { get; init; }
+    public int FilesParsed { get; init; }
+    public TimeSpan Elapsed { get; init; }
+    public int TotalNodeCount { get; init; }
+    public int TotalEdgeCount { get; init; }
+}

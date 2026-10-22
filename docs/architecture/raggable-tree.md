@@ -193,6 +193,11 @@ lazy-reindex** design:
   enumerate safely DURING an incremental reindex (previously a concurrent search could
   throw on the mutated dictionaries). The refresh publishes `RaggableTreeUpdated` on the
   `IRaggableTreeEventBus`.
+- **Bound** — the reindex replaces the nodes and edges of each changed file and reuses
+  every other node, so its cost is proportional to the changed files, not to the
+  repository: one file of 2 000 lines reindexes in under 2 s. `incremental_reindex`
+  reports the index totals (`node_count`, `edge_count`), the files parsed and the
+  engine's elapsed time.
 - **Failure barrier** — a failed refresh serves the current (stale) index and keeps the
   dirty debt for the next attempt: stale results beat a dead search.
 

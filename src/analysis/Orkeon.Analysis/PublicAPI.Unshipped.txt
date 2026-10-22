@@ -7,3 +7,17 @@ Orkeon.Analysis.Core.AccessCostService
 Orkeon.Analysis.Core.AccessCostService.AccessCostService() -> void
 Orkeon.Analysis.Core.AccessCostService.Compute(System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! members, System.Text.RegularExpressions.Regex! receivers) -> Orkeon.Analysis.Abstractions.DTOs.Tools.AccessCostReport!
 static Orkeon.Analysis.Core.AccessCostService.DefaultReceivers.get -> System.Text.RegularExpressions.Regex!
+Orkeon.Analysis.Core.IncrementalReindexResult.AddedEdgeCount.get -> int
+Orkeon.Analysis.Core.IncrementalReindexResult.AddedEdgeCount.init -> void
+Orkeon.Analysis.Core.IncrementalReindexResult.RemovedEdgeCount.get -> int
+Orkeon.Analysis.Core.IncrementalReindexResult.RemovedEdgeCount.init -> void
+Orkeon.Analysis.Core.IncrementalReindexResult.FilesParsed.get -> int
+Orkeon.Analysis.Core.IncrementalReindexResult.FilesParsed.init -> void
+Orkeon.Analysis.Core.IncrementalReindexResult.TotalNodeCount.get -> int
+Orkeon.Analysis.Core.IncrementalReindexResult.TotalNodeCount.init -> void
+Orkeon.Analysis.Core.IncrementalReindexResult.TotalEdgeCount.get -> int
+Orkeon.Analysis.Core.IncrementalReindexResult.TotalEdgeCount.init -> void
+Orkeon.Analysis.Core.IncrementalReindexResult.Elapsed.get -> System.TimeSpan
+Orkeon.Analysis.Core.IncrementalReindexResult.Elapsed.init -> void
+Orkeon.Analysis.Core.InMemoryRaggableStore.ReplaceFile(string! path, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>! edges) -> void
+Orkeon.Analysis.Core.DependencyGraphBuilder.BuildForFilesAsync(System.Collections.Generic.IEnumerable<string!>! files, System.Collections.Generic.IEnumerable<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! unchangedNodes, Orkeon.Analysis.Abstractions.Interfaces.IReferenceResolver! resolver, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableEdge!>!>!

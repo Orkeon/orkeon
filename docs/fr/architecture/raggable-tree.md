@@ -193,6 +193,11 @@ L'index reste fidèle à un workspace en cours d'édition grâce à une concepti
   recherches énumèrent en sécurité PENDANT une réindexation incrémentale (auparavant une
   recherche concurrente pouvait lever sur les dictionnaires mutés). Le rafraîchissement
   publie `RaggableTreeUpdated` sur l'`IRaggableTreeEventBus`.
+- **Borne** — la réindexation remplace les nœuds et arêtes de chaque fichier modifié et
+  réutilise tous les autres nœuds : son coût est proportionnel aux fichiers modifiés, pas
+  au dépôt ; un fichier de 2 000 lignes se réindexe en moins de 2 s. `incremental_reindex`
+  rapporte les totaux de l'index (`node_count`, `edge_count`), les fichiers analysés et
+  la durée mesurée par le moteur.
 - **Barrière d'échec** — un rafraîchissement en échec sert l'index courant (périmé) et
   conserve la dette de saleté pour la tentative suivante : un résultat périmé vaut mieux
   qu'une recherche morte.

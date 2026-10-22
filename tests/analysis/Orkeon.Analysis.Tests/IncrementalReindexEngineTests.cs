@@ -4,7 +4,9 @@ using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Adapters;
+using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Tests.Doubles;
 
 namespace Orkeon.Analysis.Tests;
 
@@ -279,6 +281,157 @@ public class IncrementalReindexEngineTests
                 .Where(n => n.VirtualFilePath == guide && n.Kind == UniversalNodeKind.Section)
                 .Select(n => n.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray();
             Assert.Equal(["Guide", "More"], names);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-30")]
+    public async Task ShouldReadAndParseOnlyChangedFile_WhenOneMarkdownFileChanges()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/one.md", "# One\ntext"),
+            ("docs/two.md", "# Two\ntext"),
+            ("docs/three.md", "# Three\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "two.md"), "# Two\nchanged", TestContext.Current.CancellationToken);
+            var counting = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), counting);
+            var two = $"{TestFixtures.TestVirtualRoot}/docs/two.md";
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [two],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var mdReads = counting.Reads.Where(p => p.EndsWith(".md", StringComparison.Ordinal)).ToArray();
+            Assert.Equal([two], mdReads);
+            Assert.Equal(1, result.FilesParsed);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-30")]
+    public async Task ShouldKeepIncomingEdges_WhenTargetFileReindexed()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("b.ts", "export class B { compute(): number { return 10; } }"),
+            ("a.ts", "import { B } from './b';\nexport class A { run(): number { const x = new B(); return x.compute(); } }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export class B { compute(): number { return 11; } extra(): number { return 1; } }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var aModule = result.Tree.Nodes.First(n => n.Level == NodeLevel.L2_Module && n.VirtualFilePath.EndsWith("a.ts", StringComparison.Ordinal));
+            var bModule = result.Tree.Nodes.First(n => n.Level == NodeLevel.L2_Module && n.VirtualFilePath.EndsWith("b.ts", StringComparison.Ordinal));
+            Assert.Contains(result.Tree.Edges, e => e.Kind == EdgeKind.Imports && e.FromId == aModule.Id && e.ToId == bModule.Id);
+            Assert.Equal(result.Tree.Edges.Count, result.TotalEdgeCount);
+            Assert.Equal(1, result.FilesParsed);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-30")]
+    public async Task ShouldDropOldNodes_WhenSymbolRemovedFromFile()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/guide.md", "# Guide\ntext\n## Obsolete\nold text"),
+            ("docs/other.md", "# Other\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            Assert.Contains(tree.Nodes, n => n.Name == "Obsolete");
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "guide.md"), "# Guide\ntext", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/docs/guide.md"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.DoesNotContain(result.Tree.Nodes, n => n.Name == "Obsolete");
+            Assert.True(result.RemovedNodeCount >= 1);
+            Assert.Equal(result.Tree.Nodes.Count, result.TotalNodeCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-30")]
+    public async Task ShouldPatchLexicalIndex_WhenFileReindexed()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/guide.md", "# Zebra\ntext"),
+            ("docs/other.md", "# Other\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            var fs = TestFixtures.CreateFs(dir);
+            var store = new InMemoryRaggableStore(tree, fs);
+            var guide = $"{TestFixtures.TestVirtualRoot}/docs/guide.md";
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "guide.md"), "# Quokka\ntext", TestContext.Current.CancellationToken);
+            using var service = new IndexFreshnessService(
+                store, () => new IncrementalReindexEngine(new TypeScriptAdapter(), fs), fs);
+
+            var result = await service.RefreshPathsAsync([guide], TestFixtures.TestVirtualRoot, CancellationToken.None);
+
+            Assert.Equal(1, result.FilesParsed);
+            var quokka = result.Tree.Nodes.First(n => n.VirtualFilePath == guide && n.Name == "Quokka");
+            var fresh = await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "Quokka", Mode = SearchMode.Lexical }, CancellationToken.None);
+            var stale = await store.SemanticSearchAsync(
+                new SemanticQuery { Text = "Zebra", Mode = SearchMode.Lexical }, CancellationToken.None);
+            Assert.Contains(fresh, h => h.Fqn == quokka.Fqn);
+            Assert.Empty(stale);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-30")]
+    public async Task ShouldIgnoreChangedPaths_WhenExcludedByDiscoveryRules()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/keep.ts", "export class Keep { run(): number { return 1; } }"),
+            ("dist/x.js", "export class Dist { run() { return 1; } }"),
+            ("node_modules/pkg/i.js", "export class Pkg { run() { return 1; } }"),
+            ("src/types.d.ts", "export declare class Typings { run(): number; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "src", "keep.ts"),
+                "export class Keep { run(): number { return 2; } }", TestContext.Current.CancellationToken);
+            var counting = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), counting);
+            var root = TestFixtures.TestVirtualRoot;
+            string[] excluded = [$"{root}/dist/x.js", $"{root}/node_modules/pkg/i.js", $"{root}/src/types.d.ts"];
+
+            var result = await engine.ReindexAsync(
+                tree, root, [$"{root}/src/keep.ts", .. excluded],
+                new IndexCodebaseRequest { RootPath = root },
+                CancellationToken.None);
+
+            Assert.Empty(counting.Reads.Intersect(excluded));
+            Assert.DoesNotContain(result.Tree.Nodes, n => excluded.Contains(n.VirtualFilePath));
+            Assert.Contains(result.Tree.Nodes, n => n.Name == "Keep" && n.Level == NodeLevel.L3_Symbol && n.SourceSnippet.Contains('2'));
+            Assert.Equal(1, result.FilesParsed);
+            Assert.Equal(1, result.ChangedFileCount);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
