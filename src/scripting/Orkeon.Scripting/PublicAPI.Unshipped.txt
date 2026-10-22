@@ -7,3 +7,4 @@ Orkeon.Scripting.Runtime.JsLlmFacade.permissionGate.get -> Orkeon.Scripting.Runt
 Orkeon.Scripting.Runtime.JsPermissionGateState
 Orkeon.Scripting.Runtime.JsPermissionGateState.enabled.get -> bool
 Orkeon.Scripting.Builders.JsAgentBuilder.effort(string! level) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.ScriptHost.RunAsync(string! virtualPath, System.Action<string!>! consoleSink, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<object?>!

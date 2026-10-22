@@ -443,6 +443,19 @@ static class Program
 
     static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)
     {
+        // The durable session loads for the project (the workspace root), then the start script runs once;
+        // the runner saves the session when the REPL ends. A hook that was not registered (a bare host) is skipped.
+        if (host.Services.GetService<Orkeon.Application.Interfaces.Ports.ISessionBufferService>() is Orkeon.Infrastructure.Session.FileSessionBufferService durable)
+        {
+            // The project key is the physical root the REPL mounted as /workspace, resolved by the VFS (not the
+            // virtual "/workspace", identical for every project); the persisted path holds only its name and hash.
+            var workspace = host.Services.GetRequiredService<Orkeon.Domain.FileSystem.IFileSystemService>()
+                .ResolveAndValidate("/workspace", Orkeon.Domain.FileSystem.FileAccessRights.Read);
+            await durable.LoadAsync(workspace.ResolvedPath ?? "/workspace", CancellationToken.None);
+        }
+        if (host.Services.GetService<Orkeon.ConsoleApp.Services.ReplStartScriptHook>() is { } startHook)
+            await startHook.RunOnceAsync(CancellationToken.None);
+
         // Boot into the scripted-commands REPL directly when the flag is set,
         // otherwise fall back to the main menu.
         Func<CancellationToken, Task> entry = scriptedOpts.BootIntoScriptedRunner

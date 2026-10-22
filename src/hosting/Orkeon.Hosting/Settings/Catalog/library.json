@@ -2714,6 +2714,26 @@
       "description": "The model's context window, in tokens: a number above zero. Unset is `200000`."
     },
     {
+      "path": "Orkeon:Cli:Session:Persist",
+      "section": "Orkeon:Cli:Session",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the session is persisted per project under `SessionsDirectory`; off unless a host turns it on."
+    },
+    {
+      "path": "Orkeon:Cli:Session:SessionsDirectory",
+      "section": "Orkeon:Cli:Session",
+      "type": "string",
+      "default": "/workspace/.orkeon/sessions",
+      "description": "Virtual directory holding one folder of persisted session per project."
+    },
+    {
+      "path": "Orkeon:Cli:Session:StartScript",
+      "section": "Orkeon:Cli:Session",
+      "type": "string",
+      "description": "The script run once at the REPL's start (`Orkeon:Cli:Session:StartScript`); unset runs none."
+    },
+    {
       "path": "Orkeon:Scripting:Limits:ExecutionTimeout",
       "section": "Orkeon:Scripting:Limits",
       "type": "duration",

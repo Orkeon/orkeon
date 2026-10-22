@@ -120,3 +120,24 @@ Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long
 Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.init -> void
 Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long
 Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.init -> void
+Orkeon.Infrastructure.Session.CliSessionOptions.SessionsDirectory.get -> string!
+Orkeon.Infrastructure.Session.CliSessionOptions.SessionsDirectory.set -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService
+Orkeon.Infrastructure.Session.FileSessionBufferService.AppendNote(string! note) -> bool
+Orkeon.Infrastructure.Session.FileSessionBufferService.EstimateTokenCount() -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.FileSessionBufferService(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.Session.CliSessionOptions! options) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetMessages() -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.SessionMessage!>!
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetMetadata() -> Orkeon.Application.Interfaces.Ports.SessionMetadata!
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetState(string! key) -> string?
+Orkeon.Infrastructure.Session.FileSessionBufferService.LoadAsync(string! projectKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.FileSessionBufferService.MessageCount.get -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.ReplaceMessages(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.SessionMessage!>! messages) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.Reset() -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.SaveAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.FileSessionBufferService.SetState(string! key, string? value) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.SetTitle(string! title) -> bool
+Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainCount) -> int
+Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.get -> string?
+Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.set -> void
+Orkeon.Infrastructure.Session.CliSessionOptions.Persist.get -> bool
+Orkeon.Infrastructure.Session.CliSessionOptions.Persist.set -> void

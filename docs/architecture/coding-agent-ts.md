@@ -122,6 +122,21 @@ Three ports carry what a conversation needs to survive between runs:
   (user/project/feedback/reference).
 - **`ICostBudgetManager`** — cumulative cost/token/call telemetry.
 
+### Durable session and start-up script
+
+In the REPL the session survives a restart. With `Orkeon:Cli:Session:Persist` on (the REPL's default
+when the key is unset), `FileSessionBufferService` decorates the in-memory buffer and keeps the last
+session of each project — messages, state bag, id and title — at
+`<SessionsDirectory>/<project>-<hash>/last.json` through `IFileSystemService`. The project is the
+physical workspace root the REPL mounts as `/workspace`; the file is read once at start, rehydrated
+without re-validation, and written after each turn and when the REPL exits. A corrupt file starts an empty session.
+`session_store` reads the rehydrated buffer like any other.
+
+`Orkeon:Cli:Session:StartScript` names a script run once after the host is built: an `.ork.ts`
+through the script host, any other file as a shell script. Its stdout, path and source are stored in
+the state bag under `SessionStateKeys.SessionStartOutput` and prepended to the first free-text turn,
+so a start-up script can name the open work. A failing script is logged and never blocks the start.
+
 `AddOrkeonSessionTools()` exposes them to scripts as six tools — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogued
 with everything else in [the tool inventory](../tools/inventory.md).

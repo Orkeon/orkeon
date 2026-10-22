@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.CostTracking;
 using Orkeon.Infrastructure.Memory;
@@ -54,10 +56,16 @@ public static class SessionToolsExtensions
         // A provider configured without a model runs its own default, which only it knows:
         // the metadata says null — unknown — rather than an empty name (GAP-18).
         services.TryAddSingleton<ISessionBufferService>(sp =>
-            new InMemorySessionBufferService(
+        {
+            var inner = new InMemorySessionBufferService(
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>()?.BaseConfig?.Model is { } model
                     && !string.IsNullOrWhiteSpace(model) ? model : null,
-                availableModels));
+                availableModels);
+            var options = sp.GetRequiredService<IOptions<CliSessionOptions>>().Value;
+            return options.Persist
+                ? new FileSessionBufferService(sp.GetRequiredService<IFileSystemService>(), options, inner)
+                : inner;
+        });
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 
         // The context window token_budget reports, bound and judged at the host's start (GAP-40).

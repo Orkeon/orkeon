@@ -141,6 +141,16 @@ internal static class ReplStartup
             SettingsValidation.CheckLogging(context.Configuration);
             Program.ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap);
             RegisterReplHumanInput(services);
+
+            // The REPL keeps its session per project unless the settings say otherwise; the start script
+            // runs from Program.RunHostAsync, once the host is built, never from Prepare.
+            services.PostConfigure<Orkeon.Infrastructure.Session.CliSessionOptions>(options =>
+            {
+                if (context.Configuration[Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionPersist] is null)
+                    options.Persist = true;
+            });
+            services.AddSingleton<Services.IStartScriptRunner, Services.ScriptHostStartScriptRunner>();
+            services.AddSingleton<Services.ReplStartScriptHook>();
         }
         catch (InvalidOperationException ex) when (ex is not RunnerSettingsException)
         {

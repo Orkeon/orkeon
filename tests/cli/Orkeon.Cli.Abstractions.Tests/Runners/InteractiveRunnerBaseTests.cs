@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Abstractions.Commands;
+using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Registry;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Abstractions.Tests.Console;
 using Orkeon.Cli.Abstractions.Tests.Doubles;
@@ -33,7 +36,7 @@ public sealed class InteractiveRunnerBaseTests
             defaults.OfType<RecordingCommand>().ToArray());
     }
 
-    private static async Task RunWithInputs(TestRunner runner, TestConsoleAdapter console, params string?[] inputs)
+    private static async Task RunWithInputs(InteractiveRunnerBase runner, TestConsoleAdapter console, params string?[] inputs)
     {
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(console);
@@ -338,5 +341,90 @@ public sealed class InteractiveRunnerBaseTests
         Assert.NotNull(runner.RegistrySnapshotDuringRun);
         Assert.Same(runner.SpecificForTest, runner.RegistrySnapshotDuringRun);
         Assert.Null(Orkeon.Cli.Abstractions.Runners.RunnerContext.Current);
+    }
+
+    private sealed class HookRunner : InteractiveRunnerBase
+    {
+        public HookRunner(IInteractiveCommandRegistry defaults, IInteractiveCommandRegistry specific, IConsoleAdapter console, IServiceProvider services)
+            : base(defaults, specific, console, NullLogger.Instance, services)
+        {
+        }
+
+        public List<string> Events { get; } = new();
+        public List<(string Name, CommandResult Result)> HookCalls { get; } = new();
+        public bool ThrowOnHook { get; set; }
+
+        protected override string Banner => "HOOK";
+        protected override string Prompt
+        {
+            get
+            {
+                Events.Add("prompt");
+                return "hook> ";
+            }
+        }
+
+        protected override Task OnAfterCommandAsync(string commandName, CommandResult result, CancellationToken ct)
+        {
+            Events.Add("hook:" + commandName);
+            HookCalls.Add((commandName, result));
+            if (ThrowOnHook && HookCalls.Count == 1)
+                throw new InvalidOperationException("hook boom");
+            return Task.CompletedTask;
+        }
+    }
+
+    private static (HookRunner Runner, TestConsoleAdapter Console) BuildHook(params IInteractiveCommand[] commands)
+    {
+        var console = new TestConsoleAdapter();
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var runner = new HookRunner(new TestCommandRegistry(Array.Empty<IInteractiveCommand>()), new TestCommandRegistry(commands), console, sp);
+        return (runner, console);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-14")]
+    public async Task ShouldCallAfterCommandHook_AfterEachCompletedCommand()
+    {
+        var one = new RecordingCommand("one", result: _ => CommandResult.Continue());
+        var two = new RecordingCommand("two", result: _ => CommandResult.Continue());
+        var (runner, console) = BuildHook(one, two);
+
+        await RunWithInputs(runner, console, "one", "two", null);
+
+        Assert.Equal(2, runner.HookCalls.Count);
+        Assert.Equal("one", runner.HookCalls[0].Name);
+        Assert.Equal("two", runner.HookCalls[1].Name);
+        Assert.False(runner.HookCalls[0].Result.ShouldExit);
+        Assert.Equal("prompt,hook:one,prompt,hook:two,prompt", string.Join(',', runner.Events));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-14")]
+    public async Task ShouldNotCallAfterCommandHook_WhenLineIsEmptyOrCommandUnknown()
+    {
+        var known = new RecordingCommand("known", result: _ => CommandResult.Continue());
+        var (runner, console) = BuildHook(known);
+
+        await RunWithInputs(runner, console, "", "nope", "known", null);
+
+        var call = Assert.Single(runner.HookCalls);
+        Assert.Equal("known", call.Name);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-14")]
+    public async Task ShouldKeepRunning_WhenAfterCommandHookThrows()
+    {
+        var one = new RecordingCommand("one", result: _ => CommandResult.Continue());
+        var two = new RecordingCommand("two", result: _ => CommandResult.Continue());
+        var (runner, console) = BuildHook(one, two);
+        runner.ThrowOnHook = true;
+
+        await RunWithInputs(runner, console, "one", "two", null);
+
+        Assert.Single(one.Invocations);
+        Assert.Single(two.Invocations);
+        Assert.Equal(2, runner.HookCalls.Count);
     }
 }

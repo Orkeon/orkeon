@@ -22,6 +22,15 @@ public sealed class CliSessionOptions
     /// </summary>
     public int? ContextWindowTokens { get; set; }
 
+    /// <summary>The script run once at the REPL's start (<c>Orkeon:Cli:Session:StartScript</c>); unset runs none.</summary>
+    public string? StartScript { get; set; }
+
+    /// <summary>Virtual directory holding one folder of persisted session per project.</summary>
+    public string SessionsDirectory { get; set; } = "/workspace/.orkeon/sessions";
+
+    /// <summary>Whether the session is persisted per project under <see cref="SessionsDirectory"/>; off unless a host turns it on.</summary>
+    public bool Persist { get; set; }
+
     /// <summary>What a host says of a context window it cannot budget against, or null when it can.</summary>
     /// <param name="options">The bound options.</param>
     public static string? ContextWindowProblem(CliSessionOptions options)

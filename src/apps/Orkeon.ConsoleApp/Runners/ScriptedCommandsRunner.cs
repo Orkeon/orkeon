@@ -1,4 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Constants.Cli;
+using Orkeon.Infrastructure.Session;
 using Microsoft.Extensions.Options;
 using Orkeon.Cli.Abstractions.Commands;
 using Orkeon.Cli.Abstractions.Console;
@@ -72,14 +76,53 @@ Type '/help' for the command list, '/help-cmd <name>' for a single command's sig
     /// <summary>Coding-agent grammar: only a leading <c>/</c> token is a command; the rest is free text.</summary>
     protected override bool SlashCommandsOnly => true;
 
-    /// <summary>Free text routes to the configured assistant command (default <c>assistant</c>) when present.</summary>
+    /// <summary>
+    /// Free text routes to the configured assistant command (default <c>assistant</c>) when present.
+    /// The start script's output, once stored in the session, is handed over with the first turn only.
+    /// </summary>
     protected override IInteractiveCommand? ResolveFallback()
     {
         if (string.IsNullOrEmpty(_fallbackCommandName))
             return null;
 
-        return Specific.Commands.FirstOrDefault(
+        var command = Specific.Commands.FirstOrDefault(
             cmd => string.Equals(cmd.Name, _fallbackCommandName, StringComparison.OrdinalIgnoreCase));
+        var session = Services.GetService<ISessionBufferService>();
+        if (command is null || session?.GetState(SessionStateKeys.SessionStartOutput) is not { Length: > 0 } startOutput)
+            return command;
+
+        session.SetState(SessionStateKeys.SessionStartOutput, null);
+        return new StartOutputPrependingCommand(command, startOutput);
+    }
+
+    /// <summary>
+    /// Persists the file-backed session when the REPL ends. The REPL token is already cancelled when the
+    /// TUI closes the loop, so the save does not observe it.
+    /// </summary>
+    protected override System.Threading.Tasks.Task OnExitAsync(CommandResult? lastResult, CancellationToken ct)
+        => SaveSessionAsync();
+
+    /// <summary>
+    /// Persists the file-backed session after each completed turn, so a killed REPL keeps it. The REPL
+    /// token can be cancelled by the TUI close, so the save does not observe it.
+    /// </summary>
+    protected override System.Threading.Tasks.Task OnAfterCommandAsync(string commandName, CommandResult result, CancellationToken ct)
+        => SaveSessionAsync();
+
+    private async System.Threading.Tasks.Task SaveSessionAsync()
+    {
+        if (Services.GetService<ISessionBufferService>() is FileSessionBufferService file)
+            await file.SaveAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private sealed class StartOutputPrependingCommand(IInteractiveCommand inner, string startOutput) : IInteractiveCommand
+    {
+        public string Name => inner.Name;
+        public IReadOnlyList<string> Aliases => inner.Aliases;
+        public string Description => inner.Description;
+
+        public System.Threading.Tasks.Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
+            => inner.ExecuteAsync(context with { RawInput = $"{startOutput}\n\n{context.RawInput}" }, cancellationToken);
     }
 
     /// <summary>A mistyped <c>/command</c> reaches here (free text never does); point at the slash form.</summary>

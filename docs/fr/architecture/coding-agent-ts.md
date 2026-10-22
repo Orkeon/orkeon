@@ -126,6 +126,22 @@ Trois ports portent ce qu'une conversation doit conserver entre deux exécutions
   (user/project/feedback/reference).
 - **`ICostBudgetManager`** — télémétrie cumulée coût/tokens/appels.
 
+### Session durable et script de démarrage
+
+Dans le REPL, la session survit à un redémarrage. Avec `Orkeon:Cli:Session:Persist` activé (valeur par
+défaut du REPL quand la clé est absente), `FileSessionBufferService` décore le tampon en mémoire et
+conserve la dernière session de chaque projet — messages, état, identifiant et titre — dans
+`<SessionsDirectory>/<projet>-<hash>/last.json` via `IFileSystemService`. Le projet est la racine
+physique de l'espace de travail que le REPL monte en `/workspace` ; le fichier est lu une fois au
+démarrage, réhydraté sans revalidation, et écrit après chaque tour et à la sortie du REPL. Un fichier corrompu démarre une
+session vide. `session_store` lit le tampon réhydraté comme n'importe quel autre.
+
+`Orkeon:Cli:Session:StartScript` désigne un script exécuté une fois, l'hôte construit : un `.ork.ts`
+via l'hôte de scripts, tout autre fichier comme script shell. Sa sortie standard, son chemin et sa
+source sont stockés dans l'état sous `SessionStateKeys.SessionStartOutput` et placés avant le premier
+tour en texte libre, de sorte qu'un script de démarrage puisse nommer le travail en cours. Un script en
+échec est journalisé et ne bloque jamais le démarrage.
+
 `AddOrkeonSessionTools()` les expose aux scripts sous forme de six outils — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogués
 avec les autres dans [l'inventaire des outils](../tools/inventory.md).

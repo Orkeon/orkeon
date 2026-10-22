@@ -18,4 +18,10 @@ public static class SessionStateKeys
 
     /// <summary>The model selected for the session; shown in the hint bar.</summary>
     public const string SelectedModel = "selected_model";
+
+    /// <summary>
+    /// What the script configured by <c>Orkeon:Cli:Session:StartScript</c> printed at the REPL's start,
+    /// with the script's path and source; the scripted-commands runner prepends it to the first turn.
+    /// </summary>
+    public const string SessionStartOutput = "session_start_output";
 }
