@@ -49,6 +49,7 @@ public sealed class ModePermissionGate : IPermissionGate
     {
         "file_write", "spawn_agent",
         "node_replace",
+        "edit_file",
     };
 
     private readonly bool _isInteractive;

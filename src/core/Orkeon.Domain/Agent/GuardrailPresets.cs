@@ -22,6 +22,12 @@ namespace Orkeon.Domain.Agent;
 /// </example>
 public static class GuardrailPresets
 {
+    private static readonly string[] FileWriteRules =
+    [
+        "The file_write tool should ONLY be used to write output/report files as specified in the task. NEVER use it to create input source files.",
+        "NEVER use file_write to create source code files that are supposed to already exist. Your job is to ANALYZE existing code, not to create it."
+    ];
+
     /// <summary>
     /// Analysis preset — prevents hallucination and file creation.
     /// Designed for agents whose job is to READ and ANALYZE existing code or data,
@@ -39,11 +45,8 @@ public static class GuardrailPresets
         ],
         ToolRules = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["file_write"] =
-            [
-                "The file_write tool should ONLY be used to write output/report files as specified in the task. NEVER use it to create input source files.",
-                "NEVER use file_write to create source code files that are supposed to already exist. Your job is to ANALYZE existing code, not to create it."
-            ],
+            ["file_write"] = FileWriteRules,
+            ["edit_file"] = FileWriteRules,
             ["directory_read"] =
             [
                 "Avoid scanning very large directories recursively. Use targeted paths and glob patterns to limit results.",

@@ -70,6 +70,7 @@ celui ci-dessus — est ce que le YAML référence.
 |-------|--------|------|-------------|-----------------|
 | `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML et assimilés — un message `.eml` passe par `email_parser`) | `{ "path": "/data/report.txt" }` |
 | `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire du contenu dans un fichier, en créant les dossiers si nécessaire | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
+| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Remplacer une chaîne dans un fichier lorsqu'elle n'apparaît qu'une fois | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
 | `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire (collection éphémère — exige le sous-système RAG à l'appel, voir ci-dessous) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
@@ -281,7 +282,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
-| `Orkeon.Tools.FileSystem` | 5 |
+| `Orkeon.Tools.FileSystem` | 6 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
 | **Total** | **103** |
@@ -300,7 +301,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (5), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (6), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
 | EventHub (7) | ✅ | ❌ |
@@ -432,6 +433,7 @@ correspondance alphabétique complète :
 | `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
+| `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
 | `github` | `GitHubTool` | `Orkeon.Tools.Web` |

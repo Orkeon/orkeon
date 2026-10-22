@@ -219,7 +219,7 @@ public partial class YamlCrewExportRoundTripTests
         Assert.Null(guardrails.Preset);
         Assert.Equal(GuardrailPresets.Analysis.Header, guardrails.Header);
         Assert.Equal([.. GuardrailPresets.Analysis.Rules, "Cite the page each finding comes from."], guardrails.Rules!);
-        Assert.Equal(["file_write", "directory_read", "web_search"], guardrails.ToolRules!.Keys);
+        Assert.Equal(["file_write", "edit_file", "directory_read", "web_search"], guardrails.ToolRules!.Keys);
 
         Assert.Null(exported.Llm);
         Assert.Equal("fast", exported.Agents["writer"].Llm!.Profile);

@@ -23,6 +23,7 @@ public static class FileSystemToolExtensions
 
         services.AddTransient<IBaseTool, FileReadTool>();
         services.AddTransient<IBaseTool, FileWriteTool>();
+        services.AddTransient<IBaseTool, EditFileTool>();
         services.AddTransient<IBaseTool, DirectoryReadTool>();
         services.AddTransient<IBaseTool, DirectorySearchTool>();
         services.AddTransient<IBaseTool, CountPatternTool>();

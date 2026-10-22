@@ -148,6 +148,7 @@ public static class ToolCatalog
         [
             new("file_read"),
             new("file_write"),
+            new("edit_file"),
             new("directory_read"),
             new("directory_search"),
             new("count_pattern"),

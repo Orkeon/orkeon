@@ -41,6 +41,7 @@ email_search
 email_send
 file_read
 file_write
+edit_file
 flow_trace
 get_last_value
 github

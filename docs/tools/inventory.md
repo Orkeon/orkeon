@@ -70,6 +70,7 @@ what YAML references.
 |-------|--------|------|-------------|-----------------|
 | `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Read the content of a file (text, JSON, XML and the like — an `.eml` message goes to `email_parser`) | `{ "path": "/data/report.txt" }` |
 | `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Write content to a file, creating folders if necessary | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
+| `edit_file` | `EditFileTool` | `FileToolBase<EditFileRequest, EditFileResponse>` | Replace a string in a file when it occurs exactly once | `{ "path": "/workspace/a.txt", "old_string": "foo", "new_string": "bar" }` |
 | `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | List the contents of a directory with glob filtering and recursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | RAG semantic search across the files of a directory (ephemeral collection — needs the RAG subsystem at call time, see below) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Deterministic regex occurrence count per pattern in a file (no LLM guessing) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
@@ -275,7 +276,7 @@ number the README and the documentation index state, checked by
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
-| `Orkeon.Tools.FileSystem` | 5 |
+| `Orkeon.Tools.FileSystem` | 6 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 each |
 | **Total** | **103** |
@@ -294,7 +295,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (5), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (6), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
 | EventHub (7) | ✅ | ❌ |
@@ -424,6 +425,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
+| `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
 | `github` | `GitHubTool` | `Orkeon.Tools.Web` |

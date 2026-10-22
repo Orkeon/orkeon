@@ -265,20 +265,48 @@ declare global {
             readonly success: boolean;
         }>;
 
+        /** `edit_file` - Replace a string in a file when it occurs exactly once. */
+        editFile(input: {
+            /** Create a backup before writing */
+            create_backup?: boolean;
+            /** The replacement text */
+            new_string: string;
+            /** The text to replace */
+            old_string: string;
+            /** The file to edit */
+            path: string;
+            /** Replace every occurrence */
+            replace_all?: boolean;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly backup_path?: string;
+            readonly errors?: readonly string[];
+            readonly file_info: Record<string, unknown>;
+            readonly path: string;
+            readonly replacements: number;
+            readonly success: boolean;
+        }>;
+
         /** `file_read` - Read content from files: text, JSON, XML and the like. Parse .eml e-mail files with email_parser. */
         fileRead(input: {
             /** The text encoding to use (default: UTF-8) */
             encoding?: "UTF-8" | "ASCII" | "Unicode" | "UTF-32";
-            /** Maximum number of characters to read (default: no limit) */
+            /** Maximum number of lines to return (default: up to the end of the file); max_length caps the result further */
+            limit?: number | null;
+            /** Maximum number of characters to read (default: no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters. */
             max_length?: number | null;
+            /** First line to return (1-based, default 1 when limit is given). With offset/limit the file is streamed and not read beyond the range; max_length then caps the range */
+            offset?: number | null;
             /** The file path to read from */
             path: string;
             /** Serve from RaggableTree index when available (path + SHA-256 match); falls back to disk otherwise. */
             use_raggable_cache?: boolean;
         }, ctx?: ExecutionContext): Promise<{
             readonly content: string;
+            readonly end_line?: number;
             readonly file_info: Record<string, unknown>;
+            readonly has_more: boolean;
             readonly served_from_cache: boolean;
+            readonly start_line?: number;
             readonly truncated: boolean;
         }>;
 

@@ -1,1 +1,42 @@
 #nullable enable
+Orkeon.Tools.FileSystem.FileReadRequest.Offset.get -> int?
+Orkeon.Tools.FileSystem.FileReadRequest.Offset.set -> void
+Orkeon.Tools.FileSystem.FileReadRequest.Limit.get -> int?
+Orkeon.Tools.FileSystem.FileReadRequest.Limit.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.StartLine.get -> int?
+Orkeon.Tools.FileSystem.FileReadResponse.StartLine.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.EndLine.get -> int?
+Orkeon.Tools.FileSystem.FileReadResponse.EndLine.set -> void
+Orkeon.Tools.FileSystem.FileReadResponse.HasMore.get -> bool
+Orkeon.Tools.FileSystem.FileReadResponse.HasMore.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest
+Orkeon.Tools.FileSystem.EditFileRequest.EditFileRequest() -> void
+Orkeon.Tools.FileSystem.EditFileRequest.Path.get -> string!
+Orkeon.Tools.FileSystem.EditFileRequest.Path.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.OldString.get -> string!
+Orkeon.Tools.FileSystem.EditFileRequest.OldString.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.NewString.get -> string!
+Orkeon.Tools.FileSystem.EditFileRequest.NewString.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.ReplaceAll.get -> bool
+Orkeon.Tools.FileSystem.EditFileRequest.ReplaceAll.set -> void
+Orkeon.Tools.FileSystem.EditFileRequest.CreateBackup.get -> bool
+Orkeon.Tools.FileSystem.EditFileRequest.CreateBackup.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse
+Orkeon.Tools.FileSystem.EditFileResponse.EditFileResponse() -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Success.get -> bool
+Orkeon.Tools.FileSystem.EditFileResponse.Success.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Path.get -> string!
+Orkeon.Tools.FileSystem.EditFileResponse.Path.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Replacements.get -> int
+Orkeon.Tools.FileSystem.EditFileResponse.Replacements.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.BackupPath.get -> string?
+Orkeon.Tools.FileSystem.EditFileResponse.BackupPath.set -> void
+Orkeon.Tools.FileSystem.EditFileResponse.Errors.get -> System.Collections.Immutable.ImmutableList<string!>?
+Orkeon.Tools.FileSystem.EditFileResponse.Errors.set -> void
+Orkeon.Tools.FileSystem.EditFileTool
+Orkeon.Tools.FileSystem.EditFileTool.EditFileTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.FileSystem.EditFileTool!>? logger = null, Orkeon.Analysis.Abstractions.Interfaces.ICitationBlockValidator? citationValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+override Orkeon.Tools.FileSystem.EditFileTool.Name.get -> string!
+override Orkeon.Tools.FileSystem.EditFileTool.Description.get -> string!
+override Orkeon.Tools.FileSystem.EditFileTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Tools.FileSystem.EditFileResponse.FileInfo.get -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Tools.FileSystem.EditFileResponse.FileInfo.init -> void
