@@ -22,7 +22,7 @@ root — see [Availability by composition root](#availability-by-composition-roo
 | `ask_question_to_coworker` | `AskQuestionTool` | Built per agent by `AgentDelegationToolsProvider` when `AllowDelegation` is on — never in DI | Ask a question to a specialized coworker agent | `{ "question": "What is the Q4 revenue?", "coworker_role": "Financial Analyst", "context": "Fiscal year 2025" }` |
 | `delegate_work_to_coworker` | `DelegateWorkTool` | Same per-agent construction (optional `AgentExecutionBudget` for recursive depth control) | Delegate a complete task to a specialized agent; with `wait_for_result: true` the coworker runs in the delegating task's context — same crew and memory scope, its answer never stored in the crew's memory — and outside a crew run the call is refused | `{ "task": "Analyze competitor pricing", "coworker_role": "Market Researcher", "context": "Focus on SaaS B2B" }` |
 | `spawn_agent` | `SpawnAgentTool` | **Not wired by any shipped composition root** — a host registers it explicitly (`IAgentFactory` required) | Create and execute a new specialised sub-agent at runtime (autonomous mode) | `{ "role": "Fact checker", "goal": "Verify the claims", "task": "..." }` |
-| `human_input` | `HumanInputTool` | `AddOrkeonHumanInput()` — wired by `orkeon run` for a YAML crew (`RunnerExecution`); under `--events` the question surfaces on the run event stream, otherwise the default `AutoApproveHumanInputProvider` answers | Ask the human a question (`input_type`: `text`, `approval` or `choice` with `choices`); the runtime suspends until the answer arrives | `{ "prompt": "Deploy to production?", "input_type": "approval" }` |
+| `human_input` | `HumanInputTool` | `AddOrkeonHumanInput()` — wired by `orkeon run` for a YAML crew (`RunnerExecution`) and by the REPL with its console provider; under `--events` the question surfaces on the run event stream, otherwise the default `AutoApproveHumanInputProvider` answers | Ask the human a question (`input_type`: `text`, `approval`, `choice` with `choices` — `recommended` marks one option — or `multi` returning a list); headless, `HumanInputOptions.HeadlessPolicy` answers the default (`Default`) or refuses (`Refuse`); the runtime suspends until the answer arrives | `{ "prompt": "Deploy to production?", "input_type": "approval" }` |
 
 The display names of the first three contracts are prose (“Ask question to coworker”,
 “Delegate work to coworker”, “Spawn sub-agent”); the registry name — the one above — is
@@ -301,7 +301,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |
 | The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names (STUDIO-21) — an agent lists them in `tools:` like any other tool (see the resolution pipeline below) | ❌ |
 | `semantic_search` | ✅ for a YAML crew (wired by the run command) | ❌ |
-| `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ❌ |
+| `human_input` | ✅ for a YAML crew (on the event stream under `--events`, auto-approved otherwise) | ✅ (console prompt) |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |
 | `spawn_agent` | ❌ (host must register it) | ❌ |
 | `code_interpreter` | concrete-type registration only — not resolvable by name | idem |

@@ -17,7 +17,7 @@ public record HumanInputRequest
     public string Prompt { get; init; } = "";
 
     /// <summary>Gets the input type. One of text|approval|choice.</summary>
-    [FieldSchema(Description = "Input type: text (free text), approval (yes/no), or choice (one of options[])", IsRequired = false, Example = "approval")]
+    [FieldSchema(Description = "Input type: text (free text), approval (yes/no), choice (one of choices[]), or multi (several of choices[])", IsRequired = false, Example = "approval")]
     public string InputType { get; init; } = "text";
 
     /// <summary>Gets the allowed choices when InputType=choice.</summary>
@@ -37,6 +37,10 @@ public record HumanInputRequest
     /// </summary>
     [FieldSchema(Description = "Optional virtual path the user may edit before approving. Capable providers open an inline editor when a choice whose value contains 'edit' is selected. Path semantics are owned by the caller; the provider routes I/O through IFileSystemService.", IsRequired = false, Example = "/output/report.md")]
     public string? EditFilePath { get; init; }
+
+    /// <summary>Gets the index of the recommended choice.</summary>
+    [FieldSchema(Description = "Index into choices[] of the recommended option", IsRequired = false)]
+    public int? Recommended { get; init; }
 }
 
 /// <summary>Response from a human input prompt.</summary>
@@ -57,6 +61,10 @@ public record HumanInputResponse
     /// <summary>Gets whether the default value was used (no user input).</summary>
     [ReturnSchema(Description = "True when the default value was used because the user gave no answer", Example = false)]
     public bool WasDefault { get; init; }
+
+    /// <summary>Gets the chosen values for input_type=multi.</summary>
+    [ReturnSchema(Description = "Chosen values when input_type=multi")]
+    public IReadOnlyList<string> Values { get; init; } = [];
 }
 
 /// <summary>
@@ -97,10 +105,14 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
 
         var normalized = NormalizeType(request.InputType);
         if (normalized is null)
-            return $"Unknown input_type '{request.InputType}'. Expected one of: text, approval, choice.";
+            return $"Unknown input_type '{request.InputType}'. Expected one of: text, approval, choice, multi.";
 
-        if (normalized == HumanInputDefaults.ChoiceInputType && request.Choices.Count == 0)
-            return "input_type=choice requires a non-empty choices[] list";
+        var isChoice = normalized is HumanInputDefaults.ChoiceInputType or MultiInputType;
+        if (isChoice && request.Choices.Count == 0)
+            return $"input_type={normalized} requires a non-empty choices[] list";
+
+        if (isChoice && request.Recommended is { } rec && (rec < 0 || rec >= request.Choices.Count))
+            return $"recommended index {rec} is outside choices[] (0..{request.Choices.Count - 1})";
 
         return null;
     }
@@ -125,9 +137,11 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
                 Prompt = request.Prompt,
                 InputType = inputType,
                 DefaultValue = request.DefaultValue,
-                Options = inputType == HumanInputDefaults.ChoiceInputType
+                Options = inputType is HumanInputDefaults.ChoiceInputType or MultiInputType
                     ? request.Choices
                     : Array.Empty<string>(),
+                Recommended = request.Recommended,
+                Multi = inputType == MultiInputType,
                 Metadata = metadata,
             };
 
@@ -143,6 +157,13 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
                     raw = confirmed ? "approved" : "rejected";
                     isApproved = confirmed;
                     break;
+                }
+                case MultiInputType:
+                {
+                    var values = await _provider.GetMultiChoiceAsync(context, cancellationToken).ConfigureAwait(false);
+                    raw = string.Join(", ", values);
+                    LogReceivedHumanResponse(inputType, raw.Length, false);
+                    return new HumanInputResponse { Response = raw, InputType = inputType, Values = values };
                 }
                 case HumanInputDefaults.ChoiceInputType:
                 {
@@ -173,6 +194,8 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
         }
     }
 
+    private const string MultiInputType = "multi";
+
     private static string? NormalizeType(string raw)
     {
 #pragma warning disable CA1308 // lowercase is the required wire/storage form, not a comparison normalization
@@ -183,6 +206,7 @@ public partial class HumanInputTool : ToolBase<HumanInputRequest, HumanInputResp
             "" or "text" => HumanInputDefaults.TextInputType,
             "approval" or "confirmation" or "confirm" or "approve" => HumanInputDefaults.ConfirmationInputType,
             "choice" or "choose" or "select" => HumanInputDefaults.ChoiceInputType,
+            "multi" => MultiInputType,
             _ => null,
         };
     }

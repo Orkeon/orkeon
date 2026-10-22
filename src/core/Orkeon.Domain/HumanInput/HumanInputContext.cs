@@ -34,6 +34,10 @@ public class HumanInputContext
     public string? DefaultValue { get; init; }
     /// <summary>Gets validation rules for the input.</summary>
     public Dictionary<string, object> ValidationRules { get; init; } = [];
+    /// <summary>Gets the index of the recommended option, if any.</summary>
+    public int? Recommended { get; init; }
+    /// <summary>Gets whether several options may be chosen.</summary>
+    public bool Multi { get; init; }
     /// <summary>Gets when this context was created.</summary>
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 

@@ -1351,3 +1351,8 @@ Orkeon.Domain.Agent.Agent.WorkingRoot.get -> string?
 Orkeon.Domain.Agent.AgentBuilder.WorkingRoot(string! virtualPath) -> Orkeon.Domain.Agent.AgentBuilder!
 Orkeon.Domain.Configuration.AgentConfiguration.WorkingRoot.get -> string?
 Orkeon.Domain.Configuration.AgentConfiguration.WorkingRoot.init -> void
+
+Orkeon.Domain.HumanInput.HumanInputContext.Multi.get -> bool
+Orkeon.Domain.HumanInput.HumanInputContext.Multi.init -> void
+Orkeon.Domain.HumanInput.HumanInputContext.Recommended.get -> int?
+Orkeon.Domain.HumanInput.HumanInputContext.Recommended.init -> void

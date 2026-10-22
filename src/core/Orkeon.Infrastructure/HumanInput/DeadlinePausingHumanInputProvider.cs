@@ -44,6 +44,15 @@ public sealed class DeadlinePausingHumanInputProvider : IHumanInputProvider
     }
 
     /// <inheritdoc />
+    public async System.Threading.Tasks.Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default)
+    {
+        using (TaskDeadline.PauseCurrent())
+        {
+            return await _inner.GetMultiChoiceAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc />
     public System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) =>
         _inner.IsAvailableAsync(cancellationToken);
 }

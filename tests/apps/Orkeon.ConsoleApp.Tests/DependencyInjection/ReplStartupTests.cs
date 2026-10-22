@@ -1,5 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Domain.Tools;
+using Orkeon.ConsoleApp.Services;
+using Orkeon.Infrastructure.HumanInput;
+using Orkeon.Infrastructure.Tools.HumanInput;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Tests.Shared.Produced;
@@ -133,5 +138,25 @@ public sealed class ReplStartupTests : IDisposable
         Assert.NotNull(interceptor.PromptOverride);
         Assert.True(interceptor.TryConsume("y"));
         Assert.Equal(PermissionAction.Allow, (await verdict).Action);
+    }
+
+    /// <summary>
+    /// The REPL registers the <c>human_input</c> tool, answered through the read loop (ReplHumanInputProvider) (the deadline
+    /// decorator wraps it under its inner key).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public void ShouldRegisterHumanInputTool_WhenReplPrepared()
+    {
+        var launch = Start("""{ "Orkeon": { "Cli": { "Tui": { "SpinnerVerbs": [ "thinking" ] } } } }""");
+
+        using var host = launch.Host;
+        Assert.NotNull(host);
+        var tools = host.Services.GetServices<IBaseTool>().ToList();
+        var tool = Assert.Single(tools, t => t is HumanInputTool);
+        Assert.Equal("human_input", tool.Name);
+        Assert.IsType<DeadlinePausingHumanInputProvider>(host.Services.GetRequiredService<IHumanInputProvider>());
+        Assert.IsType<ReplHumanInputProvider>(
+            host.Services.GetRequiredKeyedService<IHumanInputProvider>("orkeon.human-input.inner"));
     }
 }

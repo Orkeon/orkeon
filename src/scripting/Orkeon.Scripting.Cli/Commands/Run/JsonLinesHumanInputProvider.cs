@@ -74,6 +74,33 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var answer = await AskAsync(context, "multi", cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(answer))
+            return [];
+
+        var trimmed = answer.Trim();
+        if (trimmed.StartsWith('['))
+        {
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<string[]>(trimmed) ?? [];
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                trimmed = trimmed.Trim('[', ']');
+            }
+        }
+
+        return trimmed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(static item => item.Trim('\'', '"', ' '))
+            .Where(static item => item.Length > 0)
+            .ToArray();
+    }
+
+    /// <inheritdoc />
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
 
     private async Task<string?> AskAsync(HumanInputContext context, string kind, CancellationToken cancellationToken)
@@ -96,6 +123,8 @@ internal sealed class JsonLinesHumanInputProvider : IHumanInputProvider
                 prompt = context.Prompt,
                 choices = context.Options.Count > 0 ? context.Options : null,
                 defaultValue = context.DefaultValue,
+                recommended = context.Recommended,
+                multi = context.Multi ? true : (bool?)null,
                 taskDescription = string.IsNullOrEmpty(context.TaskDescription) ? null : context.TaskDescription,
             });
 

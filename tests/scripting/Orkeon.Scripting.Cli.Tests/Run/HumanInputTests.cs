@@ -126,6 +126,66 @@ public sealed class HumanInputTests : IDisposable
         Assert.Equal("markdown", stray);
     }
 
+    private static HumanInputContext MultiContext() => new()
+    {
+        Prompt = "Quels formats ?",
+        Options = ["markdown", "pdf", "html"],
+        Recommended = 1,
+        Multi = true,
+    };
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldCarryRecommendedAndMulti_WhenJsonLinesAsksMultiChoice()
+    {
+        await Provider(new ScriptedAnswerChannel().Answers("pdf"))
+            .GetMultiChoiceAsync(MultiContext(), TestContext.Current.CancellationToken);
+
+        var e = LastEvent();
+        Assert.Equal(1, e.GetProperty("recommended").GetInt32());
+        Assert.True(e.GetProperty("multi").GetBoolean());
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldReturnList_WhenJsonArrayAnswersMulti()
+    {
+        var chosen = await Provider(new ScriptedAnswerChannel().Answers("""["markdown","html"]"""))
+            .GetMultiChoiceAsync(MultiContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["markdown", "html"], chosen);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldReturnList_WhenCommaSeparatedAnswersMulti()
+    {
+        var chosen = await Provider(new ScriptedAnswerChannel().Answers("markdown, pdf"))
+            .GetMultiChoiceAsync(MultiContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["markdown", "pdf"], chosen);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldReturnList_WhenBracketedAnswerIsNotJson()
+    {
+        var chosen = await Provider(new ScriptedAnswerChannel().Answers("[markdown, pdf]"))
+            .GetMultiChoiceAsync(MultiContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["markdown", "pdf"], chosen);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldReturnList_WhenBracketedAnswerHasQuotesButIsNotJson()
+    {
+        var chosen = await Provider(new ScriptedAnswerChannel().Answers("['markdown', 'pdf']"))
+            .GetMultiChoiceAsync(MultiContext(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["markdown", "pdf"], chosen);
+    }
+
     [Theory]
     [InlineData("""{"kind":"input.given","correlationId":"c-1","value":"ok"}""", "c-1", "ok")]
     [InlineData("""{"kind":"input.given","value":"ok"}""", null, "ok")]   // no id: answers what is pending

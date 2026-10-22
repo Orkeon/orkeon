@@ -77,3 +77,24 @@ static Orkeon.Infrastructure.Configuration.SettingReference.Phrase(string! setti
 static Orkeon.Infrastructure.Configuration.SettingReference.Refuse(string! settingPath, string? value) -> void
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.get -> string?
 Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.set -> void
+
+Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider.AutoApproveHumanInputProvider(Orkeon.Infrastructure.HumanInput.HumanInputOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider!>? logger = null) -> void
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy.Default = 0 -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy.Refuse = 1 -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputOptions
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HeadlessPolicy.get -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HeadlessPolicy.set -> void
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HumanInputOptions() -> void
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputRequest.Recommended.get -> int?
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputRequest.Recommended.init -> void
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputResponse.Values.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputResponse.Values.init -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException(string! message) -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException() -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException(string! message, System.Exception! innerException) -> void
+Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.ConsoleHumanInputProvider(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider!>! logger, System.IO.TextReader! input, System.IO.TextWriter! output) -> void
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!

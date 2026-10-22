@@ -23,6 +23,7 @@ public static class HumanInputExtensions
     public static IServiceCollection AddOrkeonHumanInput(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton<HumanInputOptions>();
         services.TryAddSingleton<IHumanInputProvider, AutoApproveHumanInputProvider>();
         services.DecorateHumanInputWithDeadline();
         // TryAddEnumerable de-duplicates by ImplementationType — multiple calls

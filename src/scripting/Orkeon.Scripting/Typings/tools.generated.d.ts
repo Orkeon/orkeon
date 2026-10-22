@@ -390,14 +390,17 @@ declare global {
             default_value?: string | null;
             /** Optional virtual path the user may edit before approving. Capable providers open an inline editor when a choice whose value contains 'edit' is selected. Path semantics are owned by the caller; the provider routes I/O through IFileSystemService. */
             edit_file_path?: string | null;
-            /** Input type: text (free text), approval (yes/no), or choice (one of options[]) */
+            /** Input type: text (free text), approval (yes/no), choice (one of choices[]), or multi (several of choices[]) */
             input_type?: string;
             /** The prompt text shown to the user */
             prompt: string;
+            /** Index into choices[] of the recommended option */
+            recommended?: number | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly input_type: string;
             readonly is_approved: boolean;
             readonly response: string;
+            readonly values: readonly string[];
             readonly was_default: boolean;
         }>;
 
