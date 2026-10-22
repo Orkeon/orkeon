@@ -128,6 +128,29 @@ nothing else (pinned by `ReplAutonomousToolActTests`):
 - **One approval per model-initiated call.** The `tools.*` calls made inside `execute` are not asked
   a second time: approving the script tool covers what its body does.
 
+## Options of act
+
+`ctx.llm.act(prompt, options)` accepts four options besides the model settings. They are fixed when
+the call starts (one `ActSession` per call):
+
+- **`tools: ["file_read"]`** offers the model only that subset of the agent's tools. A name the agent
+  does not hold throws `UnknownToolError` before the model is asked.
+- **`effort: "low" | "medium" | "high"`** sets the provider's thinking setting for the call
+  (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
+  calls, by `ctx.llm.with({...})` and by `agent().effort(level)`; any other value is refused with
+  `effort must be low|medium|high`.
+- **`onToolCall(call)`** runs before each tool call, after the permission gate. It returns `"allow"`;
+  `"ask"` (the call goes to the approval channel as a `default`-mode edit would, and a denied answer
+  is a deny); `{ deny: reason }` (the call does not run, the model reads `DENIED: <reason>`); or
+  `{ input }` (the call runs with the rewritten input, which goes through the gate again). A
+  callback that throws, or returns anything else (nothing included), denies; `"ask"` with no permission gate denies.
+- **`onToolResult(call, result)`** runs after each tool call with the call and its result (the JSON
+  parsed, or the text when it is not JSON). A returned `{ context: "..." }` replaces the line the
+  model is shown for that result; returning nothing keeps it.
+
+Both callbacks run on the engine thread, through the same pump as script tools (see the threading
+model below); the permission gate always comes first.
+
 ## Coexistence with YAML
 
 The YAML configuration path remains supported and unchanged. Scripts and YAML

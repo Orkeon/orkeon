@@ -37,6 +37,7 @@ public sealed class JsAgentBuilder
     internal Orkeon.Scripting.Runtime.JsLlmConfig? LlmConfig { get; private set; }
     /// <summary>Captured <c>response_format</c> hint (e.g. <c>"json_object"</c>); merged onto LlmConfig by the adapter.</summary>
     internal string? ResponseFormatValue { get; private set; }
+    internal string? EffortValue { get; private set; }
 
     /// <summary>Schema name captured by <c>withResponseSchema</c>; <c>null</c> when unset.</summary>
     internal string? ResponseSchemaName { get; private set; }
@@ -190,6 +191,13 @@ public sealed class JsAgentBuilder
         ResponseSchemaName = name;
         ResponseSchemaValue = schema;
         ResponseSchemaStrict = strict is null || strict.IsUndefined() || strict.IsNull() || strict.AsBoolean();
+        return this;
+    }
+
+    /// <summary>Turns the provider's thinking on at <c>low</c>, <c>medium</c> or <c>high</c> effort.</summary>
+    public JsAgentBuilder effort(string level)
+    {
+        EffortValue = Orkeon.Scripting.Runtime.JsLlmConfig.RequireEffort(level);
         return this;
     }
     public JsAgentBuilder allowDelegation(bool value) { AllowDelegationFlag = value; return this; }

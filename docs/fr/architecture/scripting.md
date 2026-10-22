@@ -130,6 +130,30 @@ script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`)
 - **Une approbation par appel initié par le modèle.** Les appels `tools.*` faits dans `execute` ne
   sont pas redemandés : approuver l'outil du script couvre ce que fait son corps.
 
+## Options de act
+
+`ctx.llm.act(prompt, options)` accepte quatre options en plus des réglages du modèle. Elles sont fixées
+au début de l'appel (une `ActSession` par appel) :
+
+- **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
+  l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé.
+- **`effort: "low" | "medium" | "high"`** règle la réflexion du fournisseur pour l'appel
+  (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
+  `ctx.llm`, par `ctx.llm.with({...})` et par `agent().effort(level)` ; toute autre valeur est refusée
+  avec `effort must be low|medium|high`.
+- **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
+  `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
+  une réponse négative vaut refus) ; `{ deny: raison }` (l'appel ne s'exécute pas, le modèle lit
+  `DENIED: <raison>`) ; ou `{ input }` (l'appel s'exécute avec l'entrée réécrite, qui repasse par la
+  porte). Un rappel qui lève une exception refuse avec le message de l'exception ; toute autre valeur
+  renvoyée (rien compris) refuse aussi, et `"ask"` sans porte de permission refuse.
+- **`onToolResult(call, result)`** s'exécute après chaque appel d'outil avec l'appel et son résultat (le
+  JSON analysé, ou le texte s'il n'est pas du JSON). Un `{ context: "..." }` renvoyé remplace la ligne
+  montrée au modèle pour ce résultat ; ne rien renvoyer la conserve.
+
+Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
+le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
+
 ## Coexistence avec YAML
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews

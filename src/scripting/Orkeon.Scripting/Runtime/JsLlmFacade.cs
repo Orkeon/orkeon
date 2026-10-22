@@ -638,10 +638,17 @@ public sealed partial class JsLlmFacade
     // the result — or the failure — back through `s.settleTool`, which never throws. A tool
     // instance cannot run from the loop itself: JsTool.CallAsync is a root pump and needs the
     // engine at rest, and the engine is busy running the body that awaits `act`.
+    // The `onToolCall` option (RT-04) rides the same pump: the loop posts a request of kind
+    // `onToolCall`, the pump runs the callback here and settles its verdict as JSON; a throwing
+    // callback settles as a failure, which the loop reads as a deny with the exception message.
+    // `onToolResult` rides it too: after the tool ran, a request of kind `onToolResult` carries the
+    // call and its result; a returned `{ context }` replaces the line the model is shown.
     internal const string ActFactorySource = """
         (beginAct) => async function act(prompt, options) {
             const cb = options ? options.onDelta : undefined;
             const onDelta = typeof cb === "function" ? cb : null;
+            const onToolCall = options && typeof options.onToolCall === "function" ? options.onToolCall : null;
+            const onToolResult = options && typeof options.onToolResult === "function" ? options.onToolResult : null;
             const s = beginAct(prompt, options, onDelta !== null);
             const pump = onDelta
                 ? (async () => {
@@ -649,10 +656,17 @@ public sealed partial class JsLlmFacade
                     catch (e) { s.abort(); throw e; }
                 })()
                 : null;
-            const tools = s.hasScriptTools
+            const tools = s.hasPumpWork
                 ? (async () => {
                     for await (const id of s.toolRequests) {
-                        try { s.settleTool(id, true, await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id)))); }
+                        try {
+                            const kind = s.kindOf(id);
+                            s.settleTool(id, true, kind === "onToolCall"
+                                ? JSON.stringify(await onToolCall(JSON.parse(s.argumentsOf(id))))
+                                : kind === "onToolResult"
+                                    ? JSON.stringify(await onToolResult(...(a => [a.call, a.result])(JSON.parse(s.argumentsOf(id)))))
+                                    : await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id))));
+                        }
                         catch (e) { s.settleTool(id, false, e); }
                     }
                 })()
@@ -707,11 +721,16 @@ public sealed partial class JsLlmFacade
             Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.OnProfile();
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
-            Tools = facade._tools
+            var offered = ResolveToolSubset(options) is { } subset
+                ? SelectSubset(facade, subset)
+                : facade._tools;
+            Tools = offered
                 .Select(t => t is JsTool script ? new ScriptToolProxy(script, this) : t)
                 .ToList();
             ToolSchemas = Tools.Count > 0 ? Tools.Select(t => t.Schema).ToList() : null;
-            if (Tools.Any(t => t is ScriptToolProxy))
+            HasToolCallback = options is not null && options.IsObject() && options.Get("onToolCall") is Jint.Native.Function.Function;
+            HasToolResultCallback = options is not null && options.IsObject() && options.Get("onToolResult") is Jint.Native.Function.Function;
+            if (HasToolCallback || HasToolResultCallback || Tools.Any(t => t is ScriptToolProxy))
                 _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
             // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
@@ -730,6 +749,16 @@ public sealed partial class JsLlmFacade
             run = () => facade.RunActAsync(this);
         }
 
+        /// <summary>The agent's tools named by <paramref name="subset"/>; a name the agent does not hold fails the call.</summary>
+        private static List<IBaseTool> SelectSubset(JsLlmFacade facade, List<string> subset)
+        {
+            var available = facade._tools.Select(t => t.Name).ToList();
+            var missing = subset.Where(n => !available.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
+            if (missing.Count > 0)
+                throw new UnknownToolException(facade._agentName, missing, available);
+            return facade._tools.Where(t => subset.Contains(t.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+        }
+
         internal string Prompt { get; }
         internal int MaxIterations { get; }
         internal string PermissionMode { get; }
@@ -740,6 +769,12 @@ public sealed partial class JsLlmFacade
         internal List<IBaseTool> Tools { get; }
         internal List<LlmMessage> Messages { get; } = new(capacity: 2);
         internal bool StreamsDeltas => _deltas is not null;
+
+        /// <summary>Whether the call declared an <c>onToolCall</c> function; fixed at construction.</summary>
+        internal bool HasToolCallback { get; }
+
+        /// <summary>Whether the call declared an <c>onToolResult</c> function; fixed at construction.</summary>
+        internal bool HasToolResultCallback { get; }
 
         /// <summary>The loop, as a Task of a CLR object — Jint settles it on the engine's own loop.</summary>
         public Func<Task<object>> run { get; }
@@ -791,10 +826,10 @@ public sealed partial class JsLlmFacade
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, PendingScriptToolCall> _pending = new(StringComparer.Ordinal);
         private JsValue? _toolRequestsJs;
 
-        /// <summary>Whether the trampoline must start the tool pump.</summary>
+        /// <summary>Whether the trampoline must start the pump: script tools or an <c>onToolCall</c> callback.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Read by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
-        public bool hasScriptTools => _toolRequests is not null;
+        public bool hasPumpWork => _toolRequests is not null;
 
         /// <summary>The ids of the script-tool calls the loop posted, as a JS async iterable; ends with the run.</summary>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
@@ -804,7 +839,11 @@ public sealed partial class JsLlmFacade
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
-        public JsTool toolOf(string id) => _pending[id].Tool;
+        public JsTool? toolOf(string id) => _pending[id].Tool;
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public string kindOf(string id) => _pending[id].Kind;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
@@ -845,8 +884,28 @@ public sealed partial class JsLlmFacade
         internal async Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallScriptToolAsync(
             JsTool tool, IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
         {
+            return await PostAsync(new PendingScriptToolCall("execute", tool, JsonSerializer.Serialize(arguments)), cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>Posts one <c>onToolCall</c> request to the JS pump; the response carries the verdict as JSON.</summary>
+        internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallToolCallbackAsync(
+            string toolName, IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+            => PostAsync(new PendingScriptToolCall("onToolCall", null, JsonSerializer.Serialize(new { name = toolName, input = arguments })), cancellationToken);
+
+        /// <summary>Posts one <c>onToolResult</c> request to the JS pump; the response carries the callback's return as JSON.</summary>
+        internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallToolResultCallbackAsync(
+            string toolName, IReadOnlyDictionary<string, object?> arguments, string result, CancellationToken cancellationToken)
+        {
+            object? shown = result;
+            try { shown = JsonSerializer.Deserialize<JsonElement>(result); }
+            catch (JsonException) { /* not JSON: the callback sees the text as is */ }
+            var payload = JsonSerializer.Serialize(new { call = new { name = toolName, input = arguments }, result = shown });
+            return PostAsync(new PendingScriptToolCall("onToolResult", null, payload), cancellationToken);
+        }
+
+        private async Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> PostAsync(PendingScriptToolCall call, CancellationToken cancellationToken)
+        {
             var id = Guid.NewGuid().ToString("N");
-            var call = new PendingScriptToolCall(tool, JsonSerializer.Serialize(arguments));
             _pending[id] = call;
             using var registration = cancellationToken.Register(() =>
             {
@@ -862,7 +921,7 @@ public sealed partial class JsLlmFacade
         }
     }
 
-    private sealed record PendingScriptToolCall(JsTool Tool, string ArgumentsJson)
+    private sealed record PendingScriptToolCall(string Kind, JsTool? Tool, string ArgumentsJson)
     {
         public TaskCompletionSource<Orkeon.Domain.Tools.Protocol.ToolCallResponse> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1033,18 +1092,7 @@ public sealed partial class JsLlmFacade
         // (IBaseTool.Access) informs the verdict; unresolved tools stay
         // Unspecified and the gate classifies them fail-closed.
         var tool = session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
-        Orkeon.Application.Interfaces.Security.PermissionVerdict? verdict = null;
-        if (_permissionGate is not null)
-        {
-            // The gate may hold the call while an operator answers an approval: that time is not
-            // the script's, so the engine's wall-clock limit and the agent's wall-time budget
-            // both stop while the gate decides (#127).
-            using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
-            using var budgetPaused = _budget?.PauseWallClock();
-            verdict = await _permissionGate.CheckAsync(
-                toolName, toolArgs, permissionMode,
-                tool?.Access ?? ToolAccess.Unspecified, _ct).ConfigureAwait(false);
-        }
+        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
             // Deny (an operator's refusal included, when an approval channel answered) and an
@@ -1055,11 +1103,104 @@ public sealed partial class JsLlmFacade
             return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
         }
 
+        if (session.HasToolCallback)
+        {
+            var callback = await RunToolCallbackAsync(session, tool, toolName, toolArgs).ConfigureAwait(false);
+            if (callback.DenyReason is not null)
+            {
+                activity?.SetTag("orkeon.llm.act.permission", "denied");
+                return $"DENIED: {callback.DenyReason}";
+            }
+            toolArgs = callback.Arguments;
+        }
+
         // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
         // BudgetExhaustedException into an "ERROR:" string fed back to the model.
         _budget?.RecordToolCall();
-        return await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
+        var text = await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
+        return session.HasToolResultCallback ? await ApplyToolResultCallbackAsync(session, toolName, toolArgs, text).ConfigureAwait(false) : text;
     }
+
+    /// <summary>
+    /// Runs <c>onToolResult</c> through the session's pump: a returned <c>{ context }</c> replaces the
+    /// line the model is shown; a void return, or a callback that fails, leaves it.
+    /// </summary>
+    private async Task<string> ApplyToolResultCallbackAsync(ActSession session, string toolName, Dictionary<string, object?> toolArgs, string text)
+    {
+        var response = await session.CallToolResultCallbackAsync(toolName, toolArgs, text, _ct).ConfigureAwait(false);
+        if (!response.Success || response.Result is not string json)
+            return text;
+        using var returned = JsonDocument.Parse(json);
+        return returned.RootElement.ValueKind == JsonValueKind.Object
+            && returned.RootElement.TryGetProperty("context", out var context)
+            && context.ValueKind == JsonValueKind.String
+                ? context.GetString()!
+                : text;
+    }
+
+    /// <summary>The permission gate's verdict on one call; <c>null</c> when the host registered no gate.</summary>
+    private async Task<Orkeon.Application.Interfaces.Security.PermissionVerdict?> GateAsync(
+        string toolName, Dictionary<string, object?> toolArgs, string permissionMode, ToolAccess access)
+    {
+        if (_permissionGate is null) return null;
+        // The gate may hold the call while an operator answers an approval: that time is not
+        // the script's, so the engine's wall-clock limit and the agent's wall-time budget
+        // both stop while the gate decides (#127).
+        using var paused = _engine.Constraints.Find<PausableTimeConstraint>()?.Pause();
+        using var budgetPaused = _budget?.PauseWallClock();
+        return await _permissionGate.CheckAsync(toolName, toolArgs, permissionMode, access, _ct).ConfigureAwait(false);
+    }
+
+    private readonly record struct ToolCallbackOutcome(string? DenyReason, Dictionary<string, object?> Arguments);
+
+    /// <summary>
+    /// Runs the <c>onToolCall</c> callback through the session's pump and applies its verdict:
+    /// <c>ask</c> goes to the gate as a default-mode edit, a rewritten input is gated again.
+    /// A callback failure, or a verdict this version does not know, denies.
+    /// </summary>
+    private async Task<ToolCallbackOutcome> RunToolCallbackAsync(
+        ActSession session, IBaseTool? tool, string toolName, Dictionary<string, object?> toolArgs)
+    {
+        var response = await session.CallToolCallbackAsync(toolName, toolArgs, _ct).ConfigureAwait(false);
+        if (!response.Success)
+            return new(response.Error ?? "onToolCall failed", toolArgs);
+
+        const string NoValidVerdict = "onToolCall returned no valid verdict";
+        if (response.Result is not string json)
+            return new(NoValidVerdict, toolArgs);
+        JsonDocument verdict;
+        try { verdict = JsonDocument.Parse(json); }
+        catch (JsonException) { return new(NoValidVerdict, toolArgs); }
+        using var disposeVerdict = verdict;
+        var root = verdict.RootElement;
+        if (root.ValueKind == JsonValueKind.String && root.GetString() == "allow")
+            return new(null, toolArgs);
+        if (root.ValueKind == JsonValueKind.String && root.GetString() == "ask")
+        {
+            if (_permissionGate is null)
+                return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
+            var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit).ConfigureAwait(false);
+            return new(DenialOf(asked, toolName, "default"), toolArgs);
+        }
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("deny", out var reason))
+            return new(reason.ToString(), toolArgs);
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("input", out var input))
+        {
+            if (input.ValueKind != JsonValueKind.Object)
+                return new(NoValidVerdict, toolArgs);
+            var rewritten = JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!;
+            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
+            return new(DenialOf(regated, toolName, session.PermissionMode), rewritten);
+        }
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("context", out _))
+            return new(null, toolArgs);
+        return new(NoValidVerdict, toolArgs);
+    }
+
+    private static string? DenialOf(Orkeon.Application.Interfaces.Security.PermissionVerdict? verdict, string toolName, string mode) =>
+        verdict is null || verdict.Action == Orkeon.Application.Interfaces.Security.PermissionAction.Allow
+            ? null
+            : verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{mode}'.";
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
     private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)
@@ -1222,6 +1363,15 @@ public sealed partial class JsLlmFacade
         return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : null;
     }
 
+    /// <summary>Reads the <c>tools</c> act option: the names of the agent's tools to offer, or <c>null</c> for all of them.</summary>
+    private static List<string>? ResolveToolSubset(JsValue? options)
+    {
+        if (options is null || options.IsUndefined() || options.IsNull()) return null;
+        var raw = options.Get("tools");
+        if (!raw.IsArray()) return null;
+        return raw.AsArray().Select(v => v.ToString()).ToList();
+    }
+
     private static int ResolveMaxIterations(JsValue? options)
     {
         if (options is null || options.IsUndefined() || options.IsNull()) return DefaultActMaxIterations;
@@ -1269,6 +1419,10 @@ public sealed partial class JsLlmFacade
                     : new LlmResponseFormat { Type = rfType },
             };
         }
+
+        var effort = options.Get("effort");
+        if (effort.IsString())
+            config = (config ?? Inherited()) with { Thinking = JsLlmConfig.ThinkingAt(effort.AsString()) };
 
         // Nested `{ llm: { model: "..." } }` — the per-call model override: the agent's boot
         // provider keeps its credentials and endpoint, only the model name changes.

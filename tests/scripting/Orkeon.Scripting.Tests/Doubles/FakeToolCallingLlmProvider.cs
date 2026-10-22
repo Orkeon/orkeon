@@ -27,6 +27,12 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
     /// <summary>The messages of each chat turn, in order.</summary>
     public List<LlmMessage[]> Turns { get; } = new();
 
+    /// <summary>The tool names offered with each chat request, in order.</summary>
+    public List<IReadOnlyList<string>> OfferedToolsPerTurn { get; } = new();
+
+    /// <summary>The thinking setting (enabled, effort) seen on each chat request, in order.</summary>
+    public List<(bool? Enabled, string? Effort)> ThinkingPerTurn { get; } = new();
+
     /// <summary>The tool names the first turn offered the model.</summary>
     public IReadOnlyList<string> OfferedTools { get; private set; } = [];
 
@@ -37,6 +43,8 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
     {
         await Task.Delay(3, cancellationToken).ConfigureAwait(false);
         Turns.Add(messages);
+        OfferedToolsPerTurn.Add(config?.Tools?.Select(t => t.Name).ToList() ?? []);
+        ThinkingPerTurn.Add((config?.Thinking?.Enabled, config?.Thinking?.Effort));
         if (_turn++ == 0)
         {
             OfferedTools = config?.Tools?.Select(t => t.Name).ToList() ?? [];

@@ -6,3 +6,4 @@ Orkeon.Scripting.ScriptToolCatalogue.ScriptToolCatalogue(System.Collections.Gene
 Orkeon.Scripting.Runtime.JsLlmFacade.permissionGate.get -> Orkeon.Scripting.Runtime.JsPermissionGateState!
 Orkeon.Scripting.Runtime.JsPermissionGateState
 Orkeon.Scripting.Runtime.JsPermissionGateState.enabled.get -> bool
+Orkeon.Scripting.Builders.JsAgentBuilder.effort(string! level) -> Orkeon.Scripting.Builders.JsAgentBuilder!

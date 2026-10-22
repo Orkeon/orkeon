@@ -91,6 +91,8 @@ declare global {
         responseFormat?: ResponseFormatType;
         /** The per-call model: the host's provider keeps its credentials and endpoint. */
         llm?: { model?: string };
+        /** Turns the provider's thinking on at this effort for the call. */
+        effort?: "low" | "medium" | "high";
     }
 
     /**
@@ -156,6 +158,30 @@ declare global {
          * supports SSE streaming). Keep it cheap — rendering/logging only.
          */
         onDelta?: (delta: string) => void;
+        /**
+         * Called before each tool call, after the permission gate allowed it. Answers `"allow"`
+         * (run it), `"ask"` (hand the call to the approval channel, as a default-mode edit
+         * would; a refusal denies), `{ deny: reason }` (block, the model reads `DENIED: <reason>`),
+         * `{ input }` (run with this input, gated again) or `{ context }`. A callback that throws
+         * denies the call with the exception message. Any other return value (nothing, `null`, a
+         * non-object `input`, an unknown shape) denies the call; `"ask"` without a registered
+         * permission gate denies too. The `act` call never rejects because of a returned value.
+         */
+        onToolCall?: (call: { name: string; input: unknown }) =>
+            "allow" | "ask" | { deny: string } | { input: unknown } | { context: string }
+            | Promise<"allow" | "ask" | { deny: string } | { input: unknown } | { context: string }>;
+        /**
+         * Runs after each tool call, with the call and its result (the tool's JSON parsed, else
+         * its text). A returned `{ context }` replaces the line the model is shown for that
+         * result; a void return leaves it. Runs on the script's thread.
+         */
+        onToolResult?: (call: { name: string; input: unknown }, result: unknown) =>
+            void | { context: string } | Promise<void | { context: string }>;
+        /**
+         * Subset of the agent's tools to offer the model for this call. A name the agent does
+         * not hold throws `UnknownToolError` before the model is asked. Omitted: all its tools.
+         */
+        tools?: string[];
     }
 
     /** What `act(...)` resolves to. */
