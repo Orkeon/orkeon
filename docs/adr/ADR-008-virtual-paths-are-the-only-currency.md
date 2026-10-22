@@ -37,7 +37,7 @@ The consequences were not theoretical. A mount parsed from a mount string gets
 `MountVisibility.AgentFacing` — `Parse` has no way to say otherwise — so those directories were
 listed to agents:
 
-- `list_mounts` returned `C:\Users\…\my-team` as a mount **path**;
+- `list_mounts` returned `C:\Users\…\my-team` as a mount **path** (since 2026-10-22 the typed result names the field `virtual_path`, with `access` and `overrides[{ virtual_path, access }]`);
 - every access-denied message names the available mounts, and
   `FileSystemService.CollectBasePaths` **deliberately exempted identity mounts from redaction**
   (redacting them would have produced `Available mounts: [REDACTED]`), so the guard was disarmed

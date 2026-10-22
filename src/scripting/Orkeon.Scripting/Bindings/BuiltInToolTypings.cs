@@ -238,16 +238,49 @@ internal static partial class BuiltInToolTypings
         (schema.Parameters ?? []).Select(p => new Field(p.Key, p.Value.Required, TypeOf(p.Value), p.Value.Description));
 
     /// <summary>The TypeScript type of a CLR property type, by the JSON shape it reads.</summary>
-    private static string TypeOf(Type clr)
+    private static string TypeOf(Type clr) => TypeOf(clr, expand: false, []);
+
+    /// <summary>
+    /// <paramref name="expand"/> renders a record type by its members - the elements of an array, and
+    /// whatever those members hold - where a bare property keeps <c>Record&lt;string, unknown&gt;</c>.
+    /// <paramref name="path"/> holds the records being rendered, a cycle falls back to that default;
+    /// <see cref="MaxRecordDepth"/> bounds the nesting.
+    /// </summary>
+    private static string TypeOf(Type clr, bool expand, HashSet<Type> path)
     {
         var type = Nullable.GetUnderlyingType(clr) ?? clr;
         var schemaType = ToolSchemaGenerator.InferSchemaType(type);
         if (schemaType == "object" && DictionaryValueType(type) is { } values)
-            return $"Record<string, {TypeOf(values)}>";
+            return $"Record<string, {TypeOf(values, expand, path)}>";
         if (schemaType == "array")
-            return ElementType(type) is { } element ? $"readonly {Parenthesize(TypeOf(element))}[]" : "readonly unknown[]";
+            return ElementType(type) is { } element
+                ? $"readonly {Parenthesize(TypeOf(element, expand: true, path))}[]"
+                : "readonly unknown[]";
+        if (expand && schemaType == "object" && type.IsClass && path.Count < MaxRecordDepth && path.Add(type))
+        {
+            try
+            {
+                var members = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.GetMethod is { IsPublic: true } && p.GetIndexParameters().Length == 0
+                        && p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always })
+                    .Select(p => (Property: p, Name: SerializedName(p)))
+                    .OrderBy(m => m.Name, StringComparer.Ordinal)
+                    .ToList();
+                if (members.Count > 0)
+                {
+                    return "{ " + string.Join(" ", members.Select(m =>
+                        $"readonly {PropertyName(m.Name)}{(ToolSchemaGenerator.InferRequired(m.Property) ? "" : "?")}: {TypeOf(m.Property.PropertyType, expand: true, path)};")) + " }";
+                }
+            }
+            finally
+            {
+                path.Remove(type);
+            }
+        }
         return ScalarType(schemaType);
     }
+
+    private const int MaxRecordDepth = 4;
 
     private static Type? DictionaryValueType(Type type) =>
         (type.IsGenericType ? [type, .. type.GetInterfaces()] : type.GetInterfaces())
@@ -275,7 +308,7 @@ internal static partial class BuiltInToolTypings
     }
 
     private static string Parenthesize(string type) =>
-        type.Contains(' ', StringComparison.Ordinal) && !type.StartsWith("Record<", StringComparison.Ordinal) ? $"({type})" : type;
+        type.Contains(' ', StringComparison.Ordinal) && !type.StartsWith("Record<", StringComparison.Ordinal) && !type.StartsWith('{') ? $"({type})" : type;
 
     private static string ScalarType(string? type) => type switch
     {

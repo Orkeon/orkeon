@@ -33,9 +33,9 @@ celui ci-dessus — est ce que le YAML référence.
 | Tool | Classe | Enregistrement | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` l'appelle pour un crew YAML) | Recherche sémantique par embeddings dans les mémoires | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — tout hôte runner appelle les deux | Recherche RAG dans les bases de connaissances de l'agent via `IRagPipeline` | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — tout hôte runner appelle les deux | Recherche RAG dans les bases de connaissances de l'agent via `IRagPipeline`. Résultat typé (`answer`, `citations[]`) ; paramètre structuré `question` uniquement — l'ancienne entrée en chaîne brute est supprimée (**cassant**, idem pour `rag_eval` avec `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Même opt-in que `rag_search` | Ingestion incrémentale dans une collection RAG (pilotée par manifeste — les sources inchangées coûtent 0 embedding) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
-| `rag_eval` | `RagEvalTool` | Même opt-in que `rag_search` | Évaluer une collection contre un dataset doré YAML : recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
+| `rag_eval` | `RagEvalTool` | Même opt-in que `rag_search` | Évaluer une collection contre un dataset doré YAML : recall@k, precision@k, MRR, groundedness. Résultat typé (`metrics[]`, `cases[]`, `reports`) | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
 > **Enregistrés par tout hôte runner.** `orkeon run` (une crew YAML, un répertoire de crew,
 > un script `.ork.ts`) et `orkeon-host` enregistrent le sous-système RAG et ses trois tools :
@@ -125,7 +125,7 @@ redirections.
 | `http_api` | `HttpApiTool` | `AddOrkeonWebTools()` | Appels HTTP REST (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) avec protection SSRF |
 | `web_scrape` | `WebScrapeTool` | `AddOrkeonWebTools()` | Scraper une page web avec filtrage CSS optionnel ; `cached=true` découpe et embarque la page dans le cache RAG |
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Scraping ciblé d'éléments DOM via sélecteurs CSS (texte, HTML, attributs) |
-| `github` | `GitHubTool` | `AddOrkeonWebTools()` — enregistré **sans jeton**, ses appels sont donc anonymes ; un hôte qui a besoin de `create_issue` enregistre lui-même `new GitHubTool(personalAccessToken)` | API GitHub v3 (`action` : `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`) |
+| `github` | `GitHubTool` | `AddOrkeonWebTools()` — enregistré **sans jeton**, ses appels sont donc anonymes ; un hôte qui a besoin de `create_issue` enregistre lui-même `new GitHubTool(personalAccessToken)` | API GitHub v3 (`action` : `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`, `create_pr`). `create_pr` prend `base`, `head`, `title` et un `body` optionnel, et renvoie l'URL de la pull request dans le `url` de son unique élément de résultat ; elle exige un jeton avec droit d'écriture sur les pull requests. `github` reste soumis à confirmation en mode de permission par défaut |
 | `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService` et un `ISecretProvider`) — le secret `OPENAI_API_KEY` est résolu à l'appel (par défaut la variable d'environnement `ORKEON_OPENAI_API_KEY`, puis `Secrets:OPENAI_API_KEY`) ; sans lui un appel échoue en nommant le secret | Génération d'images via l'API OpenAI DALL-E, enregistrables sous un chemin virtuel (`save_to_path`) |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — le secret `TAVILY_API_KEY` est résolu à l'appel via `ISecretProvider` (par défaut la variable d'environnement `ORKEON_TAVILY_API_KEY`, puis `Secrets:TAVILY_API_KEY` en configuration) | Recherche web via l'API Tavily Search |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` ne le câble que si `BRAVE_API_KEY` est posée | Recherche web via l'API Brave Search |
@@ -239,7 +239,7 @@ Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide compl
 
 | Tool | Classe | Enregistrement | Cas d'usage |
 |-------|--------|------|-------------|
-| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | Lister les montages VFS visibles par l'agent, avec chemins virtuels et droits d'accès |
+| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | Lister les montages VFS visibles par l'agent, avec chemins virtuels et droits d'accès. Résultat typé `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }` ; **renommage cassant** des champs du résultat (auparavant `path` / `rights` / `overrides[{ path, rights }]`) |
 | `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embarquer des textes sur l'appareil (BGE-micro-v2 ONNX, 384 dims, CPU — pas de réseau, pas de clé d'API) |
 
 ## Tools côté hôte

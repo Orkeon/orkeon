@@ -18,7 +18,7 @@ public sealed class RagEvalToolTests
     public async Task Call_MapsParameters_AndFormatsTheSummary()
     {
         var harness = new FakeRagEvalHarness();
-        var tool = new RagEvalTool(harness);
+        using var tool = new RagEvalTool(harness);
 
         var response = await tool.CallAsync(Request(new Dictionary<string, object?>
         {
@@ -39,12 +39,14 @@ public sealed class RagEvalToolTests
         Assert.True(request.UseLlmJudge);
         Assert.True(request.ReindexCorpus);
 
-        var text = Assert.IsType<string>(response.Result);
-        Assert.Contains("RAG evaluation — dataset 'golden'", text, StringComparison.Ordinal);
-        Assert.Contains("Profile 'balanced' — judge: heuristic", text, StringComparison.Ordinal);
-        Assert.Contains("recall@3: 0.90", text, StringComparison.Ordinal);
-        Assert.Contains("MRR: 0.80", text, StringComparison.Ordinal);
-        Assert.Contains("/output/rag/eval/golden-balanced.md", text, StringComparison.Ordinal);
+        Assert.IsType<Orkeon.Tools.Abstractions.Base.ToolBase<RagEvalRequest, RagEvalResponse>>(tool, exactMatch: false);
+        var view = RagEvalResultView.From(response.Result);
+        var metric = Assert.Single(view.Metrics);
+        Assert.Equal("balanced", RagEvalResultView.Prop(metric, "Profile").GetString());
+        Assert.Equal("heuristic", RagEvalResultView.Prop(metric, "Judge").GetString());
+        Assert.Equal(0.9, RagEvalResultView.Prop(metric, "RecallAtK").GetDouble());
+        Assert.Equal(0.8, RagEvalResultView.Prop(metric, "Mrr").GetDouble());
+        Assert.Contains("/output/rag/eval/golden-balanced.md", view.Reports);
     }
 
     [Fact]
@@ -53,7 +55,7 @@ public sealed class RagEvalToolTests
         // GAP-02: Orkeon:Rag:Collection reaches the harness as the host default; an
         // explicit argument (and the dataset's own collection) still win there.
         var harness = new FakeRagEvalHarness();
-        var tool = new RagEvalTool(harness, defaultCollection: "produits");
+        using var tool = new RagEvalTool(harness, defaultCollection: "produits");
 
         await tool.CallAsync(Request(new Dictionary<string, object?>
         {
@@ -69,7 +71,7 @@ public sealed class RagEvalToolTests
     public async Task Call_CompareMode_OverridesProfile_AndIncludesTheComparisonTable()
     {
         var harness = new FakeRagEvalHarness();
-        var tool = new RagEvalTool(harness);
+        using var tool = new RagEvalTool(harness);
 
         var response = await tool.CallAsync(Request(new Dictionary<string, object?>
         {
@@ -81,16 +83,17 @@ public sealed class RagEvalToolTests
         Assert.True(response.Success, response.Error);
         Assert.Equal(["fast", "balanced", "quality"], Assert.Single(harness.Requests).Profiles);
 
-        var text = Assert.IsType<string>(response.Result);
-        Assert.Contains("| profile | recall@5 | MRR |", text, StringComparison.Ordinal);
-        Assert.Contains("| fast |", text, StringComparison.Ordinal);
-        Assert.Contains("/output/rag/eval/golden-compare.md", text, StringComparison.Ordinal);
+        var view = RagEvalResultView.From(response.Result);
+        Assert.Equal(
+            ["fast", "balanced", "quality"],
+            view.Metrics.Select(m => RagEvalResultView.Prop(m, "Profile").GetString()));
+        Assert.Contains("/output/rag/eval/golden-compare.md", view.Reports);
     }
 
     [Fact]
     public async Task Call_WithoutDataset_Fails()
     {
-        var tool = new RagEvalTool(new FakeRagEvalHarness());
+        using var tool = new RagEvalTool(new FakeRagEvalHarness());
 
         var response = await tool.CallAsync(
             Request([]), TestContext.Current.CancellationToken);
@@ -102,19 +105,19 @@ public sealed class RagEvalToolTests
     [Fact]
     public async Task ExecuteAsync_LegacyStringEntrypoint_IsRejected()
     {
-        var tool = new RagEvalTool(new FakeRagEvalHarness());
+        using var tool = new RagEvalTool(new FakeRagEvalHarness());
 
         var result = await tool.ExecuteAsync("golden.yaml", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
-        Assert.Contains("structured parameters", result.Error, StringComparison.Ordinal);
-        Assert.False(tool.ValidateInput("golden.yaml"));
+        Assert.Contains("dataset parameter is required", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Schema_DeclaresTheAgentFacingContract()
     {
-        var schema = new RagEvalTool(new FakeRagEvalHarness()).Schema;
+        using var tool = new RagEvalTool(new FakeRagEvalHarness());
+        var schema = tool.Schema;
 
         Assert.Equal("rag_eval", schema.Name);
         Assert.True(schema.Parameters["dataset"].Required);
@@ -137,5 +140,32 @@ public sealed class RagEvalToolTests
             ["a", "b"],
             RagEvalTool.ExtractProfiles(JsonElement.Parse("\"a,b\"")));
         Assert.Empty(RagEvalTool.ExtractProfiles(null));
+    }
+}
+
+/// <summary>Reads the runtime result of the <c>ToolBase&lt;,&gt;</c> rag_eval tool (a dictionary read through JSON).</summary>
+internal sealed record RagEvalResultView(IReadOnlyList<JsonElement> Metrics, IReadOnlyList<JsonElement> Cases, IReadOnlyList<string> Reports)
+{
+    public static RagEvalResultView From(object? result)
+    {
+        var dict = Assert.IsType<Dictionary<string, object?>>(result);
+        Assert.True(dict.TryGetValue("metrics", out var metrics));
+        Assert.True(dict.TryGetValue("cases", out var cases));
+        Assert.True(dict.TryGetValue("reports", out var reports));
+        return new RagEvalResultView(
+            [.. JsonSerializer.SerializeToElement(metrics).EnumerateArray()],
+            [.. JsonSerializer.SerializeToElement(cases).EnumerateArray()],
+            [.. JsonSerializer.SerializeToElement(reports).EnumerateArray().Select(e => e.GetString()!)]);
+    }
+
+    public static JsonElement Prop(JsonElement element, string name)
+    {
+        foreach (var p in element.EnumerateObject())
+        {
+            if (string.Equals(p.Name.Replace("_", "", StringComparison.Ordinal), name, StringComparison.OrdinalIgnoreCase))
+                return p.Value;
+        }
+
+        throw new Xunit.Sdk.XunitException($"property '{name}' not found in {element}");
     }
 }

@@ -64,7 +64,7 @@ declare global {
             url_filter?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly hit_count: number;
-            readonly hits: readonly Record<string, unknown>[];
+            readonly hits: readonly { readonly content: string; readonly score: number; readonly source: string; readonly title: string; readonly url?: string; }[];
             readonly query: string;
         }>;
 
@@ -75,7 +75,7 @@ declare global {
             max_entries?: number;
             root_fqn?: string | null;
         }, ctx?: ExecutionContext): Promise<{
-            readonly entries: readonly Record<string, unknown>[];
+            readonly entries: readonly { readonly children_count?: number; readonly cyclomatic?: number; readonly fqn: string; readonly kind: string; readonly language?: string; readonly lo_c?: number; readonly name: string; }[];
             readonly level: string;
             readonly totals: Record<string, unknown>;
             readonly truncated: boolean;
@@ -93,7 +93,7 @@ declare global {
             query?: string;
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
-            readonly hits: readonly Record<string, unknown>[];
+            readonly hits: readonly { readonly fqn: string; readonly match_origin: string; readonly score: number; readonly signature?: string; readonly summary_short?: string; }[];
             readonly refreshed_files: number;
             readonly total_candidates: number;
             readonly truncated: boolean;
@@ -109,7 +109,7 @@ declare global {
             readonly median?: number;
             readonly metric: string;
             readonly p95?: number;
-            readonly top: readonly Record<string, unknown>[];
+            readonly top: readonly { readonly fqn: string; readonly metric: string; readonly value: number; }[];
         }>;
 
         /** `count_pattern` - Count regex occurrences in a file (deterministic, per-pattern). Use when verification requires exact counts rather than LLM estimation. */
@@ -129,7 +129,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly bom_stripped: boolean;
             readonly bytes_scanned: number;
-            readonly counts: readonly Record<string, unknown>[];
+            readonly counts: readonly { readonly count: number; readonly error?: string; readonly matches?: readonly string[]; readonly pattern: string; }[];
         }>;
 
         /** `csv_reader` - Read CSV files and return structured data. Supports custom delimiters and header detection. */
@@ -162,10 +162,10 @@ declare global {
             table_filter?: string | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly database_name: string;
-            readonly foreign_keys?: readonly Record<string, unknown>[];
-            readonly indexes?: readonly Record<string, unknown>[];
+            readonly foreign_keys?: readonly { readonly name: string; readonly source_columns: readonly string[]; readonly source_table: string; readonly target_columns: readonly string[]; readonly target_table: string; }[];
+            readonly indexes?: readonly { readonly columns: readonly string[]; readonly is_unique: boolean; readonly name: string; readonly table_name: string; readonly type?: string; }[];
             readonly provider_name: string;
-            readonly tables: readonly Record<string, unknown>[];
+            readonly tables: readonly { readonly columns: readonly { readonly data_type: string; readonly default_value?: string; readonly is_nullable: boolean; readonly is_primary_key: boolean; readonly max_length?: number; readonly name: string; }[]; readonly name: string; readonly row_count_estimate?: number; readonly schema?: string; }[];
         }>;
 
         /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). */
@@ -179,10 +179,10 @@ declare global {
             scope?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly dot?: string;
-            readonly edges: readonly Record<string, unknown>[];
+            readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
             readonly mermaid_flowchart?: string;
             readonly metrics: Record<string, unknown>;
-            readonly nodes: readonly Record<string, unknown>[];
+            readonly nodes: readonly { readonly fqn: string; readonly is_seed: boolean; readonly kind: string; readonly level: string; readonly name: string; }[];
             readonly truncated: boolean;
         }>;
 
@@ -197,8 +197,8 @@ declare global {
             /** Whether to list contents recursively (default: false) */
             recursive?: boolean;
         }, ctx?: ExecutionContext): Promise<{
-            readonly directories: readonly Record<string, unknown>[];
-            readonly files: readonly Record<string, unknown>[];
+            readonly directories: readonly { readonly name: string; readonly path: string; readonly size?: number; readonly type: string; }[];
+            readonly files: readonly { readonly name: string; readonly path: string; readonly size?: number; readonly type: string; }[];
             readonly path: string;
             readonly total_directories: number;
             readonly total_entries_before_truncation?: number;
@@ -230,7 +230,7 @@ declare global {
             readonly files_skipped: number;
             readonly query: string;
             readonly result_count: number;
-            readonly results: readonly Record<string, unknown>[];
+            readonly results: readonly { readonly approximate_line: number; readonly chunk_index: number; readonly content: string; readonly file_extension: string; readonly score: number; readonly source_file: string; }[];
             readonly total_chunks: number;
         }>;
 
@@ -312,7 +312,7 @@ declare global {
             max_paths?: number;
             to?: string | null;
         }, ctx?: ExecutionContext): Promise<{
-            readonly paths: readonly Record<string, unknown>[];
+            readonly paths: readonly { readonly call_sites: readonly { readonly end_line: number; readonly sha256: string; readonly start_line: number; readonly virtual_file_path: string; }[]; readonly fqns: readonly string[]; readonly length: number; }[];
             readonly truncated: boolean;
         }>;
 
@@ -328,12 +328,16 @@ declare global {
             readonly value?: unknown;
         }>;
 
-        /** `github` - Interact with GitHub API v3: list/create issues, read PRs, search repos. */
+        /** `github` - Interact with GitHub API v3: list/create issues, create/read PRs, search repos. create_pr (base, head, title, optional body) needs a token with pull-request write scope. */
         github(input: {
-            /** Action to perform: list_issues, create_issue, get_pr, search_repos, get_repo */
+            /** Action to perform: list_issues, create_issue, create_pr, get_pr, search_repos, get_repo */
             action: string;
+            /** Base branch for create_pr */
+            base?: string | null;
             /** Body content for create operations */
             body?: string | null;
+            /** Head branch for create_pr */
+            head?: string | null;
             /** Issue or PR number (for get operations) */
             number?: number | null;
             /** Repository owner (GitHub username or organization) */
@@ -347,7 +351,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly action: string;
             readonly error?: string;
-            readonly items: readonly Record<string, unknown>[];
+            readonly items: readonly { readonly body: string; readonly created_at: string; readonly number: number; readonly state: string; readonly title: string; readonly url?: string; }[];
             readonly success: boolean;
             readonly total_count: number;
         }>;
@@ -365,11 +369,11 @@ declare global {
             /** Username for authentication */
             username?: string | null;
         }, ctx?: ExecutionContext): Promise<{
-            readonly edge_labels: readonly Record<string, unknown>[];
+            readonly edge_labels: readonly { readonly label: string; readonly properties: readonly string[]; readonly source_label?: string; readonly target_label?: string; }[];
             readonly graph_type: string;
-            readonly indexes: readonly Record<string, unknown>[];
-            readonly property_keys: readonly Record<string, unknown>[];
-            readonly vertex_labels: readonly Record<string, unknown>[];
+            readonly indexes: readonly { readonly index_type?: string; readonly is_unique: boolean; readonly name: string; readonly property_keys: readonly string[]; }[];
+            readonly property_keys: readonly { readonly cardinality?: string; readonly data_type: string; readonly name: string; }[];
+            readonly vertex_labels: readonly { readonly count_estimate?: number; readonly label: string; readonly properties: readonly string[]; }[];
         }>;
 
         /** `http_api` - Make HTTP API calls with support for GET, POST, PUT, DELETE, PATCH methods. Returns response body, status code, and headers. */
@@ -433,7 +437,7 @@ declare global {
             size?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly image_count: number;
-            readonly images: readonly Record<string, unknown>[];
+            readonly images: readonly { readonly base64?: string; readonly revised_prompt?: string; readonly saved_path?: string; readonly url?: string; }[];
             readonly model: string;
         }>;
 
@@ -447,7 +451,7 @@ declare global {
             readonly by_package: Record<string, number>;
             readonly direct_impact: readonly string[];
             readonly target: string;
-            readonly top_callers: readonly Record<string, unknown>[];
+            readonly top_callers: readonly { readonly fqn: string; readonly kind: string; readonly signature?: string; readonly summary_short?: string; }[];
             readonly transitive_impact: readonly string[];
             readonly truncated: boolean;
         }>;
@@ -497,7 +501,7 @@ declare global {
         indexStatus(input?: Record<string, never>, ctx?: ExecutionContext): Promise<{
             readonly dirty_count: number;
             readonly dirty_paths: readonly string[];
-            readonly roots: readonly Record<string, unknown>[];
+            readonly roots: readonly { readonly edge_count: number; readonly indexed_at: string; readonly language_summary?: string; readonly node_count: number; readonly virtual_root: string; }[];
         }>;
 
         /** `is_path_indexed` - Check whether a virtual path is covered by any indexed root (longest match wins). */
@@ -547,7 +551,10 @@ declare global {
         }>;
 
         /** `list_mounts` - Lists all available file system mounts with their virtual paths and access rights. */
-        listMounts(input?: Record<string, never>, ctx?: ExecutionContext): Promise<unknown>;
+        listMounts(input?: Record<string, never>, ctx?: ExecutionContext): Promise<{
+            readonly mounts: readonly { readonly access: string; readonly overrides: readonly { readonly access: string; readonly virtual_path: string; }[]; readonly virtual_path: string; }[];
+            readonly success: boolean;
+        }>;
 
         /** `local_embed_text` - Generate embeddings for one or more texts using the on-device BGE-micro-v2 model. */
         localEmbedText(input: {
@@ -608,7 +615,7 @@ declare global {
             readonly files_processed: number;
             readonly query: string;
             readonly result_count: number;
-            readonly results: readonly Record<string, unknown>[];
+            readonly results: readonly { readonly approximate_line: number; readonly chunk_index: number; readonly content: string; readonly score: number; readonly source_file: string; }[];
             readonly total_chunks: number;
         }>;
 
@@ -674,7 +681,7 @@ declare global {
             /** Number of documents to sample for schema inference (default 100) */
             sample_size?: number;
         }, ctx?: ExecutionContext): Promise<{
-            readonly collections: readonly Record<string, unknown>[];
+            readonly collections: readonly { readonly document_count: number; readonly indexes: readonly { readonly is_sparse: boolean; readonly is_unique: boolean; readonly keys: Record<string, number>; readonly name: string; }[]; readonly inferred_fields: readonly { readonly bson_type: string; readonly frequency: number; readonly is_indexed: boolean; readonly name: string; readonly sample_values: readonly string[]; }[]; readonly name: string; }[];
             readonly database_name: string;
         }>;
 
@@ -710,7 +717,7 @@ declare global {
         nodeOutline(input?: {
             path?: string;
         }, ctx?: ExecutionContext): Promise<{
-            readonly members: readonly Record<string, unknown>[];
+            readonly members: readonly { readonly end_byte: number; readonly end_line: number; readonly kind: string; readonly selector: string; readonly start_byte: number; readonly start_line: number; }[];
         }>;
 
         /** `node_read` - Reads one member of a file by selector: text, range and SHA-256, uncut. */
@@ -757,7 +764,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly content: string;
             readonly page_range: string;
-            readonly pages: readonly Record<string, unknown>[];
+            readonly pages: readonly { readonly height: number; readonly page_number: number; readonly text: string; readonly width: number; }[];
             readonly pages_read: number;
             readonly total_pages: number;
         }>;
@@ -780,7 +787,7 @@ declare global {
             readonly files_processed: number;
             readonly query: string;
             readonly result_count: number;
-            readonly results: readonly Record<string, unknown>[];
+            readonly results: readonly { readonly chunk_index: number; readonly content: string; readonly page_number: number; readonly score: number; readonly source_file: string; }[];
             readonly total_chunks: number;
             readonly total_pages: number;
         }>;
@@ -858,22 +865,19 @@ declare global {
         }>;
 
         /** `rag_eval` - Evaluate a RAG knowledge collection against a golden dataset (YAML): recall@k, precision@k, MRR, groundedness and answer-relevance (judge mode labelled: llm or heuristic). Writes markdown/JSON reports and returns the aggregate summary. */
-        ragEval(input: {
-            /** Collection to evaluate (default: the dataset's collection; for a dataset without corpus, the configured default collection; else 'rag-eval-{dataset name}') */
-            collection?: string;
-            /** Comma-separated profiles to compare (e.g. 'fast,balanced,quality'); overrides 'profile' */
-            compare?: string;
-            /** Virtual path of the golden dataset YAML (e.g. '/workspace/examples/rag/eval/golden.yaml') */
-            dataset: string;
-            /** Metric cutoff for recall@k / precision@k (default: 5) */
+        ragEval(input?: {
+            collection?: string | null;
+            compare?: unknown;
+            dataset?: string;
             k?: number;
-            /** Profile to evaluate (default: 'default') */
-            profile?: string;
-            /** Force a full corpus reindex before evaluating (required after an embedding model change) */
+            profile?: string | null;
             reindex?: boolean;
-            /** Judge generation with the configured LLM (falls back to the deterministic heuristic, always labelled) */
             use_llm_judge?: boolean;
-        }, ctx?: ExecutionContext): Promise<unknown>;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly cases: readonly { readonly case_id: string; readonly profile: string; readonly recall_at_k?: number; readonly reciprocal_rank?: number; }[];
+            readonly metrics: readonly { readonly answer_relevance?: number; readonly groundedness?: number; readonly judge: string; readonly k: number; readonly mrr?: number; readonly precision_at_k?: number; readonly profile: string; readonly recall_at_k?: number; }[];
+            readonly reports: readonly string[];
+        }>;
 
         /** `rag_ingest` - Ingest documents into a knowledge collection so they become searchable via rag_search. Accepts file paths, glob patterns and http(s) addresses; unchanged sources are skipped (incremental). */
         ragIngest(input: {
@@ -890,14 +894,14 @@ declare global {
         }, ctx?: ExecutionContext): Promise<unknown>;
 
         /** `rag_search` - Search knowledge bases and retrieve answers grounded in documents. Use this when you need factual information from the agent's knowledge sources. */
-        ragSearch(input: {
-            /** Optional collection selector (default: the configured default collection; 'raggable-tree' for the code index) */
-            collection?: string;
-            /** The question to search for in knowledge bases */
-            question: string;
-            /** Number of relevant chunks to retrieve (default: 3) */
+        ragSearch(input?: {
+            collection?: string | null;
+            question?: string;
             top_k?: number;
-        }, ctx?: ExecutionContext): Promise<unknown>;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly answer: string;
+            readonly citations: readonly { readonly chunk_id: string; readonly content?: string; readonly document_id?: string; readonly end_offset: number; readonly marker: number; readonly score: number; readonly snippet?: string; readonly source_id: string; readonly start_offset: number; }[];
+        }>;
 
         /** `receive_message` - Pull the next message from a mailbox (default: current agent). Only mailboxes of the calling crew are readable — reading is destructive, and a mailbox belongs to its owner. Requires exactly one of timeout_ms / wait_forever. */
         receiveMessage(input?: {
@@ -965,7 +969,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly css_selector: string;
             readonly element_count: number;
-            readonly elements: readonly Record<string, unknown>[];
+            readonly elements: readonly { readonly attributes?: Record<string, string>; readonly html?: string; readonly index: number; readonly text: string; }[];
             readonly returned_count: number;
             readonly url?: string;
         }>;
@@ -1003,7 +1007,7 @@ declare global {
         /** `session_stats` - Report full session telemetry: message count, estimated tokens, cost, and call totals. */
         sessionStats(input?: Record<string, never>, ctx?: ExecutionContext): Promise<{
             readonly by_model: Record<string, string>;
-            readonly by_model_tokens: readonly Record<string, unknown>[];
+            readonly by_model_tokens: readonly { readonly cache_read_tokens: number; readonly cache_write_tokens: number; readonly completion_tokens: number; readonly model: string; readonly prompt_tokens: number; }[];
             readonly estimated_tokens: number;
             readonly message_count: number;
             readonly total_calls: number;
@@ -1088,7 +1092,7 @@ declare global {
             semantic_query?: string | null;
             top_k?: number;
         }, ctx?: ExecutionContext): Promise<{
-            readonly hits: readonly Record<string, unknown>[];
+            readonly hits: readonly { readonly condition?: string; readonly end_line?: number; readonly expression?: string; readonly kind: string; readonly parent_fqn: string; readonly score?: number; readonly start_line: number; readonly statement_id: string; }[];
             readonly truncated: boolean;
         }>;
 
@@ -1101,9 +1105,9 @@ declare global {
             max_nodes?: number;
             seeds?: readonly string[];
         }, ctx?: ExecutionContext): Promise<{
-            readonly edges: readonly Record<string, unknown>[];
+            readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
             readonly mermaid_flowchart?: string;
-            readonly nodes: readonly Record<string, unknown>[];
+            readonly nodes: readonly { readonly fqn: string; readonly is_seed: boolean; readonly kind: string; readonly level: string; readonly name: string; }[];
             readonly truncated: boolean;
         }>;
 
@@ -1123,13 +1127,13 @@ declare global {
             readonly implements: readonly string[];
             readonly kind?: string;
             readonly level?: string;
-            readonly members: readonly Record<string, unknown>[];
+            readonly members: readonly { readonly fqn: string; readonly kind: string; readonly signature?: string; readonly summary_short?: string; }[];
             readonly name?: string;
             readonly signature?: string;
-            readonly statements: readonly Record<string, unknown>[];
+            readonly statements: readonly { readonly children: readonly Record<string, unknown>[]; readonly condition?: string; readonly depth: number; readonly embedding?: Record<string, unknown>; readonly end_line?: number; readonly expression: string; readonly id: string; readonly in_lambda: boolean; readonly in_loop: boolean; readonly kind: string; readonly parent_symbol_id: string; readonly receiver?: string; readonly references: readonly { readonly kind: string; readonly name: string; readonly resolved_id?: string; }[]; readonly start_line: number; }[];
             readonly summary_short?: string;
-            readonly top_callees: readonly Record<string, unknown>[];
-            readonly top_callers: readonly Record<string, unknown>[];
+            readonly top_callees: readonly { readonly fqn: string; readonly kind: string; readonly signature?: string; readonly summary_short?: string; }[];
+            readonly top_callers: readonly { readonly fqn: string; readonly kind: string; readonly signature?: string; readonly summary_short?: string; }[];
             readonly truncated: boolean;
         }>;
 
@@ -1177,7 +1181,7 @@ declare global {
             readonly files_processed: number;
             readonly query: string;
             readonly result_count: number;
-            readonly results: readonly Record<string, unknown>[];
+            readonly results: readonly { readonly approximate_line: number; readonly chunk_index: number; readonly content: string; readonly score: number; readonly source_file: string; }[];
             readonly total_chunks: number;
         }>;
 
@@ -1229,7 +1233,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly query: string;
             readonly result_count: number;
-            readonly results: readonly Record<string, unknown>[];
+            readonly results: readonly { readonly content: string; readonly score: number; readonly title: string; readonly url?: string; }[];
         }>;
 
         /** `xlsx_reader` - Read Excel (.xlsx) files and return structured data including sheets, rows, columns, and metadata. */
@@ -1246,7 +1250,7 @@ declare global {
             readonly metadata: Record<string, string>;
             readonly sheet_count: number;
             readonly sheet_names: readonly string[];
-            readonly sheets: readonly Record<string, unknown>[];
+            readonly sheets: readonly { readonly column_count: number; readonly headers: readonly string[]; readonly name: string; readonly row_count: number; readonly rows: readonly (readonly string[])[]; }[];
         }>;
 
         /** `xlsx_writer` - Create or update Excel (.xlsx) files with structured data including multiple sheets, headers, and rows. */
@@ -1256,7 +1260,7 @@ declare global {
             /** Output file path for the .xlsx */
             file_path: string;
             /** Sheets to write (each with name, headers, rows) */
-            sheets: readonly Record<string, unknown>[];
+            sheets: readonly { readonly headers: readonly string[]; readonly name: string; readonly rows: readonly (readonly string[])[]; }[];
         }, ctx?: ExecutionContext): Promise<{
             readonly file_path: string;
             readonly file_size: number;
@@ -1276,10 +1280,10 @@ declare global {
             readonly attribute_count?: number;
             readonly attributes?: Record<string, unknown>;
             readonly child_count?: number;
-            readonly children?: readonly Record<string, unknown>[];
+            readonly children?: readonly { readonly attributes: Record<string, unknown>; readonly name: string; readonly value: string; }[];
             readonly declaration?: string;
             readonly match_count?: number;
-            readonly matches?: readonly Record<string, unknown>[];
+            readonly matches?: readonly { readonly attributes: Record<string, unknown>; readonly name: string; readonly value: string; }[];
             readonly namespace?: string;
             readonly root_element?: string;
             readonly source?: string;

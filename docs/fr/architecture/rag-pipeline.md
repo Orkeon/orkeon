@@ -606,6 +606,13 @@ chiffre publié plutôt qu'en une affirmation :
   bloc `env:` du workflow). Les cas étiquetés `correctif`
   sont exclus des gates : ils sont conçus exprès pour mettre en échec un retrieval en une
   passe (voir plus bas).
+- **Schéma** : publié comme `interface RagEvalDataset` / `RagEvalCase` dans les typings de
+  scripting (`src/scripting/Orkeon.Scripting/Typings/rag.d.ts`). Un cas sans `question` est
+  refusé avec une erreur nommant `case #<index> ('<id>')` et le champ manquant.
+- **Hôtes** : l'espace de noms de script `rag` (`rag.retrieve`, `rag.ingest`, …) est lié dans
+  les trois hôtes — `orkeon run`, le REPL et le daemon (`RunnerExecution`) — par une seule
+  `RagScriptingBackendFactory.Build(IServiceProvider)` qui résout `IIngestionPipeline` depuis
+  le DI ; le verrou d'ingestion par collection est donc partagé avec `rag_ingest`.
 
 ## RAG correctif (CRAG)
 

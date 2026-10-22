@@ -33,9 +33,9 @@ what YAML references.
 | Tool | Class | Registration | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` calls it for a YAML crew) | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the agent's knowledge bases over `IRagPipeline` | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the agent's knowledge bases over `IRagPipeline`. Typed result (`answer`, `citations[]`); structured `question` parameter only — the legacy raw-string entry is removed (**breaking**, same for `rag_eval` with `dataset`) | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Same opt-in as `rag_search` | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
-| `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
+| `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness. Typed result (`metrics[]`, `cases[]`, `reports`) | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
 > **Registered by every runner host.** `orkeon run` (a YAML crew, a crew directory, a
 > `.ork.ts` script) and `orkeon-host` register the RAG subsystem and its three tools, so a
@@ -123,7 +123,7 @@ without a registered `IUrlValidator`) and a named client that refuses redirects.
 | `http_api` | `HttpApiTool` | `AddOrkeonWebTools()` | HTTP REST calls (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) with SSRF protection |
 | `web_scrape` | `WebScrapeTool` | `AddOrkeonWebTools()` | Scrape a web page with optional CSS filtering; `cached=true` chunks and embeds the page into the RAG cache |
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Targeted scraping of DOM elements via CSS selectors (text, HTML, attributes) |
-| `github` | `GitHubTool` | `AddOrkeonWebTools()` — registered **without a token**, so its calls are anonymous; a host that needs `create_issue` registers `new GitHubTool(personalAccessToken)` itself | GitHub API v3 (`action`: `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`) |
+| `github` | `GitHubTool` | `AddOrkeonWebTools()` — registered **without a token**, so its calls are anonymous; a host that needs `create_issue` registers `new GitHubTool(personalAccessToken)` itself | GitHub API v3 (`action`: `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`, `create_pr`). `create_pr` takes `base`, `head`, `title` and an optional `body`, and returns the pull-request URL in the `url` of its single result item; it needs a token with pull-request write scope. `github` stays asked in the default permission mode |
 | `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (needs an `IFileSystemService` and an `ISecretProvider`) — the secret `OPENAI_API_KEY` is resolved at call time (by default the `ORKEON_OPENAI_API_KEY` environment variable, then `Secrets:OPENAI_API_KEY`); without it a call fails naming the secret | Image generation via the OpenAI DALL-E API, optionally saved under a virtual path (`save_to_path`) |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — the secret `TAVILY_API_KEY` is resolved at call time through `ISecretProvider` (by default the `ORKEON_TAVILY_API_KEY` environment variable, then `Secrets:TAVILY_API_KEY` in configuration) | Web search via the Tavily Search API |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` wires it only when `BRAVE_API_KEY` is set | Web search via the Brave Search API |
@@ -234,7 +234,7 @@ Seventeen tools over the RaggableTree semantic code graph — the full guide is
 
 | Tool | Class | Registration | Use case |
 |-------|--------|------|-------------|
-| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | List the VFS mounts visible to the agent, with virtual paths and access rights |
+| `list_mounts` | `ListMountsTool` (`Orkeon.Tools.Abstractions`) | `AddOrkeonAbstractionTools()` | List the VFS mounts visible to the agent, with virtual paths and access rights. Typed result `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }`; **breaking rename** of the result fields (formerly `path` / `rights` / `overrides[{ path, rights }]`) |
 | `local_embed_text` | `LocalEmbedTool` (`Orkeon.Tools.Embeddings.Local`) | `AddOrkeonLocalEmbeddings()` | Embed texts on-device (BGE-micro-v2 ONNX, 384 dims, CPU — no network, no API key) |
 
 ## Host-side tools

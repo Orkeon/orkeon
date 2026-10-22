@@ -6,3 +6,5 @@ Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowDeviceCodeAsync(string
 Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowRedirectRejectedAsync(string! account, string! reason, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Abstractions.Security.AgentRootGuard
 static Orkeon.Tools.Abstractions.Security.AgentRootGuard.Check(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, string! virtualPath) -> Orkeon.Domain.Tools.Security.PathValidationResult?
+*REMOVED*override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteTypedAsync(Orkeon.Tools.Abstractions.Tools.ListMountsRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Abstractions.Tools.ListMountsResponse!>!

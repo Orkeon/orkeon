@@ -41,6 +41,34 @@ declare global {
         readonly citations: readonly RagCitation[];
     }
 
+    /** One golden question of a `rag_eval` dataset (YAML `cases[]`). */
+    interface RagEvalCase {
+        /** Unique identifier of the case within the dataset. */
+        id: string;
+        /** Question asked to the pipeline. */
+        question: string;
+        /** Source references expected in the top-k retrieved (ground truth for recall/MRR). */
+        relevant?: string[];
+        /** Substrings the answer must contain (heuristic answer-relevance). */
+        expected_substrings?: string[];
+        /** Reference answer used by the LLM judge. */
+        reference_answer?: string;
+        /** Free tags used to filter cases in gates. */
+        tags?: string[];
+    }
+
+    /** Golden dataset read by `rag_eval` (YAML file; a bare list of cases is accepted too). */
+    interface RagEvalDataset {
+        /** Dataset name (default: the file name). */
+        name?: string;
+        /** Virtual path of the corpus ingested before the evaluation. */
+        corpus?: string;
+        /** Collection evaluated (default: derived from the dataset name). */
+        collection?: string;
+        /** The questions; at least one. */
+        cases: RagEvalCase[];
+    }
+
     namespace rag {
         /**
          * Ingest sources into a collection (incremental: unchanged sources are

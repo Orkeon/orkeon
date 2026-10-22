@@ -152,7 +152,8 @@ public static class ScriptingCliServiceCollectionExtensions
                     DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
                     ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                     LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
-                });
+                },
+                ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });
 
         // Transpiler: fall back to PassThrough when esbuild isn't configured.

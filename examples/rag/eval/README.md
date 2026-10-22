@@ -123,6 +123,10 @@ gets **measured, not proclaimed**.
 
 ## Schema
 
+The schema is published as `interface RagEvalDataset` / `RagEvalCase` in
+[`rag.d.ts`](../../../src/scripting/Orkeon.Scripting/Typings/rag.d.ts). A case without `question`
+is refused with an error naming `case #<index> ('<id>')` and the field.
+
 Mapping form (used here) — snake_case keys:
 
 ```yaml

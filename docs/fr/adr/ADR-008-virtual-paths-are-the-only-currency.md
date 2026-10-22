@@ -38,7 +38,7 @@ Les conséquences n'étaient pas théoriques. Un montage issu d'une mount-string
 `MountVisibility.AgentFacing` — `Parse` n'a aucun moyen de dire autre chose — donc ces dossiers
 étaient listés aux agents :
 
-- `list_mounts` retournait `C:\Users\…\mon-equipe` comme **chemin** de montage ;
+- `list_mounts` retournait `C:\Users\…\mon-equipe` comme **chemin** de montage (depuis le 2026-10-22 le résultat typé nomme le champ `virtual_path`, avec `access` et `overrides[{ virtual_path, access }]`) ;
 - tout message de refus nomme les montages disponibles, et
   `FileSystemService.CollectBasePaths` **exemptait délibérément les montages identité de la
   rédaction** (les rédiger aurait produit `Available mounts: [REDACTED]`), donc le garde-fou était

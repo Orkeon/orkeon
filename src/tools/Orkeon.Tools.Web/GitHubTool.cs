@@ -14,7 +14,7 @@ namespace Orkeon.Tools.Web;
 public sealed record GitHubRequest
 {
     /// <summary>Gets the action to perform.</summary>
-    [FieldSchema(Description = "Action to perform: list_issues, create_issue, get_pr, search_repos, get_repo", IsRequired = true)]
+    [FieldSchema(Description = "Action to perform: list_issues, create_issue, create_pr, get_pr, search_repos, get_repo", IsRequired = true)]
     public string Action { get; init; } = "";
 
     /// <summary>Gets the repository owner (GitHub username or organization).</summary>
@@ -36,6 +36,14 @@ public sealed record GitHubRequest
     /// <summary>Gets the body content for create operations.</summary>
     [FieldSchema(Description = "Body content for create operations", IsRequired = false)]
     public string? Body { get; init; }
+
+    /// <summary>Gets the base branch for create_pr.</summary>
+    [FieldSchema(Description = "Base branch for create_pr", IsRequired = false)]
+    public string? Base { get; init; }
+
+    /// <summary>Gets the head branch for create_pr.</summary>
+    [FieldSchema(Description = "Head branch for create_pr", IsRequired = false)]
+    public string? Head { get; init; }
 
     /// <summary>Gets the search query string for search operations.</summary>
     [FieldSchema(Description = "Search query string for search operations", IsRequired = false)]
@@ -96,7 +104,7 @@ public sealed record GitHubItem
 /// </summary>
 [ToolContract("github",
     Name = "github",
-    Description = "Interact with GitHub API v3: list/create issues, read PRs, search repos.",
+    Description = "Interact with GitHub API v3: list/create issues, create/read PRs, search repos. create_pr (base, head, title, optional body) needs a token with pull-request write scope.",
     Category = "Web Operations")]
 public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 {
@@ -106,12 +114,12 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     private static readonly HashSet<string> ValidActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "list_issues", "create_issue", "get_pr", "search_repos", "get_repo"
+        "list_issues", "create_issue", "create_pr", "get_pr", "search_repos", "get_repo"
     };
 
     private static readonly HashSet<string> ActionsRequiringOwnerRepo = new(StringComparer.OrdinalIgnoreCase)
     {
-        "list_issues", "create_issue", "get_pr", "get_repo"
+        "list_issues", "create_issue", "create_pr", "get_pr", "get_repo"
     };
 
     private readonly string? _personalAccessToken;
@@ -131,10 +139,10 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Action))
-            return "Action is required. Supported actions: list_issues, create_issue, get_pr, search_repos, get_repo";
+            return "Action is required. Supported actions: list_issues, create_issue, create_pr, get_pr, search_repos, get_repo";
 
         if (!ValidActions.Contains(request.Action))
-            return $"Unsupported action: {request.Action}. Supported actions: list_issues, create_issue, get_pr, search_repos, get_repo";
+            return $"Unsupported action: {request.Action}. Supported actions: list_issues, create_issue, create_pr, get_pr, search_repos, get_repo";
 
         if (ActionsRequiringOwnerRepo.Contains(request.Action))
         {
@@ -150,6 +158,16 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         if (string.Equals(request.Action, "create_issue", StringComparison.OrdinalIgnoreCase) &&
             string.IsNullOrWhiteSpace(request.Title))
             return "Title is required for action 'create_issue'";
+
+        if (string.Equals(request.Action, "create_pr", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+                return "Title is required for action 'create_pr'";
+            if (string.IsNullOrWhiteSpace(request.Base))
+                return "Base is required for action 'create_pr'";
+            if (string.IsNullOrWhiteSpace(request.Head))
+                return "Head is required for action 'create_pr'";
+        }
 
         if (string.Equals(request.Action, "search_repos", StringComparison.OrdinalIgnoreCase) &&
             string.IsNullOrWhiteSpace(request.Query))
@@ -177,6 +195,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
                 {
                     "list_issues" => await ListIssuesAsync(request, cancellationToken).ConfigureAwait(false),
                     "create_issue" => await CreateIssueAsync(request, cancellationToken).ConfigureAwait(false),
+                    "create_pr" => await CreatePullRequestAsync(request, cancellationToken).ConfigureAwait(false),
                     "get_pr" => await GetPullRequestAsync(request, cancellationToken).ConfigureAwait(false),
                     "search_repos" => await SearchRepositoriesAsync(request, cancellationToken).ConfigureAwait(false),
                     "get_repo" => await GetRepositoryAsync(request, cancellationToken).ConfigureAwait(false),
@@ -266,6 +285,46 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         {
             Success = true,
             Action = "create_issue",
+            Items = item is not null ? [item] : [],
+            TotalCount = item is not null ? 1 : 0
+        };
+    }
+
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
+        Justification = "Request content ownership is transferred to HttpClient.PostAsync.")]
+    private async Task<GitHubResponse> CreatePullRequestAsync(GitHubRequest request, CancellationToken ct)
+    {
+        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/pulls";
+        var payload = new Dictionary<string, string?>
+        {
+            ["title"] = request.Title,
+            ["body"] = request.Body,
+            ["base"] = request.Base,
+            ["head"] = request.Head
+        };
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync(new Uri(url), content, ct).ConfigureAwait(false);
+        var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new GitHubResponse
+            {
+                Success = false,
+                Action = "create_pr",
+                Error = $"GitHub API returned {(int)response.StatusCode}: {responseBody}"
+            };
+        }
+
+        var item = ParseSingleItem(responseBody);
+
+        LogGitHubAction("create_pr", request.Owner, request.Repo, 1);
+
+        return new GitHubResponse
+        {
+            Success = true,
+            Action = "create_pr",
             Items = item is not null ? [item] : [],
             TotalCount = item is not null ? 1 : 0
         };

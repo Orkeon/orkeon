@@ -1,3 +1,7 @@
 #nullable enable
 override Orkeon.Tools.Web.ScrapeElementTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Web.WebScrapeTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Tools.Web.GitHubRequest.Base.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Base.init -> void
+Orkeon.Tools.Web.GitHubRequest.Head.get -> string?
+Orkeon.Tools.Web.GitHubRequest.Head.init -> void

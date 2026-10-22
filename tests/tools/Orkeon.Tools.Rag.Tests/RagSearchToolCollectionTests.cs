@@ -19,7 +19,7 @@ public class RagSearchToolCollectionTests
         var store = new RecordingRaggableStore(
             [new SearchHit { Fqn = "pkg.Foo", Score = 0.91 }]);
 
-        var tool = new RagSearchTool(pipeline, store);
+        using var tool = new RagSearchTool(pipeline, store);
 
         var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?>
@@ -34,7 +34,7 @@ public class RagSearchToolCollectionTests
         Assert.Equal(0, pipeline.CallCount);
         Assert.Equal("where is Foo declared?", store.LastQuery?.Text);
         Assert.Equal(5, store.LastQuery?.TopK);
-        Assert.Contains("pkg.Foo", resp.Result!.ToString()!, StringComparison.Ordinal);
+        Assert.Contains("pkg.Foo", RagSearchResultView.From(resp.Result).Answer!, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class RagSearchToolCollectionTests
         };
         var store = new RecordingRaggableStore([]);
 
-        var tool = new RagSearchTool(pipeline, store);
+        using var tool = new RagSearchTool(pipeline, store);
 
         var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?> { ["question"] = "generic" }),
@@ -55,7 +55,7 @@ public class RagSearchToolCollectionTests
         Assert.True(resp.Success);
         Assert.Equal(0, store.SemanticCalls);
         Assert.Equal(1, pipeline.CallCount);
-        Assert.Contains("pipeline answer", resp.Result!.ToString()!, StringComparison.Ordinal);
+        Assert.Equal("pipeline answer", RagSearchResultView.From(resp.Result).Answer);
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class RagSearchToolCollectionTests
         // GAP-02: Orkeon:Rag:Collection is the collection an agent means when it names
         // none. The constant 'default' matched no collection a crew declares.
         var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "kb answer" } };
-        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
+        using var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
 
         var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?> { ["question"] = "refund?" }),
@@ -78,7 +78,7 @@ public class RagSearchToolCollectionTests
     public async Task CallAsync_without_collection_or_configured_default_queries_the_default_constant()
     {
         var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "answer" } };
-        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: null);
+        using var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: null);
 
         await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?> { ["question"] = "q" }),
@@ -91,7 +91,7 @@ public class RagSearchToolCollectionTests
     public async Task CallAsync_an_explicit_collection_wins_over_the_configured_default()
     {
         var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "answer" } };
-        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
+        using var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
 
         await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?> { ["question"] = "q", ["collection"] = "procedures" }),
@@ -107,7 +107,7 @@ public class RagSearchToolCollectionTests
         {
             Answer = new RagAnswer { Text = "pipeline fallback" },
         };
-        var tool = new RagSearchTool(pipeline);
+        using var tool = new RagSearchTool(pipeline);
 
         var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?>
@@ -131,7 +131,7 @@ public class RagSearchToolCollectionTests
                 new SearchHit { Fqn = "pkg.B", Score = 0.7, Signature = "func B()" },
             ]);
 
-        var tool = new RagSearchTool(pipeline, store);
+        using var tool = new RagSearchTool(pipeline, store);
 
         var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
             new Dictionary<string, object?>
@@ -141,7 +141,7 @@ public class RagSearchToolCollectionTests
                 ["collection"] = "raggable-tree",
             }), TestContext.Current.CancellationToken);
 
-        var text = Assert.IsType<string>(resp.Result);
+        var text = RagSearchResultView.From(resp.Result).Answer!;
         Assert.Contains("- [pkg.A] (score: 0.90): class A", text, StringComparison.Ordinal);
         Assert.Contains("- [pkg.B] (score: 0.70): func B()", text, StringComparison.Ordinal);
     }

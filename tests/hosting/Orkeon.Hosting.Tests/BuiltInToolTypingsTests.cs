@@ -150,6 +150,20 @@ public sealed class BuiltInToolTypingsTests : IDisposable
         return (process.ExitCode, await stdout + await stderr);
     }
 
+    [Fact]
+    [Trait("BR", "RT-27")]
+    public async Task ShouldTypeListMountsResponse_WhenTypingsGenerated()
+    {
+        var rendered = BuiltInToolTypings.Render(await RegisteredTools.ReadAsync(_root));
+
+        var line = rendered.ReplaceLineEndings("\n").Split('\n')
+            .Single(l => l.Contains("listMounts(", StringComparison.Ordinal));
+        Assert.DoesNotContain("Promise<unknown>", line, StringComparison.Ordinal);
+        Assert.Contains("mounts", rendered, StringComparison.Ordinal);
+        Assert.Contains("virtual_path: string;", rendered, StringComparison.Ordinal);
+        Assert.Contains("access: string;", rendered, StringComparison.Ordinal);
+    }
+
     private static string? FindOnPath(string program) =>
         (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)

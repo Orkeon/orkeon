@@ -597,6 +597,13 @@ published number instead of a claim:
   when the `balanced` profile's aggregate recall@5 or MRR drops below the
   floors (`--min-recall 0.80 --min-mrr 0.70`, the workflow's `env:` block). Cases tagged `correctif` are excluded from the gates: they are seeded
   to fail single-shot retrieval on purpose (see below).
+- **Schema**: published as `interface RagEvalDataset` / `RagEvalCase` in the scripting typings
+  (`src/scripting/Orkeon.Scripting/Typings/rag.d.ts`). A case without `question` is refused with
+  an error naming `case #<index> ('<id>')` and the missing field.
+- **Hosts**: the `rag` script namespace (`rag.retrieve`, `rag.ingest`, …) is bound in the three
+  hosts — `orkeon run`, the REPL and the daemon (`RunnerExecution`) — through one
+  `RagScriptingBackendFactory.Build(IServiceProvider)` that resolves `IIngestionPipeline` from DI,
+  so the per-collection ingest lock is shared with `rag_ingest`.
 
 ## Corrective RAG (CRAG)
 

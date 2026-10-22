@@ -1,9 +1,8 @@
+using System.Text.Json.Serialization;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
-using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
-using ProtocolToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
 
 namespace Orkeon.Tools.Abstractions.Tools;
 
@@ -14,9 +13,11 @@ public sealed record ListMountsRequest;
 public sealed record ListMountsResponse
 {
     /// <summary>Whether the operation succeeded.</summary>
+    [JsonPropertyName("success")]
     public bool Success { get; init; }
 
     /// <summary>The available mount points.</summary>
+    [JsonPropertyName("mounts")]
     public IReadOnlyList<MountInfoDto> Mounts { get; init; } = [];
 }
 
@@ -24,12 +25,15 @@ public sealed record ListMountsResponse
 public sealed record MountInfoDto
 {
     /// <summary>The virtual path of the mount.</summary>
+    [JsonPropertyName("virtual_path")]
     public string Path { get; init; } = "";
 
     /// <summary>The access rights for this mount.</summary>
+    [JsonPropertyName("access")]
     public string Rights { get; init; } = "";
 
     /// <summary>Sub-path overrides within the mount.</summary>
+    [JsonPropertyName("overrides")]
     public IReadOnlyList<OverrideDto> Overrides { get; init; } = [];
 }
 
@@ -37,9 +41,11 @@ public sealed record MountInfoDto
 public sealed record OverrideDto
 {
     /// <summary>The sub-path of the override.</summary>
+    [JsonPropertyName("virtual_path")]
     public string Path { get; init; } = "";
 
     /// <summary>The access rights for this override.</summary>
+    [JsonPropertyName("access")]
     public string Rights { get; init; } = "";
 }
 
@@ -47,7 +53,7 @@ public sealed record OverrideDto
 /// Tool that lists all available virtual file system mounts with their paths and access rights.
 /// This tool is intended for LLM agents to discover which file system areas are accessible.
 /// </summary>
-public class ListMountsTool : ToolBase
+public class ListMountsTool : ToolBase<ListMountsRequest, ListMountsResponse>
 {
     private readonly IFileSystemService _fileSystemService;
 
@@ -75,11 +81,10 @@ public class ListMountsTool : ToolBase
     }
 
     /// <inheritdoc />
-    protected override Task<ProtocolToolCallResponse> ExecuteCoreAsync(
-        ProtocolToolCallRequest request, CancellationToken cancellationToken)
+    protected override Task<ListMountsResponse> ExecuteTypedAsync(
+        ListMountsRequest request, CancellationToken cancellationToken)
     {
-        var mounts = _fileSystemService.GetAvailableMounts();
-        var mountDtos = mounts.Select(m => new MountInfoDto
+        var mountDtos = _fileSystemService.GetAvailableMounts().Select(m => new MountInfoDto
         {
             Path = m.VirtualPath,
             Rights = FormatRights(m.DefaultRights),
@@ -90,16 +95,7 @@ public class ListMountsTool : ToolBase
             }).ToList()
         }).ToList();
 
-        var resultDict = new Dictionary<string, object>
-        {
-            ["success"] = true,
-            ["mounts"] = mountDtos
-        };
-
-        return Task.FromResult(new ProtocolToolCallResponse(
-            Success: true,
-            Result: resultDict,
-            Error: null));
+        return Task.FromResult(new ListMountsResponse { Success = true, Mounts = mountDtos });
     }
 
     /// <summary>

@@ -10,3 +10,5 @@ Orkeon.Scripting.Builders.JsAgentBuilder.effort(string! level) -> Orkeon.Scripti
 Orkeon.Scripting.ScriptHost.RunAsync(string! virtualPath, System.Action<string!>! consoleSink, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<object?>!
 Orkeon.Scripting.Builders.JsCrewBuilder.concurrency(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Runtime.JsAgentContext.spawnBackground.get -> System.Func<string!, string!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Bindings.RagScriptingBackendFactory
+static Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(System.IServiceProvider! services) -> Orkeon.Scripting.Bindings.RagScriptingBackend?

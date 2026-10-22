@@ -1,5 +1,6 @@
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
+using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Abstractions.Tools;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
@@ -31,10 +32,9 @@ public class ListMountsToolTests
         var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
 
         Assert.True(response.Success);
-        var dict = Assert.IsType<Dictionary<string, object>>(response.Result);
-        Assert.Equal(true, dict["success"]);
-        var mounts = Assert.IsType<List<MountInfoDto>>(dict["mounts"]);
-        Assert.Empty(mounts);
+        var root = ResultJson(response);
+        Assert.True(root.GetProperty("success").GetBoolean());
+        Assert.Equal(0, root.GetProperty("mounts").GetArrayLength());
     }
 
     [Fact]
@@ -52,19 +52,19 @@ public class ListMountsToolTests
         var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
 
         Assert.True(response.Success);
-        var dict = Assert.IsType<Dictionary<string, object>>(response.Result);
-        var dtos = Assert.IsType<List<MountInfoDto>>(dict["mounts"]);
-        Assert.Equal(3, dtos.Count);
+        var dtos = ResultJson(response).GetProperty("mounts");
+        Assert.Equal(3, dtos.GetArrayLength());
 
         var workspace = dtos[0];
-        Assert.Equal("/workspace", workspace.Path);
-        Assert.Equal("rw", workspace.Rights);
-        var ov = Assert.Single(workspace.Overrides);
-        Assert.Equal("secrets", ov.Path);
-        Assert.Equal("ro", ov.Rights);
+        Assert.Equal("/workspace", workspace.GetProperty("virtual_path").GetString());
+        Assert.Equal("rw", workspace.GetProperty("access").GetString());
+        var overrides = workspace.GetProperty("overrides");
+        Assert.Equal(1, overrides.GetArrayLength());
+        Assert.Equal("secrets", overrides[0].GetProperty("virtual_path").GetString());
+        Assert.Equal("ro", overrides[0].GetProperty("access").GetString());
 
-        Assert.Equal("rwnd", dtos[1].Rights);
-        Assert.Equal("ro", dtos[2].Rights);
+        Assert.Equal("rwnd", dtos[1].GetProperty("access").GetString());
+        Assert.Equal("ro", dtos[2].GetProperty("access").GetString());
     }
 
     [Fact]
@@ -78,9 +78,8 @@ public class ListMountsToolTests
 
         var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
 
-        var dict = Assert.IsType<Dictionary<string, object>>(response.Result);
-        var dtos = Assert.IsType<List<MountInfoDto>>(dict["mounts"]);
-        Assert.Equal(FileAccessRights.Write.ToString(), dtos[0].Rights);
+        var dtos = ResultJson(response).GetProperty("mounts");
+        Assert.Equal(FileAccessRights.Write.ToString(), dtos[0].GetProperty("access").GetString());
     }
 
     /// <summary>
@@ -98,11 +97,37 @@ public class ListMountsToolTests
 
         var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
 
-        var dict = Assert.IsType<Dictionary<string, object>>(response.Result);
-        var dto = Assert.Single(Assert.IsType<List<MountInfoDto>>(dict["mounts"]));
-        Assert.Equal("rw", dto.Rights);
+        var mountsJson = ResultJson(response).GetProperty("mounts");
+        Assert.Equal(1, mountsJson.GetArrayLength());
+        Assert.Equal("rw", mountsJson[0].GetProperty("access").GetString());
         Assert.DoesNotContain(typeof(MountInfoDto).GetProperties(), p => p.Name.Contains("Id", StringComparison.Ordinal));
-        Assert.DoesNotContain("|", System.Text.Json.JsonSerializer.Serialize(dto), StringComparison.Ordinal);
+        Assert.DoesNotContain("|", mountsJson.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-27")]
+    public async Task ShouldExposeVirtualPathAndAccess_WhenListMountsCalled()
+    {
+        var mounts = new List<MountInfo>
+        {
+            new("/workspace", FileAccessRights.ReadWrite,
+                [new SubPathOverride("secrets", FileAccessRights.ReadOnly)]),
+        };
+        using var tool = new ListMountsTool(new StubFileSystemService(mounts));
+
+        var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
+
+        Assert.IsType<ToolBase<ListMountsRequest, ListMountsResponse>>(tool, exactMatch: false);
+        var mount = ResultJson(response).GetProperty("mounts")[0];
+        Assert.Equal(
+            "{\"virtual_path\":\"/workspace\",\"access\":\"rw\",\"overrides\":[{\"virtual_path\":\"secrets\",\"access\":\"ro\"}]}",
+            mount.GetRawText());
+    }
+
+    private static System.Text.Json.JsonElement ResultJson(Orkeon.Domain.Tools.Protocol.ToolCallResponse response)
+    {
+        Assert.True(response.Success);
+        return System.Text.Json.JsonSerializer.SerializeToElement(response.Result);
     }
 
     /// <summary>

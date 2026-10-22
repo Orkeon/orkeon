@@ -1560,7 +1560,8 @@ public static partial class RunnerExecution
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
-            });
+            },
+            ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the
         // script resolve consistently across .ork.ts authors. EsbuildNotFoundException
