@@ -170,6 +170,21 @@ public sealed class IncrementalReindexEngine
         var keptEdges = currentTree.Edges
             .Where(e => nodesById.ContainsKey(e.FromId) && nodesById.ContainsKey(e.ToId) && !newIds.Contains(e.FromId))
             .ToList();
+        var changedCsprojs = changedVirtual.ToHashSet(StringComparer.Ordinal);
+        var editedProjectIds = allNodes
+            .Where(n => n.Kind == UniversalNodeKind.Package && changedCsprojs.Contains(ProjectGraphBuilder.CsprojPath(n)))
+            .Select(n => n.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        keptEdges.RemoveAll(e => e.Kind == EdgeKind.ProjectDepends && editedProjectIds.Contains(e.FromId));
+        newEdges.AddRange(await ProjectGraphBuilder.BuildProjectDependsAsync(
+            allNodes,
+            _fileSystem, changedCsprojs, ct).ConfigureAwait(false));
+        keptEdges.RemoveAll(e => e.Kind == EdgeKind.Tests);
+        var keptIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+        newEdges.AddRange(ProjectGraphBuilder.BuildContainsEdges(newNodes).Where(e => !keptIds.Contains(e.Id)));
+        var linkable = new List<RaggableEdge>(keptEdges);
+        linkable.AddRange(newEdges);
+        newEdges.AddRange(TestEdgeLinker.Link(allNodes, linkable));
         foreach (var edge in keptEdges.Where(e => newIds.Contains(e.ToId)))
         {
             DependencyGraphBuilder.LinkNodes(edge.Kind, nodesById[edge.FromId], nodesById[edge.ToId]);

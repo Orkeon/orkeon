@@ -201,6 +201,54 @@ public class RaggableTreeSerializerTests
         Assert.True(loaded.InLambda);
     }
 
+    [Fact]
+    [Trait("BR", "RT-33")]
+    public async Task ShouldLoadGraphSerializedWithOldKindNames_WhenWorkflowKindsAdded()
+    {
+        var json = """
+            {"version":"2.0","indexId":"old","createdAt":"2026-01-01T00:00:00Z","nodeCount":0,"edgeCount":4,"nodes":[],
+             "edges":[
+              {"id":"e1","fromId":"a","toId":"b","kind":"Imports"},
+              {"id":"e2","fromId":"a","toId":"c","kind":"Calls"},
+              {"id":"e3","fromId":"a","toId":"d","kind":"Contains"},
+              {"id":"e4","fromId":"a","toId":"e","kind":"Extends"}]}
+            """;
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var snapshot = await new RaggableTreeSerializer().DeserializeAsync(stream, CancellationToken.None);
+
+        Assert.NotNull(snapshot);
+        Assert.Equal(
+            [EdgeKind.Imports, EdgeKind.Calls, EdgeKind.Contains, EdgeKind.Extends],
+            snapshot!.Tree.Edges.Select(e => e.Kind).ToArray());
+    }
+
+    [Fact]
+    [Trait("BR", "RT-33")]
+    public async Task ShouldRoundTripNewEdgeKinds_WhenGraphIsSerialised()
+    {
+        var a = BuildMinimalNode("sym::a");
+        var b = BuildMinimalNode("sym::b");
+        RaggableEdge[] edges =
+        [
+            new("t1", a.Id, b.Id, EdgeKind.Tests),
+            new("d1", a.Id, b.Id, EdgeKind.Documents),
+            new("p1", a.Id, b.Id, EdgeKind.ProjectDepends),
+        ];
+        var tree = new RaggableTree([a, b], edges, new Dictionary<string, RaggableNode>());
+        var serializer = new RaggableTreeSerializer();
+
+        await using var stream = new MemoryStream();
+        await serializer.SerializeAsync(tree, "idx", stream, CancellationToken.None);
+        stream.Position = 0;
+        var snapshot = await serializer.DeserializeAsync(stream, CancellationToken.None);
+
+        Assert.NotNull(snapshot);
+        Assert.Equal(
+            [EdgeKind.Tests, EdgeKind.Documents, EdgeKind.ProjectDepends],
+            snapshot!.Tree.Edges.Select(e => e.Kind).ToArray());
+    }
+
     // ----- Helpers -----
 
     private static RaggableTree BuildSampleTree()

@@ -147,6 +147,8 @@ public sealed class RaggableTreeBuilder
             var edges = await gb.BuildDependenciesAsync(_resolver, ct).ConfigureAwait(false);
             allEdges.AddRange(edges);
         }
+        allEdges.AddRange(await ProjectGraphBuilder.BuildEdgesAsync(allNodes, _fileSystem, ct).ConfigureAwait(false));
+        allEdges.AddRange(TestEdgeLinker.Link(allNodes, allEdges));
 
         // Phase 3c — Fingerprinters
         foreach (var fp in _fingerprinters)

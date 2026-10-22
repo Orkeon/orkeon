@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 
 namespace Orkeon.Analysis.Abstractions.DTOs.Tools;
 
@@ -23,7 +25,13 @@ public sealed record GraphMetrics(int NodeCount, int EdgeCount, int CycleCount, 
 public sealed record DependencyGraphRequest
 {
     public NodeLevel Scope { get; init; } = NodeLevel.L1_Package;
-    public ImmutableArray<EdgeKind> EdgeKinds { get; init; } = [EdgeKind.Imports];
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
+    [JsonPropertyName("edge_kinds")]
+    public ImmutableArray<string> EdgeKinds { get; init; } = ["imports"];
+
+    [FieldSchema(Description = "Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope.", ItemsType = "string", IsRequired = false)]
+    [JsonPropertyName("node_kinds")]
+    public ImmutableArray<string> NodeKinds { get; init; } = [];
     public bool IncludeExternal { get; init; }
     public string? RootFqn { get; init; }
     public int MaxNodes { get; init; } = 200;
@@ -44,7 +52,13 @@ public sealed record DependencyGraphResponse
 public sealed record SubGraphRequest
 {
     public ImmutableArray<string> Seeds { get; init; } = [];
-    public ImmutableArray<EdgeKind> EdgeKinds { get; init; } = [EdgeKind.Calls];
+    [FieldSchema(Description = "Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted.", ItemsType = "string", IsRequired = false)]
+    [JsonPropertyName("edge_kinds")]
+    public ImmutableArray<string> EdgeKinds { get; init; } = ["calls"];
+
+    [FieldSchema(Description = "Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node.", ItemsType = "string", IsRequired = false)]
+    [JsonPropertyName("node_kinds")]
+    public ImmutableArray<string> NodeKinds { get; init; } = [];
     public int Depth { get; init; } = 2;
     public Direction Direction { get; init; } = Direction.Forward;
     public int MaxNodes { get; init; } = 100;

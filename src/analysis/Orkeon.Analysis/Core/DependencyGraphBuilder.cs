@@ -189,9 +189,14 @@ public sealed class DependencyGraphBuilder
         foreach (var call in calls)
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
-            if (ownerSymbol is null) continue;
             var name = ExtractCallName(call);
-            if (string.IsNullOrEmpty(name)) continue;
+            if (_adapter.LanguageName == "typescript" && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
+            {
+                var testOwner = ownerSymbol ?? ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
+                if (testOwner is not null) TestEdgeLinker.MarkTest(testOwner);
+            }
+
+            if (ownerSymbol is null || string.IsNullOrEmpty(name)) continue;
 
             var location = new SourceLocation(
                 ownerSymbol.VirtualFilePath,
@@ -333,6 +338,9 @@ public sealed class DependencyGraphBuilder
             }
         }
     }
+
+    private static bool IsBareIdentifierCall(TsNode call) =>
+        (call.GetChildForField("function") ?? call.GetChildForField("callee"))?.Type == "identifier";
 
     private static string ExtractCallName(TsNode call)
     {

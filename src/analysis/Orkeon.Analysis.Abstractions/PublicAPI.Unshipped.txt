@@ -91,3 +91,22 @@ static Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.operator !=(Orke
 static Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? left, Orkeon.Analysis.Abstractions.DTOs.Tools.MemberAccessCost? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.operator !=(Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? right) -> bool
 static Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall.operator ==(Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? left, Orkeon.Analysis.Abstractions.DTOs.Tools.PortCall? right) -> bool
+Orkeon.Analysis.Abstractions.EdgeKind.Tests = 32 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.EdgeKind.Documents = 64 -> Orkeon.Analysis.Abstractions.EdgeKind
+Orkeon.Analysis.Abstractions.EdgeKind.ProjectDepends = 128 -> Orkeon.Analysis.Abstractions.EdgeKind
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+*REMOVED*Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.NodeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.DependencyGraphRequest.NodeKinds.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.EdgeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.NodeKinds.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.SubGraphRequest.NodeKinds.init -> void
+Orkeon.Analysis.Abstractions.GraphKindNames
+static Orkeon.Analysis.Abstractions.GraphKindNames.EdgeKindNames.get -> System.Collections.Immutable.ImmutableArray<string!>
+static Orkeon.Analysis.Abstractions.GraphKindNames.NodeKindNames.get -> System.Collections.Immutable.ImmutableArray<string!>
+static Orkeon.Analysis.Abstractions.GraphKindNames.TryParseEdgeKind(string? name, out Orkeon.Analysis.Abstractions.EdgeKind kind) -> bool
+static Orkeon.Analysis.Abstractions.GraphKindNames.TryParseNodeKind(string? name, out System.Func<Orkeon.Analysis.Abstractions.Models.RaggableNode!, bool>! matches) -> bool
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseEdgeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Func<Orkeon.Analysis.Abstractions.Models.RaggableNode!, bool>!
+static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeQueries(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery!>

@@ -9,7 +9,7 @@ namespace Orkeon.Tests.Shared.Fixtures.DevRepo;
 public sealed class DevRepoFixtureBuilder
 {
     private readonly List<(string Path, string Content)> _files = [];
-    private readonly List<(string Name, string[] References)> _projects = [];
+    private readonly List<(string Name, string[] References, bool IsTest)> _projects = [];
 
     public DevRepoFixtureBuilder WithCSharpFile(string path, string source) => Add(path, source);
 
@@ -19,7 +19,14 @@ public sealed class DevRepoFixtureBuilder
 
     public DevRepoFixtureBuilder WithProject(string name, params string[] references)
     {
-        _projects.Add((name, references));
+        _projects.Add((name, references, false));
+        return this;
+    }
+
+    /// <summary>A test project: its csproj declares <c>IsTestProject</c> and references the given projects.</summary>
+    public DevRepoFixtureBuilder WithTestProject(string name, params string[] references)
+    {
+        _projects.Add((name, references, true));
         return this;
     }
 
@@ -34,11 +41,12 @@ public sealed class DevRepoFixtureBuilder
             fs.WriteAllTextAsync(virtualPath, content, CancellationToken.None).GetAwaiter().GetResult();
             written.Add(virtualPath);
         }
-        foreach (var (name, references) in _projects)
+        foreach (var (name, references, isTest) in _projects)
         {
             var refs = string.Concat(references.Select(r =>
                 $"    <ProjectReference Include=\"..\\{r}\\{r}.csproj\" />\n"));
-            var csproj = "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup>\n" + refs + "  </ItemGroup>\n</Project>\n";
+            var props = isTest ? "  <PropertyGroup>\n    <IsTestProject>true</IsTestProject>\n  </PropertyGroup>\n" : string.Empty;
+            var csproj = "<Project Sdk=\"Microsoft.NET.Sdk\">\n" + props + "  <ItemGroup>\n" + refs + "  </ItemGroup>\n</Project>\n";
             var virtualPath = $"{root}/{name}/{name}.csproj";
             fs.WriteAllTextAsync(virtualPath, csproj, CancellationToken.None).GetAwaiter().GetResult();
             written.Add(virtualPath);

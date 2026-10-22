@@ -236,6 +236,49 @@ Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), pytho
 - **Write**: guarded by a backup copy restored when the write fails. It is not atomic.
 - A refusal (stale hash, parse error, read-only mount, path outside the agent working root) is a failed result with the file untouched; a successful write marks the index dirty.
 
+## Graph kinds
+
+`GraphKindNames` (`Orkeon.Analysis.Abstractions`) maps lowercase workflow names onto the existing enums.
+
+| Edge name | `EdgeKind` |
+|---|---|
+| `contains` | `Contains` |
+| `calls` | `Calls` |
+| `imports` | `Imports` |
+| `inherits` | `Extends` + `Implements` |
+| `tests` | `Tests` |
+| `documents` | `Documents` |
+| `project_depends` | `ProjectDepends` |
+
+| Node name | Graph node |
+|---|---|
+| `file` | file node (`Module`) |
+| `project` | `Package` node of a marker csproj or package.json |
+| `namespace` | `Namespace` |
+| `type` | class, interface, trait, struct, enum, record, type |
+| `member` | function, method, constructor, destructor, operator, property, field, constant, variable |
+| `doc_section` | `Section` |
+| `test` | `Method` node carrying the `test` tag |
+
+`EdgeKind` gains `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`). There is no `references` kind: nothing produces it. `documents` edges are declared; they are produced by the graph-queries work.
+
+### Using the names
+
+- `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph` take the lowercase workflow names. Legacy enum names (`Imports`) are still accepted, case-insensitively. An unknown name is refused, naming it. Responses keep the enum names.
+- When `node_kinds` is given, `dependency_graph` still honours `Scope`: the kinds and tags go into the node query, and `MaxNodes` bounds the result.
+
+### How the graph is built
+
+- `ProjectGraphBuilder` reads each csproj the discoverer already found (one read per csproj) and turns each `ProjectReference` into a `project_depends` edge (`\` and `..` are normalised), plus `Contains` edges from parent to child.
+- `TestEdgeLinker` tags `[Fact]` and `[Theory]` methods (and the owner of a TypeScript `test` or `it` call) `test`, and links `tests` edges to the symbols they call in referenced projects.
+- Both run on the full build and on the incremental reindex, where they run after the fingerprinters.
+
+### Limits
+
+- The FQN is name-only: a `tests` edge to an overloaded member links every overload.
+- A test calling a symbol newly added in another file gets no `tests` edge until a full reindex.
+- A TypeScript test callback has no node: its calls are owned by the enclosing symbol, else by the file node. Today only the tag is applied to the file node; the `tests` edges of a file-level TypeScript test are not yet produced.
+
 ## Extensibility
 
 ### Adding a language

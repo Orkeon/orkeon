@@ -237,6 +237,49 @@ Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), p
 - **Écriture** : protégée par une copie de sauvegarde restaurée en cas d'échec. Elle n'est pas atomique.
 - Un refus (hash périmé, erreur d'analyse, montage en lecture seule, chemin hors de la racine de travail de l'agent) est un résultat en échec, fichier intact ; une écriture réussie marque l'index sale.
 
+## Types de graphe
+
+`GraphKindNames` (`Orkeon.Analysis.Abstractions`) fait correspondre des noms de workflow en minuscules aux énumérations existantes.
+
+| Nom d'arête | `EdgeKind` |
+|---|---|
+| `contains` | `Contains` |
+| `calls` | `Calls` |
+| `imports` | `Imports` |
+| `inherits` | `Extends` + `Implements` |
+| `tests` | `Tests` |
+| `documents` | `Documents` |
+| `project_depends` | `ProjectDepends` |
+
+| Nom de nœud | Nœud du graphe |
+|---|---|
+| `file` | nœud fichier (`Module`) |
+| `project` | nœud `Package` d'un csproj ou package.json marqueur |
+| `namespace` | `Namespace` |
+| `type` | classe, interface, trait, struct, enum, record, type |
+| `member` | fonction, méthode, constructeur, destructeur, opérateur, propriété, champ, constante, variable |
+| `doc_section` | `Section` |
+| `test` | nœud `Method` portant le tag `test` |
+
+`EdgeKind` gagne `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` sont déclarées ; elles sont produites par le travail sur les requêtes de graphe.
+
+### Utiliser les noms
+
+- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph` prennent les noms de workflow en minuscules. Les noms d'énumération historiques (`Imports`) restent acceptés, sans tenir compte de la casse. Un nom inconnu est refusé, en le nommant. Les réponses gardent les noms d'énumération.
+- Quand `node_kinds` est donné, `dependency_graph` respecte toujours `Scope` : les genres et les tags passent dans la requête de nœuds, et `MaxNodes` borne le résultat.
+
+### Construction du graphe
+
+- `ProjectGraphBuilder` lit chaque csproj déjà trouvé par le découvreur (une lecture par csproj) et transforme chaque `ProjectReference` en arête `project_depends` (`\` et `..` sont normalisés), plus des arêtes `Contains` du parent vers l'enfant.
+- `TestEdgeLinker` tague `test` les méthodes `[Fact]` et `[Theory]` (et le propriétaire d'un appel TypeScript `test` ou `it`), et relie par des arêtes `tests` les symboles qu'elles appellent dans les projets référencés.
+- Les deux s'exécutent à la construction complète et à la réindexation incrémentale, où ils passent après les fingerprinters.
+
+### Limites
+
+- Le FQN ne porte que le nom : une arête `tests` vers un membre surchargé relie toutes les surcharges.
+- Un test qui appelle un symbole récemment ajouté dans un autre fichier n'a pas d'arête `tests` avant une réindexation complète.
+- Un callback de test TypeScript n'a pas de nœud : ses appels appartiennent au symbole englobant, sinon au nœud fichier. Aujourd'hui seul le tag est posé sur le nœud fichier ; les arêtes `tests` d'un test TypeScript au niveau fichier ne sont pas encore produites.
+
 ## Extensibilité
 
 ### Ajouter un langage

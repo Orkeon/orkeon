@@ -170,11 +170,14 @@ declare global {
 
         /** `dependency_graph` - Dependency graph at a given scope (L1 packages, L2 modules, L3 symbols). */
         dependencyGraph(input?: {
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
             include_dot?: boolean;
             include_external?: boolean;
             include_mermaid?: boolean;
             max_nodes?: number;
+            /** Restrict nodes to these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node of the scope. */
+            node_kinds?: readonly string[];
             root_fqn?: string | null;
             scope?: string;
         }, ctx?: ExecutionContext): Promise<{
@@ -1139,9 +1142,12 @@ declare global {
         subGraph(input?: {
             depth?: number;
             direction?: string;
+            /** Edge kinds to follow, by name: contains, calls, imports, inherits, tests, documents, project_depends. Legacy enum names (Imports, Extends, Implements...) are still accepted. */
             edge_kinds?: readonly string[];
             include_mermaid?: boolean;
             max_nodes?: number;
+            /** Keep only expanded nodes of these kinds, by name: file, project, namespace, type, member, doc_section, test. Empty keeps every node. */
+            node_kinds?: readonly string[];
             seeds?: readonly string[];
         }, ctx?: ExecutionContext): Promise<{
             readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
