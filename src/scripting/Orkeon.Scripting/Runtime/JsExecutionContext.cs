@@ -31,6 +31,9 @@ public class JsExecutionContext
     public CancellationToken signal => _ct;
     public JsLlmFacade llm { get; }
 
+    /// <summary>The background children this context started, and the inbox of their completions.</summary>
+    internal BackgroundAgents Background { get; }
+
     internal JsExecutionContext(JsExecutionEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -44,14 +47,19 @@ public class JsExecutionContext
         log = new JsLogger(environment.Logger);
         events = environment.Crew.EventBroker;
         var (tools, unknownTools) = ResolveAgentTools(environment);
+        // The spawn tool holds no resource of its own: its ToolBase disposal has nothing to release.
+#pragma warning disable CA2000
+        var spawn = new SpawnAgentScriptTool(environment);
+        Background = new BackgroundAgents(environment.Engine, spawn, environment.Permit, environment.Ct);
         llm = new JsLlmFacade(
             environment.Engine, environment.LlmProvider, environment.Ct,
-            tools,
+            [.. tools, spawn],
             new JsLlmActGuards
             {
                 Budget = environment.Budget,
                 PermissionGate = environment.PermissionGate,
                 UnknownTools = unknownTools,
+                Background = Background,
             },
             new JsLlmObservability
             {
@@ -61,6 +69,7 @@ public class JsExecutionContext
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
             });
+#pragma warning restore CA2000
     }
 
     /// <summary>

@@ -75,7 +75,7 @@ public sealed class ActUnknownToolTests
 
         var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
 
-        Assert.Equal(["file_read"], provider.OfferedTools);
+        Assert.Equal(["file_read", "spawn_agent"], provider.OfferedTools);
         Assert.Single(tool.Calls);
         Assert.StartsWith("final: ", result.tasks[0].output!.ToString()!, StringComparison.Ordinal);
     }

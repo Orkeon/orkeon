@@ -41,6 +41,7 @@ public sealed partial class JsLlmFacade
     private readonly string _crewName;
     private readonly string _agentName;
     private readonly UnknownAgentTools? _unknownTools;
+    private readonly BackgroundAgents? _background;
 
     // The run scope of the agent body this facade belongs to (JsAgentContext), attached once and
     // ended by the context's Dispose; null for a context outside any agent body (a crew hook, a
@@ -77,6 +78,7 @@ public sealed partial class JsLlmFacade
         _budget = guards?.Budget;
         _permissionGate = guards?.PermissionGate;
         _unknownTools = guards?.UnknownTools;
+        _background = guards?.Background;
         _deltaSink = observability?.DeltaSink;
         _logger = observability?.Logger;
         _crewName = observability?.CrewName ?? string.Empty;
@@ -665,7 +667,9 @@ public sealed partial class JsLlmFacade
                                 ? JSON.stringify(await onToolCall(JSON.parse(s.argumentsOf(id))))
                                 : kind === "onToolResult"
                                     ? JSON.stringify(await onToolResult(...(a => [a.call, a.result])(JSON.parse(s.argumentsOf(id)))))
-                                    : await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id))));
+                                    : kind === "spawn"
+                                        ? await s.spawn(s.argumentsOf(id))
+                                        : await s.toolOf(id).execute(JSON.parse(s.argumentsOf(id))));
                         }
                         catch (e) { s.settleTool(id, false, e); }
                     }
@@ -713,6 +717,8 @@ public sealed partial class JsLlmFacade
             _facade = facade;
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
+            WaitsForChildren = options is not null && options.IsObject() && options.Get("waitFor") is { } waitFor
+                && waitFor.IsString() && string.Equals(waitFor.AsString(), "children", StringComparison.Ordinal);
             PermissionMode = ResolvePermissionMode(options);
             // A mode the script poses on a host without a gate checks nothing: say so once for
             // this call rather than drop it in silence (#128).
@@ -725,12 +731,17 @@ public sealed partial class JsLlmFacade
                 ? SelectSubset(facade, subset)
                 : facade._tools;
             Tools = offered
-                .Select(t => t is JsTool script ? new ScriptToolProxy(script, this) : t)
+                .Select(t => t switch
+                {
+                    JsTool script => new ScriptToolProxy(script, this),
+                    SpawnAgentScriptTool spawn => new SpawnToolProxy(spawn, this),
+                    _ => t,
+                })
                 .ToList();
             ToolSchemas = Tools.Count > 0 ? Tools.Select(t => t.Schema).ToList() : null;
             HasToolCallback = options is not null && options.IsObject() && options.Get("onToolCall") is Jint.Native.Function.Function;
             HasToolResultCallback = options is not null && options.IsObject() && options.Get("onToolResult") is Jint.Native.Function.Function;
-            if (HasToolCallback || HasToolResultCallback || Tools.Any(t => t is ScriptToolProxy))
+            if (HasToolCallback || HasToolResultCallback || Tools.Any(t => t is ScriptToolProxy or SpawnToolProxy))
                 _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
             // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
@@ -746,6 +757,9 @@ public sealed partial class JsLlmFacade
             if (streamDeltas)
                 _deltas = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 
+            // Taken here, on the engine thread inside act(): a spawnBackground made while this act
+            // runs finds it as the innermost active act.
+            Owner = facade._background?.BeginAct();
             run = () => facade.RunActAsync(this);
         }
 
@@ -759,8 +773,14 @@ public sealed partial class JsLlmFacade
             return facade._tools.Where(t => subset.Contains(t.Name, StringComparer.OrdinalIgnoreCase)).ToList();
         }
 
+        /// <summary>The background-children owner of this act; <c>null</c> without a background registry.</summary>
+        internal object? Owner { get; }
+
         internal string Prompt { get; }
         internal int MaxIterations { get; }
+
+        /// <summary>Whether the call ends its wait only once every background child has settled (<c>waitFor: "children"</c>).</summary>
+        internal bool WaitsForChildren { get; }
         internal string PermissionMode { get; }
         internal LlmConfig Config { get; }
         internal IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema>? ToolSchemas { get; }
@@ -845,6 +865,17 @@ public sealed partial class JsLlmFacade
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
         public string kindOf(string id) => _pending[id].Kind;
 
+        /// <summary>Starts the child of a <c>spawn_agent</c> call, on the engine thread; returns its promise.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
+        public JsValue spawn(string argumentsJson) =>
+            JsHostError.Guard(_facade._engine, () => Tools.OfType<SpawnToolProxy>().Single().Tool.Start(argumentsJson));
+
+        /// <summary>Posts one <c>spawn_agent</c> call to the JS pump and awaits the child's output.</summary>
+        internal Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallSpawnAsync(
+            IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken)
+            => PostAsync(new PendingScriptToolCall("spawn", null, JsonSerializer.Serialize(arguments)), cancellationToken);
+
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
             Justification = "Called by the act trampoline (ActFactorySource) through Jint. The type is private so the script sees nothing else.")]
         public string argumentsOf(string id) => _pending[id].ArgumentsJson;
@@ -863,21 +894,12 @@ public sealed partial class JsLlmFacade
             {
                 call.Completion.TrySetResult(ok
                     ? new Orkeon.Domain.Tools.Protocol.ToolCallResponse(true, value.ToObject(), null)
-                    : new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, FailureMessage(value)));
+                    : new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, BackgroundAgents.FailureMessage(value)));
             }
             catch (Exception ex)
             {
                 call.Completion.TrySetResult(new Orkeon.Domain.Tools.Protocol.ToolCallResponse(false, null, ex.Message));
             }
-        }
-
-        private static string FailureMessage(JsValue error)
-        {
-            if (JsHostError.Unwrap(error) is { } clr)
-                return JsExceptionUnwrap.UnwrapToInnermost(clr).Message;
-            if (error.IsObject() && error.AsObject().Get("message") is { } message && message.IsString())
-                return message.AsString();
-            return error.ToString();
         }
 
         /// <summary>Posts one call of <paramref name="tool"/> to the JS tool pump and awaits its settlement.</summary>
@@ -919,6 +941,36 @@ public sealed partial class JsLlmFacade
             }
             return await call.Completion.Task.ConfigureAwait(false);
         }
+    }
+
+    /// <summary><c>spawn_agent</c> as the act loop sees it: calls cross over to the session's JS tool pump.</summary>
+    private sealed class SpawnToolProxy(SpawnAgentScriptTool tool, ActSession session) : IBaseTool
+    {
+        internal SpawnAgentScriptTool Tool { get; } = tool;
+
+        public string Name => Tool.Name;
+        public string Description => Tool.Description;
+        public Orkeon.Domain.Tools.Protocol.ToolSchema Schema => Tool.Schema;
+        public ToolAccess Access => Tool.Access;
+
+        public Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            return session.CallSpawnAsync(request.Parameters, cancellationToken);
+        }
+
+        public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
+        {
+            var arguments = string.IsNullOrWhiteSpace(input)
+                ? new Dictionary<string, object?>()
+                : JsonSerializer.Deserialize<Dictionary<string, object?>>(input) ?? new Dictionary<string, object?>();
+            var response = await CallAsync(new ProtocolToolCallRequest(Name, arguments), cancellationToken).ConfigureAwait(false);
+            return response.Success
+                ? ToolResult.CreateSuccess(JsonSerializer.Serialize(response.Result))
+                : ToolResult.CreateError(response.Error ?? "Tool execution failed.");
+        }
+
+        public bool ValidateInput(string input) => Tool.ValidateInput(input);
     }
 
     private sealed record PendingScriptToolCall(string Kind, JsTool? Tool, string ArgumentsJson)
@@ -997,6 +1049,9 @@ public sealed partial class JsLlmFacade
                 completedIterations = i;
                 _ct.ThrowIfCancellationRequested();
                 session.ThrowIfAborted();
+                // Each completion of a background child is one user turn, delivered once.
+                if (_background is not null)
+                    messages.AddRange(_background.Drain().Select(m => new LlmMessage { Role = "user", Content = m }));
                 // Pre-flight gate: refuse to pay for another LLM turn once any budget
                 // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
                 // host via JsCrew.TryUnwrapTypedHostException).
@@ -1012,7 +1067,17 @@ public sealed partial class JsLlmFacade
 
                 var (calls, assistantTurn) = ReadToolCalls(resp);
                 if (assistantTurn is null)
-                    return new { output = RenderAnswer(resp), iterations = i + 1 };
+                {
+                    var answer = RenderAnswer(resp);
+                    if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
+                        return new { output = answer, iterations = i + 1 };
+
+                    // The model answered while children are out: wait for their next completion
+                    // (or for the last of them to settle) and take another turn.
+                    messages.Add(new LlmMessage { Role = "assistant", Content = answer });
+                    await _background.WaitForCompletionAsync(_ct).ConfigureAwait(false);
+                    continue;
+                }
 
                 activity?.SetTag("orkeon.llm.act.tool", string.Join(",", calls.Select(c => c.ToolName)));
 
@@ -1048,6 +1113,8 @@ public sealed partial class JsLlmFacade
             // Return, interrupt, throw or cancellation: the pump reading `deltas` must always
             // see the end of the channel, or `act` would never settle.
             session.CompleteDeltas();
+            if (session.Owner is { } owner)
+                _background?.EndAct(owner);
             enteredRunScope?.Dispose();
             if (ownedRunScope is not null)
                 await ownedRunScope.DisposeAsync().ConfigureAwait(false);

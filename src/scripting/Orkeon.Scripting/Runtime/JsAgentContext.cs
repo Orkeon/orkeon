@@ -148,6 +148,11 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         return spawned;
     });
 
+    // Synchronous and bridged like spawn: the child starts on the engine thread, and a refusal
+    // (unknown agent, spent budget) is a JavaScript throw at the call site.
+    public Func<string, string, JsValue> spawnBackground => (agent, input) =>
+        JsHostError.Guard(_engineRef, () => Background.Spawn(agent, input));
+
     /// <summary>
     /// The read-only view of <paramref name="raw"/> the body sees: a Proxy whose <c>with</c>
     /// is <see cref="stateWith"/> and whose every other set is refused. <c>undefined</c> and

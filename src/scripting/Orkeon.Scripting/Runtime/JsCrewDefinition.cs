@@ -37,6 +37,9 @@ internal sealed record JsCrewDefinition
 
     public string? Goal { get; init; }
 
+    /// <summary>The crew-wide cap on children running at once; 4 unless the script says otherwise.</summary>
+    public int Concurrency { get; init; } = 4;
+
     /// <summary>
     /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks
     /// and recalls the closest ones before each task, in the host's default memory store, under the

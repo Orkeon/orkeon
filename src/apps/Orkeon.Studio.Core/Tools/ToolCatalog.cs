@@ -257,6 +257,7 @@ public static class ToolCatalog
             new("human_input"),
             new("ask_question_to_coworker"),
             new("delegate_work_to_coworker"),
+            new("spawn_agent"),
         ]),
         new(MountsFamily,
         [

@@ -140,6 +140,12 @@ declare global {
         /** Maximum number of tool-call iterations. Default: 10. `0` or `Infinity` = unlimited. */
         maxIterations?: number;
         /**
+         * `"children"`: when the model answers while background children (`ctx.spawnBackground`) are
+         * out, wait for their completions and take another turn, until every child has settled or
+         * `maxIterations` is reached. The end of the call cancels the children still running.
+         */
+        waitFor?: "children";
+        /**
          * System prompt seeded as the first message of the tool-call conversation.
          * Wins over any `SystemMessage` set in the provider configuration (the
          * conversation-level message has precedence on every provider). Omitted:
@@ -280,6 +286,12 @@ declare global {
         stateWith(mutate: (prev: Readonly<TState>) => TState | Promise<TState>): Promise<Readonly<TState>>;
         lock<T>(name: string, fn: () => Promise<T>): Promise<T>;
         spawn<TIn, TOut>(builder: AgentBuilder<TIn, TOut, unknown>): Agent<TIn, TOut>;
+        /**
+         * Starts a crew agent as a child in the background and returns its ticket at once. Its
+         * completion reaches the next `ctx.llm.act` turn as a user message, `agent <name> completed: <text>`
+         * (`agent <name> failed: <reason>` when it fails). At most `crew.concurrency(n)` children run at once.
+         */
+        spawnBackground(agent: string, input: string): { readonly id: number; readonly agent: string };
     }
 
     /** `ctx.log`: extra arguments are joined to the message by a space, objects as JSON. */

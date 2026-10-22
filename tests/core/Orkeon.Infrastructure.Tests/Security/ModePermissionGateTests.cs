@@ -304,6 +304,18 @@ public class ModePermissionGateTests
     }
 
     [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldAllowSpawnAgent_WhenModeIsAcceptEdits()
+    {
+        // Membership of EditTools is visible only here: an unknown name would ask, an edit tool is auto-accepted.
+        var gate = new ModePermissionGate(isInteractive: true);
+
+        var verdict = await gate.CheckAsync("spawn_agent", NoArgs, "acceptEdits", cancellationToken: Ct);
+
+        Assert.Equal(PermissionAction.Allow, verdict.Action);
+    }
+
+    [Fact]
     public async Task Plan_deny_message_names_the_mode()
     {
         var gate = new ModePermissionGate();

@@ -32,6 +32,9 @@ internal sealed record JsExecutionEnvironment
     /// </summary>
     public Orkeon.Domain.Autonomous.AgentExecutionBudget? Budget { get; init; }
 
+    /// <summary>The permit of the crew's concurrency gate the agent runs under as a child, null for a run holding none.</summary>
+    internal GatePermit? Permit { get; init; }
+
     /// <summary>
     /// Optional per-tool-call permission gate consulted by <c>ctx.llm.act</c> before each
     /// tool execution. Null = ungated (pre-F2 behaviour).

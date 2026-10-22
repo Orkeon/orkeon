@@ -76,6 +76,7 @@ public sealed partial class JsCrew
         Memory = definition.Memory;
         Planning = definition.Planning;
         MaxRpm = definition.MaxRpm;
+        ConcurrencyGate = new SemaphoreSlim(definition.Concurrency, definition.Concurrency);
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;
@@ -97,7 +98,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts are intentionally unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -111,6 +112,7 @@ public sealed partial class JsCrew
         LlmProvider = agent.Builder.LlmConfig?.ProfileProvider ?? _llmProvider,
         BuiltInTools = _builtInTools,
         Budget = budget,
+        Permit = permit,
         PermissionGate = _permissionGate,
         DeltaSink = _deltaSink,
         ToolInvocation = _toolInvocation,
@@ -468,6 +470,15 @@ public sealed partial class JsCrew
 
     internal SemaphoreSlim GetInstanceSemaphore(JsAgent agent)
         => _instanceSemaphores.GetOrAdd(agent.id, _ => new SemaphoreSlim(1, 1));
+
+    /// <summary>The crew-wide cap on children running at once (<c>crewBuilder().concurrency(n)</c>, default 4).</summary>
+    internal SemaphoreSlim ConcurrencyGate { get; }
+
+    private static async Task<JsValue> AcquireGateAsync(GatePermit permit, CancellationToken? signal)
+    {
+        await permit.AcquireAsync(signal ?? CancellationToken.None).ConfigureAwait(false);
+        return JsValue.Undefined;
+    }
 
     // The open attempts of this crew in opening order; the last one is what the broker attributes to.
     // Guarded by its own lock: attempts open on the draining thread and close there or, when a host

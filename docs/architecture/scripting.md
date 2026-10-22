@@ -151,6 +151,22 @@ the call starts (one `ActSession` per call):
 Both callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); the permission gate always comes first.
 
+## Child agents: `spawn_agent` and `ctx.spawnBackground`
+
+- **`spawn_agent`** is a model-callable tool, always offered in `act`. It runs a named crew agent as a
+  child (`{ "agent", "input" }`) and returns its output. The child runs under a child budget
+  (delegation depth + 1); a refusal (depth or spawn budget exhausted, unknown agent) is a failed tool
+  result the model reads, never an exception. The run is engine work: it goes through the root pump,
+  like script tools (see the threading model below).
+- **`ctx.spawnBackground(agent, input)`** starts a crew agent in the background and returns its ticket
+  (`{ id, agent }`) at once. Its completion reaches the script-context inbox, and the next `act` turn
+  reads it as a user message: `agent <name> completed: <text>`, or `agent <name> failed: <reason>`.
+- **`waitFor: "children"`** (option of `act`): when the model answers while background children are
+  still running, the loop waits for them and feeds their messages back. Children still running when
+  the `act` ends are cancelled.
+- **`crew.concurrency(n)`** bounds the children running at once (default 4, `n` >= 1). The slot is
+  acquired before the per-agent semaphore.
+
 ## Coexistence with YAML
 
 The YAML configuration path remains supported and unchanged. Scripts and YAML

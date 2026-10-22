@@ -60,14 +60,22 @@ public sealed partial class ToolCatalogTests
     {
         var names = ToolCatalog.All.Select(t => t.Name).ToList();
 
-        Assert.Equal(ToolsARunExposes, names.Count);
+        Assert.Equal(ToolsARunExposes + 1, names.Count);
         Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
-        // The three families the matrix keeps out of a run never appear: RAG, Slack, the
-        // code interpreter (concrete type only), spawn_agent (wired by no shipped root).
+        // The families the matrix keeps out of a run never appear: RAG, Slack, the
+        // code interpreter (concrete type only).
         Assert.DoesNotContain("rag_search", names);
         Assert.DoesNotContain("slack_send_message", names);
         Assert.DoesNotContain("code_interpreter", names);
-        Assert.DoesNotContain("spawn_agent", names);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldContainSpawnAgent_WhenCatalogListed()
+    {
+        var names = ToolCatalog.All.Select(t => t.Name).ToList();
+
+        Assert.Single(names, n => n == "spawn_agent");
     }
 
     [Fact]

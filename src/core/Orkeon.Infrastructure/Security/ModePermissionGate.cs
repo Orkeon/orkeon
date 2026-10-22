@@ -47,7 +47,7 @@ public sealed class ModePermissionGate : IPermissionGate
     /// </summary>
     private static readonly HashSet<string> EditTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "file_write",
+        "file_write", "spawn_agent",
     };
 
     private readonly bool _isInteractive;

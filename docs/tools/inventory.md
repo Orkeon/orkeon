@@ -242,6 +242,7 @@ Seventeen tools over the RaggableTree semantic code graph — the full guide is
 | Tool | Class | Registration | Use case |
 |-------|--------|------|-------------|
 | `progress_report` | `ProgressReportTool` (`Orkeon.Cli.Commands.Scripting`) | `AddScriptCommands(...)` (the scripted-commands host) | Report the progress of a long-running scripted operation to the CLI status line |
+| `spawn_agent` | `SpawnAgentScriptTool` (`Orkeon.Scripting`) | the script host, always offered to the model in `act` | Run a named agent of the crew as a child and return its output, under a child budget (depth + 1); `{ "agent": "researcher", "input": "Summarise the findings" }` |
 
 ## Outside the catalogue
 

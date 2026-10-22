@@ -8,3 +8,5 @@ Orkeon.Scripting.Runtime.JsPermissionGateState
 Orkeon.Scripting.Runtime.JsPermissionGateState.enabled.get -> bool
 Orkeon.Scripting.Builders.JsAgentBuilder.effort(string! level) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.ScriptHost.RunAsync(string! virtualPath, System.Action<string!>! consoleSink, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<object?>!
+Orkeon.Scripting.Builders.JsCrewBuilder.concurrency(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Runtime.JsAgentContext.spawnBackground.get -> System.Func<string!, string!, Jint.Native.JsValue!>!

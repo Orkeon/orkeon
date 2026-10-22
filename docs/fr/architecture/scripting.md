@@ -154,6 +154,24 @@ au début de l'appel (une `ActSession` par appel) :
 Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
 
+## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
+
+- **`spawn_agent`** est un outil appelable par le modèle, toujours proposé dans `act`. Il exécute un
+  agent nommé de la crew comme enfant (`{ "agent", "input" }`) et renvoie sa sortie. L'enfant tourne
+  sous un budget enfant (profondeur de délégation + 1) ; un refus (profondeur ou budget de spawn
+  épuisé, agent inconnu) est un résultat d'outil en échec que le modèle lit, jamais une exception.
+  L'exécution est du travail du moteur : elle passe par la pompe racine, comme les outils de script
+  (voir le modèle de threading ci-dessous).
+- **`ctx.spawnBackground(agent, input)`** démarre un agent de la crew en arrière-plan et renvoie son
+  ticket (`{ id, agent }`) aussitôt. Sa complétion arrive dans la boîte de réception du contexte de
+  script, et le tour suivant d'`act` la lit comme un message utilisateur : `agent <name> completed: <text>`
+  ou `agent <name> failed: <reason>`.
+- **`waitFor: "children"`** (option d'`act`) : quand le modèle répond alors que des enfants en
+  arrière-plan tournent encore, la boucle les attend et réinjecte leurs messages. Les enfants encore
+  actifs à la fin d'`act` sont annulés.
+- **`crew.concurrency(n)`** borne le nombre d'enfants simultanés (4 par défaut, `n` >= 1). Le créneau
+  est acquis avant le sémaphore par agent.
+
 ## Coexistence avec YAML
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews

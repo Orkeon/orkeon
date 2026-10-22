@@ -114,6 +114,11 @@ declare global {
          * applies none, and says so.
          */
         maxRpm(value: number): this;
+        /**
+         * The most children (`ctx.spawnBackground`, the `spawn_agent` tool) the crew runs at once.
+         * Default 4; must be 1 or more.
+         */
+        concurrency(n: number): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
         /** `message` is the displayed message of the failure — the innermost CLR message, or a script error's own. */

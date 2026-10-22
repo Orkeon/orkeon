@@ -37,7 +37,7 @@ public sealed partial class JsCrew
                 describeError, decideAction, delay,
                 recordResult, finishRun,
                 crewHookOf, hookContext, displayMessage, logHookFailure,
-                resolveAgent,
+                resolveAgent, openPermit, gateAcquire, gateRelease,
             } = h;
 
             // One run's JS-side handle: the CLR scope plus `wait`, which races a script promise
@@ -175,7 +175,7 @@ public sealed partial class JsCrew
                 }
             };
 
-            return {
+            const api = {
                 run: async (options) => runWith(open("run", options)),
                 runFromHost: (scope) => runWith(scope),
                 async *runStream(options) { return yield* steps(open("stream", options)); },
@@ -197,11 +197,23 @@ public sealed partial class JsCrew
                     }
                 },
 
+                // A child spawned by spawn_agent or ctx.spawnBackground: one permit of the crew-wide
+                // concurrency gate, taken before (and as a separate acquisition from) the agent's own
+                // instance semaphore, handed back on success, failure and cancellation.
+                async runChild(agentOrName, input, options) {
+                    const inherited = options.permit != null;
+                    const permit = inherited ? options.permit : openPermit();
+                    if (!inherited) await gateAcquire(permit, options);
+                    try { return await api.runAgent(agentOrName, input, { ...options, permit }); }
+                    finally { if (!inherited) gateRelease(permit); }
+                },
+
                 // Lifecycle hooks (onAgentStart / onAgentStop): the CLR hands a returned promise here
                 // so its rejection is reported once (a CLR log call) and never left as an unobserved
                 // rejection. Never awaited, never drained.
                 observe: (promise, onRejected) => { Promise.resolve(promise).then(undefined, onRejected); },
             };
+            return api;
         }
         """;
 
@@ -212,6 +224,9 @@ public sealed partial class JsCrew
 
     /// <summary>JS <c>async (agentOrName, input, options?) =&gt; TOut</c>; see the class remarks.</summary>
     public JsValue runAgent => RunModuleInstance.Get("runAgent");
+
+    /// <summary>JS <c>async (agentOrName, input, options?) =&gt; TOut</c>: <see cref="runAgent"/> under the crew-wide concurrency gate.</summary>
+    internal JsValue runChild => RunModuleInstance.Get("runChild");
 
     /// <summary>JS <c>async function* (options?) =&gt; CrewStreamEvent</c>; see the class remarks.</summary>
     public JsValue runStream => RunModuleInstance.Get("runStream");
@@ -244,8 +259,13 @@ public sealed partial class JsCrew
         open = (kind, options) => JsHostError.Guard(_engine, () =>
         {
             var (signal, timeout) = CrewRunOptions.From(options);
-            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
+            var scope = new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
                 CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
+            // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
+            if (options is not null && options.IsObject() && options.Get("budget").ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
+                scope.Budget = childBudget;
+            scope.Permit = options is not null && options.IsObject() ? options.Get("permit").ToObject() as GatePermit : null;
+            return scope;
         }),
         start = scope => JsHostError.Guard(_engine, scope.Start),
         endRun = scope => JsHostError.Guard(_engine, scope.End),
@@ -283,6 +303,9 @@ public sealed partial class JsCrew
         logHookFailure = (scope, hookName, err) => JsHostError.Guard(_engine,
             () => LogCrewHookFailed(_logger, name, hookName, DisplayMessage(err))),
         resolveAgent = (scope, value) => JsHostError.Guard(_engine, () => ResolveAgent(value)),
+        openPermit = () => new GatePermit(ConcurrencyGate),
+        gateAcquire = (permit, options) => AcquireGateAsync(permit, CrewRunOptions.From(options).Signal),
+        gateRelease = permit => JsHostError.Guard(_engine, permit.Close),
     };
 
     private static CrewRunKind ParseKind(string kind) => kind switch

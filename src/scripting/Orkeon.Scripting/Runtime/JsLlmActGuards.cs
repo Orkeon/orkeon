@@ -19,4 +19,7 @@ internal sealed record JsLlmActGuards
     /// rejects with an <see cref="Orkeon.Scripting.Exceptions.UnknownToolException"/> before any model call (GAP-27).
     /// </summary>
     public UnknownAgentTools? UnknownTools { get; init; }
+
+    /// <summary>The background children of the script context: <c>act</c> drains their completions and may wait for them.</summary>
+    internal BackgroundAgents? Background { get; init; }
 }
