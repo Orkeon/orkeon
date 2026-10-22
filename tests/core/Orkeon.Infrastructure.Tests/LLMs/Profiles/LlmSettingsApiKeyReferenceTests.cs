@@ -225,6 +225,20 @@ public sealed class LlmSettingsApiKeyReferenceTests
         Assert.Contains("\"ApiKeyEnvVar\": \"ZAI_API_KEY\"", profileError.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public void ShouldCarryMaxRateLimitWait_WhenSettingIsConfigured()
+    {
+        var configuration = Configuration(
+            ("Llm:BaseUrl", "https://api.z.ai/api/paas/v4"),
+            ("Llm:Model", "glm-5"),
+            ("Llm:MaxRateLimitWait", "00:10:00"));
+
+        var config = LlmSettings.ReadDefault(configuration, Empty);
+
+        Assert.Equal(TimeSpan.FromMinutes(10), config.MaxRateLimitWait);
+    }
+
     // ── blank values: the overlay of a Studio launch ────────────────────────
 
     [Fact]

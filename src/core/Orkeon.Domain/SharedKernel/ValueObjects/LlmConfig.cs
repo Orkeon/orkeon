@@ -148,6 +148,11 @@ public sealed record LlmConfig
     /// budget of the streaming path.
     /// </summary>
     public int MaxRetries { get; init; } = LlmDefaults.DefaultMaxRetries;
+    /// <summary>
+    /// The longest rate-limit window (429, or 529 with a reset header) a call waits out before it
+    /// fails with <see cref="Orkeon.Domain.Exceptions.LlmRateLimitException"/> (<c>Llm:MaxRateLimitWait</c>, 5 minutes by default).
+    /// </summary>
+    public TimeSpan MaxRateLimitWait { get; init; } = Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait;
 
     /// <summary>Gets the tool schemas to include in the LLM request payload.</summary>
     public IReadOnlyList<ToolSchema>? Tools { get; init; }

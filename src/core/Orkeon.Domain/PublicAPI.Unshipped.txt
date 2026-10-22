@@ -1356,3 +1356,12 @@ Orkeon.Domain.HumanInput.HumanInputContext.Multi.get -> bool
 Orkeon.Domain.HumanInput.HumanInputContext.Multi.init -> void
 Orkeon.Domain.HumanInput.HumanInputContext.Recommended.get -> int?
 Orkeon.Domain.HumanInput.HumanInputContext.Recommended.init -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException() -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message, System.Exception! innerException) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message, System.TimeSpan wait) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.Wait.get -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.get -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.init -> void
+static readonly Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait -> System.TimeSpan

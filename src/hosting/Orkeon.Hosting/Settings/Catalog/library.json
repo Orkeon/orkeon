@@ -498,6 +498,13 @@
       "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
     },
     {
+      "path": "Llm:MaxRateLimitWait",
+      "section": "Llm",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing."
+    },
+    {
       "path": "Llm:MaxRetries",
       "section": "Llm",
       "type": "integer",
@@ -548,6 +555,13 @@
       "type": "boolean",
       "default": false,
       "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
+    },
+    {
+      "path": "Llm:Profiles:<name>:MaxRateLimitWait",
+      "section": "Llm",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing."
     },
     {
       "path": "Llm:Profiles:<name>:MaxRetries",

@@ -85,6 +85,12 @@ internal class LlmProfileShape
     /// <summary>How many times a call that fails on a passing error is tried again; <c>0</c> never retries.</summary>
     public int? MaxRetries { get; set; } = LlmDefaults.DefaultMaxRetries;
 
+    /// <summary>
+    /// The longest rate-limit window a call waits out before it fails: a provider that announces a
+    /// longer one makes the call fail at once with a rate-limit error. <c>00:00:00</c> waits for nothing.
+    /// </summary>
+    public TimeSpan? MaxRateLimitWait { get; set; } = Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait;
+
     /// <summary>What a provider that can think before it answers is asked to do.</summary>
     public LlmThinkingShape? Thinking { get; set; }
 
