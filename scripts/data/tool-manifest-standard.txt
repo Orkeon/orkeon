@@ -65,6 +65,7 @@ mongodb_schema
 mysql_query
 node_outline
 node_read
+node_replace
 package_summary
 pdf_reader
 pdf_search

@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 18 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
+Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 19 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
 
 ## Vue d'ensemble
 
@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // les 18 tools agents (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // les 19 tools agents (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les cinq
@@ -143,8 +143,9 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `statement_query` | Requêtes structurelles L4 (if, try, return...) — chaque index porte les statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 | `node_outline` | Membres d'un fichier C# ou TypeScript avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | Un membre par sélecteur : texte, plage et SHA-256, lu sans coupure | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
+| `node_replace` | Remplace un nœud par sélecteur et SHA-256 attendu (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 
-Les 18 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+Les 19 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
@@ -223,6 +224,18 @@ Un sélecteur résout exactement un nœud ou échoue en listant les candidats. L
 Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
 
 `node_outline` liste les membres avec sélecteur, genre, plage d'octets et plage de lignes. `node_read` renvoie le texte d'un membre, sa plage et le SHA-256 de ses octets, sans coupure : l'outil porte sa propre borne de résultat (`node_read` = 256 000 caractères dans `AgentDefaults`), la coupure par défaut des résultats d'outil ne s'applique donc pas.
+
+## Éditeur structurel
+
+`node_replace` remplace un nœud (sélecteur de `node_outline`, hash de `node_read`) via `StructuralEditEngine` :
+
+- **Épissure d'octets** : seuls les octets du nœud changent ; le reste du fichier est identique à l'octet près.
+- **Refus d'un hash périmé** : le SHA-256 courant du nœud est comparé à `expected_hash` avant toute écriture ; un écart est refusé par une `StaleHashException` qui nomme le hash attendu et le hash réel.
+- **Validation par ré-analyse** : le résultat est analysé de nouveau et les diagnostics comparés par position ; un remplacement est refusé s'il introduit un diagnostic absent avant (Markdown n'a pas de validation d'analyse).
+- **Étendue remplacée** : elle inclut les commentaires et attributs de tête du nœud, donc un remplacement qui les omet les supprime. Une section Markdown remplace aussi ses sous-sections.
+- **Fins de ligne** du remplacement normalisées sur celles du fichier.
+- **Écriture** : protégée par une copie de sauvegarde restaurée en cas d'échec. Elle n'est pas atomique.
+- Un refus (hash périmé, erreur d'analyse, montage en lecture seule, chemin hors de la racine de travail de l'agent) est un résultat en échec, fichier intact ; une écriture réussie marque l'index sale.
 
 ## Extensibilité
 

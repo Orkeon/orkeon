@@ -18,6 +18,7 @@ public static class RaggableToolsExtensions
         services.AddTransient<IBaseTool, ImpactAnalysisTool>();
         services.AddTransient<IBaseTool, NodeOutlineTool>();
         services.AddTransient<IBaseTool, NodeReadTool>();
+        services.AddTransient<IBaseTool, NodeReplaceTool>();
         services.AddTransient<IBaseTool, PackageSummaryTool>();
         services.AddTransient<IBaseTool, StatementQueryTool>();
         services.AddTransient<IBaseTool, SubGraphTool>();

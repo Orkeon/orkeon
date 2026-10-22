@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 18 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
+Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 19 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
 
 ## Overview
 
@@ -145,8 +145,9 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `statement_query` | L4 structural queries (if, try, return...) — every index carries the statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
 | `node_outline` | Members of a C# or TypeScript file with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | One member by selector: text, range and SHA-256, read uncut | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
+| `node_replace` | Replace one node by selector and expected SHA-256 (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 
-The 18 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+The 19 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` carries the build knobs per call (`IndexCodebaseRequest`):
 `root_path` (required, a virtual path), `languages` (empty = auto-detect),
@@ -222,6 +223,18 @@ A selector resolves to exactly one node or fails listing candidates. A node's sp
 Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Declarations are addressable today in C# and TypeScript, sections in Markdown; the other shipped grammars are refused by name; a file whose extension no grammar claims is refused by name.
 
 `node_outline` lists the members with selector, kind, byte range and line range. `node_read` returns the text of one member, its range and the SHA-256 of its bytes, uncut: the tool carries its own result bound (`node_read` = 256 000 characters in `AgentDefaults`), so the default tool-result cut does not apply.
+
+## Structural editor
+
+`node_replace` replaces one node (selector from `node_outline`, hash from `node_read`) through `StructuralEditEngine`:
+
+- **Byte splice**: only the node's bytes change; the rest of the file is byte-identical.
+- **Stale-hash refusal**: the node's current SHA-256 is compared with `expected_hash` before any write; a mismatch is refused with a `StaleHashException` naming the expected and the actual hash.
+- **Re-parse validation**: the result is parsed again and diagnostics are compared by position; a replacement is refused when it introduces a diagnostic that was not there before (Markdown has no parse validation).
+- **Replaced span**: it includes the node's leading comments and attributes, so a replacement that omits them removes them. A Markdown section replaces its sub-sections too.
+- **Line endings** of the replacement are normalised to the file's.
+- **Write**: guarded by a backup copy restored when the write fails. It is not atomic.
+- A refusal (stale hash, parse error, read-only mount, path outside the agent working root) is a failed result with the file untouched; a successful write marks the index dirty.
 
 ## Extensibility
 

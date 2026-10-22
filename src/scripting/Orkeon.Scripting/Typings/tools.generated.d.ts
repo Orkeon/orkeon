@@ -737,6 +737,17 @@ declare global {
             readonly text: string;
         }>;
 
+        /** `node_replace` - Replaces one node of a file by selector and expected SHA-256 (from node_read): refused when the hash is stale or when the replacement introduces a parse error that was not there before; the file is then untouched. The replaced span includes the node's leading comments and attributes, so a replacement that omits them removes them; a Markdown section replaces its sub-sections too. Line endings are normalised to the file's. */
+        nodeReplace(input?: {
+            expected_hash?: string;
+            path?: string;
+            selector?: string;
+            text?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly new_hash: string;
+            readonly range: Record<string, unknown>;
+        }>;
+
         /** `package_summary` - Details about a package (L1): file count, symbol count, exports, dependencies. */
         packageSummary(input?: {
             fqn?: string;

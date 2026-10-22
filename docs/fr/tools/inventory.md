@@ -234,6 +234,7 @@ Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide compl
 | `statement_query` | `StatementQueryTool` | Requêter les statements L4 par genre, FQN parent, ou similarité sémantique |
 | `node_outline` | `NodeOutlineTool` | Lister les membres d'un fichier C# ou TypeScript avec sélecteurs, plages d'octets et de lignes |
 | `node_read` | `NodeReadTool` | Lire un membre par sélecteur : texte (commentaires et attributs de tête inclus), plage, SHA-256, sans coupure |
+| `node_replace` | `NodeReplaceTool` | Remplacer un nœud par sélecteur et SHA-256 attendu : refusé si le hash est périmé ou si une erreur d'analyse est introduite, fichier intact ; marque l'index sale. Classe Edit |
 
 ## Montages et embeddings locaux
 
@@ -455,6 +456,7 @@ correspondance alphabétique complète :
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
 | `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
 | `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |
+| `node_replace` | `NodeReplaceTool` | `Orkeon.Tools.Analysis` |
 | `package_summary` | `PackageSummaryTool` | `Orkeon.Tools.Analysis` |
 | `pdf_reader` | `PdfReaderTool` | `Orkeon.Tools.Data` |
 | `pdf_search` | `PdfSearchTool` | `Orkeon.Tools.Data` |

@@ -243,6 +243,7 @@ public static class ToolCatalog
             new("symbol_source"),
             new("node_outline"),
             new("node_read"),
+            new("node_replace"),
             new("codebase_search"),
             new("dependency_graph"),
             new("sub_graph"),

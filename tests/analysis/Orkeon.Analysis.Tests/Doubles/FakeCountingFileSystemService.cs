@@ -18,6 +18,15 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
         _inner = inner;
     }
 
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(string Path, byte[] Bytes)> _writes = new();
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(string Source, string Destination)> _copies = new();
+
+    /// <summary>Virtual paths and bytes written so far (text recorded as UTF-8), in call order.</summary>
+    public IReadOnlyList<(string Path, byte[] Bytes)> Writes => [.. _writes];
+
+    /// <summary>Copies requested so far, in call order.</summary>
+    public IReadOnlyList<(string Source, string Destination)> Copies => [.. _copies];
+
     /// <summary>Virtual paths read so far, in call order.</summary>
     public IReadOnlyList<string> Reads => [.. _reads];
 
@@ -54,7 +63,10 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
         => _inner.GetEntryKindAsync(virtualPath, ct);
 
     public Task<int> WriteAllTextAsync(string virtualPath, string content, CancellationToken ct)
-        => _inner.WriteAllTextAsync(virtualPath, content, ct);
+    {
+        _writes.Enqueue((virtualPath, System.Text.Encoding.UTF8.GetBytes(content)));
+        return _inner.WriteAllTextAsync(virtualPath, content, ct);
+    }
 
     public Task<bool> ExistsAsync(string virtualPath, CancellationToken ct)
         => _inner.ExistsAsync(virtualPath, ct);
@@ -65,8 +77,19 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
     public Task<bool> DeleteAsync(string virtualPath, bool recursive, CancellationToken ct)
         => _inner.DeleteAsync(virtualPath, recursive, ct);
 
-    public Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
-        => _inner.WriteAllBytesAsync(virtualPath, content, ct);
+    /// <summary>When set, a byte write first truncates the target through the inner service, then throws this.</summary>
+    public Exception? WriteFailure;
+
+    public async Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
+    {
+        if (WriteFailure is not null)
+        {
+            await _inner.WriteAllBytesAsync(virtualPath, [], ct);
+            throw WriteFailure;
+        }
+        _writes.Enqueue((virtualPath, (byte[])content.Clone()));
+        return await _inner.WriteAllBytesAsync(virtualPath, content, ct);
+    }
 
     public Task<int> AppendAllTextAsync(string virtualPath, string content, CancellationToken ct)
         => _inner.AppendAllTextAsync(virtualPath, content, ct);
@@ -80,6 +103,14 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
     public Task<Stream> OpenAppendStreamAsync(string virtualPath, CancellationToken ct = default)
         => _inner.OpenAppendStreamAsync(virtualPath, ct);
 
+    /// <summary>When set, a copy whose source ends with ".orkeon-edit.bak" (a restore) throws this.</summary>
+    public Exception? RestoreCopyFailure;
+
     public Task CopyAsync(string srcVirtualPath, string dstVirtualPath, bool overwrite = false, CancellationToken ct = default)
-        => _inner.CopyAsync(srcVirtualPath, dstVirtualPath, overwrite, ct);
+    {
+        _copies.Enqueue((srcVirtualPath, dstVirtualPath));
+        if (RestoreCopyFailure is not null && srcVirtualPath.EndsWith(".orkeon-edit.bak", StringComparison.Ordinal))
+            throw RestoreCopyFailure;
+        return _inner.CopyAsync(srcVirtualPath, dstVirtualPath, overwrite, ct);
+    }
 }

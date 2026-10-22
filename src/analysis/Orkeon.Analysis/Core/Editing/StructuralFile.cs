@@ -34,7 +34,7 @@ internal sealed class StructuralFile
         "type_alias_declaration",
     };
 
-    private const string MarkdownLanguage = "markdown";
+    internal const string MarkdownLanguage = "markdown";
 
     private static readonly HashSet<string> Walkable = new(StringComparer.Ordinal) { "csharp", "typescript" };
 
@@ -62,30 +62,44 @@ internal sealed class StructuralFile
         _sections = sections;
     }
 
+    public string Language { get; private init; } = string.Empty;
+
     public static async Task<StructuralFile> LoadAsync(IFileSystemService fs, TreeSitterParserPool pool, string virtualPath)
     {
         ArgumentNullException.ThrowIfNull(fs);
         ArgumentNullException.ThrowIfNull(pool);
+        var grammar = GrammarOf(virtualPath);
+        var bytes = await fs.TryReadAllBytesAsync(virtualPath, CancellationToken.None).ConfigureAwait(false)
+            ?? throw new FileNotFoundException("File not found.", virtualPath);
+        return Parse(pool, bytes, virtualPath, grammar.Language);
+    }
+
+    internal static StructuralFile FromBytes(TreeSitterParserPool pool, byte[] bytes, string virtualPath)
+        => Parse(pool, bytes, virtualPath, GrammarOf(virtualPath).Language);
+
+    private static GrammarInfo GrammarOf(string virtualPath)
+    {
         var extension = Path.GetExtension(virtualPath);
-        var grammar = LanguageRegistry.Shipped.FirstOrDefault(g =>
+        return LanguageRegistry.Shipped.FirstOrDefault(g =>
             (g.Language == MarkdownLanguage || Walkable.Contains(g.Language))
             && g.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
             ?? throw new UnsupportedExtensionException(extension);
+    }
 
-        var bytes = await fs.TryReadAllBytesAsync(virtualPath, CancellationToken.None).ConfigureAwait(false)
-            ?? throw new FileNotFoundException("File not found.", virtualPath);
+    private static StructuralFile Parse(TreeSitterParserPool pool, byte[] bytes, string virtualPath, string language)
+    {
         var bom = bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble) ? Encoding.UTF8.Preamble.Length : 0;
         var source = Encoding.UTF8.GetString(bytes.AsSpan(bom));
-        if (grammar.Language == MarkdownLanguage)
+        if (language == MarkdownLanguage)
         {
             var sections = new MarkdownDocumentMapper().Map(virtualPath, source)
                 .Where(n => n.Kind == UniversalNodeKind.Section).ToList();
-            return new StructuralFile(bytes, source, bom, null, sections) { _markdownPath = virtualPath };
+            return new StructuralFile(bytes, source, bom, null, sections) { _markdownPath = virtualPath, Language = language };
         }
 
-        using var parsed = pool.Parse(source, grammar.Language);
+        using var parsed = pool.Parse(source, language);
         var root = PathNode.Of(parsed.Root);
-        var file = new StructuralFile(bytes, source, bom, root, []);
+        var file = new StructuralFile(bytes, source, bom, root, []) { Language = language };
         file.Walk(root, string.Empty);
         return file;
     }

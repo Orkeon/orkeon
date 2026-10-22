@@ -127,3 +127,55 @@ static Orkeon.Tools.Analysis.NodeReadRequest.operator !=(Orkeon.Tools.Analysis.N
 static Orkeon.Tools.Analysis.NodeReadRequest.operator ==(Orkeon.Tools.Analysis.NodeReadRequest? left, Orkeon.Tools.Analysis.NodeReadRequest? right) -> bool
 static Orkeon.Tools.Analysis.NodeReadResponse.operator !=(Orkeon.Tools.Analysis.NodeReadResponse? left, Orkeon.Tools.Analysis.NodeReadResponse? right) -> bool
 static Orkeon.Tools.Analysis.NodeReadResponse.operator ==(Orkeon.Tools.Analysis.NodeReadResponse? left, Orkeon.Tools.Analysis.NodeReadResponse? right) -> bool
+Orkeon.Tools.Analysis.NodeReplaceRange
+Orkeon.Tools.Analysis.NodeReplaceRange.EndByte.get -> int
+Orkeon.Tools.Analysis.NodeReplaceRange.EndByte.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRange.EndLine.get -> int
+Orkeon.Tools.Analysis.NodeReplaceRange.EndLine.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRange.NodeReplaceRange() -> void
+Orkeon.Tools.Analysis.NodeReplaceRange.StartByte.get -> int
+Orkeon.Tools.Analysis.NodeReplaceRange.StartByte.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRange.StartLine.get -> int
+Orkeon.Tools.Analysis.NodeReplaceRange.StartLine.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRequest
+Orkeon.Tools.Analysis.NodeReplaceRequest.ExpectedHash.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceRequest.ExpectedHash.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRequest.NodeReplaceRequest() -> void
+Orkeon.Tools.Analysis.NodeReplaceRequest.Path.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceRequest.Path.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRequest.Selector.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceRequest.Selector.init -> void
+Orkeon.Tools.Analysis.NodeReplaceRequest.Text.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceRequest.Text.init -> void
+Orkeon.Tools.Analysis.NodeReplaceResponse
+Orkeon.Tools.Analysis.NodeReplaceResponse.NewHash.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceResponse.NewHash.init -> void
+Orkeon.Tools.Analysis.NodeReplaceResponse.NodeReplaceResponse() -> void
+Orkeon.Tools.Analysis.NodeReplaceResponse.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
+Orkeon.Tools.Analysis.NodeReplaceResponse.Range.init -> void
+Orkeon.Tools.Analysis.NodeReplaceTool
+Orkeon.Tools.Analysis.NodeReplaceTool.NodeReplaceTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+override Orkeon.Tools.Analysis.NodeReplaceTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.NodeReplaceTool.Description.get -> string!
+override Orkeon.Tools.Analysis.NodeReplaceTool.Name.get -> string!
+Orkeon.Tools.Analysis.NodeReplaceRange.<Clone>$() -> Orkeon.Tools.Analysis.NodeReplaceRange!
+Orkeon.Tools.Analysis.NodeReplaceRange.Equals(Orkeon.Tools.Analysis.NodeReplaceRange? other) -> bool
+Orkeon.Tools.Analysis.NodeReplaceRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeReplaceRequest!
+Orkeon.Tools.Analysis.NodeReplaceRequest.Equals(Orkeon.Tools.Analysis.NodeReplaceRequest? other) -> bool
+Orkeon.Tools.Analysis.NodeReplaceResponse.<Clone>$() -> Orkeon.Tools.Analysis.NodeReplaceResponse!
+Orkeon.Tools.Analysis.NodeReplaceResponse.Equals(Orkeon.Tools.Analysis.NodeReplaceResponse? other) -> bool
+override Orkeon.Tools.Analysis.NodeReplaceRange.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeReplaceRange.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeReplaceRange.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeReplaceRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeReplaceRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeReplaceRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeReplaceResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeReplaceResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeReplaceResponse.ToString() -> string!
+static Orkeon.Tools.Analysis.NodeReplaceRange.operator !=(Orkeon.Tools.Analysis.NodeReplaceRange? left, Orkeon.Tools.Analysis.NodeReplaceRange? right) -> bool
+static Orkeon.Tools.Analysis.NodeReplaceRange.operator ==(Orkeon.Tools.Analysis.NodeReplaceRange? left, Orkeon.Tools.Analysis.NodeReplaceRange? right) -> bool
+static Orkeon.Tools.Analysis.NodeReplaceRequest.operator !=(Orkeon.Tools.Analysis.NodeReplaceRequest? left, Orkeon.Tools.Analysis.NodeReplaceRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeReplaceRequest.operator ==(Orkeon.Tools.Analysis.NodeReplaceRequest? left, Orkeon.Tools.Analysis.NodeReplaceRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeReplaceResponse.operator !=(Orkeon.Tools.Analysis.NodeReplaceResponse? left, Orkeon.Tools.Analysis.NodeReplaceResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeReplaceResponse.operator ==(Orkeon.Tools.Analysis.NodeReplaceResponse? left, Orkeon.Tools.Analysis.NodeReplaceResponse? right) -> bool
