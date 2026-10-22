@@ -75,3 +75,5 @@ Orkeon.Infrastructure.Security.ModePermissionGate.Rules.init -> void
 Orkeon.Infrastructure.Configuration.SettingReference
 static Orkeon.Infrastructure.Configuration.SettingReference.Phrase(string! settingPath, string? value) -> string?
 static Orkeon.Infrastructure.Configuration.SettingReference.Refuse(string! settingPath, string? value) -> void
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.get -> string?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.set -> void

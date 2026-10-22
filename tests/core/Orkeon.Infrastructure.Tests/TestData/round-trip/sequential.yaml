@@ -69,6 +69,7 @@ agents:
       Ten years in procurement; reads the contract before the press release.
 
       *sourcing
+    workingRoot: /workspace/project
     tools: [web_search, file_read]
     allowDelegation: false
     maxIter: 12

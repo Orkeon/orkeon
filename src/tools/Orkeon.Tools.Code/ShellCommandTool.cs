@@ -1,7 +1,9 @@
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Code.Confinement;
 using Orkeon.Tools.Code.Constants.Shell;
 using Orkeon.Tools.Code.Sessions;
@@ -440,6 +442,16 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (argumentDenial is not null)
             return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
 
+        if (!string.IsNullOrWhiteSpace(request.WorkingDirectory)
+            && AgentRootGuard.Check(_fileSystem, request.WorkingDirectory) is { } workingDirectoryDenial)
+            return $"WorkingDirectory denied: {workingDirectoryDenial.DenialReason}";
+
+        // A root whose rights are None grants nothing to bind: the command does not run (RT-06).
+        if (AgentRunScope.Current?.Root is { } agentRoot
+            && _fileSystem.ResolveAndValidate(agentRoot, FileAccessRights.None).IsAllowed
+            && RightsAt(agentRoot) == FileAccessRights.None)
+            return $"WorkingDirectory denied: the agent working root '{agentRoot}' grants no access.";
+
         if (request.TimeoutSeconds <= 0)
             return "Timeout must be greater than 0";
 
@@ -613,6 +625,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private List<ConfinedPath> BuildConfinedPaths()
     {
         var paths = new List<ConfinedPath>();
+        var agentRoot = AgentRunScope.Current?.Root?.TrimEnd('/');
         foreach (var mount in _fileSystem.GetAvailableMounts())
         {
             var virtualRoot = mount.VirtualPath.TrimEnd('/');
@@ -624,13 +637,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
                 continue;
 
-            if (Granted(mount.DefaultRights) is { } access)
+            // A declared agent root narrows the mount that holds it to the root, at its physical path,
+            // never the whole mount (RT-06); the other mounts stay bound as they are.
+            var holdsRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot);
+            if (holdsRoot)
+            {
+                // The rights in force at the root, as the file system resolves them (an override above
+                // the root counts), not the mount's default.
+                var narrowed = _fileSystem.ResolveAndValidate(agentRoot!, FileAccessRights.None);
+                if (narrowed.IsAllowed && !string.IsNullOrEmpty(narrowed.ResolvedPath) && Granted(RightsAt(agentRoot!)) is { } rootAccess)
+                    paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot!, rootAccess));
+            }
+            else if (Granted(mount.DefaultRights) is { } access)
                 paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
 
             foreach (var subPath in mount.Overrides)
             {
                 var relative = subPath.RelativePath.Trim('/');
                 if (relative.Length == 0)
+                    continue;
+
+                if (holdsRoot && !MatchesMountPrefix($"{virtualRoot}/{relative}", agentRoot!))
                     continue;
 
                 var source = Path.Combine(root.ResolvedPath, relative);
@@ -642,6 +669,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         return paths;
     }
+
+    /// <summary>The Read and Write rights in force at <paramref name="virtualPath"/>, as the file system resolves them.</summary>
+    private FileAccessRights RightsAt(string virtualPath) =>
+        (_fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read).IsAllowed ? FileAccessRights.Read : FileAccessRights.None)
+        | (_fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Write).IsAllowed ? FileAccessRights.Write : FileAccessRights.None);
 
     /// <summary>How a path with <paramref name="rights"/> is bound, or null when it grants neither Read nor Write.</summary>
     private static ConfinedAccess? Granted(FileAccessRights rights)
@@ -775,6 +807,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
         string requested, FileAccessRights rights)
     {
+        if (string.IsNullOrWhiteSpace(requested))
+            requested = AgentRunScope.Current?.Root ?? requested;
+
         if (!string.IsNullOrWhiteSpace(requested))
         {
             var named = _fileSystem.ResolveAndValidate(requested, rights);
@@ -852,7 +887,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         if (mounts.Any(m => MatchesMountPrefix(token, m.VirtualPath)))
         {
-            var result = _fileSystem.ResolveAndValidate(token, rights);
+            var result = AgentRootGuard.Check(_fileSystem, token) ?? _fileSystem.ResolveAndValidate(token, rights);
             return result.IsAllowed
                 ? (result.ResolvedPath!, null)
                 : (token, result.DenialReason ?? "access denied");
@@ -864,7 +899,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             var right = token[(eq + 1)..];
             if (mounts.Any(m => MatchesMountPrefix(right, m.VirtualPath)))
             {
-                var result = _fileSystem.ResolveAndValidate(right, rights);
+                var result = AgentRootGuard.Check(_fileSystem, right) ?? _fileSystem.ResolveAndValidate(right, rights);
                 return result.IsAllowed
                     ? (string.Concat(token.AsSpan(0, eq + 1), result.ResolvedPath), null)
                     : (token, result.DenialReason ?? "access denied");

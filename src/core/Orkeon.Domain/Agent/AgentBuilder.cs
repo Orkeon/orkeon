@@ -21,6 +21,7 @@ public sealed class AgentBuilder
     private int _maxIterations = AgentDefaults.MaxIterations;
     private int? _maxRpm;
     private bool _verbose;
+    private string? _workingRoot;
     private TimeSpan? _maxExecutionTime;
     private string? _systemTemplate;
     private string? _promptTemplate;
@@ -210,6 +211,14 @@ public sealed class AgentBuilder
         return this;
     }
 
+    /// <summary>Declares the virtual working root the agent runs under (RT-06).</summary>
+    public AgentBuilder WorkingRoot(string virtualPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        _workingRoot = virtualPath;
+        return this;
+    }
+
     /// <summary>
     /// Attaches a knowledge (RAG) collection to the agent with default retrieval options.
     /// Cumulative: call once per collection to attach several collections.
@@ -368,7 +377,7 @@ public sealed class AgentBuilder
         if (_llm is not null)
             ValidateOwnProvider(_llm);
 
-        return Agent.Create(new AgentCreateOptions
+        var agent = Agent.Create(new AgentCreateOptions
         {
             Role = _role,
             Goal = _goal,
@@ -388,6 +397,8 @@ public sealed class AgentBuilder
             LlmConfig = _llmConfig,
             KnowledgeAttachments = _knowledgeAttachments
         });
+        agent.WorkingRoot = _workingRoot;
+        return agent;
     }
 
     /// <summary>

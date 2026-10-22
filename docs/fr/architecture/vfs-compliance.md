@@ -143,6 +143,23 @@ chaque opération déclare le droit qu'elle exige et le registre refuse l'appel 
 (ou la redéfinition du sous-arbre) ne l'accorde pas. `MountVisibility` vaut `AgentFacing` (le
 défaut, listé par `GetAvailableMounts` et dans le prompt des agents) ou `Internal` (ci-dessous).
 
+## Racine de travail d'un agent et mount
+
+Un agent peut déclarer une `working_root` (YAML ; `AgentBuilder.WorkingRoot(string)`) : un chemin
+virtuel tel que `/workspace/.orkeon/worktrees/x` qui doit se trouver sous un mount, faute de quoi
+le run est refusé au démarrage par une erreur qui nomme la racine. C'est une intersection avec
+les mounts, jamais une extension :
+
+- les outils fichier (`FileToolBase.ResolveVirtualPath`, via `AgentRootGuard`) refusent, avant
+  toute E/S, un chemin du même mount situé hors de la racine ; les autres mounts (`/output`,
+  `/tmp`) gardent leurs propres droits ;
+- `shell_command` refuse un répertoire de travail ou un argument de chemin hors de la racine,
+  prend la racine pour répertoire de travail par défaut et y restreint les chemins confinés de
+  son bac à sable ;
+- un refus reprend la forme du refus VFS : les chemins physiques sont masqués.
+
+Absente, rien ne change : les mounts seuls confinent l'agent.
+
 ## Racines internes et accès privilégié
 
 Un runner monte pour lui-même quelques racines en montages **internes**

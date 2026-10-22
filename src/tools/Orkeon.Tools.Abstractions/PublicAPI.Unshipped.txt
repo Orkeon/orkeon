@@ -4,3 +4,5 @@ Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ReadRedirectAsync(System.T
 Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowAuthorizationUrlAsync(string! account, System.Uri! authorizationUri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowDeviceCodeAsync(string! account, System.Uri! verificationUri, string! userCode, System.TimeSpan expiresIn, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowRedirectRejectedAsync(string! account, string! reason, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Security.AgentRootGuard
+static Orkeon.Tools.Abstractions.Security.AgentRootGuard.Check(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, string! virtualPath) -> Orkeon.Domain.Tools.Security.PathValidationResult?

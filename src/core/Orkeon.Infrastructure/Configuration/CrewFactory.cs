@@ -284,6 +284,8 @@ public partial class CrewFactory : ICrewFactory
 
         if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
             builder.Backstory(agentConfig.Backstory);
+        if (!string.IsNullOrWhiteSpace(agentConfig.WorkingRoot))
+            builder.WorkingRoot(agentConfig.WorkingRoot);
         if (resolvedTools.Count > 0)
             builder.WithTools(resolvedTools);
         // The agent's llm block — profile, model, sampling, thinking, response format, cache.
