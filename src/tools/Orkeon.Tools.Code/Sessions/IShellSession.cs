@@ -50,4 +50,7 @@ internal interface IShellSession : IAsyncDisposable
     /// </summary>
     /// <exception cref="ShellSessionException">The session is closed or its shell died.</exception>
     Task<ShellRunResult> RunAsync(ShellInvocation invocation, CancellationToken cancellationToken);
+
+    /// <summary>Starts one command detached, its output going to <paramref name="physicalLogPath"/>.</summary>
+    Task<ShellJobHandle> StartDetachedAsync(ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken);
 }

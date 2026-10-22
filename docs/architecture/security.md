@@ -72,6 +72,14 @@ agent's **shell session**, which the operating system confines
 - **Paths.** Under bubblewrap the arguments are checked and passed virtual. Under Seatbelt,
   AppContainer and `None` they are translated virtual→physical, and physical paths in the output
   come back virtual.
+- **Jobs.** `action = start_job` runs an allowlisted command detached, with the same confinement
+  as a blocking call, and returns a `job_id` and the virtual path of its output file,
+  `/output/jobs/<id>.log` (the first mount with Write rights when `/output` is not writable;
+  refused when none is). `job_status` reports `running` or the `exit_code`; `job_tail` returns the
+  last `tail_lines` lines (a bounded read from the end of the file). A run holds 16 live jobs at
+  most, a job id is valid for the run that started it, and the run's end kills the jobs still
+  running. The `>`, `>>`, `<`, `|`, `;` and `&` operators stay refused in the command: the
+  redirection to the log is the session's, by stream, never a shell operator.
 - **Windows commands.** A program is looked up on `PATH` only (never the working directory, a
   mount the agent writes to), `.exe` then `.com`. A cmd.exe built-in (`echo`, `dir`, `type`) runs as
   `cmd.exe /d /v:off /s /c "<built-in> <arguments>"`, every argument that is not a plain word

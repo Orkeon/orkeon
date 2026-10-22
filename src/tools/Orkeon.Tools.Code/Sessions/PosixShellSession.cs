@@ -40,6 +40,27 @@ internal sealed class PosixShellSession : IShellSession
     private bool _removeDirectoryAfterKill;
     private string? _privateDirectory;
 
+    /// <summary>
+    /// How a session starts a job of its own, outside its shell: the shell process to start (behind the
+    /// confinement that wraps the session, when there is one), the mounts that turn a host path into the
+    /// path that process sees, and whether it starts from a dedicated thread.
+    /// </summary>
+    /// <param name="Prepare">A new start info for the shell, its wrapper arguments and environment set.</param>
+    /// <param name="Mounts">The bound paths of a confined view; null when the job sees host paths.</param>
+    /// <param name="OnDedicatedThread">See <c>startOnDedicatedThread</c> of <see cref="StartAsync"/>.</param>
+    internal sealed record DetachedLaunch(
+        Func<ProcessStartInfo> Prepare, IReadOnlyList<Confinement.ConfinedPath>? Mounts = null, bool OnDedicatedThread = false);
+
+    /// <summary>
+    /// The script of a job: output to the log, no input, the working directory, then the command in place
+    /// of the shell. Run as <c>sh -c script _ork_job &lt;log&gt; &lt;directory&gt; &lt;command&gt; [arguments]</c>:
+    /// every value is an argument, never part of the script.
+    /// </summary>
+    private const string JobScript =
+        "exec >\"$1\" 2>&1 </dev/null; dir=$2; shift 2; if [ -n \"$dir\" ]; then cd -- \"$dir\" || exit 1; fi; exec \"$@\"";
+
+    private DetachedLaunch? _detached;
+
     private PosixShellSession(Process process, ManualResetEventSlim? keeper)
     {
         _process = process;
@@ -74,10 +95,11 @@ internal sealed class PosixShellSession : IShellSession
     /// with its own <c>/tmp</c> (bubblewrap) takes it away by itself.
     /// </param>
     /// <param name="cancellationToken">Cancels the start.</param>
+    /// <param name="detached">How the session starts a job of its own; null when it cannot.</param>
     /// <exception cref="ShellSessionException">The shell did not become ready.</exception>
     public static async Task<PosixShellSession> StartAsync(
         ProcessStartInfo startInfo, int? watchedHostPid, bool startOnDedicatedThread, bool hostSeesPrivateDirectory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, DetachedLaunch? detached = null)
     {
         ArgumentNullException.ThrowIfNull(startInfo);
         startInfo.RedirectStandardInput = true;
@@ -93,7 +115,7 @@ internal sealed class PosixShellSession : IShellSession
             ? await StartOnDedicatedThreadAsync(startInfo).ConfigureAwait(false)
             : (StartProcess(startInfo), null);
 
-        var session = new PosixShellSession(process, keeper) { _removeDirectoryAfterKill = hostSeesPrivateDirectory };
+        var session = new PosixShellSession(process, keeper) { _removeDirectoryAfterKill = hostSeesPrivateDirectory, _detached = detached };
         try
         {
             await session.HandshakeAsync(watchedHostPid, cancellationToken).ConfigureAwait(false);
@@ -103,6 +125,70 @@ internal sealed class PosixShellSession : IShellSession
         {
             await session.DisposeAsync().ConfigureAwait(false);
             throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ShellJobHandle> StartDetachedAsync(ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(physicalLogPath);
+        if (_detached is not { } detached)
+            throw new ShellSessionException("This shell session cannot start a job.");
+
+        var startInfo = detached.Prepare();
+        startInfo.UseShellExecute = false;
+        startInfo.CreateNoWindow = true;
+        foreach (var argument in (string[])["-c", JobScript, "_ork_job", SeenBy(detached, physicalLogPath), invocation.WorkingDirectory ?? "", invocation.Executable])
+            startInfo.ArgumentList.Add(argument);
+        foreach (var argument in invocation.Arguments)
+            startInfo.ArgumentList.Add(argument);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var (process, keeper) = detached.OnDedicatedThread
+            ? await StartOnDedicatedThreadAsync(startInfo).ConfigureAwait(false)
+            : (StartProcess(startInfo), null);
+        return new ShellJobHandle(
+            Path.GetFileNameWithoutExtension(physicalLogPath), WatchAsync(process, keeper), () => Kill(process));
+    }
+
+    /// <summary>The log path as the job's shell sees it: the virtual path of the mount holding it, when confined.</summary>
+    private static string SeenBy(DetachedLaunch detached, string physicalPath)
+    {
+        foreach (var mount in (detached.Mounts ?? []).OrderByDescending(m => m.Source.Length))
+        {
+            var source = mount.Source.TrimEnd('/');
+            if (physicalPath.StartsWith(source + "/", StringComparison.Ordinal))
+                return mount.Destination.TrimEnd('/') + physicalPath[source.Length..];
+        }
+
+        return physicalPath;
+    }
+
+    private static async Task<int> WatchAsync(Process process, ManualResetEventSlim? keeper)
+    {
+        try
+        {
+            await process.WaitForExitAsync().ConfigureAwait(false);
+            return process.ExitCode;
+        }
+        finally
+        {
+            keeper?.Set();
+            process.Dispose();
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031", Justification = "The job may have exited, or been disposed, between the check and the kill.")]
+    private static void Kill(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception)
+        {
+            // Already gone.
         }
     }
 

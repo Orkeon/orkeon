@@ -78,6 +78,135 @@ internal sealed class WindowsShellSession : IShellSession
     internal JobObject Job => _job;
 
     /// <inheritdoc />
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The process and the log are disposed by the watcher when the job ends.")]
+    [SuppressMessage("Reliability", "CA2025", Justification = "The watcher awaits the pumps and then disposes the process, the log and the job object itself.")]
+    public async Task<ShellJobHandle> StartDetachedAsync(ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(physicalLogPath);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_sync)
+        {
+            if (_disposal is not null)
+                throw new ShellSessionException("The shell session is closed.");
+        }
+
+        string applicationPath;
+        string commandLine;
+        try
+        {
+            (applicationPath, commandLine) = CommandLineOf(invocation);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new ShellSessionException(ex.Message, ex);
+        }
+
+        var directory = string.IsNullOrEmpty(invocation.WorkingDirectory) ? _defaultDirectory : invocation.WorkingDirectory;
+
+        // The log is opened through the VFS before anything runs: a failure here leaves no process behind.
+        var log = await openLogAsync(cancellationToken).ConfigureAwait(false);
+
+        // A job object of its own: a reset or a timeout of the session's job never kills a detached job.
+        var jobObject = JobObject.Create();
+        WindowsLaunchedProcess process;
+        try
+        {
+            process = WindowsProcessLauncher.Start(new WindowsLaunch(
+                applicationPath, commandLine, _environmentBlock, directory, jobObject, _containerSid, _capabilities));
+        }
+        catch (ObjectDisposedException ex)
+        {
+            jobObject.Dispose();
+            await log.DisposeAsync().ConfigureAwait(false);
+            throw new ShellSessionException("The shell session is closed.", ex);
+        }
+        catch
+        {
+            jobObject.Dispose();
+            await log.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
+        var logGate = new SemaphoreSlim(1, 1);
+        var readers = new CancellationTokenSource();
+        var tail = new LiveTailBuffer();
+        var pumps = Task.WhenAll(CopyAsync(process.Stdout, log, logGate, tail, readers.Token), CopyAsync(process.Stderr, log, logGate, tail, readers.Token));
+        return new ShellJobHandle(
+            Path.GetFileNameWithoutExtension(physicalLogPath),
+            WatchAsync(process, pumps, readers, log, logGate, jobObject),
+            () => Kill(process, jobObject))
+        {
+            // The log is held open for writing: a reader gets the recent output from memory.
+            LiveTail = () => tail.Snapshot(),
+        };
+    }
+
+    private static async Task<int> WatchAsync(
+        WindowsLaunchedProcess process, Task pumps, CancellationTokenSource readers, Stream log, SemaphoreSlim logGate, JobObject jobObject)
+    {
+        try
+        {
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+
+            // A grandchild may still hold the pipes: what came within the grace is what the job printed.
+            readers.CancelAfter(s_outputGrace);
+            await pumps.ConfigureAwait(false);
+            return process.ExitCode ?? -1;
+        }
+        finally
+        {
+            await log.DisposeAsync().ConfigureAwait(false);
+            logGate.Dispose();
+            readers.Dispose();
+            process.Dispose();
+            jobObject.Dispose();
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031", Justification = "A pipe broken or cancelled ends the copy; what was read so far is in the log.")]
+    private static async Task CopyAsync(Stream source, Stream log, SemaphoreSlim logGate, LiveTailBuffer tail, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[16 * 1024];
+        try
+        {
+            int read;
+            while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                tail.Append(buffer.AsSpan(0, read));
+                await logGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await log.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                    await log.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    logGate.Release();
+                }
+            }
+        }
+        catch
+        {
+            // Cancelled after the grace, or the pipe broke: the copy ends here.
+        }
+    }
+
+    [SuppressMessage("Design", "CA1031", Justification = "The job may have exited, or been disposed, between the check and the kill.")]
+    private static void Kill(WindowsLaunchedProcess process, JobObject jobObject)
+    {
+        try
+        {
+            _ = NativeMethods.TerminateProcess(process.Handle, 1);
+            jobObject.Dispose();
+        }
+        catch
+        {
+            // Already gone.
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<ShellRunResult> RunAsync(ShellInvocation invocation, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(invocation);

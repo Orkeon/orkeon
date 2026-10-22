@@ -1030,8 +1030,14 @@ declare global {
 
         /** `shell_command` - Execute shell commands with security controls. Supports allowlist/blocklist, timeout, and output capture. */
         shellCommand(input: {
-            /** Shell command to execute */
+            /** run (default): run the command and wait; start_job: start it detached, output to a log file; job_status: running or exit code of a job; job_tail: last lines of a job's log */
+            action?: string;
+            /** Shell command to execute; required by the run and start_job actions */
             command: string;
+            /** Id returned by start_job, for job_status and job_tail */
+            job_id?: string;
+            /** Lines job_tail returns from the end of the log */
+            tail_lines?: number;
             /** Timeout in seconds */
             timeout_seconds?: number;
             /** Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory the command may use: readable for a read-only command, writable for any other. */
@@ -1039,8 +1045,12 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly completed: boolean;
             readonly exit_code: number;
+            readonly job_id: string;
+            readonly output_path: string;
+            readonly status: string;
             readonly stderr: string;
             readonly stdout: string;
+            readonly tail: string;
         }>;
 
         /** `sqlserver_query` - Execute SQL queries on Microsoft SQL Server databases */

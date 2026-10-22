@@ -19,3 +19,20 @@ Orkeon.Tools.Code.Sessions.ShellSessionException
 Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException() -> void
 Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message) -> void
 Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Code.ShellCommandRequest.Action.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.Action.init -> void
+Orkeon.Tools.Code.ShellCommandRequest.JobId.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.JobId.init -> void
+Orkeon.Tools.Code.ShellCommandRequest.TailLines.get -> int
+Orkeon.Tools.Code.ShellCommandRequest.TailLines.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.JobId.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.JobId.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.OutputPath.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.OutputPath.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.Status.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Status.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.Tail.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Tail.init -> void
+const Orkeon.Tools.Code.ShellCommandTool.DefaultTailLines = 50 -> int
+const Orkeon.Tools.Code.ShellCommandTool.RunAction = "run" -> string!
+override Orkeon.Tools.Code.ShellCommandTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!

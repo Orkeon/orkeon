@@ -46,13 +46,21 @@ internal sealed class BubblewrapShellSandbox(Func<BubblewrapAvailability> probe)
         if (!bubblewrap.IsAvailable)
             throw new ShellSessionException($"Confinement unavailable: {bubblewrap.Reason}.");
 
-        var startInfo = new ProcessStartInfo(bubblewrap.ExecutablePath!);
-        foreach (var argument in BubblewrapCommandLine.Build(view.Paths, view.ReadOnlyPaths, view.AllowNetwork, "/"))
-            startInfo.ArgumentList.Add(argument);
-        startInfo.ArgumentList.Add(UnconfinedShellSandbox.PosixShell);
+        var startInfo = Prepare();
         startInfo.ArgumentList.Add("-s");
-        ShellEnvironment.ConfigureRestricted(startInfo);
-        return await PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: true, hostSeesPrivateDirectory: false, cancellationToken)
+        return await PosixShellSession.StartAsync(
+                startInfo, watchedHostPid: null, startOnDedicatedThread: true, hostSeesPrivateDirectory: false, cancellationToken,
+                new PosixShellSession.DetachedLaunch(Prepare, view.Paths, OnDedicatedThread: true))
             .ConfigureAwait(false);
+
+        ProcessStartInfo Prepare()
+        {
+            var info = new ProcessStartInfo(bubblewrap.ExecutablePath!);
+            foreach (var argument in BubblewrapCommandLine.Build(view.Paths, view.ReadOnlyPaths, view.AllowNetwork, "/"))
+                info.ArgumentList.Add(argument);
+            info.ArgumentList.Add(UnconfinedShellSandbox.PosixShell);
+            ShellEnvironment.ConfigureRestricted(info);
+            return info;
+        }
     }
 }

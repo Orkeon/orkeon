@@ -99,8 +99,20 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
             startInfo.Environment["HOME"] = scratch;
             startInfo.Environment["TMPDIR"] = scratch;
 
+            // A job is under the profile too, in the scratch directory like the shell.
+            ProcessStartInfo PrepareJob()
+            {
+                var info = new ProcessStartInfo(SeatbeltProbe.SandboxExec) { WorkingDirectory = scratch };
+                foreach (var argument in (string[])["-p", profile, UnconfinedShellSandbox.PosixShell])
+                    info.ArgumentList.Add(argument);
+                ShellEnvironment.ConfigureRestricted(info);
+                info.Environment["HOME"] = scratch;
+                info.Environment["TMPDIR"] = scratch;
+                return info;
+            }
+
             // The watchdog is the launcher's, so the preamble starts none.
-            var session = await PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, cancellationToken)
+            var session = await PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, cancellationToken, new PosixShellSession.DetachedLaunch(PrepareJob))
                 .ConfigureAwait(false);
             return new ScratchSession(session, scratch);
         }
@@ -162,6 +174,9 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
 
         public Task<ShellRunResult> RunAsync(ShellInvocation invocation, CancellationToken cancellationToken)
             => inner.RunAsync(invocation, cancellationToken);
+
+        public Task<ShellJobHandle> StartDetachedAsync(ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken)
+            => inner.StartDetachedAsync(invocation, physicalLogPath, openLogAsync, cancellationToken);
 
         public ValueTask DisposeAsync()
         {
