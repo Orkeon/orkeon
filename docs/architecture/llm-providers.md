@@ -206,6 +206,24 @@ members, not through copies of the payload builder:
 | `TryAdaptRejectedPayload` | re-sends once without the output cap when the catalogue's cap was refused | Kimi (the mandated temperature, then the base rule) |
 | `BuildEndpoint` | `{baseUrl}/chat/completions` | Azure OpenAI (dated deployment URL, or the v1 surface with `api_version: v1`) |
 
+## Prompt-cache tokens and TTL
+
+`LlmResponse` carries three cache counts: `CacheHitTokens` (read from the cache), `CacheWriteTokens`
+(written to it — Anthropic's `cache_creation_input_tokens`) and `CacheMissTokens` (input not served from
+the cache). `PromptTokens` already includes the written and read tokens: a write is never counted twice.
+`MeteredLlmProvider` records them once per call in the `CostUsageEvent`; `CostBudgetManager` keeps per model
+the prompt, completion, cache-write and cache-read tokens and the cost (`CostReport.ModelUsageByModel`), and
+`session_stats` returns them in `by_model_tokens[]` beside the unchanged `by_model` cost map. A model whose
+`ModelPricing` declares `CacheWritePricePerMillion` / `CacheReadPricePerMillion` is priced as
+`(prompt - write - read) x prompt rate + write x write rate + read x read rate + completion x completion rate`;
+without those rates the cost is unchanged.
+
+The cache TTL is `LlmCacheConfig.Ttl` (`5m` or `1h`). A call can carry it as the option
+`LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), which `ChatOptionsComposer` fills from the agent's
+`llm.cache.ttl`; the chat client adapter folds it into the call's `Cache.Ttl` and Anthropic emits it in
+`cache_control`. The OpenAI-compatible providers cannot honour it and log the structured unhonoured-option
+warning (event 110, `cache_ttl`) instead of dropping it silently.
+
 ## Decorators and registration
 
 - **`MeteredLlmProvider`** — the one place LLM usage is measured: it reports every call of

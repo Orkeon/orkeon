@@ -477,6 +477,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             // A partition of PromptTokens, never additive to it — null when unreported.
             CacheHitTokens = response.CacheHitTokens,
             CacheMissTokens = response.CacheMissTokens,
+            CacheWriteTokens = response.CacheWriteTokens,
             Estimated = !counted,
             // What the vendor billed, as billed — null when it billed nothing in its answer,
             // never a price computed here (DD-1).

@@ -37,6 +37,9 @@ public record CostUsageEvent
     /// <summary>Prompt tokens the provider had to compute; null when unmeasured.</summary>
     public long? CacheMissTokens { get; init; }
 
+    /// <summary>Prompt tokens written to the provider's cache; null when unmeasured.</summary>
+    public long? CacheWriteTokens { get; init; }
+
     /// <summary>
     /// True when the token counts are an APPROXIMATION the runtime computed itself,
     /// because the provider returned no usage at all. Callers that display a figure must
@@ -152,6 +155,25 @@ public record AgentCostSummary(
     int TotalCalls,
     decimal AverageCostPerCall);
 
+/// <summary>Token usage and cost of one model.</summary>
+public sealed record ModelUsage
+{
+    /// <summary>Prompt tokens.</summary>
+    public long PromptTokens { get; init; }
+
+    /// <summary>Completion tokens.</summary>
+    public long CompletionTokens { get; init; }
+
+    /// <summary>Cache-write tokens.</summary>
+    public long CacheWriteTokens { get; init; }
+
+    /// <summary>Cache-read tokens.</summary>
+    public long CacheReadTokens { get; init; }
+
+    /// <summary>Cost.</summary>
+    public decimal Cost { get; init; }
+}
+
 /// <summary>
 /// Aggregated cost report for a crew, agent, or time period.
 /// </summary>
@@ -171,6 +193,9 @@ public record CostReport
 
     /// <summary>Cost breakdown by model.</summary>
     public IReadOnlyDictionary<string, decimal> ByModel { get; init; } = new Dictionary<string, decimal>();
+
+    /// <summary>Token usage breakdown by model.</summary>
+    public IReadOnlyDictionary<string, ModelUsage> ModelUsageByModel { get; init; } = new Dictionary<string, ModelUsage>();
 
     /// <summary>Cost breakdown by operation type.</summary>
     public IReadOnlyDictionary<string, decimal> ByOperationType { get; init; } = new Dictionary<string, decimal>();

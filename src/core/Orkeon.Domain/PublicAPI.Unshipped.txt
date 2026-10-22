@@ -1365,3 +1365,5 @@ Orkeon.Domain.Exceptions.LlmRateLimitException.Wait.get -> System.TimeSpan
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.get -> System.TimeSpan
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.init -> void
 static readonly Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.init -> void

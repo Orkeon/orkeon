@@ -666,6 +666,18 @@
       "description": "The most characters logged of one request or response body; `0` logs it whole."
     },
     {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:CacheReadPricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Cost per million cache-read tokens; null when the model declares none."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:CacheWritePricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Cost per million cache-write tokens; null when the model declares none."
+    },
+    {
       "path": "Orkeon:CostTracking:CustomPricings:<i>:CompletionPricePerMillion",
       "section": "Orkeon:CostTracking",
       "type": "number",

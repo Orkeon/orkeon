@@ -338,6 +338,25 @@ public class ChatOptionsComposerTests
         Assert.Equal(LlmResponseFormat.JsonObject(), options.AdditionalProperties![LlmChatOptionsKeys.ResponseFormat]);
     }
 
+    [Fact]
+    [Trait("BR", "RT-12")]
+    public async System.Threading.Tasks.Task ShouldComposeCacheTtl_WhenAgentConfigDeclaresIt()
+    {
+        var composer = BuildComposer();
+        var cached = BuildAgent(LlmConfig.Create("m") with
+        {
+            Cache = new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" },
+        });
+
+        var (withTtl, _) = await composer.BuildChatOptionsAsync(cached, BuildTask(), TestContext.Current.CancellationToken);
+        var (withoutCache, _) = await composer.BuildChatOptionsAsync(
+            BuildAgent(LlmConfig.Create("m")), BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Equal("1h", withTtl.AdditionalProperties![LlmChatOptionsKeys.CacheTtl]);
+        Assert.True(withoutCache.AdditionalProperties is null
+            || !withoutCache.AdditionalProperties.ContainsKey(LlmChatOptionsKeys.CacheTtl));
+    }
+
     // ── Task-level overrides win ──────────────────────────────────────────
 
     [Fact]

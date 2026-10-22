@@ -15,6 +15,14 @@ public sealed class MockLlmProvider : ILlmProvider
     private Func<LlmMessage[], LlmConfig?, LlmResponse>? _chatFunc;
     private Exception? _chatException;
 
+    /// <summary>Cache token counts stamped on every response when set.</summary>
+    public int? CacheHitTokens { get; set; }
+    public int? CacheMissTokens { get; set; }
+    public int? CacheWriteTokens { get; set; }
+
+    private LlmResponse WithCache(LlmResponse r) =>
+        r with { CacheHitTokens = CacheHitTokens ?? r.CacheHitTokens, CacheMissTokens = CacheMissTokens ?? r.CacheMissTokens, CacheWriteTokens = CacheWriteTokens ?? r.CacheWriteTokens };
+
     public string Name { get; set; } = "MockLlmProvider";
 
     /// <summary>The configuration the provider declares (<see cref="ILlmProvider.BaseConfig"/>).</summary>
@@ -59,7 +67,7 @@ public sealed class MockLlmProvider : ILlmProvider
             return _generateAsyncFunc(prompt, config, cancellationToken);
 
         var result = _generateFunc != null ? _generateFunc(prompt, config) : _generateResult;
-        return Task.FromResult(result);
+        return Task.FromResult(WithCache(result));
     }
 
     public Task<LlmResponse> ChatAsync(
@@ -75,7 +83,7 @@ public sealed class MockLlmProvider : ILlmProvider
             return Task.FromException<LlmResponse>(_chatException);
 
         var result = _chatFunc != null ? _chatFunc(messages, config) : _chatResult;
-        return Task.FromResult(result);
+        return Task.FromResult(WithCache(result));
     }
 
     /// <summary>

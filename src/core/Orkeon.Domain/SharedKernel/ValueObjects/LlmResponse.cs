@@ -21,6 +21,8 @@ public sealed record LlmResponse
     public int? CacheHitTokens { get; init; }
     /// <summary>Gets the number of prompt tokens that missed the provider's prompt cache (DeepSeek's <c>prompt_cache_miss_tokens</c>).</summary>
     public int? CacheMissTokens { get; init; }
+    /// <summary>Gets the number of prompt tokens written to the provider's prompt cache (Anthropic's <c>cache_creation_input_tokens</c>).</summary>
+    public int? CacheWriteTokens { get; init; }
     /// <summary>
     /// Gets the normalized prompt-cache hit ratio — <c>hit / (hit + miss)</c> per DeepSeek guideline §6.5 —
     /// or <see langword="null"/> when the provider reports no cache token breakdown. Monitor this:

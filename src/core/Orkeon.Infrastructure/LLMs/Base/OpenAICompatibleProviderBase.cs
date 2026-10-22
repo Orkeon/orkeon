@@ -1283,6 +1283,10 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     private const string SeedRemedy =
         "Orkeon writes a seed on Ollama only; remove the setting, and pin the temperature for steadier answers";
 
+    /// <summary>Why a cache TTL is not written in this dialect (RT-12): only Anthropic's cache_control carries one.</summary>
+    private const string CacheTtlRemedy =
+        "Orkeon writes a cache lifetime on Anthropic only; remove the setting, this API caches by its own rules";
+
     /// <summary>
     /// Writes the sampling settings the configuration sets, and only those (GAP-36):
     /// <c>temperature</c> and <c>top_p</c> whatever their value, <c>stop</c> when there are stop
@@ -1311,6 +1315,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             LogUnsupportedOption("presence_penalty", ProviderDisplayName, PenaltyRemedy);
         if (config.Seed is not null)
             LogUnsupportedOption("seed", ProviderDisplayName, SeedRemedy);
+        if (!string.IsNullOrWhiteSpace(config.Cache?.Ttl))
+            LogUnsupportedOption("cache_ttl", ProviderDisplayName, CacheTtlRemedy);
     }
 
     /// <summary>

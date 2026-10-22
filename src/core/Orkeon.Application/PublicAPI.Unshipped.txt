@@ -2386,3 +2386,32 @@ static Orkeon.Application.Interfaces.Ports.LlmCallSettlement.operator ==(Orkeon.
 *REMOVED*Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null) -> void
 Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem = null) -> void
 Orkeon.Application.Interfaces.Ports.IHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWriteTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheWriteTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage
+Orkeon.Application.Interfaces.Ports.ModelUsage.ModelUsage() -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.PromptTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.PromptTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.CompletionTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.CompletionTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheWriteTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheWriteTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheReadTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.CacheReadTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.Cost.get -> decimal
+Orkeon.Application.Interfaces.Ports.ModelUsage.Cost.init -> void
+Orkeon.Application.Interfaces.Ports.CostReport.ModelUsageByModel.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Application.Interfaces.Ports.ModelUsage!>!
+Orkeon.Application.Interfaces.Ports.CostReport.ModelUsageByModel.init -> void
+Orkeon.Application.Interfaces.Ports.ModelPricing.CacheWritePricePerMillion.get -> decimal?
+Orkeon.Application.Interfaces.Ports.ModelPricing.CacheWritePricePerMillion.init -> void
+Orkeon.Application.Interfaces.Ports.ModelPricing.CacheReadPricePerMillion.get -> decimal?
+Orkeon.Application.Interfaces.Ports.ModelPricing.CacheReadPricePerMillion.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.<Clone>$() -> Orkeon.Application.Interfaces.Ports.ModelUsage!
+Orkeon.Application.Interfaces.Ports.ModelUsage.Equals(Orkeon.Application.Interfaces.Ports.ModelUsage? other) -> bool
+override Orkeon.Application.Interfaces.Ports.ModelUsage.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.ModelUsage.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.ModelUsage.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.ModelUsage.operator !=(Orkeon.Application.Interfaces.Ports.ModelUsage? left, Orkeon.Application.Interfaces.Ports.ModelUsage? right) -> bool
+static Orkeon.Application.Interfaces.Ports.ModelUsage.operator ==(Orkeon.Application.Interfaces.Ports.ModelUsage? left, Orkeon.Application.Interfaces.Ports.ModelUsage? right) -> bool
+const Orkeon.Application.Common.DTOs.LlmChatOptionsKeys.CacheTtl = "orkeon:cache_ttl" -> string!

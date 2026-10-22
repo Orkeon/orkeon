@@ -57,10 +57,25 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         return CheckBudgets(eventWithCost);
     }
 
-    private decimal EstimateCost(CostUsageEvent usageEvent) =>
-        usageEvent.PromptTokens > 0 || usageEvent.CompletionTokens > 0
-            ? _pricingRegistry.CalculateCost(usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens)
-            : 0m;
+    private decimal EstimateCost(CostUsageEvent usageEvent)
+    {
+        if (usageEvent.PromptTokens <= 0 && usageEvent.CompletionTokens <= 0)
+            return 0m;
+
+        var pricing = _pricingRegistry.TryGetPricing(usageEvent.Model);
+        if (pricing is { CacheWritePricePerMillion: null, CacheReadPricePerMillion: null } or null)
+            return _pricingRegistry.CalculateCost(usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens);
+
+        // PromptTokens already includes the cache tokens: only the remainder pays the plain prompt rate.
+        // A rate the model does not declare falls back to the prompt rate.
+        var write = usageEvent.CacheWriteTokens ?? 0;
+        var read = usageEvent.CacheHitTokens ?? 0;
+        var fresh = Math.Max(0, usageEvent.PromptTokens - write - read);
+        return (fresh * pricing.PromptPricePerMillion
+                + write * (pricing.CacheWritePricePerMillion ?? pricing.PromptPricePerMillion)
+                + read * (pricing.CacheReadPricePerMillion ?? pricing.PromptPricePerMillion)
+                + usageEvent.CompletionTokens * pricing.CompletionPricePerMillion) / 1_000_000m;
+    }
 
     /// <inheritdoc />
     public CostReport GetReport(string? crewId = null, string? agentId = null)
@@ -318,6 +333,20 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             .Where(g => !string.IsNullOrEmpty(g.Key))
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Cost ?? 0m));
 
+        var modelUsage = list
+            .GroupBy(e => e.Model)
+            .Where(g => !string.IsNullOrEmpty(g.Key))
+            .ToDictionary(
+                g => g.Key,
+                g => new ModelUsage
+                {
+                    PromptTokens = g.Sum(e => (long)e.PromptTokens),
+                    CompletionTokens = g.Sum(e => (long)e.CompletionTokens),
+                    CacheWriteTokens = g.Sum(e => e.CacheWriteTokens ?? 0L),
+                    CacheReadTokens = g.Sum(e => e.CacheHitTokens ?? 0L),
+                    Cost = g.Sum(e => e.Cost ?? 0m),
+                });
+
         var byOperationType = list
             .GroupBy(e => e.OperationType)
             .Where(g => !string.IsNullOrEmpty(g.Key))
@@ -330,6 +359,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             TotalCalls = list.Count,
             ByAgent = byAgent,
             ByModel = byModel,
+            ModelUsageByModel = modelUsage,
             ByOperationType = byOperationType,
             PeriodStart = list.Min(e => e.Timestamp),
             PeriodEnd = list.Max(e => e.Timestamp)

@@ -214,6 +214,26 @@ pas par des copies du constructeur de payload :
 | `TryAdaptRejectedPayload` | ré-émet une fois sans le plafond de sortie quand celui du catalogue a été refusé | Kimi (la température imposée, puis la règle de la base) |
 | `BuildEndpoint` | `{baseUrl}/chat/completions` | Azure OpenAI (URL datée par déploiement, ou la surface v1 avec `api_version: v1`) |
 
+## Jetons du cache de prompt et TTL
+
+`LlmResponse` porte trois compteurs de cache : `CacheHitTokens` (lus dans le cache), `CacheWriteTokens`
+(écrits dans le cache — le `cache_creation_input_tokens` d'Anthropic) et `CacheMissTokens` (entrée non servie
+par le cache). `PromptTokens` inclut déjà les jetons écrits et lus : une écriture n'est jamais comptée deux
+fois. `MeteredLlmProvider` les enregistre une fois par appel dans le `CostUsageEvent` ; `CostBudgetManager`
+conserve par modèle les jetons de prompt, de complétion, d'écriture et de lecture du cache et le coût
+(`CostReport.ModelUsageByModel`), et `session_stats` les renvoie dans `by_model_tokens[]` à côté de la table
+de coûts `by_model`, inchangée. Un modèle dont le `ModelPricing` déclare `CacheWritePricePerMillion` /
+`CacheReadPricePerMillion` est tarifé `(prompt - écriture - lecture) x tarif prompt + écriture x tarif
+d'écriture + lecture x tarif de lecture + complétion x tarif de complétion` ; sans ces tarifs, le coût est
+inchangé.
+
+Le TTL du cache est `LlmCacheConfig.Ttl` (`5m` ou `1h`). Un appel peut le porter comme option
+`LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), que `ChatOptionsComposer` remplit depuis le
+`llm.cache.ttl` de l'agent ; l'adaptateur de client de chat le replie dans le `Cache.Ttl` de l'appel et
+Anthropic l'émet dans `cache_control`. Les fournisseurs compatibles OpenAI ne peuvent pas l'honorer et
+journalisent l'avertissement structuré d'option non honorée (événement 110, `cache_ttl`) au lieu de
+l'abandonner en silence.
+
 ## Décorateurs et enregistrement
 
 - **`MeteredLlmProvider`** — l'unique endroit où l'usage LLM est mesuré : il rapporte chaque

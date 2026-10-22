@@ -909,6 +909,8 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             LogUnsupportedOption("frequency_penalty", PenaltyRemedyForOllama);
         if (config.PresencePenalty != 0.0)
             LogUnsupportedOption("presence_penalty", PenaltyRemedyForOllama);
+        if (!string.IsNullOrWhiteSpace(config.Cache?.Ttl))
+            LogUnsupportedOption("cache_ttl", CacheTtlRemedyForOllama);
 
         return OllamaRequestOptions.CreateBuilder()
             .AddTemperature(config.Temperature)
@@ -922,6 +924,10 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     /// <summary>Ollama's own repetition control is a Modelfile parameter, not a request penalty.</summary>
     private const string PenaltyRemedyForOllama =
         "Orkeon writes no repetition penalty for Ollama; set repeat_penalty in the model's Modelfile instead";
+
+    /// <summary>Why a cache TTL is not written for Ollama (RT-12): only Anthropic's cache_control carries one.</summary>
+    private const string CacheTtlRemedyForOllama =
+        "Orkeon writes a cache lifetime on Anthropic only; remove the setting, Ollama keeps models loaded by its own keep_alive";
 
     /// <summary>
     /// Creates the request payload for Ollama API.

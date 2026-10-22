@@ -27,6 +27,12 @@ public record ModelPricing
     /// </summary>
     public decimal? EmbeddingPricePerMillion { get; init; }
 
+    /// <summary>Cost per million cache-write tokens; null when the model declares none.</summary>
+    public decimal? CacheWritePricePerMillion { get; init; }
+
+    /// <summary>Cost per million cache-read tokens; null when the model declares none.</summary>
+    public decimal? CacheReadPricePerMillion { get; init; }
+
     /// <summary>
     /// Currency for pricing (default: USD).
     /// </summary>

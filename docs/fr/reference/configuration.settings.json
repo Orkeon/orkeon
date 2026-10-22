@@ -51,6 +51,8 @@
     "LlmLogging:FullEmbeddingLog": "Si un vecteur d'embedding est journalisé en entier. `false` remplace chacun par ses deux premières et ses deux dernières valeurs : l'échange garde sa forme et perd ses mégaoctets.",
     "LlmLogging:LogStreamingExchanges": "Si un échange en flux est journalisé : sa requête, et la réponse une fois le flux terminé.",
     "LlmLogging:MaxBodyLengthChars": "Le plus grand nombre de caractères journalisés d'un corps de requête ou de réponse ; `0` le journalise en entier.",
+    "Orkeon:CostTracking:CustomPricings:<i>:CacheReadPricePerMillion": "Coût par million de tokens lus dans le cache de prompt ; null si le modèle n'en déclare pas.",
+    "Orkeon:CostTracking:CustomPricings:<i>:CacheWritePricePerMillion": "Coût par million de tokens écrits dans le cache de prompt ; null si le modèle n'en déclare pas.",
     "Orkeon:CostTracking:CustomPricings:<i>:CompletionPricePerMillion": "Coût par million de tokens de complétion (sortie), dans la devise indiquée.",
     "Orkeon:CostTracking:CustomPricings:<i>:Currency": "Devise des prix (défaut : USD).",
     "Orkeon:CostTracking:CustomPricings:<i>:EffectiveDate": "Date à laquelle ce prix est entré en vigueur.",

@@ -106,3 +106,17 @@ static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetLlmApiPolicy(Micro
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DelayAsync(System.TimeSpan delay, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 const Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.Reason = "rate-limit window" -> string!
 static Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.WindowOf(System.Net.Http.HttpResponseMessage! response, System.DateTimeOffset now, System.TimeSpan maximum) -> System.TimeSpan?
+Orkeon.Infrastructure.Tools.SessionStatsResponse.ByModelTokens.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Tools.ModelTokensEntry!>!
+Orkeon.Infrastructure.Tools.SessionStatsResponse.ByModelTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry
+Orkeon.Infrastructure.Tools.ModelTokensEntry.ModelTokensEntry() -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.Model.get -> string!
+Orkeon.Infrastructure.Tools.ModelTokensEntry.Model.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.PromptTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.PromptTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CompletionTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CompletionTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.init -> void
