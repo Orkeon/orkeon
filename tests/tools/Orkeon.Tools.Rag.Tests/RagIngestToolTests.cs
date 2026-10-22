@@ -153,6 +153,30 @@ public class RagIngestToolTests
     }
 
     [Fact]
+    [Trait("BR", "RT-22")]
+    public async Task ShouldUseVirtualPathAsSourceId_WhenSourceIsOnAnotherMount()
+    {
+        var fs = new FakeFileSystemService()
+            .AddMount("/workspace")
+            .AddMount("/data")
+            .AddFile("/workspace/docs/other.md", "other")
+            .AddFile("/data/docs/a.md", "alpha");
+        var pipeline = new FakeIngestionPipeline { Report = SampleReport() };
+        var tool = CreateTool(pipeline, fs);
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+            new Dictionary<string, object?>
+            {
+                ["collection"] = "docs",
+                ["sources"] = new List<object?> { "/data/docs/*.md" },
+            }), TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error);
+        var source = Assert.Single(pipeline.LastRequest!.Sources);
+        Assert.Equal("/data/docs/a.md", source.Location);
+    }
+
+    [Fact]
     public async Task CallAsync_Fails_WhenAGlobMatchesNothing()
     {
         var fs = new FakeFileSystemService().AddMount("/workspace");
@@ -210,6 +234,27 @@ public class RagIngestToolTests
         var text = Assert.IsType<string>(response.Result);
         Assert.Contains("Errors:", text, StringComparison.Ordinal);
         Assert.Contains("- boom on /w/a.md", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-23")]
+    public async Task ShouldReportPrunedCount_WhenRagIngestPrunes()
+    {
+        var pipeline = new FakeIngestionPipeline { Report = SampleReport() with { SourcesPruned = 2 } };
+        var tool = CreateTool(pipeline);
+
+        var response = await tool.CallAsync(new ToolCallRequest("rag_ingest",
+            new Dictionary<string, object?>
+            {
+                ["collection"] = "docs",
+                ["sources"] = new List<object?> { "/workspace/a.md" },
+                ["prune"] = true,
+            }), TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error);
+        Assert.True(pipeline.LastRequest!.Prune);
+        var text = Assert.IsType<string>(response.Result);
+        Assert.Contains("2 pruned", text, StringComparison.Ordinal);
     }
 
     [Fact]

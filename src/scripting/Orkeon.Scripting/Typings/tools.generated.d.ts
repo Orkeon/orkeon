@@ -881,6 +881,8 @@ declare global {
             chunking_strategy?: string;
             /** Target collection in the document store */
             collection: string;
+            /** Delete the chunks and manifest entries of previously ingested sources absent from 'sources' */
+            prune?: boolean;
             /** Force a full reindex of the collection (required after an embedding model change) */
             reindex?: boolean;
             /** File paths, glob patterns or http(s) addresses to ingest (e.g. '/workspace/docs/**\/*.md') */

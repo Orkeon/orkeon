@@ -63,9 +63,11 @@ namespace Orkeon.Rag.Stores;
 /// registry entry — O(N) provider calls in the number of chunks of that source, with no
 /// store-wide scan (the <see cref="IMemoryProvider"/> surface offers no enumeration API).
 /// </para>
-/// <para><b>Concurrency</b>: manifest and registry updates are read-merge-write and therefore
-/// best-effort under concurrent writers to the same (collection, source) — same guarantees as
-/// the underlying provider, no cross-call locking.</para>
+/// <para><b>Concurrency</b>: the collection registry read-merge-write is atomic per
+/// (provider, collection) across every store instance built over the same provider, through an
+/// in-process lock. Per-source manifests stay best-effort under concurrent writers to the same
+/// (collection, source) — same guarantees as the underlying provider. Writers in other
+/// processes are not serialized.</para>
 /// </remarks>
 public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStoreCollectionProbe
 {
@@ -93,6 +95,10 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStore
     private const string ChunkKind = "chunk";
     private const string ManifestKind = "manifest";
     private const string RegistryKind = "registry";
+
+    // One lock table per provider instance, shared by every store built over it.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+        IMemoryProvider, System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim>> RegistryLocks = new();
 
     private readonly IMemoryProvider _provider;
 
@@ -302,24 +308,40 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStore
         await _provider.DeleteAsync(manifestKey, cancellationToken).ConfigureAwait(false);
 
         var registryKey = RegistryKey(collection);
-        var registry = await _provider.GetAsync(registryKey, cancellationToken).ConfigureAwait(false);
-        if (registry is null)
-            return;
-
-        var hashes = new SortedSet<string>(ParseLines(registry.Content), StringComparer.Ordinal);
-        if (!hashes.Remove(sourceHash))
-            return;
-
-        if (hashes.Count == 0)
+        var registryLock = await AcquireRegistryLockAsync(collection, cancellationToken).ConfigureAwait(false);
+        try
         {
-            await _provider.DeleteAsync(registryKey, cancellationToken).ConfigureAwait(false);
+            var registry = await _provider.GetAsync(registryKey, cancellationToken).ConfigureAwait(false);
+            if (registry is null)
+                return;
+
+            var hashes = new SortedSet<string>(ParseLines(registry.Content), StringComparer.Ordinal);
+            if (!hashes.Remove(sourceHash))
+                return;
+
+            if (hashes.Count == 0)
+            {
+                await _provider.DeleteAsync(registryKey, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await _provider
+                    .StoreAsync(registryKey, RegistryItem(collection, hashes), cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
-        else
+        finally
         {
-            await _provider
-                .StoreAsync(registryKey, RegistryItem(collection, hashes), cancellationToken)
-                .ConfigureAwait(false);
+            registryLock.Release();
         }
+    }
+
+    private async Task<SemaphoreSlim> AcquireRegistryLockAsync(string collection, CancellationToken cancellationToken)
+    {
+        var locks = RegistryLocks.GetValue(_provider, static _ => new(StringComparer.Ordinal));
+        var registryLock = locks.GetOrAdd(collection, static _ => new SemaphoreSlim(1, 1));
+        await registryLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return registryLock;
     }
 
     /// <summary>
@@ -455,20 +477,28 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStore
         CancellationToken cancellationToken)
     {
         var registryKey = RegistryKey(collection);
-        var existing = await _provider.GetAsync(registryKey, cancellationToken).ConfigureAwait(false);
+        var registryLock = await AcquireRegistryLockAsync(collection, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var existing = await _provider.GetAsync(registryKey, cancellationToken).ConfigureAwait(false);
 
-        var hashes = new SortedSet<string>(ParseLines(existing?.Content), StringComparer.Ordinal);
-        var countBefore = hashes.Count;
+            var hashes = new SortedSet<string>(ParseLines(existing?.Content), StringComparer.Ordinal);
+            var countBefore = hashes.Count;
 
-        foreach (var sourceId in sourceIds)
-            hashes.Add(SourceHash(sourceId));
+            foreach (var sourceId in sourceIds)
+                hashes.Add(SourceHash(sourceId));
 
-        if (existing is not null && hashes.Count == countBefore)
-            return; // Registry already up to date.
+            if (existing is not null && hashes.Count == countBefore)
+                return; // Registry already up to date.
 
-        await _provider
-            .StoreAsync(registryKey, RegistryItem(collection, hashes), cancellationToken)
-            .ConfigureAwait(false);
+            await _provider
+                .StoreAsync(registryKey, RegistryItem(collection, hashes), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            registryLock.Release();
+        }
     }
 
     private static MemoryItem RegistryItem(string collection, IReadOnlyCollection<string> hashes)

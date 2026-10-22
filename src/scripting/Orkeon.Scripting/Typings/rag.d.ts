@@ -16,6 +16,8 @@ declare global {
         readonly sourcesUnchanged: number;
         /** Sources re-ingested (modified, or forcibly rebuilt via `reindex`). */
         readonly sourcesReingested: number;
+        /** Sources removed because absent from the request (`prune`). */
+        readonly sourcesPruned: number;
         readonly durationMs: number;
         /** Non-fatal errors encountered during the run (empty when clean). */
         readonly errors: readonly string[];
@@ -53,6 +55,8 @@ declare global {
             chunkingStrategy?: string;
             /** Force a full reindex (required after an embedding model change). Default false. */
             reindex?: boolean;
+            /** Delete previously ingested sources absent from `sources`. Default false. */
+            prune?: boolean;
         }): Promise<RagIngestReport>;
 
         /**

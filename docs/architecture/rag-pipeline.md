@@ -425,6 +425,24 @@ redirect, so an approved URL cannot be bounced to an internal address.
   It is also the only way to re-ingest after an embedding-profile change:
   a drift between the manifest's recorded profile and the active provider fails
   the run loudly rather than silently mixing incompatible vectors.
+- **`prune`** (`rag_ingest` option, `rag.ingest({ prune: true })`): deletes the chunks
+  and the manifest entries of manifest sources that are absent from the ingested source
+  set, and reports them as `SourcesPruned` (`<n> pruned` in the tool output,
+  `sourcesPruned` in the script payload). Pruning is skipped for a run that recorded any
+  error, so a failed load never causes data loss.
+- **Scope and concurrency**:
+  - *Store persistence* follows `Orkeon:Rag:Provider`: the default in-memory store is lost
+    at process end; `sqlite`, `redis`, `chromadb`, `pinecone` and `lancedb` persist.
+  - *The document store is host-global*: one store per host, shared by every workspace and
+    crew. Chunks ingested through one workspace are retrievable from another.
+  - *The ingestion manifest is per workspace* (`/output/rag/manifests/{collection}.json`
+    through each workspace's VFS). A second workspace sharing a persistent store sees an
+    empty or different manifest and re-ingests.
+  - *Ingests of one collection are serialized* by an in-process per-collection lock (from
+    the manifest read to its write); different collections run concurrently. The
+    collection-registry update of the store is atomic per provider.
+  - The lock is in-process only: a cross-process lock needs provider support and is out of
+    scope, so two host processes sharing a store can still race.
 - Glob sources (`*`, `**`, `?`) are expanded through the VFS by
   `SourceGlobExpander` at every consuming surface (scripting `rag.ingest`,
   `rag_ingest` tool, CLI `orkeon rag ingest`, eval harness corpus, and the crew
