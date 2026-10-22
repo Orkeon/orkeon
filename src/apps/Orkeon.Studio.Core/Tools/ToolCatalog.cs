@@ -245,6 +245,7 @@ public static class ToolCatalog
             new("node_outline"),
             new("node_read"),
             new("node_replace"),
+            new("structural_search"),
             new("codebase_search"),
             new("dependency_graph"),
             new("sub_graph"),

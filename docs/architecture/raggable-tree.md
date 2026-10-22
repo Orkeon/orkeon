@@ -279,6 +279,34 @@ Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), pytho
 - A test calling a symbol newly added in another file gets no `tests` edge until a full reindex.
 - A TypeScript test callback has no node: its calls are owned by the enclosing symbol, else by the file node. Today only the tag is applied to the file node; the `tests` edges of a file-level TypeScript test are not yet produced.
 
+## Structural search
+
+`structural_search` (read-class) finds syntax nodes by pattern or by rule. The engine is native (no ast-grep binary): each candidate file is parsed again by the matcher, so a result never comes from a stale index. Give exactly one of `pattern`, `rule` (an object) or `rule_file`.
+
+Rule subset:
+
+| Key | Meaning |
+|---|---|
+| `kind` | The node kind (tree-sitter grammar name) |
+| `pattern` | A code pattern with metavariables |
+| `regex` | A regular expression on the node text |
+| `field` | The field name the node holds in its parent |
+| `inside` | The node has a parent matching the sub-rule: the direct parent unless `stopBy: end` |
+| `has` | The node has a child matching the sub-rule: a direct child unless `stopBy: end` |
+| `not` | The sub-rule must not match |
+| `all` / `any` | Every / at least one of the sub-rules matches |
+| `stopBy` | Where `inside` / `has` stop climbing or descending: `neighbor` (default), `end`, or a rule object |
+
+Any other key (`follows`, `precedes`, `matches`, `constraints`, `transform`, …) is refused by name.
+
+Metavariables: `$A` captures one node, and a repeated name must match equal text; `$$$ARGS` captures a sequence of siblings. Captures are returned with each match.
+
+Languages: C# (`cs`), TypeScript (`ts`), Markdown (`md`) and the other grammars the index ships. In Markdown the kinds are `heading`, `fence`, `link` and `front_matter`; `regex` applies to the heading text or the fence info string, and `pattern` is not available.
+
+A YAML rule file (`id`, `language`, `rule`, `message`, `severity`, `fix`) is read through the VFS under a mounted root; `fix` is read, never applied.
+
+Results are capped by `max_results` (default 100) and `max_files` (default 500); the result reports `truncated` and `files_scanned`. Each match carries path, line, column, text, the enclosing symbol and its captures.
+
 ## Extensibility
 
 ### Adding a language

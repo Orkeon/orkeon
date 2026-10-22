@@ -1138,6 +1138,25 @@ declare global {
             readonly truncated: boolean;
         }>;
 
+        /** `structural_search` - Searches C#, TypeScript or Markdown files for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
+        structuralSearch(input?: {
+            glob?: string | null;
+            language?: string;
+            max_files?: number;
+            max_results?: number;
+            paths?: readonly string[];
+            /** Code pattern with $NAME / $$$NAME metavariables. Give exactly one of pattern, rule or rule_file. */
+            pattern?: string | null;
+            /** Structural rule object. Keys: kind, pattern, regex, field, inside, has, not, all, any, stopBy. Any other key is refused by name. */
+            rule?: unknown;
+            /** Virtual path of a YAML rule file (id, language, rule, message, severity, fix) under a mounted root. */
+            rule_file?: string | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly files_scanned: number;
+            readonly matches: readonly { readonly captures: Record<string, string>; readonly column: number; readonly enclosing_symbol?: string; readonly line: number; readonly path: string; readonly text: string; }[];
+            readonly truncated: boolean;
+        }>;
+
         /** `sub_graph` - Sub-graph expansion around seeds, bounded by depth and node count. */
         subGraph(input?: {
             depth?: number;

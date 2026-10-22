@@ -36,6 +36,16 @@ internal static class LanguageRegistry
         return new TsLanguage(entry.Library, entry.Function);
     }
 
+    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cs"] = "csharp",
+        ["ts"] = "typescript",
+        ["md"] = "markdown",
+    };
+
+    /// <summary>The canonical language name of an alias (<c>cs</c>, <c>ts</c>); any other name is returned as given.</summary>
+    public static string Resolve(string language) => Aliases.GetValueOrDefault(language, language);
+
     public static bool IsSupported(string language) => Map.ContainsKey(language);
 
     public static IEnumerable<string> Supported => Map.Keys.Where(k => k != "c-sharp");

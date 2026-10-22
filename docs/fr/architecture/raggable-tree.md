@@ -280,6 +280,34 @@ Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), p
 - Un test qui appelle un symbole récemment ajouté dans un autre fichier n'a pas d'arête `tests` avant une réindexation complète.
 - Un callback de test TypeScript n'a pas de nœud : ses appels appartiennent au symbole englobant, sinon au nœud fichier. Aujourd'hui seul le tag est posé sur le nœud fichier ; les arêtes `tests` d'un test TypeScript au niveau fichier ne sont pas encore produites.
 
+## Recherche structurelle
+
+`structural_search` (classe Read) trouve des nœuds de syntaxe par motif ou par règle. Le moteur est natif (aucun binaire ast-grep) : chaque fichier candidat est analysé de nouveau par le matcher, un résultat ne vient donc jamais d'un index périmé. Donner exactement un de `pattern`, `rule` (un objet) ou `rule_file`.
+
+Sous-ensemble de règles :
+
+| Clé | Signification |
+|---|---|
+| `kind` | Le genre du nœud (nom de la grammaire tree-sitter) |
+| `pattern` | Un motif de code avec métavariables |
+| `regex` | Une expression régulière sur le texte du nœud |
+| `field` | Le nom du champ que le nœud occupe chez son parent |
+| `inside` | Le nœud a un parent qui satisfait la sous-règle : le parent direct sauf avec `stopBy: end` |
+| `has` | Le nœud a un enfant qui satisfait la sous-règle : un enfant direct sauf avec `stopBy: end` |
+| `not` | La sous-règle ne doit pas correspondre |
+| `all` / `any` | Toutes / au moins une des sous-règles correspondent |
+| `stopBy` | Où `inside` / `has` cessent de monter ou de descendre : `neighbor` (défaut), `end`, ou un objet de règle |
+
+Toute autre clé (`follows`, `precedes`, `matches`, `constraints`, `transform`, …) est refusée par son nom.
+
+Métavariables : `$A` capture un nœud, et un nom répété doit correspondre à un texte égal ; `$$$ARGS` capture une suite de nœuds frères. Les captures sont renvoyées avec chaque correspondance.
+
+Langages : C# (`cs`), TypeScript (`ts`), Markdown (`md`) et les autres grammaires livrées par l'index. En Markdown les genres sont `heading`, `fence`, `link` et `front_matter` ; `regex` porte sur le texte du titre ou sur la chaîne d'information de la clôture, et `pattern` n'est pas disponible.
+
+Un fichier de règles YAML (`id`, `language`, `rule`, `message`, `severity`, `fix`) est lu via le VFS sous une racine montée ; `fix` est lu, jamais appliqué.
+
+Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (500 par défaut) ; le résultat indique `truncated` et `files_scanned`. Chaque correspondance porte chemin, ligne, colonne, texte, symbole englobant et captures.
+
 ## Extensibilité
 
 ### Ajouter un langage

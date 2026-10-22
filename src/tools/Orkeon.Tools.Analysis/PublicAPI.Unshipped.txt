@@ -179,3 +179,69 @@ static Orkeon.Tools.Analysis.NodeReplaceRequest.operator !=(Orkeon.Tools.Analysi
 static Orkeon.Tools.Analysis.NodeReplaceRequest.operator ==(Orkeon.Tools.Analysis.NodeReplaceRequest? left, Orkeon.Tools.Analysis.NodeReplaceRequest? right) -> bool
 static Orkeon.Tools.Analysis.NodeReplaceResponse.operator !=(Orkeon.Tools.Analysis.NodeReplaceResponse? left, Orkeon.Tools.Analysis.NodeReplaceResponse? right) -> bool
 static Orkeon.Tools.Analysis.NodeReplaceResponse.operator ==(Orkeon.Tools.Analysis.NodeReplaceResponse? left, Orkeon.Tools.Analysis.NodeReplaceResponse? right) -> bool
+Orkeon.Tools.Analysis.StructuralMatchDto
+Orkeon.Tools.Analysis.StructuralMatchDto.<Clone>$() -> Orkeon.Tools.Analysis.StructuralMatchDto!
+Orkeon.Tools.Analysis.StructuralMatchDto.Captures.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
+Orkeon.Tools.Analysis.StructuralMatchDto.Captures.init -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.Column.get -> int
+Orkeon.Tools.Analysis.StructuralMatchDto.Column.init -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.EnclosingSymbol.get -> string?
+Orkeon.Tools.Analysis.StructuralMatchDto.EnclosingSymbol.init -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.Equals(Orkeon.Tools.Analysis.StructuralMatchDto? other) -> bool
+Orkeon.Tools.Analysis.StructuralMatchDto.Line.get -> int
+Orkeon.Tools.Analysis.StructuralMatchDto.Line.init -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.Path.get -> string!
+Orkeon.Tools.Analysis.StructuralMatchDto.Path.init -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.StructuralMatchDto() -> void
+Orkeon.Tools.Analysis.StructuralMatchDto.Text.get -> string!
+Orkeon.Tools.Analysis.StructuralMatchDto.Text.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest
+Orkeon.Tools.Analysis.StructuralSearchRequest.<Clone>$() -> Orkeon.Tools.Analysis.StructuralSearchRequest!
+Orkeon.Tools.Analysis.StructuralSearchRequest.Equals(Orkeon.Tools.Analysis.StructuralSearchRequest? other) -> bool
+Orkeon.Tools.Analysis.StructuralSearchRequest.Glob.get -> string?
+Orkeon.Tools.Analysis.StructuralSearchRequest.Glob.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.Language.get -> string!
+Orkeon.Tools.Analysis.StructuralSearchRequest.Language.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.MaxFiles.get -> int
+Orkeon.Tools.Analysis.StructuralSearchRequest.MaxFiles.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.MaxResults.get -> int
+Orkeon.Tools.Analysis.StructuralSearchRequest.MaxResults.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.Paths.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Analysis.StructuralSearchRequest.Paths.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.Pattern.get -> string?
+Orkeon.Tools.Analysis.StructuralSearchRequest.Pattern.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.Rule.get -> System.Text.Json.JsonElement?
+Orkeon.Tools.Analysis.StructuralSearchRequest.Rule.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.RuleFile.get -> string?
+Orkeon.Tools.Analysis.StructuralSearchRequest.RuleFile.init -> void
+Orkeon.Tools.Analysis.StructuralSearchRequest.StructuralSearchRequest() -> void
+Orkeon.Tools.Analysis.StructuralSearchResponse
+Orkeon.Tools.Analysis.StructuralSearchResponse.<Clone>$() -> Orkeon.Tools.Analysis.StructuralSearchResponse!
+Orkeon.Tools.Analysis.StructuralSearchResponse.Equals(Orkeon.Tools.Analysis.StructuralSearchResponse? other) -> bool
+Orkeon.Tools.Analysis.StructuralSearchResponse.FilesScanned.get -> int
+Orkeon.Tools.Analysis.StructuralSearchResponse.FilesScanned.init -> void
+Orkeon.Tools.Analysis.StructuralSearchResponse.Matches.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.Analysis.StructuralMatchDto!>!
+Orkeon.Tools.Analysis.StructuralSearchResponse.Matches.init -> void
+Orkeon.Tools.Analysis.StructuralSearchResponse.StructuralSearchResponse() -> void
+Orkeon.Tools.Analysis.StructuralSearchResponse.Truncated.get -> bool
+Orkeon.Tools.Analysis.StructuralSearchResponse.Truncated.init -> void
+Orkeon.Tools.Analysis.StructuralSearchTool
+Orkeon.Tools.Analysis.StructuralSearchTool.StructuralSearchTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool) -> void
+override Orkeon.Tools.Analysis.StructuralMatchDto.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralMatchDto.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralMatchDto.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralSearchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralSearchRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralSearchRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralSearchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralSearchResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralSearchResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.StructuralSearchTool.Description.get -> string!
+override Orkeon.Tools.Analysis.StructuralSearchTool.Name.get -> string!
+static Orkeon.Tools.Analysis.StructuralMatchDto.operator !=(Orkeon.Tools.Analysis.StructuralMatchDto? left, Orkeon.Tools.Analysis.StructuralMatchDto? right) -> bool
+static Orkeon.Tools.Analysis.StructuralMatchDto.operator ==(Orkeon.Tools.Analysis.StructuralMatchDto? left, Orkeon.Tools.Analysis.StructuralMatchDto? right) -> bool
+static Orkeon.Tools.Analysis.StructuralSearchRequest.operator !=(Orkeon.Tools.Analysis.StructuralSearchRequest? left, Orkeon.Tools.Analysis.StructuralSearchRequest? right) -> bool
+static Orkeon.Tools.Analysis.StructuralSearchRequest.operator ==(Orkeon.Tools.Analysis.StructuralSearchRequest? left, Orkeon.Tools.Analysis.StructuralSearchRequest? right) -> bool
+static Orkeon.Tools.Analysis.StructuralSearchResponse.operator !=(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool
+static Orkeon.Tools.Analysis.StructuralSearchResponse.operator ==(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool

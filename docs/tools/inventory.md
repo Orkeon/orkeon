@@ -231,6 +231,7 @@ Seventeen tools over the RaggableTree semantic code graph — the full guide is
 | `node_outline` | `NodeOutlineTool` | List the members of a C# or TypeScript file with selectors, byte and line ranges |
 | `node_read` | `NodeReadTool` | Read one member by selector: text (leading comments and attributes included), range, SHA-256, uncut |
 | `node_replace` | `NodeReplaceTool` | Replace one node by selector and expected SHA-256: refused on a stale hash or a newly introduced parse error, the file left untouched; marks the index dirty. Edit-class |
+| `structural_search` | `StructuralSearchTool` | Structural search by pattern with `$A` / `$$$ARGS` metavariables, rule object or YAML rule file over C#, TypeScript and Markdown files, bounded by `max_results` / `max_files`. Read-class |
 
 ## Mounts and local embeddings
 
@@ -477,6 +478,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `spawn_agent` | `SpawnAgentTool` | `Orkeon.Infrastructure` (host-registered) |
 | `sqlserver_query` | `SqlServerDatabaseTool` | `Orkeon.Tools.Data` |
 | `statement_query` | `StatementQueryTool` | `Orkeon.Tools.Analysis` |
+| `structural_search` | `StructuralSearchTool` | `Orkeon.Tools.Analysis` |
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |

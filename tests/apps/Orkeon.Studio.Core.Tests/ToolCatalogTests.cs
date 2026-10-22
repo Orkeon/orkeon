@@ -24,7 +24,7 @@ public sealed partial class ToolCatalogTests
     /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 18, collaboration 3
     /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 99;
+    private const int ToolsARunExposes = 100;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";

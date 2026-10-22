@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <Content Include="Fixtures\DevRepo\Goldens\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Fixtures\DevRepo\Rules\*.yml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>
