@@ -27,12 +27,6 @@ internal static partial class PatternCompiler
         "compilation_unit", "program", "global_statement", "expression_statement",
     };
 
-    [GeneratedRegex(@"\$\$\$([A-Za-z_][A-Za-z0-9_]*)")]
-    private static partial Regex VariadicToken();
-
-    [GeneratedRegex(@"\$([A-Za-z_][A-Za-z0-9_]*)")]
-    private static partial Regex SingleToken();
-
     [GeneratedRegex(@"^__ork_(mv|va)_(.+)__$")]
     private static partial Regex Sentinel();
 
@@ -40,7 +34,10 @@ internal static partial class PatternCompiler
     {
         ArgumentNullException.ThrowIfNull(pattern);
         ArgumentNullException.ThrowIfNull(pool);
-        var source = SingleToken().Replace(VariadicToken().Replace(pattern, "__ork_va_$1__"), "__ork_mv_$1__");
+        var source = MetavariableGrammar.Token().Replace(pattern, token =>
+            token.Groups[1].Success ? $"__ork_va_{token.Groups[1].Value}__"
+            : token.Groups[2].Success ? $"__ork_mv_{token.Groups[2].Value}__"
+            : token.Value);
         using var parsed = pool.Parse(source, language);
         if (!parsed.Root.HasError) return Snapshot(parsed.Root);
 

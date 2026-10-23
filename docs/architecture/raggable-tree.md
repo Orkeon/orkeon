@@ -323,6 +323,14 @@ Results are capped by `max_results` (default 100) and `max_files` (default 500);
 - `validate: "build"` writes the files, then `DotnetBuildValidator` builds the nearest `.csproj`/`.sln` above the edited files (`dotnet build --no-restore`, timeout, process killed on cancel). A red build restores the original bytes; with no project found the check is skipped and reported.
 - The result lists each operation's path and range, and the validation outcome.
 
+## Structural rewrite
+
+`structural_rewrite` (Edit class) rewrites every node a `pattern` or `rule` matches with a `fix` template, over the files of `paths` / `glob` (bounded by `max_files`).
+
+- `dry_run` defaults to `true`: nothing is written, the result carries a per-file unified diff, match count and applied count.
+- Each rewritten file is re-parsed in memory; a file whose rewrite does not parse is refused alone (`refused_reason`), the others are still applied.
+- C# and TypeScript only: Markdown files are refused.
+
 ## Extensibility
 
 ### Adding a language

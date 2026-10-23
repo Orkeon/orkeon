@@ -345,3 +345,71 @@ static Orkeon.Tools.Analysis.EditBatchRequest.operator !=(Orkeon.Tools.Analysis.
 static Orkeon.Tools.Analysis.EditBatchRequest.operator ==(Orkeon.Tools.Analysis.EditBatchRequest? left, Orkeon.Tools.Analysis.EditBatchRequest? right) -> bool
 static Orkeon.Tools.Analysis.EditBatchResponse.operator !=(Orkeon.Tools.Analysis.EditBatchResponse? left, Orkeon.Tools.Analysis.EditBatchResponse? right) -> bool
 static Orkeon.Tools.Analysis.EditBatchResponse.operator ==(Orkeon.Tools.Analysis.EditBatchResponse? left, Orkeon.Tools.Analysis.EditBatchResponse? right) -> bool
+Orkeon.Tools.Analysis.StructuralRewriteFileDto
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Applied.get -> int
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Applied.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.<Clone>$() -> Orkeon.Tools.Analysis.StructuralRewriteFileDto!
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Diff.get -> string!
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Diff.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Equals(Orkeon.Tools.Analysis.StructuralRewriteFileDto? other) -> bool
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Matches.get -> int
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Matches.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Path.get -> string!
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Path.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.RefusedReason.get -> string?
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.RefusedReason.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Skipped.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.Skipped.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteFileDto.StructuralRewriteFileDto() -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest
+Orkeon.Tools.Analysis.StructuralRewriteRequest.<Clone>$() -> Orkeon.Tools.Analysis.StructuralRewriteRequest!
+Orkeon.Tools.Analysis.StructuralRewriteRequest.DryRun.get -> bool
+Orkeon.Tools.Analysis.StructuralRewriteRequest.DryRun.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Equals(Orkeon.Tools.Analysis.StructuralRewriteRequest? other) -> bool
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Fix.get -> string?
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Fix.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Glob.get -> string?
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Glob.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Language.get -> string!
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Language.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.MaxFiles.get -> int
+Orkeon.Tools.Analysis.StructuralRewriteRequest.MaxFiles.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Paths.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Paths.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Pattern.get -> string?
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Pattern.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.RuleFile.get -> string?
+Orkeon.Tools.Analysis.StructuralRewriteRequest.RuleFile.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Rule.get -> System.Text.Json.JsonElement?
+Orkeon.Tools.Analysis.StructuralRewriteRequest.Rule.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteRequest.StructuralRewriteRequest() -> void
+Orkeon.Tools.Analysis.StructuralRewriteResponse
+Orkeon.Tools.Analysis.StructuralRewriteResponse.<Clone>$() -> Orkeon.Tools.Analysis.StructuralRewriteResponse!
+Orkeon.Tools.Analysis.StructuralRewriteResponse.Equals(Orkeon.Tools.Analysis.StructuralRewriteResponse? other) -> bool
+Orkeon.Tools.Analysis.StructuralRewriteResponse.Files.get -> System.Collections.Immutable.ImmutableList<Orkeon.Tools.Analysis.StructuralRewriteFileDto!>!
+Orkeon.Tools.Analysis.StructuralRewriteResponse.Files.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteResponse.FilesScanned.get -> int
+Orkeon.Tools.Analysis.StructuralRewriteResponse.FilesScanned.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteResponse.StructuralRewriteResponse() -> void
+Orkeon.Tools.Analysis.StructuralRewriteResponse.Truncated.get -> bool
+Orkeon.Tools.Analysis.StructuralRewriteResponse.Truncated.init -> void
+Orkeon.Tools.Analysis.StructuralRewriteTool
+Orkeon.Tools.Analysis.StructuralRewriteTool.StructuralRewriteTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+override Orkeon.Tools.Analysis.StructuralRewriteFileDto.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralRewriteFileDto.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralRewriteFileDto.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralRewriteRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralRewriteRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralRewriteRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralRewriteResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.StructuralRewriteResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.StructuralRewriteResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.StructuralRewriteTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.StructuralRewriteTool.Description.get -> string!
+override Orkeon.Tools.Analysis.StructuralRewriteTool.Name.get -> string!
+static Orkeon.Tools.Analysis.StructuralRewriteFileDto.operator !=(Orkeon.Tools.Analysis.StructuralRewriteFileDto? left, Orkeon.Tools.Analysis.StructuralRewriteFileDto? right) -> bool
+static Orkeon.Tools.Analysis.StructuralRewriteFileDto.operator ==(Orkeon.Tools.Analysis.StructuralRewriteFileDto? left, Orkeon.Tools.Analysis.StructuralRewriteFileDto? right) -> bool
+static Orkeon.Tools.Analysis.StructuralRewriteRequest.operator !=(Orkeon.Tools.Analysis.StructuralRewriteRequest? left, Orkeon.Tools.Analysis.StructuralRewriteRequest? right) -> bool
+static Orkeon.Tools.Analysis.StructuralRewriteRequest.operator ==(Orkeon.Tools.Analysis.StructuralRewriteRequest? left, Orkeon.Tools.Analysis.StructuralRewriteRequest? right) -> bool
+static Orkeon.Tools.Analysis.StructuralRewriteResponse.operator !=(Orkeon.Tools.Analysis.StructuralRewriteResponse? left, Orkeon.Tools.Analysis.StructuralRewriteResponse? right) -> bool
+static Orkeon.Tools.Analysis.StructuralRewriteResponse.operator ==(Orkeon.Tools.Analysis.StructuralRewriteResponse? left, Orkeon.Tools.Analysis.StructuralRewriteResponse? right) -> bool

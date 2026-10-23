@@ -90,4 +90,14 @@ public sealed class StructuralRuleTests
         Assert.Equal("Foo(1)", Assert.Single(Run(source, Inside("block", Obj(("kind", "for_statement"))))).Text);
         Assert.Empty(Run(source, Inside("for_statement", Obj(("kind", "if_statement")))));
     }
+
+    [Fact]
+    [Trait("BR", "RT-32")]
+    public void ShouldExposeBoundMetavariableNames_WhenRuleHasSeveralPatterns()
+    {
+        var rule = StructuralRule.FromInline("csharp", Obj(
+            ("any", new List<object?> { Obj(("pattern", "foo($Name, $$$rest)")), Obj(("pattern", "bar($arg, $_X1)")) })));
+
+        Assert.Equal(["Name", "_X1", "arg", "rest"], rule.MetavariableNames.Order(StringComparer.Ordinal).ToArray());
+    }
 }

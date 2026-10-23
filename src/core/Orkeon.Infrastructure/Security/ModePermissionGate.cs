@@ -50,6 +50,7 @@ public sealed class ModePermissionGate : IPermissionGate
     {
         "file_write", "spawn_agent",
         "node_replace", "node_insert", "edit_batch",
+        "structural_rewrite",
         "edit_file",
     };
 

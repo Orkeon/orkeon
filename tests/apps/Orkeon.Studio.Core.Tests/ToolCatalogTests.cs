@@ -24,7 +24,7 @@ public sealed partial class ToolCatalogTests
     /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 18, collaboration 3
     /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 102;
+    private const int ToolsARunExposes = 103;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";
@@ -56,6 +56,7 @@ public sealed partial class ToolCatalogTests
 
     [Fact]
     [Trait("BR", "RT-35")]
+    [Trait("BR", "RT-32")]
     public void The_catalogue_lists_exactly_the_tools_a_run_exposes_once_each()
     {
         var names = ToolCatalog.All.Select(t => t.Name).ToList();
@@ -64,6 +65,7 @@ public sealed partial class ToolCatalogTests
         Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
         // The families the matrix keeps out of a run never appear: RAG, Slack, the
         // code interpreter (concrete type only).
+        Assert.Contains("structural_rewrite", names);
         Assert.DoesNotContain("rag_search", names);
         Assert.DoesNotContain("slack_send_message", names);
         Assert.DoesNotContain("code_interpreter", names);

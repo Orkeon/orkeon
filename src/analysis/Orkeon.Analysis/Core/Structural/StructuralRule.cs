@@ -27,6 +27,9 @@ internal sealed class StructuralRule
 
     public string? Fix { get; }
 
+    public IReadOnlySet<string> MetavariableNames =>
+        RuleNodes.PatternsOf(Root).SelectMany(MetavariableGrammar.NamesIn).ToHashSet(StringComparer.Ordinal);
+
     public static StructuralRule FromInline(string language, IReadOnlyDictionary<string, object?> rule)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(language);

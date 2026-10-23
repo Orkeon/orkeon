@@ -25,7 +25,7 @@ internal sealed class NodeReplaceOperation(NodeSelector selector, string expecte
         };
     }
 
-    private static string WithLineEndingsOf(ReadOnlySpan<byte> file, string value)
+    internal static string WithLineEndingsOf(ReadOnlySpan<byte> file, string value)
     {
         var normalised = value.Replace("\r\n", "\n", StringComparison.Ordinal);
         return IndentationDetector.LineEnding(file) == "\r\n" ? normalised.Replace("\n", "\r\n", StringComparison.Ordinal) : normalised;

@@ -91,6 +91,7 @@ session_store
 shell_command
 sqlserver_query
 statement_query
+structural_rewrite
 structural_search
 sub_graph
 symbol_detail

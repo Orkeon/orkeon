@@ -66,7 +66,7 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
     protected override async Task<StructuralSearchResponse> ExecuteTypedAsync(StructuralSearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var rule = await RuleOfAsync(request, cancellationToken).ConfigureAwait(false);
+        var rule = await RuleOfAsync(_fs, request.Pattern, request.Rule, request.RuleFile, request.Language, cancellationToken).ConfigureAwait(false);
         var language = LanguageRegistry.Resolve(rule.Language);
         var grammar = Served.Contains(language) ? LanguageRegistry.Shipped.FirstOrDefault(g => g.Language == language) : null;
         if (grammar is null)
@@ -77,7 +77,7 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         var scanned = 0;
         var truncated = false;
 
-        await foreach (var path in CandidateFilesAsync(request, grammar, cancellationToken).ConfigureAwait(false))
+        await foreach (var path in CandidateFilesAsync(_fs, request.Paths, request.Glob, grammar, cancellationToken).ConfigureAwait(false))
         {
             if (scanned >= request.MaxFiles)
             {
@@ -113,21 +113,22 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         return new StructuralSearchResponse { Matches = matches.ToImmutableList(), Truncated = truncated, FilesScanned = scanned };
     }
 
-    private async Task<StructuralRule> RuleOfAsync(StructuralSearchRequest request, CancellationToken cancellationToken)
+    internal static async Task<StructuralRule> RuleOfAsync(
+        IFileSystemService fs, string? pattern, System.Text.Json.JsonElement? rule, string? ruleFile, string language, CancellationToken cancellationToken)
     {
-        var given = new[] { request.Pattern is not null, request.Rule is not null, request.RuleFile is not null }.Count(g => g);
-        if (given != 1) throw new ArgumentException("Give exactly one of 'pattern', 'rule' or 'rule_file'.", nameof(request));
+        var given = new[] { pattern is not null, rule is not null, ruleFile is not null }.Count(g => g);
+        if (given != 1) throw new ArgumentException("Give exactly one of 'pattern', 'rule' or 'rule_file'.");
 
-        if (request.RuleFile is not null)
-            return await YamlRuleLoader.LoadAsync(_fs, request.RuleFile, cancellationToken).ConfigureAwait(false);
-        if (request.Rule is { } inline)
+        if (ruleFile is not null)
+            return await YamlRuleLoader.LoadAsync(fs, ruleFile, cancellationToken).ConfigureAwait(false);
+        if (rule is { } inline)
         {
             if (ToObject(inline) is not Dictionary<string, object?> dictionary)
-                throw new ArgumentException("'rule' takes a rule object.", nameof(request));
-            return StructuralRule.FromInline(request.Language, dictionary);
+                throw new ArgumentException("'rule' takes a rule object.");
+            return StructuralRule.FromInline(language, dictionary);
         }
 
-        return StructuralRule.FromPattern(request.Language, request.Pattern!);
+        return StructuralRule.FromPattern(language, pattern!);
     }
 
     private static object? ToObject(System.Text.Json.JsonElement element) => element.ValueKind switch
@@ -138,12 +139,12 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         _ => null,
     };
 
-    private async IAsyncEnumerable<string> CandidateFilesAsync(
-        StructuralSearchRequest request, GrammarInfo grammar, [EnumeratorCancellation] CancellationToken cancellationToken)
+    internal static async IAsyncEnumerable<string> CandidateFilesAsync(
+        IFileSystemService fs, ImmutableList<string> paths, string? glob, GrammarInfo grammar, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var roots = request.Paths.Count > 0 ? request.Paths : _fs.GetAvailableMounts().Select(m => m.VirtualPath).ToImmutableList();
+        var roots = paths.Count > 0 ? paths : fs.GetAvailableMounts().Select(m => m.VirtualPath).ToImmutableList();
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        var options = new VirtualEnumerationOptions(SearchPattern: request.Glob);
+        var options = new VirtualEnumerationOptions(SearchPattern: glob);
         foreach (var root in roots)
         {
             if (IsOfLanguage(root, grammar))
@@ -152,7 +153,7 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
                 continue;
             }
 
-            await foreach (var entry in _fs.EnumerateFilesAsync(root, options, cancellationToken).ConfigureAwait(false))
+            await foreach (var entry in fs.EnumerateFilesAsync(root, options, cancellationToken).ConfigureAwait(false))
             {
                 if (entry.Kind == VirtualEntryKind.File && IsOfLanguage(entry.VirtualPath, grammar) && seen.Add(entry.VirtualPath))
                     yield return entry.VirtualPath;
@@ -160,6 +161,6 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         }
     }
 
-    private static bool IsOfLanguage(string path, GrammarInfo grammar)
+    internal static bool IsOfLanguage(string path, GrammarInfo grammar)
         => grammar.Extensions.Contains(System.IO.Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 }

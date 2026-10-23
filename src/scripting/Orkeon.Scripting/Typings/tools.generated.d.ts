@@ -1158,6 +1158,23 @@ declare global {
             readonly truncated: boolean;
         }>;
 
+        /** `structural_rewrite` - Applies a rule's fix template to the matching files; dry run by default. */
+        structuralRewrite(input?: {
+            dry_run?: boolean;
+            fix?: string | null;
+            glob?: string | null;
+            language?: string;
+            max_files?: number;
+            paths?: readonly string[];
+            pattern?: string | null;
+            rule?: unknown;
+            rule_file?: string | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly files: readonly { readonly applied: number; readonly diff: string; readonly matches: number; readonly path: string; readonly refused_reason?: string; readonly skipped: readonly string[]; }[];
+            readonly files_scanned: number;
+            readonly truncated: boolean;
+        }>;
+
         /** `structural_search` - Searches C#, TypeScript or Markdown files for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
         structuralSearch(input?: {
             glob?: string | null;

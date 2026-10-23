@@ -246,6 +246,7 @@ public static class ToolCatalog
             new("node_read"),
             new("node_replace"),
             new("structural_search"),
+            new("structural_rewrite"),
             new("node_insert"),
             new("edit_batch"),
             new("codebase_search"),

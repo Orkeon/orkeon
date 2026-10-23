@@ -237,6 +237,7 @@ Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide compl
 | `node_read` | `NodeReadTool` | Lire un membre par sélecteur : texte (commentaires et attributs de tête inclus), plage, SHA-256, sans coupure |
 | `node_replace` | `NodeReplaceTool` | Remplacer un nœud par sélecteur et SHA-256 attendu : refusé si le hash est périmé ou si une erreur d'analyse est introduite, fichier intact ; marque l'index sale. Classe Edit |
 | `structural_search` | `StructuralSearchTool` | Recherche structurelle par motif avec métavariables `$A` / `$$$ARGS`, objet de règle ou fichier de règles YAML sur des fichiers C#, TypeScript et Markdown, bornée par `max_results` / `max_files`. Classe Read |
+| `structural_rewrite` | `StructuralRewriteTool` | Réécrire les nœuds trouvés par un motif ou une règle avec un modèle `fix` sur des fichiers C# et TypeScript ; `dry_run` vaut `true` par défaut ; diff par fichier, un fichier dont la réécriture ne s'analyse pas est refusé seul ; Markdown refusé. Classe Edit
 | `node_insert` | `NodeInsertTool` | Ajouter un nœud `inside` un type, un namespace ou une section Markdown (dernier membre, indentation des frères) ou `before`/`after` un nœud d'ancrage (ses commentaires et attributs restent avec lui) ; aucun hash d'ancrage requis ; refusé si une erreur d'analyse est introduite ; marque l'index sale. Classe Edit |
 | `edit_batch` | `EditBatchTool` | Appliquer des opérations `node_replace` et `node_insert` sur plusieurs fichiers en une transaction : chaque fichier ré-analysé (`validate: "parse"`) ou le build lancé (`validate: "build"`) ; tout est appliqué ou chaque fichier reste identique à l'octet ; liste la plage de chaque opération. Classe Edit |
 
@@ -490,6 +491,7 @@ correspondance alphabétique complète :
 | `spawn_agent` | `SpawnAgentTool` | `Orkeon.Infrastructure` (enregistré par l'hôte) |
 | `sqlserver_query` | `SqlServerDatabaseTool` | `Orkeon.Tools.Data` |
 | `statement_query` | `StatementQueryTool` | `Orkeon.Tools.Analysis` |
+| `structural_rewrite` | `StructuralRewriteTool` | `Orkeon.Tools.Analysis` |
 | `structural_search` | `StructuralSearchTool` | `Orkeon.Tools.Analysis` |
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
