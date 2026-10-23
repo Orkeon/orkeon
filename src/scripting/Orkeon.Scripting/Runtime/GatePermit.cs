@@ -14,6 +14,9 @@ internal sealed class GatePermit(SemaphoreSlim gate)
     private bool _held;
     private bool _closed;
 
+    /// <summary>True once the owner closed the permit.</summary>
+    internal bool IsClosed { get { lock (_sync) return _closed; } }
+
     /// <summary>
     /// Takes the permit unless it is already held, cancelled by <paramref name="cancellationToken"/>; held
     /// only once the wait succeeded. Takes are serialised, so a concurrent second take waits for the first

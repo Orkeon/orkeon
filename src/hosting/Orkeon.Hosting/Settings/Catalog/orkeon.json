@@ -30,6 +30,7 @@
     "Orkeon:Rag:WebFallback",
     "Orkeon:Redis",
     "Orkeon:Sandbox",
+    "Orkeon:Scripting:AgentMemory",
     "Orkeon:Scripting:Limits",
     "Orkeon:Scripting:Toolchain",
     "Orkeon:Security:PermissionGate",

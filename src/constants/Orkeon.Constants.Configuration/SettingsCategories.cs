@@ -145,6 +145,8 @@ public static class SettingsCategories
             ["Orkeon:Checkpointing"] = OrchestrationAndPersistence,
 
             ["Orkeon:Scripting"] = ScriptsAndConsole,
+            ["Orkeon:Scripting:AgentInstances"] = ScriptsAndConsole,
+            ["Orkeon:Scripting:AgentMemory"] = ScriptsAndConsole,
             ["Orkeon:Cli"] = ScriptsAndConsole,
 
             ["Orkeon:Host"] = ServiceHostAndA2A,

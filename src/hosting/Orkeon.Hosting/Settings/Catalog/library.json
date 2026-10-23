@@ -396,6 +396,20 @@
       "description": "The `Orkeon:Cli:Session` section: what a session budgets against. Bound and judged at the host's start by `AddOrkeonSessionTools` — `token_budget` used to read it at each call and fall back on its default, in silence, for a value it could not read."
     },
     {
+      "path": "Orkeon:Scripting:AgentInstances",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddScriptCommands",
+      "description": "Transcript caps of an agent instance, bound to the `Orkeon:Scripting:AgentInstances` section."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentMemory",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddOrkeonSessionTools",
+      "description": "Configuration of the durable agent memory."
+    },
+    {
       "path": "Orkeon:Scripting:Limits",
       "category": "scripts-and-console",
       "hosts": [],
@@ -2752,6 +2766,27 @@
       "section": "Orkeon:Cli:Session",
       "type": "string",
       "description": "The script run once at the REPL's start (`Orkeon:Cli:Session:StartScript`); unset runs none."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentInstances:MaxTranscriptCharacters",
+      "section": "Orkeon:Scripting:AgentInstances",
+      "type": "integer",
+      "default": 32000,
+      "description": "The most characters (sum of message contents) one instance keeps in its transcript."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentInstances:MaxTranscriptMessages",
+      "section": "Orkeon:Scripting:AgentInstances",
+      "type": "integer",
+      "default": 40,
+      "description": "The most messages one instance keeps in its transcript."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentMemory:RootDirectory",
+      "section": "Orkeon:Scripting:AgentMemory",
+      "type": "string",
+      "default": "/workspace/.orkeon/agent-memory",
+      "description": "Root directory of the memory files."
     },
     {
       "path": "Orkeon:Scripting:Limits:ExecutionTimeout",

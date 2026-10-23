@@ -48,9 +48,13 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
+    private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
     public string name { get; }
+
+    /// <summary>True when the script set the name with <c>.name(...)</c>.</summary>
+    internal bool HasName { get; }
 
     internal string? Goal { get; }
     internal string Process { get; }
@@ -69,6 +73,7 @@ public sealed partial class JsCrew
         ArgumentNullException.ThrowIfNull(definition);
         _engine = engine;
         name = definition.Name;
+        HasName = definition.NameSet;
         Goal = definition.Goal;
         Process = definition.Process;
         Manager = definition.Manager;
@@ -78,7 +83,7 @@ public sealed partial class JsCrew
         Planning = definition.Planning;
         MaxRpm = definition.MaxRpm;
         ConcurrencyGate = new SemaphoreSlim(definition.Concurrency, definition.Concurrency);
-        Instances = new AgentInstanceRegistry(definition.MaxInstances);
+        Instances = new AgentInstanceRegistry(definition.MaxInstances, definition.AgentInstances);
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;
@@ -86,6 +91,7 @@ public sealed partial class JsCrew
         _deltaSink = definition.DeltaSink;
         _toolInvocation = definition.ToolInvocation;
         _agentMemoryStore = definition.AgentMemoryStore;
+        _toolLimits = definition.ToolLimits;
         _agents = new List<JsAgent>();
         _tasks = new List<JsTask>(definition.Tasks);
 
@@ -121,6 +127,7 @@ public sealed partial class JsCrew
         DeltaSink = _deltaSink,
         ToolInvocation = _toolInvocation,
         AgentMemoryStore = _agentMemoryStore,
+        ToolLimits = _toolLimits ?? new(),
     };
 
     private JsEventBroker? _eventBroker;

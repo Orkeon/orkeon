@@ -14,6 +14,7 @@ namespace Orkeon.Scripting.Runtime;
 internal sealed record JsCrewDefinition
 {
     public required string Name { get; init; }
+    public bool NameSet { get; init; }
     public required string Process { get; init; }
     public required IEnumerable<JsAgent> Agents { get; init; }
     public required IEnumerable<JsTask> Tasks { get; init; }
@@ -37,6 +38,12 @@ internal sealed record JsCrewDefinition
 
     /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
     public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+    /// <summary>Optional cut of each tool result and fan-out bound of <c>ctx.llm.act</c>.</summary>
+    public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>Optional transcript caps of the agent instances.</summary>
+    public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 
     public string? Goal { get; init; }
 

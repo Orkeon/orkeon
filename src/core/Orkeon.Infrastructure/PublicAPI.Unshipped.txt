@@ -149,3 +149,15 @@ Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.DeleteAsync(string! age
 Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.GetAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
 Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.SearchAsync(string! agentKey, string! query, int limit, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit!>!>!
 Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.StoreAsync(string! agentKey, string! key, string! valueJson, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.get -> string!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.init -> void
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ScriptAgentMemoryOptions() -> void
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.<Clone>$() -> Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? other) -> bool
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(object? obj) -> bool
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.GetHashCode() -> int
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ToString() -> string!
+const Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.SectionName = "Orkeon:Scripting:AgentMemory" -> string!
+static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator !=(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? left, Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? right) -> bool
+static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator ==(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? left, Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? right) -> bool

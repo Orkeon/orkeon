@@ -764,6 +764,8 @@ internal static partial class RunCommand
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                ToolLimits = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName)),
+                AgentInstances = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName)),
             },
             ragBackend: ragBackend);
 

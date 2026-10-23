@@ -31,6 +31,8 @@
     "Orkeon:Rag:WebFallback",
     "Orkeon:Redis",
     "Orkeon:Sandbox",
+    "Orkeon:Scripting:AgentInstances",
+    "Orkeon:Scripting:AgentMemory",
     "Orkeon:Security:PermissionGate",
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",

@@ -2,6 +2,7 @@ using System.Globalization;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Builders;
+using Orkeon.Scripting.Configuration;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -12,27 +13,42 @@ internal sealed record AgentInstanceRun(AgentInstanceRegistry Registry, string I
 internal sealed record AgentInstanceSend(JsAgent Agent, AgentExecutionBudget Budget, AgentInstanceRun Run, CancellationToken Signal);
 
 /// <summary>The addressable child agents of a crew (RT-03): ids, states and the transcript each keeps.</summary>
-internal sealed class AgentInstanceRegistry(int maxInstances)
+internal sealed class AgentInstanceRegistry
 {
-    /// <summary>The most messages one instance keeps in its transcript.</summary>
+    /// <summary>The default cap on messages one instance keeps in its transcript.</summary>
     internal const int MaxTranscriptMessages = 40;
 
-    /// <summary>The most characters (sum of message contents) one instance keeps in its transcript.</summary>
+    /// <summary>The default cap on characters (sum of message contents) one instance keeps in its transcript.</summary>
     internal const int MaxTranscriptCharacters = 32_000;
 
     private readonly Lock _sync = new();
     private readonly List<Entry> _entries = [];
+    private readonly int _maxInstances;
+    private readonly int _maxTranscriptMessages;
+    private readonly int _maxTranscriptCharacters;
     private int _last;
 
-    /// <summary>The transcript cut to both caps, the oldest messages dropped first.</summary>
+    /// <summary>Builds the registry; <paramref name="options"/> (validated here, once) sets the transcript caps, the defaults when null.</summary>
+    internal AgentInstanceRegistry(int maxInstances, ScriptAgentInstanceOptions? options = null)
+    {
+        options?.Validate();
+        _maxInstances = maxInstances;
+        _maxTranscriptMessages = options?.MaxTranscriptMessages ?? MaxTranscriptMessages;
+        _maxTranscriptCharacters = options?.MaxTranscriptCharacters ?? MaxTranscriptCharacters;
+    }
+
+    /// <summary>The transcript cut to the default caps, the oldest messages dropped first.</summary>
     internal static IReadOnlyList<LlmMessage> BoundTranscript(IReadOnlyList<LlmMessage> transcript)
+        => BoundTranscript(transcript, MaxTranscriptMessages, MaxTranscriptCharacters);
+
+    private static IReadOnlyList<LlmMessage> BoundTranscript(IReadOnlyList<LlmMessage> transcript, int maxMessages, int maxCharacters)
     {
         var kept = 0;
         var characters = 0;
-        for (var i = transcript.Count - 1; i >= 0 && kept < MaxTranscriptMessages; i--)
+        for (var i = transcript.Count - 1; i >= 0 && kept < maxMessages; i--)
         {
             characters += transcript[i].Content.Length;
-            if (characters > MaxTranscriptCharacters) break;
+            if (characters > maxCharacters) break;
             kept++;
         }
 
@@ -109,7 +125,7 @@ internal sealed class AgentInstanceRegistry(int maxInstances)
             transcript.RemoveAt(transcript.Count - 1);
         lock (_sync)
         {
-            if (Find(id) is { } entry) entry.Transcript = BoundTranscript(transcript);
+            if (Find(id) is { } entry) entry.Transcript = BoundTranscript(transcript, _maxTranscriptMessages, _maxTranscriptCharacters);
         }
     }
 
@@ -132,7 +148,7 @@ internal sealed class AgentInstanceRegistry(int maxInstances)
 
     private void Evict()
     {
-        while (_entries.Count > maxInstances)
+        while (_entries.Count > _maxInstances)
         {
             var oldestEnded = _entries.FindIndex(e => e.State != State.Running);
             if (oldestEnded < 0) return;

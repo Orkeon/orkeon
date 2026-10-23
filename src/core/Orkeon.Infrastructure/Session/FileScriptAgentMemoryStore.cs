@@ -8,7 +8,8 @@ namespace Orkeon.Infrastructure.Session;
 /// <summary>File-backed <see cref="IScriptAgentMemoryStore"/>: one JSON file per project and agent.</summary>
 public sealed class FileScriptAgentMemoryStore : IScriptAgentMemoryStore
 {
-    private const string AgentPrefix = "agent:";
+    // Folder of a crew without a name: FileName only yields lower-case letters, digits, - and _, so no crew name can map to it.
+    private const string NoCrewFolder = "~none";
 
     private readonly IFileSystemService _fileSystem;
     private readonly string _rootDirectory;
@@ -104,17 +105,10 @@ public sealed class FileScriptAgentMemoryStore : IScriptAgentMemoryStore
         }
     }
 
-    // agent:<project>:<agent name> — the project may start with a drive letter ("C:\\"), the name may hold anything.
     private FileDocument DocumentFor(string agentKey)
     {
-        ArgumentNullException.ThrowIfNull(agentKey);
-        var from = AgentPrefix.Length;
-        var search = from + 2 < agentKey.Length && agentKey[from + 1] == ':' && agentKey[from + 2] is '\\' or '/' ? from + 2 : from;
-        var split = agentKey.StartsWith(AgentPrefix, StringComparison.Ordinal) ? agentKey.IndexOf(':', search) : -1;
-        if (split <= from || split == agentKey.Length - 1)
-            throw new ArgumentException($"Agent key '{agentKey}' is not agent:<project>:<agent name>.", nameof(agentKey));
-        var project = agentKey[from..split];
-        var path = $"{_rootDirectory}/{ProjectKey.Slug(project)}/{FileName(agentKey[(split + 1)..])}.json";
+        var key = ScriptAgentMemoryKey.Parse(agentKey);
+        var path = $"{_rootDirectory}/{ProjectKey.Slug(key.Project)}/{(key.Crew is null ? NoCrewFolder : FileName(key.Crew))}/{FileName(key.Agent)}.json";
         return _documents.GetOrAdd(path, p => new FileDocument(p));
     }
 

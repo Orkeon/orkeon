@@ -65,6 +65,8 @@ public static class SettingsSections
         "Orkeon:Redis",
         "Orkeon:Sandbox",
         "Orkeon:Scripting",
+        "Orkeon:Scripting:AgentInstances",
+        "Orkeon:Scripting:AgentMemory",
         "Orkeon:Scripting:Limits",
         "Orkeon:Scripting:Toolchain",
         "Orkeon:Security",

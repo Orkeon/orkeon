@@ -2457,3 +2457,19 @@ override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.GetHashCode() 
 override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.ToString() -> string!
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.operator !=(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? right) -> bool
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.operator ==(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? right) -> bool
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Agent.get -> string!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Agent.init -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Crew.get -> string?
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Crew.init -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Project.get -> string!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Project.init -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.ScriptAgentMemoryKey() -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.<Clone>$() -> Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Equals(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? other) -> bool
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator !=(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? right) -> bool
+static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator ==(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? right) -> bool
+static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Parse(string! key) -> Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey!

@@ -259,6 +259,51 @@ public sealed class ActBackgroundAgentsTests
         Assert.True(provider.Cancelled("child-a").IsCompletedSuccessfully);
     }
 
+    /// <summary>Runs a crew whose background child hands its context over, and returns the permit that child held.</summary>
+    private static async Task<(GatePermit Permit, JsCrew Crew)> RunAndGrabChildPermitAsync()
+    {
+        const string js = """
+            const kid = agentBuilder().name("a").role("R").goal("G")
+                .body(async (input, ctx) => { grab(ctx); return (await ctx.llm.act(String(input), { permissionMode: "bypassPermissions" })).output; })
+                .build();
+            const root = agentBuilder().name("root").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    ctx.spawnBackground("a", "child-a");
+                    return (await ctx.llm.act("orchestrate", { permissionMode: "bypassPermissions", waitFor: "children", maxIterations: 20 })).output;
+                }).build();
+            crewBuilder().name("c").withAgent(root).withAgent(kid).build();
+            """;
+        var engine = new JsEngineFactory(llmProvider: new SlowLlmProvider()).Create();
+        var grabbed = new System.Collections.Concurrent.ConcurrentBag<JsExecutionContext>();
+        engine.SetValue("grab", new Action<object>(c => grabbed.Add((JsExecutionContext)c)));
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, TestContext.Current.CancellationToken)).ToObject()!;
+
+        await crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(Safety, TestContext.Current.CancellationToken);
+
+        // The agent also runs as a crew member, holding no permit: only the child run's context has one.
+        var permit = Assert.Single(grabbed.Select(c => c.Background.Permit), p => p is not null);
+        return (permit!, crew);
+    }
+
+    [Fact]
+    [Trait("BR", "R10")]
+    public async Task ShouldClosePermit_WhenCrewRunReleasesItsGate()
+    {
+        var (permit, _) = await RunAndGrabChildPermitAsync();
+
+        Assert.True(permit.IsClosed);
+    }
+
+    [Fact]
+    [Trait("BR", "R10")]
+    public async Task ShouldRefuseReacquire_WhenBackgroundChildOutlivesTheRun()
+    {
+        var (permit, crew) = await RunAndGrabChildPermitAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => permit.AcquireAsync(CancellationToken.None));
+        Assert.Equal(4, crew.ConcurrencyGate.CurrentCount);
+    }
+
     private static readonly TimeSpan Short = TimeSpan.FromSeconds(10);
 
     private static string HeldChildCrew(int concurrency, params string[] later)

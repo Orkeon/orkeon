@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Tests.Doubles;
 
@@ -368,5 +369,55 @@ public sealed class AgentInstanceRegistryTests
         Assert.Equal(big[^1].Content, byChars[^1].Content);
         Assert.Equal(big.Skip(big.Count - byChars.Count).Select(m => m.Content), byChars.Select(m => m.Content));
         Assert.True(byChars.Count < big.Count);
+    }
+
+    private static async Task<string> RunWithOptionsAsync(ILlmProvider provider, ScriptAgentInstanceOptions options, string js)
+    {
+        var ports = new ScriptingHostPorts { AgentInstances = options };
+        var engine = new JsEngineFactory(llmProvider: provider, hostPorts: ports).Create();
+        var crew = (JsCrew)(await engine.EvaluateAsync(js, null, TestContext.Current.CancellationToken)).ToObject()!;
+        return await OutputAsync(crew).WaitAsync(Safety, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    [Trait("BR", "R6")]
+    public async Task ShouldTrimTranscript_WhenConfiguredMessageCapIsLower()
+    {
+        var provider = new SlowLlmProvider();
+
+        var output = await RunWithOptionsAsync(provider, new ScriptAgentInstanceOptions { MaxTranscriptMessages = 2 },
+            Script(FinishedA + "await c.send(\"a1\", \"more\"); return await c.send(\"a1\", \"more2\");"));
+
+        Assert.Equal("R:more2", output);
+        Assert.Equal(["user:more", "assistant:R:more", "user:more2"], Dialogue(ChatEndingWith(provider, "more2")));
+    }
+
+    [Fact]
+    [Trait("BR", "R6")]
+    public async Task ShouldTrimTranscript_WhenConfiguredCharacterCapIsLower()
+    {
+        var provider = new SlowLlmProvider();
+
+        var output = await RunWithOptionsAsync(provider, new ScriptAgentInstanceOptions { MaxTranscriptCharacters = 10 },
+            Script(FinishedA + "return await c.send(\"a1\", \"more\");"));
+
+        Assert.Equal("R:more", output);
+        Assert.Equal(["assistant:R:child-a", "user:more"], Dialogue(ChatEndingWith(provider, "more")));
+    }
+
+    [Fact]
+    [Trait("BR", "R6")]
+    public void ShouldRefuseOptions_WhenATranscriptCapIsNotPositive()
+    {
+        // No Validate exists on ScriptingLimitsOptions to mimic: ArgumentOutOfRangeException naming the property.
+        var messages = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new ScriptAgentInstanceOptions { MaxTranscriptMessages = 0 }.Validate());
+        Assert.Equal(nameof(ScriptAgentInstanceOptions.MaxTranscriptMessages), messages.ParamName);
+
+        var characters = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new ScriptAgentInstanceOptions { MaxTranscriptCharacters = -1 }.Validate());
+        Assert.Equal(nameof(ScriptAgentInstanceOptions.MaxTranscriptCharacters), characters.ParamName);
+
+        new ScriptAgentInstanceOptions().Validate();
     }
 }

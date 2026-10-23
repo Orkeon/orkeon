@@ -31,6 +31,9 @@ internal sealed class BackgroundAgents
         _ct = ct;
     }
 
+    /// <summary>Test seam over the gate permit this instance holds.</summary>
+    internal GatePermit? Permit => _permit;
+
     /// <summary>Whether a child is still running or a completion waits to be delivered.</summary>
     internal bool HasPendingWork
     {

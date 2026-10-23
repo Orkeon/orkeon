@@ -80,9 +80,14 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _crewRef = environment.Crew;
         instanceId = environment.Instance is { } instance ? instance.Id : JsValue.Undefined;
         _stateRaw = initialState ?? JsValue.Undefined;
-        // RT-16: durable per (project, agent name) when the host wired a store; the host's working directory is the project.
+        // RT-16: durable per (project, crew, agent name) when the host wired a store; the host's working directory is the project.
         memory.agent = environment.AgentMemoryStore is { } durable
-            ? new JsMemoryScope(durable, $"agent:{Environment.CurrentDirectory}:{_self.name}", environment.Ct)
+            ? new JsMemoryScope(durable, new Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey
+            {
+                Project = Environment.CurrentDirectory,
+                Crew = _crewRef.HasName ? _crewRef.name : null,
+                Agent = _self.name,
+            }.ToString(), environment.Ct)
             : new JsMemoryScope();
         _runScope = AgentRunScope.Create(_self.id, _self.name);
         llm.AttachRunScope(_runScope);

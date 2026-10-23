@@ -137,4 +137,67 @@ public sealed class SessionToolsExtensionsTests
             sp.GetRequiredService<ISessionBufferService>(),
             sp.GetRequiredService<ISessionBufferService>());
     }
+
+    private static ServiceProvider MemoryProvider(Orkeon.Tests.Shared.FileSystem.FakeFileSystemService fs, params (string Key, string Value)[] pairs)
+    {
+        var config = Config(pairs);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(config);
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(fs);
+        services.AddOrkeonSessionTools(config);
+        return services.BuildServiceProvider();
+    }
+
+    private static Orkeon.Tests.Shared.FileSystem.FakeFileSystemService MemoryFs() =>
+        new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService()
+            .AddMount("/workspace", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite)
+            .AddMount("/custom", Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite);
+
+    private static async Task<List<string>> PathsUnderAsync(Orkeon.Domain.FileSystem.IFileSystemService fs, string root)
+    {
+        var paths = new List<string>();
+        await foreach (var f in fs.EnumerateFilesAsync(root, new Orkeon.Domain.FileSystem.VirtualEnumerationOptions { Recursive = true }, TestContext.Current.CancellationToken))
+            if (f.Kind == Orkeon.Domain.FileSystem.VirtualEntryKind.File) paths.Add(f.VirtualPath);
+        return paths;
+    }
+
+    [Fact]
+    [Trait("BR", "R7")]
+    public async Task ShouldUseConfiguredRoot_WhenAgentMemoryRootIsSet()
+    {
+        var fs = MemoryFs();
+        using var sp = MemoryProvider(fs, ("Orkeon:Scripting:AgentMemory:RootDirectory", "/custom/mem"));
+        var key = new ScriptAgentMemoryKey { Project = "/workspace/p", Crew = "c", Agent = "a" }.ToString();
+
+        await sp.GetRequiredService<IScriptAgentMemoryStore>().StoreAsync(key, "k", "1", TestContext.Current.CancellationToken);
+
+        var path = Assert.Single(await PathsUnderAsync(fs, "/custom/mem"));
+        Assert.StartsWith("/custom/mem/", path, StringComparison.Ordinal);
+        Assert.Empty(await PathsUnderAsync(fs, "/workspace/.orkeon/agent-memory"));
+    }
+
+    [Fact]
+    [Trait("BR", "R7")]
+    public async Task ShouldUseDefaultRoot_WhenAgentMemoryRootIsAbsent()
+    {
+        var fs = MemoryFs();
+        using var sp = MemoryProvider(fs);
+        var key = new ScriptAgentMemoryKey { Project = "/workspace/p", Crew = "c", Agent = "a" }.ToString();
+
+        await sp.GetRequiredService<IScriptAgentMemoryStore>().StoreAsync(key, "k", "1", TestContext.Current.CancellationToken);
+
+        var path = Assert.Single(await PathsUnderAsync(fs, "/workspace/.orkeon/agent-memory"));
+        Assert.StartsWith("/workspace/.orkeon/agent-memory/", path, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "R7")]
+    public void ShouldRefuseStart_WhenAgentMemoryRootIsEmpty()
+    {
+        using var sp = MemoryProvider(MemoryFs(), ("Orkeon:Scripting:AgentMemory:RootDirectory", ""));
+
+        Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(
+            () => sp.GetRequiredService<IScriptAgentMemoryStore>());
+    }
 }

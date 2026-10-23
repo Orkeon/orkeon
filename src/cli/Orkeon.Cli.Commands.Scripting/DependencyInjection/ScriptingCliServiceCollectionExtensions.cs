@@ -75,6 +75,9 @@ public static class ScriptingCliServiceCollectionExtensions
             services.AddOptions<ScriptCommandsConfiguration>()
                 .Bind(configuration.GetSection(ScriptCommandsConfiguration.SectionName))
                 .DeclareSettings(ScriptCommandsConfiguration.SectionName);
+            services.AddOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>()
+                .Bind(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName))
+                .DeclareSettings(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName);
         }
         else
         {
@@ -154,6 +157,8 @@ public static class ScriptingCliServiceCollectionExtensions
                     ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                     LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                     AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
+                    ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                    AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
                 },
                 ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });

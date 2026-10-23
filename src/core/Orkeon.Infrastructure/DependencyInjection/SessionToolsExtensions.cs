@@ -69,8 +69,14 @@ public static class SessionToolsExtensions
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 
         // RT-16: ctx.memory.agent of the scripting hosts, one JSON file per project and agent.
+        services.AddOrkeonSettings<ScriptAgentMemoryOptions>(ScriptAgentMemoryOptions.SectionName)
+            .ValidateSettings(o => string.IsNullOrWhiteSpace(o.RootDirectory)
+                ? $"{ScriptAgentMemoryOptions.SectionName}:RootDirectory must not be empty."
+                : null);
         services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(sp =>
-            new FileScriptAgentMemoryStore(sp.GetRequiredService<IFileSystemService>(), "/workspace/.orkeon/agent-memory"));
+            new FileScriptAgentMemoryStore(
+                sp.GetRequiredService<IFileSystemService>(),
+                sp.GetRequiredService<IOptions<ScriptAgentMemoryOptions>>().Value.RootDirectory));
 
         // The context window token_budget reports, bound and judged at the host's start (GAP-40).
         services.AddOrkeonSettings<CliSessionOptions>(CliSessionOptions.SectionName)

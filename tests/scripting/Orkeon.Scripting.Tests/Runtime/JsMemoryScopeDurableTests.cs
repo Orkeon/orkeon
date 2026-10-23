@@ -8,18 +8,18 @@ public sealed class JsMemoryScopeDurableTests
 {
     private static readonly TimeSpan Safety = TimeSpan.FromSeconds(30);
 
-    private static string Script(string name, string body)
+    private static string Script(string name, string body, string? crewName)
         => "const me = agentBuilder().name(\"" + name + "\").role(\"R\").goal(\"G\")"
             + ".body(async (input, ctx) => {" + body + "}).build();\n"
             + "report(me.id);\n"
-            + "const c = crewBuilder().name(\"c\").withAgent(me).build();\nc;";
+            + "const c = crewBuilder()" + (crewName is null ? "" : ".name(\"" + crewName + "\")") + ".withAgent(me).build();\nc;";
 
-    private static async Task<(string Output, string AgentId)> RunAsync(FakeScriptAgentMemoryStore store, string name, string body)
+    private static async Task<(string Output, string AgentId)> RunAsync(FakeScriptAgentMemoryStore store, string name, string body, string? crewName = "c")
     {
         var engine = new JsEngineFactory(hostPorts: new ScriptingHostPorts { AgentMemoryStore = store }).Create();
         var id = "";
         engine.SetValue("report", new Action<string>(v => id = v));
-        var crew = (JsCrew)(await engine.EvaluateAsync(Script(name, body), null, TestContext.Current.CancellationToken)).ToObject()!;
+        var crew = (JsCrew)(await engine.EvaluateAsync(Script(name, body, crewName), null, TestContext.Current.CancellationToken)).ToObject()!;
         var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
         return (result.tasks[0].output!.ToString()!, id);
     }
@@ -59,5 +59,37 @@ public sealed class JsMemoryScopeDurableTests
         Assert.Single(keys, k => k.EndsWith(":alpha", StringComparison.Ordinal));
         Assert.Single(keys, k => k.EndsWith(":beta", StringComparison.Ordinal));
         Assert.DoesNotContain(keys, k => k.EndsWith(":" + idA, StringComparison.Ordinal) || k.EndsWith(":" + idB, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "R5")]
+    public async Task ShouldIsolateMemory_WhenSameAgentRunsInTwoCrews()
+    {
+        var store = new FakeScriptAgentMemoryStore();
+        await RunAsync(store, "a", "await ctx.memory.agent.store(\"k\", {n:1}); return \"stored\";", "crewA");
+
+        var (output, _) = await RunAsync(store, "a",
+            "const v = await ctx.memory.agent.get(\"k\"); await ctx.memory.agent.store(\"other\", 2);"
+            + "return JSON.stringify({ seen: v != null });", "crewB");
+
+        Assert.Equal("{\"seen\":false}", output);
+        var keys = store.AgentKeysSeen.Distinct().Order(StringComparer.Ordinal).ToList();
+        var project = Environment.CurrentDirectory;
+        Assert.Equal([$"agent:{project}:crewA:a", $"agent:{project}:crewB:a"], keys);
+    }
+
+    [Fact]
+    [Trait("BR", "R5")]
+    public async Task ShouldNotShareMemory_WhenCrewHasNoNameAndAnotherCrewIsNamedCrew()
+    {
+        var store = new FakeScriptAgentMemoryStore();
+        await RunAsync(store, "a", "await ctx.memory.agent.store(\"k\", {n:1}); return \"stored\";", null);
+
+        var (output, _) = await RunAsync(store, "a",
+            "const v = await ctx.memory.agent.get(\"k\"); await ctx.memory.agent.store(\"other\", 2);"
+            + "return JSON.stringify({ seen: v != null });", "crew");
+
+        Assert.Equal("{\"seen\":false}", output);
+        Assert.Equal(2, store.AgentKeysSeen.Distinct().Count());
     }
 }

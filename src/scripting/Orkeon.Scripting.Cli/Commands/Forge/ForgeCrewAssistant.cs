@@ -137,6 +137,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
                 DeltaSink = services.GetService<ILlmDeltaSink>(),
                 ToolInvocation = services.GetService<IToolInvocationPipeline>(),
                 LlmProfiles = services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                ToolLimits = configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName).Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(),
+                AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
             });
 
         // The pack ships pre-built JS: pass-through, no esbuild required for the interview

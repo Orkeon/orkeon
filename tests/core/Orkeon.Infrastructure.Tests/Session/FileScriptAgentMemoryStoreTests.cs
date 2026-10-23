@@ -1,3 +1,4 @@
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.Session;
@@ -14,7 +15,8 @@ public sealed class FileScriptAgentMemoryStoreTests
     private const string ProjectA = "/workspace/project-a";
     private const string ProjectB = "/workspace/project-b";
     private const string SlugA = "project-a-3b27f97a4179";
-    private static string AgentKey(string project, string id) => $"agent:{project}:{id}";
+    private static string AgentKey(string project, string id) =>
+        new ScriptAgentMemoryKey { Project = project, Crew = "crew", Agent = id }.ToString();
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -33,6 +35,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldPersistThroughFileStore_WhenHostProvidesPort()
     {
         var fs = NewFs();
@@ -52,7 +55,7 @@ public sealed class FileScriptAgentMemoryStoreTests
         Assert.Equal("alpha-key", hit.Key);
         Assert.Equal("{\"n\":1}", hit.ValueJson);
 
-        var path = $"{Root}/{SlugA}/a1.json";
+        var path = $"{Root}/{SlugA}/crew/a1.json";
         var json = await fs.TryReadAllTextAsync(path, Ct);
         Assert.NotNull(json);
         Assert.DoesNotContain("\\\"n\\\"", json, StringComparison.Ordinal);
@@ -65,6 +68,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldRefuseKey_WhenItHoldsNewline()
     {
         var fs = NewFs();
@@ -78,6 +82,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldRestoreBackup_WhenWriteFails()
     {
         var failing = new FailingWriteFileSystemService(NewFs());
@@ -94,6 +99,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldKeepEveryValue_WhenStoresRunConcurrentlyOnOneAgent()
     {
         var fs = NewFs();
@@ -110,11 +116,12 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldRefuseUnreadableFile_InsteadOfOverwriting_WhenMemoryFileIsCorrupt()
     {
         const string corrupt = "{\"k\":";
         const string backup = "{\"old\":1}";
-        var path = $"{Root}/{SlugA}/a1.json";
+        var path = $"{Root}/{SlugA}/crew/a1.json";
         var fs = NewFs().AddFile(path, corrupt).AddFile(path + ".bak", backup);
         var a1 = AgentKey(ProjectA, "a1");
 
@@ -130,6 +137,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldRoundTripOnRealDisk_WhenUsingDiskBackedFileSystem()
     {
         var dir = Path.Combine(Path.GetTempPath(), "orkeon-agent-memory-" + Guid.NewGuid().ToString("N"));
@@ -153,7 +161,7 @@ public sealed class FileScriptAgentMemoryStoreTests
             Assert.Null(await reread.GetAsync(a1, "k1", Ct));
             Assert.Equal("\"two\"", await reread.GetAsync(a1, "k2", Ct));
             Assert.Equal("{\"n\":3}", await reread.GetAsync(a2, "k1", Ct));
-            Assert.True(File.Exists(Path.Combine(dir, ".orkeon", "agent-memory", SlugA, "a1.json")));
+            Assert.True(File.Exists(Path.Combine(dir, ".orkeon", "agent-memory", SlugA, "crew", "a1.json")));
         }
         finally
         {
@@ -163,6 +171,7 @@ public sealed class FileScriptAgentMemoryStoreTests
 
     [Fact]
     [Trait("BR", "RT-16")]
+    [Trait("BR", "R5")]
     public async Task ShouldDeriveSameProjectKey_ForSessionBufferAndAgentMemory()
     {
         Assert.Equal(SlugA, ProjectKey.Slug(ProjectA));
@@ -178,6 +187,61 @@ public sealed class FileScriptAgentMemoryStoreTests
         var memoryFile = Assert.Single(await FilesAsync(fs, Root));
 
         Assert.Equal($"{Sessions}/{SlugA}/last.json", sessionFile.VirtualPath);
-        Assert.Equal($"{Root}/{SlugA}/a1.json", memoryFile.VirtualPath);
+        Assert.Equal($"{Root}/{SlugA}/crew/a1.json", memoryFile.VirtualPath);
+    }
+
+    [Fact]
+    [Trait("BR", "R5")]
+    public async Task ShouldKeepSeparateFiles_WhenTwoCrewsShareAnAgentName()
+    {
+        var fs = NewFs();
+        var crewA = new ScriptAgentMemoryKey { Project = ProjectA, Crew = "crewA", Agent = "agent1" }.ToString();
+        var crewB = new ScriptAgentMemoryKey { Project = ProjectA, Crew = "crewB", Agent = "agent1" }.ToString();
+
+        await NewStore(fs).StoreAsync(crewA, "k", "\"from-a\"", Ct);
+        await NewStore(fs).StoreAsync(crewB, "k", "\"from-b\"", Ct);
+
+        var next = NewStore(fs);
+        Assert.Equal("\"from-a\"", await next.GetAsync(crewA, "k", Ct));
+        Assert.Equal("\"from-b\"", await next.GetAsync(crewB, "k", Ct));
+        var files = await FilesAsync(fs, Root);
+        Assert.Equal(2, files.Select(f => f.VirtualPath).Distinct().Count());
+    }
+
+    [Fact]
+    [Trait("BR", "R5")]
+    public async Task ShouldWriteUnderItsOwnFolder_WhenCrewHasNoName()
+    {
+        var fs = NewFs();
+        var noCrew = new ScriptAgentMemoryKey { Project = ProjectA, Crew = null, Agent = "a1" }.ToString();
+        var named = new ScriptAgentMemoryKey { Project = ProjectA, Crew = "crew", Agent = "a1" }.ToString();
+
+        await NewStore(fs).StoreAsync(noCrew, "k", "\"none\"", Ct);
+        await NewStore(fs).StoreAsync(named, "k", "\"named\"", Ct);
+
+        var next = NewStore(fs);
+        Assert.Equal("\"none\"", await next.GetAsync(noCrew, "k", Ct));
+        Assert.Equal("\"named\"", await next.GetAsync(named, "k", Ct));
+        var files = await FilesAsync(fs, Root);
+        Assert.Equal(2, files.Select(f => f.VirtualPath).Distinct().Count());
+        Assert.Contains(files, f => f.VirtualPath == $"{Root}/{SlugA}/crew/a1.json");
+    }
+
+    [Fact]
+    [Trait("BR", "R5")]
+    public async Task ShouldKeepCrewNamedNoneApart_WhenCrewHasNoName()
+    {
+        var fs = NewFs();
+        var noCrew = new ScriptAgentMemoryKey { Project = ProjectA, Crew = null, Agent = "a1" }.ToString();
+        var literal = new ScriptAgentMemoryKey { Project = ProjectA, Crew = "%none", Agent = "a1" }.ToString();
+
+        await NewStore(fs).StoreAsync(noCrew, "k", "\"no-crew\"", Ct);
+        await NewStore(fs).StoreAsync(literal, "k", "\"literal\"", Ct);
+
+        var next = NewStore(fs);
+        Assert.Equal("\"no-crew\"", await next.GetAsync(noCrew, "k", Ct));
+        Assert.Equal("\"literal\"", await next.GetAsync(literal, "k", Ct));
+        var files = await FilesAsync(fs, Root);
+        Assert.Equal(2, files.Select(f => f.VirtualPath).Distinct().Count());
     }
 }
