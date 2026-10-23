@@ -9,22 +9,50 @@ internal sealed class StructuralEditEngine(IFileSystemService fs, TreeSitterPars
     public async Task<EditOutcome> ApplyAsync(
         string virtualPath, IReadOnlyList<IEditOperation> operations, CancellationToken cancellationToken = default)
     {
-        var bytes = await fs.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
+        var original = await fs.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
             ?? throw new FileNotFoundException("File not found.", virtualPath);
-        EditResult? last = null;
+        var (bytes, ranges) = ApplyInMemory(virtualPath, original, operations);
+        await WriteAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
+        var last = ranges[^1];
+        var replaced = bytes.AsSpan(last.StartByte, last.EndByte - last.StartByte);
+        return new EditOutcome { Range = last, NewHash = Convert.ToHexStringLower(SHA256.HashData(replaced)) };
+    }
+
+    /// <summary>Applies the operations in order, each on the bytes the previous one produced; nothing is written.</summary>
+    public (byte[] Bytes, IReadOnlyList<NodeRange> Ranges) ApplyInMemory(
+        string virtualPath, byte[] original, IReadOnlyList<IEditOperation> operations)
+    {
+        if (operations.Count == 0) throw new ArgumentException("At least one operation is required.", nameof(operations));
+        var bytes = original;
+        var ranges = new List<NodeRange>(operations.Count);
         foreach (var operation in operations)
         {
             var parsed = StructuralFile.FromBytes(pool, bytes, virtualPath);
-            last = operation.Apply(bytes, parsed);
-            var introduced = ValidatorFor(parsed.Language).Introduced(bytes, last.Bytes, last.Range);
+            var result = operation.Apply(bytes, parsed);
+            var introduced = ValidatorFor(parsed.Language).Introduced(bytes, result.Bytes, result.Range);
             if (introduced.Count > 0) throw new ParseBrokenException(introduced);
-            bytes = last.Bytes;
+            var byteShift = result.Bytes.Length - bytes.Length;
+            var lineShift = result.Bytes.AsSpan().Count((byte)'\n') - bytes.AsSpan().Count((byte)'\n');
+            for (var i = 0; i < ranges.Count; i++)
+            {
+                var earlier = ranges[i];
+                if (earlier.StartByte < result.Range.StartByte)
+                {
+                    if (result.Range.StartByte < earlier.EndByte)
+                        ranges[i] = new NodeRange(
+                            earlier.StartByte, earlier.EndByte + byteShift, earlier.StartLine, earlier.EndLine + lineShift);
+                    continue;
+                }
+
+                ranges[i] = new NodeRange(
+                    earlier.StartByte + byteShift, earlier.EndByte + byteShift, earlier.StartLine + lineShift, earlier.EndLine + lineShift);
+            }
+
+            bytes = result.Bytes;
+            ranges.Add(result.Range);
         }
 
-        if (last is null) throw new ArgumentException("At least one operation is required.", nameof(operations));
-        await WriteAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
-        var replaced = bytes.AsSpan(last.Range.StartByte, last.Range.EndByte - last.Range.StartByte);
-        return new EditOutcome { Range = last.Range, NewHash = Convert.ToHexStringLower(SHA256.HashData(replaced)) };
+        return (bytes, ranges);
     }
 
     private IParseValidator ValidatorFor(string language)

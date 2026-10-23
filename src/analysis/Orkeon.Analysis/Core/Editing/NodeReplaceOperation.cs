@@ -27,9 +27,7 @@ internal sealed class NodeReplaceOperation(NodeSelector selector, string expecte
 
     private static string WithLineEndingsOf(ReadOnlySpan<byte> file, string value)
     {
-        var crlf = file.Count("\r\n"u8);
-        var lf = file.Count((byte)'\n') - crlf;
         var normalised = value.Replace("\r\n", "\n", StringComparison.Ordinal);
-        return crlf > lf ? normalised.Replace("\n", "\r\n", StringComparison.Ordinal) : normalised;
+        return IndentationDetector.LineEnding(file) == "\r\n" ? normalised.Replace("\n", "\r\n", StringComparison.Ordinal) : normalised;
     }
 }

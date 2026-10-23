@@ -245,3 +245,103 @@ static Orkeon.Tools.Analysis.StructuralSearchRequest.operator !=(Orkeon.Tools.An
 static Orkeon.Tools.Analysis.StructuralSearchRequest.operator ==(Orkeon.Tools.Analysis.StructuralSearchRequest? left, Orkeon.Tools.Analysis.StructuralSearchRequest? right) -> bool
 static Orkeon.Tools.Analysis.StructuralSearchResponse.operator !=(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool
 static Orkeon.Tools.Analysis.StructuralSearchResponse.operator ==(Orkeon.Tools.Analysis.StructuralSearchResponse? left, Orkeon.Tools.Analysis.StructuralSearchResponse? right) -> bool
+Orkeon.Tools.Analysis.NodeInsertRequest
+Orkeon.Tools.Analysis.NodeInsertRequest.<Clone>$() -> Orkeon.Tools.Analysis.NodeInsertRequest!
+Orkeon.Tools.Analysis.NodeInsertRequest.Equals(Orkeon.Tools.Analysis.NodeInsertRequest? other) -> bool
+Orkeon.Tools.Analysis.NodeInsertRequest.NodeInsertRequest() -> void
+Orkeon.Tools.Analysis.NodeInsertRequest.Path.get -> string!
+Orkeon.Tools.Analysis.NodeInsertRequest.Path.init -> void
+Orkeon.Tools.Analysis.NodeInsertRequest.Position.get -> string!
+Orkeon.Tools.Analysis.NodeInsertRequest.Position.init -> void
+Orkeon.Tools.Analysis.NodeInsertRequest.Selector.get -> string!
+Orkeon.Tools.Analysis.NodeInsertRequest.Selector.init -> void
+Orkeon.Tools.Analysis.NodeInsertRequest.Text.get -> string!
+Orkeon.Tools.Analysis.NodeInsertRequest.Text.init -> void
+Orkeon.Tools.Analysis.NodeInsertResponse
+Orkeon.Tools.Analysis.NodeInsertResponse.<Clone>$() -> Orkeon.Tools.Analysis.NodeInsertResponse!
+Orkeon.Tools.Analysis.NodeInsertResponse.Equals(Orkeon.Tools.Analysis.NodeInsertResponse? other) -> bool
+Orkeon.Tools.Analysis.NodeInsertResponse.NewHash.get -> string!
+Orkeon.Tools.Analysis.NodeInsertResponse.NewHash.init -> void
+Orkeon.Tools.Analysis.NodeInsertResponse.NodeInsertResponse() -> void
+Orkeon.Tools.Analysis.NodeInsertResponse.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
+Orkeon.Tools.Analysis.NodeInsertResponse.Range.init -> void
+Orkeon.Tools.Analysis.NodeInsertTool
+Orkeon.Tools.Analysis.NodeInsertTool.NodeInsertTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+override Orkeon.Tools.Analysis.NodeInsertRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeInsertRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeInsertRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeInsertResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.NodeInsertResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.NodeInsertResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.NodeInsertTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.NodeInsertTool.Description.get -> string!
+override Orkeon.Tools.Analysis.NodeInsertTool.Name.get -> string!
+static Orkeon.Tools.Analysis.NodeInsertRequest.operator !=(Orkeon.Tools.Analysis.NodeInsertRequest? left, Orkeon.Tools.Analysis.NodeInsertRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeInsertRequest.operator ==(Orkeon.Tools.Analysis.NodeInsertRequest? left, Orkeon.Tools.Analysis.NodeInsertRequest? right) -> bool
+static Orkeon.Tools.Analysis.NodeInsertResponse.operator !=(Orkeon.Tools.Analysis.NodeInsertResponse? left, Orkeon.Tools.Analysis.NodeInsertResponse? right) -> bool
+static Orkeon.Tools.Analysis.NodeInsertResponse.operator ==(Orkeon.Tools.Analysis.NodeInsertResponse? left, Orkeon.Tools.Analysis.NodeInsertResponse? right) -> bool
+Orkeon.Tools.Analysis.EditBatchOperation
+Orkeon.Tools.Analysis.EditBatchOperation.<Clone>$() -> Orkeon.Tools.Analysis.EditBatchOperation!
+Orkeon.Tools.Analysis.EditBatchOperation.EditBatchOperation() -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Equals(Orkeon.Tools.Analysis.EditBatchOperation? other) -> bool
+Orkeon.Tools.Analysis.EditBatchOperation.ExpectedHash.get -> string?
+Orkeon.Tools.Analysis.EditBatchOperation.ExpectedHash.init -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Kind.get -> string!
+Orkeon.Tools.Analysis.EditBatchOperation.Kind.init -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Path.get -> string!
+Orkeon.Tools.Analysis.EditBatchOperation.Path.init -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Position.get -> string?
+Orkeon.Tools.Analysis.EditBatchOperation.Position.init -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Selector.get -> string!
+Orkeon.Tools.Analysis.EditBatchOperation.Selector.init -> void
+Orkeon.Tools.Analysis.EditBatchOperation.Text.get -> string!
+Orkeon.Tools.Analysis.EditBatchOperation.Text.init -> void
+Orkeon.Tools.Analysis.EditBatchOperationResult
+Orkeon.Tools.Analysis.EditBatchOperationResult.<Clone>$() -> Orkeon.Tools.Analysis.EditBatchOperationResult!
+Orkeon.Tools.Analysis.EditBatchOperationResult.EditBatchOperationResult() -> void
+Orkeon.Tools.Analysis.EditBatchOperationResult.Equals(Orkeon.Tools.Analysis.EditBatchOperationResult? other) -> bool
+Orkeon.Tools.Analysis.EditBatchOperationResult.Path.get -> string!
+Orkeon.Tools.Analysis.EditBatchOperationResult.Path.init -> void
+Orkeon.Tools.Analysis.EditBatchOperationResult.Range.get -> Orkeon.Tools.Analysis.NodeReplaceRange!
+Orkeon.Tools.Analysis.EditBatchOperationResult.Range.init -> void
+Orkeon.Tools.Analysis.EditBatchRequest
+Orkeon.Tools.Analysis.EditBatchRequest.<Clone>$() -> Orkeon.Tools.Analysis.EditBatchRequest!
+Orkeon.Tools.Analysis.EditBatchRequest.EditBatchRequest() -> void
+Orkeon.Tools.Analysis.EditBatchRequest.Equals(Orkeon.Tools.Analysis.EditBatchRequest? other) -> bool
+Orkeon.Tools.Analysis.EditBatchRequest.Operations.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Analysis.EditBatchOperation!>!
+Orkeon.Tools.Analysis.EditBatchRequest.Operations.init -> void
+Orkeon.Tools.Analysis.EditBatchRequest.Validate.get -> string!
+Orkeon.Tools.Analysis.EditBatchRequest.Validate.init -> void
+Orkeon.Tools.Analysis.EditBatchResponse
+Orkeon.Tools.Analysis.EditBatchResponse.<Clone>$() -> Orkeon.Tools.Analysis.EditBatchResponse!
+Orkeon.Tools.Analysis.EditBatchResponse.EditBatchResponse() -> void
+Orkeon.Tools.Analysis.EditBatchResponse.Equals(Orkeon.Tools.Analysis.EditBatchResponse? other) -> bool
+Orkeon.Tools.Analysis.EditBatchResponse.Operations.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Analysis.EditBatchOperationResult!>!
+Orkeon.Tools.Analysis.EditBatchResponse.Operations.init -> void
+Orkeon.Tools.Analysis.EditBatchResponse.Validation.get -> string!
+Orkeon.Tools.Analysis.EditBatchResponse.Validation.init -> void
+Orkeon.Tools.Analysis.EditBatchTool
+Orkeon.Tools.Analysis.EditBatchTool.EditBatchTool(Orkeon.Domain.FileSystem.IFileSystemService! fs, Orkeon.Analysis.TreeSitter.TreeSitterParserPool! pool, Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator? buildValidator = null, Orkeon.Analysis.Abstractions.Interfaces.IIndexInvalidation? indexInvalidation = null) -> void
+override Orkeon.Tools.Analysis.EditBatchOperation.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.EditBatchOperation.GetHashCode() -> int
+override Orkeon.Tools.Analysis.EditBatchOperation.ToString() -> string!
+override Orkeon.Tools.Analysis.EditBatchOperationResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.EditBatchOperationResult.GetHashCode() -> int
+override Orkeon.Tools.Analysis.EditBatchOperationResult.ToString() -> string!
+override Orkeon.Tools.Analysis.EditBatchRequest.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.EditBatchRequest.GetHashCode() -> int
+override Orkeon.Tools.Analysis.EditBatchRequest.ToString() -> string!
+override Orkeon.Tools.Analysis.EditBatchResponse.Equals(object? obj) -> bool
+override Orkeon.Tools.Analysis.EditBatchResponse.GetHashCode() -> int
+override Orkeon.Tools.Analysis.EditBatchResponse.ToString() -> string!
+override Orkeon.Tools.Analysis.EditBatchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Analysis.EditBatchTool.Description.get -> string!
+override Orkeon.Tools.Analysis.EditBatchTool.Name.get -> string!
+static Orkeon.Tools.Analysis.EditBatchOperation.operator !=(Orkeon.Tools.Analysis.EditBatchOperation? left, Orkeon.Tools.Analysis.EditBatchOperation? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchOperation.operator ==(Orkeon.Tools.Analysis.EditBatchOperation? left, Orkeon.Tools.Analysis.EditBatchOperation? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchOperationResult.operator !=(Orkeon.Tools.Analysis.EditBatchOperationResult? left, Orkeon.Tools.Analysis.EditBatchOperationResult? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchOperationResult.operator ==(Orkeon.Tools.Analysis.EditBatchOperationResult? left, Orkeon.Tools.Analysis.EditBatchOperationResult? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchRequest.operator !=(Orkeon.Tools.Analysis.EditBatchRequest? left, Orkeon.Tools.Analysis.EditBatchRequest? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchRequest.operator ==(Orkeon.Tools.Analysis.EditBatchRequest? left, Orkeon.Tools.Analysis.EditBatchRequest? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchResponse.operator !=(Orkeon.Tools.Analysis.EditBatchResponse? left, Orkeon.Tools.Analysis.EditBatchResponse? right) -> bool
+static Orkeon.Tools.Analysis.EditBatchResponse.operator ==(Orkeon.Tools.Analysis.EditBatchResponse? left, Orkeon.Tools.Analysis.EditBatchResponse? right) -> bool

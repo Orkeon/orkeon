@@ -26,6 +26,7 @@ drive_read
 drive_search
 drive_share
 drive_upload
+edit_batch
 email_accounts
 email_create_folder
 email_delete
@@ -63,6 +64,7 @@ mdx_search
 memory_store
 mongodb_query
 mongodb_schema
+node_insert
 mysql_query
 node_outline
 node_read

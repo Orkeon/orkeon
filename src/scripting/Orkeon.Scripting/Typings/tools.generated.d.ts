@@ -268,6 +268,15 @@ declare global {
             readonly success: boolean;
         }>;
 
+        /** `edit_batch` - Applies node_replace and node_insert operations over several files as one transaction. Each operation is {kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: 'inside', 'before' or 'after'). Operations on one file apply in order, each on the bytes the previous one produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' also runs dotnet build on the project above the edited files and restores every file when it is red. On any failure all files are left as they were. */
+        editBatch(input?: {
+            operations?: readonly { readonly expected_hash?: string; readonly kind: string; readonly path: string; readonly position?: string; readonly selector: string; readonly text: string; }[];
+            validate?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly operations: readonly { readonly path: string; readonly range: { readonly end_byte: number; readonly end_line: number; readonly start_byte: number; readonly start_line: number; }; }[];
+            readonly validation: string;
+        }>;
+
         /** `edit_file` - Replace a string in a file when it occurs exactly once. */
         editFile(input: {
             /** Create a backup before writing */
@@ -742,6 +751,17 @@ declare global {
             readonly row_count?: number;
             readonly rows?: readonly Record<string, unknown>[];
             readonly scalar_result?: unknown;
+        }>;
+
+        /** `node_insert` - Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (an enum member gets its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and attributes, 'after' below the anchor. There is no expected_hash: no anchor hash is required for before/after, the anchor is only a location. The text is re-indented line by line to the siblings' indentation (tabs or spaces as the file does); the insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
+        nodeInsert(input?: {
+            path?: string;
+            position?: string;
+            selector?: string;
+            text?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly new_hash: string;
+            readonly range: Record<string, unknown>;
         }>;
 
         /** `node_outline` - Outline of a file's members. */

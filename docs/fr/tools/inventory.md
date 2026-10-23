@@ -237,6 +237,8 @@ Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide compl
 | `node_read` | `NodeReadTool` | Lire un membre par sélecteur : texte (commentaires et attributs de tête inclus), plage, SHA-256, sans coupure |
 | `node_replace` | `NodeReplaceTool` | Remplacer un nœud par sélecteur et SHA-256 attendu : refusé si le hash est périmé ou si une erreur d'analyse est introduite, fichier intact ; marque l'index sale. Classe Edit |
 | `structural_search` | `StructuralSearchTool` | Recherche structurelle par motif avec métavariables `$A` / `$$$ARGS`, objet de règle ou fichier de règles YAML sur des fichiers C#, TypeScript et Markdown, bornée par `max_results` / `max_files`. Classe Read |
+| `node_insert` | `NodeInsertTool` | Ajouter un nœud `inside` un type, un namespace ou une section Markdown (dernier membre, indentation des frères) ou `before`/`after` un nœud d'ancrage (ses commentaires et attributs restent avec lui) ; aucun hash d'ancrage requis ; refusé si une erreur d'analyse est introduite ; marque l'index sale. Classe Edit |
+| `edit_batch` | `EditBatchTool` | Appliquer des opérations `node_replace` et `node_insert` sur plusieurs fichiers en une transaction : chaque fichier ré-analysé (`validate: "parse"`) ou le build lancé (`validate: "build"`) ; tout est appliqué ou chaque fichier reste identique à l'octet ; liste la plage de chaque opération. Classe Edit |
 
 ## Montages et embeddings locaux
 
@@ -434,6 +436,7 @@ correspondance alphabétique complète :
 | `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
+| `edit_batch` | `EditBatchTool` | `Orkeon.Tools.Analysis` |
 | `edit_file` | `EditFileTool` | `Orkeon.Tools.FileSystem` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
@@ -457,6 +460,7 @@ correspondance alphabétique complète :
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
+| `node_insert` | `NodeInsertTool` | `Orkeon.Tools.Analysis` |
 | `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
 | `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |
 | `node_replace` | `NodeReplaceTool` | `Orkeon.Tools.Analysis` |

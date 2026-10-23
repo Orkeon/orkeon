@@ -110,3 +110,22 @@ static Orkeon.Analysis.Abstractions.GraphKindNames.TryParseNodeKind(string? name
 static Orkeon.Analysis.Abstractions.GraphKindNames.ParseEdgeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.EdgeKind>
 static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeKinds(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Func<Orkeon.Analysis.Abstractions.Models.RaggableNode!, bool>!
 static Orkeon.Analysis.Abstractions.GraphKindNames.ParseNodeQueries(System.Collections.Immutable.ImmutableArray<string!> names) -> System.Collections.Immutable.ImmutableArray<Orkeon.Analysis.Abstractions.DTOs.Queries.NodeQuery!>
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Green = 0 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Red = 1 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome.Skipped = 2 -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.BuildValidation() -> void
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Detail.get -> string!
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Detail.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Outcome.get -> Orkeon.Analysis.Abstractions.Interfaces.BuildOutcome
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Outcome.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.<Clone>$() -> Orkeon.Analysis.Abstractions.Interfaces.BuildValidation!
+Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Equals(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? other) -> bool
+Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator
+Orkeon.Analysis.Abstractions.Interfaces.IBuildValidator.ValidateAsync(System.Collections.Generic.IReadOnlyList<string!>! editedPhysicalPaths, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Analysis.Abstractions.Interfaces.BuildValidation!>!
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.Equals(object? obj) -> bool
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.GetHashCode() -> int
+override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.ToString() -> string!
+static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator !=(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool
+static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator ==(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool

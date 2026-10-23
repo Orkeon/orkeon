@@ -309,7 +309,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var tools = provider.GetServices<IBaseTool>().ToList();
 
-        Assert.Equal(20, tools.Count);
+        Assert.Equal(22, tools.Count);
         Assert.Contains(tools, t => t is CodebaseMapTool);
         Assert.Contains(tools, t => t is CodebaseSearchTool);
         Assert.Contains(tools, t => t is ComplexityReportTool);

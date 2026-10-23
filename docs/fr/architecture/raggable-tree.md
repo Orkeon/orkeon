@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // les 19 tools agents (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // les 21 tools agents (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les cinq
@@ -144,8 +144,10 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `node_outline` | Membres d'un fichier C# ou TypeScript avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | Un membre par sélecteur : texte, plage et SHA-256, lu sans coupure | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 | `node_replace` | Remplace un nœud par sélecteur et SHA-256 attendu (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
+| `node_insert` | Ajoute un nœud `inside`, `before` ou `after` un sélecteur d'ancrage (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
+| `edit_batch` | Plusieurs opérations `node_replace` / `node_insert` sur plusieurs fichiers en une transaction (classe Edit) | `{ "operations": [{ "kind": "node_replace", "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }], "validate": "parse" }` |
 
-Les 19 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+Les 21 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
@@ -307,6 +309,20 @@ Langages : C# (`cs`), TypeScript (`ts`), Markdown (`md`) et les autres grammaire
 Un fichier de règles YAML (`id`, `language`, `rule`, `message`, `severity`, `fix`) est lu via le VFS sous une racine montée ; `fix` est lu, jamais appliqué.
 
 Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (500 par défaut) ; le résultat indique `truncated` et `files_scanned`. Chaque correspondance porte chemin, ligne, colonne, texte, symbole englobant et captures.
+
+`node_insert` ajoute un nœud à une position relative à un sélecteur d'ancrage :
+
+- **`inside`** ajoute le texte comme dernier membre d'un corps de classe, struct, interface ou namespace (C#, TypeScript), ou à la fin de la section d'un titre Markdown ; les membres d'enum reçoivent la virgule de séparation. L'indentation est celle du premier frère, sinon celle du parent plus l'unité détectée du fichier (espaces ou tabulations) ; un corps vide utilise la seconde règle.
+- **`before`** insère au-dessus des commentaires et attributs de tête de l'ancre, **`after`** en dessous ; un texte multi-ligne est ré-indenté ligne à ligne sur l'indentation de l'ancre. Aucun hash d'ancrage n'est requis pour `before`/`after`.
+- Le résultat est ré-analysé comme pour `node_replace` et refusé s'il introduit un diagnostic.
+
+`edit_batch` applique des opérations `node_replace` et `node_insert` sur plusieurs fichiers en une transaction (`EditTransaction`) :
+
+- `expected_hash` est requis pour `node_replace`, absent pour `node_insert`. Les opérations d'un même fichier s'appliquent dans l'ordre sur les octets déjà modifiés : le second hash est vérifié contre l'état après la première.
+- Le droit d'écriture de chaque chemin est vérifié avant toute écriture ; chaque fichier est ré-analysé en mémoire (`validate: "parse"`) avant la première écriture.
+- Avant la première écriture, un journal `/output/edit-batch/<id>.journal` garde les octets d'origine de chaque fichier ; il est supprimé en cas de succès, et le `edit_batch` suivant sur le montage rejoue un journal resté. Un échec d'écriture restaure les fichiers déjà écrits depuis la mémoire ; si cette restauration échoue aussi, le journal reste et l'appel lève une `AggregateException`. Un `edit_batch` concurrent sur un fichier tenu est refusé (le verrou est dans le processus).
+- `validate: "build"` écrit les fichiers, puis `DotnetBuildValidator` construit le `.csproj`/`.sln` le plus proche au-dessus des fichiers modifiés (`dotnet build --no-restore`, délai maximal, processus tué à l'annulation). Un build rouge restaure les octets d'origine ; sans projet trouvé, la vérification est ignorée et signalée.
+- Le résultat liste le chemin et la plage de chaque opération, et l'issue de la validation.
 
 ## Extensibilité
 

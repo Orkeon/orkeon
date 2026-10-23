@@ -36,8 +36,13 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
         return _inner.TryReadAllBytesAsync(virtualPath, ct);
     }
 
+    /// <summary>Virtual paths whose Write right is refused by <see cref="ResolveAndValidate"/>.</summary>
+    public HashSet<string> DeniedWritePaths = [];
+
     public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight)
-        => _inner.ResolveAndValidate(virtualPath, requiredRight);
+        => requiredRight.HasFlag(FileAccessRights.Write) && DeniedWritePaths.Contains(virtualPath)
+            ? PathValidationResult.Denied($"Write refused on '{virtualPath}'.")
+            : _inner.ResolveAndValidate(virtualPath, requiredRight);
 
     public string? ToVirtualPath(string physicalPath) => _inner.ToVirtualPath(physicalPath);
 
@@ -80,8 +85,16 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
     /// <summary>When set, a byte write first truncates the target through the inner service, then throws this.</summary>
     public Exception? WriteFailure;
 
+    /// <summary>Per-path script of byte writes: each write to the path dequeues one entry; a non-null entry truncates the target then throws it.</summary>
+    public Dictionary<string, Queue<Exception?>> WriteOutcomesByPath = [];
+
     public async Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
     {
+        if (WriteOutcomesByPath.TryGetValue(virtualPath, out var script) && script.Count > 0 && script.Dequeue() is { } scripted)
+        {
+            await _inner.WriteAllBytesAsync(virtualPath, [], ct);
+            throw scripted;
+        }
         if (WriteFailure is not null)
         {
             await _inner.WriteAllBytesAsync(virtualPath, [], ct);

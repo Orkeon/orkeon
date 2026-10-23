@@ -7,6 +7,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
 using Orkeon.Analysis.Core.ContextInjection;
+using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.Core.Watcher;
 using Orkeon.Analysis.Fingerprinters;
 using Orkeon.Analysis.Summarizers;
@@ -52,6 +53,7 @@ public static class RaggableTreeServiceCollectionExtensions
         services.TryAddSingleton<IFileSystemDiscoverer>(sp =>
             new FileSystemDiscoverer(sp.GetRequiredService<IFileSystemService>()));
         services.TryAddSingleton<TreeSitterParserPool>();
+        services.TryAddSingleton<IBuildValidator, DotnetBuildValidator>();
         services.TryAddSingleton<IReferenceResolver, DefaultReferenceResolver>();
         services.TryAddSingleton<IEmbeddingTextComposer, EmbeddingTextComposer>();
     }

@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 19 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
+Multi-language semantic graph of the source code: Tree-sitter parsing, embedding enrichment, vector storage, and exposure to agents through 21 tools. Replaces raw file reading with a structured index offering five stratified node levels (L0 monorepo → L1 package → L2 module → L3 symbol → L4 statement) plus the edge layer between them.
 
 ## Overview
 
@@ -146,8 +146,10 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `node_outline` | Members of a C# or TypeScript file with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | One member by selector: text, range and SHA-256, read uncut | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 | `node_replace` | Replace one node by selector and expected SHA-256 (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
+| `node_insert` | Add a node `inside`, `before` or `after` an anchor selector (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
+| `edit_batch` | Several `node_replace` / `node_insert` operations over several files as one transaction (Edit class) | `{ "operations": [{ "kind": "node_replace", "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }], "validate": "parse" }` |
 
-The 19 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+The 21 tools are registered via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` carries the build knobs per call (`IndexCodebaseRequest`):
 `root_path` (required, a virtual path), `languages` (empty = auto-detect),
@@ -306,6 +308,20 @@ Languages: C# (`cs`), TypeScript (`ts`), Markdown (`md`) and the other grammars 
 A YAML rule file (`id`, `language`, `rule`, `message`, `severity`, `fix`) is read through the VFS under a mounted root; `fix` is read, never applied.
 
 Results are capped by `max_results` (default 100) and `max_files` (default 500); the result reports `truncated` and `files_scanned`. Each match carries path, line, column, text, the enclosing symbol and its captures.
+
+`node_insert` adds a node at a position against an anchor selector:
+
+- **`inside`** appends the text as the last member of a class, struct, interface or namespace body (C#, TypeScript), or at the end of a Markdown heading's section; enum members get the separating comma. Indentation is the first sibling's, else the parent's plus the file's detected unit (spaces or tabs); an empty body uses the second rule.
+- **`before`** inserts above the anchor's leading comments and attributes, **`after`** below the anchor; multi-line text is re-indented line by line to the anchor's indentation. No anchor hash is needed for `before`/`after`.
+- The result is re-parsed as for `node_replace` and refused when it introduces a diagnostic.
+
+`edit_batch` applies `node_replace` and `node_insert` operations over several files as one transaction (`EditTransaction`):
+
+- `expected_hash` is required for `node_replace`, absent for `node_insert`. Operations on one file apply in order on the progressively edited bytes: the second hash is checked against the state after the first.
+- The Write right of every path is checked before any write; every file is re-parsed in memory (`validate: "parse"`) before the first write.
+- Before the first write a journal `/output/edit-batch/<id>.journal` keeps every file's original bytes; it is deleted on success, and the next `edit_batch` on the mount replays a leftover one. A later write failure restores the files already written from memory; if that restore fails too, the journal stays and the call throws an `AggregateException`. A concurrent `edit_batch` touching a held file is refused (the lock is in-process).
+- `validate: "build"` writes the files, then `DotnetBuildValidator` builds the nearest `.csproj`/`.sln` above the edited files (`dotnet build --no-restore`, timeout, process killed on cancel). A red build restores the original bytes; with no project found the check is skipped and reported.
+- The result lists each operation's path and range, and the validation outcome.
 
 ## Extensibility
 
