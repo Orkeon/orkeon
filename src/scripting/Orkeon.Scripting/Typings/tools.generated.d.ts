@@ -22,6 +22,17 @@ declare global {
             readonly report?: Record<string, unknown>;
         }>;
 
+        /** `affected_tests` - Test projects and classes reached through the graph by changed files. */
+        affectedTests(input?: {
+            base?: string | null;
+            changed_files?: readonly string[] | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly all: boolean;
+            readonly test_classes: readonly string[];
+            readonly test_projects: readonly string[];
+            readonly unresolved: readonly string[];
+        }>;
+
         /** `arcadedb_query` - Execute Cypher or SQL queries on ArcadeDB via Bolt protocol */
         arcadedbQuery(input: {
             /** Bolt protocol URI for ArcadeDB */
@@ -48,6 +59,23 @@ declare global {
             readonly record_count: number;
             readonly records?: readonly Record<string, unknown>[];
             readonly relationships_created: number;
+        }>;
+
+        /** `batch_anchors` - Closure of anchors (contains, callers, tests) and overlap of two anchor sets. */
+        batchAnchors(input?: {
+            a?: Record<string, unknown> | null;
+            action?: string;
+            b?: Record<string, unknown> | null;
+            files?: readonly string[] | null;
+            fqns?: readonly string[] | null;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly disjoint: boolean;
+            readonly nodes: readonly string[];
+            readonly shared: readonly string[];
+            readonly truncated: boolean;
+            readonly unresolved: readonly string[];
+            readonly unresolved_a: readonly string[];
+            readonly unresolved_b: readonly string[];
         }>;
 
         /** `cache_search` - Semantic search over content previously stored in the RAG cache (e.g. by web_scrape with cached=true). source filter scopes by producing tool; url_filter scopes by URL substring; both are optional — empty means global search. */
@@ -235,6 +263,22 @@ declare global {
             readonly result_count: number;
             readonly results: readonly { readonly approximate_line: number; readonly chunk_index: number; readonly content: string; readonly file_extension: string; readonly score: number; readonly source_file: string; }[];
             readonly total_chunks: number;
+        }>;
+
+        /** `documented_in` - Markdown sections that document a symbol. */
+        documentedIn(input?: {
+            fqn?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly sections: readonly { readonly heading_path: string; readonly path: string; readonly start_line: number; }[];
+            readonly unresolved: readonly string[];
+        }>;
+
+        /** `documents_of` - Symbols documented by the sections of a Markdown file. */
+        documentsOf(input?: {
+            path?: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly symbols: readonly { readonly file: string; readonly fqn: string; readonly heading_path: string; readonly kind: string; }[];
+            readonly unresolved: readonly string[];
         }>;
 
         /** `docx_reader` - Read DOCX (Word) files and return structured data including text, tables, and metadata. */

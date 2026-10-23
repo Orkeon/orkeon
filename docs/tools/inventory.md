@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **103 built-in tool classes**. The counting
+This page is the reference catalogue of the **118 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -209,7 +209,7 @@ security model and the `orkeon drive` commands: [Drive tools](../guides/drive.md
 
 ## Codebase analysis tools (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Seventeen tools over the RaggableTree semantic code graph — the full guide is
+Twenty-seven tools over the RaggableTree semantic code graph — the full guide is
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Class | Use case |
@@ -230,6 +230,10 @@ Seventeen tools over the RaggableTree semantic code graph — the full guide is
 | `complexity_report` | `ComplexityReportTool` | Top-N methods by complexity metrics, with median/P95 |
 | `statement_query` | `StatementQueryTool` | Query L4 statements by kind, parent FQN, or semantic similarity |
 | `access_cost` | `AccessCostTool` | Port-access cost of members selected by `fqns` or `changed_files` (default: the working-tree changes), restricted to `roots`; `receivers` overrides the port-receiver regex. Read-class |
+| `documents_of` | `DocumentsOfTool` | Symbols documented by the sections of a Markdown file (`path`). Read-class |
+| `documented_in` | `DocumentedInTool` | Markdown sections that document a symbol (`fqn`): file, heading path, start line. Read-class |
+| `batch_anchors` | `BatchAnchorsTool` | `action: closure` expands anchors (`fqns`, `files`) to contained nodes, callers and tests; `action: overlap` compares two anchor sets `a` and `b` and lists the shared nodes. Read-class |
+| `affected_tests` | `AffectedTestsTool` | Test projects and test classes a change reaches through the graph (`changed_files` or `base`; neither means `base = HEAD`, the working-tree changes); answers `all` when it cannot bound the set. Read-class |
 | `node_outline` | `NodeOutlineTool` | List the members of a C# or TypeScript file with selectors, byte and line ranges |
 | `node_read` | `NodeReadTool` | Read one member by selector: text (leading comments and attributes included), range, SHA-256, uncut |
 | `node_replace` | `NodeReplaceTool` | Replace one node by selector and expected SHA-256: refused on a stale hash or a newly introduced parse error, the file left untouched; marks the index dirty. Edit-class |
@@ -254,7 +258,7 @@ Seventeen tools over the RaggableTree semantic code graph — the full guide is
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 103 built-in tool classes:
+Deliberately **not** part of the 118 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -276,7 +280,7 @@ number the README and the documentation index state, checked by
 | Package | Tool classes |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 16 |
+| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 27 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`) | 12 |
@@ -284,8 +288,8 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
-| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 each |
-| **Total** | **103** |
+| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
+| **Total** | **118** |
 
 ## Availability by composition root
 
@@ -388,8 +392,10 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | YAML name | Class | Package |
 |----------|--------|---------|
 | `access_cost` | `AccessCostTool` | `Orkeon.Tools.Analysis` |
+| `affected_tests` | `AffectedTestsTool` | `Orkeon.Tools.Analysis` |
 | `arcadedb_query` | `ArcadeDbTool` | `Orkeon.Tools.Data` |
 | `ask_question_to_coworker` | `AskQuestionTool` | `Orkeon.Infrastructure` |
+| `batch_anchors` | `BatchAnchorsTool` | `Orkeon.Tools.Analysis` |
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |
 | `cache_search` | `CacheSearchTool` | `Orkeon.Tools.Web` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
@@ -403,6 +409,8 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `dependency_graph` | `DependencyGraphTool` | `Orkeon.Tools.Analysis` |
 | `directory_read` | `DirectoryReadTool` | `Orkeon.Tools.FileSystem` |
 | `directory_search` | `DirectorySearchTool` | `Orkeon.Tools.FileSystem` |
+| `documented_in` | `DocumentedInTool` | `Orkeon.Tools.Analysis` |
+| `documents_of` | `DocumentsOfTool` | `Orkeon.Tools.Analysis` |
 | `docx_reader` | `DocxReadTool` | `Orkeon.Tools.Data` |
 | `docx_writer` | `DocxWriteTool` | `Orkeon.Tools.Data` |
 | `drive_accounts` | `DriveAccountsTool` | `Orkeon.Tools.Drive` |

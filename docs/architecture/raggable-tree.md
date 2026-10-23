@@ -262,7 +262,7 @@ Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), pytho
 | `doc_section` | `Section` |
 | `test` | `Method` node carrying the `test` tag |
 
-`EdgeKind` gains `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`). There is no `references` kind: nothing produces it. `documents` edges are declared; they are produced by the graph-queries work.
+`EdgeKind` gains `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`). There is no `references` kind: nothing produces it. `documents` edges link a Markdown section to the symbols it names (see [Graph queries](#graph-queries)).
 
 ### Using the names
 
@@ -280,6 +280,34 @@ Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), pytho
 - The FQN is name-only: a `tests` edge to an overloaded member links every overload.
 - A test calling a symbol newly added in another file gets no `tests` edge until a full reindex.
 - A TypeScript test callback has no node: its calls are owned by the enclosing symbol, else by the file node. Today only the tag is applied to the file node; the `tests` edges of a file-level TypeScript test are not yet produced.
+
+## Graph queries
+
+Four Read-class tools answer questions over the graph without reading the code. All of them report names they could not resolve in `unresolved`.
+
+### `affected_tests`
+
+Input: `changed_files` or `base` (a git ref whose diff gives the files); with neither, `base` is `HEAD`, i.e. the working-tree changes. Response: `all`, `test_projects` (folders), `test_classes` (reached through `tests` edges), `unresolved`.
+
+- A neutral extension (`.md`, `.txt`, `.png`, ...) is exempt. `.claude/` and the work folder are skipped.
+- `all` is `true` when a non-neutral file is not in the index, has no owning project, or when the expansion is truncated.
+- Limits: `project_depends` comes from csproj files only; TypeScript tests are tagged but carry no `tests` edges; a cross-file `tests` edge exists only after a full reindex.
+- Parity: the answer matches the harness script `affected-tests.py`.
+
+### `batch_anchors`
+
+Input: `action`, then `fqns` / `files` for `closure`, or `a` / `b` (each `{fqns, files}`) for `overlap`.
+
+- `closure`: the nodes contained down from the anchors, plus their callers at depth 1, plus the inbound `tests`. Response: `nodes`, `unresolved`, `truncated`.
+- `overlap`: lists the nodes both closures share in `shared`, or sets `disjoint`. Response also carries `unresolved_a`, `unresolved_b`, `truncated`.
+- A truncated closure, or an unresolved anchor on either side, never proves disjointness; an unresolved anchor present on both sides is listed in `shared`.
+
+### `documented_in` and `documents_of`
+
+- `documented_in` (`fqn`): `sections[]` with `path`, `heading_path`, `start_line`.
+- `documents_of` (`path`): `symbols[]` with `fqn`, `kind`, `file` (repo-relative), `heading_path`.
+- The `Documents` edge goes from a `Section` to a symbol. It is built from code spans, link texts and headings equal to a symbol's local name, resolved by local name: an ambiguous name links every candidate. `DocumentsEdgeLinker` builds the edges on the full build and on the incremental reindex.
+- The Markdown mapper tags a `Section` `code:<text>` or `link:<text>` for each such span or link.
 
 ## Structural search
 

@@ -179,12 +179,13 @@ public sealed class IncrementalReindexEngine
         newEdges.AddRange(await ProjectGraphBuilder.BuildProjectDependsAsync(
             allNodes,
             _fileSystem, changedCsprojs, ct).ConfigureAwait(false));
-        keptEdges.RemoveAll(e => e.Kind == EdgeKind.Tests);
+        keptEdges.RemoveAll(e => e.Kind is EdgeKind.Tests or EdgeKind.Documents);
         var keptIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
         newEdges.AddRange(ProjectGraphBuilder.BuildContainsEdges(newNodes).Where(e => !keptIds.Contains(e.Id)));
         var linkable = new List<RaggableEdge>(keptEdges);
         linkable.AddRange(newEdges);
         newEdges.AddRange(TestEdgeLinker.Link(allNodes, linkable));
+        newEdges.AddRange(DocumentsEdgeLinker.Link(allNodes, linkable));
         foreach (var edge in keptEdges.Where(e => newIds.Contains(e.ToId)))
         {
             DependencyGraphBuilder.LinkNodes(edge.Kind, nodesById[edge.FromId], nodesById[edge.ToId]);

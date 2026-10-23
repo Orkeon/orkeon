@@ -263,7 +263,7 @@ Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), p
 | `doc_section` | `Section` |
 | `test` | nœud `Method` portant le tag `test` |
 
-`EdgeKind` gagne `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` sont déclarées ; elles sont produites par le travail sur les requêtes de graphe.
+`EdgeKind` gagne `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` relient une section Markdown aux symboles qu'elle nomme (voir [Requêtes sur le graphe](#requêtes-sur-le-graphe)).
 
 ### Utiliser les noms
 
@@ -281,6 +281,34 @@ Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), p
 - Le FQN ne porte que le nom : une arête `tests` vers un membre surchargé relie toutes les surcharges.
 - Un test qui appelle un symbole récemment ajouté dans un autre fichier n'a pas d'arête `tests` avant une réindexation complète.
 - Un callback de test TypeScript n'a pas de nœud : ses appels appartiennent au symbole englobant, sinon au nœud fichier. Aujourd'hui seul le tag est posé sur le nœud fichier ; les arêtes `tests` d'un test TypeScript au niveau fichier ne sont pas encore produites.
+
+## Requêtes sur le graphe
+
+Quatre tools de classe Read répondent à des questions sur le graphe sans lire le code. Tous reportent dans `unresolved` les noms qu'ils n'ont pas pu résoudre.
+
+### `affected_tests`
+
+Entrée : `changed_files` ou `base` (une ref git dont le diff donne les fichiers) ; sans l'un ni l'autre, `base` vaut `HEAD`, soit les changements de l'arbre de travail. Réponse : `all`, `test_projects` (dossiers), `test_classes` (atteintes par les arêtes `tests`), `unresolved`.
+
+- Une extension neutre (`.md`, `.txt`, `.png`, ...) est exemptée. `.claude/` et le dossier de travail sont ignorés.
+- `all` vaut `true` quand un fichier non neutre n'est pas dans l'index, n'a pas de projet propriétaire, ou quand l'expansion est tronquée.
+- Limites : `project_depends` vient des seuls csproj ; les tests TypeScript sont étiquetés mais sans arêtes `tests` ; une arête `tests` entre fichiers n'existe qu'après une réindexation complète.
+- Parité : la réponse correspond au script du harness `affected-tests.py`.
+
+### `batch_anchors`
+
+Entrée : `action`, puis `fqns` / `files` pour `closure`, ou `a` / `b` (chacun `{fqns, files}`) pour `overlap`.
+
+- `closure` : les nœuds contenus sous les ancres, plus leurs appelants à profondeur 1, plus les `tests` entrants. Réponse : `nodes`, `unresolved`, `truncated`.
+- `overlap` : liste dans `shared` les nœuds communs aux deux fermetures, ou renseigne `disjoint`. La réponse porte aussi `unresolved_a`, `unresolved_b`, `truncated`.
+- Une fermeture tronquée, ou une ancre non résolue d'un côté, ne prouve jamais la disjonction ; une ancre non résolue présente des deux côtés figure dans `shared`.
+
+### `documented_in` et `documents_of`
+
+- `documented_in` (`fqn`) : `sections[]` avec `path`, `heading_path`, `start_line`.
+- `documents_of` (`path`) : `symbols[]` avec `fqn`, `kind`, `file` (relatif au dépôt), `heading_path`.
+- L'arête `Documents` va d'une `Section` vers un symbole. Elle est construite à partir des spans de code, textes de lien et titres égaux au nom local d'un symbole, résolus par nom local : un nom ambigu relie tous les candidats. `DocumentsEdgeLinker` construit les arêtes au build complet et à la réindexation incrémentale.
+- Le mapper Markdown étiquette une `Section` `code:<text>` ou `link:<text>` pour chaque span ou lien de ce type.
 
 ## Recherche structurelle
 

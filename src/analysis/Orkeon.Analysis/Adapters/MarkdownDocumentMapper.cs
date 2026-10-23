@@ -8,6 +8,7 @@ using Markdig.Syntax.Inlines;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Analysis.Core;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 
@@ -36,6 +37,7 @@ public sealed class MarkdownDocumentMapper
 
         var headings = document.Descendants<HeadingBlock>().ToList();
         var stack = new List<(int Level, string Fqn)>();
+        var sections = new List<(RaggableNode Node, int Start, int End)>();
         for (var i = 0; i < headings.Count; i++)
         {
             var heading = headings[i];
@@ -46,8 +48,10 @@ public sealed class MarkdownDocumentMapper
 
             var next = headings.Skip(i + 1).FirstOrDefault(h => h.Level <= heading.Level);
             var end = next is null ? content.Length : next.Span.Start;
-            nodes.Add(Create(virtualPath, UniversalNodeKind.Section, name, fqn, NodeLevel.L3_Symbol,
-                content, bytes, heading.Span.Start, end, heading.Line));
+            var section = Create(virtualPath, UniversalNodeKind.Section, name, fqn, NodeLevel.L3_Symbol,
+                content, bytes, heading.Span.Start, end, heading.Line);
+            nodes.Add(section);
+            sections.Add((section, heading.Span.Start, end));
         }
 
         foreach (var front in document.Descendants<YamlFrontMatterBlock>())
@@ -75,7 +79,11 @@ public sealed class MarkdownDocumentMapper
                 content, bytes, link.Span.Start, link.Span.End + 1, link.Line);
             node.TagsMutable[TargetPrefix + link.Url] = string.Empty;
             nodes.Add(node);
+            if (label.Length > 0) TagInnermostSection(sections, link.Span.Start, DocumentsEdgeLinker.LinkTag + label);
         }
+
+        foreach (var code in document.Descendants<CodeInline>())
+            TagInnermostSection(sections, code.Span.Start, DocumentsEdgeLinker.CodeTag + code.Content);
 
         AttachToSections(nodes);
         return nodes;
@@ -174,6 +182,12 @@ public sealed class MarkdownDocumentMapper
             SourceSnippet = snippet,
             Sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snippet))),
         };
+    }
+
+    private static void TagInnermostSection(List<(RaggableNode Node, int Start, int End)> sections, int position, string tag)
+    {
+        var innermost = sections.LastOrDefault(s => s.Start <= position && position < s.End);
+        innermost.Node?.TagsMutable[tag] = string.Empty;
     }
 
     private static void AttachToSections(List<RaggableNode> nodes)

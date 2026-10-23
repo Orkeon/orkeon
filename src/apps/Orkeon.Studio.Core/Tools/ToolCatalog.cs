@@ -259,6 +259,10 @@ public static class ToolCatalog
             new("complexity_report"),
             new("statement_query"),
             new("access_cost"),
+            new("affected_tests"),
+            new("batch_anchors"),
+            new("documented_in"),
+            new("documents_of"),
         ]),
         new(CollaborationFamily,
         [

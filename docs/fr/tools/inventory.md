@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **103 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **118 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -214,7 +214,7 @@ pour les deux fournisseurs, modèle de sécurité et commandes `orkeon drive` :
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide complet est
+Vingt-sept tools sur le graphe sémantique de code RaggableTree — le guide complet est
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Classe | Cas d'usage |
@@ -234,6 +234,10 @@ Dix-sept tools sur le graphe sémantique de code RaggableTree — le guide compl
 | `impact_analysis` | `ImpactAnalysisTool` | Appelants directs et transitifs affectés par la modification d'un symbole |
 | `complexity_report` | `ComplexityReportTool` | Top-N des méthodes par métriques de complexité, avec médiane/P95 |
 | `access_cost` | `AccessCostTool` | Coût d'accès aux ports des membres choisis par `fqns` ou `changed_files` (par défaut : les changements de l'arbre de travail), restreint à `roots` ; `receivers` remplace la regex des récepteurs de ports. Classe lecture |
+| `documents_of` | `DocumentsOfTool` | Symboles documentés par les sections d'un fichier Markdown (`path`). Classe Read |
+| `documented_in` | `DocumentedInTool` | Sections Markdown qui documentent un symbole (`fqn`) : fichier, chemin de titres, ligne de début. Classe Read |
+| `batch_anchors` | `BatchAnchorsTool` | `action: closure` étend des ancres (`fqns`, `files`) aux nœuds contenus, appelants et tests ; `action: overlap` compare deux ensembles d'ancres `a` et `b` et liste les nœuds partagés. Classe Read |
+| `affected_tests` | `AffectedTestsTool` | Projets de test et classes de test atteints par un changement via le graphe (`changed_files` ou `base` ; ni l'un ni l'autre vaut `base = HEAD`, les changements de l'arbre de travail) ; répond `all` quand il ne peut pas borner l'ensemble. Classe Read |
 | `statement_query` | `StatementQueryTool` | Requêter les statements L4 par genre, FQN parent, ou similarité sémantique |
 | `node_outline` | `NodeOutlineTool` | Lister les membres d'un fichier C# ou TypeScript avec sélecteurs, plages d'octets et de lignes |
 | `node_read` | `NodeReadTool` | Lire un membre par sélecteur : texte (commentaires et attributs de tête inclus), plage, SHA-256, sans coupure |
@@ -282,7 +286,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | Package | Classes de tools |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 16 |
+| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 27 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
@@ -290,8 +294,8 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
-| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
-| **Total** | **103** |
+| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
+| **Total** | **118** |
 
 ## Disponibilité par racine de composition
 
@@ -396,8 +400,10 @@ correspondance alphabétique complète :
 | Nom YAML | Classe | Package |
 |----------|--------|---------|
 | `access_cost` | `AccessCostTool` | `Orkeon.Tools.Analysis` |
+| `affected_tests` | `AffectedTestsTool` | `Orkeon.Tools.Analysis` |
 | `arcadedb_query` | `ArcadeDbTool` | `Orkeon.Tools.Data` |
 | `ask_question_to_coworker` | `AskQuestionTool` | `Orkeon.Infrastructure` |
+| `batch_anchors` | `BatchAnchorsTool` | `Orkeon.Tools.Analysis` |
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |
 | `cache_search` | `CacheSearchTool` | `Orkeon.Tools.Web` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
@@ -411,6 +417,8 @@ correspondance alphabétique complète :
 | `dependency_graph` | `DependencyGraphTool` | `Orkeon.Tools.Analysis` |
 | `directory_read` | `DirectoryReadTool` | `Orkeon.Tools.FileSystem` |
 | `directory_search` | `DirectorySearchTool` | `Orkeon.Tools.FileSystem` |
+| `documented_in` | `DocumentedInTool` | `Orkeon.Tools.Analysis` |
+| `documents_of` | `DocumentsOfTool` | `Orkeon.Tools.Analysis` |
 | `docx_reader` | `DocxReadTool` | `Orkeon.Tools.Data` |
 | `docx_writer` | `DocxWriteTool` | `Orkeon.Tools.Data` |
 | `drive_accounts` | `DriveAccountsTool` | `Orkeon.Tools.Drive` |
