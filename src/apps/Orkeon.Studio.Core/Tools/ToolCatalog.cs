@@ -150,6 +150,8 @@ public static class ToolCatalog
             new("file_write"),
             new("edit_file"),
             new("directory_read"),
+            new("glob"),
+            new("grep"),
             new("directory_search"),
             new("count_pattern"),
         ]),

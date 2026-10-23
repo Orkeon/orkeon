@@ -37,7 +37,7 @@ public sealed class ModePermissionGate : IPermissionGate
         "memory_store", "local_embed_text", "is_path_indexed", "statement_query",
         "complexity_report", "dependency_graph", "flow_trace", "impact_analysis",
         "package_summary", "sub_graph", "access_cost", "node_outline", "node_read",
-        "structural_search",
+        "structural_search", "glob", "grep",
     };
 
     private static readonly string[] ReadPrefixes = ["codebase_", "symbol_", "index_"];

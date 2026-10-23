@@ -396,6 +396,19 @@ declare global {
             readonly total_count: number;
         }>;
 
+        /** `glob` - Expand a wildcard pattern (relative to a mounted directory) and list the matching file paths, sorted and capped. */
+        glob(input: {
+            /** Maximum number of paths returned (default: 200) */
+            max_results?: number;
+            /** Root directory (virtual path): an existing mounted directory */
+            path: string;
+            /** Wildcard pattern relative to path; an absolute pattern is refused */
+            pattern: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly paths: readonly string[];
+            readonly truncated: boolean;
+        }>;
+
         /** `graph_schema` - Inspect graph database schema (vertex labels, edge labels, properties, indexes) */
         graphSchema(input: {
             /** Database name (required for ArcadeDB) */
@@ -414,6 +427,28 @@ declare global {
             readonly indexes: readonly { readonly index_type?: string; readonly is_unique: boolean; readonly name: string; readonly property_keys: readonly string[]; }[];
             readonly property_keys: readonly { readonly cardinality?: string; readonly data_type: string; readonly name: string; }[];
             readonly vertex_labels: readonly { readonly count_estimate?: number; readonly label: string; readonly properties: readonly string[]; }[];
+        }>;
+
+        /** `grep` - Search the lines of text files under a mounted directory (path) with a regex; glob filters files relative to path. Binary, unreadable and over-1-MiB files are skipped; regex timeout, max_results and max_files bound the scan. Returns path:line:text hits. */
+        grep(input: {
+            /** Case-insensitive matching */
+            case_insensitive?: boolean;
+            /** Optional file filter relative to path (never absolute); all files when absent */
+            glob?: string | null;
+            /** Maximum number of files scanned; binary or unreadable files are skipped and counted (default: 2000) */
+            max_files?: number;
+            /** Maximum number of hits (default: 200) */
+            max_results?: number;
+            /** Root directory searched (virtual path, a mounted directory inside the agent root) */
+            path: string;
+            /** Regular expression searched in each line (per-match timeout; the scan stops and timed_out is set on a timeout) */
+            pattern: string;
+        }, ctx?: ExecutionContext): Promise<{
+            readonly files_scanned: number;
+            readonly files_skipped: number;
+            readonly hits: readonly { readonly line: number; readonly path: string; readonly text: string; }[];
+            readonly timed_out: boolean;
+            readonly truncated: boolean;
         }>;
 
         /** `http_api` - Make HTTP API calls with support for GET, POST, PUT, DELETE, PATCH methods. Returns response body, status code, and headers. */

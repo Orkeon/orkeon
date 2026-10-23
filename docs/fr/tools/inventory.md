@@ -74,6 +74,8 @@ celui ci-dessus — est ce que le YAML référence.
 | `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire (collection éphémère — exige le sous-système RAG à l'appel, voir ci-dessous) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
+| `glob` | `GlobTool` | `FileToolBase<GlobRequest, GlobResponse>` | Fichiers correspondant à un motif sous une racine montée, bornés par `max_results` (`pattern` relatif à `path`). Classe Read | `{ "path": "/workspace", "pattern": "**/*.cs", "max_results": 100 }` |
+| `grep` | `GrepTool` | `FileToolBase<GrepRequest, GrepResponse>` | Recherche regex ligne à ligne renvoyant `path:line:text`, bornée par `max_results` / `max_files`, fichiers binaires ou de plus de 1 Mio ignorés, délai par correspondance ; `glob` filtre relatif à `path`. Classe Read | `{ "path": "/workspace", "pattern": "TODO", "glob": "**/*.cs" }` |
 
 `directory_search` — comme `txt_search`, `mdx_search` et `pdf_search` plus bas — cherche au travers
 des collections éphémères du sous-système RAG : l'extension l'enregistre et le construit sans lui,
@@ -286,7 +288,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
-| `Orkeon.Tools.FileSystem` | 6 |
+| `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
 | **Total** | **103** |
@@ -365,7 +367,7 @@ Les tools sont enregistrés dans `IToolRegistry` au démarrage de l'application 
 extensions DI (chaque table ci-dessus nomme celle qui possède ses tools) :
 
 ```csharp
-services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, count_pattern
+services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, count_pattern, glob, grep
 services.AddOrkeonDataTools();         // les 22 tools de données (relationnel + MongoDB + graphe chaînés en interne)
 services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
 services.AddOrkeonCodeTools();         // shell_command
@@ -442,7 +444,9 @@ correspondance alphabétique complète :
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
 | `get_last_value` | `GetLastValueTool` | `Orkeon.Tools.EventHub` |
 | `github` | `GitHubTool` | `Orkeon.Tools.Web` |
+| `glob` | `GlobTool` | `Orkeon.Tools.FileSystem` |
 | `graph_schema` | `GraphSchemaTool` | `Orkeon.Tools.Data` |
+| `grep` | `GrepTool` | `Orkeon.Tools.FileSystem` |
 | `http_api` | `HttpApiTool` | `Orkeon.Tools.Web` |
 | `human_input` | `HumanInputTool` | `Orkeon.Infrastructure` |
 | `image_generation` | `ImageGenerationTool` | `Orkeon.Tools.Web` |

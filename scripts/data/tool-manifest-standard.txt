@@ -46,7 +46,9 @@ edit_file
 flow_trace
 get_last_value
 github
+glob
 graph_schema
+grep
 http_api
 human_input
 image_generation

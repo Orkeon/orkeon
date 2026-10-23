@@ -106,7 +106,10 @@ public abstract partial class FileToolBase<TRequest, TResponse> : FileToolBase
                     error = ExtractErrorMessage(resultDict);
                 }
 
-                return new ProtocolToolCallResponse(Success: success, Result: filteredResult, Error: error);
+                return new ProtocolToolCallResponse(Success: success, Result: filteredResult, Error: error)
+                {
+                    AlreadyBounded = typedResponse is Orkeon.Domain.Tools.IBoundedToolResponse { AlreadyBounded: true }
+                };
             }
             catch (JsonException ex)
             {

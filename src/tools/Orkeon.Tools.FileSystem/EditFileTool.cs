@@ -256,7 +256,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
         return count;
     }
 
-    private static (Encoding Encoding, byte[] Bom) DetectEncoding(byte[] bytes)
+    internal static (Encoding Encoding, byte[] Bom) DetectEncoding(byte[] bytes)
     {
         var span = bytes.AsSpan();
         if (span.StartsWith(Utf32LeBom)) return (new UTF32Encoding(false, false, true), Utf32LeBom);
