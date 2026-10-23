@@ -264,9 +264,9 @@ public sealed class MarkdownIntentOperationsTests : IDisposable
 
     [Theory]
     [Trait("BR", "RT-43")]
-    [InlineData("# S\n\n```mermaid\nold", "# S\n\n```mermaid\nNEW")]
-    [InlineData("# S\n\n```mermaid", "# S\n\n```mermaid\nNEW")]
-    [InlineData("# S\n\n```mermaid\nold\n", "# S\n\n```mermaid\nNEW\n")]
+    [InlineData("# S\n\n```mermaid\nold", "# S\n\n```mermaid\nNEW\n```")]
+    [InlineData("# S\n\n```mermaid", "# S\n\n```mermaid\nNEW\n```")]
+    [InlineData("# S\n\n```mermaid\nold\n", "# S\n\n```mermaid\nNEW\n```\n")]
     public async Task ShouldReplaceBodyToEndOfFile_WhenMermaidFenceIsUnclosed(string source, string expected)
     {
         await SeedAsync("doc.md", source);
@@ -274,5 +274,40 @@ public sealed class MarkdownIntentOperationsTests : IDisposable
         await ApplyAsync("doc.md", new ReplaceMermaidOperation(NodeSelector.Parse("S"), 0, "NEW"));
 
         Assert.Equal(expected, await ReadAsync("doc.md"));
+    }
+
+    [Fact]
+    [Trait("BR", "R17")]
+    public async Task ShouldAppendClosingFence_WhenMermaidBlockIsUnclosed()
+    {
+        await SeedAsync("doc.md", "# S\n\n```mermaid\nold");
+
+        await ApplyAsync("doc.md", new ReplaceMermaidOperation(NodeSelector.Parse("S"), 0, "graph TD\n  A --> B"));
+
+        Assert.Equal("# S\n\n```mermaid\ngraph TD\n  A --> B\n```", await ReadAsync("doc.md"));
+    }
+
+    [Fact]
+    [Trait("BR", "R17")]
+    public async Task ShouldUseTildeFence_WhenUnclosedBlockOpensWithTildes()
+    {
+        await SeedAsync("doc.md", "# S\n\n~~~mermaid\nold");
+
+        await ApplyAsync("doc.md", new ReplaceMermaidOperation(NodeSelector.Parse("S"), 0, "graph TD\n  A --> B"));
+
+        Assert.Equal("# S\n\n~~~mermaid\ngraph TD\n  A --> B\n~~~", await ReadAsync("doc.md"));
+    }
+
+    [Fact]
+    [Trait("BR", "R17")]
+    public async Task ShouldKeepOneClosingFence_WhenMermaidBlockIsClosed()
+    {
+        await SeedAsync("doc.md", "# S\n\n```mermaid\nold\n```\n\nend\n");
+
+        await ApplyAsync("doc.md", new ReplaceMermaidOperation(NodeSelector.Parse("S"), 0, "graph TD\n  A --> B"));
+
+        var text = await ReadAsync("doc.md");
+        Assert.Equal("# S\n\n```mermaid\ngraph TD\n  A --> B\n```\n\nend\n", text);
+        Assert.Equal(2, text.Split("```").Length - 1);
     }
 }

@@ -347,4 +347,59 @@ public sealed class EnsureUsingOperationTests : IDisposable
 
         Assert.Equal("using System;\r\nusing B;\nusing C;\nusing D;\n\nnamespace N;\n", await ReadAsync("c.cs"));
     }
+
+    [Fact]
+    [Trait("BR", "R13a")]
+    public async Task ShouldSeeNextName_WhenLineCommentSitsInsideImportBraces()
+    {
+        const string source = "import {\n  a, // note\n  b\n} from \"m\";\n";
+        await SeedAsync("c.ts", source);
+
+        var outcomeB = await EnsureAsync("c.ts", "b", "m");
+        var outcomeA = await EnsureAsync("c.ts", "a", "m");
+
+        Assert.False(outcomeB.Applied);
+        Assert.False(outcomeA.Applied);
+        Assert.Equal(source, await ReadAsync("c.ts"));
+    }
+
+    [Fact]
+    [Trait("BR", "R13b")]
+    public async Task ShouldSeeNamedImports_WhenImportHasADefaultBinding()
+    {
+        const string source = "import Défaut, { a, b } from \"m\";\n";
+        await SeedAsync("c.ts", source);
+
+        var outcomeA = await EnsureAsync("c.ts", "a", "m");
+        var outcomeB = await EnsureAsync("c.ts", "b", "m");
+
+        Assert.False(outcomeA.Applied);
+        Assert.False(outcomeB.Applied);
+        Assert.Equal(source, await ReadAsync("c.ts"));
+    }
+
+    [Fact]
+    [Trait("BR", "R13b")]
+    public async Task ShouldSeeDefaultBinding_WhenEnsuringTheDefaultName()
+    {
+        const string source = "import Défaut, { a } from \"m\";\n";
+        await SeedAsync("c.ts", source);
+
+        var outcome = await EnsureAsync("c.ts", "Défaut", "m");
+
+        Assert.False(outcome.Applied);
+        Assert.Equal(source, await ReadAsync("c.ts"));
+    }
+
+    [Fact]
+    [Trait("BR", "R13b")]
+    public async Task ShouldKeepDefaultFirst_WhenMergingIntoDefaultAndNamedImport()
+    {
+        await SeedAsync("c.ts", "import Défaut, { a } from \"m\";\n");
+
+        var outcome = await EnsureAsync("c.ts", "c", "m");
+
+        Assert.True(outcome.Applied);
+        Assert.Equal("import Défaut, { a, c } from \"m\";\n", await ReadAsync("c.ts"));
+    }
 }

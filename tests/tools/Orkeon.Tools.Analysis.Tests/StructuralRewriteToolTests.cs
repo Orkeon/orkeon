@@ -241,6 +241,28 @@ public sealed class StructuralRewriteToolTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "R14")]
+    public async Task ShouldRewriteDollarLiteral_WhenStructuralRewriteRuns()
+    {
+        const string src = "class A\n{\n    void Run()\n    {\n        Cost(\"$5\");\n    }\n}\n";
+        var fs = await SeedAsync(("A.cs", src));
+        using var tool = new StructuralRewriteTool(fs, _pool, _index);
+
+        var resp = await tool.ExecuteTypedForTest(new StructuralRewriteRequest
+        {
+            Pattern = "Cost(\"$$5\")",
+            Language = "csharp",
+            Fix = "Cost(\"$$7\")",
+            Paths = ImmutableList.Create("/workspace/src"),
+            DryRun = false,
+        }, CancellationToken.None);
+
+        var file = Assert.Single(resp.Files);
+        Assert.Equal(1, file.Applied);
+        Assert.Equal(Encoding.UTF8.GetBytes(src.Replace("$5", "$7", StringComparison.Ordinal)), await BytesAsync("A.cs"));
+    }
+
+    [Fact]
     [Trait("BR", "RT-32")]
     public async Task ShouldRestoreOriginalAndRefuse_WhenWriteFailsPartway()
     {

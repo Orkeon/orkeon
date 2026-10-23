@@ -9,6 +9,7 @@ using static Orkeon.Tests.Shared.Constants.TestToolParamKeys;
 
 namespace Orkeon.Tools.FileSystem.Tests;
 
+[Collection("EditFileToolSharedPaths")]
 public sealed class EditFileToolCitationAndBackupTests
 {
     private const FileAccessRights All = FileAccessRights.Read | FileAccessRights.Write | FileAccessRights.Create;

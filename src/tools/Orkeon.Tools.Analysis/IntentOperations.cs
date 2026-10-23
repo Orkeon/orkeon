@@ -6,6 +6,9 @@ namespace Orkeon.Tools.Analysis;
 /// <summary>Builds the edit operation of an intent <c>op</c> (ensure_using, ensure_import, ensure_field, ensure_member, ensure_section, insert_under_heading, replace_mermaid); shared by edit_batch and node_ensure.</summary>
 internal static class IntentOperations
 {
+    public static IReadOnlyList<string> Names { get; } =
+        ["ensure_using", "ensure_import", "ensure_field", "ensure_member", "ensure_section", "insert_under_heading", "replace_mermaid"];
+
     public static IEditOperation Create(string? op, string? selector, string? name, string? module, string? text, int? index = null, int? level = null)
     {
         switch (op)

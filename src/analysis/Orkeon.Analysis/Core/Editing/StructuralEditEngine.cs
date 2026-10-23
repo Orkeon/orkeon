@@ -29,7 +29,7 @@ internal sealed class StructuralEditEngine(IFileSystemService fs, TreeSitterPars
 
     /// <summary>Rewrites the matches back to front with the fix, keeping the outermost of overlapping ones; nothing is written.</summary>
 #pragma warning disable CA1822 // the engine is the public face of edits; callers hold an instance
-    public RewriteOutcome Rewrite(string virtualPath, byte[] original, IReadOnlyList<StructuralMatch> matches, FixTemplate fix)
+    public RewriteOutcome Rewrite(byte[] original, IReadOnlyList<StructuralMatch> matches, FixTemplate fix)
     {
         var ordered = matches.OrderBy(m => m.StartByte).ThenByDescending(m => m.EndByte).ToList();
         var kept = new List<StructuralMatch>(ordered.Count);

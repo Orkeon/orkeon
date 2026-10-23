@@ -129,3 +129,6 @@ override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.GetHashCode() -
 override Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.ToString() -> string!
 static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator !=(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool
 static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator ==(Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? left, Orkeon.Analysis.Abstractions.Interfaces.BuildValidation? right) -> bool
+Orkeon.Analysis.Abstractions.Editing.FileEditLocks
+static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.Release(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId) -> void
+static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.TryAcquire(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId, out string? heldPath) -> bool

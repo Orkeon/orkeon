@@ -218,7 +218,7 @@ public sealed class EditBatchToolTests : IDisposable
         const string source = "# Doc\n\n## Sec\n\n```mermaid\ngraph A\n```\n\n```mermaid\ngraph B\n```\n";
         await _disk.WriteAllTextAsync("/workspace/doc.md", source, CancellationToken.None);
 
-        await RunAsync([new() { Op = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Doc/Sec", Index = 1, Text = "graph B2" }]);
+        await RunAsync([new() { Kind = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Doc/Sec", Index = 1, Text = "graph B2" }]);
 
         Assert.Equal(
             source.Replace("graph B\n", "graph B2\n", StringComparison.Ordinal),
@@ -232,9 +232,9 @@ public sealed class EditBatchToolTests : IDisposable
         await _disk.WriteAllTextAsync("/workspace/doc.md", "# Plan\n\n## Notes\n\n```mermaid\ngraph A\n```\n", CancellationToken.None);
         EditBatchOperation[] operations =
         [
-            new() { Op = "ensure_section", Path = "/workspace/doc.md", Name = "Plan/Anchors" },
-            new() { Op = "insert_under_heading", Path = "/workspace/doc.md", Selector = "Plan/Anchors", Text = "Item" },
-            new() { Op = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Plan/Notes", Index = 0, Text = "graph B" },
+            new() { Kind = "ensure_section", Path = "/workspace/doc.md", Name = "Plan/Anchors" },
+            new() { Kind = "insert_under_heading", Path = "/workspace/doc.md", Selector = "Plan/Anchors", Text = "Item" },
+            new() { Kind = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Plan/Notes", Index = 0, Text = "graph B" },
         ];
 
         var response = await RunAsync(operations);
@@ -257,8 +257,8 @@ public sealed class EditBatchToolTests : IDisposable
         await _disk.WriteAllTextAsync("/workspace/B.cs", fileB, CancellationToken.None);
         EditBatchOperation[] intents =
         [
-            new() { Op = "ensure_using", Path = "/workspace/A.cs", Name = "System.Linq" },
-            new() { Op = "ensure_field", Path = "/workspace/A.cs", Selector = "A", Text = field },
+            new() { Kind = "ensure_using", Path = "/workspace/A.cs", Name = "System.Linq" },
+            new() { Kind = "ensure_field", Path = "/workspace/A.cs", Selector = "A", Text = field },
         ];
         EditBatchOperation[] operations =
         [
@@ -291,5 +291,50 @@ public sealed class EditBatchToolTests : IDisposable
         Assert.All(again.Operations, o => Assert.False(o.Applied));
         Assert.Equal(writesBefore, _fs.Writes.Count);
         Assert.Equal(a, await File.ReadAllTextAsync(Physical("A.cs"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "R16")]
+    public async Task ShouldRunIntentOperation_WhenKindNamesIt()
+    {
+        await SeedAsync();
+
+        var response = await RunAsync([new() { Kind = "ensure_using", Path = "/workspace/A.cs", Name = "System.Linq" }]);
+
+        Assert.Single(response.Operations);
+        Assert.True(response.Operations[0].Applied);
+        var a = await File.ReadAllTextAsync(Physical("A.cs"), TestContext.Current.CancellationToken);
+        Assert.Equal(1, a.Split("using System.Linq;").Length - 1);
+    }
+
+    [Fact]
+    [Trait("BR", "R16")]
+    public async Task ShouldRefuseOperation_WhenKindIsUnknown()
+    {
+        await SeedAsync();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => RunAsync([new() { Kind = "bogus", Path = "/workspace/A.cs", Selector = "A.X", Text = NewX }]));
+
+        Assert.Contains("node_replace", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("node_insert", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("ensure_using", ex.Message, StringComparison.Ordinal);
+        await AssertUntouchedAsync();
+    }
+
+    [Fact]
+    [Trait("BR", "R16")]
+    public async Task ShouldRefuseOperation_WhenOnlyOpIsGiven()
+    {
+        await SeedAsync();
+        var operation = System.Text.Json.JsonSerializer.Deserialize<EditBatchOperation>(
+            "{\"op\":\"ensure_using\",\"path\":\"/workspace/A.cs\",\"name\":\"System.Linq\"}")!;
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => RunAsync([operation]));
+
+        Assert.Contains("node_replace", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("node_insert", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("ensure_using", ex.Message, StringComparison.Ordinal);
+        await AssertUntouchedAsync();
     }
 }

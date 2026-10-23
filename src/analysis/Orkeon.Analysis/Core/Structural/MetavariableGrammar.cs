@@ -16,6 +16,9 @@ internal static partial class MetavariableGrammar
         return token.Groups[2].Success ? token.Groups[2].Value : null;
     }
 
+    /// <summary>The text the <c>$$</c> escape stands for.</summary>
+    public const string LiteralDollar = "$";
+
     public static IEnumerable<string> NamesIn(string text) =>
         Token().Matches(text).Select(NameOf).OfType<string>();
 }

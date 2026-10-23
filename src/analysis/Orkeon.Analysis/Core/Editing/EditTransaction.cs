@@ -1,3 +1,4 @@
+using Orkeon.Analysis.Abstractions.Editing;
 using System.Security.Cryptography;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.TreeSitter;
@@ -37,14 +38,15 @@ internal sealed class EditTransaction
         }
 
         var batchId = Guid.NewGuid().ToString("N");
-        EditLocks.Acquire(paths, batchId);
+        if (!FileEditLocks.TryAcquire(paths, batchId, out var held))
+            throw new EditConflictException($"'{held}' is held by another edit batch in progress.");
         try
         {
             return await RunAsync(paths, validation, batchId, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            EditLocks.Release(paths, batchId);
+            FileEditLocks.Release(paths, batchId);
         }
     }
 
@@ -161,7 +163,7 @@ internal sealed class EditTransaction
         var options = new VirtualEnumerationOptions(Recursive: false, SearchPattern: "*" + EditJournal.Extension);
         await foreach (var entry in _fs.EnumerateFilesAsync(EditJournal.Folder, options, cancellationToken).ConfigureAwait(false))
         {
-            if (EditLocks.IsActive(Path.GetFileNameWithoutExtension(entry.VirtualPath))) continue;
+            if (FileEditLocks.IsActive(Path.GetFileNameWithoutExtension(entry.VirtualPath))) continue;
             var journal = await _fs.TryReadAllBytesAsync(entry.VirtualPath, cancellationToken).ConfigureAwait(false);
             if (journal is null) continue;
             foreach (var (path, bytes, editedHash) in EditJournal.Deserialize(journal))

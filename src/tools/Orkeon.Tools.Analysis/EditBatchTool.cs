@@ -16,7 +16,6 @@ public sealed record EditBatchOperation
     [JsonPropertyName("expected_hash")] public string? ExpectedHash { get; init; }
     [JsonPropertyName("position")] public string? Position { get; init; }
     [JsonPropertyName("text")] public string Text { get; init; } = "";
-    [JsonPropertyName("op")] public string? Op { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
     [JsonPropertyName("module")] public string? Module { get; init; }
     [JsonPropertyName("index")] public int? Index { get; init; }
@@ -61,7 +60,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
     public override string Description =>
         "Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is "
         + "{kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: "
-        + "'inside', 'before' or 'after'). An intent operation is {op, path} with op ensure_using / ensure_import (name, "
+        + "'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, "
         + "module for TypeScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when "
         + "absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one "
         + "produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' "
@@ -129,15 +128,11 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
 
     private static IEditOperation ToOperation(EditBatchOperation operation)
     {
-        if (!string.IsNullOrEmpty(operation.Op))
-            return IntentOperations.Create(operation.Op, operation.Selector, operation.Name, operation.Module, operation.Text, operation.Index, operation.Level);
-
-        var selector = NodeSelector.Parse(operation.Selector);
         switch (operation.Kind)
         {
             case "node_replace":
                 return new NodeReplaceOperation(
-                    selector,
+                    NodeSelector.Parse(operation.Selector),
                     operation.ExpectedHash ?? throw new ArgumentException("expected_hash is required for node_replace.", nameof(operation)),
                     operation.Text);
             case "node_insert":
@@ -148,9 +143,12 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
                     "AFTER" => InsertPosition.After,
                     _ => throw new ArgumentException("position must be 'inside', 'before' or 'after'.", nameof(operation)),
                 };
-                return new NodeInsertOperation(selector, position, operation.Text);
+                return new NodeInsertOperation(NodeSelector.Parse(operation.Selector), position, operation.Text);
             default:
-                throw new ArgumentException("kind must be 'node_replace' or 'node_insert', or op must name an intent operation.", nameof(operation));
+                if (IntentOperations.Names.Contains(operation.Kind))
+                    return IntentOperations.Create(operation.Kind, operation.Selector, operation.Name, operation.Module, operation.Text, operation.Index, operation.Level);
+                throw new ArgumentException(
+                    $"kind '{operation.Kind}' is not supported; use node_replace, node_insert, {string.Join(", ", IntentOperations.Names)}.", nameof(operation));
         }
     }
 }

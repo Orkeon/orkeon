@@ -81,7 +81,9 @@ internal sealed class ReplaceMermaidOperation(NodeSelector section, int index, s
         var start = fence.Range.StartByte;
         var rest = file[start..];
         var firstNewline = rest.IndexOf((byte)'\n');
-        var closeAt = ClosingFence(rest, firstNewline);
+        var marker = rest[0];
+        var length = rest.IndexOfAnyExcept(marker) is var run and >= 0 ? run : rest.Length;
+        var closeAt = ClosingFence(rest, firstNewline, marker, length);
         var closed = closeAt >= 0;
         var eol = IndentationDetector.LineEnding(file);
         var content = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", eol, StringComparison.Ordinal);
@@ -99,7 +101,7 @@ internal sealed class ReplaceMermaidOperation(NodeSelector section, int index, s
             from = firstNewline >= 0 ? start + firstNewline + 1 : file.Length;
             to = file.Length;
             if (firstNewline < 0) lead = eol;
-            tail = to > from && file[to - 1] == (byte)'\n' ? eol : string.Empty;
+            tail = eol + new string((char)marker, length) + (file[to - 1] == (byte)'\n' ? eol : string.Empty);
         }
 
         var body = lead + content + tail;
@@ -123,10 +125,8 @@ internal sealed class ReplaceMermaidOperation(NodeSelector section, int index, s
 
     private static bool IsMermaid(string opening) => opening.AsSpan().Trim().TrimStart("`~").SequenceEqual("mermaid");
 
-    private static int ClosingFence(ReadOnlySpan<byte> rest, int firstNewline)
+    private static int ClosingFence(ReadOnlySpan<byte> rest, int firstNewline, byte marker, int length)
     {
-        var marker = rest[0];
-        var length = rest.IndexOfAnyExcept(marker) is var run and >= 0 ? run : rest.Length;
         var position = firstNewline + 1;
         while (firstNewline >= 0 && position < rest.Length)
         {

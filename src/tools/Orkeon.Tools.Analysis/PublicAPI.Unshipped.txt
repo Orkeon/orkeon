@@ -606,8 +606,6 @@ Orkeon.Tools.Analysis.EditBatchOperation.Module.get -> string?
 Orkeon.Tools.Analysis.EditBatchOperation.Module.init -> void
 Orkeon.Tools.Analysis.EditBatchOperation.Name.get -> string?
 Orkeon.Tools.Analysis.EditBatchOperation.Name.init -> void
-Orkeon.Tools.Analysis.EditBatchOperation.Op.get -> string?
-Orkeon.Tools.Analysis.EditBatchOperation.Op.init -> void
 Orkeon.Tools.Analysis.EditBatchOperationResult.Applied.get -> bool
 Orkeon.Tools.Analysis.EditBatchOperationResult.Applied.init -> void
 Orkeon.Tools.Analysis.NodeEnsureRequest

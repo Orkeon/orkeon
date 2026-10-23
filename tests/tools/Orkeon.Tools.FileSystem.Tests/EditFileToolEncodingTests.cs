@@ -9,6 +9,7 @@ using static Orkeon.Tests.Shared.Constants.TestToolParamKeys;
 
 namespace Orkeon.Tools.FileSystem.Tests;
 
+[Collection("EditFileToolSharedPaths")]
 public sealed class EditFileToolEncodingTests
 {
     private const string File = "/workspace/a.txt";

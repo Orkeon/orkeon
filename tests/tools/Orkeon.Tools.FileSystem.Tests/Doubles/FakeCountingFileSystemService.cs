@@ -118,8 +118,24 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
     public Task<bool> DeleteAsync(string virtualPath, bool recursive, CancellationToken ct)
         => _inner.DeleteAsync(virtualPath, recursive, ct);
 
-    public Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
-        => _inner.WriteAllBytesAsync(virtualPath, content, ct);
+    /// <summary>When set, a byte write waits on it (after raising <see cref="WriteReached"/>) until the test releases it.</summary>
+    public TaskCompletionSource? BlockWrites { get => _blockWrites; set => _blockWrites = value; }
+
+    private TaskCompletionSource? _blockWrites;
+
+    /// <summary>Raised when a byte write is reached while <see cref="BlockWrites"/> is set.</summary>
+    public TaskCompletionSource WriteReached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public async Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct)
+    {
+        var gate = System.Threading.Interlocked.Exchange(ref _blockWrites, null);
+        if (gate is not null)
+        {
+            WriteReached.TrySetResult();
+            await gate.Task.ConfigureAwait(false);
+        }
+        return await _inner.WriteAllBytesAsync(virtualPath, content, ct).ConfigureAwait(false);
+    }
 
     public Task<int> AppendAllTextAsync(string virtualPath, string content, CancellationToken ct)
         => _inner.AppendAllTextAsync(virtualPath, content, ct);

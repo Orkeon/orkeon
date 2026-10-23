@@ -108,7 +108,7 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
         var matches = matcher.Match(path, original, rule);
         if (matches.Count == 0) return new StructuralRewriteFileDto { Path = path, Matches = 0, Applied = 0, Diff = "" };
 
-        var outcome = _engine.Rewrite(path, original, matches, fix);
+        var outcome = _engine.Rewrite(original, matches, fix);
         var introduced = ParseErrorsIntroduced(original, outcome.Bytes, language);
         if (introduced.Count > 0)
             return Refused(path, matches.Count, "Rewrite would introduce parse errors: " + string.Join("; ", introduced));

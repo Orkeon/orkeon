@@ -8,11 +8,14 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
     [GeneratedRegex(@"^\s*using\s+(?!static\b)([\w.]+)\s*;\s*$")]
     private static partial Regex PlainUsing();
 
-    [GeneratedRegex(@"^import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*(['""])(.+?)\2\s*;?\s*$")]
+    [GeneratedRegex(@"^import\s+(?:type\s+)?(?:(?<default>[\w$]+)\s*,\s*)?\{([^}]*)\}\s*from\s*(['""])(.+?)\2\s*;?\s*$")]
     private static partial Regex NamedImport();
 
-    [GeneratedRegex(@"^import\s+(?:type\s+)?\{[^}]*$")]
+    [GeneratedRegex(@"^import\s+(?:type\s+)?(?:[\w$]+\s*,\s*)?\{[^}]*$")]
     private static partial Regex OpenNamedImport();
+
+    [GeneratedRegex(@"//[^\n]*|/\*.*?\*/", RegexOptions.Singleline)]
+    private static partial Regex Comment();
 
     [GeneratedRegex(@"^import\b.*['""]\s*;?\s*$")]
     private static partial Regex SingleLineImport();
@@ -113,8 +116,8 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
             }
 
             if (!m.Success || m.Groups[3].Value != from) continue;
-            var bindings = m.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            if (bindings.Contains(name)) return (i, span, false);
+            var bindings = Comment().Replace(m.Groups[1].Value, string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            if (bindings.Contains(name) || (m.Groups["default"].Success && m.Groups["default"].Value == name)) return (i, span, false);
             if (span > 1)
             {
                 if (!AppendBinding(lines, i, span)) continue;
@@ -125,7 +128,8 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
             bindings.Sort(string.CompareOrdinal);
             var typeKeyword = lines[i].TrimStart().StartsWith("import type", StringComparison.Ordinal) ? "type " : string.Empty;
             var ending = lines[i].EndsWith('\r') ? "\r" : string.Empty;
-            lines[i] = $"import {typeKeyword}{{ {string.Join(", ", bindings)} }} from {m.Groups[2].Value}{from}{m.Groups[2].Value}{semicolon}{ending}";
+            var defaultBinding = m.Groups["default"].Success ? m.Groups["default"].Value + ", " : string.Empty;
+            lines[i] = $"import {typeKeyword}{defaultBinding}{{ {string.Join(", ", bindings)} }} from {m.Groups[2].Value}{from}{m.Groups[2].Value}{semicolon}{ending}";
             return (i, 1, true);
         }
 

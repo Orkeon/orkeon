@@ -29,7 +29,7 @@ internal sealed class FixTemplate(string template)
         var lines = Template.Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", "\n" + indentation, StringComparison.Ordinal);
         return MetavariableGrammar.Token().Replace(lines, token => MetavariableGrammar.NameOf(token) is { } name
             ? match.Captures.GetValueOrDefault(name, "")
-            : "$");
+            : MetavariableGrammar.LiteralDollar);
     }
 
 }

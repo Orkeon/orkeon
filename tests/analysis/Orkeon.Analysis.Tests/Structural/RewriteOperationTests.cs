@@ -24,7 +24,17 @@ public sealed class RewriteOperationTests : IDisposable
         var rule = StructuralRule.FromPattern("csharp", pattern);
         var matches = new Matcher(_pool).Match("/workspace/a.cs", bytes, rule);
         var fs = new FakeCountingFileSystemService(new DiskBackedFileSystemService(_dir, "/workspace"));
-        return new StructuralEditEngine(fs, _pool).Rewrite("/workspace/a.cs", bytes, matches, new FixTemplate(fixTemplate));
+        return new StructuralEditEngine(fs, _pool).Rewrite(bytes, matches, new FixTemplate(fixTemplate));
+    }
+
+    [Fact]
+    [Trait("BR", "R14")]
+    public void ShouldMatchSingleDollar_WhenPatternHoldsDoubleDollar()
+    {
+        var result = Run("class C { void M() { Cost(\"$5\"); } }", "Cost(\"$$5\")", "Cost(\"free\")");
+
+        Assert.Equal("class C { void M() { Cost(\"free\"); } }", Encoding.UTF8.GetString(result.Bytes));
+        Assert.Equal(1, result.Applied);
     }
 
     [Fact]

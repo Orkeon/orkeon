@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json.Serialization;
+using Orkeon.Analysis.Abstractions.Editing;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
@@ -140,101 +141,112 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
             var resolvedPath = writeCheck.ResolvedPath!;
             var virtualPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? request.Path;
 
-            var original = await _fileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"File not found: {virtualPath}");
-
-            var (encoding, bom) = DetectEncoding(original);
-            string content;
+            var holderId = Guid.NewGuid().ToString("N");
+            var lockedPaths = new[] { virtualPath };
+            if (!FileEditLocks.TryAcquire(lockedPaths, holderId, out var heldPath))
+                throw new InvalidOperationException($"'{heldPath}' is held by another edit in progress.");
             try
             {
-                content = encoding.GetString(original, bom.Length, original.Length - bom.Length);
-            }
-            catch (DecoderFallbackException)
-            {
-                throw new InvalidOperationException(bom.Length == 0
-                    ? "The file is not valid UTF-8 and has no byte-order mark; it was left untouched"
-                    : $"The file is not valid {encoding.WebName.ToUpperInvariant()} (detected from its byte-order mark); it was left untouched");
-            }
+                var original = await _fileSystemService.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
+                    ?? throw new FileNotFoundException($"File not found: {virtualPath}");
 
-            // A pure-CRLF file matches LF-written strings and keeps CRLF; any other file is matched literally.
-            var crlf = content.Contains("\r\n", StringComparison.Ordinal)
-                && !content.Replace("\r\n", string.Empty, StringComparison.Ordinal).Contains('\n', StringComparison.Ordinal);
-            var oldString = request.OldString;
-            var newString = request.NewString;
-            if (crlf)
-            {
-                content = content.Replace("\r\n", "\n", StringComparison.Ordinal);
-                oldString = oldString.Replace("\r\n", "\n", StringComparison.Ordinal);
-                newString = newString.Replace("\r\n", "\n", StringComparison.Ordinal);
-            }
-
-            var count = CountOccurrences(content, oldString);
-            if (count == 0)
-                throw new InvalidOperationException("old_string not found in the file");
-            if (count > 1 && !request.ReplaceAll)
-                throw new InvalidOperationException(
-                    $"old_string matches {count} times; make it unique or set replace_all");
-
-            var edited = content.Replace(oldString, newString, StringComparison.Ordinal);
-            if (crlf)
-                edited = edited.Replace("\n", "\r\n", StringComparison.Ordinal);
-            var bytes = new byte[bom.Length + encoding.GetByteCount(edited)];
-            bom.CopyTo(bytes, 0);
-            encoding.GetBytes(edited, 0, edited.Length, bytes, bom.Length);
-
-            string? backupPath = null;
-            if (request.CreateBackup)
-            {
-                backupPath = await FreeBackupPathAsync(FileWriteTool.BuildBackupVirtualPath(virtualPath), cancellationToken).ConfigureAwait(false);
-                await _fileSystemService.CopyAsync(virtualPath, backupPath, overwrite: false, cancellationToken).ConfigureAwait(false);
-            }
-
-            try
-            {
-                await _fileSystemService.WriteAllBytesAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception writeError)
-            {
+                var (encoding, bom) = DetectEncoding(original);
+                string content;
                 try
                 {
-                    await _fileSystemService.WriteAllBytesAsync(virtualPath, original, CancellationToken.None).ConfigureAwait(false);
+                    content = encoding.GetString(original, bom.Length, original.Length - bom.Length);
                 }
-                catch (Exception restoreError)
+                catch (DecoderFallbackException)
                 {
-                    throw new IOException(
-                        $"{writeError.Message}; restoring the original also failed: {restoreError.Message}", writeError);
+                    throw new InvalidOperationException(bom.Length == 0
+                        ? "The file is not valid UTF-8 and has no byte-order mark; it was left untouched"
+                        : $"The file is not valid {encoding.WebName.ToUpperInvariant()} (detected from its byte-order mark); it was left untouched");
                 }
-                throw;
+
+                // A pure-CRLF file matches LF-written strings and keeps CRLF; any other file is matched literally.
+                var crlf = content.Contains("\r\n", StringComparison.Ordinal)
+                    && !content.Replace("\r\n", string.Empty, StringComparison.Ordinal).Contains('\n', StringComparison.Ordinal);
+                var oldString = request.OldString;
+                var newString = request.NewString;
+                if (crlf)
+                {
+                    content = content.Replace("\r\n", "\n", StringComparison.Ordinal);
+                    oldString = oldString.Replace("\r\n", "\n", StringComparison.Ordinal);
+                    newString = newString.Replace("\r\n", "\n", StringComparison.Ordinal);
+                }
+
+                var count = CountOccurrences(content, oldString);
+                if (count == 0)
+                    throw new InvalidOperationException("old_string not found in the file");
+                if (count > 1 && !request.ReplaceAll)
+                    throw new InvalidOperationException(
+                        $"old_string matches {count} times; make it unique or set replace_all");
+
+                var edited = content.Replace(oldString, newString, StringComparison.Ordinal);
+                if (crlf)
+                    edited = edited.Replace("\n", "\r\n", StringComparison.Ordinal);
+                var bytes = new byte[bom.Length + encoding.GetByteCount(edited)];
+                bom.CopyTo(bytes, 0);
+                encoding.GetBytes(edited, 0, edited.Length, bytes, bom.Length);
+
+                string? backupPath = null;
+                if (request.CreateBackup)
+                {
+                    backupPath = await FreeBackupPathAsync(FileWriteTool.BuildBackupVirtualPath(virtualPath), cancellationToken).ConfigureAwait(false);
+                    await _fileSystemService.CopyAsync(virtualPath, backupPath, overwrite: false, cancellationToken).ConfigureAwait(false);
+                }
+
+                try
+                {
+                    await _fileSystemService.WriteAllBytesAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception writeError)
+                {
+                    try
+                    {
+                        await _fileSystemService.WriteAllBytesAsync(virtualPath, original, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception restoreError)
+                    {
+                        throw new IOException(
+                            $"{writeError.Message}; restoring the original also failed: {restoreError.Message}", writeError);
+                    }
+                    throw;
+                }
+
+                // The bytes are on disk either way: mark the path stale before the citation verdict.
+                _indexInvalidation?.MarkDirty(virtualPath);
+
+                var response = new EditFileResponse
+                {
+                    Success = true,
+                    Path = virtualPath,
+                    Replacements = count,
+                    BackupPath = backupPath,
+                    FileInfo = new Dictionary<string, object>
+                    {
+                        ["size"] = bytes.Length,
+                        ["extension"] = System.IO.Path.GetExtension(virtualPath),
+                        ["full_path"] = virtualPath,
+                    },
+                };
+
+                if (_citationValidator is not null && FileWriteTool.HasCitationHeaders(request.NewString))
+                {
+                    var verdict = await _citationValidator.ValidateAsync(request.NewString, cancellationToken).ConfigureAwait(false);
+                    if (!verdict.IsValid)
+                    {
+                        response.Success = false;
+                        response.Errors = [.. verdict.Violations];
+                    }
+                }
+
+                return response;
             }
-
-            // The bytes are on disk either way: mark the path stale before the citation verdict.
-            _indexInvalidation?.MarkDirty(virtualPath);
-
-            var response = new EditFileResponse
+            finally
             {
-                Success = true,
-                Path = virtualPath,
-                Replacements = count,
-                BackupPath = backupPath,
-                FileInfo = new Dictionary<string, object>
-                {
-                    ["size"] = bytes.Length,
-                    ["extension"] = System.IO.Path.GetExtension(virtualPath),
-                    ["full_path"] = virtualPath,
-                },
-            };
-
-            if (_citationValidator is not null && FileWriteTool.HasCitationHeaders(request.NewString))
-            {
-                var verdict = await _citationValidator.ValidateAsync(request.NewString, cancellationToken).ConfigureAwait(false);
-                if (!verdict.IsValid)
-                {
-                    response.Success = false;
-                    response.Errors = [.. verdict.Violations];
-                }
+                FileEditLocks.Release(lockedPaths, holderId);
             }
-
-            return response;
         }
     }
 

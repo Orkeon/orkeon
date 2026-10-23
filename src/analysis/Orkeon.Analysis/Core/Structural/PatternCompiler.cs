@@ -37,7 +37,7 @@ internal static partial class PatternCompiler
         var source = MetavariableGrammar.Token().Replace(pattern, token =>
             token.Groups[1].Success ? $"__ork_va_{token.Groups[1].Value}__"
             : token.Groups[2].Success ? $"__ork_mv_{token.Groups[2].Value}__"
-            : token.Value);
+            : MetavariableGrammar.LiteralDollar);
         using var parsed = pool.Parse(source, language);
         if (!parsed.Root.HasError) return Snapshot(parsed.Root);
 
