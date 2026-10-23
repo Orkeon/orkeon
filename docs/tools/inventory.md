@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **118 built-in tool classes**. The counting
+This page is the reference catalogue of the **119 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -209,7 +209,7 @@ security model and the `orkeon drive` commands: [Drive tools](../guides/drive.md
 
 ## Codebase analysis tools (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Twenty-seven tools over the RaggableTree semantic code graph — the full guide is
+Twenty-eight tools over the RaggableTree semantic code graph — the full guide is
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Class | Use case |
@@ -259,7 +259,7 @@ Twenty-seven tools over the RaggableTree semantic code graph — the full guide 
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 118 built-in tool classes:
+Deliberately **not** part of the 119 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -281,7 +281,7 @@ number the README and the documentation index state, checked by
 | Package | Tool classes |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 27 |
+| `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 28 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`) | 12 |
@@ -290,7 +290,7 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
-| **Total** | **118** |
+| **Total** | **119** |
 
 ## Availability by composition root
 
@@ -310,7 +310,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
 | EventHub (7) | ✅ | ❌ |
-| Analysis (15) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
+| Analysis (28) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ while RaggableTree is enabled with its default local embedding provider | ✅ |
 | RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ✅ registered by every `RunnerHost` host — `orkeon run` in all its forms, `orkeon-host`, `orkeon mcp serve` —, with the ONNX reranker: a YAML agent that lists one receives it, a script reaches them as `tools.ragSearch` and `rag.*` | ✅ registered, with the ONNX reranker: a YAML agent that lists one receives it |
 | `web_search`, `cache_search` | ✅ | ❌ |

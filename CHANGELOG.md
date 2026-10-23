@@ -7,6 +7,181 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `list_mounts` returns a typed result with renamed fields **[breaking]** (RT-27, #162)
+
+`list_mounts` answers a typed `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }`
+(`ListMountsTool`, `Orkeon.Tools.Abstractions`) and the generated typings follow.
+
+| Before | After |
+|---|---|
+| `mounts[].path` | `mounts[].virtual_path` |
+| `mounts[].rights` | `mounts[].access` |
+| `mounts[].overrides[].path` / `.rights` | `mounts[].overrides[].virtual_path` / `.access` |
+
+Migration: a script or a prompt that reads `path` or `rights` from the result reads `virtual_path` and `access`.
+
+### Changed — `rag_search` and `rag_eval` take structured parameters only **[breaking]** (RT-25, RT-24, #155, #154)
+
+`rag_search` returns a typed `{ answer, citations[] }` and `rag_eval` a typed `{ metrics[], cases[], reports }`. The legacy
+raw-string entry of both tools is removed: `rag_search` takes `question`, `rag_eval` takes `dataset`.
+
+Migration: pass `{ question: "text" }` where a bare string was passed, and read `citations[]` from the typed result. The
+`rag` namespace is now bound in `orkeon-repl` and in `orkeon run` as well as in the daemon, through one
+`RagScriptingBackendFactory`; an optional service whose activation fails is logged at Debug with its type name, not
+swallowed. `rag.d.ts` carries the golden-dataset schema (`RagEvalDataset`, loaded by `RagEvalDatasetYamlLoader` from
+`golden.yaml`).
+
+### Changed — the file-editing tools are asked in `ask` mode **[breaking]** (RT-09a, RT-39, RT-40, RT-41, RT-42, RT-43, RT-32, RT-01, #147, #173, #174, #175, #176, #177, #166, #141)
+
+`ModePermissionGate` now treats these tools as Edit class: `file_write`, `spawn_agent`, `edit_file`, `node_replace`,
+`node_insert`, `node_ensure`, `edit_batch` and `structural_rewrite`. In the default mode they are asked, in
+`acceptEdits` they run, in `plan` and `dontAsk` they are denied, and a headless host (crew runner, SDK) degrades the ask
+to a motivated deny.
+
+Migration: a crew or script that ran one of these tools unattended grants the call: `bypassPermissions` or
+`acceptEdits` for the session, an allow rule, or a declared `Access = Edit`. The `github` tool keeps `Access =
+Unspecified` and stays asked in the default mode, `create_pr` included.
+
+### Changed — the shell tool-result cut goes from 4000 to 10000 characters **[breaking]** (RT-10, RT-07, #148, #145)
+
+The default cut of a `shell_command` result in `ToolInvocationPipeline` is 10000 characters (it was 4000), resolved with
+every other tool through `ToolResultLimitsOptions` (`Orkeon:Tools:ResultLimits`, `Limits:<tool>`). The cut size is
+reported in the result. A result a tool already bounded (`ToolCallResponse.AlreadyBounded`) is no longer cut a second
+time, so its notice and trailing keys survive.
+
+Migration: a host that relied on the 4000 limit sets `Orkeon:Tools:ResultLimits:Limits:shell_command` to the old value.
+Independent read-class calls of one turn now run concurrently (`MaxParallelToolCalls`, default 4) in the native
+tool-calling loops; the text-fallback loop and the dispatcher text path do not fan out. No host sets
+`JsExecutionEnvironment.ToolLimits` for the script path, so a scripted `act` always uses the built-in defaults: see
+[limitations](docs/reference/limitations.md).
+
+### Added — an agent confined to a working root, detached shell jobs (RT-06, RT-11, #137, #138)
+
+- **`working_root`** (YAML key; alias `workingRoot`, C# `AgentBuilder.WorkingRoot`): a virtual path under a mount that
+  confines the agent's file tools and `shell_command` to it (`AgentRunScope.Root`). Default none, so nothing changes
+  for a crew that does not declare it. A run that declares a root no mount holds is refused at start, naming the root;
+  a root containing `..` is refused. The sandbox view binds the root with the rights in force there (the deepest
+  containing override, else the mount's default) and keeps the overrides under it and the other mounts.
+- **Shell jobs.** `shell_command` takes `action`: `start_job` runs an allowlisted command detached with the same
+  confinement and returns a `job_id` and the output file `/output/jobs/<id>.log`; `job_status` reports `running` or the
+  `exit_code`; `job_tail` returns the last `tail_lines` lines. 16 live jobs per run, ids valid for the run that started
+  them, the end of the run kills the jobs still running. Without `action` the call is the blocking call it was.
+  Reference: [Shell confinement](docs/architecture/security.md#shell-confinement).
+
+### Added — file tools for the agent loop: `edit_file`, ranged `file_read`, `glob`, `grep` (RT-09a, RT-09b, #147)
+
+- `file_read` takes `offset` and `limit`. `edit_file` replaces a unique `old` by `new` (refused when it matches zero or
+  several times), keeps the file's line endings and encoding (a non-UTF-8 file without a byte-order mark is refused by
+  name), restores the original on any failed write, and with `create_backup` never overwrites an earlier backup.
+- `glob` and `grep` return `path:line` hits under the agent root (a `..` segment is refused) and skip files over 1 MiB
+  (counted in `files_skipped`).
+
+### Added — scripting: spawn, background agents, instances, durable memory, `act` options (RT-01, RT-02, RT-03, RT-16, RT-04, RT-15, RT-19, RT-18, RT-26, RT-20, #141, #136, #142, #157, #143, #152, #159, #139, #140)
+
+- **Spawn.** `spawn_agent` (`SpawnAgentScriptTool`) is offered to a script's `act`; `ctx.delegate` runs without deadlock
+  under `concurrency(n)`: a child already under a crew permit takes no second one, a background spawn takes its own
+  (`GatePermit`). `ctx.spawnBackground()` starts a background agent whose completion reaches the parent's inbox as a
+  message; each `act` cancels only the children it started.
+- **Instances.** `crew.instances()` lists addressable agent instances; they take `send` and `stop`, `maxInstances`
+  (default 32) and `ctx.instanceId`; an act that ends on `maxIterations` keeps its transcript, so a later `send` has its
+  context. Caps: 40 messages and 32k characters per instance.
+- **Durable agent memory.** `ctx.memory.agent` persists per project through `IScriptAgentMemoryStore`
+  (`FileScriptAgentMemoryStore`, root `/workspace/.orkeon/agent-memory`, key = agent name). A corrupt file is refused,
+  never overwritten. The root is not configurable yet: see [limitations](docs/reference/limitations.md).
+- **`act` options.** `act({ tools })` narrows the offered tools and throws `UnknownToolError` before the model is
+  called (case-insensitive); `effort` on `act` and `AgentBuilder.effort()` reaches the provider; `onToolCall` and
+  `onToolResult` run before and after every tool call (a verdict that is null, not an object or unparseable is a
+  deny; `"ask"` with no permission gate fails closed). `withAutonomousTool` tools are offered in `act`, gated by their
+  declared access, and an inner `tools.*` call is not asked twice.
+- **`runCrewAsync` from `completed`** chains a crew; the chain depth is bounded (default 8) and past it the script gets
+  a catchable error while the drain loop goes on.
+
+### Added — REPL and sessions: `human_input`, durable sessions, session-start script (RT-08, RT-14, RT-05, #146, #151, #144)
+
+- `human_input` works in `orkeon-repl` (also under `--ui=tui`, through the console adapter) with `multi` and a
+  `recommended` option; headless, `HumanInputOptions.HeadlessPolicy` answers the default or refuses, and the JSON-lines
+  provider of `orkeon run` accepts `[a, b]` or a comma list for `multi`.
+- Sessions are durable per project (`FileSessionBufferService`, `last.json`), reloaded at start and saved after each
+  command (`InteractiveRunnerBase.OnAfterCommandAsync`, a new virtual member) and at exit.
+- `Orkeon:Cli:Session:StartScript` runs once at start; what it printed is prepended to the first turn
+  (`ISessionBufferService.SetState()`, key `session_start_output`, cleared before the hook runs).
+
+### Added — LLM providers: rate-limit windows and cache tokens (RT-13, RT-12, #150, #149)
+
+- A 429, or a 529 carrying a reset header, waits for the window instead of the backoff ladder (`Retry-After`, the
+  Anthropic and OpenAI reset headers, the longest wins), observing the caller's token. The wait is capped by
+  `Llm:MaxRateLimitWait` (5 minutes by default; the 5xx ladder keeps its 30-second cap); beyond it the call fails at
+  once with `LlmRateLimitException` (a `DomainException`).
+- `LlmResponse.CacheWriteTokens` and the cache read tokens reach `CostBudgetManager` and `session_stats`.
+  `LlmCacheConfig.Ttl` (`5m` or `1h`) is a per-call option (`orkeon:cache_ttl`); a provider that cannot honour it,
+  Ollama included, logs the structured warning (event 110, `cache_ttl`).
+
+### Added — RAG ingestion: locking, prune, sources on any mount (RT-28, RT-23, RT-22, RT-21, #156, #153, #161, #160)
+
+Concurrent ingests of one collection lose nothing (a per-collection lock, in-process); `IngestionRequest.Prune` deletes
+the chunks of manifest sources absent from the requested globs and `IngestionReport.SourcesPruned` counts them (a
+failed delete is an error of the report and keeps its manifest entry); sources are globbed on any mount with the
+virtual path as `sourceId`; `rag-pipeline.md` states where collections persist (host-global scope).
+
+### Added — RaggableTree: Markdown nodes, selectors, graph kinds and dev-workflow queries (RT-29, RT-35, RT-44, RT-38, RT-30, RT-31, RT-33, RT-34, RT-36, RT-37, #163, #169, #178, #172, #164, #165, #167, #168, #170, #171)
+
+The analysis suite counts 28 tools (`AddRaggableTreeTools`).
+
+- **Markdown nodes** (RT-29). `.md` and `.markdown` files give `Section`, `CodeFence`, `Link` and `FrontMatter` nodes
+  (Markdig, YamlDotNet; front matter that is not a mapping gives a node without key tags, never a failed build) and
+  the markdown search finds them. A link carries `target:<raw target>` and is never resolved to `resolved:<fqn>` in a
+  built or reindexed index.
+- **Selectors** (RT-44, RT-38). `node_outline` and `node_read` (text, range, SHA-256, uncut) address a member by
+  readable selector, Markdown heading path (`A/Notes[2]`, ordinal on any segment) or `@ts:` path; an ambiguous overload
+  lists its candidates; grammars with no handler (`.py`, `.rs`) are refused by name.
+- **`access_cost`** (RT-35) per member by `fqns` or `changed_files`, parity with `access-cost.py`; lambda bodies stay
+  out of the enclosing member's metrics.
+- **`structural_search`** (RT-31): native rule engine (`kind`, `pattern`, `regex`, `field`, `inside`, `has`, `not`,
+  `all`, `any`, `stopBy`) over C#, TypeScript and Markdown; an unparseable pattern or an unknown key is refused by
+  name; `max_files` exceeded reports `truncated`.
+- **Graph kinds** (RT-33). `EdgeKind` gains `Tests`, `Documents` and `ProjectDepends` (flags `1<<5` to `1<<7`; there
+  is no `references` kind). `edge_kinds` and `node_kinds` of `dependency_graph` and `sub_graph` are now arrays of
+  lowercase strings (`calls`, `imports`, `inherits`, `tests`, `documents`, `project_depends`; `file`, `project`,
+  `namespace`, `type`, `member`, `doc_section`, `test`) where they were arrays of enum values; the legacy enum names
+  (`Imports`) are still accepted case-insensitively, an unknown name is refused naming it, and responses keep the enum
+  names. `ProjectGraphBuilder` reads each csproj for `project_depends` and `Contains` edges, `TestEdgeLinker` tags
+  `[Fact]`/`[Theory]` methods and links `tests` edges. Limit: a `tests` edge to an overloaded member links every
+  overload, and TypeScript tests are tagged without `tests` edges.
+- **Dev-workflow queries** (RT-34, RT-36, RT-37). `affected_tests` (`changed_files` or `base`, default the working
+  tree) answers `all`, `test_projects`, `test_classes`, `unresolved`; `batch_anchors` (`closure`, `overlap`; an
+  unresolved anchor never proves disjointness); `documented_in` and `documents_of` over `Documents` edges built from
+  Markdown code spans, links and headings (`DocumentsEdgeLinker`; `documents_of` reads at most 1000 sections).
+- **Incremental reindex** (RT-30). `incremental_reindex` and the freshness pass re-parse only the changed files (the
+  discovery filters apply to each path) and patch the store per file, at a cost proportional to the changes. It does
+  not re-resolve dependents: a call from an unchanged file into a newly added symbol, and a test calling a symbol
+  added in another file, wait for a full reindex.
+
+Reference: [RaggableTree](docs/architecture/raggable-tree.md), [limitations](docs/reference/limitations.md).
+
+### Added — structural editing: `node_replace`, `node_insert`, `edit_batch`, `structural_rewrite`, intent operations (RT-39, RT-40, RT-41, RT-32, RT-42, RT-43, #173, #174, #175, #166, #176, #177)
+
+- `node_replace` splices one node's bytes, refuses a stale `expected_hash` (`StaleHashException`) and any new parse
+  diagnostic, and restores a backup when the write fails. `node_insert` adds a node `inside`, `before` or `after` an anchor.
+- `edit_batch` applies `node_replace` and `node_insert` over several files as one transaction (`EditTransaction`):
+  hashes checked on the progressively edited bytes, every file re-parsed before the first write, a journal
+  `/output/edit-batch/<id>.journal` replayed only while it matches, `validate: "build"` restores on a red build.
+- `structural_rewrite` applies a rule's `fix` (`FixTemplate`), `dry_run` by default, a file that does not parse refused
+  alone. Best-effort atomic, not atomic: see [limitations](docs/reference/limitations.md).
+- **Intent operations** `ensure_using`, `ensure_import`, `ensure_field`, `ensure_member`, `ensure_section`,
+  `insert_under_heading`, `replace_mermaid`, through the `node_ensure` tool and the `op` field of `edit_batch`. A no-op
+  writes nothing and reports `applied=false`.
+
+### Added — `github` `create_pr` (RT-17, #158)
+
+`github` takes `action = create_pr` with `base`, `head`, `title` and an optional `body`, and returns the pull-request URL;
+it needs a token with pull-request write scope.
+
+### Changed — tracking issue #179
+
+Every RT item above is traced in the run's plan; the gaps that ship are recorded in
+[`docs/reference/limitations.md`](docs/reference/limitations.md), and the tool-count claims are brought to the code
+(#179).
+
 ### Added — `orkeon quickstart` writes the README's two-minute crew, no clone needed
 
 `orkeon quickstart [--to <dir>]` writes `crew.yaml` and `appsettings.json` — embedded in the tool byte for byte from

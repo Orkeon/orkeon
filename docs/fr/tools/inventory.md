@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **118 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **119 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -214,7 +214,7 @@ pour les deux fournisseurs, modèle de sécurité et commandes `orkeon drive` :
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
-Vingt-sept tools sur le graphe sémantique de code RaggableTree — le guide complet est
+Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide complet est
 [RaggableTree](../architecture/raggable-tree.md).
 
 | Tool | Classe | Cas d'usage |
@@ -264,7 +264,7 @@ Vingt-sept tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 103 classes de tools intégrées :
+Délibérément **hors** des 119 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -287,7 +287,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | Package | Classes de tools |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
-| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 27 |
+| `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 28 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
@@ -296,7 +296,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **118** |
+| **Total** | **119** |
 
 ## Disponibilité par racine de composition
 
@@ -316,7 +316,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
 | EventHub (7) | ✅ | ❌ |
-| Analysis (15) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
+| Analysis (28) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
 | RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ✅ enregistrés par tout hôte `RunnerHost` — `orkeon run` sous toutes ses formes, `orkeon-host`, `orkeon mcp serve` —, avec le reranker ONNX : un agent YAML qui en liste un le reçoit, un script les atteint par `tools.ragSearch` et `rag.*` | ✅ enregistrés, avec le reranker ONNX : un agent YAML qui en liste un le reçoit |
 | `web_search`, `cache_search` | ✅ | ❌ |
