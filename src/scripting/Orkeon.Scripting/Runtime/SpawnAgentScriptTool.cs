@@ -80,12 +80,27 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         _budget.RecordSpawn();
 
         var engine = _environment.Engine;
+        var instances = crew.Instances;
+        var stop = CancellationTokenSource.CreateLinkedTokenSource(signal);
+        var instanceId = instances.Register(agent, childBudget, stop);
         var options = new Jint.Native.JsObject(engine);
-        options.Set("signal", JsValue.FromObject(engine, signal));
+        options.Set("signal", JsValue.FromObject(engine, stop.Token));
         options.Set("budget", JsValue.FromObject(engine, childBudget));
+        options.Set("instance", JsValue.FromObject(engine, new AgentInstanceRun(instances, instanceId, [])));
         if (inheritPermit && _environment.Permit is { } permit)
             options.Set("permit", JsValue.FromObject(engine, permit));
-        return engine.Invoke(crew.runChild, [JsValue.FromObject(engine, agent), input, options]);
+        JsValue promise;
+        try { promise = engine.Invoke(crew.runChild, [JsValue.FromObject(engine, agent), input, options]); }
+        catch
+        {
+            instances.Finish(instanceId, succeeded: false);
+            throw;
+        }
+
+        var onCompleted = new Action<JsValue>(_ => instances.Finish(instanceId, succeeded: true));
+        var onFailed = new Action<JsValue>(_ => instances.Finish(instanceId, succeeded: false));
+        engine.Invoke(promise.Get("then"), promise, [JsValue.FromObject(engine, onCompleted), JsValue.FromObject(engine, onFailed)]);
+        return promise;
     }
 
     /// <inheritdoc />

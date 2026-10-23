@@ -39,6 +39,9 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
     {
         public static ScriptStep Call(string toolName, string argumentsJson) => new(toolName, argumentsJson, null);
         public static ScriptStep Answer(string text) => new(null, null, text);
+
+        /// <summary>A turn whose chat call throws.</summary>
+        public static ScriptStep Fail() => new(null, null, null);
     }
 
     /// <summary>The content of every tool-result message received, in order.</summary>
@@ -84,6 +87,7 @@ internal sealed class FakeToolCallingLlmProvider : ILlmProvider
         {
             var step = _turn < _script.Count ? _script[_turn] : ScriptStep.Answer("script exhausted");
             _turn++;
+            if (step is { ToolName: null, Text: null }) throw new InvalidOperationException("scripted provider failure");
             return step.ToolName is null ? new LlmResponse { Content = step.Text! } : ToolCall(step.ToolName, step.ArgumentsJson!);
         }
         if (_turn++ == 0)

@@ -30,9 +30,20 @@ public static class CrewBuilderBinding
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
         Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
         Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation = null)
+        => Register(engine, logger, llmProvider, builtInTools, permissionGate, deltaSink, toolInvocation, null);
+
+    internal static void Register(
+        Engine engine,
+        ILogger? logger,
+        ILlmProvider? llmProvider,
+        IEnumerable<IBaseTool>? builtInTools,
+        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate,
+        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink,
+        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation,
+        Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? agentMemoryStore)
     {
         ArgumentNullException.ThrowIfNull(engine);
         var tools = builtInTools as IReadOnlyList<IBaseTool> ?? builtInTools?.ToArray();
-        engine.SetValue(GlobalName, new Func<JsCrewBuilder>(() => new JsCrewBuilder(engine, logger, llmProvider, tools, permissionGate, deltaSink, toolInvocation)));
+        engine.SetValue(GlobalName, new Func<JsCrewBuilder>(() => new JsCrewBuilder(engine, logger, llmProvider, tools, permissionGate, deltaSink, toolInvocation) { AgentMemoryStore = agentMemoryStore }));
     }
 }

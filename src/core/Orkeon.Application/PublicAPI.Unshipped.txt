@@ -2439,3 +2439,21 @@ Orkeon.Application.Services.Security.SerialisingToolApprovalChannel.RequestAsync
 Orkeon.Application.Services.Security.SerialisingToolApprovalChannel.SerialisingToolApprovalChannel(Orkeon.Application.Interfaces.Security.IToolApprovalChannel! inner) -> void
 Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.get -> Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>?
 Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.set -> void
+Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore
+Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore.DeleteAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore.GetAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore.SearchAsync(string! agentKey, string! query, int limit, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit!>!>!
+Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore.StoreAsync(string! agentKey, string! key, string! valueJson, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.Key.get -> string!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.Key.init -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.ScriptAgentMemoryHit() -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.ValueJson.get -> string!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.ValueJson.init -> void
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.<Clone>$() -> Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit!
+Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.Equals(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? other) -> bool
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.operator !=(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? right) -> bool
+static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit.operator ==(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit? right) -> bool

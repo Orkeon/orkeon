@@ -141,3 +141,11 @@ Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.get -> string?
 Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.set -> void
 Orkeon.Infrastructure.Session.CliSessionOptions.Persist.get -> bool
 Orkeon.Infrastructure.Session.CliSessionOptions.Persist.set -> void
+Orkeon.Infrastructure.Session.ProjectKey
+static Orkeon.Infrastructure.Session.ProjectKey.Slug(string! projectKey) -> string!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.FileScriptAgentMemoryStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! rootDirectory) -> void
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.DeleteAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.GetAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.SearchAsync(string! agentKey, string! query, int limit, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit!>!>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.StoreAsync(string! agentKey, string! key, string! valueJson, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!

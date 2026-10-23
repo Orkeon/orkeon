@@ -292,6 +292,8 @@ declare global {
          * (`agent <name> failed: <reason>` when it fails). At most `crew.concurrency(n)` children run at once.
          */
         spawnBackground(agent: string, input: string): { readonly id: number; readonly agent: string };
+        /** The id (`a1`…) of the agent instance this body runs as (`crew.instances()`); `undefined` outside one. */
+        readonly instanceId: string | undefined;
     }
 
     /** `ctx.log`: extra arguments are joined to the message by a space, objects as JSON. */

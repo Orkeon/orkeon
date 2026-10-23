@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
@@ -87,17 +85,9 @@ public sealed class FileSessionBufferService : ISessionBufferService
     /// <inheritdoc />
     public void SetState(string key, string? value) => _inner.SetState(key, value);
 
-    /// <summary>
-    /// <c>&lt;SessionsDirectory&gt;/&lt;name&gt;-&lt;hash&gt;/last.json</c>: the name is the key's last segment
-    /// reduced to letters, digits and dashes, the hash (of the whole key) keeps two projects apart.
-    /// </summary>
+    /// <summary><c>&lt;SessionsDirectory&gt;/&lt;project slug&gt;/last.json</c>.</summary>
     private string FilePath(string projectKey)
-    {
-        var name = new string(projectKey.TrimEnd('/', '\\').Split('/', '\\')[^1]
-            .Select(c => char.IsAsciiLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray());
-        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(projectKey)))[..12];
-        return $"{_options.SessionsDirectory.TrimEnd('/')}/{name}-{hash}/last.json";
-    }
+        => $"{_options.SessionsDirectory.TrimEnd('/')}/{ProjectKey.Slug(projectKey)}/last.json";
 
     private sealed record PersistedSession
     {

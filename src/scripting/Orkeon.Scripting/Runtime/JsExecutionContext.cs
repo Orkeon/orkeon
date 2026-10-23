@@ -60,6 +60,7 @@ public class JsExecutionContext
                 PermissionGate = environment.PermissionGate,
                 UnknownTools = unknownTools,
                 Background = Background,
+                Instance = environment.Instance,
             },
             new JsLlmObservability
             {

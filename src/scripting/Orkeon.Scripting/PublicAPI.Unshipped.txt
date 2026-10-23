@@ -14,3 +14,10 @@ Orkeon.Scripting.Bindings.RagScriptingBackendFactory
 static Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(System.IServiceProvider! services) -> Orkeon.Scripting.Bindings.RagScriptingBackend?
 Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.get -> Orkeon.Domain.Tools.ToolResultLimitsOptions!
 Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.init -> void
+Orkeon.Scripting.Builders.JsCrewBuilder.maxInstances(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Runtime.JsCrew.instances() -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.send.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.stop(string! id) -> bool
+Orkeon.Scripting.Runtime.JsAgentContext.instanceId.get -> Jint.Native.JsValue!
+Orkeon.Scripting.ScriptingHostPorts.AgentMemoryStore.get -> Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore?
+Orkeon.Scripting.ScriptingHostPorts.AgentMemoryStore.init -> void

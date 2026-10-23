@@ -153,6 +153,7 @@ public static class ScriptingCliServiceCollectionExtensions
                     DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
                     ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                     LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                    AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                 },
                 ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });

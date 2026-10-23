@@ -46,6 +46,7 @@ public sealed partial class JsLlmFacade
     private readonly string _agentName;
     private readonly UnknownAgentTools? _unknownTools;
     private readonly BackgroundAgents? _background;
+    private readonly AgentInstanceRun? _instance;
 
     // The run scope of the agent body this facade belongs to (JsAgentContext), attached once and
     // ended by the context's Dispose; null for a context outside any agent body (a crew hook, a
@@ -83,6 +84,7 @@ public sealed partial class JsLlmFacade
         _permissionGate = guards?.PermissionGate;
         _unknownTools = guards?.UnknownTools;
         _background = guards?.Background;
+        _instance = guards?.Instance;
         _deltaSink = observability?.DeltaSink;
         _logger = observability?.Logger;
         _crewName = observability?.CrewName ?? string.Empty;
@@ -754,6 +756,8 @@ public sealed partial class JsLlmFacade
             var system = ResolveSystem(options);
             if (system is not null)
                 Messages.Add(LlmMessage.System(system));
+            if (facade._instance is { } instance)
+                Messages.AddRange(instance.Seed);
             Messages.Add(new LlmMessage { Role = "user", Content = prompt });
 
             // One reader (the pump), one writer (the streaming continuation), never bounded:
@@ -1074,7 +1078,11 @@ public sealed partial class JsLlmFacade
                 {
                     var answer = RenderAnswer(resp);
                     if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
+                    {
+                        messages.Add(new LlmMessage { Role = "assistant", Content = answer });
+                        KeepTranscript(messages, interrupted: false);
                         return new { output = answer, iterations = i + 1 };
+                    }
 
                     // The model answered while children are out: wait for their next completion
                     // (or for the last of them to settle) and take another turn.
@@ -1099,6 +1107,7 @@ public sealed partial class JsLlmFacade
             // ctx.llm.interrupt(): graceful settle instead of a crash — the script keeps
             // control and can inspect { interrupted: true }. Host cancellation is excluded
             // by the filter and keeps propagating as OperationCanceledException.
+            KeepTranscript(session.Messages, interrupted: true);
             return new
             {
                 output = "(interrupted)",
@@ -1118,6 +1127,7 @@ public sealed partial class JsLlmFacade
                 await ownedRunScope.DisposeAsync().ConfigureAwait(false);
         }
 
+        KeepTranscript(session.Messages, interrupted: false);
         return new
         {
             output = "(max tool-call iterations reached without a final answer)",
@@ -1125,6 +1135,9 @@ public sealed partial class JsLlmFacade
             exhausted = true,
         };
     }
+
+    private void KeepTranscript(List<LlmMessage> messages, bool interrupted)
+        => _instance?.Registry.Keep(_instance.Id, messages, interrupted);
 
     /// <summary>
     /// One chat turn for the tool-call loop. When the script asked for deltas (<c>onDelta</c>) —

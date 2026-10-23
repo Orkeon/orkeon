@@ -22,4 +22,7 @@ internal sealed record JsLlmActGuards
 
     /// <summary>The background children of the script context: <c>act</c> drains their completions and may wait for them.</summary>
     internal BackgroundAgents? Background { get; init; }
+
+    /// <summary>The agent instance this context runs as: <c>act</c> resumes from its transcript and keeps the one it ends with (RT-03).</summary>
+    internal AgentInstanceRun? Instance { get; init; }
 }

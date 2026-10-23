@@ -1560,6 +1560,7 @@ public static partial class RunnerExecution
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
             },
             ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 

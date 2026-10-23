@@ -142,6 +142,9 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>The permit of the crew's concurrency gate this run is a child under; null for a run holding none.</summary>
     internal GatePermit? Permit { get; set; }
 
+    /// <summary>The agent instance this run is a (follow-up) run of; null for a run that is not one.</summary>
+    internal AgentInstanceRun? Instance { get; set; }
+
     /// <summary>The <c>crew.run</c> span (<see cref="Start"/>, listener permitting).</summary>
     internal Activity? Activity { get; private set; }
 
@@ -285,7 +288,7 @@ internal sealed class CrewRunScope : IDisposable
     internal AgentAttempt OpenAttempt(JsAgent agent, JsValue initialState)
     {
         ThrowIfNotRunning();
-        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit), initialState);
+        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance), initialState);
         try
         {
             var attribution = _crew.BeginBrokerScope(agent, this);

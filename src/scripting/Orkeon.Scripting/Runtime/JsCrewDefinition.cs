@@ -35,10 +35,16 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional single tool-invocation point applied inside <c>ctx.llm.act</c> (GAP-09).</summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 
+    /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
+    public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
     public string? Goal { get; init; }
 
     /// <summary>The crew-wide cap on children running at once; 4 unless the script says otherwise.</summary>
     public int Concurrency { get; init; } = 4;
+
+    /// <summary>The most agent instances the crew keeps (RT-03); 32 unless the script says otherwise.</summary>
+    public int MaxInstances { get; init; } = 32;
 
     /// <summary>
     /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks

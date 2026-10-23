@@ -103,6 +103,12 @@ internal sealed record CrewRunHelpers
     /// <summary><c>(permit)</c> — hands the crew-wide concurrency permit back if held.</summary>
     public required Action<GatePermit> gateRelease { get; init; }
 
+    /// <summary><c>(id) =&gt; options</c> — starts a follow-up run of an agent instance: the options <c>runChild</c> takes, or a refusal.</summary>
+    public required Func<string, JsValue> beginSend { get; init; }
+
+    /// <summary><c>(id, succeeded)</c> — ends the follow-up run begun by <c>beginSend</c>.</summary>
+    public required Action<string, bool> finishInstance { get; init; }
+
     /// <summary><c>(scope, agentOrName) =&gt; agent</c> — <c>runAgent</c>'s target, with the membership and re-entrance checks.</summary>
     public required Func<CrewRunScope, JsValue, JsAgent> resolveAgent { get; init; }
 }

@@ -167,6 +167,37 @@ model below); the permission gate always comes first.
 - **`crew.concurrency(n)`** bounds the children running at once (default 4, `n` >= 1). The slot is
   acquired before the per-agent semaphore.
 
+### Agent instances: `crew.instances`, `crew.send`, `crew.stop`
+
+Each background ticket and each `spawn_agent` call is an **agent instance** of its crew, with the id
+`a<ticket>` (`a1`, `a2`, ...). The ids are script-side only: the response of the `spawn_agent` tool
+is unchanged.
+
+- **`crew.instances()`** lists `{ id, agent, state }` rows; `state` is `running`, `completed`,
+  `failed` or `stopped`. `ctx.instanceId` is the id of the instance a child body runs as.
+- **`crew.send(id, message)`** runs one more bare act on the same agent (its tools and system
+  message, a fresh child budget) seeded with the instance's stored transcript, appends the result to
+  that transcript and resolves to the reply text. It takes a crew gate permit, counts as a spawn
+  against `MaxSpawnedAgents` and takes the per-agent semaphore. A `send` on an unknown or evicted id,
+  on a running instance, or while another `send` on the same id runs, is refused.
+- **`crew.stop(id)`** cancels a running instance at once and returns `true` (`false` for a finished
+  or unknown id). The gate slot is freed when the act settles, after the tool calls in flight end.
+- **Bounds** (one owner, APP-05): `crew.maxInstances(n)` (default 32) keeps at most `n` instances,
+  evicting the oldest finished one, never a running one; each transcript is capped in messages and in
+  total characters, the oldest messages dropped first. A failed or cancelled act stores no transcript
+  (the previous one stays); an act ended by `{ interrupted: true }` stores its transcript without the
+  trailing assistant turn whose tool calls have no result.
+
+### Durable agent memory: `ctx.memory.agent`
+
+`ctx.memory.agent` (`store`, `get`, `search`, `delete`) outlives the run when the host provides an
+`IScriptAgentMemoryStore`: the orkeon CLI and the hosted runner do, through one JSON file per project
+and agent under `/workspace/.orkeon/agent-memory/<project>/`. A value stored by agent `a` is returned
+in the next run for `a`, never for `b`; the key is `agent:<project>:<agent name>`. A write replaces the
+whole file under a per-file lock and restores a backup if it fails; a key holding a newline is
+refused. Hosts without the port (`run`, the Forge assistant and test bench) keep `ctx.memory.agent`
+in memory, for the run only.
+
 ## Coexistence with YAML
 
 The YAML configuration path remains supported and unchanged. Scripts and YAML

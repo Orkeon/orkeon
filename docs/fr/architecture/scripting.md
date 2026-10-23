@@ -172,6 +172,42 @@ le modèle de threading ci-dessous) ; la porte de permission passe toujours en p
 - **`crew.concurrency(n)`** borne le nombre d'enfants simultanés (4 par défaut, `n` >= 1). Le créneau
   est acquis avant le sémaphore par agent.
 
+### Instances d'agents : `crew.instances`, `crew.send`, `crew.stop`
+
+Chaque ticket d'arrière-plan et chaque appel à `spawn_agent` est une **instance d'agent** de sa crew,
+d'identifiant `a<ticket>` (`a1`, `a2`, ...). Les identifiants ne sont visibles que du script : la
+réponse de l'outil `spawn_agent` ne change pas.
+
+- **`crew.instances()`** liste des lignes `{ id, agent, state }` ; `state` vaut `running`,
+  `completed`, `failed` ou `stopped`. `ctx.instanceId` est l'identifiant de l'instance dont le corps
+  d'un enfant est l'exécution.
+- **`crew.send(id, message)`** lance un `act` nu de plus sur le même agent (ses outils et son message
+  système, un budget enfant neuf) amorcé par la transcription conservée de l'instance, ajoute le
+  résultat à cette transcription et se résout avec le texte de la réponse. Il prend un permis de la
+  porte de la crew, compte comme un spawn contre `MaxSpawnedAgents` et prend le sémaphore de l'agent.
+  Un `send` sur un identifiant inconnu ou évincé, sur une instance en cours, ou pendant qu'un autre
+  `send` du même identifiant s'exécute, est refusé.
+- **`crew.stop(id)`** annule aussitôt une instance en cours et renvoie `true` (`false` pour un
+  identifiant terminé ou inconnu). Le créneau de la porte est libéré quand l'`act` s'achève, après la
+  fin des appels d'outils en vol.
+- **Bornes** (un seul propriétaire, APP-05) : `crew.maxInstances(n)` (32 par défaut) garde au plus `n`
+  instances, en évinçant la plus ancienne terminée, jamais une instance en cours ; chaque
+  transcription est plafonnée en nombre de messages et en nombre total de caractères, les plus anciens
+  messages étant retirés d'abord. Un `act` échoué ou annulé ne stocke aucune transcription (la
+  précédente reste) ; un `act` terminé par `{ interrupted: true }` stocke sa transcription sans le
+  dernier tour d'assistant dont les appels d'outils n'ont pas de résultat.
+
+### Mémoire durable d'agent : `ctx.memory.agent`
+
+`ctx.memory.agent` (`store`, `get`, `search`, `delete`) survit à l'exécution quand l'hôte fournit un
+`IScriptAgentMemoryStore` : la CLI orkeon et le runner hébergé le font, avec un fichier JSON par
+projet et par agent sous `/workspace/.orkeon/agent-memory/<projet>/`. Une valeur stockée par l'agent
+`a` est renvoyée à l'exécution suivante pour `a`, jamais pour `b` ; la clé est
+`agent:<projet>:<nom de l'agent>`. Une écriture remplace tout le fichier sous un verrou par fichier et
+restaure une sauvegarde si elle échoue ; une clé contenant un saut de ligne est refusée. Les hôtes sans
+ce port (`run`, l'assistant et le banc d'essai de Forge) gardent `ctx.memory.agent` en mémoire, le
+temps de l'exécution.
+
 ## Coexistence avec YAML
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews

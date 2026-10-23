@@ -21,6 +21,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
+    private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Bindings.RagScriptingBackend? _ragBackend;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
@@ -55,6 +56,7 @@ public sealed class JsEngineFactory
         _permissionGate = hostPorts?.PermissionGate;
         _deltaSink = hostPorts?.DeltaSink;
         _toolInvocation = hostPorts?.ToolInvocation;
+        _agentMemoryStore = hostPorts?.AgentMemoryStore;
         _llmProfiles = hostPorts?.LlmProfiles;
         _ragBackend = ragBackend;
     }
@@ -163,7 +165,7 @@ public sealed class JsEngineFactory
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
-        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation);
+        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation, _agentMemoryStore);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider, _llmProfiles);
