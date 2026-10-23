@@ -245,6 +245,7 @@ Vingt-sept tools sur le graphe sémantique de code RaggableTree — le guide com
 | `structural_search` | `StructuralSearchTool` | Recherche structurelle par motif avec métavariables `$A` / `$$$ARGS`, objet de règle ou fichier de règles YAML sur des fichiers C#, TypeScript et Markdown, bornée par `max_results` / `max_files`. Classe Read |
 | `structural_rewrite` | `StructuralRewriteTool` | Réécrire les nœuds trouvés par un motif ou une règle avec un modèle `fix` sur des fichiers C# et TypeScript ; `dry_run` vaut `true` par défaut ; diff par fichier, un fichier dont la réécriture ne s'analyse pas est refusé seul ; Markdown refusé. Classe Edit
 | `node_insert` | `NodeInsertTool` | Ajouter un nœud `inside` un type, un namespace ou une section Markdown (dernier membre, indentation des frères) ou `before`/`after` un nœud d'ancrage (ses commentaires et attributs restent avec lui) ; aucun hash d'ancrage requis ; refusé si une erreur d'analyse est introduite ; marque l'index sale. Classe Edit |
+| `node_ensure` | `NodeEnsureTool` | Appliquer une opération d'intention idempotente à un fichier (`ensure_using`, `ensure_import`, `ensure_field`, `ensure_member`, `ensure_section`, `insert_under_heading`, `replace_mermaid`) ; un no-op n'écrit rien et renvoie `applied: false` ; refusé si une erreur d'analyse est introduite ; marque l'index sale. Classe Edit |
 | `edit_batch` | `EditBatchTool` | Appliquer des opérations `node_replace` et `node_insert` sur plusieurs fichiers en une transaction : chaque fichier ré-analysé (`validate: "parse"`) ou le build lancé (`validate: "build"`) ; tout est appliqué ou chaque fichier reste identique à l'octet ; liste la plage de chaque opération. Classe Edit |
 
 ## Montages et embeddings locaux
@@ -473,6 +474,7 @@ correspondance alphabétique complète :
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
+| `node_ensure` | `NodeEnsureTool` | `Orkeon.Tools.Analysis` |
 | `node_insert` | `NodeInsertTool` | `Orkeon.Tools.Analysis` |
 | `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
 | `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |

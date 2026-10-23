@@ -56,16 +56,29 @@ internal sealed class EditTransaction
         var originals = new List<byte[]>(paths.Count);
         var edited = new List<byte[]>(paths.Count);
         var rangesByPath = new Dictionary<string, IReadOnlyList<NodeRange>>(StringComparer.Ordinal);
+        var appliedByPath = new Dictionary<string, IReadOnlyList<bool>>(StringComparer.Ordinal);
         foreach (var path in paths)
         {
             var original = await _fs.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException("File not found.", path);
             var operations = _operations.Where(o => o.Path == path).Select(o => o.Operation).ToList();
-            var (bytes, ranges) = _engine.ApplyInMemory(path, original, operations);
+            var (bytes, ranges, applied) = _engine.ApplyInMemory(path, original, operations);
             originals.Add(original);
             edited.Add(bytes);
             rangesByPath[path] = ranges;
+            appliedByPath[path] = applied;
         }
+
+        // A file whose operations were all no-ops is neither journaled nor written.
+        var changed = Enumerable.Range(0, paths.Count).Where(i => !edited[i].AsSpan().SequenceEqual(originals[i])).ToList();
+        if (changed.Count < paths.Count)
+        {
+            paths = [.. changed.Select(i => paths[i])];
+            originals = [.. changed.Select(i => originals[i])];
+            edited = [.. changed.Select(i => edited[i])];
+        }
+
+        if (paths.Count == 0) return Report(rangesByPath, appliedByPath, null);
 
         var journalPath = EditJournal.PathOf(batchId);
         await _fs.WriteAllBytesAsync(journalPath, EditJournal.Serialize(paths, originals, edited), cancellationToken).ConfigureAwait(false);
@@ -94,6 +107,12 @@ internal sealed class EditTransaction
         }
 
         await _fs.DeleteAsync(journalPath, recursive: false, CancellationToken.None).ConfigureAwait(false);
+        return Report(rangesByPath, appliedByPath, build);
+    }
+
+    private EditTransactionResult Report(
+        Dictionary<string, IReadOnlyList<NodeRange>> rangesByPath, Dictionary<string, IReadOnlyList<bool>> appliedByPath, BuildValidation? build)
+    {
         var next = new Dictionary<string, int>(StringComparer.Ordinal);
         return new EditTransactionResult
         {
@@ -101,7 +120,7 @@ internal sealed class EditTransaction
             {
                 var index = next.GetValueOrDefault(o.Path);
                 next[o.Path] = index + 1;
-                return new EditedRange(o.Path, rangesByPath[o.Path][index]);
+                return new EditedRange(o.Path, rangesByPath[o.Path][index], appliedByPath[o.Path][index]);
             }).ToList(),
             Build = build,
         };

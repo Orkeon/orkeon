@@ -239,6 +239,20 @@ Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), p
 - **Écriture** : protégée par une copie de sauvegarde restaurée en cas d'échec. Elle n'est pas atomique.
 - Un refus (hash périmé, erreur d'analyse, montage en lecture seule, chemin hors de la racine de travail de l'agent) est un résultat en échec, fichier intact ; une écriture réussie marque l'index sale.
 
+## Opérations d'intention
+
+`node_ensure` et le champ `op` de `edit_batch` appliquent une opération idempotente ; chacune est un no-op qui n'écrit rien et renvoie `applied: false` quand sa cible est déjà satisfaite.
+
+| Opération | Paramètres | Règle d'idempotence | Règle de placement |
+|---|---|---|---|
+| `ensure_using` | `name` | le using est déjà présent | dans le bloc des using, à sa place triée |
+| `ensure_import` | `name`, `module` | l'import est déjà présent | dans le bloc des imports |
+| `ensure_field` | `selector` (type), `text` | un membre de ce nom existe | près des champs du type |
+| `ensure_member` | `selector` (type), `text` | un membre de ce nom existe | près des membres du type |
+| `ensure_section` | `name` (chemin de titres), `level?` | chaque titre du chemin existe | titres manquants ajoutés en fin de fichier, chacun au niveau de sa profondeur |
+| `insert_under_heading` | `selector` (titre), `text` | aucune : ajoute toujours | en fin de section, avant le titre suivant de même niveau ou supérieur |
+| `replace_mermaid` | `selector` (section), `index` (base 0), `text` | le corps du bloc vaut déjà `text` | seul le corps du n-ième bloc `mermaid` (``` ou ~~~) de la section et de ses sous-sections change ; moins de blocs : refusé, fichier intact |
+
 ## Types de graphe
 
 `GraphKindNames` (`Orkeon.Analysis.Abstractions`) fait correspondre des noms de workflow en minuscules aux énumérations existantes.

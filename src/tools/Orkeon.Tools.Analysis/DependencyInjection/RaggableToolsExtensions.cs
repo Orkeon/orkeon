@@ -21,6 +21,7 @@ public static class RaggableToolsExtensions
         services.AddTransient<IBaseTool, EditBatchTool>();
         services.AddTransient<IBaseTool, FlowTraceTool>();
         services.AddTransient<IBaseTool, ImpactAnalysisTool>();
+        services.AddTransient<IBaseTool, NodeEnsureTool>();
         services.AddTransient<IBaseTool, NodeInsertTool>();
         services.AddTransient<IBaseTool, NodeOutlineTool>();
         services.AddTransient<IBaseTool, NodeReadTool>();

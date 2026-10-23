@@ -250,6 +250,7 @@ public static class ToolCatalog
             new("structural_search"),
             new("structural_rewrite"),
             new("node_insert"),
+            new("node_ensure"),
             new("edit_batch"),
             new("codebase_search"),
             new("dependency_graph"),

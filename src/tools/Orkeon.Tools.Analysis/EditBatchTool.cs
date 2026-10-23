@@ -16,6 +16,11 @@ public sealed record EditBatchOperation
     [JsonPropertyName("expected_hash")] public string? ExpectedHash { get; init; }
     [JsonPropertyName("position")] public string? Position { get; init; }
     [JsonPropertyName("text")] public string Text { get; init; } = "";
+    [JsonPropertyName("op")] public string? Op { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("module")] public string? Module { get; init; }
+    [JsonPropertyName("index")] public int? Index { get; init; }
+    [JsonPropertyName("level")] public int? Level { get; init; }
 }
 
 public sealed record EditBatchRequest
@@ -28,6 +33,7 @@ public sealed record EditBatchOperationResult
 {
     [JsonPropertyName("path")] public required string Path { get; init; }
     [JsonPropertyName("range")] public required NodeReplaceRange Range { get; init; }
+    [JsonPropertyName("applied")] public bool Applied { get; init; }
 }
 
 public sealed record EditBatchResponse
@@ -53,9 +59,11 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
 
     public override string Name => "edit_batch";
     public override string Description =>
-        "Applies node_replace and node_insert operations over several files as one transaction. Each operation is "
+        "Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is "
         + "{kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: "
-        + "'inside', 'before' or 'after'). Operations on one file apply in order, each on the bytes the previous one "
+        + "'inside', 'before' or 'after'). An intent operation is {op, path} with op ensure_using / ensure_import (name, "
+        + "module for TypeScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when "
+        + "absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one "
         + "produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' "
         + "also runs dotnet build on the project above the edited files and restores every file when it is red. "
         + "On any failure all files are left as they were.";
@@ -98,6 +106,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
             Operations = [.. result.Operations.Select(o => new EditBatchOperationResult
             {
                 Path = o.Path,
+                Applied = o.Applied,
                 Range = new NodeReplaceRange
                 {
                     StartByte = o.Range.StartByte,
@@ -120,6 +129,9 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
 
     private static IEditOperation ToOperation(EditBatchOperation operation)
     {
+        if (!string.IsNullOrEmpty(operation.Op))
+            return IntentOperations.Create(operation.Op, operation.Selector, operation.Name, operation.Module, operation.Text, operation.Index, operation.Level);
+
         var selector = NodeSelector.Parse(operation.Selector);
         switch (operation.Kind)
         {
@@ -138,7 +150,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
                 };
                 return new NodeInsertOperation(selector, position, operation.Text);
             default:
-                throw new ArgumentException("kind must be 'node_replace' or 'node_insert'.", nameof(operation));
+                throw new ArgumentException("kind must be 'node_replace' or 'node_insert', or op must name an intent operation.", nameof(operation));
         }
     }
 }

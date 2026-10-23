@@ -240,6 +240,7 @@ Twenty-seven tools over the RaggableTree semantic code graph — the full guide 
 | `structural_search` | `StructuralSearchTool` | Structural search by pattern with `$A` / `$$$ARGS` metavariables, rule object or YAML rule file over C#, TypeScript and Markdown files, bounded by `max_results` / `max_files`. Read-class |
 | `structural_rewrite` | `StructuralRewriteTool` | Rewrite the nodes a pattern or rule matches with a `fix` template over C# and TypeScript files; `dry_run` defaults to `true`; per-file diff, a file whose rewrite does not parse is refused alone; Markdown refused. Edit-class |
 | `node_insert` | `NodeInsertTool` | Add a node `inside` a type, namespace or Markdown section (last member, siblings' indentation) or `before`/`after` an anchor node (its comments and attributes stay with it); no anchor hash needed; refused on a newly introduced parse error; marks the index dirty. Edit-class |
+| `node_ensure` | `NodeEnsureTool` | Apply one idempotent intent operation to one file (`ensure_using`, `ensure_import`, `ensure_field`, `ensure_member`, `ensure_section`, `insert_under_heading`, `replace_mermaid`); a no-op writes nothing and reports `applied: false`; refused on a newly introduced parse error; marks the index dirty. Edit-class |
 | `edit_batch` | `EditBatchTool` | Apply `node_replace` and `node_insert` operations over several files as one transaction: every file re-parsed (`validate: "parse"`) or the build run (`validate: "build"`); all applied or every file byte-identical; lists each operation's range. Edit-class |
 
 ## Mounts and local embeddings
@@ -465,6 +466,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `mongodb_query` | `MongoDbTool` | `Orkeon.Tools.Data` |
 | `mongodb_schema` | `MongoDbSchemaTool` | `Orkeon.Tools.Data` |
 | `mysql_query` | `MySqlDatabaseTool` | `Orkeon.Tools.Data` |
+| `node_ensure` | `NodeEnsureTool` | `Orkeon.Tools.Analysis` |
 | `node_insert` | `NodeInsertTool` | `Orkeon.Tools.Analysis` |
 | `node_outline` | `NodeOutlineTool` | `Orkeon.Tools.Analysis` |
 | `node_read` | `NodeReadTool` | `Orkeon.Tools.Analysis` |

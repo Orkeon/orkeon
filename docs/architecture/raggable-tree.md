@@ -238,6 +238,20 @@ Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), pytho
 - **Write**: guarded by a backup copy restored when the write fails. It is not atomic.
 - A refusal (stale hash, parse error, read-only mount, path outside the agent working root) is a failed result with the file untouched; a successful write marks the index dirty.
 
+## Intent operations
+
+`node_ensure` and the `op` field of `edit_batch` apply one idempotent operation; each is a no-op that writes nothing and reports `applied: false` when its target already holds.
+
+| Operation | Parameters | Idempotence rule | Placement rule |
+|---|---|---|---|
+| `ensure_using` | `name` | the using is already present | in the using block, sorted place |
+| `ensure_import` | `name`, `module` | the import is already present | in the import block |
+| `ensure_field` | `selector` (type), `text` | a member of that name exists | next to the type's fields |
+| `ensure_member` | `selector` (type), `text` | a member of that name exists | next to the type's members |
+| `ensure_section` | `name` (heading path), `level?` | every heading of the path exists | missing headings appended at the end, each at the level of its depth |
+| `insert_under_heading` | `selector` (heading), `text` | none: always appends | at the end of the section, before the next heading of the same or higher level |
+| `replace_mermaid` | `selector` (section), `index` (0-based), `text` | the fence body is already `text` | only the body of the n-th `mermaid` fence (``` or ~~~) of the section and its sub-sections changes; fewer fences: refused, file untouched |
+
 ## Graph kinds
 
 `GraphKindNames` (`Orkeon.Analysis.Abstractions`) maps lowercase workflow names onto the existing enums.

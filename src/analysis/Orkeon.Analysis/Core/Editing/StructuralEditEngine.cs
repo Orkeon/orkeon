@@ -13,7 +13,14 @@ internal sealed class StructuralEditEngine(IFileSystemService fs, TreeSitterPars
     {
         var original = await fs.TryReadAllBytesAsync(virtualPath, cancellationToken).ConfigureAwait(false)
             ?? throw new FileNotFoundException("File not found.", virtualPath);
-        var (bytes, ranges) = ApplyInMemory(virtualPath, original, operations);
+        var (bytes, ranges, _) = ApplyInMemory(virtualPath, original, operations);
+        if (bytes.AsSpan().SequenceEqual(original))
+        {
+            var noOp = ranges[^1];
+            var existing = original.AsSpan(noOp.StartByte, noOp.EndByte - noOp.StartByte);
+            return new EditOutcome { Range = noOp, NewHash = Convert.ToHexStringLower(SHA256.HashData(existing)), Applied = false };
+        }
+
         await WriteAsync(virtualPath, bytes, cancellationToken).ConfigureAwait(false);
         var last = ranges[^1];
         var replaced = bytes.AsSpan(last.StartByte, last.EndByte - last.StartByte);
@@ -65,16 +72,24 @@ internal sealed class StructuralEditEngine(IFileSystemService fs, TreeSitterPars
     }
 
     /// <summary>Applies the operations in order, each on the bytes the previous one produced; nothing is written.</summary>
-    public (byte[] Bytes, IReadOnlyList<NodeRange> Ranges) ApplyInMemory(
+    public (byte[] Bytes, IReadOnlyList<NodeRange> Ranges, IReadOnlyList<bool> Applied) ApplyInMemory(
         string virtualPath, byte[] original, IReadOnlyList<IEditOperation> operations)
     {
         if (operations.Count == 0) throw new ArgumentException("At least one operation is required.", nameof(operations));
         var bytes = original;
         var ranges = new List<NodeRange>(operations.Count);
+        var applied = new List<bool>(operations.Count);
         foreach (var operation in operations)
         {
             var parsed = StructuralFile.FromBytes(pool, bytes, virtualPath);
             var result = operation.Apply(bytes, parsed);
+            if (!result.Applied)
+            {
+                ranges.Add(result.Range);
+                applied.Add(false);
+                continue;
+            }
+
             var introduced = ValidatorFor(parsed.Language).Introduced(bytes, result.Bytes, result.Range);
             if (introduced.Count > 0) throw new ParseBrokenException(introduced);
             var byteShift = result.Bytes.Length - bytes.Length;
@@ -96,9 +111,10 @@ internal sealed class StructuralEditEngine(IFileSystemService fs, TreeSitterPars
 
             bytes = result.Bytes;
             ranges.Add(result.Range);
+            applied.Add(true);
         }
 
-        return (bytes, ranges);
+        return (bytes, ranges, applied);
     }
 
     private IParseValidator ValidatorFor(string language)

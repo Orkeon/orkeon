@@ -12,6 +12,9 @@ namespace Orkeon.Analysis.Core.Editing;
 
 internal sealed record NodeRange(int StartByte, int EndByte, int StartLine, int EndLine);
 
+/// <summary>A direct child of a type body: its tree-sitter kind, its own source text and its range (leading comments included).</summary>
+internal sealed record BodyMember(string Kind, string Text, NodeRange Range);
+
 internal sealed record StructuralNode(string Selector, string Kind, NodeRange Range, string Text, string Sha256);
 
 /// <summary>
@@ -51,6 +54,7 @@ internal sealed class StructuralFile
     private readonly IReadOnlyList<RaggableNode> _sections;
     private readonly List<Declaration> _declarations = [];
     private string _markdownPath = string.Empty;
+    private IReadOnlyList<RaggableNode> _fences = [];
     private IReadOnlyList<SectionEntry>? _sectionEntries;
 
     private StructuralFile(byte[] bytes, string source, int bomLength, PathNode? root, IReadOnlyList<RaggableNode> sections)
@@ -92,9 +96,10 @@ internal sealed class StructuralFile
         var source = Encoding.UTF8.GetString(bytes.AsSpan(bom));
         if (language == MarkdownLanguage)
         {
-            var sections = new MarkdownDocumentMapper().Map(virtualPath, source)
-                .Where(n => n.Kind == UniversalNodeKind.Section).ToList();
-            return new StructuralFile(bytes, source, bom, null, sections) { _markdownPath = virtualPath, Language = language };
+            var mapped = new MarkdownDocumentMapper().Map(virtualPath, source);
+            var sections = mapped.Where(n => n.Kind == UniversalNodeKind.Section).ToList();
+            var fences = mapped.Where(n => n.Kind == UniversalNodeKind.CodeFence).OrderBy(n => n.Range.StartByte).ToList();
+            return new StructuralFile(bytes, source, bom, null, sections) { _markdownPath = virtualPath, _fences = fences, Language = language };
         }
 
         using var parsed = pool.Parse(source, language);
@@ -108,11 +113,60 @@ internal sealed class StructuralFile
         ? Sections.Select(e => new StructuralNode(e.Selector, "section", SectionRange(e), string.Empty, string.Empty)).ToList()
         : _declarations.Select(d => new StructuralNode(d.Selector, d.Kind, DeclarationRange(d.Span, d.Siblings, d.Index), string.Empty, string.Empty)).ToList();
 
+    /// <summary>The fenced code blocks of a Markdown file, in document order (kind CodeFence).</summary>
+    public IReadOnlyList<StructuralNode> CodeFences() => _fences.Select(BuildFence).ToList();
+
+    private StructuralNode BuildFence(RaggableNode fence)
+    {
+        var text = fence.SourceSnippet.TrimEnd('\r', '\n');
+        var startByte = _bomLength + fence.Range.StartByte;
+        var range = new NodeRange(
+            startByte, startByte + Encoding.UTF8.GetByteCount(text),
+            fence.Range.StartLine, fence.Range.StartLine + text.Count(c => c == '\n'));
+        return new StructuralNode(
+            string.Empty, "CodeFence", range, text, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text))));
+    }
+
     public StructuralNode Resolve(NodeSelector selector)
     {
         ArgumentNullException.ThrowIfNull(selector);
         if (_root is null) return ResolveSection(selector);
         return selector.IsTreeSitterPath ? ResolvePath(selector, _root) : ResolveReadable(selector);
+    }
+
+    /// <summary>The members written directly in the braced body of the declaration <paramref name="declaration"/> (comments excluded), in source order.</summary>
+    public IReadOnlyList<BodyMember> BodyMembers(StructuralNode declaration)
+    {
+        ArgumentNullException.ThrowIfNull(declaration);
+        var found = _declarations.FirstOrDefault(d => d.Selector == declaration.Selector);
+        var body = found is null ? null : FindBody(found.Span);
+        if (body is null) return [];
+        var named = body.NamedChildren;
+        var members = new List<BodyMember>(named.Count);
+        for (var i = 0; i < named.Count; i++)
+        {
+            if (named[i].Type == "comment") continue;
+            // tree-sitter-typescript leaves the terminating semicolon of a field outside its node.
+            var semicolon = named[i].Type == "public_field_definition" && named[i].EndIndex < _source.Length && _source[named[i].EndIndex] == ';';
+            var range = DeclarationRange(named[i], named, i);
+            members.Add(new BodyMember(
+                named[i].Type,
+                _source[named[i].StartIndex..(named[i].EndIndex + (semicolon ? 1 : 0))],
+                semicolon ? range with { EndByte = range.EndByte + 1 } : range));
+        }
+
+        return members;
+    }
+
+    private static PathNode? FindBody(PathNode node)
+    {
+        foreach (var child in node.NamedChildren)
+        {
+            if (Bodies.Contains(child.Type)) return child;
+            if (Containers.Contains(child.Type) && FindBody(child) is { } inner) return inner;
+        }
+
+        return null;
     }
 
     private StructuralNode ResolveSection(NodeSelector selector)

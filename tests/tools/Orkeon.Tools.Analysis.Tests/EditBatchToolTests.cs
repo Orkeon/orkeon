@@ -210,4 +210,86 @@ public sealed class EditBatchToolTests : IDisposable
         var call = Assert.Single(_build.Calls);
         Assert.Equal([Physical("A.cs"), Physical("B.cs")], call);
     }
+
+    [Fact]
+    [Trait("BR", "RT-43")]
+    public async Task ShouldSkipParseValidation_WhenFileIsMarkdown()
+    {
+        const string source = "# Doc\n\n## Sec\n\n```mermaid\ngraph A\n```\n\n```mermaid\ngraph B\n```\n";
+        await _disk.WriteAllTextAsync("/workspace/doc.md", source, CancellationToken.None);
+
+        await RunAsync([new() { Op = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Doc/Sec", Index = 1, Text = "graph B2" }]);
+
+        Assert.Equal(
+            source.Replace("graph B\n", "graph B2\n", StringComparison.Ordinal),
+            await File.ReadAllTextAsync(Physical("doc.md"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-43")]
+    public async Task ShouldMapMarkdownIntentOps_WhenEditBatchTargetsMarkdown()
+    {
+        await _disk.WriteAllTextAsync("/workspace/doc.md", "# Plan\n\n## Notes\n\n```mermaid\ngraph A\n```\n", CancellationToken.None);
+        EditBatchOperation[] operations =
+        [
+            new() { Op = "ensure_section", Path = "/workspace/doc.md", Name = "Plan/Anchors" },
+            new() { Op = "insert_under_heading", Path = "/workspace/doc.md", Selector = "Plan/Anchors", Text = "Item" },
+            new() { Op = "replace_mermaid", Path = "/workspace/doc.md", Selector = "Plan/Notes", Index = 0, Text = "graph B" },
+        ];
+
+        var response = await RunAsync(operations);
+
+        Assert.Equal(3, response.Operations.Count);
+        Assert.All(response.Operations, o => Assert.True(o.Applied));
+        Assert.Equal(
+            "# Plan\n\n## Notes\n\n```mermaid\ngraph B\n```\n\n## Anchors\n\nItem\n",
+            await File.ReadAllTextAsync(Physical("doc.md"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-42")]
+    public async Task ShouldApplyUsingFieldAndTwoReplacesAsOneTransaction_WhenEditBatchMixesIntentOperations()
+    {
+        const string fileB = "public class B\n{\n    public int P() { return 3; }\n\n    public int R() { return 5; }\n}\n";
+        const string newR = "public int R() { return 50; }";
+        const string field = "private int _z;";
+        await _disk.WriteAllTextAsync("/workspace/A.cs", FileA, CancellationToken.None);
+        await _disk.WriteAllTextAsync("/workspace/B.cs", fileB, CancellationToken.None);
+        EditBatchOperation[] intents =
+        [
+            new() { Op = "ensure_using", Path = "/workspace/A.cs", Name = "System.Linq" },
+            new() { Op = "ensure_field", Path = "/workspace/A.cs", Selector = "A", Text = field },
+        ];
+        EditBatchOperation[] operations =
+        [
+            .. intents,
+            await ReplaceAsync("B.cs", "B.P", NewP),
+            await ReplaceAsync("B.cs", "B.R", newR),
+        ];
+
+        var response = await RunAsync(operations);
+
+        Assert.Equal(4, response.Operations.Count);
+        Assert.All(response.Operations, o => Assert.True(o.Applied));
+        Assert.Equal(
+            ["/workspace/A.cs", "/workspace/A.cs", "/workspace/B.cs", "/workspace/B.cs"],
+            response.Operations.Select(o => o.Path).ToArray());
+        var a = await File.ReadAllTextAsync(Physical("A.cs"), TestContext.Current.CancellationToken);
+        var b = await File.ReadAllTextAsync(Physical("B.cs"), TestContext.Current.CancellationToken);
+        Assert.Equal(1, a.Split("using System.Linq;").Length - 1);
+        Assert.Equal(1, a.Split(field).Length - 1);
+        Assert.Contains(NewX.Replace("10", "1"), a, StringComparison.Ordinal);
+        Assert.Contains(NewP, b, StringComparison.Ordinal);
+        Assert.Contains(newR, b, StringComparison.Ordinal);
+        Assert.Single(_fs.Writes, w => w.Path == "/workspace/A.cs");
+        Assert.Single(_fs.Writes, w => w.Path == "/workspace/B.cs");
+
+        var writesBefore = _fs.Writes.Count;
+        var again = await RunAsync(intents);
+
+        Assert.Equal(2, again.Operations.Count);
+        Assert.All(again.Operations, o => Assert.False(o.Applied));
+        Assert.Equal(writesBefore, _fs.Writes.Count);
+        Assert.Equal(a, await File.ReadAllTextAsync(Physical("A.cs"), TestContext.Current.CancellationToken));
+    }
 }

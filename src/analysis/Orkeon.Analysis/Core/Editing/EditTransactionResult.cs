@@ -2,7 +2,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 
 namespace Orkeon.Analysis.Core.Editing;
 
-internal sealed record EditedRange(string Path, NodeRange Range);
+internal sealed record EditedRange(string Path, NodeRange Range, bool Applied = true);
 
 internal sealed record EditTransactionResult
 {
