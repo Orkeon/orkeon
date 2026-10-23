@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Orkeon.Analysis.Abstractions;
+using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -182,6 +183,13 @@ public sealed class IncrementalReindexEngine
         keptEdges.RemoveAll(e => e.Kind is EdgeKind.Tests or EdgeKind.Documents);
         var keptIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
         newEdges.AddRange(ProjectGraphBuilder.BuildContainsEdges(newNodes).Where(e => !keptIds.Contains(e.Id)));
+        var addedSymbols = newNodes.Where(n => n.Level == NodeLevel.L3_Symbol).ToDictionary(n => n.Id, n => n.Name, StringComparer.Ordinal);
+        var removedSymbols = currentTree.Nodes.Where(n => removedIds.Contains(n.Id) && n.Level == NodeLevel.L3_Symbol).ToList();
+        var changedNames = addedSymbols.Where(p => !removedIds.Contains(p.Key)).Select(p => p.Value)
+            .Concat(removedSymbols.Where(n => !addedSymbols.ContainsKey(n.Id)).Select(n => n.Name))
+            .ToHashSet(StringComparer.Ordinal);
+        newEdges.AddRange(await RelinkInboundCallsAsync(root, unchangedNodes, allNodes, nodesById, changedNames, keptEdges, ct).ConfigureAwait(false));
+        ResolveMarkdownLinks(unchangedNodes, newNodes, allNodes, removedIds, changedVirtual, changedNames);
         var linkable = new List<RaggableEdge>(keptEdges);
         linkable.AddRange(newEdges);
         newEdges.AddRange(TestEdgeLinker.Link(allNodes, linkable));
@@ -220,6 +228,113 @@ public sealed class IncrementalReindexEngine
             TotalNodeCount = allNodes.Count,
             TotalEdgeCount = allEdges.Count,
         };
+    }
+
+    // Unchanged files are not read: their calls come from the `calls:<name>` tags of their module nodes,
+    // resolved through the injected resolver against the caller's own language, in the file order of the tree.
+    private async Task<List<RaggableEdge>> RelinkInboundCallsAsync(
+        string root,
+        List<RaggableNode> unchangedNodes,
+        List<RaggableNode> allNodes,
+        Dictionary<string, RaggableNode> nodesById,
+        HashSet<string> changedNames,
+        List<RaggableEdge> keptEdges,
+        CancellationToken ct)
+    {
+        var relinked = new List<RaggableEdge>();
+        if (changedNames.Count == 0) return relinked;
+
+        var fileRank = await FileRanksAsync(root, ct).ConfigureAwait(false);
+        var knownIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var language in unchangedNodes.Where(n => n.Level == NodeLevel.L2_Module).GroupBy(n => n.Language, StringComparer.OrdinalIgnoreCase))
+        {
+            var refs = new List<UnresolvedRef>();
+            foreach (var module in language)
+            {
+                foreach (var name in changedNames)
+                {
+                    if (!module.Tags.TryGetValue(DependencyGraphBuilder.CallsTagPrefix + name, out var owners)) continue;
+                    foreach (var ownerId in owners.Split('\n'))
+                    {
+                        if (nodesById.TryGetValue(ownerId, out var owner) && !string.IsNullOrEmpty(owner.Fqn))
+                            refs.Add(new UnresolvedRef(owner.Fqn, name, ReferenceKind.Call, new SourceLocation(owner.VirtualFilePath, 0, 0, string.Empty)));
+                    }
+                }
+            }
+            if (refs.Count == 0) continue;
+
+            var symbols = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
+            foreach (var node in allNodes
+                .Where(n => string.Equals(n.Language, language.Key, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(n.Fqn))
+                .OrderBy(n => fileRank.GetValueOrDefault(n.VirtualFilePath, int.MaxValue)))
+                symbols[node.Fqn] = node;
+
+            foreach (var edge in await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false))
+            {
+                if (!knownIds.Add(edge.Id)) continue;
+                if (edge.Kind == EdgeKind.Calls) DropSupersededCalls(edge, keptEdges, nodesById);
+                relinked.Add(new RaggableEdge(edge.Id, edge.FromId, edge.ToId, edge.Kind));
+                if (nodesById.TryGetValue(edge.FromId, out var from) && nodesById.TryGetValue(edge.ToId, out var to))
+                    DependencyGraphBuilder.LinkNodes(edge.Kind, from, to);
+            }
+        }
+
+        return relinked;
+    }
+
+    // A caller holds one Calls edge per name: the resolver's new pick replaces the kept one.
+    private static void DropSupersededCalls(RaggableEdge edge, List<RaggableEdge> keptEdges, Dictionary<string, RaggableNode> nodesById)
+    {
+        if (!nodesById.TryGetValue(edge.ToId, out var target) || !nodesById.TryGetValue(edge.FromId, out var caller)) return;
+        foreach (var stale in keptEdges
+            .Where(e => e.Kind == EdgeKind.Calls && e.FromId == edge.FromId && e.ToId != edge.ToId
+                && nodesById.TryGetValue(e.ToId, out var old) && old.Name == target.Name)
+            .ToList())
+        {
+            keptEdges.Remove(stale);
+            caller.CallIdsMutable.Remove(stale.ToId);
+            nodesById[stale.ToId].CalledByIdsMutable.Remove(caller.Id);
+        }
+    }
+
+    // The order a full build discovers the files in is the file system's listing (no file is read).
+    private async Task<Dictionary<string, int>> FileRanksAsync(string root, CancellationToken ct)
+    {
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+        await foreach (var entry in _fileSystem.EnumerateFilesAsync(root, new VirtualEnumerationOptions(Recursive: true), ct).ConfigureAwait(false))
+        {
+            if (entry.Kind == VirtualEntryKind.File) ranks.TryAdd(entry.VirtualPath, ranks.Count);
+        }
+        return ranks;
+    }
+
+    // Unchanged files are not read: their links come from the `target:` tags, and only those whose target
+    // file or name is added or removed by the changed set are resolved again.
+    private static void ResolveMarkdownLinks(
+        List<RaggableNode> unchangedNodes,
+        List<RaggableNode> newNodes,
+        List<RaggableNode> allNodes,
+        HashSet<string> removedIds,
+        IReadOnlyCollection<string> changedPaths,
+        HashSet<string> changedNames)
+    {
+        var changedFiles = changedPaths.Select(p => p[(p.LastIndexOf('/') + 1)..]).ToHashSet(StringComparer.Ordinal);
+        var affected = new List<RaggableNode>();
+        foreach (var link in unchangedNodes.Where(n => n.Kind == UniversalNodeKind.Link))
+        {
+            foreach (var key in link.Tags.Keys.Where(k => k.StartsWith("resolved:", StringComparison.Ordinal) && removedIds.Contains(k["resolved:".Length..])).ToList())
+                link.TagsMutable.Remove(key);
+
+            var target = link.Tags.Keys.Single(k => k.StartsWith("target:", StringComparison.Ordinal))["target:".Length..].Split('#')[0];
+            var name = target[(target.LastIndexOf('/') + 1)..];
+            if (!link.Tags.Keys.Any(k => k.StartsWith("resolved:", StringComparison.Ordinal))
+                && (changedFiles.Contains(name) || changedNames.Contains(name)))
+                affected.Add(link);
+        }
+
+        affected.AddRange(newNodes);
+        if (!affected.Any(n => n.Kind == UniversalNodeKind.Link)) return;
+        RaggableTreeBuilder.ResolveMarkdownLinks(affected, new MarkdownLinkIndex(allNodes));
     }
 
     private static string ComputeIndexId(List<RaggableNode> unchangedNodes, List<RaggableNode> newNodes)

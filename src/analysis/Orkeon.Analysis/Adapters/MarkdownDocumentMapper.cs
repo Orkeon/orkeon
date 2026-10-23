@@ -6,6 +6,7 @@ using Markdig.Extensions.Yaml;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Orkeon.Analysis.Abstractions;
+using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Core;
@@ -67,7 +68,7 @@ public sealed class MarkdownDocumentMapper
         {
             var language = fence.Info ?? string.Empty;
             var node = Create(virtualPath, UniversalNodeKind.CodeFence, language.Length > 0 ? language : "code", string.Empty,
-                NodeLevel.L4_Statement, content, bytes, fence.Span.Start, fence.Span.End + 1, fence.Line);
+                NodeLevel.L4_Statement, content, bytes, fence.Span.Start, fence.ClosingFencedCharCount == 0 && fence.Parent is MarkdownDocument ? content.Length : fence.Span.End + 1, fence.Line);
             if (language.Length > 0) node.TagsMutable[language] = string.Empty;
             nodes.Add(node);
         }
@@ -98,13 +99,19 @@ public sealed class MarkdownDocumentMapper
         ArgumentNullException.ThrowIfNull(virtualPath);
         ArgumentNullException.ThrowIfNull(store);
 
-        foreach (var link in nodes.Where(n => n.Kind == UniversalNodeKind.Link))
-        {
-            var target = link.Tags.Keys.Single(k => k.StartsWith(TargetPrefix, StringComparison.Ordinal))[TargetPrefix.Length..]
-                .Split('#')[0];
-            if (target.Length == 0 || target.Contains(':', StringComparison.Ordinal)) continue;
+        var links = nodes.Where(n => n.Kind == UniversalNodeKind.Link).ToList();
+        if (links.Count == 0) return nodes;
 
-            var found = await store.GetModuleByPathAsync(ResolvePath(virtualPath, target), cancellationToken).ConfigureAwait(false);
+        var markdownFiles = new MarkdownLinkIndex(await store.QueryAsync(
+            new NodeQuery { Languages = [Language], Take = int.MaxValue }, cancellationToken).ConfigureAwait(false));
+        foreach (var link in links)
+        {
+            var target = LinkTarget(link);
+            if (target is null) continue;
+
+            var path = ResolvePath(virtualPath, target);
+            var found = await store.GetModuleByPathAsync(path, cancellationToken).ConfigureAwait(false);
+            found ??= markdownFiles.MarkdownFile(path);
             if (found is null)
             {
                 var candidates = await store.FindByLocalNameAsync(target, cancellationToken).ConfigureAwait(false);
@@ -115,6 +122,28 @@ public sealed class MarkdownDocumentMapper
         }
 
         return nodes;
+    }
+
+    // Resolves from lookups built once over the node list: no store scan per link.
+    internal static void ResolveLinks(IEnumerable<RaggableNode> nodes, string virtualPath, MarkdownLinkIndex index)
+    {
+        foreach (var link in nodes.Where(n => n.Kind == UniversalNodeKind.Link))
+        {
+            var target = LinkTarget(link);
+            if (target is null) continue;
+
+            var path = ResolvePath(virtualPath, target);
+            var found = index.ModuleByPath(path) ?? index.MarkdownFile(path) ?? index.ByLocalName(target);
+            if (found is not null)
+                link.TagsMutable[$"resolved:{found.Id}"] = found.Fqn;
+        }
+    }
+
+    private static string? LinkTarget(RaggableNode link)
+    {
+        var target = link.Tags.Keys.Single(k => k.StartsWith(TargetPrefix, StringComparison.Ordinal))[TargetPrefix.Length..]
+            .Split('#')[0];
+        return target.Length == 0 || target.Contains(':', StringComparison.Ordinal) ? null : target;
     }
 
     private Dictionary<string, object?>.KeyCollection YamlKeys(string yaml)
@@ -201,4 +230,35 @@ public sealed class MarkdownDocumentMapper
             parent.ChildrenIdsMutable.Add(node.Id);
         }
     }
+}
+
+internal sealed class MarkdownLinkIndex
+{
+    private readonly Dictionary<string, RaggableNode> _modules = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RaggableNode> _markdownFiles = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RaggableNode> _byLocalName = new(StringComparer.Ordinal);
+
+    public MarkdownLinkIndex(IEnumerable<RaggableNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Level == NodeLevel.L2_Module) _modules.TryAdd(node.VirtualFilePath, node);
+            if (string.IsNullOrEmpty(node.Fqn)) continue;
+
+            var separator = node.Fqn.LastIndexOf("::", StringComparison.Ordinal);
+            if (separator < 0) continue;
+
+            _byLocalName.TryAdd(node.Fqn[(separator + 2)..], node);
+            // A Markdown file has no Module node: its first section, in Fqn order, stands for it.
+            if (node.Language == "markdown" && node.Fqn.StartsWith(node.VirtualFilePath + "::", StringComparison.Ordinal)
+                && (!_markdownFiles.TryGetValue(node.VirtualFilePath, out var first) || string.CompareOrdinal(node.Fqn, first.Fqn) < 0))
+                _markdownFiles[node.VirtualFilePath] = node;
+        }
+    }
+
+    public RaggableNode? ModuleByPath(string path) => _modules.GetValueOrDefault(path);
+
+    public RaggableNode? MarkdownFile(string path) => _markdownFiles.GetValueOrDefault(path);
+
+    public RaggableNode? ByLocalName(string name) => _byLocalName.GetValueOrDefault(name);
 }

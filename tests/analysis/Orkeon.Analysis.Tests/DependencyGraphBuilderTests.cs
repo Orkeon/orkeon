@@ -94,4 +94,18 @@ public class DependencyGraphBuilderTests
         var (_, edges) = await BuildAsync(("/r/a.ts", TestFixtures.Imports));
         Assert.Contains(edges, e => e.Kind == EdgeKind.Imports && e.ToId.StartsWith("ext::npm::", StringComparison.Ordinal));
     }
+
+    [Fact]
+    [Trait("BR", "R18")]
+    public async Task ShouldCollectCall_WhenCallSitsInTopLevelTestCallback()
+    {
+        const string source = "export function helper() { return 1; }\ntest('x', () => { helper(); });\n";
+
+        var (nodes, edges) = await BuildAsync(("/r/a.spec.ts", source));
+
+        var module = Assert.Single(nodes, n => n.Level == NodeLevel.L2_Module);
+        var helper = Assert.Single(nodes, n => n.Name == "helper");
+        var edge = Assert.Single(edges, e => e.Kind == EdgeKind.Calls && e.ToId == helper.Id);
+        Assert.Equal(module.Id, edge.FromId);
+    }
 }

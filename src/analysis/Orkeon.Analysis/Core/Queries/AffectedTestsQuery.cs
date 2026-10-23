@@ -19,7 +19,7 @@ public sealed record AffectedTestsResult
 /// The test projects and test classes a set of changed files reaches through the graph, or "all" when a
 /// changed file cannot be attributed (mirrors the affected-tests.py script).
 /// Limits, stated and not worked around: <c>project_depends</c> edges come from csproj files only; TypeScript
-/// tests are tagged but carry no <c>Tests</c> edges; cross-file <c>Tests</c> edges exist only after a full reindex.
+/// tests carry <c>Tests</c> edges from their test-tagged module.
 /// The test projects are the closure over <c>project_depends</c>, so a changed file whose symbols reach no
 /// <c>Tests</c> edge still reaches the test projects of its owner by the path rule.
 /// </summary>
@@ -73,12 +73,13 @@ public static partial class AffectedTestsQuery
         if (reached.Truncated) return Everything([]);
 
         var testMethods = reached.Edges.Where(e => e.Kind == EdgeKind.Tests).Select(e => e.FromId).Distinct(StringComparer.Ordinal).ToList();
-        var methodNodes = reached.Nodes.Where(n => testMethods.Contains(n.Id, StringComparer.Ordinal));
+        var methodNodes = reached.Nodes.Where(n => testMethods.Contains(n.Id, StringComparer.Ordinal)).ToList();
+        var testModules = methodNodes.Where(n => n.Level == NodeLevel.L2_Module).Select(n => n.Fqn);
         var parents = await store.GetManyAsync(methodNodes.Select(n => n.ParentId).OfType<string>().Distinct(StringComparer.Ordinal), ct).ConfigureAwait(false);
         return new AffectedTestsResult
         {
             TestProjects = testProjects,
-            TestClasses = [.. parents.Where(p => p.Kind == UniversalNodeKind.Class).Select(p => p.Fqn).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+            TestClasses = [.. parents.Where(p => p.Kind == UniversalNodeKind.Class).Select(p => p.Fqn).Concat(testModules).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
         };
     }
 

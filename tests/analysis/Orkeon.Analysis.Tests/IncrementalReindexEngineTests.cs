@@ -436,6 +436,351 @@ public class IncrementalReindexEngineTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    private const string CallerSource = "export function caller(): number { return foo(); }";
+
+    private static async Task<HashSet<string>> FullBuildCallsAsync(string dir)
+    {
+        var builder = new RaggableTreeBuilder(new TypeScriptAdapter(), SortedFs(dir));
+        var full = await builder.BuildAsync(
+            TestFixtures.TestVirtualRoot, new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+        return CallsOf(full.Tree);
+    }
+
+    // Listing order must not depend on the disk: files are discovered in ordinal path order.
+    private static FakeCountingFileSystemService SortedFs(string dir) =>
+        new(TestFixtures.CreateFs(dir)) { SortListing = true };
+
+    private static HashSet<string> CallsOf(RaggableTree tree)
+    {
+        var byId = tree.Nodes.ToDictionary(n => n.Id, n => n.Fqn);
+        return tree.Edges.Where(e => e.Kind == EdgeKind.Calls)
+            .Select(e => $"{byId[e.FromId]} -> {byId[e.ToId]}").ToHashSet();
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldKeepSingleCallsEdge_WhenNameIsAddedInAFileRankedBeforeTheCurrentTarget()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("b.ts", "export function other(): number { return 1; }"),
+            ("d.ts", "export function foo(): number { return 4; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function other(): number { return 1; }\nexport function foo(): number { return 2; }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), SortedFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var calls = CallsOf(result.Tree).Where(c => c.EndsWith("foo", StringComparison.Ordinal)).ToList();
+            var call = Assert.Single(calls);
+            Assert.Contains("b.ts", call, StringComparison.Ordinal);
+            Assert.Equal(await FullBuildCallsAsync(dir), CallsOf(result.Tree));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldLinkCall_WhenNameIsAddedInABrandNewFile()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("d.ts", "export function foo(): number { return 4; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function foo(): number { return 2; }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), SortedFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var call = Assert.Single(CallsOf(result.Tree), c => c.EndsWith("foo", StringComparison.Ordinal));
+            Assert.Contains("b.ts", call, StringComparison.Ordinal);
+            Assert.Equal(await FullBuildCallsAsync(dir), CallsOf(result.Tree));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private static bool HasEdge(RaggableTree tree, EdgeKind kind, string fromName, string toName)
+    {
+        var from = tree.Nodes.Where(n => n.Name == fromName).Select(n => n.Id).ToHashSet();
+        var to = tree.Nodes.Where(n => n.Name == toName).Select(n => n.Id).ToHashSet();
+        return tree.Edges.Any(e => e.Kind == kind && from.Contains(e.FromId) && to.Contains(e.ToId));
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldLinkUnchangedCaller_WhenCalledSymbolIsAdded()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("b.ts", "export function other(): number { return 1; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            Assert.False(HasEdge(tree, EdgeKind.Calls, "caller", "foo"));
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function other(): number { return 1; }\nexport function foo(): number { return 2; }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.True(HasEdge(result.Tree, EdgeKind.Calls, "caller", "foo"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldUnlinkUnchangedCaller_WhenCalledSymbolIsRemoved()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("b.ts", "export function foo(): number { return 2; }"),
+            ("c.ts", "export function unrelated(): number { return 3; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            Assert.True(HasEdge(tree, EdgeKind.Calls, "caller", "foo"));
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function other(): number { return 1; }", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(dir, "c.ts"),
+                "export function unrelated(): number { return 3; }\nexport function foo(): number { return 4; }", TestContext.Current.CancellationToken);
+            var oldFoo = tree.Nodes.First(n => n.Name == "foo").Id;
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts", $"{TestFixtures.TestVirtualRoot}/c.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.DoesNotContain(result.Tree.Edges, e => e.Kind == EdgeKind.Calls && e.ToId == oldFoo);
+            var cFoo = result.Tree.Nodes.First(n => n.Name == "foo" && n.VirtualFilePath.EndsWith("c.ts", StringComparison.Ordinal)).Id;
+            Assert.Contains(result.Tree.Edges, e => e.Kind == EdgeKind.Calls && e.ToId == cFoo);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldNotReadUnchangedFiles_WhenRelinkingInboundCalls()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("b.ts", "export function other(): number { return 1; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function other(): number { return 1; }\nexport function foo(): number { return 2; }", TestContext.Current.CancellationToken);
+            var counting = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), counting);
+            var a = $"{TestFixtures.TestVirtualRoot}/a.ts";
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.True(HasEdge(result.Tree, EdgeKind.Calls, "caller", "foo"));
+            Assert.DoesNotContain(a, counting.Reads);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldLinkTestsEdge_WhenTestCallsASymbolAddedElsewhere()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.test.ts", "export function checksFoo(): number { return foo(); }\ntest('x', () => { foo(); });"),
+            ("b.ts", "export function other(): number { return 1; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.ts"),
+                "export function other(): number { return 1; }\nexport function foo(): number { return 2; }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/b.ts"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var fooIds = result.Tree.Nodes.Where(n => n.Name == "foo").Select(n => n.Id).ToHashSet();
+            Assert.Contains(result.Tree.Edges, e => e.Kind == EdgeKind.Tests && fooIds.Contains(e.ToId));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldNotLinkCallToMarkdownSection_WhenChangedMarkdownHeadingSharesTheCalledName()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", "export function caller(): number { return install(); }"),
+            ("docs/other.md", "# Other\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "x.md"), "# install\ntext", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/docs/x.md"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var section = result.Tree.Nodes.Single(n => n.Kind == UniversalNodeKind.Section && n.Name == "install");
+            var caller = result.Tree.Nodes.Single(n => n.Name == "caller").Id;
+            Assert.DoesNotContain(result.Tree.Edges, e => e.Kind == EdgeKind.Calls && e.FromId == caller && e.ToId == section.Id);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldKeepFirstCandidate_WhenAnotherFileDefiningTheSameNameIsEdited()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("a.ts", CallerSource),
+            ("b.ts", "export function foo(): number { return 1; }"),
+            ("c.ts", "export function foo(): number { return 2; }"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            var caller = tree.Nodes.Single(n => n.Name == "caller").Id;
+            var initial = tree.Edges.Where(e => e.Kind == EdgeKind.Calls && e.FromId == caller).ToList();
+            var initialTarget = tree.Nodes.Single(n => n.Id == Assert.Single(initial).ToId);
+            Assert.Equal("foo", initialTarget.Name);
+            var edited = initialTarget.VirtualFilePath;
+            var editedName = edited.EndsWith("b.ts", StringComparison.Ordinal) ? "b.ts" : "c.ts";
+            var otherName = editedName == "b.ts" ? "c.ts" : "b.ts";
+            await File.WriteAllTextAsync(Path.Combine(dir, editedName),
+                "export function foo(): number { return 1; }\nexport function extra(): number { return 5; }", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [edited],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var newCaller = result.Tree.Nodes.Single(n => n.Name == "caller").Id;
+            var targets = result.Tree.Edges.Where(e => e.Kind == EdgeKind.Calls && e.FromId == newCaller)
+                .Select(e => result.Tree.Nodes.Single(n => n.Id == e.ToId).VirtualFilePath).ToList();
+            Assert.Equal([edited], targets);
+            Assert.DoesNotContain(targets, p => p.EndsWith(otherName, StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    private static string ResolvedTag(RaggableTree tree, string path) =>
+        tree.Nodes.Single(n => n.VirtualFilePath == path && n.Kind == UniversalNodeKind.Link).Tags
+            .Where(t => t.Key.StartsWith("resolved:", StringComparison.Ordinal))
+            .Select(t => t.Value).FirstOrDefault() ?? "";
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldResolveLink_WhenChangedMarkdownIsReindexed()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/a.md", "# A\ntext"),
+            ("docs/b.md", "# B\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "a.md"), "# A\n[see](./b.md)", TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+            var a = $"{TestFixtures.TestVirtualRoot}/docs/a.md";
+            var b = $"{TestFixtures.TestVirtualRoot}/docs/b.md";
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [a],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.StartsWith(b, ResolvedTag(result.Tree, a), StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldResolveUnchangedLink_WhenItsTargetFileIsAdded()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/a.md", "# A\n[see](./b.md)"),
+            ("docs/c.md", "# C\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            var a = $"{TestFixtures.TestVirtualRoot}/docs/a.md";
+            var b = $"{TestFixtures.TestVirtualRoot}/docs/b.md";
+            Assert.Equal("", ResolvedTag(tree, a));
+            await File.WriteAllTextAsync(Path.Combine(dir, "docs", "b.md"), "# B\ntext", TestContext.Current.CancellationToken);
+            var counting = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir));
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), counting);
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [b],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.StartsWith(b, ResolvedTag(result.Tree, a), StringComparison.Ordinal);
+            Assert.DoesNotContain(a, counting.Reads);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    [Trait("BR", "R19")]
+    public async Task ShouldDropResolvedTag_WhenItsTargetFileIsRemoved()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("docs/a.md", "# A\n[see](./b.md)"),
+            ("docs/b.md", "# B\ntext"),
+        ]);
+        try
+        {
+            var (tree, _) = await BuildInitialAsync(dir);
+            var a = $"{TestFixtures.TestVirtualRoot}/docs/a.md";
+            Assert.StartsWith($"{TestFixtures.TestVirtualRoot}/docs/b.md", ResolvedTag(tree, a), StringComparison.Ordinal);
+            File.Delete(Path.Combine(dir, "docs", "b.md"));
+            var engine = new IncrementalReindexEngine(new TypeScriptAdapter(), TestFixtures.CreateFs(dir));
+
+            var result = await engine.ReindexAsync(
+                tree, TestFixtures.TestVirtualRoot, [$"{TestFixtures.TestVirtualRoot}/docs/b.md"],
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.Equal("", ResolvedTag(result.Tree, a));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static async Task<(RaggableTree Tree, string IndexId)> BuildInitialAsync(string dir)
     {
         var fs = TestFixtures.CreateFs(dir);

@@ -30,11 +30,12 @@ internal static partial class TestEdgeLinker
         var linked = new List<RaggableEdge>();
         foreach (var call in edges.Where(e => e.Kind == EdgeKind.Calls))
         {
-            if (!byId.TryGetValue(call.FromId, out var test) || test.Kind != UniversalNodeKind.Method
+            if (!byId.TryGetValue(call.FromId, out var test) || (test.Kind != UniversalNodeKind.Method && test.Level != NodeLevel.L2_Module)
                 || !test.Tags.ContainsKey(TestTag) || !byId.TryGetValue(call.ToId, out var target)) continue;
             var testProject = ProjectOf(test, byId);
             var targetProject = ProjectOf(target, byId);
-            if (testProject is null || targetProject is null || !referenced[testProject].Contains(targetProject)) continue;
+            var unscoped = test.Level == NodeLevel.L2_Module && (testProject is null || targetProject is null);
+            if (!unscoped && (testProject is null || targetProject is null || !referenced[testProject].Contains(targetProject))) continue;
             linked.Add(new RaggableEdge($"tests::{test.Id}->{target.Id}", test.Id, target.Id, EdgeKind.Tests));
         }
 

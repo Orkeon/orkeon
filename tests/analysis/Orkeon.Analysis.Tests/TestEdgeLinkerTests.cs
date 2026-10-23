@@ -125,4 +125,21 @@ public sealed class TestEdgeLinkerTests : IDisposable
         Assert.NotEmpty(inFile);
         Assert.DoesNotContain(inFile, n => n.Tags.ContainsKey("test"));
     }
+
+    [Fact]
+    [Trait("BR", "R18")]
+    public async Task ShouldLinkTestsEdge_WhenTsTestCallbackCallsASymbol()
+    {
+        var repo = new DevRepoFixtureBuilder()
+            .WithTypeScriptFile("lib.ts", "export function helper() { return 1; }\n")
+            .WithTypeScriptFile("lib.spec.ts", "import { helper } from './lib';\ntest('x', () => { helper(); });\n");
+        var tree = await BuildAsync(repo, new TypeScriptAdapter());
+
+        var module = Assert.Single(tree.Nodes, n => n.Level == NodeLevel.L2_Module && n.VirtualFilePath == "/src/lib.spec.ts");
+        var helper = Assert.Single(tree.Nodes, n => n.Name == "helper");
+        Assert.True(module.Tags.ContainsKey("test"));
+        var edge = Assert.Single(tree.Edges, e => e.Kind == EdgeKind.Tests);
+        Assert.Equal(module.Id, edge.FromId);
+        Assert.Equal(helper.Id, edge.ToId);
+    }
 }

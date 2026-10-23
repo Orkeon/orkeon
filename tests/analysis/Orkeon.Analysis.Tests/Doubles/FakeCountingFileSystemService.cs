@@ -48,9 +48,21 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
 
     public IReadOnlyList<MountInfo> GetAvailableMounts() => _inner.GetAvailableMounts();
 
+    /// <summary>When set, listings come back sorted by ordinal virtual path, whatever the disk order is.</summary>
+    public bool SortListing { get; init; }
+
     public IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(
         string virtualRoot, VirtualEnumerationOptions? options, CancellationToken ct)
-        => _inner.EnumerateFilesAsync(virtualRoot, options, ct);
+        => SortListing ? SortedAsync(virtualRoot, options, ct) : _inner.EnumerateFilesAsync(virtualRoot, options, ct);
+
+    private async IAsyncEnumerable<VirtualFileEntry> SortedAsync(
+        string virtualRoot, VirtualEnumerationOptions? options,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        var entries = new List<VirtualFileEntry>();
+        await foreach (var e in _inner.EnumerateFilesAsync(virtualRoot, options, ct).ConfigureAwait(false)) entries.Add(e);
+        foreach (var e in entries.OrderBy(x => x.VirtualPath, StringComparer.Ordinal)) yield return e;
+    }
 
     public Task<Stream> OpenReadStreamAsync(string virtualPath, CancellationToken ct)
     {

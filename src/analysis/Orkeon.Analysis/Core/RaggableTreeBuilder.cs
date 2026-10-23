@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Abstractions.Interfaces;
@@ -139,6 +140,8 @@ public sealed class RaggableTreeBuilder
                 .RegisterFile(file.VirtualPath, source, fileNodes);
         }
 
+        ResolveMarkdownLinks(allNodes, new MarkdownLinkIndex(allNodes));
+
         // Phase 3b — Resolve dependencies per language
         _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Resolve, 0, 0));
         var allEdges = new List<RaggableEdge>();
@@ -199,6 +202,12 @@ public sealed class RaggableTreeBuilder
 
         var indexId = TreeAssembly.ComputeIndexId(discovery.Files);
         return new BuildResult(tree, indexId, discovery.Files.Length, embeddingStats, discovery.FilterStats);
+    }
+
+    internal static void ResolveMarkdownLinks(IEnumerable<RaggableNode> nodes, MarkdownLinkIndex index)
+    {
+        foreach (var file in nodes.Where(n => n.Kind == UniversalNodeKind.Link).GroupBy(n => n.VirtualFilePath, StringComparer.Ordinal))
+            MarkdownDocumentMapper.ResolveLinks(file, file.Key, index);
     }
 
     private DependencyGraphBuilder GetOrCreateBuilder(

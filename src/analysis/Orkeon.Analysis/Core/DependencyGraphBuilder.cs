@@ -99,7 +99,7 @@ public sealed class DependencyGraphBuilder
 
         CollectImports(edges, index, filePath, moduleNode, parsed.Root, language);
         CollectInheritance(edges, index, ctx, parsed.Root, language);
-        CollectCalls(unresolvedCalls, ctx, parsed.Root, language);
+        CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, language);
     }
 
     private void CollectImports(
@@ -182,6 +182,7 @@ public sealed class DependencyGraphBuilder
     private void CollectCalls(
         List<UnresolvedRef> unresolved,
         FileContext ctx,
+        RaggableNode moduleNode,
         TsNode root,
         TsLanguage language)
     {
@@ -190,10 +191,11 @@ public sealed class DependencyGraphBuilder
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
             var name = ExtractCallName(call);
-            if (_adapter.LanguageName == "typescript" && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
+            if (_adapter.LanguageName == "typescript")
             {
-                var testOwner = ownerSymbol ?? ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
-                if (testOwner is not null) TestEdgeLinker.MarkTest(testOwner);
+                ownerSymbol ??= moduleNode;
+                if (ownerSymbol is not null && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
+                    TestEdgeLinker.MarkTest(ownerSymbol);
             }
 
             if (ownerSymbol is null || string.IsNullOrEmpty(name)) continue;
@@ -204,9 +206,22 @@ public sealed class DependencyGraphBuilder
                 call.EndPosition.Row + 1,
                 ComputeSha(call.Text ?? string.Empty));
 
+            TagCall(moduleNode, name, ownerSymbol.Id);
+
             var kind = call.Type == "new_expression" ? ReferenceKind.Instantiate : ReferenceKind.Call;
             unresolved.Add(new UnresolvedRef(ownerSymbol.Fqn, name, kind, location));
         }
+    }
+
+    internal const string CallsTagPrefix = "calls:";
+
+    // The names a file calls, with the ids of the symbols that call them, stay on its module node so an
+    // incremental reindex can relink the file when a changed file defines or drops one of them.
+    private static void TagCall(RaggableNode module, string name, string ownerId)
+    {
+        var key = CallsTagPrefix + name;
+        if (!module.TagsMutable.TryGetValue(key, out var owners)) module.TagsMutable[key] = ownerId;
+        else if (!owners.Split('\n').Contains(ownerId)) module.TagsMutable[key] = owners + '\n' + ownerId;
     }
 
     private static void ApplyInverseLinks(

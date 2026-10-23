@@ -136,4 +136,28 @@ public sealed class AffectedTestsQueryTests : IDisposable
             Assert.Equal(expected, result.TestProjects.Order(StringComparer.Ordinal));
         }
     }
+
+    [Fact]
+    [Trait("BR", "R18")]
+    public async Task ShouldReturnTsTest_WhenAffectedTestsQueriesAChangedTsSymbol()
+    {
+        IFileSystemService fs = TestFixtures.CreateFs(_dir);
+        new DevRepoFixtureBuilder()
+            .WithProject("P")
+            .WithTestProject("P.Tests", "P")
+            .WithTypeScriptFile("P/lib.ts", "export function helper() { return 1; }\n")
+            .WithTypeScriptFile("P.Tests/lib.spec.ts", "import { helper } from '../P/lib';\ntest('x', () => { helper(); });\n")
+            .Build(fs, TestFixtures.TestVirtualRoot);
+        var built = await new RaggableTreeBuilder(new TypeScriptAdapter(), fs).BuildAsync(
+            TestFixtures.TestVirtualRoot,
+            new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+            CancellationToken.None);
+        var store = new InMemoryRaggableStore(built.Tree, fs);
+        var module = Assert.Single(built.Tree.Nodes, n => n.Level == NodeLevel.L2_Module && n.VirtualFilePath == "/src/P.Tests/lib.spec.ts");
+
+        var result = await AffectedTestsQuery.RunAsync(
+            store, ["P/lib.ts"], TestFixtures.TestVirtualRoot, CancellationToken.None);
+
+        Assert.Equal([module.Fqn], result.TestClasses);
+    }
 }
