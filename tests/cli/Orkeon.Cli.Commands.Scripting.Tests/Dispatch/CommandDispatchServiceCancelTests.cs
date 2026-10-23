@@ -48,7 +48,7 @@ public sealed class CommandDispatchServiceCancelTests
     public void Ticket_posted_under_a_prompt_scope_is_in_the_prompt_turn_before_dispatch_returns()
     {
         var service = NewService();
-        using var scope = CommandDispatchService.BeginCommand("x", CancellationToken.None, timeout: null, promptLine: "/x");
+        using var scope = service.BeginCommand("x", CancellationToken.None, timeout: null, promptLine: "/x");
 
         var ticket = PostIdle(service, "x");
 
@@ -62,11 +62,11 @@ public sealed class CommandDispatchServiceCancelTests
     {
         var service = NewService();
         string a;
-        using (CommandDispatchService.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
+        using (service.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
             a = PostIdle(service, "a");
 
         string b;
-        using (CommandDispatchService.BeginCommand("b", CancellationToken.None, timeout: null, promptLine: "/b"))
+        using (service.BeginCommand("b", CancellationToken.None, timeout: null, promptLine: "/b"))
             b = PostIdle(service, "b");
 
         var turn = service.PromptTurnTickets();

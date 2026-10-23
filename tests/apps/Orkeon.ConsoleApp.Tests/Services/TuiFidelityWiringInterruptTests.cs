@@ -47,6 +47,7 @@ public sealed class TuiFidelityWiringInterruptTests
     [Fact]
     [Trait("BR", "CH-02")]
     [Trait("BR", "CH-03")]
+    [Trait("BR", "R12b")]
     public void InterruptCurrent_cancels_the_prompt_turn_and_not_a_newer_background_ticket()
     {
         var dispatch = NewDispatch();
@@ -54,13 +55,13 @@ public sealed class TuiFidelityWiringInterruptTests
         using var _ = services;
 
         string promptTicket;
-        using (CommandDispatchService.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
+        using (dispatch.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
         {
             promptTicket = PostIdle(dispatch, "turn");
         }
 
         string backgroundTicket;
-        using (CommandDispatchService.BeginCommand("b", CancellationToken.None, timeout: null))
+        using (dispatch.BeginCommand("b", CancellationToken.None, timeout: null))
         {
             backgroundTicket = PostIdle(dispatch, "crew");
         }
@@ -79,6 +80,7 @@ public sealed class TuiFidelityWiringInterruptTests
 
     [Fact]
     [Trait("BR", "CH-03")]
+    [Trait("BR", "R12b")]
     public void PromptTurnRunning_is_false_when_only_a_background_ticket_runs()
     {
         var dispatch = NewDispatch();
@@ -86,7 +88,7 @@ public sealed class TuiFidelityWiringInterruptTests
         using var _ = services;
 
         string backgroundTicket;
-        using (CommandDispatchService.BeginCommand("b", CancellationToken.None, timeout: null))
+        using (dispatch.BeginCommand("b", CancellationToken.None, timeout: null))
         {
             backgroundTicket = PostIdle(dispatch, "crew");
         }
@@ -95,7 +97,7 @@ public sealed class TuiFidelityWiringInterruptTests
         Assert.False(integration.PromptTurnRunning!());
 
         string promptTicket;
-        using (CommandDispatchService.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
+        using (dispatch.BeginCommand("a", CancellationToken.None, timeout: null, promptLine: "/a"))
         {
             promptTicket = PostIdle(dispatch, "turn");
         }
