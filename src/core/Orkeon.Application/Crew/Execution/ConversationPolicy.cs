@@ -252,10 +252,6 @@ internal static class ConversationPolicy
     /// Truncates a tool result string to the specified maximum length.
     /// When truncation occurs, appends a notice with the count of omitted characters.
     /// </summary>
-    internal static string TruncateToolResult(string result, int maxLength)
-    {
-        if (result.Length <= maxLength) return result;
-        return result[..maxLength] +
-            $"\n\n[... truncated, {result.Length - maxLength} chars omitted. Use more specific parameters to narrow results.]";
-    }
+    internal static string TruncateToolResult(string result, int maxLength) =>
+        Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(result, maxLength);
 }

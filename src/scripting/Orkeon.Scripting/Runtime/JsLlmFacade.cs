@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Channels;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
@@ -36,6 +37,9 @@ public sealed partial class JsLlmFacade
     private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
+
+    /// <summary>The configured result limits and fan-out bound of the act loop.</summary>
+    public ToolResultLimitsOptions ToolLimits { get; init; } = new();
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
     private readonly string _crewName;
@@ -1087,13 +1091,7 @@ public sealed partial class JsLlmFacade
                 // or an error included, since a provider rejects a call left unanswered. The tool
                 // schemas stay in `cfg` every iteration, so the model can chain further calls or answer.
                 messages.Add(assistantTurn);
-                foreach (var call in calls)
-                {
-                    _ct.ThrowIfCancellationRequested();
-                    session.ThrowIfAborted();
-                    var resultText = await ResolveToolResultAsync(session, call.ToolName, call.Arguments, activity).ConfigureAwait(false);
-                    messages.Add(new LlmMessage { Role = "tool", Content = resultText, ToolCallId = call.Id });
-                }
+                await RunToolCallsAsync(session, calls, messages, activity).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) when (IsLocalInterrupt)
@@ -1145,20 +1143,82 @@ public sealed partial class JsLlmFacade
         return await _provider!.ChatAsync(messages, cfg, _ct).ConfigureAwait(false);
     }
 
+    private static IBaseTool? FindTool(ActSession session, string toolName) =>
+        session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
+
+    private readonly record struct PreparedToolCall(
+        Orkeon.Application.Interfaces.LLM.ParsedToolCall Call, IBaseTool? Tool, Dictionary<string, object?> Arguments, string? Refusal);
+
     /// <summary>
-    /// Applies the permission gate to one tool call and, when allowed, executes it. Returns the
-    /// text fed back to the model: a <c>DENIED: …</c> refusal on a non-Allow verdict, otherwise
-    /// the tool's result string.
+    /// Runs the calls of one model turn group by group (<see cref="ToolCallScheduler"/>): per group the
+    /// gate and <c>onToolCall</c> of each call first, one by one in call order; then the group's reads
+    /// together (a write, or any call not allow-listed, is a group of one); then <c>onToolResult</c> and the
+    /// tool messages in call order. A call whose gate or callback faults leaves its siblings to complete;
+    /// the first fault is rethrown after the group.
     /// </summary>
-    private async Task<string> ResolveToolResultAsync(
-        ActSession session, string toolName, Dictionary<string, object?> toolArgs,
-        System.Diagnostics.Activity? activity)
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fault barrier: the siblings of a faulted call complete first; the first fault is rethrown after the group.")]
+    private async Task RunToolCallsAsync(
+        ActSession session, IReadOnlyList<Orkeon.Application.Interfaces.LLM.ParsedToolCall> calls,
+        List<LlmMessage> messages, System.Diagnostics.Activity? activity)
     {
+        var groups = ToolCallScheduler.Partition(
+            calls, c => ToolCallScheduler.IsParallelRead(c.ToolName, FindTool(session, c.ToolName)?.Access ?? ToolAccess.Unspecified));
+        foreach (var group in groups)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? fault = null;
+            var prepared = new List<PreparedToolCall>(group.Calls.Count);
+            foreach (var call in group.Calls)
+            {
+                _ct.ThrowIfCancellationRequested();
+                session.ThrowIfAborted();
+                try
+                {
+                    prepared.Add(await PrepareToolCallAsync(session, call, activity).ConfigureAwait(false));
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fault ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex);
+                }
+            }
+
+            var toRun = prepared.Where(p => p.Refusal is null).ToList();
+            var outputs = await ToolCallScheduler.RunAsync(
+                toRun, _ => group.IsParallel,
+                (p, _) => ExecuteToolAsync(p.Tool, p.Call.ToolName, p.Arguments),
+                ToolLimits.MaxParallelToolCalls, _ct).ConfigureAwait(false);
+
+            var executed = 0;
+            foreach (var p in prepared)
+            {
+                var text = p.Refusal;
+                if (text is null)
+                {
+                    text = outputs[executed++];
+                    if (session.HasToolResultCallback)
+                        text = await ApplyToolResultCallbackAsync(session, p.Call.ToolName, p.Arguments, text).ConfigureAwait(false);
+                }
+                messages.Add(new LlmMessage { Role = "tool", Content = text, ToolCallId = p.Call.Id });
+            }
+
+            fault?.Throw();
+        }
+    }
+
+    /// <summary>
+    /// Applies the permission gate and <c>onToolCall</c> to one tool call. A non-Allow verdict or a
+    /// callback denial becomes the <c>DENIED: …</c> refusal fed back to the model; otherwise the call is
+    /// ready to execute, with the arguments the callback may have rewritten.
+    /// </summary>
+    private async Task<PreparedToolCall> PrepareToolCallAsync(
+        ActSession session, Orkeon.Application.Interfaces.LLM.ParsedToolCall call, System.Diagnostics.Activity? activity)
+    {
+        var toolName = call.ToolName;
+        var toolArgs = call.Arguments;
         var permissionMode = session.PermissionMode;
         // Resolved before the gate so the tool's self-declared access class
         // (IBaseTool.Access) informs the verdict; unresolved tools stay
         // Unspecified and the gate classifies them fail-closed.
-        var tool = session.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
+        var tool = FindTool(session, toolName);
         var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
@@ -1167,7 +1227,7 @@ public sealed partial class JsLlmFacade
             // tool result — no exception, the model can adapt. Denied calls consume no
             // tool-call budget.
             activity?.SetTag("orkeon.llm.act.permission", "denied");
-            return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
+            return new(call, tool, toolArgs, $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}");
         }
 
         if (session.HasToolCallback)
@@ -1176,7 +1236,7 @@ public sealed partial class JsLlmFacade
             if (callback.DenyReason is not null)
             {
                 activity?.SetTag("orkeon.llm.act.permission", "denied");
-                return $"DENIED: {callback.DenyReason}";
+                return new(call, tool, toolArgs, $"DENIED: {callback.DenyReason}");
             }
             toolArgs = callback.Arguments;
         }
@@ -1184,8 +1244,7 @@ public sealed partial class JsLlmFacade
         // Recorded here, NOT inside ExecuteToolAsync: its fault barrier would swallow
         // BudgetExhaustedException into an "ERROR:" string fed back to the model.
         _budget?.RecordToolCall();
-        var text = await ExecuteToolAsync(tool, toolName, toolArgs).ConfigureAwait(false);
-        return session.HasToolResultCallback ? await ApplyToolResultCallbackAsync(session, toolName, toolArgs, text).ConfigureAwait(false) : text;
+        return new(call, tool, toolArgs, null);
     }
 
     /// <summary>
@@ -1285,7 +1344,7 @@ public sealed partial class JsLlmFacade
             // Without the host's pipeline, the bound it would have applied: one rule for both paths.
             return resp.Result is null
                 ? "(no output)"
-                : Orkeon.Application.Crew.Execution.NativeToolCallTranscript.TruncateResult(JsonSerializer.Serialize(resp.Result), tool.Name);
+                : ToolResultLimitsOptions.Cut(JsonSerializer.Serialize(resp.Result), ToolLimits.ResolveFor(tool.Name));
         }
         catch (Exception ex)
         {

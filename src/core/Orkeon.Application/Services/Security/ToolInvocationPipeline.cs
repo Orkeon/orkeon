@@ -37,6 +37,7 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     private readonly IToolResultSanitizer? _sanitizer;
     private readonly IAuditLogger? _auditLogger;
     private readonly ILogger _logger;
+    private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _limits;
 
     /// <summary>A pipeline with no guardian, no sanitizer and no audit: the call and the truncation only.</summary>
     public static ToolInvocationPipeline Unguarded { get; } = new();
@@ -46,16 +47,19 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
     /// <param name="sanitizer">The sanitizer applied to every successful result.</param>
     /// <param name="auditLogger">The audit trail a <c>ToolExecution</c> event is written to per call.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="limits">The per-tool result cuts; without it the <c>AgentDefaults</c> ones apply.</param>
     public ToolInvocationPipeline(
         IGuardianPipeline? guardian = null,
         IToolResultSanitizer? sanitizer = null,
         IAuditLogger? auditLogger = null,
-        ILogger<ToolInvocationPipeline>? logger = null)
+        ILogger<ToolInvocationPipeline>? logger = null,
+        Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? limits = null)
     {
         _guardian = guardian;
         _sanitizer = sanitizer;
         _auditLogger = auditLogger;
         _logger = (ILogger?)logger ?? NullLogger.Instance;
+        _limits = limits?.Value;
     }
 
     /// <inheritdoc />
@@ -120,10 +124,12 @@ public sealed partial class ToolInvocationPipeline : IToolInvocationPipeline
             ? ToolCallFormatting.FormatResult(response.Result)
             : $"Error: {response.Error}";
 
-        // The one truncation rule (AgentDefaults.ResolveMaxToolResultLength), applied before the
+        // The one truncation rule (ToolResultLimitsOptions.ResolveFor, defaulting to AgentDefaults), applied before the
         // sanitizer so that what is screened is exactly what the model reads.
-        var conversationText = ConversationPolicy.TruncateToolResult(
-            rawText, AgentDefaults.ResolveMaxToolResultLength(tool.Name));
+        var conversationText = response.AlreadyBounded
+            ? rawText
+            : ConversationPolicy.TruncateToolResult(
+                rawText, _limits?.ResolveFor(tool.Name) ?? AgentDefaults.ResolveMaxToolResultLength(tool.Name));
 
         if (response.Success && _sanitizer is not null)
         {

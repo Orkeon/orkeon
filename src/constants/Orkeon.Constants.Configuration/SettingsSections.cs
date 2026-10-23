@@ -74,6 +74,7 @@ public static class SettingsSections
         "Orkeon:Tools",
         "Orkeon:Tools:Drive",
         "Orkeon:Tools:Email",
+        "Orkeon:Tools:ResultLimits",
         "Orkeon:Tools:Shell",
         "Orkeon:VectorSearch",
         "Security:Audit",

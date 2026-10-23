@@ -200,13 +200,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 30 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 70 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 25 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-68 sections, 379 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+69 sections, 381 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1249,9 +1249,9 @@ l'invite de chaque tour d'agent — voir [Sécurité](../architecture/security.m
 
 Filtrage des résultats d'outils : `Policy` vaut `Warn` par défaut — balisé comme donnée et
 signalé —, `Block` retient High/Critical, `None` laisse tout passer ; les `TrustedTools` s'ajoutent
-aux `email_*` par défaut. La longueur ne se règle pas ici : une seule règle,
-`AgentDefaults.ResolveMaxToolResultLength`. Liée par `AddOrkeonInfrastructure()` et appliquée à
-chaque résultat d'outil par `IToolInvocationPipeline`.
+aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:Tools:ResultLimits`
+(ci-dessous). Liée par `AddOrkeonInfrastructure()` et appliquée à chaque résultat d'outil par
+`IToolInvocationPipeline`.
 
 <!-- settings:Security:ToolResults -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1355,6 +1355,31 @@ Politiques DLP et détection de PII. Opt-in : `AddOrkeonDlp()`.
 ## Outils
 
 Ce que les outils d'un agent ont le droit de faire, et les serveurs et index qu'ils atteignent.
+
+### `Orkeon:Tools:ResultLimits`
+
+La coupe d'un résultat d'outil et le parallélisme d'un lot d'appels. `Limits` associe un nom
+d'outil (insensible à la casse) au plus grand nombre de caractères de son résultat ; elle part de la
+table de `AgentDefaults` (`shell_command` : 10_000), chaque valeur vaut au moins 1, et un outil
+absent de la table garde sa borne `AgentDefaults`. `MaxParallelToolCalls` (défaut `4`, au moins 1)
+est le plus grand nombre d'appels d'outils en lecture d'un même tour du modèle qui s'exécutent en
+même temps ([appels parallèles](../architecture/coding-agent-ts.md#une-boucle-dagent-dans-une-crew--ctxllmact)).
+
+Un résultat qui dépasse sa borne est coupé et se termine par un avis, `N chars omitted. …`, qui dit
+combien a été retranché. `shell_command`, son plafond de flux et `job_tail` lisent la même borne, de
+même que la coupe de repli de `ctx.llm.act` quand aucun pipeline n'en applique. Un outil qui a déjà
+coupé sa propre sortie (`shell_command`, avec son avis) marque le résultat comme déjà borné, et le
+pipeline ne le coupe pas une seconde fois. Le `ResultBudget`
+des outils Drive et Email est une borne distincte, hors de ce réglage.
+
+<!-- settings:Orkeon:Tools:ResultLimits -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Limits:<nom>` | entier | — | La coupe en caractères, par nom d'outil (insensible à la casse). |
+| `MaxParallelToolCalls` | entier | `4` | Le plus grand nombre d'appels d'un même lot qui s'exécutent en même temps. |
+<!-- /settings -->
 
 ### `Orkeon:Tools:Shell`
 

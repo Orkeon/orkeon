@@ -8,6 +8,7 @@ using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Security;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
+using Microsoft.Extensions.Options;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Application.Tests.Services.Security;
@@ -184,6 +185,89 @@ public class ToolInvocationPipelineTests
         Assert.Equal(["writer"], guardian.Contexts[1].DelegationChain);
         Assert.Equal("writer", guardian.Contexts[1].TargetAgentRole);
         Assert.Empty(guardian.Contexts[2].DelegationChain);
+    }
+
+    private static ToolInvocationPipeline PipelineWithLimits(params (string Tool, int Limit)[] limits)
+    {
+        var options = new ToolResultLimitsOptions();
+        foreach (var (tool, limit) in limits)
+            options.Limits[tool] = limit;
+        return new ToolInvocationPipeline(limits: Options.Create(options));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async System.Threading.Tasks.Task ShouldUseConfiguredCut_WhenResultLimitSetForTool()
+    {
+        var pipeline = PipelineWithLimits(("directory_read", 6000));
+        var fiveThousand = new string('a', 5000);
+
+        var configured = await pipeline.InvokeAsync(Call(new SpyTool("directory_read", result: fiveThousand)), TestContext.Current.CancellationToken);
+        var unconfigured = await pipeline.InvokeAsync(Call(new SpyTool("web_scrape", result: fiveThousand)), TestContext.Current.CancellationToken);
+
+        Assert.Equal(fiveThousand, configured.ConversationText);
+        Assert.Equal(
+            new string('a', 4000) + "\n\n[... truncated, 1000 chars omitted. Use more specific parameters to narrow results.]",
+            unconfigured.ConversationText);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async System.Threading.Tasks.Task ShouldReportOmittedChars_WhenResultIsCut()
+    {
+        var pipeline = PipelineWithLimits(("file_read", 1000));
+
+        var result = await pipeline.InvokeAsync(
+            Call(new SpyTool("file_read", result: new string('b', 1300))), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            new string('b', 1000) + "\n\n[... truncated, 300 chars omitted. Use more specific parameters to narrow results.]",
+            result.ConversationText);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async System.Threading.Tasks.Task ShouldKeepShellCommandAtTenThousand_WhenNoLimitConfigured()
+    {
+        var pipeline = PipelineWithLimits();
+
+        var kept = await pipeline.InvokeAsync(
+            Call(new SpyTool("shell_command", result: new string('s', 9000))), TestContext.Current.CancellationToken);
+        var cut = await pipeline.InvokeAsync(
+            Call(new SpyTool("shell_command", result: new string('s', 12_000))), TestContext.Current.CancellationToken);
+
+        Assert.Equal(new string('s', 9000), kept.ConversationText);
+        Assert.Equal(
+            new string('s', 10_000) + "\n\n[... truncated, 2000 chars omitted. Use more specific parameters to narrow results.]",
+            cut.ConversationText);
+        Assert.Equal(10_000, new ToolResultLimitsOptions().ResolveFor("shell_command"));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async System.Threading.Tasks.Task ShouldNotCutAgain_WhenToolResultIsFlaggedAlreadyBounded()
+    {
+        var pipeline = PipelineWithLimits(("file_read", 1000));
+        var payload = new string('b', 1300);
+        var tool = new StubResponseTool("file_read", new ToolCallResponse(true, payload, null) { AlreadyBounded = true });
+
+        var result = await pipeline.InvokeAsync(Call(tool), TestContext.Current.CancellationToken);
+
+        Assert.Equal(payload, result.ConversationText);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async System.Threading.Tasks.Task ShouldStillCut_WhenToolResultIsNotFlagged()
+    {
+        var pipeline = PipelineWithLimits(("file_read", 1000));
+        var tool = new StubResponseTool("file_read", new ToolCallResponse(true, new string('b', 1300), null));
+
+        var result = await pipeline.InvokeAsync(Call(tool), TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            new string('b', 1000) + "\n\n[... truncated, 300 chars omitted. Use more specific parameters to narrow results.]",
+            result.ConversationText);
     }
 
     // -- CH-02: the tool and security instruments are fed without an audit log --

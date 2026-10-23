@@ -1367,3 +1367,15 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.init -> void
 static readonly Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait -> System.TimeSpan
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.init -> void
+const Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName = "Orkeon:Tools:ResultLimits" -> string!
+Orkeon.Domain.Tools.ToolResultLimitsOptions
+Orkeon.Domain.Tools.ToolResultLimitsOptions.Limits.get -> System.Collections.Generic.Dictionary<string!, int>!
+Orkeon.Domain.Tools.ToolResultLimitsOptions.MaxParallelToolCalls.get -> int
+Orkeon.Domain.Tools.ToolResultLimitsOptions.MaxParallelToolCalls.set -> void
+Orkeon.Domain.Tools.ToolResultLimitsOptions.ResolveFor(string! toolName) -> int
+Orkeon.Domain.Tools.ToolResultLimitsOptions.ToolResultLimitsOptions() -> void
+static Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(string! result, int maxLength) -> string!
+Orkeon.Domain.Tools.IBoundedToolResponse
+Orkeon.Domain.Tools.IBoundedToolResponse.AlreadyBounded.get -> bool
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.get -> bool
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.init -> void

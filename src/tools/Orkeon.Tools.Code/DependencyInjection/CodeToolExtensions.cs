@@ -76,7 +76,8 @@ public static class CodeToolExtensions
             var logger = sp.GetService<ILogger<ShellCommandTool>>();
             var shell = sp.GetRequiredService<IOptions<ShellToolOptions>>().Value;
             return new ShellCommandTool(fs, allowedCommands: CommandList(shell.AllowedCommands), blockedPatterns: null, logger,
-                allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands))
+                allowInterpreters: shell.AllowInterpreters, extraAllowedCommands: CommandList(shell.ExtraAllowedCommands),
+                limits: sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value)
             {
                 Confinement = shell.Confinement,
                 Sessions = sp.GetRequiredService<ShellSessionManager>(),

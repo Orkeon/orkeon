@@ -59,7 +59,8 @@ public sealed class ShellCommandToolJobTests : IDisposable
         FakeShellSandbox? sandbox,
         FileAccessRights workspaceRights = FileAccessRights.ReadWrite,
         FileAccessRights? outputRights = FileAccessRights.ReadWrite,
-        ShellConfinementOptions? confinement = null)
+        ShellConfinementOptions? confinement = null,
+        Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null)
     {
         var workspace = Path.Combine(_tempDir, "ws");
         Directory.CreateDirectory(workspace);
@@ -72,8 +73,8 @@ public sealed class ShellCommandToolJobTests : IDisposable
         _fileSystem = fileSystem;
         var options = confinement ?? TestConfinement.Off();
         var tool = sandbox is null
-            ? new ShellCommandTool(fileSystem) { Confinement = options }
-            : new ShellCommandTool(fileSystem) { Sandbox = sandbox, Confinement = options };
+            ? new ShellCommandTool(fileSystem, limits: limits) { Confinement = options }
+            : new ShellCommandTool(fileSystem, limits: limits) { Sandbox = sandbox, Confinement = options };
         _disposables.Add(tool);
         return tool;
     }
@@ -214,6 +215,29 @@ public sealed class ShellCommandToolJobTests : IDisposable
 
         var text = Assert.IsType<string>(tail["tail"]).Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd('\n');
         Assert.Equal("line4\nline5", text);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async Task ShouldCutJobTailOnConfiguredBound_WhenLimitSetForShell()
+    {
+        var limits = new Orkeon.Domain.Tools.ToolResultLimitsOptions();
+        limits.Limits["shell_command"] = 500;
+        var sandbox = new FakeShellSandbox();
+        var tool = NewTool(sandbox, limits: limits);
+
+        Dictionary<string, object?> tail;
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            var id = JobIdOf(Unpack(await tool.CallAsync(Request("start_job", command: "echo hi"), Ct)));
+            JobOf(sandbox).WriteLog(new string('b', 1200));
+            tail = Unpack(await tool.CallAsync(Request("job_tail", jobId: id), Ct));
+        }
+
+        var text = Assert.IsType<string>(tail["tail"]);
+        Assert.StartsWith(new string('b', 500), text, StringComparison.Ordinal);
+        Assert.Contains("chars omitted", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Output truncated]", text, StringComparison.Ordinal);
     }
 
     [Theory]

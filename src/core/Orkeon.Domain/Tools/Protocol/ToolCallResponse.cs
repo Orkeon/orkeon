@@ -10,4 +10,8 @@ public record ToolCallResponse(
     object? Result,
     string? Error,
     Dictionary<string, object?>? Metadata = null
-);
+)
+{
+    /// <summary>True when the tool already bounded its own output; the invocation pipeline then does not truncate it again.</summary>
+    public bool AlreadyBounded { get; init; }
+}

@@ -52,4 +52,10 @@ internal sealed record JsExecutionEnvironment
     /// through after the permission gate. Null = the tool is called directly.
     /// </summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
+
+    /// <summary>
+    /// The configured tool-result cuts and fan-out bound of <c>ctx.llm.act</c>; a host sets it from
+    /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.
+    /// </summary>
+    public Orkeon.Domain.Tools.ToolResultLimitsOptions ToolLimits { get; init; } = new();
 }

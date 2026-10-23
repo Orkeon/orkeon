@@ -12,3 +12,5 @@ Orkeon.Scripting.Builders.JsCrewBuilder.concurrency(int value) -> Orkeon.Scripti
 Orkeon.Scripting.Runtime.JsAgentContext.spawnBackground.get -> System.Func<string!, string!, Jint.Native.JsValue!>!
 Orkeon.Scripting.Bindings.RagScriptingBackendFactory
 static Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(System.IServiceProvider! services) -> Orkeon.Scripting.Bindings.RagScriptingBackend?
+Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.get -> Orkeon.Domain.Tools.ToolResultLimitsOptions!
+Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.init -> void

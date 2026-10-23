@@ -207,7 +207,7 @@ internal sealed class PosixShellSession : IShellSession
             timeout.CancelAfter(invocation.Timeout);
             try
             {
-                await WriteAsync(ShellScript.Command(invocation, nonce), timeout.Token).ConfigureAwait(false);
+                await WriteAsync(ShellScript.Command(invocation, nonce, ShellScript.ByteCapFor(invocation.OutputLimit)), timeout.Token).ConfigureAwait(false);
                 var frame = await ReadFrameAsync(nonce, timeout.Token).ConfigureAwait(false);
                 return new ShellRunResult(frame.ExitCode, frame.Stdout, frame.Stderr);
             }

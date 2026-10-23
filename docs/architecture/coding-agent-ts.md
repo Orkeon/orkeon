@@ -93,6 +93,22 @@ policy travelled with user-level authority, and the providers' native system han
 (Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
 message wins over `LlmConfig.SystemMessage` on every provider.
 
+**Parallel read-class tool calls.** The tool calls of one model turn that are read-class — the
+tool declares `Access` `Read` **and** its name is on the explicit allow-list (`file_read`,
+`directory_read`, `directory_search`, `count_pattern`, `glob`, `grep`, `rag_search`, `codebase_*`,
+`symbol_*`, `index_status`, `node_outline`, `node_read`; the shell session is not on it) — run
+concurrently, bounded by `MaxParallelToolCalls` (default 4) of
+[`Orkeon:Tools:ResultLimits`](../reference/configuration.md#securitytoolresults). A write call, or one whose access is `Unspecified`, is a
+barrier: a read after it waits for it and sees its effect. The results, and the tool messages sent
+back to the model, keep the call order. Hooks: for each parallel group, `onToolCall` runs for every
+read first (sequentially, in call order, on the engine thread), then the executions, then
+`onToolResult` in call order; no callback ever runs concurrently with another. When a sibling
+faults, is cancelled or throws `BudgetExhaustedException`, the others complete and are recorded,
+and the first fault is rethrown after the group. The approvals that concurrent reads ask are
+serialised (`SerialisingToolApprovalChannel`, registered by `AddConsoleToolApproval`). The
+native loops of a YAML crew and the chat dispatcher fan out the same way; the text-fallback sites
+(the `ChatToolDispatcher` text path and `LegacyTextAgentLoop`) stay sequential.
+
 ## Permissions and budget
 
 The permission gate is a first-class DI service, `IPermissionGate`

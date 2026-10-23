@@ -4,8 +4,8 @@ namespace Orkeon.Infrastructure.Configuration;
 
 /// <summary>
 /// Configuration options for tool result sanitization (<c>Security:ToolResults</c>). The
-/// length of a result is bounded by one rule only, <c>AgentDefaults.ResolveMaxToolResultLength</c>,
-/// applied by the tool-invocation pipeline before this sanitizer runs.
+/// length of a result is bounded by one rule only, <c>ToolResultLimitsOptions.ResolveFor</c>
+/// (<c>Orkeon:Tools:ResultLimits</c>, defaulting to <c>AgentDefaults</c>), applied by the tool-invocation pipeline before this sanitizer runs.
 /// </summary>
 public class ToolResultSecurityOptions
 {

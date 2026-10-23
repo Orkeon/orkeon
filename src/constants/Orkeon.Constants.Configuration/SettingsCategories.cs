@@ -131,6 +131,7 @@ public static class SettingsCategories
 
             ["Orkeon:Tools:Shell"] = Tools,
             ["Orkeon:Tools:Email"] = Tools,
+            ["Orkeon:Tools:ResultLimits"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
             ["MCP"] = Tools,
             ["RaggableTree"] = Tools,

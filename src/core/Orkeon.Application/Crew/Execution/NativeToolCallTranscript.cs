@@ -7,7 +7,7 @@ namespace Orkeon.Application.Crew.Execution;
 /// <summary>
 /// The conversation turns of native tool calling, shared by the C# agent loop and the scripting
 /// <c>ctx.llm.act</c> loop: the assistant turn that carries a response's tool calls, which the
-/// provider replays in its own protocol, and the one bound a tool result is cut to.
+/// provider replays in its own protocol.
 /// </summary>
 public static class NativeToolCallTranscript
 {
@@ -29,20 +29,6 @@ public static class NativeToolCallTranscript
             RawToolCalls = RawToolCalls(responseBody),
             ReasoningContent = ReasoningContent(response),
         };
-    }
-
-    /// <summary>
-    /// Cuts a tool result to the framework's one bound,
-    /// <see cref="AgentDefaults.ResolveMaxToolResultLength"/>, and tells the model how much was
-    /// left out — the rule the host's tool invocation pipeline applies.
-    /// </summary>
-    /// <param name="result">The tool's result as the model would read it.</param>
-    /// <param name="toolName">The tool's name, which may carry a wider bound.</param>
-    /// <returns>The result, whole or cut.</returns>
-    public static string TruncateResult(string result, string toolName)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-        return ConversationPolicy.TruncateToolResult(result, AgentDefaults.ResolveMaxToolResultLength(toolName));
     }
 
     private static string RawToolCalls(JsonElement root)

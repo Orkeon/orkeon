@@ -256,7 +256,7 @@
       "category": "security",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "Configuration options for tool result sanitization (`Security:ToolResults`). The length of a result is bounded by one rule only, `AgentDefaults.ResolveMaxToolResultLength`, applied by the tool-invocation pipeline before this sanitizer runs."
+      "description": "Configuration options for tool result sanitization (`Security:ToolResults`). The length of a result is bounded by one rule only, `ToolResultLimitsOptions.ResolveFor` (`Orkeon:Tools:ResultLimits`, defaulting to `AgentDefaults`), applied by the tool-invocation pipeline before this sanitizer runs."
     },
     {
       "path": "Security:Url",
@@ -312,6 +312,13 @@
       "hosts": [],
       "registration": "AddOrkeonEmailTools",
       "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
+    },
+    {
+      "path": "Orkeon:Tools:ResultLimits",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The cut of each tool's result, bound from `Orkeon:Tools:ResultLimits`, and the fan-out bound of a tool-call batch."
     },
     {
       "path": "Orkeon:Tools:Shell",
@@ -2349,6 +2356,19 @@
       "type": "boolean",
       "default": false,
       "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
+    },
+    {
+      "path": "Orkeon:Tools:ResultLimits:Limits:<name>",
+      "section": "Orkeon:Tools:ResultLimits",
+      "type": "integer",
+      "description": "The cut in characters, by tool name (case-insensitive)."
+    },
+    {
+      "path": "Orkeon:Tools:ResultLimits:MaxParallelToolCalls",
+      "section": "Orkeon:Tools:ResultLimits",
+      "type": "integer",
+      "default": 4,
+      "description": "The most tool calls of one batch that run at once."
     },
     {
       "path": "Orkeon:Tools:Shell:AllowedCommands",

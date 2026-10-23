@@ -96,6 +96,25 @@ utilisateur, et la gestion native du system des fournisseurs (Anthropic `system`
 niveau, `cache_control`) ne se déclenchait jamais. Un message system au niveau conversation
 l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
+**Appels d'outils en lecture, en parallèle.** Les appels d'outils d'un même tour du modèle qui
+sont de classe lecture — l'outil déclare l'`Access` `Read` **et** son nom figure sur la liste
+d'autorisation explicite (`file_read`, `directory_read`, `directory_search`, `count_pattern`,
+`glob`, `grep`, `rag_search`, `codebase_*`, `symbol_*`, `index_status`, `node_outline`,
+`node_read` ; la session shell n'y figure pas) — s'exécutent en parallèle, dans la limite de
+`MaxParallelToolCalls` (4 par défaut) de
+[`Orkeon:Tools:ResultLimits`](../../reference/configuration.md#securitytoolresults). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
+barrière : une lecture placée après lui l'attend et voit son effet. Les résultats, et les messages
+d'outil renvoyés au modèle, gardent l'ordre des appels. Hooks : pour chaque groupe parallèle,
+`onToolCall` s'exécute d'abord pour toutes les lectures (séquentiellement, dans l'ordre des
+appels, sur le fil du moteur), puis les exécutions, puis `onToolResult` dans l'ordre des appels ;
+aucun callback ne s'exécute jamais en même temps qu'un autre. Quand un appel frère échoue, est
+annulé ou lève `BudgetExhaustedException`, les autres vont à leur terme et sont consignés, et la
+première erreur est relancée après le groupe. Les approbations que demandent les lectures
+concurrentes sont sérialisées (`SerialisingToolApprovalChannel`, enregistré par
+`AddConsoleToolApproval`). Les boucles natives d'une crew YAML et le dispatcher de chat se
+déploient de la même façon ; les sites en repli texte (le chemin texte de `ChatToolDispatcher` et
+`LegacyTextAgentLoop`) restent séquentiels.
+
 ## Permissions et budget
 
 Le garde de permissions est un service DI de premier rang, `IPermissionGate`

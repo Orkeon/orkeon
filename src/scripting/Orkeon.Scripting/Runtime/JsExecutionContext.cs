@@ -68,7 +68,10 @@ public class JsExecutionContext
                 Logger = environment.Logger,
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
-            });
+            })
+        {
+            ToolLimits = environment.ToolLimits,
+        };
 #pragma warning restore CA2000
     }
 

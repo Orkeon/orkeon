@@ -36,3 +36,7 @@ Orkeon.Tools.Code.ShellCommandResponse.Tail.init -> void
 const Orkeon.Tools.Code.ShellCommandTool.DefaultTailLines = 50 -> int
 const Orkeon.Tools.Code.ShellCommandTool.RunAction = "run" -> string!
 override Orkeon.Tools.Code.ShellCommandTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+*REMOVED*Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null) -> void
+Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null, Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null) -> void
+Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.get -> bool
+Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.init -> void

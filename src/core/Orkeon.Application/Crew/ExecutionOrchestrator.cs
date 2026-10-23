@@ -64,7 +64,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         ToolInvocation ?? ToolInvocationPipeline.Unguarded, Callbacks);
 
     private ChatToolDispatcher ToolDispatcher =>
-        _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools, _verboseLogger);
+        _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools, _verboseLogger, ToolLimits);
 
     private ChatOptionsComposer OptionsComposer =>
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
@@ -76,7 +76,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
 
     private NativeToolCallingAgentLoop NativeLoop =>
-        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools, _verboseLogger);
+        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools, _verboseLogger, ToolLimits);
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
@@ -146,6 +146,13 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// first built, so set it before the first execution.
     /// </summary>
     public IToolInvocationPipeline? ToolInvocation { get; set; }
+
+    /// <summary>
+    /// The tool-result options, whose <c>MaxParallelToolCalls</c> bounds the read calls of one turn that
+    /// run together (RT-07). Set by <c>AddOrkeonApplication</c>; null runs the default bound. Read when
+    /// the loops are first built.
+    /// </summary>
+    public Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>? ToolLimits { get; set; }
 
     /// <summary>
     /// The host's named LLM profiles (GAP-17). An agent whose <c>llm</c> configuration — or a

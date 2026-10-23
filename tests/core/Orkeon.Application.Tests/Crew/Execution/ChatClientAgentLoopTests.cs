@@ -562,4 +562,36 @@ public class ChatClientAgentLoopTests
         Assert.Equal("clean final text", result.Output);
         Assert.Equal(4, client.Requests.Count);
     }
+
+    // ── RT-07: the read function calls of one turn fan out in the chat dispatcher ─────
+
+    [Fact]
+    [Trait("BR", "RT-07")]
+    public async System.Threading.Tasks.Task ShouldFanOutInChatDispatcher_WhenFunctionCallsAreReads()
+    {
+        var probe = new ConcurrencyProbe(expected: 3);
+        var tools = new IBaseTool[]
+        {
+            new GatedTool("file_read", ToolAccess.Read, probe),
+            new GatedTool("grep", ToolAccess.Read, probe),
+            new GatedTool("glob", ToolAccess.Read, probe),
+        };
+        var agent = BuildAgent(5, tools);
+        var (loop, client) = BuildLoop(tools);
+        client.Enqueue(new ChatResponse([new ChatMessage(ChatRole.Assistant,
+        [
+            new FunctionCallContent("c1", "file_read", arguments: null),
+            new FunctionCallContent("c2", "grep", arguments: null),
+            new FunctionCallContent("c3", "glob", arguments: null),
+        ])]));
+        client.EnqueueText("done");
+
+        await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, probe.Max);
+        var resultIds = client.Requests[1].Messages
+            .SelectMany(m => m.Contents.OfType<FunctionResultContent>())
+            .Select(r => r.CallId);
+        Assert.Equal(["c1", "c2", "c3"], resultIds);
+    }
 }

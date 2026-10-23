@@ -63,8 +63,11 @@ public sealed record ShellCommandRequest
 }
 
 /// <summary>Strongly-typed response for <see cref="ShellCommandTool"/>.</summary>
-public sealed record ShellCommandResponse
+public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResponse
 {
+    /// <summary>Gets whether the shell cut its own output.</summary>
+    public bool AlreadyBounded { get; init; }
+
     /// <summary>Gets the process exit code.</summary>
     [ReturnSchema(Description = "Process exit code", Example = 0)]
     public int ExitCode { get; init; }
@@ -234,6 +237,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private readonly HashSet<string> _allowedCommands;
     private readonly List<string> _blockedPatterns;
     private readonly IFileSystemService _fileSystem;
+    private readonly int _outputLimit;
 
     /// <summary>
     /// True when interpreters were re-enabled via opt-in AND no explicit custom
@@ -381,16 +385,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <paramref name="allowInterpreters"/> nor the git read-only restriction. An empty
     /// enumerable is harmless (union of nothing).
     /// </param>
+    /// <param name="limits">The configured result cuts; the <c>shell_command</c> entry sets the output limit, the default map's (<see cref="MaxOutputLength"/>) otherwise.</param>
     public ShellCommandTool(
         IFileSystemService fileSystem,
         IEnumerable<string>? allowedCommands = null,
         IEnumerable<string>? blockedPatterns = null,
         ILogger<ShellCommandTool>? logger = null,
         bool allowInterpreters = false,
-        IEnumerable<string>? extraAllowedCommands = null)
+        IEnumerable<string>? extraAllowedCommands = null,
+        Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null)
         : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
+        _outputLimit = (limits ?? new Orkeon.Domain.Tools.ToolResultLimitsOptions()).ResolveFor("shell_command");
         _fileSystem = fileSystem;
         _interpretersAllowed = allowInterpreters && allowedCommands is null;
         _allowedCommands = BuildAllowedCommands(allowedCommands, allowInterpreters);
@@ -706,7 +713,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // ValidateTypedRequest.
         var windowsBuiltin = !confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable);
         var invocation = new ShellInvocation(
-            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin);
+            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin, _outputLimit);
 
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
@@ -743,23 +750,28 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (result.TimedOut)
         {
             LogCommandTimedOut(request.Command, request.TimeoutSeconds);
+            var timedOutStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
+            var timedOutStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]";
             return new ShellCommandResponse
             {
                 ExitCode = -1,
-                Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
-                Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]")
-                    + (result.SessionReset ? SessionResetNote : ""),
-                Completed = false
+                Stdout = Truncate(timedOutStdout),
+                Stderr = Truncate(timedOutStderr) + (result.SessionReset ? SessionResetNote : ""),
+                Completed = false,
+                AlreadyBounded = IsCut(timedOutStdout) || IsCut(timedOutStderr)
             };
         }
 
         LogCommandCompleted(request.Command, result.ExitCode);
+        var completedStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
+        var completedStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements);
         return new ShellCommandResponse
         {
             ExitCode = result.ExitCode,
-            Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
-            Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements)),
-            Completed = true
+            Stdout = Truncate(completedStdout),
+            Stderr = Truncate(completedStderr),
+            Completed = true,
+            AlreadyBounded = IsCut(completedStdout) || IsCut(completedStderr)
         };
     }
 
@@ -1326,14 +1338,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return false;
     }
 
-    /// <summary>Truncates a string to <see cref="MaxOutputLength"/> characters.</summary>
-    private static string Truncate(string value)
-    {
-        if (value.Length <= MaxOutputLength)
-            return value;
+    private bool IsCut(string value) => value.Length > _outputLimit;
 
-        return value[..MaxOutputLength] + "\n[Output truncated]";
-    }
+    /// <summary>Truncates a string to the configured output limit, telling how many characters were omitted.</summary>
+    private string Truncate(string value) =>
+        Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(value, _outputLimit);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shell command completed: {Command} (exit code: {ExitCode})")]
     private partial void LogCommandCompleted(string command, int exitCode);

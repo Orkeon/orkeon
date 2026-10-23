@@ -188,13 +188,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 30 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 70 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 25 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-68 sections, 379 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+69 sections, 381 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1200,9 +1200,9 @@ prompt — see [Security](../architecture/security.md).
 
 Tool-result screening: `Policy` is `Warn` by default — tagged as data and reported —, `Block`
 withholds High/Critical, `None` passes everything; `TrustedTools` are added to the `email_*`
-defaults. The length bound is not configured here: one rule,
-`AgentDefaults.ResolveMaxToolResultLength`. Bound by `AddOrkeonInfrastructure()` and applied to
-every tool result by `IToolInvocationPipeline`.
+defaults. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
+(below). Bound by `AddOrkeonInfrastructure()` and applied to every tool result by
+`IToolInvocationPipeline`.
 
 <!-- settings:Security:ToolResults -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1306,6 +1306,30 @@ DLP policies and PII detection. Opt-in: `AddOrkeonDlp()`.
 ## Tools
 
 What the tools of an agent may do, and which servers and indexes they reach.
+
+### `Orkeon:Tools:ResultLimits`
+
+The cut of a tool result and the fan-out of a tool-call batch. `Limits` maps a tool name
+(case-insensitive) to the most characters of its result; it starts as the `AgentDefaults` map
+(`shell_command`: 10_000), each value is at least 1, and a tool absent from the map keeps its
+`AgentDefaults` bound. `MaxParallelToolCalls` (default `4`, at least 1) is the most read-class tool
+calls of one model turn that run at once ([parallel calls](../architecture/coding-agent-ts.md#an-agent-loop-in-a-crew--ctxllmact)).
+
+A result past its bound is cut and ends with a notice, `N chars omitted. …`, naming how much was
+dropped. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
+`ctx.llm.act` falls back on when no pipeline applies one. A tool that has already cut its own output
+(`shell_command` with its notice) flags the result as already bounded, and the pipeline does not cut
+it a second time. The `ResultBudget` of the Drive and
+Email tools is a separate bound, out of this setting.
+
+<!-- settings:Orkeon:Tools:ResultLimits -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Limits:<name>` | integer | — | The cut in characters, by tool name (case-insensitive). |
+| `MaxParallelToolCalls` | integer | `4` | The most tool calls of one batch that run at once. |
+<!-- /settings -->
 
 ### `Orkeon:Tools:Shell`
 

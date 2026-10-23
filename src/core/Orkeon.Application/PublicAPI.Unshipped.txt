@@ -2318,7 +2318,6 @@ static Orkeon.Application.Telemetry.OrkeonMeter.RecordSecurityEvent(string! kind
 *REMOVED*virtual Orkeon.Application.Training.TrainingTask.PrintMembers(System.Text.StringBuilder! builder) -> bool
 Orkeon.Application.Crew.Execution.NativeToolCallTranscript
 static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.AssistantTurn(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Text.Json.JsonElement responseBody) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!
-static Orkeon.Application.Crew.Execution.NativeToolCallTranscript.TruncateResult(string! result, string! toolName) -> string!
 Orkeon.Application.Interfaces.Security.IToolApprovalChannel
 Orkeon.Application.Interfaces.Security.IToolApprovalChannel.RequestAsync(Orkeon.Application.Interfaces.Security.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolApprovalDecision>!
 Orkeon.Application.Interfaces.Security.ToolApprovalDecision
@@ -2415,3 +2414,28 @@ override Orkeon.Application.Interfaces.Ports.ModelUsage.ToString() -> string!
 static Orkeon.Application.Interfaces.Ports.ModelUsage.operator !=(Orkeon.Application.Interfaces.Ports.ModelUsage? left, Orkeon.Application.Interfaces.Ports.ModelUsage? right) -> bool
 static Orkeon.Application.Interfaces.Ports.ModelUsage.operator ==(Orkeon.Application.Interfaces.Ports.ModelUsage? left, Orkeon.Application.Interfaces.Ports.ModelUsage? right) -> bool
 const Orkeon.Application.Common.DTOs.LlmChatOptionsKeys.CacheTtl = "orkeon:cache_ttl" -> string!
+*REMOVED*Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null) -> void
+Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>? limits = null) -> void
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.<Clone>$() -> Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>!
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.Calls.get -> System.Collections.Generic.IReadOnlyList<TCall>!
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.Calls.init -> void
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.Deconstruct(out bool IsParallel, out System.Collections.Generic.IReadOnlyList<TCall>! Calls) -> void
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.Equals(Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>? other) -> bool
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.IsParallel.get -> bool
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.IsParallel.init -> void
+Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.ToolCallGroup(bool IsParallel, System.Collections.Generic.IReadOnlyList<TCall>! Calls) -> void
+Orkeon.Application.Crew.Execution.ToolCallScheduler
+override Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.GetHashCode() -> int
+override Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.ToString() -> string!
+static Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.operator !=(Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>? left, Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>? right) -> bool
+static Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>.operator ==(Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>? left, Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>? right) -> bool
+static Orkeon.Application.Crew.Execution.ToolCallScheduler.IsParallelRead(string! toolName, Orkeon.Domain.Tools.ToolAccess access) -> bool
+static Orkeon.Application.Crew.Execution.ToolCallScheduler.Partition<TCall>(System.Collections.Generic.IReadOnlyList<TCall>! calls, System.Func<TCall, bool>! isParallelRead) -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Crew.Execution.ToolCallGroup<TCall>!>!
+static Orkeon.Application.Crew.Execution.ToolCallScheduler.RunAsync<TCall, TOutcome>(System.Collections.Generic.IReadOnlyList<TCall>! calls, System.Func<TCall, bool>! isParallelRead, System.Func<TCall, System.Threading.CancellationToken, System.Threading.Tasks.Task<TOutcome>!>! execute, int maxParallel, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<TOutcome>!>!
+Orkeon.Application.Services.Security.SerialisingToolApprovalChannel
+Orkeon.Application.Services.Security.SerialisingToolApprovalChannel.RequestAsync(Orkeon.Application.Interfaces.Security.ToolApprovalRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolApprovalDecision>!
+Orkeon.Application.Services.Security.SerialisingToolApprovalChannel.SerialisingToolApprovalChannel(Orkeon.Application.Interfaces.Security.IToolApprovalChannel! inner) -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.get -> Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions!>?
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolLimits.set -> void

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
@@ -47,7 +48,7 @@ public static class ScriptingCliServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(sp => new ConsoleToolApprovalChannel(() => sp.GetRequiredService<IConsoleAdapter>()));
-        services.TryAddSingleton<IToolApprovalChannel>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
+        services.TryAddSingleton<IToolApprovalChannel>(sp => new SerialisingToolApprovalChannel(sp.GetRequiredService<ConsoleToolApprovalChannel>()));
         services.TryAddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
         // The session's rules, read by the gate before the mode and set by commands (ctx.services.get("permissions")).
         services.TryAddSingleton<SessionToolPermissionRules>();
