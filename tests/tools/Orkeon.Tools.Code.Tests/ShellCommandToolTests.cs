@@ -975,6 +975,57 @@ public sealed class ShellCommandToolTests : IDisposable
         }
     }
 
+    [Fact]
+    public void ShouldDeclareItselfAnExecutingTool()
+    {
+        Assert.Equal(Orkeon.Domain.Tools.ToolAccess.Execute, _tool.Access);
+    }
+
+    [Theory]
+    [InlineData("action", "launch", "Unknown action 'launch'")]
+    [InlineData("timeout_seconds", 0, "Timeout must be greater than 0")]
+    public async Task ShouldRefuseTheCall_WhenAFieldIsOutOfRange(string field, object value, string expected)
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?> { ["command"] = "echo hi", [field] = value });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains(expected, result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseGit_WhenNoSubcommandIsGiven()
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?> { ["command"] = "g" + "it" });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("requires a read-only subcommand", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldParseNothing_WhenTheCommandIsBlank()
+    {
+        var (executable, arguments) = ShellCommandTool.ParseCommand("   ");
+
+        Assert.Equal("", executable);
+        Assert.Empty(arguments);
+    }
+
+    [Fact]
+    public void ShouldMatchNoPath_WhenTheMountIsTheRoot()
+    {
+        Assert.False(ShellCommandTool.MatchesMountPrefix("/workspace", "/"));
+        Assert.Throws<ArgumentNullException>(() => ShellCommandTool.MatchesMountPrefix(null!, "/workspace"));
+        Assert.Throws<ArgumentNullException>(() => ShellCommandTool.MatchesMountPrefix("/workspace", null!));
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

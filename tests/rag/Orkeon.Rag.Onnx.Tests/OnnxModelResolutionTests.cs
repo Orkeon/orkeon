@@ -125,6 +125,98 @@ public class OnnxModelResolutionTests
     }
 
     [Fact]
+    public void TryLoadEmbedded_AssemblyWithoutTheResources_FailsLoudly()
+    {
+        // The reranker's own assembly loads but carries no weights: a version mismatch, not an absence.
+        var assemblyName = typeof(OnnxCrossEncoderReranker).Assembly.GetName().Name!;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => OnnxRerankerModelSource.TryLoadEmbedded(assemblyName, out _, out _));
+
+        Assert.Contains(assemblyName, exception.Message, StringComparison.Ordinal);
+        Assert.Contains(OnnxRerankerModelSource.ModelResourceName, exception.Message, StringComparison.Ordinal);
+        Assert.Contains(OnnxRerankerModelSource.VocabResourceName, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rerank_VocabMissingOnVfs_FailsWithActionableMessage()
+    {
+        var fileSystem = new FakeFileSystemService()
+            .AddMount("/models")
+            .AddFile("/models/model.onnx", [1, 2, 3]);
+
+        using var reranker = new OnnxCrossEncoderReranker(
+            fileSystem,
+            options: new OnnxRerankerOptions
+            {
+                ModelPath = "/models/model.onnx",
+                VocabPath = "/models/vocab.txt",
+            },
+            logger: null,
+            modelAssemblyName: AbsentAssembly);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reranker.RerankAsync("query", OneCandidate(), topN: 5, TestContext.Current.CancellationToken));
+
+        Assert.Contains("vocab", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("/models/vocab.txt", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rerank_FailedResolution_IsRememberedNotRetried()
+    {
+        // The initialization runs once: a second call observes the same failure.
+        using var reranker = new OnnxCrossEncoderReranker(
+            new ThrowingFileSystemService(), options: null, logger: null, modelAssemblyName: AbsentAssembly);
+
+        var first = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reranker.RerankAsync("query", OneCandidate(), topN: 1, TestContext.Current.CancellationToken));
+        var second = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reranker.RerankAsync("query", OneCandidate(), topN: 1, TestContext.Current.CancellationToken));
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void Constructor_NullFileSystem_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new OnnxCrossEncoderReranker(null!));
+    }
+
+    [Fact]
+    public void Name_IsTheCanonicalFactoryName()
+    {
+        using var reranker = new OnnxCrossEncoderReranker(new ThrowingFileSystemService());
+
+        Assert.Equal("onnx", reranker.Name);
+    }
+
+    [Fact]
+    public async Task Rerank_NullArguments_AreRefused()
+    {
+        using var reranker = new OnnxCrossEncoderReranker(
+            new ThrowingFileSystemService(), options: null, logger: null, modelAssemblyName: AbsentAssembly);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => reranker.RerankAsync(null!, OneCandidate(), topN: 1, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => reranker.RerankAsync("query", null!, topN: 1, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Rerank_AfterDispose_IsRefused_AndDisposeIsIdempotent()
+    {
+        var reranker = new OnnxCrossEncoderReranker(
+            new ThrowingFileSystemService(), options: null, logger: null, modelAssemblyName: AbsentAssembly);
+
+        reranker.Dispose();
+        reranker.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => reranker.RerankAsync("query", OneCandidate(), topN: 1, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public void EmbeddedResourceNames_MatchTheModelPackageContract()
     {
         Assert.Equal(MsMarcoMiniLmModel.AssemblyName, OnnxRerankerModelSource.ModelAssemblyName);

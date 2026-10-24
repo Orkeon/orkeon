@@ -204,6 +204,18 @@ public sealed class HostA2AConfigurationTests
             services.Where(d => d.ServiceType == typeof(IHostedService)).Select(d => d.ImplementationType));
     }
 
+    [Fact]
+    public async Task An_enabled_section_without_a_registered_server_is_named_as_a_wiring_fault()
+    {
+        // A host built without AddHostServices has no server to start: said in words at start,
+        // rather than as a null reference on the first peer's call.
+        var service = Service(Exposing("http://localhost"), server: null);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartAsync(Ct));
+
+        Assert.Contains("AddHostServices", ex.Message, StringComparison.Ordinal);
+    }
+
     private static HostA2AOptions Exposing(string host) =>
         new() { Enabled = true, Host = host, Crews = ["veille"] };
 

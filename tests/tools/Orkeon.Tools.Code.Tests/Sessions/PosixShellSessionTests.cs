@@ -63,6 +63,31 @@ public sealed class PosixShellSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldReportOnlyTheTailOfTheErrorOutput_WhenTheSessionDiesSayingALot()
+    {
+        // A wrapper that floods its error output before dying: the report keeps its last words.
+        var startInfo = new ProcessStartInfo("/bin/sh");
+        foreach (var argument in (string[])["-c", "i=0; while [ $i -lt 400 ]; do echo \"noise line $i\" >&2; i=$((i+1)); done; echo 'last words' >&2; exit 5"])
+            startInfo.ArgumentList.Add(argument);
+
+        var error = await Assert.ThrowsAsync<ShellSessionException>(
+            () => PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: false, Ct));
+
+        Assert.Contains("exit code 5", error.Message, StringComparison.Ordinal);
+        Assert.Contains("last words", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("noise line 0\n", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldFailTheStart_WhenTheShellCannotBeStartedFromItsDedicatedThread()
+    {
+        var startInfo = new ProcessStartInfo(Path.Combine(_tempDir, "no-such-shell"));
+
+        await Assert.ThrowsAnyAsync<Exception>(
+            () => PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: true, hostSeesPrivateDirectory: false, Ct));
+    }
+
+    [Fact]
     public async Task ShouldPassEachArgumentAsOneWord_WhateverItHolds()
     {
         string[] words = ["it's", "", "two words", "$HOME", "`id`", "$(id)", "line1\nline2", "*", ";", "&&"];
@@ -223,5 +248,80 @@ public sealed class PosixShellSessionTests : IDisposable
             LinuxProcesses.KillIfAlive(sleep);
             if (!host.HasExited) host.Kill();
         }
+    }
+
+    // ---- Detached jobs ---------------------------------------------------------------------------
+
+    private static Func<CancellationToken, Task<Stream>> NoLog => _ => Task.FromResult<Stream>(Stream.Null);
+
+    [Fact]
+    public async Task ShouldRunAJobOutsideTheShell_WritingItsOutputToTheLogInItsDirectory()
+    {
+        await using var session = await OpenAsync();
+        var log = Path.Combine(_tempDir, "job-1.log");
+
+        var handle = await session.StartDetachedAsync(Sh("pwd; echo out; echo err >&2; exit 4", _tempDir), log, NoLog, Ct);
+
+        Assert.Equal("job-1", handle.Id);
+        Assert.Equal(4, await handle.Exit.WaitAsync(Polling.DefaultTimeout, Ct));
+        var lines = await File.ReadAllLinesAsync(log, Ct);
+        Assert.Equal(Path.GetFullPath(_tempDir), Path.GetFullPath(lines[0]));
+        Assert.Contains("out", lines);
+        Assert.Contains("err", lines);
+    }
+
+    [Fact]
+    public async Task ShouldEndAJob_WhenItIsKilled()
+    {
+        await using var session = await OpenAsync();
+        var log = Path.Combine(_tempDir, "job-2.log");
+
+        var handle = await session.StartDetachedAsync(
+            new ShellInvocation("sleep", [LinuxProcesses.UniqueSleepDuration()], null, TimeSpan.FromHours(1)), log, NoLog, Ct);
+        Assert.False(handle.Exit.IsCompleted);
+
+        handle.Kill();
+
+        Assert.NotEqual(0, await handle.Exit.WaitAsync(Polling.DefaultTimeout, Ct));
+        handle.Kill(); // the job is gone: a second kill is harmless
+    }
+
+    [Fact]
+    public async Task ShouldWriteTheLogWhereTheJobSeesIt_WhenTheLaunchMapsTheMounts()
+    {
+        var host = Directory.CreateDirectory(Path.Combine(_tempDir, "host")).FullName;
+        var seen = Directory.CreateDirectory(Path.Combine(_tempDir, "seen")).FullName;
+        var startInfo = new ProcessStartInfo(UnconfinedShellSandbox.PosixShell);
+        startInfo.ArgumentList.Add("-s");
+        var launch = new PosixShellSession.DetachedLaunch(
+            () => new ProcessStartInfo(UnconfinedShellSandbox.PosixShell),
+            [new Orkeon.Tools.Code.Confinement.ConfinedPath(host, seen, Orkeon.Tools.Code.Confinement.ConfinedAccess.ReadWrite)],
+            OnDedicatedThread: true);
+        await using var session = await PosixShellSession.StartAsync(
+            startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, Ct, launch);
+
+        var handle = await session.StartDetachedAsync(Sh("echo mapped"), Path.Combine(host, "job-3.log"), NoLog, Ct);
+
+        Assert.Equal(0, await handle.Exit.WaitAsync(Polling.DefaultTimeout, Ct));
+        Assert.Equal("mapped", (await File.ReadAllTextAsync(Path.Combine(seen, "job-3.log"), Ct)).Trim());
+        Assert.False(File.Exists(Path.Combine(host, "job-3.log")));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAJob_WhenTheSessionHasNoWayToStartOne()
+    {
+        var startInfo = new ProcessStartInfo(UnconfinedShellSandbox.PosixShell);
+        startInfo.ArgumentList.Add("-s");
+        await using var session = await PosixShellSession.StartAsync(
+            startInfo, watchedHostPid: null, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, Ct);
+
+        var ex = await Assert.ThrowsAsync<ShellSessionException>(
+            () => session.StartDetachedAsync(Sh("true"), Path.Combine(_tempDir, "job-4.log"), NoLog, Ct));
+
+        Assert.Equal("This shell session cannot start a job.", ex.Message);
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => session.StartDetachedAsync(null!, Path.Combine(_tempDir, "job-4.log"), NoLog, Ct));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => session.StartDetachedAsync(Sh("true"), " ", NoLog, Ct));
     }
 }

@@ -156,6 +156,20 @@ tasks:
     }
 
     [Fact]
+    public async Task A_run_for_a_crew_the_host_does_not_declare_is_refused_by_name()
+    {
+        var (runner, registry, host) = Build();
+        using var _ = host;
+
+        var result = await runner.RunAsync("payroll", "hello", "test:thread-1");
+
+        Assert.Equal(HostedRunOutcome.UnknownCrew, result.Outcome);
+        Assert.False(result.Succeeded);
+        Assert.Contains("payroll", result.Message, StringComparison.Ordinal);
+        Assert.Empty(registry.Running);
+    }
+
+    [Fact]
     public async Task A_successful_run_reports_Completed_with_the_answer_and_releases_its_slot()
     {
         var (runner, registry, host) = Build();

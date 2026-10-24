@@ -1,4 +1,10 @@
+using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Orkeon.Host.Gateway;
+using Orkeon.Host.Tests.Doubles;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Host.Tests;
 
@@ -163,5 +169,98 @@ public class DiscordChannelTests
         // Discord refuses a blank body: the send would fail and the user's only reading of
         // "it finished" would be total silence — the worst possible one.
         Assert.Equal("(no output)", DiscordResponder.Truncate("   \n\t  "));
+    }
+
+    // ---- The channel without a connection: built, refused, disposed ---------------------
+
+    private static DiscordChannelOptions UnsetToken() => new()
+    {
+        Enabled = true,
+        AllowedUserIds = ["trusted"],
+        TokenEnvironmentVariable = $"ORKEON_TEST_DISCORD_TOKEN_{Guid.NewGuid():N}",
+    };
+
+    [Fact]
+    public async Task A_channel_is_built_without_connecting_and_throttles_its_replies()
+    {
+        await using var channel = new DiscordChannel(Options.Create(UnsetToken()), NullLogger<DiscordChannel>.Instance);
+
+        Assert.Equal("discord", channel.Name);
+        Assert.IsType<ThrottledResponder>(channel.Responder);
+    }
+
+    [Fact]
+    public void A_channel_needs_its_options_and_a_logger()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new DiscordChannel(null!, NullLogger<DiscordChannel>.Instance));
+        Assert.Throws<ArgumentNullException>(
+            () => new DiscordChannel(Options.Create(UnsetToken()), null!));
+    }
+
+    [Fact]
+    public async Task An_unset_token_refuses_the_run_and_names_the_variable()
+    {
+        // Thrown, not returned: a silent return left the daemon up, deaf, and reported healthy.
+        var options = UnsetToken();
+        using var provider = new RecordingLoggerProvider();
+        using var loggers = LoggerFactory.Create(builder => builder.AddProvider(provider));
+        await using var channel = new DiscordChannel(Options.Create(options), loggers.CreateLogger<DiscordChannel>());
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => channel.RunAsync((_, _) => Task.CompletedTask, TestContext.Current.CancellationToken));
+
+        Assert.Contains(options.TokenEnvironmentVariable, ex.Message, StringComparison.Ordinal);
+        Assert.True(provider.Logger.HasEntry(e =>
+            e.Level == LogLevel.Error && e.Message.Contains(options.TokenEnvironmentVariable, StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task A_run_needs_a_message_handler()
+    {
+        await using var channel = new DiscordChannel(Options.Create(UnsetToken()), NullLogger<DiscordChannel>.Instance);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => channel.RunAsync(null!, TestContext.Current.CancellationToken));
+    }
+
+    // ---- The responder: a conversation id that is no Discord channel ---------------------
+
+    private static InboundMessage Message(string conversation) => new()
+    {
+        Channel = "discord",
+        ConversationId = conversation,
+        SenderId = "trusted",
+        Text = "hello",
+        ReceivedAt = DateTimeOffset.UnixEpoch,
+    };
+
+    [Fact]
+    public async Task A_reply_to_a_conversation_that_is_not_a_channel_id_is_logged_not_thrown()
+    {
+        // The acknowledgement is awaited by the runner: a throw here would fail a run over a greeting.
+        await using var client = new DiscordSocketClient();
+        var logger = new RecordingLogger();
+        var responder = new DiscordResponder(client, logger);
+        var ct = TestContext.Current.CancellationToken;
+
+        await responder.AcknowledgeAsync(Message("not-a-channel"), "on it", ct);
+        await responder.ProgressAsync(Message("not-a-channel"), "working", ct);
+        await responder.CompleteAsync(Message("not-a-channel"), "done", ct);
+
+        Assert.Equal(3, logger.Entries.Count(e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("not-a-channel", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task A_responder_needs_a_client_a_logger_and_a_message()
+    {
+        await using var client = new DiscordSocketClient();
+        var responder = new DiscordResponder(client, new RecordingLogger());
+
+        Assert.Throws<ArgumentNullException>(() => new DiscordResponder(null!, new RecordingLogger()));
+        Assert.Throws<ArgumentNullException>(() => new DiscordResponder(client, null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => responder.CompleteAsync(null!, "done", TestContext.Current.CancellationToken));
     }
 }

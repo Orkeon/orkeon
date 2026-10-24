@@ -73,6 +73,55 @@ public sealed class CrewHostServiceTests : IDisposable
         Assert.Contains("RunTimeout", ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_crew_without_a_name_is_refused()
+    {
+        using var service = Build(new OrkeonHostOptions { Crews = [new HostedCrewOptions { Name = " ", Path = _crewFile }] });
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("Name and a Path", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_crew_allowing_no_concurrent_run_is_refused()
+    {
+        var crew = Crew() with { Profile = new CrewHostingProfile { MaxConcurrentRuns = 0 } };
+        using var service = Build(new OrkeonHostOptions { Crews = [crew] });
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("MaxConcurrentRuns 0", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_negative_shutdown_grace_period_is_refused()
+    {
+        using var service = Build(new OrkeonHostOptions
+        {
+            Crews = [Crew()],
+            ShutdownGracePeriod = TimeSpan.FromSeconds(-1),
+        });
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("ShutdownGracePeriod", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_configuration_refusal_exits_78_and_keeps_its_cause()
+    {
+        var cause = new InvalidOperationException("binder");
+
+        var withCause = new HostConfigurationException("refused", cause);
+        var bare = new HostConfigurationException();
+
+        Assert.Equal(78, HostConfigurationException.ExitCode);
+        Assert.Same(cause, withCause.InnerException);
+        Assert.Equal("refused", withCause.Message);
+        Assert.False(string.IsNullOrWhiteSpace(bare.Message));
+    }
+
     private static IConfiguration Profiles(params string[] names) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(names.Select(n => new KeyValuePair<string, string?>($"Llm:Profiles:{n}:Model", "m")))

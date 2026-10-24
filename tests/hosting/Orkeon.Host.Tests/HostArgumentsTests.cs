@@ -125,6 +125,75 @@ public sealed partial class HostArgumentsTests : IDisposable
         Assert.Contains(named, report, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("--mount", "orkeon-host: --mount requires a value.")]
+    [InlineData("-m", "orkeon-host: -m requires a value.")]
+    [InlineData("-s", "orkeon-host: --settings requires a path.")]
+    [InlineData("--working-dir", "orkeon-host: --working-dir requires a path.")]
+    [InlineData("--mount=", "orkeon-host: --mount= has an empty value.")]
+    public void ShouldRefuseWith78_WhenAValueFlagHasNoValue(string argument, string expected)
+    {
+        var (exit, reports) = Launch(argument);
+
+        Assert.Equal(78, exit);
+        Assert.Equal([expected], reports);
+    }
+
+    [Fact]
+    public void ShouldRefuseWith78_WhenTheWorkingDirectoryDoesNotExist()
+    {
+        var missing = Path.Combine(_scratch, "no-such-dir");
+
+        var (exit, reports) = Launch("--working-dir", missing);
+
+        Assert.Equal(78, exit);
+        var report = Assert.Single(reports);
+        Assert.Contains("working directory not found", report, StringComparison.Ordinal);
+        Assert.Contains(missing, report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseWith78_WhenTheSettingsFileDoesNotExist()
+    {
+        var missing = Path.Combine(_scratch, "missing.json");
+
+        var (exit, reports) = Launch("--settings", missing);
+
+        Assert.Equal(78, exit);
+        Assert.Equal([$"orkeon-host: settings file not found: {missing}"], reports);
+    }
+
+    [Theory]
+    [InlineData("--help")]
+    [InlineData("-h")]
+    public void ShouldAnswerTheHelp_WhenAskedForIt(string flag)
+    {
+        var text = HostStartup.InformationalText(["--settings", "x", flag, "--version"]);
+
+        // The help wins over --version and over the flags that would start the daemon.
+        Assert.NotNull(text);
+        Assert.Contains("--version", text, StringComparison.Ordinal);
+        Assert.Contains("docs/architecture/service-host.md", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldAnswerTheVersion_WhenAskedForIt()
+    {
+        var text = HostStartup.InformationalText(["--version"]);
+
+        Assert.NotNull(text);
+        Assert.StartsWith("orkeon-host ", text, StringComparison.Ordinal);
+        Assert.NotEqual("orkeon-host ", text);
+    }
+
+    [Fact]
+    public void ShouldAnswerNothing_WhenTheDaemonMustRun()
+    {
+        Assert.Null(HostStartup.InformationalText(["--settings", _settings]));
+        Assert.Null(HostStartup.InformationalText([]));
+        Assert.Throws<ArgumentNullException>(() => HostStartup.InformationalText(null!));
+    }
+
     private static (int Exit, List<string> Reports) Launch(params string[] args)
     {
         var reports = new List<string>();

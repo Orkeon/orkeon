@@ -82,4 +82,24 @@ public sealed class ShellConfinementResolverTests
         Assert.Null(resolution.Backend);
         Assert.Contains(reason, resolution.UnavailableReason!, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ShouldBeUnavailableWithTheReason_WhenTheModeIsNotAConfinementMode()
+    {
+        var resolution = ShellConfinementResolver.Resolve((ShellConfinementMode)99, ShellPlatform.Linux, inContainer: false);
+
+        Assert.Null(resolution.Backend);
+        Assert.Contains("is not a confinement mode", resolution.UnavailableReason!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldNameThePlatformOfTheProcess()
+    {
+        var expected = OperatingSystem.IsLinux() ? ShellPlatform.Linux
+            : OperatingSystem.IsMacOS() ? ShellPlatform.MacOS
+            : OperatingSystem.IsWindows() ? ShellPlatform.Windows
+            : ShellPlatform.Other;
+
+        Assert.Equal(expected, ShellConfinementResolver.CurrentPlatform);
+    }
 }

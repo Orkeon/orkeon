@@ -77,6 +77,14 @@ public sealed class ChatRoutingTests
     }
 
     [Fact]
+    public void Routes_over_no_crew_are_refused()
+    {
+        var ex = Assert.Throws<HostConfigurationException>(() => ChatRoutes.From(Discord(), []));
+
+        Assert.Contains("Crews", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_route_to_an_unknown_crew_is_refused()
     {
         var ex = Assert.Throws<HostConfigurationException>(
