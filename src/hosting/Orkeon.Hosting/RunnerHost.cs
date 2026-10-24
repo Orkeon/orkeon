@@ -182,7 +182,7 @@ public static partial class RunnerHost
 
             LogMountDecisions(host, decisions);
             WarnIfTokensUnavailable(host, decisions);
-            AnnounceSettingsNotices(host.Services, WarnOnStderr);
+            AnnounceSettingsNotices(host.Services, OperatorWarning(host.Services));
             WarnIfLlmNotConfigured(host, decisions.ElectedLlmProfile);
             ActivateTelemetry(host);
             return host;
@@ -438,7 +438,12 @@ public static partial class RunnerHost
         return notices;
     }
 
-    private static void WarnOnStderr(string notice) => Console.Error.WriteLine("WARNING: " + notice);
+    /// <summary>A notice said to the operator: a <c>WARNING:</c> line of the operator channel (<see cref="RunnerOperatorLog"/>).</summary>
+    private static Action<string> OperatorWarning(IServiceProvider services)
+    {
+        var operatorLogger = RunnerOperatorLog.Create(services.GetRequiredService<ILoggerFactory>());
+        return notice => RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + notice);
+    }
 
     [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Notice}")]
     private static partial void LogSettingsNotice(ILogger logger, string notice);
@@ -512,7 +517,7 @@ public static partial class RunnerHost
 
     /// <summary>
     /// An OAuth e-mail or drive account is declared, but the runner could not provide its token
-    /// store as asked: said once, on the log and on stderr, because the run goes on — a crew that
+    /// store as asked: said once, on the log and on the operator channel (stderr), because the run goes on — a crew that
     /// sends no mail and opens no drive must not fail for it — and each call of such an account
     /// will then refuse.
     /// </summary>
@@ -522,10 +527,12 @@ public static partial class RunnerHost
         if (decisions.TokensUnavailable.Count == 0)
             return;
 
-        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.RunnerHost");
+        var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger("Orkeon.Hosting.RunnerHost");
+        var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
         foreach (var reason in decisions.TokensUnavailable)
         {
-            Console.Error.WriteLine("WARNING: " + reason);
+            RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + reason);
             LogTokensUnavailable(logger, reason);
         }
     }
@@ -591,9 +598,10 @@ public static partial class RunnerHost
         if (electedProfile is not null)
             LogLlmProfileElected(logger, electedProfile);
         LogOfferedProfileKeys(logger, profilesSection, offered, defined);
-        WarnUnresolvedApiKeyReferences(logger, configuration, profilesSection, hidden, electedProfile);
+        var operatorLogger = RunnerOperatorLog.Create(host.Services.GetRequiredService<ILoggerFactory>());
+        WarnUnresolvedApiKeyReferences(logger, operatorLogger, configuration, profilesSection, hidden, electedProfile);
         var hasDefault = LlmSettings.HasDefault(configuration);
-        WarnSilentAddresses(logger, hasDefault ? llmSection : null, profilesSection, offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)));
+        WarnSilentAddresses(logger, operatorLogger, hasDefault ? llmSection : null, profilesSection, offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)));
 
         if (hasDefault)
         {
@@ -601,16 +609,16 @@ public static partial class RunnerHost
             return;
         }
 
-        Console.Error.WriteLine("WARNING: " + LlmNotConfiguredMessage);
+        RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + LlmNotConfiguredMessage);
         LogLlmNotConfigured(logger);
     }
 
     /// <summary>
-    /// A <c>custom</c> address with no path, once per section offered: logger and stderr, by the
+    /// A <c>custom</c> address with no path, once per section offered: logger and operator channel (stderr), by the
     /// section's path and its address as written, read by the Domain reading alone.
     /// </summary>
     private static void WarnSilentAddresses(
-        ILogger logger, IConfigurationSection? defaultSection, IConfigurationSection profilesSection, IEnumerable<string> profiles)
+        ILogger logger, ILogger operatorLogger, IConfigurationSection? defaultSection, IConfigurationSection profilesSection, IEnumerable<string> profiles)
     {
         var sections = profiles.Select(profilesSection.GetSection);
         if (defaultSection is not null)
@@ -622,7 +630,7 @@ public static partial class RunnerHost
                 continue;
 
             var warning = OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address);
-            Console.Error.WriteLine("WARNING: " + warning);
+            RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + warning);
             LogLlmBaseUrlSilent(logger, warning);
         }
     }
@@ -654,7 +662,7 @@ public static partial class RunnerHost
     /// A hidden profile's is no reason to warn, unless the run elected it as its default.
     /// </summary>
     private static void WarnUnresolvedApiKeyReferences(
-        ILogger logger, IConfiguration configuration, IConfigurationSection profilesSection, List<string> hidden, string? electedProfile)
+        ILogger logger, ILogger operatorLogger, IConfiguration configuration, IConfigurationSection profilesSection, List<string> hidden, string? electedProfile)
     {
         var defaultReference = $"{ConfigurationKeys.LlmSection}:{ConfigurationKeys.LlmApiKeyEnvVar}";
         var silenced = hidden
@@ -669,7 +677,7 @@ public static partial class RunnerHost
                 continue;
 
             var warning = UnresolvedApiKeyReferenceMessage(reference);
-            Console.Error.WriteLine("WARNING: " + warning);
+            RunnerOperatorLog.Warn(operatorLogger, "WARNING: " + warning);
             LogApiKeyReferenceUnresolved(logger, warning);
         }
     }
@@ -1589,6 +1597,9 @@ public static partial class RunnerHost
         if (configureLogging != null)
         {
             services.AddLogging(b => configureLogging(context, b));
+            // After the caller's logging, which may have cleared the providers: the operator
+            // warnings reach stderr whatever the caller chose (RunnerOperatorLog).
+            services.AddOperatorChannel();
             return;
         }
 
@@ -1606,6 +1617,7 @@ public static partial class RunnerHost
             b.SetMinimumLevel(LogLevel.Warning);
             RunnerExecution.AddVerboseCategoryRule(b, context.Configuration);
         });
+        services.AddOperatorChannel();
     }
 
     /// <summary>

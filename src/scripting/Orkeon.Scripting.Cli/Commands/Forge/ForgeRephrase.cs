@@ -39,7 +39,7 @@ internal static class ForgeRephrase
         ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
         ArgumentNullException.ThrowIfNull(options);
 
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, Console.Error);
         var events = options.Events ? new ForgeEventWriter(Console.Out) : null;
         using var host = RunnerHost.Build(
             settingsPath,

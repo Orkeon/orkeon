@@ -23,9 +23,9 @@ internal sealed record HostCommandLine(
 
 /// <summary>
 /// The outcome of the reserved-root guard: a refusal to report, warnings to re-emit, or
-/// neither. <c>RunnerExecution.EnsureReservedRootsAreFree</c> writes its own diagnostics to
-/// <see cref="Console.Error"/> (it is shared with three CLI commands), so the daemon captures
-/// them — the message has to reach the Windows event log too, where stderr goes nowhere.
+/// neither. <c>RunnerExecution.EnsureReservedRootsAreFree</c> writes its own diagnostics to the
+/// writer it is handed (it is shared with three CLI commands), so the daemon captures them — the
+/// message has to reach the Windows event log too, where stderr goes nowhere.
 /// </summary>
 /// <param name="Error">The refusal to report before exiting 78, or null when the roots are free.</param>
 /// <param name="Warnings">What the guard wrote to stderr while accepting, verbatim, or null.</param>
@@ -183,7 +183,7 @@ internal static class HostStartup
         // Accepted, but the guard still had something to say: re-emitted so the terminal and journald
         // contracts stay byte-identical to the CLI's.
         if (reservedRoots.Warnings is { } reservedRootsWarnings)
-            Console.Error.Write(reservedRootsWarnings);
+            HostConsole.Error.Write(reservedRootsWarnings);
 
         var mounts = new List<string>(command.Mounts);
         mounts.AddRange(crewPlan.Mounts);
@@ -350,8 +350,8 @@ internal static class HostStartup
     /// would otherwise surface as a raw "Duplicate virtual paths" exception thrown out of a DI
     /// factory — a crash, rather than the configuration mistake it is (ADR-008, decision 5).
     /// <para>
-    /// The guard writes its own refusal to <see cref="Console.Error"/>, so stderr is captured
-    /// here: under the Windows SCM that message would otherwise go nowhere, and the caller
+    /// The guard writes its refusal to a buffer of its own here: under the Windows SCM that
+    /// message would otherwise go nowhere, and the caller
     /// re-emits whatever the guard wrote so the terminal and journald contracts stay
     /// byte-identical.
     /// </para>
@@ -363,18 +363,8 @@ internal static class HostStartup
     {
         ArgumentNullException.ThrowIfNull(reservedRoots);
 
-        var realError = Console.Error;
         using var capture = new StringWriter();
-        bool free;
-        Console.SetError(capture);
-        try
-        {
-            free = RunnerExecution.EnsureReservedRootsAreFree(mounts, settingsPath, reservedRoots);
-        }
-        finally
-        {
-            Console.SetError(realError);
-        }
+        var free = RunnerExecution.EnsureReservedRootsAreFree(mounts, settingsPath, capture, reservedRoots);
 
         var written = capture.ToString();
         if (!free)

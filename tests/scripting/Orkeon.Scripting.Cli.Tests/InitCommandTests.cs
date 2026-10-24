@@ -257,7 +257,7 @@ public sealed class InitCommandTests
             // The written file is found by the runner resolution chain from ANY directory.
             var elsewhere = Path.Combine(scratch.Root, "some", "other", "cwd");
             Directory.CreateDirectory(elsewhere);
-            var resolved = RunnerSettings.ResolveSettingsPath(null, elsewhere, quiet: true);
+            var resolved = RunnerSettings.ResolveSettingsPath(null, elsewhere, null);
             Assert.Equal(globalPath, resolved);
         }
         finally

@@ -642,7 +642,7 @@ internal static partial class RunCommand
         // Build the host with the same bootstrap surface as the YAML runner: appsettings,
         // VFS mounts, LLM provider, tools, LLM exchange logging. Plus a /script:ro mount
         // for the script itself.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, scriptDir);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, scriptDir, Console.Error);
         if (settingsPath != null)
             await Console.Error.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
 
@@ -657,7 +657,7 @@ internal static partial class RunCommand
 
         // Same guard as the YAML runner (STUDIO-50): an --llm-profile the settings do not
         // define is one line naming the ones they do, not an exception out of the host build.
-        if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath))
+        if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath, Console.Error))
             return Program.ExitScriptError;
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
@@ -707,7 +707,7 @@ internal static partial class RunCommand
             RunnerLogging.LogMounts(cliMounts, logger);
 
         using var linkCts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
-        using var lifetime = RunnerExecution.RegisterGracefulShutdown(linkCts, logger);
+        using var lifetime = RunnerExecution.RegisterGracefulShutdown(linkCts, Console.Error);
 
         // The DI-provided IFileSystemService respects the mount list above; tools resolved
         // from the host will use it natively. JsEngineFactory wraps it for the script body.
@@ -810,11 +810,11 @@ internal static partial class RunCommand
         // duplicate-virtual-path exception thrown out of a DI factory, not as the
         // configuration mistake it is. A --mount on a root the settings declare is not a
         // duplicate: the host replaces that settings entry by name (STUDIO-15 D-01).
-        if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath))
+        if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath, Console.Error))
             return null;
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
-                cliMounts, settingsPath,
+                cliMounts, settingsPath, Console.Error,
                 RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
         {
             return null;
@@ -825,7 +825,7 @@ internal static partial class RunCommand
         // those two and not the crew's block (GAP-49, decision 3).
         if (!RunnerExecution.EnsureMountSelectionIsResolvable(
                 cliMounts, options.MountIds, CrewMountDeclarations.None, settingsPath,
-                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption, out var selection))
+                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption, Console.Error, out var selection))
         {
             return null;
         }
@@ -833,7 +833,7 @@ internal static partial class RunCommand
         // Same guard as the YAML runner: a mount whose host-side directory is missing would
         // otherwise surface as a DirectoryNotFoundException thrown out of the
         // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
-        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath, selection) ? selection : null;
+        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath, selection, Console.Error) ? selection : null;
     }
 
     /// <summary>

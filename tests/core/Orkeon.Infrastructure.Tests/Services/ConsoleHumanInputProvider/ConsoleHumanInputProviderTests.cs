@@ -2,16 +2,26 @@ using Orkeon.Domain.Common;
 using Orkeon.Domain.HumanInput;
 using Orkeon.Domain.HumanInput.ValueObjects;
 using Orkeon.Infrastructure.HumanInput;
+using Orkeon.Infrastructure.Tests.Doubles;
 
 namespace Orkeon.Infrastructure.Tests.Services;
 
-public class ConsoleHumanInputProviderTests
+public sealed class ConsoleHumanInputProviderTests : IDisposable
 {
+    private readonly FakeTextReader _input = new();
+    private readonly StringWriter _output = new();
+
+    public void Dispose()
+    {
+        _input.Dispose();
+        _output.Dispose();
+    }
+
     [Fact]
     public async Task ShouldReturnInput_WhenGetInputAsyncReadsFromConsole()
     {
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -21,7 +31,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("hello input\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
         Assert.Equal("hello input", result);
@@ -36,7 +46,7 @@ public class ConsoleHumanInputProviderTests
     public async Task ShouldParseYesNo_WhenGetConfirmationAsync(string input, bool expected)
     {
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -45,7 +55,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader(input + "\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         var result = await provider.GetConfirmationAsync(context, TestContext.Current.CancellationToken);
         Assert.Equal(expected, result);
@@ -55,7 +65,7 @@ public class ConsoleHumanInputProviderTests
     public async Task ShouldReturnCorrectOption_WhenGetChoiceAsyncByIndex()
     {
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "A", "B", "C" };
         var context = new HumanInputContext
         {
@@ -66,7 +76,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("2\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
         Assert.Equal("B", result);
@@ -76,7 +86,7 @@ public class ConsoleHumanInputProviderTests
     public async Task ShouldReturnInput_WhenGetChoiceAsyncByText()
     {
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "A", "B", "C" };
         var context = new HumanInputContext
         {
@@ -87,7 +97,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("C\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
         Assert.Equal("C", result);
@@ -97,7 +107,7 @@ public class ConsoleHumanInputProviderTests
     public async Task ShouldAlwaysTrue_WhenIsAvailableAsync()
     {
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var available = await provider.IsAvailableAsync(TestContext.Current.CancellationToken);
         Assert.True(available);
     }
@@ -107,7 +117,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -117,7 +127,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -131,7 +141,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -141,7 +151,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("   \n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -155,7 +165,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -164,7 +174,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("first line\nsecond line\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -188,7 +198,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -197,7 +207,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader(input + "\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetConfirmationAsync(context, TestContext.Current.CancellationToken);
@@ -211,7 +221,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "Option1", "Option2", "Option3" };
         var context = new HumanInputContext
         {
@@ -222,7 +232,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("99\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -236,7 +246,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "A", "B", "C" };
         var context = new HumanInputContext
         {
@@ -247,7 +257,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("0\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -261,7 +271,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "Red", "Green", "Blue" };
         var context = new HumanInputContext
         {
@@ -272,7 +282,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("-1\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -286,7 +296,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "Apple", "Apricot", "Banana" };
         var context = new HumanInputContext
         {
@@ -297,7 +307,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("Ap\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -311,7 +321,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -321,7 +331,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("anything\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -335,7 +345,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -345,7 +355,7 @@ public class ConsoleHumanInputProviderTests
 
         var specialInput = "Hello @#$%^&*() World!";
         var sr = new StringReader(specialInput + "\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -359,7 +369,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -369,7 +379,7 @@ public class ConsoleHumanInputProviderTests
 
         var unicodeInput = "Hello 世界 ☺ ❤";
         var sr = new StringReader(unicodeInput + "\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -383,7 +393,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -393,7 +403,7 @@ public class ConsoleHumanInputProviderTests
 
         var longInput = string.Join(" ", Enumerable.Repeat("word", 1000));
         var sr = new StringReader(longInput + "\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -408,7 +418,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -417,7 +427,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetConfirmationAsync(context, TestContext.Current.CancellationToken);
@@ -431,7 +441,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "Production", "Staging", "Development" };
         var context = new HumanInputContext
         {
@@ -442,7 +452,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("Staging\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -456,7 +466,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var request = HumanInputRequest.Create(
             "Enter your name",
             Orkeon.Domain.HumanInput.HumanInputType.Text,
@@ -464,10 +474,10 @@ public class ConsoleHumanInputProviderTests
         );
 
         var sr = new StringReader("John Doe\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal("John Doe", result);
@@ -478,7 +488,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "Option A", "Option B", "Option C" };
         var request = HumanInputRequest.Create(
             "Choose an option",
@@ -488,10 +498,10 @@ public class ConsoleHumanInputProviderTests
         );
 
         var sr = new StringReader("2\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal("2", result); // Returns raw input from RequestInputAsync
@@ -502,7 +512,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var request = HumanInputRequest.Create(
             "Do you approve?",
             Orkeon.Domain.HumanInput.HumanInputType.Approval,
@@ -510,10 +520,10 @@ public class ConsoleHumanInputProviderTests
         );
 
         var sr = new StringReader("yes\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal("yes", result);
@@ -524,7 +534,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var request = HumanInputRequest.Create(
             "Enter value",
             Orkeon.Domain.HumanInput.HumanInputType.Text,
@@ -533,10 +543,10 @@ public class ConsoleHumanInputProviderTests
 
         // Simulate Console.ReadLine returning null
         var sr = new StringReader("");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal("default-value", result);
@@ -547,7 +557,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var request = HumanInputRequest.Create(
             "Enter value",
             Orkeon.Domain.HumanInput.HumanInputType.Text,
@@ -555,10 +565,10 @@ public class ConsoleHumanInputProviderTests
         );
 
         var sr = new StringReader("");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal(string.Empty, result);
@@ -569,7 +579,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -579,23 +589,13 @@ public class ConsoleHumanInputProviderTests
             DefaultValue = "default"
         };
 
-        // Since we can't mock console input in unit tests,
-        // we expect it to return an empty string when no input is provided
-        var originalIn = Console.In;
-        try
-        {
-            Console.SetIn(new StringReader("")); // Empty input
+        _input.Inner = new StringReader(""); // Empty input
 
-            // Act
-            var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
+        // Act
+        var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
 
-            // Assert - should return default value when input is empty
-            Assert.Equal("default", result);
-        }
-        finally
-        {
-            Console.SetIn(originalIn);
-        }
+        // Assert - should return default value when input is empty
+        Assert.Equal("default", result);
     }
 
     [Fact]
@@ -603,7 +603,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -624,7 +624,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -645,7 +645,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -667,7 +667,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -676,7 +676,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("  yes  \n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetConfirmationAsync(context, TestContext.Current.CancellationToken);
@@ -690,7 +690,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -699,7 +699,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("  no  \n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetConfirmationAsync(context, TestContext.Current.CancellationToken);
@@ -713,7 +713,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "FirstOption", "SecondOption", "ThirdOption" };
         var context = new HumanInputContext
         {
@@ -724,7 +724,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("secondoption\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -738,7 +738,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -747,7 +747,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("\tTabbed text\nSecond line\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);
@@ -761,7 +761,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
@@ -777,7 +777,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "First", "Second", "Third" };
         var context = new HumanInputContext
         {
@@ -788,7 +788,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("  2  \n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -802,7 +802,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var request = HumanInputRequest.Create(
             "Enter value",
             Orkeon.Domain.HumanInput.HumanInputType.Text,
@@ -811,10 +811,10 @@ public class ConsoleHumanInputProviderTests
         );
 
         var sr = new StringReader("test\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
-        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, CancellationToken.None);
+        var result = await ConsoleHumanInputProvider.RequestInputAsync(request, _input, _output, CancellationToken.None);
 
         // Assert
         Assert.Equal("test", result);
@@ -825,7 +825,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "OnlyOption" };
         var context = new HumanInputContext
         {
@@ -836,7 +836,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("1\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -850,7 +850,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var options = new[] { "A", "B", "C" };
         var context = new HumanInputContext
         {
@@ -861,7 +861,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("1.5\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetChoiceAsync(context, TestContext.Current.CancellationToken);
@@ -875,7 +875,7 @@ public class ConsoleHumanInputProviderTests
     {
         // Arrange
         var logger = new TestLogger<ConsoleHumanInputProvider>();
-        var provider = new ConsoleHumanInputProvider(logger);
+        var provider = new ConsoleHumanInputProvider(logger, _input, _output);
         var context = new HumanInputContext
         {
             AgentId = AgentId.Create(),
@@ -885,7 +885,7 @@ public class ConsoleHumanInputProviderTests
         };
 
         var sr = new StringReader("\n");
-        Console.SetIn(sr);
+        _input.Inner = sr;
 
         // Act
         var result = await provider.GetInputAsync(context, TestContext.Current.CancellationToken);

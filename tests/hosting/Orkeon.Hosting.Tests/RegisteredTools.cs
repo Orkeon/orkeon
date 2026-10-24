@@ -27,6 +27,7 @@ internal static class RegisteredTools
                 services.AddOrkeonHumanInput();
                 services.AddSingleton<IBaseTool>(new ProgressReportTool(new ProgressBroker()));
             },
+            TextWriter.Null,
             TestContext.Current.CancellationToken);
         Assert.NotNull(host);
         return [.. await host.Services.GetRequiredService<IToolRegistry>().GetAllToolsAsync()];

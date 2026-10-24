@@ -179,7 +179,7 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         try
         {
             free = RunnerExecution.EnsureReservedRootsAreFree(
-                [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"], settingsPath: null, RunnerVirtualRoots.Crew);
+                [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"], settingsPath: null, stderr, RunnerVirtualRoots.Crew);
         }
         finally
         {

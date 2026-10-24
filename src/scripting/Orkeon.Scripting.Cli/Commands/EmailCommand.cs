@@ -356,7 +356,7 @@ internal static class EmailCommand
     private static IHost BuildHost(EmailCommandOptionsBase options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
         if (settingsPath != null)
             Console.Error.WriteLine($"Using settings: {settingsPath}");
 

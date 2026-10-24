@@ -680,7 +680,7 @@ internal static class ForgeCommand
         // The engine host: same settings chain as `orkeon run` (explicit --settings →
         // next to the workspace → global), the read folder readable, the session writable,
         // and the forge's own services on top.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, Console.Error);
         var box = new ForgeSubmissionBox();
         var tally = new ForgeUsageTally();
         var observer = new ForgeRunObserver();
@@ -811,9 +811,9 @@ internal static class ForgeCommand
         warnings = [];
         // The forge takes no --mount, no --mount-id, no crew: a root declared twice is withdrawn
         // and said so (CH-12), on stderr here and as an event once the writer exists.
-        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox)
+        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, Console.Error, RunnerVirtualRoots.Sandbox)
             || !RunnerExecution.EnsureMountSelectionIsResolvable(
-                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, out var selection))
+                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, Console.Error, out var selection))
         {
             return false;
         }
@@ -1473,7 +1473,7 @@ internal static class ForgeCommand
         // from the launch scripts. Warning that no model is configured would be a false
         // alarm on a command that never talks to one — a missing settings file simply means
         // the generated launcher carries no --settings line.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, quiet: true);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, null);
         ForgePromotionResult result;
         var now = DateTimeOffset.UtcNow;
         try
@@ -1576,7 +1576,7 @@ internal static class ForgeCommand
     {
         try
         {
-            var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, quiet: true);
+            var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, null);
             using var transpiler = Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(
                 RunnerSettings.ReadConfiguration(settingsPath));
             transpiler.ResolveBinary();

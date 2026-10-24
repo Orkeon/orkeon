@@ -5,3 +5,32 @@ Orkeon.Hosting.RunnerMountPlan.InputDirectories.get -> System.Collections.Generi
 Orkeon.Hosting.RunnerMountPlan.InputDirectories.init -> void
 Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.get -> bool
 Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.init -> void
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureMountSelectionIsResolvable(System.Collections.Generic.IEnumerable<string!>! userMounts, System.Collections.Generic.IEnumerable<string!>! mountIds, Orkeon.Hosting.CrewMountDeclarations! crewMounts, string? settingsPath, out Orkeon.Hosting.MountSelectionPlan? plan) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureMountSourcesExist(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureMountSourcesExist(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, Orkeon.Hosting.MountSelectionPlan? selection) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureReservedRootsAreFree(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, params string![]! reserved) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.EnsureVirtualRootsAreUnique(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath) -> bool
+*REMOVED*static Orkeon.Hosting.RunnerExecution.RegisterGracefulShutdown(System.Threading.CancellationTokenSource! cts, Microsoft.Extensions.Logging.ILogger! logger) -> System.IDisposable!
+*REMOVED*static Orkeon.Hosting.RunnerSettings.ResolveSettingsPath(string? explicitPath, string! configDir, bool quiet = false) -> string?
+Orkeon.Hosting.IRunnerConsole
+Orkeon.Hosting.IRunnerConsole.ErrorOutput.get -> System.IO.TextWriter!
+Orkeon.Hosting.IRunnerConsole.Input.get -> System.IO.TextReader!
+Orkeon.Hosting.IRunnerConsole.OnInterrupt(System.Func<bool>! handler) -> System.IDisposable!
+Orkeon.Hosting.IRunnerConsole.Output.get -> System.IO.TextWriter!
+Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.get -> Orkeon.Hosting.IRunnerConsole!
+Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.set -> void
+Orkeon.Hosting.SystemRunnerConsole
+Orkeon.Hosting.SystemRunnerConsole.ErrorOutput.get -> System.IO.TextWriter!
+Orkeon.Hosting.SystemRunnerConsole.Input.get -> System.IO.TextReader!
+Orkeon.Hosting.SystemRunnerConsole.OnInterrupt(System.Func<bool>! handler) -> System.IDisposable!
+Orkeon.Hosting.SystemRunnerConsole.Output.get -> System.IO.TextWriter!
+static Orkeon.Hosting.SystemRunnerConsole.Instance.get -> Orkeon.Hosting.SystemRunnerConsole!
+static Orkeon.Hosting.RunnerExecution.EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath, System.IO.TextWriter! error) -> bool
+static Orkeon.Hosting.RunnerExecution.EnsureMountSelectionIsResolvable(System.Collections.Generic.IEnumerable<string!>! userMounts, System.Collections.Generic.IEnumerable<string!>! mountIds, Orkeon.Hosting.CrewMountDeclarations! crewMounts, string? settingsPath, System.IO.TextWriter! error, out Orkeon.Hosting.MountSelectionPlan? plan) -> bool
+static Orkeon.Hosting.RunnerExecution.EnsureMountSourcesExist(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, System.IO.TextWriter! error) -> bool
+static Orkeon.Hosting.RunnerExecution.EnsureMountSourcesExist(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, Orkeon.Hosting.MountSelectionPlan? selection, System.IO.TextWriter! error) -> bool
+static Orkeon.Hosting.RunnerExecution.EnsureReservedRootsAreFree(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, System.IO.TextWriter! error, params string![]! reserved) -> bool
+static Orkeon.Hosting.RunnerExecution.EnsureVirtualRootsAreUnique(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, System.IO.TextWriter! error) -> bool
+static Orkeon.Hosting.RunnerExecution.RegisterGracefulShutdown(System.Threading.CancellationTokenSource! cts, System.IO.TextWriter! error) -> System.IDisposable!
+static Orkeon.Hosting.RunnerSettings.ResolveSettingsPath(string? explicitPath, string! configDir, System.IO.TextWriter? warnings) -> string?

@@ -448,7 +448,7 @@ internal static class RagCommand
     /// </summary>
     private static IHost? BuildHost(RagCommandOptionsBase options, string cwd)
     {
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
         if (settingsPath != null)
             Console.Error.WriteLine($"Using settings: {settingsPath}");
 
@@ -467,7 +467,7 @@ internal static class RagCommand
         // unconditionally, so claiming it is always a collision, and rag was the one verb that
         // never asked the guard about anything. `--mount x:/sandbox:rw` reached the registry and
         // came back as the raw duplicate-path exception this guard exists to replace.
-        if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Sandbox))
+        if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, Console.Error, RunnerVirtualRoots.Sandbox))
             return null;
 
         // Two settings entries of one root (VFS-90) have no crew here to pick one and this verb
@@ -475,7 +475,7 @@ internal static class RagCommand
         // refuses in one line - naming --mount, the one way this verb has (GAP-49, decision 3) -
         // instead of the host throwing out of its configuration.
         if (!RunnerExecution.EnsureMountSelectionIsResolvable(
-                cliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.MountOption, out _))
+                cliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.MountOption, Console.Error, out _))
         {
             return null;
         }

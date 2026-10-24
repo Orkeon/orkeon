@@ -207,15 +207,16 @@ public static class RunnerSettings
     /// </summary>
     /// <param name="explicitPath">Explicit <c>--settings</c> path, or <see langword="null"/>.</param>
     /// <param name="configDir">Directory the crew config lives in (resolution anchor).</param>
-    /// <param name="quiet">
-    /// Suppresses the stderr diagnostics — for callers such as <c>orkeon doctor</c> that
-    /// replay the chain and report the outcome themselves.
+    /// <param name="warnings">
+    /// Where the chain's warnings are written — stderr for a runner —, or <see langword="null"/>
+    /// to keep them unsaid, for callers such as <c>orkeon doctor</c> that replay the chain and
+    /// report the outcome themselves.
     /// </param>
-    public static string? ResolveSettingsPath(string? explicitPath, string configDir, bool quiet = false)
+    public static string? ResolveSettingsPath(string? explicitPath, string configDir, TextWriter? warnings)
     {
         // 1. Explicit
         if (!string.IsNullOrEmpty(explicitPath))
-            return ResolveExplicitSettingsPath(explicitPath, quiet);
+            return ResolveExplicitSettingsPath(explicitPath, warnings);
 
         // 2. Per-example override (next to config.yaml)
         var localSettings = Path.Combine(configDir, ConventionalNames.SettingsFile);
@@ -229,12 +230,9 @@ public static class RunnerSettings
         var globalSettings = TryGetGlobalSettingsPath();
         if (globalSettings is not null && File.Exists(globalSettings)) return globalSettings;
 
-        if (!quiet)
-        {
-            Console.Error.WriteLine(
-                "WARNING: No appsettings.json found. Using environment variables only. " +
-                "Run `orkeon init` to create a configuration.");
-        }
+        warnings?.WriteLine(
+            "WARNING: No appsettings.json found. Using environment variables only. " +
+            "Run `orkeon init` to create a configuration.");
         return null;
     }
 
@@ -243,12 +241,11 @@ public static class RunnerSettings
     /// exist is a mistake worth naming rather than silently falling through to the
     /// conventional locations, so it ends the resolution either way.
     /// </summary>
-    private static string? ResolveExplicitSettingsPath(string explicitPath, bool quiet)
+    private static string? ResolveExplicitSettingsPath(string explicitPath, TextWriter? warnings)
     {
         var full = Path.GetFullPath(explicitPath);
         if (File.Exists(full)) return full;
-        if (!quiet)
-            Console.Error.WriteLine($"WARNING: Explicit settings not found: {full}");
+        warnings?.WriteLine($"WARNING: Explicit settings not found: {full}");
         return null;
     }
 

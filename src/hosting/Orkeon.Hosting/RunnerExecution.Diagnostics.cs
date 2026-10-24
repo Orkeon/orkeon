@@ -60,7 +60,8 @@ public static partial class RunnerExecution
                 (bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
-            using var shutdown = RegisterGracefulShutdown(cts, logger);
+            var console = opts.RunnerConsole;
+            using var shutdown = RegisterGracefulShutdown(cts, console.ErrorOutput);
 
             try
             {
@@ -89,8 +90,8 @@ public static partial class RunnerExecution
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count();
 
-                Console.WriteLine(
-                    $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})");
+                await console.Output.WriteLineAsync(
+                    $"VALIDATION OK: {configPath} (agents={crew.Agents.Count}, tasks={crew.Tasks.Count}, tools resolved={toolsResolved})").ConfigureAwait(false);
                 return 0;
             }
             catch (OperationCanceledException)
@@ -100,9 +101,9 @@ public static partial class RunnerExecution
             }
             catch (Exception ex)
             {
-                await Console.Error.WriteLineAsync($"VALIDATION FAILED: {configPath}").ConfigureAwait(false);
-                await Console.Error.WriteLineAsync(ex.Message).ConfigureAwait(false);
-                await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"VALIDATION FAILED: {configPath}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.Message).ConfigureAwait(false);
+                await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
                 return 1;
             }
         }
@@ -126,12 +127,13 @@ public static partial class RunnerExecution
 
         async Task<int> RunListToolsCoreAsync()
         {
+            var console = opts.RunnerConsole;
             var cwd = Directory.GetCurrentDirectory();
-            var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd);
+            var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, cwd, console.ErrorOutput);
 
             // The tool list does not depend on the model, but an --llm-profile the settings do
             // not define is refused here as on a run, rather than ignored in silence (STUDIO-50).
-            if (!EnsureLlmProfileIsKnown(opts.LlmProfile, settingsPath))
+            if (!EnsureLlmProfileIsKnown(opts.LlmProfile, settingsPath, console.ErrorOutput))
                 return 1;
 
             using var host = await BuildToolHostAsync(
@@ -148,8 +150,10 @@ public static partial class RunnerExecution
                     // must list exactly the tools a real kickoff exposes — without this,
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
+                    services.AddSingleton(console);
                     configureServices?.Invoke(ctx, services);
                 },
+                console.ErrorOutput,
                 CancellationToken.None).ConfigureAwait(false);
             if (host is null)
                 return 1;
@@ -162,7 +166,7 @@ public static partial class RunnerExecution
                 .OrderBy(n => n, StringComparer.Ordinal);
 
             foreach (var name in names)
-                Console.WriteLine(name);
+                await console.Output.WriteLineAsync(name).ConfigureAwait(false);
 
             return 0;
         }
@@ -198,13 +202,14 @@ public static partial class RunnerExecution
         bool allowExternalMounts,
         OfferedMountSelectors offered,
         Action<HostBuilderContext, IServiceCollection>? configureServices,
+        TextWriter error,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(error);
         // One reading of the layers the host composes for every guard (GAP-49, decision 2); the
         // selection line names what the command offers: --mount-id and --mount for --list-tools,
         // nothing for mcp serve (decision 3).
         var layers = RunnerSettings.ReadMountConfiguration(settingsPath);
-        var error = Console.Error;
         if (!EnsureReservedRootsAreFree(cliMounts, layers, error, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, mountIds, CrewMountDeclarations.None, layers, settingsPath, offered, error, out var selection)
@@ -251,7 +256,7 @@ public static partial class RunnerExecution
             // A setting the host build refuses — a retired key, MCP:EnableServer, an LLM profile
             // it cannot build, a file it cannot read, an address that is none (GAP-35) — is the
             // operator's to fix: the sentence, not a stack trace.
-            ReportRefusedSettings(ex);
+            ReportRefusedSettings(ex, error);
             return null;
         }
 
@@ -271,29 +276,19 @@ public static partial class RunnerExecution
     /// The guards <see cref="TryBuildHost"/> applies to the settings file itself, before any host
     /// (GAP-40) — the mounts it declares claim no root <c>orkeon run</c> keeps for itself, appear once
     /// per root or are told apart by their ids, and exist on the disk —, run with no crew and no
-    /// <c>--mount</c>, as <c>orkeon doctor</c> asks. They write their refusal on stderr, which is
-    /// captured here: the refusal comes back as one line, null when the file passes.
+    /// <c>--mount</c>, as <c>orkeon doctor</c> asks. They write their refusal to a buffer of their
+    /// own here: the refusal comes back as one line, null when the file passes.
     /// </summary>
     /// <param name="settingsPath">The settings file a run would read, or null.</param>
     internal static string? CheckSettingsMounts(string? settingsPath)
     {
-        var realError = Console.Error;
         using var capture = new StringWriter(CultureInfo.InvariantCulture);
-        bool passed;
-        Console.SetError(capture);
-        try
-        {
-            string[] none = [];
-            passed = EnsureVirtualRootsAreUnique(none, settingsPath)
-                && EnsureReservedRootsAreFree(
-                    none, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
-                && EnsureMountSelectionIsResolvable(none, [], CrewMountDeclarations.None, settingsPath, out var selection)
-                && EnsureMountSourcesExist(none, settingsPath, selection);
-        }
-        finally
-        {
-            Console.SetError(realError);
-        }
+        string[] none = [];
+        var passed = EnsureVirtualRootsAreUnique(none, settingsPath, capture)
+            && EnsureReservedRootsAreFree(
+                none, settingsPath, capture, RunnerVirtualRoots.Crew, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+            && EnsureMountSelectionIsResolvable(none, [], CrewMountDeclarations.None, settingsPath, capture, out var selection)
+            && EnsureMountSourcesExist(none, settingsPath, selection, capture);
 
         if (passed)
             return null;
@@ -472,12 +467,12 @@ public static partial class RunnerExecution
     /// <c>ORKEON_DEBUG=1</c>, the same switch the scripting CLI's own fault barrier uses.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static async Task ReportCrewConfigurationErrorAsync(ILogger logger, Exception ex, int verbose)
+    private static async Task ReportCrewConfigurationErrorAsync(ILogger logger, Exception ex, int verbose, TextWriter error)
     {
         LogCrewConfigurationError(logger, ex.Message);
 
         if (verbose > 0 || RunnerEnvironment.DebugDiagnostics)
-            await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+            await error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
     }
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Validating crew from {ConfigPath} (dry-run — no LLM probe, no kickoff)...")]
