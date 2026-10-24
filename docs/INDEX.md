@@ -54,6 +54,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [The run event bus](./architecture/run-event-bus.md) | `orkeon run --events jsonl`: the versioned protocol another program reads, the commands it can send back, and the `client://` seat it gets at the run's hub |
 | [Security, resilience and plugins](./architecture/security.md) | 6 security layers, Polly policies, checkpointing, plugin system |
 | [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 7 diagnostics, exempted scopes, migration exit criteria |
+| [Console compliance](./architecture/console-compliance.md) | No `System.Console` in framework code: the `ORKCON001` analyzer, the console adapters and the one sink per executable, `IRunnerConsole` / `ITerminalProbe`, the `Orkeon.Operator` warning channel |
 | [Plugin system](./architecture/plugins.md) | `IOrkeonPlugin` contract, VFS discovery, `AssemblyLoadContext` isolation, opt-in activation `AddOrkeonPlugins`, ⚠️ trust boundary |
 | [Scripting DSL](./architecture/scripting.md) | TypeScript-syntax DSL (`.ork.ts`): esbuild transpilation, sandboxed Jint execution, the full Orkeon surface (agents, crews, tools, FSM, graphs, events) via fluent builders |
 | [TypeScript CLI commands](./architecture/cli-ts-commands.md) | Interactive REPL commands in `*.cmd.ts` (`defineCommand`) loaded at startup without .NET recompilation, with work dispatch to agents |

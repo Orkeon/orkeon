@@ -29,10 +29,11 @@ trim_trailing_whitespace = false
 dotnet_diagnostic.CA2007.severity = error
 
 # ── ORKCON001 console ratchet (2026-10-24) ─────────────────────────────────
-# Direct System.Console usage (Orkeon.Compliance.Vfs ConsoleUsageAnalyzer). Silent
-# while the stock listed in the console inventory is being resorbed; raised to
-# error once it reaches zero outside [SuppressConsoleCompliance] adapters and sinks.
-dotnet_diagnostic.ORKCON001.severity = none
+# Direct System.Console usage (Orkeon.Compliance.Vfs ConsoleUsageAnalyzer). The stock
+# (about 350 sites) was resorbed to zero and frozen as an error: only the console
+# adapters and the one sink of each executable, marked [SuppressConsoleCompliance],
+# touch the process console (docs/architecture/console-compliance.md).
+dotnet_diagnostic.ORKCON001.severity = error
 
 # ── B1 globalisation ratchet (2026-06-13) ──────────────────────────────────
 # Resorbed to zero across all src projects (363 sites, multi-agent wave R11.1/B1)

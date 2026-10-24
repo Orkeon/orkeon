@@ -69,6 +69,7 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 
 ### Other rules
 
+- **Console**: framework code never references `System.Console` (`ORKCON001`, an error). Output goes to an injected `ILogger`, terminal I/O through `IRunnerConsole` (Hosting, the `orkeon` CLI), `IConsoleAdapter` (REPL), `ITerminalProbe` (TUI) or a `TextWriter`/`TextReader` parameter; only console adapters and one sink per executable carry `[SuppressConsoleCompliance]` (`docs/architecture/console-compliance.md`).
 - **Namespace collision**: `Orkeon.Domain.Task` collides with `System.Threading.Tasks.Task`. In a file that imports both, write every `Task` as `System.Threading.Tasks.Task`.
 - **Two scripting projects** (ADR-007): `Orkeon.Cli.Commands.Scripting` (`src/cli/`) is a library of TypeScript-scripted interactive commands; `Orkeon.Scripting.Cli` (`src/scripting/`) is the `orkeon` dotnet tool (`AssemblyName=orkeon`). The project whose last segment is `Cli` is the executable.
 - **Version**: `src/Directory.Build.props` (`VersionPrefix` + `VersionSuffix`) is the single source of truth; the publish workflow refuses a `v*` tag that does not match it.
