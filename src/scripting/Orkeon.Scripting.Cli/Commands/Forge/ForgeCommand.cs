@@ -525,12 +525,14 @@ internal static class ForgeCommand
     private const int ExitCancelled = 130;
 
     /// <summary>Dispatches <c>forge</c> subcommands.</summary>
+    /// <param name="console">The terminal the verb writes, reads and takes its interrupt key from.</param>
     /// <param name="args">The arguments after <c>forge</c>.</param>
     /// <param name="workingDirectoryOverride">The workspace; the process working directory when null.</param>
     /// <param name="scheduleHost">The operating system the schedule verbs act on; this machine's when null.</param>
     public static async Task<int> DispatchAsync(
-        string[] args, string? workingDirectoryOverride = null, ForgeScheduleHost? scheduleHost = null)
+        IRunnerConsole console, string[] args, string? workingDirectoryOverride = null, ForgeScheduleHost? scheduleHost = null)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(args);
 
         var workspace = workingDirectoryOverride ?? Directory.GetCurrentDirectory();
@@ -538,24 +540,24 @@ internal static class ForgeCommand
 
         if (options.Error is { } parseError)
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {parseError}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {parseError}").ConfigureAwait(false);
             return ExitError;
         }
 
         if (options.List)
-            return await ListAsync(workspace).ConfigureAwait(false);
+            return await ListAsync(console, workspace).ConfigureAwait(false);
 
         if (options.Rephrase)
-            return await ForgeRephrase.RunAsync(workspace, options).ConfigureAwait(false);
+            return await ForgeRephrase.RunAsync(console, workspace, options).ConfigureAwait(false);
 
         if (options.PromoteSlug is not null)
-            return await PromoteAsync(workspace, options, scheduleHost).ConfigureAwait(false);
+            return await PromoteAsync(console, workspace, options, scheduleHost).ConfigureAwait(false);
 
         if (options.ScheduleDirectory is not null || options.UnscheduleDirectory is not null)
         {
             // Under the same guard as a reopen: the verbs write forge.json and schedule/, and a
             // disk that refuses must come back as an exit code, never as an unhandled exception.
-            return await GuardedAsync(() => Task.FromResult(Schedule(options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
+            return await GuardedAsync(console, () => Task.FromResult(Schedule(console, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
                 .ConfigureAwait(false);
         }
 
@@ -564,7 +566,7 @@ internal static class ForgeCommand
             // Under the same guard as the schedule verbs: the rename undoes what it did itself
             // when a step fails, and anything it did not foresee must still come back as an exit
             // code, never as an unhandled exception.
-            return await GuardedAsync(() => Task.FromResult(Rename(workspace, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
+            return await GuardedAsync(console, () => Task.FromResult(Rename(console, workspace, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine())))
                 .ConfigureAwait(false);
         }
 
@@ -573,18 +575,18 @@ internal static class ForgeCommand
             // Under the same guard as adoption, for the same reason: the rebuild writes a
             // session, and a disk that refuses must come back as an exit code with a
             // closed event stream.
-            return await GuardedAsync(() => ReopenAsync(workspace, options)).ConfigureAwait(false);
+            return await GuardedAsync(console, () => ReopenAsync(console, workspace, options)).ConfigureAwait(false);
         }
 
         if (options.Format is { } requestedFormat && !IsKnownFormat(requestedFormat))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: unknown format '{requestedFormat}' — use yaml or script.")
                 .ConfigureAwait(false);
             return ExitError;
         }
 
-        return await RunOrAdoptAsync(workspace, options).ConfigureAwait(false);
+        return await RunOrAdoptAsync(console, workspace, options).ConfigureAwait(false);
     }
 
     private static bool IsKnownFormat(string format) =>
@@ -594,7 +596,7 @@ internal static class ForgeCommand
     /// A verb at the CLI boundary: what it did not foresee becomes exit 2, like <c>orkeon run</c>,
     /// never an unhandled exception.
     /// </summary>
-    private static async Task<int> GuardedAsync(Func<Task<int>> verb)
+    private static async Task<int> GuardedAsync(IRunnerConsole console, Func<Task<int>> verb)
     {
         try
         {
@@ -603,7 +605,7 @@ internal static class ForgeCommand
 #pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
             return ExitRuntimeError;
         }
 #pragma warning restore CA1031
@@ -615,17 +617,17 @@ internal static class ForgeCommand
     /// event stream — not as an unhandled exception that leaves a client waiting forever for a
     /// session.finished that will never come.
     /// </summary>
-    private static async Task<int> RunOrAdoptAsync(string workspace, ForgeCommandOptions options)
+    private static async Task<int> RunOrAdoptAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options)
     {
         try
         {
             return options.Adopt
-                ? await AdoptAsync(workspace, options).ConfigureAwait(false)
-                : await RunCycleAsync(workspace, options).ConfigureAwait(false);
+                ? await AdoptAsync(console, workspace, options).ConfigureAwait(false)
+                : await RunCycleAsync(console, workspace, options).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            await Console.Error.WriteLineAsync("orkeon forge: interrupted — the session is saved and resumable.")
+            await console.ErrorOutput.WriteLineAsync("orkeon forge: interrupted — the session is saved and resumable.")
                 .ConfigureAwait(false);
             return ExitCancelled;
         }
@@ -633,19 +635,19 @@ internal static class ForgeCommand
         {
             // A setting the engine host refuses is a refusal like the others, exit 1 (GAP-35) —
             // not the unexpected error it fell into.
-            await Console.Error.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {ex.Message}").ConfigureAwait(false);
             return ExitError;
         }
 #pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
             return ExitRuntimeError;
         }
 #pragma warning restore CA1031
     }
 
-    private static async Task<int> RunCycleAsync(string workspace, ForgeCommandOptions options)
+    private static async Task<int> RunCycleAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options)
     {
         // A read folder that does not exist is a typo, and the cheapest refusal there is:
         // before the session is even opened, so a mistyped path leaves no stray session
@@ -653,7 +655,7 @@ internal static class ForgeCommand
         var readRoot = options.ReadDirectory is { } readDirectory ? Path.GetFullPath(readDirectory) : null;
         if (readRoot is not null && !Directory.Exists(readRoot))
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: --read names no directory: '{readRoot}'.")
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: --read names no directory: '{readRoot}'.")
                 .ConfigureAwait(false);
             return ExitError;
         }
@@ -663,24 +665,24 @@ internal static class ForgeCommand
         // mistyped id leaves no stray session behind and no model is ever asked.
         var reference = LoadReference(options.Reference, out var unknownReference);
         if (unknownReference is not null)
-            return await RefuseReferenceAsync(options, unknownReference).ConfigureAwait(false);
+            return await RefuseReferenceAsync(console, options, unknownReference).ConfigureAwait(false);
 
         // Open or create the session first: it is cheap, offline, and `resume` must be
         // able to say "no such session" before any host boots.
         var resumed = options.ResumeSlug is not null;
-        var (session, openExitCode) = await OpenSessionAsync(workspace, options, reference).ConfigureAwait(false);
+        var (session, openExitCode) = await OpenSessionAsync(console, workspace, options, reference).ConfigureAwait(false);
         if (session is null)
             return openExitCode;
 
         // A resume composes with the reference the session recorded (D-01): the parser refuses
         // another one there.
         if (resumed)
-            reference = await RecordedReferenceAsync(session).ConfigureAwait(false);
+            reference = await RecordedReferenceAsync(console, session).ConfigureAwait(false);
 
         // The engine host: same settings chain as `orkeon run` (explicit --settings →
         // next to the workspace → global), the read folder readable, the session writable,
         // and the forge's own services on top.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, Console.Error);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, console.ErrorOutput);
         var box = new ForgeSubmissionBox();
         var tally = new ForgeUsageTally();
         var observer = new ForgeRunObserver();
@@ -689,23 +691,23 @@ internal static class ForgeCommand
         // run by the test stage. Everything else the crew sees is read-only.
         Directory.CreateDirectory(OutputDirectoryOf(session));
 
-        if (!TryPlanMounts(workspace, readRoot, session, settingsPath, out var mountPlan, out var mountWarnings))
+        if (!TryPlanMounts(console, workspace, readRoot, session, settingsPath, out var mountPlan, out var mountWarnings))
             return 1;
 
-        // Disposing the renderer never touches Console.Out — it only wraps it.
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        // Disposing the renderer never touches the console output — it only wraps it.
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
         foreach (var warning in mountWarnings)
             events.Warning(ForgeErrorCodes.MountAmbiguous, warning);
 
-        using var host = BuildEngineHost(settingsPath, mountPlan, box, tally, observer);
+        using var host = BuildEngineHost(console, settingsPath, mountPlan, box, tally, observer);
 
         // No Llm section = no interview. Refuse with the remedy, before spending a turn —
         // the silent echo degrade that is acceptable for `orkeon run` would make the
         // assistant babble its own prompts back at the user.
         if (!host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists())
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon forge: no LLM is configured (FORGE-LLM-UNAVAILABLE) — run `orkeon init`, or pass --settings.")
                 .ConfigureAwait(false);
             return ExitError;
@@ -722,8 +724,8 @@ internal static class ForgeCommand
 
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events
-            ? new JsonLinesUserChannel(Console.In)
-            : new TerminalUserChannel(Console.In, Console.Out);
+            ? new JsonLinesUserChannel(console.Input)
+            : new TerminalUserChannel(console.Input, console.Output);
 
         // The dry-pause edit (v3 W-10): the wizard's Composer step shows the proposed
         // agents while the engine is off — amending one is a resume that carries the
@@ -731,7 +733,7 @@ internal static class ForgeCommand
         // The arbitration keeps its own edit decision; this path only exists BEFORE the
         // first trial of the current iteration, so it charges none.
         if (options.Edit
-            && await ApplyEditedBlueprintAsync(session, channel, events, knownTools).ConfigureAwait(false) is { } editExitCode)
+            && await ApplyEditedBlueprintAsync(console, session, channel, events, knownTools).ConfigureAwait(false) is { } editExitCode)
         {
             return editExitCode;
         }
@@ -760,7 +762,7 @@ internal static class ForgeCommand
             .RunAsync(resumed, stopBefore: options.Dry ? ForgeState.Test : null, announce: announce)
             .ConfigureAwait(false);
 
-        await AnnounceDryPauseAsync(session, options, result).ConfigureAwait(false);
+        await AnnounceDryPauseAsync(console, session, options, result).ConfigureAwait(false);
         return result.ExitCode;
     }
 
@@ -803,7 +805,7 @@ internal static class ForgeCommand
     /// root declared twice with nothing to pick one is refused here, in one line.
     /// </para>
     /// </summary>
-    private static bool TryPlanMounts(
+    private static bool TryPlanMounts(IRunnerConsole console,
         string workspace, string? readRoot, ForgeSession session, string? settingsPath,
         out RunnerMountPlan mountPlan, out IReadOnlyList<string> warnings)
     {
@@ -811,9 +813,9 @@ internal static class ForgeCommand
         warnings = [];
         // The forge takes no --mount, no --mount-id, no crew: a root declared twice is withdrawn
         // and said so (CH-12), on stderr here and as an event once the writer exists.
-        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, Console.Error, RunnerVirtualRoots.Sandbox)
+        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, console.ErrorOutput, RunnerVirtualRoots.Sandbox)
             || !RunnerExecution.EnsureMountSelectionIsResolvable(
-                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, Console.Error, out var selection))
+                mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.None, console.ErrorOutput, out var selection))
         {
             return false;
         }
@@ -828,7 +830,7 @@ internal static class ForgeCommand
     /// in the middle of the event stream and every consumer has to guess which lines are
     /// events. Warnings still matter — they go to stderr.
     /// </summary>
-    private static Microsoft.Extensions.Hosting.IHost BuildEngineHost(
+    private static Microsoft.Extensions.Hosting.IHost BuildEngineHost(IRunnerConsole console,
         string? settingsPath, RunnerMountPlan mountPlan, ForgeSubmissionBox box, ForgeUsageTally tally, ForgeRunObserver observer) =>
         RunnerHost.Build(
             settingsPath,
@@ -849,7 +851,11 @@ internal static class ForgeCommand
                 // /output, and the log is where that is said.
                 logging.AddFilter("Orkeon.Hosting.RunnerHost", LogLevel.Information);
             },
-            configureServices: (_, services) => AddEngineServices(services, box, tally, observer));
+            configureServices: (_, services) =>
+            {
+                services.AddSingleton(console);
+                AddEngineServices(services, box, tally, observer);
+            });
 
     /// <summary>
     /// The interview stage. A run that does not stop before its trial holds that trial in this
@@ -977,15 +983,15 @@ internal static class ForgeCommand
     /// <c>USECASES-UNKNOWN-ID</c>. No session exists, so the stream carries the error and closes on
     /// «failed», like a reopen that could produce none; the terminal gets the one line.
     /// </summary>
-    private static async Task<int> RefuseReferenceAsync(ForgeCommandOptions options, UseCases.UnknownUseCaseException error)
+    private static async Task<int> RefuseReferenceAsync(IRunnerConsole console, ForgeCommandOptions options, UseCases.UnknownUseCaseException error)
     {
         if (!options.Events)
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {error.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {error.Message}").ConfigureAwait(false);
             return ExitError;
         }
 
-        var events = new ForgeEventWriter(Console.Out);
+        var events = new ForgeEventWriter(console.Output);
         events.Error(UseCases.UnknownUseCaseException.Code, error.Message, recoverable: false);
         events.SessionFinished("failed", ExitError);
         return ExitError;
@@ -996,7 +1002,7 @@ internal static class ForgeCommand
     /// build no longer carries is said on stderr and composed without — the session still resumes,
     /// and keeps its provenance as recorded.
     /// </summary>
-    private static async Task<ForgeReference?> RecordedReferenceAsync(ForgeSession session)
+    private static async Task<ForgeReference?> RecordedReferenceAsync(IRunnerConsole console, ForgeSession session)
     {
         if (session.Document.Reference is not { } recorded)
             return null;
@@ -1004,7 +1010,7 @@ internal static class ForgeCommand
         var reference = ForgeReference.Recorded(recorded);
         if (reference is null)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: the use case '{recorded.Id}' this session was composed from is no longer in the"
                 + " catalogue — the team is composed without it.")
                 .ConfigureAwait(false);
@@ -1018,22 +1024,22 @@ internal static class ForgeCommand
     /// <paramref name="reference"/>, when there is one. A refusal is reported on stderr and comes
     /// back as a null session carrying the exit code.
     /// </summary>
-    private static async Task<(ForgeSession? Session, int ExitCode)> OpenSessionAsync(
+    private static async Task<(ForgeSession? Session, int ExitCode)> OpenSessionAsync(IRunnerConsole console,
         string workspace, ForgeCommandOptions options, ForgeReference? reference)
     {
         if (options.ResumeSlug is not { } slug)
-            return (await CreateSessionAsync(workspace, options, reference).ConfigureAwait(false), 0);
+            return (await CreateSessionAsync(console, workspace, options, reference).ConfigureAwait(false), 0);
 
         if (!ForgeSession.TryLoadBySlug(workspace, slug, out var loaded, out var loadError))
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
             return (null, ExitError);
         }
 
         var session = loaded!;
         if (session.Status is ForgeSessionStatus.Failed)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: session '{slug}' is {session.Document.Status} and cannot be resumed.")
                 .ConfigureAwait(false);
             return (null, ExitError);
@@ -1047,7 +1053,7 @@ internal static class ForgeCommand
         if (options.Format is { } requestedFormat
             && !string.Equals(requestedFormat, session.Document.Format, StringComparison.OrdinalIgnoreCase))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: session '{slug}' was created with --format {session.Document.Format}"
                 + " — the format of a session cannot change on resume.")
                 .ConfigureAwait(false);
@@ -1056,7 +1062,7 @@ internal static class ForgeCommand
 
         if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable(workspace, options))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: session '{slug}' renders a script crew and esbuild was not found"
                 + " (FORGE-ESBUILD-MISSING) — install the toolchain (see `orkeon doctor`) and resume again.")
                 .ConfigureAwait(false);
@@ -1071,7 +1077,7 @@ internal static class ForgeCommand
     /// A brand-new session, with the budget the command line asked for and the reference it is
     /// composed from, recorded in English until the promotion knows the brief's language (D-04).
     /// </summary>
-    private static async Task<ForgeSession> CreateSessionAsync(
+    private static async Task<ForgeSession> CreateSessionAsync(IRunnerConsole console,
         string workspace, ForgeCommandOptions options, ForgeReference? reference)
     {
         var format = options.Format ?? ForgeSession.FormatYaml;
@@ -1079,7 +1085,7 @@ internal static class ForgeCommand
         {
             // The clean degradation of SPEC §8.2: fall back to YAML with the remedy,
             // never a transpilation error a beginner cannot read.
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon forge: esbuild was not found (FORGE-ESBUILD-MISSING) — rendering YAML instead;"
                 + " install the script toolchain (see `orkeon doctor`) to get a .ork.ts crew.")
                 .ConfigureAwait(false);
@@ -1104,7 +1110,7 @@ internal static class ForgeCommand
     /// it is validated in full and the session moves back to a deterministic re-render.
     /// Returns the exit code when the amendment is refused, null when it was applied.
     /// </summary>
-    private static async Task<int?> ApplyEditedBlueprintAsync(
+    private static async Task<int?> ApplyEditedBlueprintAsync(IRunnerConsole console,
         ForgeSession session,
         IForgeUserChannel channel,
         ForgeEventWriter events,
@@ -1112,7 +1118,7 @@ internal static class ForgeCommand
     {
         if (session.State != ForgeState.Test)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: --edit amends a session paused before its trial; session '{session.Document.Slug}'"
                 + $" is at '{ForgeEventWriter.Spell(session.State)}' — at the arbitration, use the edit decision instead.")
                 .ConfigureAwait(false);
@@ -1140,13 +1146,13 @@ internal static class ForgeCommand
     }
 
     /// <summary>Where a <c>--dry</c> run stopped and how to take it from there — terminal only.</summary>
-    private static async Task AnnounceDryPauseAsync(
+    private static async Task AnnounceDryPauseAsync(IRunnerConsole console,
         ForgeSession session, ForgeCommandOptions options, ForgeEngineResult result)
     {
         if (options.Events || !options.Dry || result.Outcome != ForgeEngineOutcome.Paused)
             return;
 
-        await Console.Out.WriteLineAsync(
+        await console.Output.WriteLineAsync(
             $"Generated and validated under {Path.Combine(session.Directory, ForgeYamlRenderer.CrewDirectoryName)}."
             + $" Try it: orkeon forge resume {session.Document.Slug}"
             + $" — or keep it as it is, without a trial: orkeon forge resume {session.Document.Slug} --adopt")
@@ -1165,16 +1171,16 @@ internal static class ForgeCommand
     /// the session records that it was skipped rather than pretending a verdict was earned.
     /// </para>
     /// </summary>
-    private static async Task<int> AdoptAsync(string workspace, ForgeCommandOptions options)
+    private static async Task<int> AdoptAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options)
     {
         if (!ForgeSession.TryLoadBySlug(workspace, options.ResumeSlug!, out var session, out var loadError))
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
             return ExitError;
         }
 
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
         events.SessionStarted(session!, resumed: true);
 
         if (!session!.TryAdoptWithoutTrial(DateTimeOffset.UtcNow))
@@ -1189,14 +1195,14 @@ internal static class ForgeCommand
             events.Error(ForgeErrorCodes.InvalidState, detail, recoverable: true);
             events.SessionFinished(StatusWord(session), ExitError);
             if (!options.Events)
-                await Console.Error.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
             return ExitError;
         }
 
         events.SessionFinished("ready", 0);
         if (!options.Events)
         {
-            await Console.Out.WriteLineAsync(
+            await console.Output.WriteLineAsync(
                 $"Adopted without a trial. Ship it with: orkeon forge promote {session.Document.Slug} --to <directory>")
                 .ConfigureAwait(false);
         }
@@ -1224,21 +1230,21 @@ internal static class ForgeCommand
     /// folder in place, and the next reopen finds this session instead of rebuilding another.
     /// </para>
     /// </summary>
-    private static async Task<int> ReopenAsync(string workspace, ForgeCommandOptions options)
+    private static async Task<int> ReopenAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options)
     {
         var teamDirectory = Path.GetFullPath(options.ReopenDirectory!);
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
 
         if (!Directory.Exists(teamDirectory))
         {
-            return await RefuseReopenAsync(events, options, $"reopen names no directory: '{teamDirectory}'.")
+            return await RefuseReopenAsync(console, events, options, $"reopen names no directory: '{teamDirectory}'.")
                 .ConfigureAwait(false);
         }
 
         var link = ForgeTeamLink.Resolve(workspace, teamDirectory);
         if (link is { IsLinked: true, Session: { } existing })
-            return await ReopenLinkedAsync(existing, link.Kind, teamDirectory, events, options).ConfigureAwait(false);
+            return await ReopenLinkedAsync(console, existing, link.Kind, teamDirectory, events, options).ConfigureAwait(false);
 
         // A copy gets a session of its own (D-05): the rebuild rewrites the id the copy carried,
         // so it can never reopen, nor update, its original's.
@@ -1250,7 +1256,7 @@ internal static class ForgeCommand
         }
         catch (InvalidOperationException ex)
         {
-            return await RefuseReopenAsync(events, options, ex.Message).ConfigureAwait(false);
+            return await RefuseReopenAsync(console, events, options, ex.Message).ConfigureAwait(false);
         }
 
         var session = rebuilt.Session;
@@ -1270,7 +1276,7 @@ internal static class ForgeCommand
         if (!options.Events)
         {
             var copyOf = isCopy ? link.Session!.Document.PromotedTo : null;
-            await Console.Out.WriteLineAsync(RebuiltSummary(session.Document.Slug, teamDirectory, recorded, copyOf))
+            await console.Output.WriteLineAsync(RebuiltSummary(session.Document.Slug, teamDirectory, recorded, copyOf))
                 .ConfigureAwait(false);
         }
 
@@ -1283,7 +1289,7 @@ internal static class ForgeCommand
     /// original. The session follows it, so its next promotion updates the folder where it now
     /// is — and a copy made from here on is told apart from it by this path).
     /// </summary>
-    private static async Task<int> ReopenLinkedAsync(
+    private static async Task<int> ReopenLinkedAsync(IRunnerConsole console,
         ForgeSession existing, TeamSessionLinkKind kind, string teamDirectory, ForgeEventWriter events, ForgeCommandOptions options)
     {
         var moved = kind == TeamSessionLinkKind.Moved;
@@ -1306,7 +1312,7 @@ internal static class ForgeCommand
         if (!options.Events)
         {
             var since = moved ? ", since moved here — it now points here" : "";
-            await Console.Out.WriteLineAsync(
+            await console.Output.WriteLineAsync(
                 $"Session '{existing.Document.Slug}' promoted this folder{since}. Reopen it: orkeon forge resume {existing.Document.Slug}")
                 .ConfigureAwait(false);
         }
@@ -1332,12 +1338,12 @@ internal static class ForgeCommand
     /// A reopen that could not produce a session: no session started, so the stream carries the
     /// error and closes on «failed» — the verdict is on the command, there is no session to judge.
     /// </summary>
-    private static async Task<int> RefuseReopenAsync(ForgeEventWriter events, ForgeCommandOptions options, string detail)
+    private static async Task<int> RefuseReopenAsync(IRunnerConsole console, ForgeEventWriter events, ForgeCommandOptions options, string detail)
     {
         events.Error(ForgeErrorCodes.TeamUnreadable, detail, recoverable: false);
         events.SessionFinished("failed", ExitError);
         if (!options.Events)
-            await Console.Error.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
         return ExitError;
     }
 
@@ -1348,12 +1354,12 @@ internal static class ForgeCommand
     /// the stream carries the <c>warning</c>s, then either the folder's <c>schedule.state</c> —
     /// exit 0 — or an <c>error</c> with the command a person can run instead — exit 1.
     /// </summary>
-    private static int Schedule(ForgeCommandOptions options, ForgeScheduleHost host)
+    private static int Schedule(IRunnerConsole console, ForgeCommandOptions options, ForgeScheduleHost host)
     {
         var verb = options.UnscheduleDirectory is not null ? "unschedule" : "schedule";
         var teamDirectory = Path.GetFullPath(options.ScheduleDirectory ?? options.UnscheduleDirectory!);
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
 
         if (!Directory.Exists(teamDirectory))
         {
@@ -1392,11 +1398,11 @@ internal static class ForgeCommand
     /// schedule was reinstalled, then <c>team.renamed</c> — exit 0 — or one <c>error</c> — exit 1,
     /// and everything as it was.
     /// </summary>
-    private static int Rename(string workspace, ForgeCommandOptions options, ForgeScheduleHost host)
+    private static int Rename(IRunnerConsole console, string workspace, ForgeCommandOptions options, ForgeScheduleHost host)
     {
         var teamDirectory = Path.GetFullPath(options.RenameDirectory!);
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
 
         var outcome = ForgeTeamRenamer.Rename(workspace, teamDirectory, options.TeamName!, host);
         if (outcome.Failure is { } failure)
@@ -1443,24 +1449,24 @@ internal static class ForgeCommand
     /// the command still succeeds: the promotion stands, the id links the two.
     /// </para>
     /// </summary>
-    private static async Task<int> PromoteAsync(string workspace, ForgeCommandOptions options, ForgeScheduleHost? scheduleHost)
+    private static async Task<int> PromoteAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options, ForgeScheduleHost? scheduleHost)
     {
         if (!ForgeSession.TryLoadBySlug(workspace, options.PromoteSlug!, out var session, out var loadError))
         {
-            await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
             return ExitError;
         }
 
         if (session!.Status != ForgeSessionStatus.Ready)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon forge: session '{options.PromoteSlug}' is {session.Document.Status} — only a ready session can be promoted.")
                 .ConfigureAwait(false);
             return ExitError;
         }
 
-        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
-        var events = new ForgeEventWriter(renderer ?? Console.Out);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(console.Output);
+        var events = new ForgeEventWriter(renderer ?? console.Output);
         events.SessionStarted(session, resumed: true);
 
         // The team's name titles the session before the folder is written, so FORGE.md and
@@ -1527,7 +1533,7 @@ internal static class ForgeCommand
             var warning = ForgePromoter.LauncherTooLongWarning(tooLong);
             events.Warning(ForgeErrorCodes.LauncherTooLong, warning);
             if (options.Events)
-                await Console.Error.WriteLineAsync($"orkeon forge: {warning}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon forge: {warning}").ConfigureAwait(false);
         }
 
         // The promotion is written: the session folder follows the team's (D-02). Outside the
@@ -1589,23 +1595,23 @@ internal static class ForgeCommand
     }
 
     /// <summary>Prints the workspace's sessions, most recently touched first.</summary>
-    private static async Task<int> ListAsync(string workspace)
+    private static async Task<int> ListAsync(IRunnerConsole console, string workspace)
     {
         var sessions = ForgeSession.List(workspace);
         if (sessions.Count == 0)
         {
-            await Console.Out.WriteLineAsync($"No forge session under {ForgeSession.RootFor(workspace)}.")
+            await console.Output.WriteLineAsync($"No forge session under {ForgeSession.RootFor(workspace)}.")
                 .ConfigureAwait(false);
             return 0;
         }
 
-        await Console.Out.WriteLineAsync(string.Create(
+        await console.Output.WriteLineAsync(string.Create(
             CultureInfo.InvariantCulture,
             $"{"SLUG",-34} {"STATE",-10} {"STATUS",-16} {"FORMAT",-7} UPDATED")).ConfigureAwait(false);
 
         foreach (var session in sessions)
         {
-            await Console.Out.WriteLineAsync(string.Create(
+            await console.Output.WriteLineAsync(string.Create(
                 CultureInfo.InvariantCulture,
                 $"{session.Slug,-34} {SpellState(session.State),-10} {session.Status,-16} {session.Format,-7} {session.UpdatedAt}"))
                 .ConfigureAwait(false);

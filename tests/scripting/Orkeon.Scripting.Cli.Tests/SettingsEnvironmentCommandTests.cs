@@ -119,7 +119,7 @@ public sealed class SettingsEnvironmentCommandTests
     private static async Task<(int Exit, string Stdout, string Stderr)> RunAsync(params string[] args)
     {
         using var console = new TestConsole();
-        var exit = await Program.DispatchAsync(args);
+        var exit = await Program.DispatchAsync(console, args);
         return (exit, console.Stdout, console.Stderr);
     }
 

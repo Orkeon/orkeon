@@ -19,6 +19,9 @@ public sealed class FakeRunnerConsole : IRunnerConsole
     /// <summary>The standard input; empty unless a test sets it.</summary>
     public TextReader Input { get; set; } = new StringReader("");
 
+    /// <summary>Whether the input reads as redirected; a buffer is, by default.</summary>
+    public bool IsInputRedirected { get; set; } = true;
+
     TextWriter IRunnerConsole.Output => Output;
 
     TextWriter IRunnerConsole.ErrorOutput => ErrorOutput;

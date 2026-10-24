@@ -23,7 +23,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         var target = Path.Combine(_workspace, "orkeon-quickstart");
@@ -40,7 +40,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync(["--to", "demo/crew"], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, ["--to", "demo/crew"], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         var target = Path.Combine(_workspace, "demo", "crew");
@@ -55,7 +55,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         var example = Path.Combine(RepoRoot(), "examples", "quickstart");
@@ -76,7 +76,7 @@ public sealed class QuickstartCommandTests : IDisposable
         await File.WriteAllTextAsync(edited, "# edited", TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("is not empty", console.Stderr, StringComparison.Ordinal);
@@ -90,7 +90,7 @@ public sealed class QuickstartCommandTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(_workspace, "orkeon-quickstart"), "", TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("is a file", console.Stderr, StringComparison.Ordinal);
@@ -102,7 +102,7 @@ public sealed class QuickstartCommandTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_workspace, "orkeon-quickstart"));
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.True(File.Exists(Path.Combine(_workspace, "orkeon-quickstart", "crew.yaml")));
@@ -115,7 +115,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync([argument], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, [argument], _workspace);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("--to needs a directory", console.Stderr, StringComparison.Ordinal);
@@ -127,7 +127,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await QuickstartCommand.DispatchAsync(["--bogus"], _workspace);
+        var exit = await QuickstartCommand.DispatchAsync(console, ["--bogus"], _workspace);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unknown argument '--bogus'", console.Stderr, StringComparison.Ordinal);
@@ -140,7 +140,7 @@ public sealed class QuickstartCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["quickstart", "--help"]);
+        var exit = await Program.DispatchAsync(console, ["quickstart", "--help"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("orkeon quickstart [--to <dir>]", console.Stdout, StringComparison.Ordinal);

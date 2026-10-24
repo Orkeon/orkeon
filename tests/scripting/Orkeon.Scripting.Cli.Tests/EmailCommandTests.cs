@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Tests.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -25,7 +26,7 @@ public sealed partial class EmailCommandTests
         scratch.WriteFile("appsettings.json", "{}");
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+        var exit = await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("No e-mail account is configured", console.Stdout, StringComparison.Ordinal);
@@ -45,7 +46,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+        var exit = await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("perso — me@gmail.com", console.Stdout, StringComparison.Ordinal);
@@ -66,7 +67,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
+        var exit = await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
         Assert.Equal(Program.ExitOk, exit);
         using var document = JsonDocument.Parse(console.Stdout);
@@ -95,7 +96,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
+        var exit = await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
         Assert.Equal(Program.ExitOk, exit);
         using var document = JsonDocument.Parse(console.Stdout);
@@ -128,7 +129,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "perso" });
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "perso" });
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("signs in with a password", console.Stderr, StringComparison.Ordinal);
@@ -146,7 +147,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "work" });
+        var exit = await EmailCommand.ExecuteCheckAsync(console, new EmailCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "work" });
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("Unknown e-mail account 'work'", console.Stderr, StringComparison.Ordinal);
@@ -164,7 +165,7 @@ public sealed partial class EmailCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "hotmail",
@@ -192,7 +193,7 @@ public sealed partial class EmailCommandTests
         using (var graph = new StubOutlookHttpMessageHandler())
         using (var console = new TestConsole())
         {
-            var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+            var exit = await EmailCommand.ExecuteCheckAsync(console, new EmailCheckCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "hotmail",
@@ -209,7 +210,7 @@ public sealed partial class EmailCommandTests
         using (var graph = new StubOutlookHttpMessageHandler())
         using (var console = new TestConsole())
         {
-            var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+            var exit = await EmailCommand.ExecuteCheckAsync(console, new EmailCheckCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "hotmail",
@@ -229,7 +230,7 @@ public sealed partial class EmailCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+            var exit = await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
             Assert.Equal(Program.ExitOk, exit);
             Assert.Contains("hotmail (default) — me@hotmail.com", console.Stdout, StringComparison.Ordinal);
             Assert.Contains("  ready", console.Stdout, StringComparison.Ordinal);
@@ -237,7 +238,7 @@ public sealed partial class EmailCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await EmailCommand.ExecuteLogoutAsync(new EmailLogoutCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "hotmail" });
+            var exit = await EmailCommand.ExecuteLogoutAsync(console, new EmailLogoutCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "hotmail" });
             Assert.Equal(Program.ExitOk, exit);
             Assert.Contains("Signed out", console.Stdout, StringComparison.Ordinal);
         }
@@ -245,7 +246,7 @@ public sealed partial class EmailCommandTests
         Assert.Empty(Directory.GetFiles(Path.Combine(credentials, "email"), "hotmail-*.json"));
         using (var console = new TestConsole())
         {
-            await EmailCommand.ExecuteAccountsAsync(new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+            await EmailCommand.ExecuteAccountsAsync(console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
             Assert.Contains("orkeon email login hotmail", console.Stdout, StringComparison.Ordinal);
         }
     }
@@ -256,7 +257,7 @@ public sealed partial class EmailCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.DispatchAsync(["--help"]);
+        var exit = await EmailCommand.DispatchAsync(console, ["--help"]);
 
         Assert.Equal(Program.ExitOk, exit);
         foreach (var verb in new[] { "accounts", "login", "logout", "check" })
@@ -269,9 +270,9 @@ public sealed partial class EmailCommandTests
         using var scratch = new ScriptScratch();
         WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
         using (var identity = new StubOutlookHttpMessageHandler())
-        using (new TestConsole())
+        using (var login = new TestConsole())
         {
-            Assert.Equal(Program.ExitOk, await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            Assert.Equal(Program.ExitOk, await EmailCommand.ExecuteLoginAsync(login, new EmailLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "hotmail",
@@ -283,7 +284,7 @@ public sealed partial class EmailCommandTests
         using var graph = new StubOutlookHttpMessageHandler { GraphStatus = HttpStatusCode.ServiceUnavailable };
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+        var exit = await EmailCommand.ExecuteCheckAsync(console, new EmailCheckCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -293,6 +294,33 @@ public sealed partial class EmailCommandTests
         Assert.Equal(Program.ExitRuntimeError, exit);
         Assert.Contains("orkeon email check: Microsoft Graph is throttling or unavailable", console.Stderr, StringComparison.Ordinal);
         Assert.Empty(console.Stdout);
+    }
+
+    /// <summary>
+    /// Ctrl+C reaches the verb through the console it is handed: the key press delivered by the
+    /// console's interrupt cancels the sign-in, which exits 130 and leaves no handler behind.
+    /// </summary>
+    [Fact]
+    public async Task Login_WhenTheGivenConsoleIsInterrupted_ExitsCancelled()
+    {
+        using var scratch = new ScriptScratch();
+        WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
+        using var identity = new StubOutlookHttpMessageHandler();
+        using var console = new TestConsole();
+        var interaction = new StubInterruptedEmailLoginInteraction(console.Interrupt);
+
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
+        {
+            WorkingDirectoryOverride = scratch.Root,
+            Account = "hotmail",
+            Interaction = interaction,
+            ConfigureTestServices = Answering(identity),
+        }).WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(Program.ExitCancelled, exit);
+        Assert.True(interaction.Consumed);
+        Assert.Equal(0, console.InterruptHandlerCount);
+        Assert.DoesNotContain("Signed in", console.Stdout, StringComparison.Ordinal);
     }
 
     /// <summary>One Outlook account signing in with OAuth, its tokens kept under <paramref name="credentials"/>.</summary>

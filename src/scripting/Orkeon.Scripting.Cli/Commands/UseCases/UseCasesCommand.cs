@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
@@ -108,25 +109,26 @@ internal static class UseCasesCommand
     private const string EventsFormat = "jsonl";
 
     /// <summary>Parses <paramref name="args"/> (already stripped of <c>usecases</c>) and dispatches to a subcommand.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return await CliGrammar.DispatchAsync("usecases", args, [typeof(UseCasesSearchOptions), typeof(UseCasesListOptions), typeof(UseCasesShowOptions), typeof(UseCasesExportOptions)], options => options switch
+        return await CliGrammar.DispatchAsync(console, "usecases", args, [typeof(UseCasesSearchOptions), typeof(UseCasesListOptions), typeof(UseCasesShowOptions), typeof(UseCasesExportOptions)], (console, options) => options switch
         {
-            UseCasesSearchOptions o => ExecuteSearchAsync(o),
-            UseCasesListOptions o => ExecuteListAsync(o),
-            UseCasesShowOptions o => ExecuteShowAsync(o),
-            UseCasesExportOptions o => ExecuteExportAsync(o),
+            UseCasesSearchOptions o => ExecuteSearchAsync(console, o),
+            UseCasesListOptions o => ExecuteListAsync(console, o),
+            UseCasesShowOptions o => ExecuteShowAsync(console, o),
+            UseCasesExportOptions o => ExecuteExportAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
 
     /// <summary>Runs one search, or the session mode; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteSearchAsync(UseCasesSearchOptions options)
+    public static Task<int> ExecuteSearchAsync(IRunnerConsole console, UseCasesSearchOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("search", options, async (output, cancellationToken) =>
+        return GuardedAsync(console, "search", options, async (output, cancellationToken) =>
         {
             if (!TryReadLanguage(options, output, out var language))
                 return Program.ExitScriptError;
@@ -150,7 +152,7 @@ internal static class UseCasesCommand
 
             if (text.Length == 0)
             {
-                return await RunSessionAsync(engine, catalog, policy, options.Top, language, output.Events!, cancellationToken)
+                return await RunSessionAsync(console.Input, engine, catalog, policy, options.Top, language, output.Events!, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -161,17 +163,18 @@ internal static class UseCasesCommand
             if (output.Events is { } events)
                 events.Results(answer, correlationId: null);
             else
-                await Console.Out.WriteAsync(RenderAnswer(answer)).ConfigureAwait(false);
+                await console.Output.WriteAsync(RenderAnswer(answer)).ConfigureAwait(false);
 
             return Program.ExitOk;
         });
     }
 
     /// <summary>Lists the catalogue, filtered; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteListAsync(UseCasesListOptions options)
+    public static Task<int> ExecuteListAsync(IRunnerConsole console, UseCasesListOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("list", options, async (output, _) =>
+        return GuardedAsync(console, "list", options, async (output, _) =>
         {
             if (!TryReadLanguage(options, output, out var language))
                 return Program.ExitScriptError;
@@ -207,7 +210,7 @@ internal static class UseCasesCommand
             if (output.Events is { } events)
                 events.Catalog(catalog, useCases);
             else
-                await Console.Out.WriteAsync(RenderList(useCases, language ?? UseCaseLanguages.Fallback)).ConfigureAwait(false);
+                await console.Output.WriteAsync(RenderList(useCases, language ?? UseCaseLanguages.Fallback)).ConfigureAwait(false);
 
             return Program.ExitOk;
         });
@@ -224,10 +227,11 @@ internal static class UseCasesCommand
     }
 
     /// <summary>Shows one sheet; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteShowAsync(UseCasesShowOptions options)
+    public static Task<int> ExecuteShowAsync(IRunnerConsole console, UseCasesShowOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("show", options, async (output, _) =>
+        return GuardedAsync(console, "show", options, async (output, _) =>
         {
             if (!TryReadLanguage(options, output, out var language))
                 return Program.ExitScriptError;
@@ -246,7 +250,7 @@ internal static class UseCasesCommand
             if (output.Events is { } events)
                 events.Sheet(useCase, files, crew);
             else
-                await Console.Out.WriteAsync(RenderSheet(useCase, files, crew, language)).ConfigureAwait(false);
+                await console.Output.WriteAsync(RenderSheet(useCase, files, crew, language)).ConfigureAwait(false);
 
             return Program.ExitOk;
         });
@@ -257,10 +261,11 @@ internal static class UseCasesCommand
     /// reference-only case (D-03) and a destination that holds anything are refused before a
     /// byte is written.
     /// </summary>
-    public static Task<int> ExecuteExportAsync(UseCasesExportOptions options)
+    public static Task<int> ExecuteExportAsync(IRunnerConsole console, UseCasesExportOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("export", options, async (output, _) =>
+        return GuardedAsync(console, "export", options, async (output, _) =>
         {
             if (!TryReadLanguage(options, output, out var language))
                 return Program.ExitScriptError;
@@ -291,7 +296,7 @@ internal static class UseCasesCommand
             if (output.Events is { } events)
                 events.Exported(export);
             else
-                await Console.Out.WriteAsync(RenderExport(export)).ConfigureAwait(false);
+                await console.Output.WriteAsync(RenderExport(export)).ConfigureAwait(false);
 
             return Program.ExitOk;
         });
@@ -307,6 +312,7 @@ internal static class UseCasesCommand
     [SuppressMessage("Design", "CA1031", Justification =
         "Session fault barrier: one query that fails is answered with a recoverable error event, and the next query is still served.")]
     private static async Task<int> RunSessionAsync(
+        TextReader input,
         UseCaseSearchEngine engine,
         UseCaseCatalog catalog,
         UseCaseSearchPolicy policy,
@@ -317,7 +323,7 @@ internal static class UseCasesCommand
     {
         events.Ready(catalog, policy);
 
-        while (await ReadLineAsync(Console.In, cancellationToken).ConfigureAwait(false) is { } line)
+        while (await ReadLineAsync(input, cancellationToken).ConfigureAwait(false) is { } line)
         {
             if (!TryReadQuery(line, defaultTop, defaultLanguage, out var correlationId, out var query, out var problem))
             {
@@ -632,26 +638,25 @@ internal static class UseCasesCommand
     [SuppressMessage("Design", "CA1031", Justification =
         "Top-level CLI fault barrier: an unexpected failure becomes the runtime-error exit code with one line, not a stack trace.")]
     private static async Task<int> GuardedAsync(
-        string verb, UseCasesCommandOptions options, Func<Output, CancellationToken, Task<int>> body)
+        IRunnerConsole console, string verb, UseCasesCommandOptions options, Func<Output, CancellationToken, Task<int>> body)
     {
         var events = options.Events;
         if (events is not null && !string.Equals(events, EventsFormat, StringComparison.OrdinalIgnoreCase))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon usecases {verb}: unsupported --events format '{events}' — the only one is {EventsFormat} ({UseCaseErrorCodes.OptionInvalid}).")
                 .ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
-        var output = new Output(verb, events is null ? null : new UseCaseEventWriter(Console.Out));
+        var output = new Output(verb, events is null ? null : new UseCaseEventWriter(console.Output), console);
 
         using var cancellation = new CancellationTokenSource();
-        ConsoleCancelEventHandler onCancel = (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cancellation.Cancel();
-        };
-        Console.CancelKeyPress += onCancel;
+            return true;
+        });
 
         try
         {
@@ -671,17 +676,13 @@ internal static class UseCasesCommand
             if (output.Events is { } writer)
                 writer.Error(UseCaseErrorCodes.Failed, message, recoverable: false);
             else
-                await Console.Error.WriteLineAsync($"orkeon usecases {verb}: {message}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon usecases {verb}: {message}").ConfigureAwait(false);
             return Program.ExitRuntimeError;
-        }
-        finally
-        {
-            Console.CancelKeyPress -= onCancel;
         }
     }
 
     /// <summary>Where a verb reports: the event writer in <c>--events</c> mode, stderr otherwise.</summary>
-    private sealed record Output(string Verb, UseCaseEventWriter? Events)
+    private sealed record Output(string Verb, UseCaseEventWriter? Events, IRunnerConsole Terminal)
     {
         /// <summary>Reports a refusal and returns exit code 1.</summary>
         public async Task<int> FailAsync(string code, string message, bool alreadyCoded = false)
@@ -693,7 +694,7 @@ internal static class UseCasesCommand
             }
 
             var line = alreadyCoded ? message : $"{message} ({code})";
-            await Console.Error.WriteLineAsync($"orkeon usecases {Verb}: {line}").ConfigureAwait(false);
+            await Terminal.ErrorOutput.WriteLineAsync($"orkeon usecases {Verb}: {line}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
@@ -703,7 +704,7 @@ internal static class UseCasesCommand
             if (Events is not null)
                 Events.Error(code, message, recoverable: false);
             else
-                Console.Error.WriteLine($"orkeon usecases {Verb}: {message} ({code})");
+                Terminal.ErrorOutput.WriteLine($"orkeon usecases {Verb}: {message} ({code})");
         }
     }
 }

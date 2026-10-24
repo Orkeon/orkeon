@@ -37,7 +37,7 @@ public sealed class HostRefusalStreamTests
             """{ "Llm": { "Provider": "OpenAI", "ApiKey": "${OPENAI_API_KEY}" } }""");
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             SettingsPath = settings,

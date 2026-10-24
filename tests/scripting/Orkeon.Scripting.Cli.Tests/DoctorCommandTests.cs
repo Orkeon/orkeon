@@ -48,7 +48,7 @@ public sealed class DoctorCommandTests : IDisposable
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
         });
@@ -73,7 +73,7 @@ public sealed class DoctorCommandTests : IDisposable
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -100,7 +100,7 @@ public sealed class DoctorCommandTests : IDisposable
         scratch.WriteFile(Path.Combine("install", Orkeon.Constants.FileSystem.InstallChannels.MarkerFile), "zip\n");
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -126,7 +126,7 @@ public sealed class DoctorCommandTests : IDisposable
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -150,7 +150,7 @@ public sealed class DoctorCommandTests : IDisposable
         scratch.WriteFile(Path.Combine("out", Orkeon.Constants.FileSystem.InstallChannels.MarkerFile), "snap\n");
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -172,7 +172,7 @@ public sealed class DoctorCommandTests : IDisposable
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -198,7 +198,7 @@ public sealed class DoctorCommandTests : IDisposable
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -217,7 +217,7 @@ public sealed class DoctorCommandTests : IDisposable
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch)
     {
         using var console = new TestConsole();
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -414,7 +414,7 @@ public sealed class DoctorCommandTests : IDisposable
         string runLine;
         using (var console = new TestConsole())
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = crew,
                 SettingsPath = settings,
@@ -437,7 +437,7 @@ public sealed class DoctorCommandTests : IDisposable
         scratch.WriteFile(".orkeon", "not a directory");
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -458,7 +458,7 @@ public sealed class DoctorCommandTests : IDisposable
         Directory.CreateDirectory(probeDir);
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             WorkingDirectoryOverride = probeDir,
         });
@@ -476,7 +476,7 @@ public sealed class DoctorCommandTests : IDisposable
             """{ "Llm": { "Model": "llama3.2", "BaseUrl": "http://localhost:11434" } }""");
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
@@ -520,7 +520,7 @@ public sealed class DoctorCommandTests : IDisposable
                 $$"""{ "Llm": { "Model": "llama3.2", "BaseUrl": "http://localhost:11434", "ApiKeyEnvVar": "{{variable}}" } }""");
             using var console = new TestConsole();
 
-            await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+            await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
 
             using var doc = JsonDocument.Parse(console.Stdout);
             var detail = ByCheck(doc)["llm-config"].GetProperty("detail").GetString()!;
@@ -548,7 +548,7 @@ public sealed class DoctorCommandTests : IDisposable
                 """);
             using var console = new TestConsole();
 
-            await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+            await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
 
             using var doc = JsonDocument.Parse(console.Stdout);
             Assert.Equal("ok", ByCheck(doc)["llm-reachability"].GetProperty("status").GetString());
@@ -569,7 +569,7 @@ public sealed class DoctorCommandTests : IDisposable
             $$"""{ "Llm": { "Model": "llama3.2", "BaseUrl": "http://localhost:11434", "ApiKeyEnvVar": "{{variable}}" } }""");
         using var console = new TestConsole();
 
-        await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+        await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
 
         using var doc = JsonDocument.Parse(console.Stdout);
         var config = ByCheck(doc)["llm-config"];
@@ -600,7 +600,7 @@ public sealed class DoctorCommandTests : IDisposable
             """);
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
 
         Assert.Equal(Program.ExitOk, exit);
         using var doc = JsonDocument.Parse(console.Stdout);
@@ -627,7 +627,7 @@ public sealed class DoctorCommandTests : IDisposable
             """{ "Llm": { "Model": "deepseek-chat", "BaseUrl": "https://api.deepseek.com", "ApiKey": "${DEEPSEEK_API_KEY}" } }""");
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions { Json = true, WorkingDirectoryOverride = scratch.Root });
 
         Assert.Equal(Program.ExitScriptError, exit);
         using var doc = JsonDocument.Parse(console.Stdout);

@@ -21,7 +21,7 @@ public sealed class RunCommandErrorTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
         });
@@ -40,7 +40,7 @@ public sealed class RunCommandErrorTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
         });
@@ -65,7 +65,7 @@ public sealed class RunCommandErrorTests
         var settings = scratch.WriteFile("refused.json", """{ "RaggableTree": { "Exclude": ["bin"] } }""");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             SettingsPath = settings,
@@ -90,7 +90,7 @@ public sealed class RunCommandErrorTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             Mounts = [$"{scratch.OutDir}:/script:rw"],
@@ -115,7 +115,7 @@ public sealed class RunCommandErrorTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             Mounts = [$"{scratch.OutDir}:/credentials:rw"],

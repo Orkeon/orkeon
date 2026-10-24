@@ -27,7 +27,7 @@ public sealed class DriveCommandTests
         scratch.WriteFile("appsettings.json", "{}");
         using var console = new TestConsole();
 
-        var exit = await DriveCommand.ExecuteAccountsAsync(new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+        var exit = await DriveCommand.ExecuteAccountsAsync(console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("No drive account is configured", console.Stdout, StringComparison.Ordinal);
@@ -48,7 +48,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await DriveCommand.ExecuteAccountsAsync(new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+            var exit = await DriveCommand.ExecuteAccountsAsync(console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
 
             Assert.Equal(Program.ExitOk, exit);
             Assert.Contains("GoogleDrive · root /Orkeon/agents", console.Stdout, StringComparison.Ordinal);
@@ -59,7 +59,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            await DriveCommand.ExecuteAccountsAsync(new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
+            await DriveCommand.ExecuteAccountsAsync(console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
             using var json = JsonDocument.Parse(console.Stdout);
             var perso = json.RootElement.EnumerateArray().Single(account => account.GetProperty("name").GetString() == "perso");
@@ -83,7 +83,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await DriveCommand.ExecuteLoginAsync(new DriveLoginCommandOptions
+            var exit = await DriveCommand.ExecuteLoginAsync(console, new DriveLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "pro",
@@ -107,7 +107,7 @@ public sealed class DriveCommandTests
             graph.Map(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me/drive/items/root-id/children", FakeHttpResponse.Json(
                 """{"value":[{"id":"f1","name":"a.txt","file":{"mimeType":"text/plain"}}]}"""));
 
-            var exit = await DriveCommand.ExecuteCheckAsync(new DriveCheckCommandOptions
+            var exit = await DriveCommand.ExecuteCheckAsync(console, new DriveCheckCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "pro",
@@ -121,7 +121,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await DriveCommand.ExecuteLogoutAsync(new DriveLogoutCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro" });
+            var exit = await DriveCommand.ExecuteLogoutAsync(console, new DriveLogoutCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro" });
             Assert.Equal(Program.ExitOk, exit);
             Assert.Contains("Signed out", console.Stdout, StringComparison.Ordinal);
         }
@@ -129,7 +129,7 @@ public sealed class DriveCommandTests
         Assert.Empty(Directory.GetFiles(Path.Combine(credentials, "drive"), "pro-*.json"));
         using (var console = new TestConsole())
         {
-            await DriveCommand.ExecuteAccountsAsync(new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+            await DriveCommand.ExecuteAccountsAsync(console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
             Assert.Contains("orkeon drive login pro", console.Stdout, StringComparison.Ordinal);
         }
     }
@@ -142,7 +142,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await DriveCommand.ExecuteCheckAsync(new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "work" });
+            var exit = await DriveCommand.ExecuteCheckAsync(console, new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "work" });
 
             Assert.Equal(Program.ExitScriptError, exit);
             Assert.Contains("Unknown drive account 'work'. Configured: pro.", console.Stderr, StringComparison.Ordinal);
@@ -150,7 +150,7 @@ public sealed class DriveCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await DriveCommand.ExecuteCheckAsync(new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro" });
+            var exit = await DriveCommand.ExecuteCheckAsync(console, new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro" });
 
             Assert.Equal(Program.ExitScriptError, exit);
             Assert.Contains("orkeon drive check: Drive account 'pro' needs an OAuth sign-in", console.Stderr, StringComparison.Ordinal);
@@ -163,7 +163,7 @@ public sealed class DriveCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await DriveCommand.DispatchAsync(["--help"]);
+        var exit = await DriveCommand.DispatchAsync(console, ["--help"]);
 
         Assert.Equal(Program.ExitOk, exit);
         foreach (var verb in new[] { "accounts", "login", "logout", "check" })

@@ -417,7 +417,7 @@ public sealed class ForgeSchedulingTests : IDisposable
         var (_, host) = Machine(ForgePromotePlatform.Other);
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["schedule", Team], _workspace, host));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["schedule", Team], _workspace, host));
 
         Assert.Equal("✔ scheduled (daily@07:30): orkeon:ma-veille", console.Stdout.Trim());
     }
@@ -911,7 +911,7 @@ public sealed class ForgeSchedulingTests : IDisposable
     private async Task<(int ExitCode, List<JsonElement> Events)> RunAsync(ForgeScheduleHost host, params string[] args)
     {
         using var console = new TestConsole();
-        var exitCode = await ForgeCommand.DispatchAsync([.. args, "--events", "jsonl"], _workspace, host);
+        var exitCode = await ForgeCommand.DispatchAsync(console, [.. args, "--events", "jsonl"], _workspace, host);
         return (exitCode, Events(console.Stdout));
     }
 

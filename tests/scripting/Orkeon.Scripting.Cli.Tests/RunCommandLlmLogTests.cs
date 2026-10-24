@@ -20,7 +20,7 @@ public sealed class RunCommandLlmLogTests
         var externalLogDir = Path.Combine(Path.GetTempPath(), "ork-llmlog-" + Guid.NewGuid().ToString("N"));
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             LlmLogPath = externalLogDir,
@@ -41,7 +41,7 @@ public sealed class RunCommandLlmLogTests
         using var console = new TestConsole();
         try
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = script,
                 LlmLogPath = externalLogDir,
@@ -69,7 +69,7 @@ public sealed class RunCommandLlmLogTests
         using var console = new TestConsole();
         try
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = script,
                 LlmLogEnabled = true,

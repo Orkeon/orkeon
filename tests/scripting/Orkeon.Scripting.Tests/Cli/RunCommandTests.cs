@@ -1,5 +1,6 @@
 using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
+using Orkeon.Scripting.Tests.Doubles;
 
 namespace Orkeon.Scripting.Tests.Cli;
 
@@ -47,7 +48,8 @@ public sealed class RunCommandTests : IDisposable
             await tools.fileWrite({ path: "/output/hello.txt", content: "ok" });
             """);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = scriptPath,
             Mounts = new[] { $"{_outDir}:/output:rw" },
@@ -62,7 +64,8 @@ public sealed class RunCommandTests : IDisposable
     [Fact]
     public async Task Cli_returns_exit_1_when_script_missing()
     {
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = Path.Combine(_scriptDir, "does-not-exist.ork.ts"),
         });
@@ -88,7 +91,8 @@ public sealed class RunCommandTests : IDisposable
             await tools.fileWrite({ path: "/output/out.txt", content: greet("orkeon") });
             """);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = entryPath,
             Mounts = new[] { $"{_outDir}:/output:rw" },
@@ -115,7 +119,8 @@ public sealed class RunCommandTests : IDisposable
         await File.WriteAllTextAsync(externalScript, "/// <reference orkeon-script=\"1.0\" />\nvar result = 1;\n", TestContext.Current.CancellationToken);
         try
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var console = new FakeRunnerConsole();
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = externalScript,
             });
@@ -150,7 +155,8 @@ public sealed class RunCommandTests : IDisposable
             (globalThis as any).crew = crew;
             """);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = scriptPath,
             Validate = true,
@@ -184,32 +190,18 @@ public sealed class RunCommandTests : IDisposable
             (globalThis as any).crew = crew;
             """);
 
-        var originalOut = Console.Out;
-        var originalError = Console.Error;
-        using var capturedOut = new StringWriter();
-        using var capturedError = new StringWriter();
-        Console.SetOut(capturedOut);
-        Console.SetError(capturedError);
-        int exit;
-        try
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
-            exit = await RunCommand.ExecuteAsync(new RunCommandOptions
-            {
-                ScriptPath = scriptPath,
-                Validate = true,
-                AllowExternalMounts = true,
-            });
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-            Console.SetError(originalError);
-        }
+            ScriptPath = scriptPath,
+            Validate = true,
+            AllowExternalMounts = true,
+        });
 
         Assert.NotEqual(0, exit);
         Assert.Contains(
             "Script tool 'json_tool' collides with an already-registered tool",
-            capturedOut.ToString() + capturedError.ToString(),
+            console.Output.ToString() + console.ErrorOutput.ToString(),
             StringComparison.Ordinal);
     }
 
@@ -242,32 +234,18 @@ public sealed class RunCommandTests : IDisposable
         // unconfigured provider never fails the task with a vendor's "API key is required".
         var settingsPath = WriteScript("settings.json", "{}");
 
-        var originalOut = Console.Out;
-        var originalError = Console.Error;
-        using var capturedOut = new StringWriter();
-        using var capturedError = new StringWriter();
-        Console.SetOut(capturedOut);
-        Console.SetError(capturedError);
-        int exit;
-        try
+        var console = new FakeRunnerConsole();
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
-            exit = await RunCommand.ExecuteAsync(new RunCommandOptions
-            {
-                ScriptPath = scriptPath,
-                SettingsPath = settingsPath,
-                Mounts = new[] { $"{_outDir}:/output:rw" },
-                AllowExternalMounts = true,
-            });
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-            Console.SetError(originalError);
-        }
+            ScriptPath = scriptPath,
+            SettingsPath = settingsPath,
+            Mounts = new[] { $"{_outDir}:/output:rw" },
+            AllowExternalMounts = true,
+        });
 
         Assert.Equal(0, exit);
-        Assert.Contains("=== Crew Output ===", capturedOut.ToString(), StringComparison.Ordinal);
-        var stderr = capturedError.ToString();
+        Assert.Contains("=== Crew Output ===", console.Output.ToString(), StringComparison.Ordinal);
+        var stderr = console.ErrorOutput.ToString();
         Assert.Contains(RunnerHost.LlmNotConfiguredMessage, stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("API key is required", stderr, StringComparison.Ordinal);
     }

@@ -89,41 +89,42 @@ internal static class EmailCommand
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>Parses <paramref name="args"/> (already stripped of the leading <c>email</c>) and dispatches to a verb.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return await CliGrammar.DispatchAsync("email", args, [typeof(EmailAccountsCommandOptions), typeof(EmailLoginCommandOptions), typeof(EmailLogoutCommandOptions), typeof(EmailCheckCommandOptions)], options => options switch
+        return await CliGrammar.DispatchAsync(console, "email", args, [typeof(EmailAccountsCommandOptions), typeof(EmailLoginCommandOptions), typeof(EmailLogoutCommandOptions), typeof(EmailCheckCommandOptions)], (console, options) => options switch
         {
-            EmailAccountsCommandOptions o => ExecuteAccountsAsync(o),
-            EmailLoginCommandOptions o => ExecuteLoginAsync(o),
-            EmailLogoutCommandOptions o => ExecuteLogoutAsync(o),
-            EmailCheckCommandOptions o => ExecuteCheckAsync(o),
+            EmailAccountsCommandOptions o => ExecuteAccountsAsync(console, o),
+            EmailLoginCommandOptions o => ExecuteLoginAsync(console, o),
+            EmailLogoutCommandOptions o => ExecuteLogoutAsync(console, o),
+            EmailCheckCommandOptions o => ExecuteCheckAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
 
     /// <summary>Lists the accounts.</summary>
-    public static Task<int> ExecuteAccountsAsync(EmailAccountsCommandOptions options)
+    public static Task<int> ExecuteAccountsAsync(IRunnerConsole console, EmailAccountsCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("accounts", options, async (administration, ct) =>
+        return GuardedAsync(console, "accounts", options, async (administration, ct) =>
         {
             var accounts = await administration.ListAsync(ct).ConfigureAwait(false);
             if (options.Json)
             {
-                await Console.Out.WriteLineAsync(JsonSerializer.Serialize(accounts, JsonOptions)).ConfigureAwait(false);
+                await console.Output.WriteLineAsync(JsonSerializer.Serialize(accounts, JsonOptions)).ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
             if (accounts.Count == 0)
             {
-                await Console.Out.WriteLineAsync(
+                await console.Output.WriteLineAsync(
                     "No e-mail account is configured. Declare one under Orkeon:Tools:Email:Accounts in the settings file (see docs/guides/email.md).")
                     .ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
-            await Console.Out.WriteAsync(RenderAccounts(accounts)).ConfigureAwait(false);
+            await console.Output.WriteAsync(RenderAccounts(accounts)).ConfigureAwait(false);
             return Program.ExitOk;
         });
     }
@@ -135,31 +136,32 @@ internal static class EmailCommand
     /// sign-in — the loopback wait has no deadline, so a driver that goes away must not leave it
     /// listening.
     /// </summary>
-    public static async Task<int> ExecuteLoginAsync(EmailLoginCommandOptions options)
+    public static async Task<int> ExecuteLoginAsync(IRunnerConsole console, EmailLoginCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
         if (options.Events is { } format && !string.Equals(format, EventsFormat, StringComparison.OrdinalIgnoreCase))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon email login: unsupported --events format '{format}' — the only one is {EventsFormat}.")
                 .ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
-        var events = options.Events is null ? null : new EmailEventWriter(Console.Out);
-        return await GuardedAsync("login", options, async (administration, ct) =>
+        var events = options.Events is null ? null : new EmailEventWriter(console.Output);
+        return await GuardedAsync(console, "login", options, async (administration, ct) =>
         {
             if (events is null)
             {
-                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("e-mail");
+                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("e-mail", console);
                 await administration.LoginAsync(options.Account, interaction, ct).ConfigureAwait(false);
-                await Console.Out.WriteLineAsync($"Signed in: the tokens of e-mail account '{options.Account}' are stored. Agents can use it now.")
+                await console.Output.WriteLineAsync($"Signed in: the tokens of e-mail account '{options.Account}' are stored. Agents can use it now.")
                     .ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
             using var driver = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            var dialogue = new EventOAuthLoginInteraction(events, Console.In, onInputClosed: () =>
+            var dialogue = new EventOAuthLoginInteraction(events, console.Input, onInputClosed: () =>
             {
                 try
                 {
@@ -187,13 +189,14 @@ internal static class EmailCommand
     }
 
     /// <summary>Signs an account out.</summary>
-    public static Task<int> ExecuteLogoutAsync(EmailLogoutCommandOptions options)
+    public static Task<int> ExecuteLogoutAsync(IRunnerConsole console, EmailLogoutCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("logout", options, async (administration, ct) =>
+        return GuardedAsync(console, "logout", options, async (administration, ct) =>
         {
             var removed = await administration.LogoutAsync(options.Account, ct).ConfigureAwait(false);
-            await Console.Out.WriteLineAsync(removed
+            await console.Output.WriteLineAsync(removed
                     ? $"Signed out: the tokens of e-mail account '{options.Account}' are deleted."
                     : $"E-mail account '{options.Account}' had no stored tokens.")
                 .ConfigureAwait(false);
@@ -202,25 +205,26 @@ internal static class EmailCommand
     }
 
     /// <summary>Checks that an account connects.</summary>
-    public static Task<int> ExecuteCheckAsync(EmailCheckCommandOptions options)
+    public static Task<int> ExecuteCheckAsync(IRunnerConsole console, EmailCheckCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
         if (options.Events is { } format && !string.Equals(format, EventsFormat, StringComparison.OrdinalIgnoreCase))
         {
-            return Console.Error.WriteLineAsync(
+            return console.ErrorOutput.WriteLineAsync(
                 $"orkeon email check: unsupported --events format '{format}' — the only one is {EventsFormat}.")
                 .ContinueWith(_ => Program.ExitScriptError, TaskScheduler.Default);
         }
 
         // With events (STUDIO-69), the verdict is one event line — the counts on success, the
         // error with its code on a refusal — so that a driver reads what happened instead of a sentence.
-        var events = options.Events is null ? null : new EmailEventWriter(Console.Out);
-        return GuardedAsync("check", options, async (administration, ct) =>
+        var events = options.Events is null ? null : new EmailEventWriter(console.Output);
+        return GuardedAsync(console, "check", options, async (administration, ct) =>
         {
             var result = await administration.CheckAsync(options.Account, ct).ConfigureAwait(false);
             var summary = RenderCheck(result);
             if (events is null)
-                await Console.Out.WriteLineAsync(summary).ConfigureAwait(false);
+                await console.Output.WriteLineAsync(summary).ConfigureAwait(false);
             else
                 events.CheckCompleted(result.Account, result.Folders, result.InboxTotal, result.InboxUnread, summary);
 
@@ -282,22 +286,22 @@ internal static class EmailCommand
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: unexpected failures are converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> GuardedAsync(
+        IRunnerConsole console,
         string verb,
         EmailCommandOptionsBase options,
         Func<EmailAccountAdministration, CancellationToken, Task<int>> body,
         EmailEventWriter? events = null)
     {
         using var cts = new CancellationTokenSource();
-        ConsoleCancelEventHandler onCancel = (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cts.Cancel();
-        };
-        Console.CancelKeyPress += onCancel;
+            return true;
+        });
 
         try
         {
-            using var host = BuildHost(options);
+            using var host = BuildHost(console, options);
             var administration = host.Services.GetRequiredService<EmailAccountAdministration>();
             return await body(administration, cts.Token).ConfigureAwait(false);
         }
@@ -308,32 +312,28 @@ internal static class EmailCommand
         }
         catch (EmailToolException ex)
         {
-            await FailAsync(verb, events, ex.Code.ToString(), ex.Message).ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, ex.Code.ToString(), ex.Message).ConfigureAwait(false);
             return IsOperatorFixable(ex.Code) ? Program.ExitScriptError : Program.ExitRuntimeError;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or FileNotFoundException or DirectoryNotFoundException)
         {
-            await FailAsync(verb, events, nameof(EmailErrorCode.InvalidConfiguration), ex.Message).ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, nameof(EmailErrorCode.InvalidConfiguration), ex.Message).ConfigureAwait(false);
             return Program.ExitScriptError;
         }
         catch (Exception ex)
         {
-            await FailAsync(verb, events, EmailEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, EmailEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
-        }
-        finally
-        {
-            Console.CancelKeyPress -= onCancel;
         }
     }
 
     /// <summary>Says why the verb failed: an <c>error</c> event when a program drives it, one line on stderr otherwise.</summary>
-    private static Task FailAsync(string verb, EmailEventWriter? events, string code, string message)
+    private static Task FailAsync(TextWriter error, string verb, EmailEventWriter? events, string code, string message)
     {
         if (events is null)
-            return Console.Error.WriteLineAsync($"orkeon email {verb}: {message}");
+            return error.WriteLineAsync($"orkeon email {verb}: {message}");
 
         events.Error(code, message);
         return Task.CompletedTask;
@@ -353,12 +353,12 @@ internal static class EmailCommand
     /// need the e-mail services, and the host mounts the internal credentials root by itself
     /// whenever an OAuth account is declared.
     /// </summary>
-    private static IHost BuildHost(EmailCommandOptionsBase options)
+    private static IHost BuildHost(IRunnerConsole console, EmailCommandOptionsBase options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
         if (settingsPath != null)
-            Console.Error.WriteLine($"Using settings: {settingsPath}");
+            console.ErrorOutput.WriteLine($"Using settings: {settingsPath}");
 
         return RunnerHost.Build(
             settingsPath,
@@ -368,10 +368,14 @@ internal static class EmailCommand
                 // Standard output carries the verb's answer (`accounts --json` is parsed by
                 // tools): every log line goes to standard error.
                 logging.ClearProviders();
-                logging.AddSimpleConsole(console => console.SingleLine = true);
-                logging.Services.Configure<ConsoleLoggerOptions>(console => console.LogToStandardErrorThreshold = LogLevel.Trace);
+                logging.AddSimpleConsole(o => o.SingleLine = true);
+                logging.Services.Configure<ConsoleLoggerOptions>(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 logging.SetMinimumLevel(LogLevel.Warning);
             },
-            configureServices: (context, services) => options.ConfigureTestServices?.Invoke(context, services));
+            configureServices: (context, services) =>
+            {
+                services.AddSingleton(console);
+                options.ConfigureTestServices?.Invoke(context, services);
+            });
     }
 }

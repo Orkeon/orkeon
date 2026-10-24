@@ -11,8 +11,8 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// Coverage for the runner-parity diagnostics added to <c>orkeon run</c>: the <c>--validate</c>
 /// and <c>--list-tools</c> flags (delegated to <see cref="Orkeon.Hosting.RunnerExecution"/>), the
 /// <c>semantic_search</c> registration the YAML path now shares with the standalone standard runner,
-/// and the "path required unless --list-tools" contract. Console-driving tests hold the serial
-/// <see cref="CliCollection"/> gate because they redirect the process-global streams.
+/// and the "path required unless --list-tools" contract. Host-building tests hold the serial
+/// <see cref="CliCollection"/> gate: the host it builds logs through the console logger provider, which writes to the process streams.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class RunCommandDiagnosticsTests
@@ -20,7 +20,8 @@ public sealed class RunCommandDiagnosticsTests
     [Fact]
     public void ToRunnerOptions_carries_validate_and_list_tools_flags()
     {
-        var mapped = RunCommand.ToRunnerOptions(new RunCommandOptions
+        using var console = new TestConsole();
+        var mapped = RunCommand.ToRunnerOptions(console, new RunCommandOptions
         {
             ScriptPath = "crew.yaml",
             Validate = true,
@@ -30,6 +31,7 @@ public sealed class RunCommandDiagnosticsTests
         Assert.True(mapped.Validate);
         Assert.True(mapped.ListTools);
         Assert.Equal("crew.yaml", mapped.ConfigPath);
+        Assert.Same(console, mapped.RunnerConsole);
     }
 
     [Fact]
@@ -52,7 +54,7 @@ public sealed class RunCommandDiagnosticsTests
     {
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ListTools = true });
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions { ListTools = true });
 
         Assert.Equal(Program.ExitOk, exit);
         // human_input is injected by the shared runner's TryBuildHost path; semantic_search comes
@@ -70,7 +72,7 @@ public sealed class RunCommandDiagnosticsTests
         var crew = scratch.WriteScript("crew.yaml", "name: c\ngoal: g\n");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             ListTools = true,
@@ -89,7 +91,7 @@ public sealed class RunCommandDiagnosticsTests
         using var console = new TestConsole();
 
         // No ScriptPath supplied — --list-tools must still succeed (parity with the standard runner).
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ListTools = true });
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions { ListTools = true });
 
         Assert.Equal(Program.ExitOk, exit);
     }
@@ -99,7 +101,7 @@ public sealed class RunCommandDiagnosticsTests
     {
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ScriptPath = "" });
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions { ScriptPath = "" });
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("required", console.Stderr, StringComparison.OrdinalIgnoreCase);

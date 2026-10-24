@@ -44,7 +44,7 @@ public sealed class RagCommandTests
         };
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["./docs/**/*.md"],
@@ -74,7 +74,7 @@ public sealed class RagCommandTests
         string refusedErr;
         using (var console = new TestConsole())
         {
-            refused = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+            refused = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
             {
                 Collection = "docs",
                 Sources = ["./docs/**/*.md"],
@@ -93,7 +93,7 @@ public sealed class RagCommandTests
 
         var pipeline = new FakeIngestionPipeline();
         using var console2 = new TestConsole();
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console2, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["./docs/**/*.md"],
@@ -128,7 +128,7 @@ public sealed class RagCommandTests
         int exit;
         try
         {
-            exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+            exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
             {
                 Collection = "docs",
                 Sources = ["./docs/**/*.md"],
@@ -165,7 +165,7 @@ public sealed class RagCommandTests
         var pipeline = new FakeIngestionPipeline();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["./docs/**/*.md"],
@@ -191,7 +191,7 @@ public sealed class RagCommandTests
         var pipeline = new FakeIngestionPipeline();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["faq.md"],
@@ -215,7 +215,7 @@ public sealed class RagCommandTests
         var pipeline = new FakeIngestionPipeline();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["./docs/**/*.pdf"],
@@ -243,7 +243,7 @@ public sealed class RagCommandTests
         };
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteIngestAsync(new RagIngestCommandOptions
+        var exit = await RagCommand.ExecuteIngestAsync(console, new RagIngestCommandOptions
         {
             Collection = "docs",
             Sources = ["a.md"],
@@ -282,7 +282,7 @@ public sealed class RagCommandTests
         };
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteSearchAsync(new RagSearchCommandOptions
+        var exit = await RagCommand.ExecuteSearchAsync(console, new RagSearchCommandOptions
         {
             Question = "refund policy?",
             Collection = "docs",
@@ -306,7 +306,7 @@ public sealed class RagCommandTests
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteSearchAsync(new RagSearchCommandOptions
+        var exit = await RagCommand.ExecuteSearchAsync(console, new RagSearchCommandOptions
         {
             Question = "   ",
             Collection = "docs",
@@ -324,7 +324,7 @@ public sealed class RagCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await RagCommand.DispatchAsync(["frobnicate"]);
+        var exit = await RagCommand.DispatchAsync(console, ["frobnicate"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
     }
@@ -334,7 +334,7 @@ public sealed class RagCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await RagCommand.DispatchAsync(["ingest"]);
+        var exit = await RagCommand.DispatchAsync(console, ["ingest"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
     }

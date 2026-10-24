@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using System.Reflection;
 using Orkeon.Constants.FileSystem;
 
@@ -26,23 +27,24 @@ internal static class TypingsCommand
     private const string CommandsResource = "typings/orkeon-cli.d.ts";
 
     /// <summary>Dispatches <c>orkeon typings …</c> (arguments already stripped of the verb).</summary>
-    public static Task<int> DispatchAsync(string[] args) => DispatchAsync(args, Directory.GetCurrentDirectory());
+    public static Task<int> DispatchAsync(IRunnerConsole console, string[] args) => DispatchAsync(console, args, Directory.GetCurrentDirectory());
 
     /// <summary>Test seam: the same dispatch, anchored at <paramref name="workingDirectory"/>.</summary>
-    internal static async Task<int> DispatchAsync(string[] args, string workingDirectory)
+    internal static async Task<int> DispatchAsync(IRunnerConsole console, string[] args, string workingDirectory)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(args);
 
         var arguments = Parse(args);
         if (arguments.Help)
         {
-            await Console.Out.WriteAsync(Usage).ConfigureAwait(false);
+            await console.Output.WriteAsync(Usage).ConfigureAwait(false);
             return Program.ExitOk;
         }
 
         if (arguments.Error is { } error)
         {
-            await Console.Error.WriteLineAsync("orkeon typings: " + error).ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync("orkeon typings: " + error).ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
@@ -53,10 +55,10 @@ internal static class TypingsCommand
         await WriteAsync(typeof(TypingsCommand).Assembly, CommandsResource, Path.Combine(target, CommandsFileName)).ConfigureAwait(false);
 
         var relative = Path.GetRelativePath(workingDirectory, target).Replace('\\', '/');
-        await Console.Out.WriteLineAsync($"Wrote {DslFileName} and {CommandsFileName} to {target}").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync("Reference them at the top of a script:").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"  /// <reference path=\"./{relative}/{DslFileName}\" />       (a .ork.ts crew)").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"  /// <reference path=\"./{relative}/{CommandsFileName}\" />   (a .cmd.ts command)").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"Wrote {DslFileName} and {CommandsFileName} to {target}").ConfigureAwait(false);
+        await console.Output.WriteLineAsync("Reference them at the top of a script:").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"  /// <reference path=\"./{relative}/{DslFileName}\" />       (a .ork.ts crew)").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"  /// <reference path=\"./{relative}/{CommandsFileName}\" />   (a .cmd.ts command)").ConfigureAwait(false);
         return Program.ExitOk;
     }
 

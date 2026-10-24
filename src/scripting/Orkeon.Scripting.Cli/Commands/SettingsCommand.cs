@@ -149,40 +149,41 @@ internal static class SettingsCommand
         "  For instance: orkeon settings rate · orkeon settings RateLimiting · orkeon settings --host repl");
 
     /// <summary>Dispatches <c>orkeon settings …</c> (arguments already stripped of the verb).</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
+        ArgumentNullException.ThrowIfNull(console);
         var options = SettingsCommandOptions.Parse(args);
         if (options.Help)
         {
-            await Console.Out.WriteAsync(Usage()).ConfigureAwait(false);
+            await console.Output.WriteAsync(Usage()).ConfigureAwait(false);
             return Program.ExitOk;
         }
 
         if (options.Error is not null)
-            return await RefuseAsync(options.Error).ConfigureAwait(false);
+            return await RefuseAsync(console.ErrorOutput, options.Error).ConfigureAwait(false);
 
         if (string.Equals(options.Name, EnvironmentForm, StringComparison.OrdinalIgnoreCase))
-            return await DispatchEnvironmentAsync(options).ConfigureAwait(false);
+            return await DispatchEnvironmentAsync(console, options).ConfigureAwait(false);
 
         var catalog = options.Host is null ? SettingsCatalog.Complete : SettingsCatalog.Complete.ForHost(options.Host);
         var selection = Select(catalog, options, out var refusal);
         if (selection is null)
-            return await RefuseAsync(refusal!).ConfigureAwait(false);
+            return await RefuseAsync(console.ErrorOutput, refusal!).ConfigureAwait(false);
 
-        await Console.Out.WriteAsync(TextOf(selection, catalog, options)).ConfigureAwait(false);
+        await console.Output.WriteAsync(TextOf(selection, catalog, options)).ConfigureAwait(false);
         return Program.ExitOk;
     }
 
     /// <summary><c>orkeon settings env</c>: the environment variables, as text or as JSON.</summary>
-    private static async Task<int> DispatchEnvironmentAsync(SettingsCommandOptions options)
+    private static async Task<int> DispatchEnvironmentAsync(IRunnerConsole console, SettingsCommandOptions options)
     {
         if (options.All || options.Host is not null)
         {
-            return await RefuseAsync(
+            return await RefuseAsync(console.ErrorOutput, 
                 "`orkeon settings env` takes --json and nothing else: each variable says who reads it.").ConfigureAwait(false);
         }
 
-        await Console.Out.WriteAsync(options.Json ? EnvironmentJson() : EnvironmentVariables()).ConfigureAwait(false);
+        await console.Output.WriteAsync(options.Json ? EnvironmentJson() : EnvironmentVariables()).ConfigureAwait(false);
         return Program.ExitOk;
     }
 
@@ -225,9 +226,9 @@ internal static class SettingsCommand
         return Render(selection, catalog, options.Host);
     }
 
-    private static async Task<int> RefuseAsync(string reason)
+    private static async Task<int> RefuseAsync(TextWriter errorOutput, string reason)
     {
-        await Console.Error.WriteLineAsync(Prefix + reason).ConfigureAwait(false);
+        await errorOutput.WriteLineAsync(Prefix + reason).ConfigureAwait(false);
         return Program.ExitScriptError;
     }
 

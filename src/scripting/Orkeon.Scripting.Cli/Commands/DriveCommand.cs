@@ -90,41 +90,42 @@ internal static class DriveCommand
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>Parses <paramref name="args"/> (already stripped of the leading <c>drive</c>) and dispatches to a verb.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return await CliGrammar.DispatchAsync("drive", args, [typeof(DriveAccountsCommandOptions), typeof(DriveLoginCommandOptions), typeof(DriveLogoutCommandOptions), typeof(DriveCheckCommandOptions)], options => options switch
+        return await CliGrammar.DispatchAsync(console, "drive", args, [typeof(DriveAccountsCommandOptions), typeof(DriveLoginCommandOptions), typeof(DriveLogoutCommandOptions), typeof(DriveCheckCommandOptions)], (console, options) => options switch
         {
-            DriveAccountsCommandOptions o => ExecuteAccountsAsync(o),
-            DriveLoginCommandOptions o => ExecuteLoginAsync(o),
-            DriveLogoutCommandOptions o => ExecuteLogoutAsync(o),
-            DriveCheckCommandOptions o => ExecuteCheckAsync(o),
+            DriveAccountsCommandOptions o => ExecuteAccountsAsync(console, o),
+            DriveLoginCommandOptions o => ExecuteLoginAsync(console, o),
+            DriveLogoutCommandOptions o => ExecuteLogoutAsync(console, o),
+            DriveCheckCommandOptions o => ExecuteCheckAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
 
     /// <summary>Lists the accounts.</summary>
-    public static Task<int> ExecuteAccountsAsync(DriveAccountsCommandOptions options)
+    public static Task<int> ExecuteAccountsAsync(IRunnerConsole console, DriveAccountsCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("accounts", options, async (administration, ct) =>
+        return GuardedAsync(console, "accounts", options, async (administration, ct) =>
         {
             var accounts = await administration.ListAsync(ct).ConfigureAwait(false);
             if (options.Json)
             {
-                await Console.Out.WriteLineAsync(JsonSerializer.Serialize(accounts, JsonOptions)).ConfigureAwait(false);
+                await console.Output.WriteLineAsync(JsonSerializer.Serialize(accounts, JsonOptions)).ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
             if (accounts.Count == 0)
             {
-                await Console.Out.WriteLineAsync(
+                await console.Output.WriteLineAsync(
                     "No drive account is configured. Declare one under Orkeon:Tools:Drive:Accounts in the settings file (see docs/guides/drive.md).")
                     .ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
-            await Console.Out.WriteAsync(RenderAccounts(accounts)).ConfigureAwait(false);
+            await console.Output.WriteAsync(RenderAccounts(accounts)).ConfigureAwait(false);
             return Program.ExitOk;
         });
     }
@@ -134,26 +135,27 @@ internal static class DriveCommand
     /// output, the pasted redirect address is read on standard input, and the end of that input
     /// aborts the sign-in — as <c>orkeon email login</c> does for Studio's Mails tab.
     /// </summary>
-    public static async Task<int> ExecuteLoginAsync(DriveLoginCommandOptions options)
+    public static async Task<int> ExecuteLoginAsync(IRunnerConsole console, DriveLoginCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        if (await RefuseFormatAsync("login", options.Events).ConfigureAwait(false))
+        if (await RefuseFormatAsync(console.ErrorOutput, "login", options.Events).ConfigureAwait(false))
             return Program.ExitScriptError;
 
-        var events = options.Events is null ? null : new DriveEventWriter(Console.Out);
-        return await GuardedAsync("login", options, async (administration, ct) =>
+        var events = options.Events is null ? null : new DriveEventWriter(console.Output);
+        return await GuardedAsync(console, "login", options, async (administration, ct) =>
         {
             if (events is null)
             {
-                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("drive");
+                var interaction = options.Interaction ?? new ConsoleOAuthLoginInteraction("drive", console);
                 await administration.LoginAsync(options.Account, interaction, ct).ConfigureAwait(false);
-                await Console.Out.WriteLineAsync($"Signed in: the tokens of drive account '{options.Account}' are stored. Agents can use it now.")
+                await console.Output.WriteLineAsync($"Signed in: the tokens of drive account '{options.Account}' are stored. Agents can use it now.")
                     .ConfigureAwait(false);
                 return Program.ExitOk;
             }
 
             using var driver = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            var dialogue = new EventOAuthLoginInteraction(events, Console.In, onInputClosed: () =>
+            var dialogue = new EventOAuthLoginInteraction(events, console.Input, onInputClosed: () =>
             {
                 try
                 {
@@ -181,13 +183,14 @@ internal static class DriveCommand
     }
 
     /// <summary>Signs an account out.</summary>
-    public static Task<int> ExecuteLogoutAsync(DriveLogoutCommandOptions options)
+    public static Task<int> ExecuteLogoutAsync(IRunnerConsole console, DriveLogoutCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("logout", options, async (administration, ct) =>
+        return GuardedAsync(console, "logout", options, async (administration, ct) =>
         {
             var removed = await administration.LogoutAsync(options.Account, ct).ConfigureAwait(false);
-            await Console.Out.WriteLineAsync(removed
+            await console.Output.WriteLineAsync(removed
                     ? $"Signed out: the tokens of drive account '{options.Account}' are deleted."
                     : $"Drive account '{options.Account}' had no stored tokens.")
                 .ConfigureAwait(false);
@@ -196,19 +199,20 @@ internal static class DriveCommand
     }
 
     /// <summary>Checks that an account connects; with <c>--events jsonl</c> the verdict is one event line.</summary>
-    public static async Task<int> ExecuteCheckAsync(DriveCheckCommandOptions options)
+    public static async Task<int> ExecuteCheckAsync(IRunnerConsole console, DriveCheckCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        if (await RefuseFormatAsync("check", options.Events).ConfigureAwait(false))
+        if (await RefuseFormatAsync(console.ErrorOutput, "check", options.Events).ConfigureAwait(false))
             return Program.ExitScriptError;
 
-        var events = options.Events is null ? null : new DriveEventWriter(Console.Out);
-        return await GuardedAsync("check", options, async (administration, ct) =>
+        var events = options.Events is null ? null : new DriveEventWriter(console.Output);
+        return await GuardedAsync(console, "check", options, async (administration, ct) =>
         {
             var result = await administration.CheckAsync(options.Account, ct).ConfigureAwait(false);
             var summary = RenderCheck(result);
             if (events is null)
-                await Console.Out.WriteLineAsync(summary).ConfigureAwait(false);
+                await console.Output.WriteLineAsync(summary).ConfigureAwait(false);
             else
                 events.CheckCompleted(result.Account, result.RootPath, result.RootName, result.Items, result.More, summary);
             return Program.ExitOk;
@@ -216,11 +220,11 @@ internal static class DriveCommand
     }
 
     /// <summary>Says, and answers true, when <paramref name="format"/> is an events format the verbs do not write.</summary>
-    private static async Task<bool> RefuseFormatAsync(string verb, string? format)
+    private static async Task<bool> RefuseFormatAsync(TextWriter error, string verb, string? format)
     {
         if (format is null || string.Equals(format, EventsFormat, StringComparison.OrdinalIgnoreCase))
             return false;
-        await Console.Error.WriteLineAsync($"orkeon drive {verb}: unsupported --events format '{format}' — the only one is {EventsFormat}.").ConfigureAwait(false);
+        await error.WriteLineAsync($"orkeon drive {verb}: unsupported --events format '{format}' — the only one is {EventsFormat}.").ConfigureAwait(false);
         return true;
     }
 
@@ -263,22 +267,22 @@ internal static class DriveCommand
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: unexpected failures are converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> GuardedAsync(
+        IRunnerConsole console,
         string verb,
         DriveCommandOptionsBase options,
         Func<DriveAccountAdministration, CancellationToken, Task<int>> body,
         DriveEventWriter? events = null)
     {
         using var cts = new CancellationTokenSource();
-        ConsoleCancelEventHandler onCancel = (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cts.Cancel();
-        };
-        Console.CancelKeyPress += onCancel;
+            return true;
+        });
 
         try
         {
-            using var host = BuildHost(options);
+            using var host = BuildHost(console, options);
             var administration = host.Services.GetRequiredService<DriveAccountAdministration>();
             return await body(administration, cts.Token).ConfigureAwait(false);
         }
@@ -289,32 +293,28 @@ internal static class DriveCommand
         }
         catch (DriveToolException ex)
         {
-            await FailAsync(verb, events, ex.Code.ToString(), ex.Message).ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, ex.Code.ToString(), ex.Message).ConfigureAwait(false);
             return IsOperatorFixable(ex.Code) ? Program.ExitScriptError : Program.ExitRuntimeError;
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or FileNotFoundException or DirectoryNotFoundException)
         {
-            await FailAsync(verb, events, nameof(DriveErrorCode.InvalidConfiguration), ex.Message).ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, nameof(DriveErrorCode.InvalidConfiguration), ex.Message).ConfigureAwait(false);
             return Program.ExitScriptError;
         }
         catch (Exception ex)
         {
-            await FailAsync(verb, events, DriveEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
+            await FailAsync(console.ErrorOutput, verb, events, DriveEventWriter.UnexpectedCode, $"unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
-        }
-        finally
-        {
-            Console.CancelKeyPress -= onCancel;
         }
     }
 
     /// <summary>Says why the verb failed: an <c>error</c> event when a program drives it, one line on stderr otherwise.</summary>
-    private static Task FailAsync(string verb, DriveEventWriter? events, string code, string message)
+    private static Task FailAsync(TextWriter error, string verb, DriveEventWriter? events, string code, string message)
     {
         if (events is null)
-            return Console.Error.WriteLineAsync($"orkeon drive {verb}: {message}");
+            return error.WriteLineAsync($"orkeon drive {verb}: {message}");
 
         events.Error(code, message);
         return Task.CompletedTask;
@@ -334,12 +334,12 @@ internal static class DriveCommand
     /// need the drive services, and the host mounts the internal credentials root by itself
     /// whenever a drive account is declared.
     /// </summary>
-    private static IHost BuildHost(DriveCommandOptionsBase options)
+    private static IHost BuildHost(IRunnerConsole console, DriveCommandOptionsBase options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
         if (settingsPath != null)
-            Console.Error.WriteLine($"Using settings: {settingsPath}");
+            console.ErrorOutput.WriteLine($"Using settings: {settingsPath}");
 
         return RunnerHost.Build(
             settingsPath,
@@ -349,10 +349,14 @@ internal static class DriveCommand
                 // Standard output carries the verb's answer (`accounts --json` is parsed by
                 // tools): every log line goes to standard error.
                 logging.ClearProviders();
-                logging.AddSimpleConsole(console => console.SingleLine = true);
-                logging.Services.Configure<ConsoleLoggerOptions>(console => console.LogToStandardErrorThreshold = LogLevel.Trace);
+                logging.AddSimpleConsole(o => o.SingleLine = true);
+                logging.Services.Configure<ConsoleLoggerOptions>(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 logging.SetMinimumLevel(LogLevel.Warning);
             },
-            configureServices: (context, services) => options.ConfigureTestServices?.Invoke(context, services));
+            configureServices: (context, services) =>
+            {
+                services.AddSingleton(console);
+                options.ConfigureTestServices?.Invoke(context, services);
+            });
     }
 }

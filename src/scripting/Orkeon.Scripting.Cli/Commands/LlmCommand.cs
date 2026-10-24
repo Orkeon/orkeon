@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using System.Globalization;
 using CommandLine;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -135,25 +136,26 @@ internal sealed class LlmModelsCommandOptions : CliOptions
 internal static class LlmCommand
 {
     /// <summary>Dispatches an <c>orkeon llm …</c> invocation.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return await CliGrammar.DispatchAsync("llm", args, [typeof(LlmProbeCommandOptions), typeof(LlmModelsCommandOptions)], options => options switch
+        return await CliGrammar.DispatchAsync(console, "llm", args, [typeof(LlmProbeCommandOptions), typeof(LlmModelsCommandOptions)], (console, options) => options switch
         {
-            LlmProbeCommandOptions o => ExecuteProbeAsync(o),
-            LlmModelsCommandOptions o => ExecuteModelsAsync(o),
+            LlmProbeCommandOptions o => ExecuteProbeAsync(console, o),
+            LlmModelsCommandOptions o => ExecuteModelsAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
 
     // ── orkeon llm models ───────────────────────────────────────────────────
 
-    private static async Task<int> ExecuteModelsAsync(LlmModelsCommandOptions options)
+    private static async Task<int> ExecuteModelsAsync(IRunnerConsole console, LlmModelsCommandOptions options)
     {
         var apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnv);
 
-        using var cts = CreateInterruptibleTokenSource();
+        using var cts = new CancellationTokenSource();
+        using var interrupt = CancelOnInterrupt(console, cts);
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
         IReadOnlyList<string> models;
@@ -180,28 +182,28 @@ internal static class LlmCommand
         {
             // A missing catalogue is a documented, recoverable case: the campaign scripts fall
             // back to the model list declared in their JSON. Say so instead of just failing.
-            await Console.Error.WriteLineAsync($"orkeon llm models: {ex.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon llm models: {ex.Message}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
         if (options.Json)
-            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(models));
+            await console.Output.WriteLineAsync(System.Text.Json.JsonSerializer.Serialize(models)).ConfigureAwait(false);
         else
             foreach (var model in models)
-                Console.WriteLine(model);
+                await console.Output.WriteLineAsync(model).ConfigureAwait(false);
 
         return models.Count > 0 ? Program.ExitOk : Program.ExitScriptError;
     }
 
     // ── orkeon llm probe ────────────────────────────────────────────────────
 
-    private static async Task<int> ExecuteProbeAsync(LlmProbeCommandOptions options)
+    private static async Task<int> ExecuteProbeAsync(IRunnerConsole console, LlmProbeCommandOptions options)
     {
         var apiKey = Environment.GetEnvironmentVariable(options.ApiKeyEnv);
         var needsKey = !string.Equals(options.Provider, "ollama", StringComparison.OrdinalIgnoreCase);
         if (needsKey && string.IsNullOrWhiteSpace(apiKey))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: no API key found in ${options.ApiKeyEnv}. " +
                 "Export it, or point --api-key-env at the variable that holds it. " +
                 "Keys are never accepted as a command-line argument.").ConfigureAwait(false);
@@ -210,7 +212,7 @@ internal static class LlmCommand
 
         if (!TryParseModes(options.Modes, out var modes, out var badMode))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: unknown mode '{badMode}'. Supported: " +
                 string.Join(", ", LlmProbeRunner.SupportedModes)).ConfigureAwait(false);
             return Program.ExitScriptError;
@@ -219,12 +221,13 @@ internal static class LlmCommand
         var wantsJson = string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase);
         if (!wantsJson && !string.Equals(options.Format, "md", StringComparison.OrdinalIgnoreCase))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon llm probe: unknown format '{options.Format}'. Supported: md, json.").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
-        using var cts = CreateInterruptibleTokenSource();
+        using var cts = new CancellationTokenSource();
+        using var interrupt = CancelOnInterrupt(console, cts);
         var config = BuildConfig(options, apiKey);
 
         using var httpClientFactory = new CliHttpClientFactory();
@@ -232,7 +235,7 @@ internal static class LlmCommand
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon llm probe: the factory returned a provider the probe cannot unwrap.").ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }
@@ -253,7 +256,7 @@ internal static class LlmCommand
         }
         catch (NotSupportedException ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon llm probe: {ex.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon llm probe: {ex.Message}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
 
@@ -262,11 +265,11 @@ internal static class LlmCommand
             ? LlmProbeReport.ToJson(context, results)
             : LlmProbeReport.ToMarkdown(context, results);
 
-        Console.WriteLine(report);
+        await console.Output.WriteLineAsync(report).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(options.Archive))
         {
-            await ArchiveAsync(options.Archive!, options.Provider, config.Model, report, wantsJson, cts.Token)
+            await ArchiveAsync(console.ErrorOutput, options.Archive!, options.Provider, config.Model, report, wantsJson, cts.Token)
                 .ConfigureAwait(false);
         }
 
@@ -319,16 +322,13 @@ internal static class LlmCommand
             ? new AnthropicToolCallingStrategy().Parser
             : new OpenAIToolCallingStrategy(NullLogger<OpenAIToolCallParser>.Instance).Parser;
 
-    private static CancellationTokenSource CreateInterruptibleTokenSource()
-    {
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+    /// <summary>Cancels <paramref name="cts"/> on the console's interrupt key until disposed.</summary>
+    private static IDisposable CancelOnInterrupt(IRunnerConsole console, CancellationTokenSource cts) =>
+        console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cts.Cancel();
-        };
-        return cts;
-    }
+            return true;
+        });
 
     internal static LlmConfig BuildConfig(LlmProbeCommandOptions options, string? apiKey)
     {
@@ -415,7 +415,7 @@ internal static class LlmCommand
     /// in the in-memory config.
     /// </summary>
     private static async Task ArchiveAsync(
-        string directory, string provider, string model, string report, bool json,
+        TextWriter error, string directory, string provider, string model, string report, bool json,
         CancellationToken cancellationToken)
     {
         // EXCEPTION-BOOTSTRAP. The probe runs outside a host, so no IFileSystemService exists  —
@@ -427,6 +427,6 @@ internal static class LlmCommand
         var path = Path.Combine(directory, $"probe-{provider}-{safeModel}-{stamp}.{(json ? "json" : "md")}");
 
         await File.WriteAllTextAsync(path, report, cancellationToken).ConfigureAwait(false);
-        await Console.Error.WriteLineAsync($"Archived: {path}").ConfigureAwait(false);
+        await error.WriteLineAsync($"Archived: {path}").ConfigureAwait(false);
     }
 }

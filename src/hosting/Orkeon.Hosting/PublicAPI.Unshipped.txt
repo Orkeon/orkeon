@@ -16,6 +16,7 @@ Orkeon.Hosting.RunnerMountPlan.WithdrawsAmbiguousRoots.init -> void
 Orkeon.Hosting.IRunnerConsole
 Orkeon.Hosting.IRunnerConsole.ErrorOutput.get -> System.IO.TextWriter!
 Orkeon.Hosting.IRunnerConsole.Input.get -> System.IO.TextReader!
+Orkeon.Hosting.IRunnerConsole.IsInputRedirected.get -> bool
 Orkeon.Hosting.IRunnerConsole.OnInterrupt(System.Func<bool>! handler) -> System.IDisposable!
 Orkeon.Hosting.IRunnerConsole.Output.get -> System.IO.TextWriter!
 Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.get -> Orkeon.Hosting.IRunnerConsole!
@@ -23,6 +24,7 @@ Orkeon.Hosting.RunnerOptionsBase.RunnerConsole.set -> void
 Orkeon.Hosting.SystemRunnerConsole
 Orkeon.Hosting.SystemRunnerConsole.ErrorOutput.get -> System.IO.TextWriter!
 Orkeon.Hosting.SystemRunnerConsole.Input.get -> System.IO.TextReader!
+Orkeon.Hosting.SystemRunnerConsole.IsInputRedirected.get -> bool
 Orkeon.Hosting.SystemRunnerConsole.OnInterrupt(System.Func<bool>! handler) -> System.IDisposable!
 Orkeon.Hosting.SystemRunnerConsole.Output.get -> System.IO.TextWriter!
 static Orkeon.Hosting.SystemRunnerConsole.Instance.get -> Orkeon.Hosting.SystemRunnerConsole!

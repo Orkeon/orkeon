@@ -30,7 +30,7 @@ public sealed class DriveCommandEventsTests
             """{"access_token":"access-1","refresh_token":"refresh-1","expires_in":3600}"""));
         using var console = new ConversationConsole();
 
-        var exit = await DriveCommand.ExecuteLoginAsync(new DriveLoginCommandOptions
+        var exit = await DriveCommand.ExecuteLoginAsync(console, new DriveLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "pro",
@@ -55,7 +55,7 @@ public sealed class DriveCommandEventsTests
         WriteOneDriveSettings(scratch, Path.Combine(scratch.Root, "credentials"));
         using var console = new ConversationConsole();
 
-        var exit = await DriveCommand.ExecuteCheckAsync(new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "jsonl" });
+        var exit = await DriveCommand.ExecuteCheckAsync(console, new DriveCheckCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "jsonl" });
 
         Assert.Equal(Program.ExitScriptError, exit);
         var error = Assert.Single(EventLines(console.Stdout));
@@ -71,12 +71,12 @@ public sealed class DriveCommandEventsTests
         var credentials = Path.Combine(scratch.Root, "credentials");
         WriteOneDriveSettings(scratch, credentials);
         using (var identity = new FakeHttpMessageHandler())
-        using (new ConversationConsole())
+        using (var login = new ConversationConsole())
         {
             identity.Map(HttpMethod.Post, Authority + "devicecode", FakeHttpResponse.Json(
                 """{"device_code":"dev","user_code":"C","verification_uri":"https://microsoft.com/devicelogin","expires_in":900,"interval":1}"""));
             identity.Map(HttpMethod.Post, Authority + "token", FakeHttpResponse.Json("""{"access_token":"access-1","refresh_token":"refresh-1","expires_in":3600}"""));
-            Assert.Equal(Program.ExitOk, await DriveCommand.ExecuteLoginAsync(new DriveLoginCommandOptions
+            Assert.Equal(Program.ExitOk, await DriveCommand.ExecuteLoginAsync(login, new DriveLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "jsonl", ConfigureTestServices = Answering(identity),
             }));
@@ -89,7 +89,7 @@ public sealed class DriveCommandEventsTests
             """{"value":[{"id":"f1","name":"a.txt","file":{"mimeType":"text/plain"},"parentReference":{"id":"root-id"}}]}"""));
         using var console = new ConversationConsole();
 
-        var exit = await DriveCommand.ExecuteCheckAsync(new DriveCheckCommandOptions
+        var exit = await DriveCommand.ExecuteCheckAsync(console, new DriveCheckCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "jsonl", ConfigureTestServices = Answering(graph),
         });
@@ -112,7 +112,7 @@ public sealed class DriveCommandEventsTests
         WriteOneDriveSettings(scratch, Path.Combine(scratch.Root, "credentials"));
         using var console = new ConversationConsole();
 
-        var exit = await DriveCommand.ExecuteLoginAsync(new DriveLoginCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "xml" });
+        var exit = await DriveCommand.ExecuteLoginAsync(console, new DriveLoginCommandOptions { WorkingDirectoryOverride = scratch.Root, Account = "pro", Events = "xml" });
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unsupported --events format 'xml'", console.Stderr, StringComparison.Ordinal);

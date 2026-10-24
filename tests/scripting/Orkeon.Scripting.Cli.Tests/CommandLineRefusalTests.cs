@@ -54,7 +54,7 @@ public sealed class CommandLineRefusalTests
         var settings = scratch.WriteFile("s.json", "{}");
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["run", crew, "--validate", "-s", settings, "--allow-external-mounts", "extra"]);
+        var exit = await Program.DispatchAsync(console, ["run", crew, "--validate", "-s", settings, "--allow-external-mounts", "extra"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unexpected argument 'extra'", console.Stderr, StringComparison.Ordinal);
@@ -99,7 +99,7 @@ public sealed class CommandLineRefusalTests
         };
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await Program.DispatchAsync(argv);
+        var exit = await Program.DispatchAsync(console, argv);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains($"unexpected argument '{Extra}'", console.Stderr, StringComparison.Ordinal);
@@ -130,7 +130,7 @@ public sealed class CommandLineRefusalTests
         var to = Path.Combine(scratch.Root, "mon");
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "export", "01-research-assistant", "--to", to, "équipe"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "export", "01-research-assistant", "--to", to, "équipe"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("équipe", console.Stderr, StringComparison.Ordinal);
@@ -150,7 +150,7 @@ public sealed class CommandLineRefusalTests
             : ["usecases", "search", "--", text];
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(argv);
+        var exit = await Program.DispatchAsync(console, argv);
 
         Assert.DoesNotContain("is unknown", console.Stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("unexpected argument", console.Stderr, StringComparison.Ordinal);
@@ -171,7 +171,7 @@ public sealed class CommandLineRefusalTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(line.Split(' '));
+        var exit = await Program.DispatchAsync(console, line.Split(' '));
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Empty(console.Stdout);
@@ -188,7 +188,7 @@ public sealed class CommandLineRefusalTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(line.Split(' '));
+        var exit = await Program.DispatchAsync(console, line.Split(' '));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains(expected, console.Stdout, StringComparison.Ordinal);
@@ -208,7 +208,7 @@ public sealed class CommandLineRefusalTests
             : ["rag", "search", "-c", "docs", "-s", "--", "what?"];
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await Program.DispatchAsync(argv);
+        var exit = await Program.DispatchAsync(console, argv);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Empty(console.Stdout);

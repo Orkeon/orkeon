@@ -5,7 +5,7 @@ namespace Orkeon.Scripting.Cli.Tests.Run;
 /// <summary>
 /// CH-02 - characterisation: a crew that cannot be loaded (<c>llm: gpt-4o</c>, a plain string where
 /// a block is expected) ends <c>run</c> with exit 2 and <c>run --validate</c> with exit 1, as of today.
-/// <para>In the CLI collection: the run reads the process-global console.</para>
+/// <para>In the CLI collection: the host it builds logs through the console logger provider, which writes to the process streams.</para>
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class CrewLoadRefusalExitTests
@@ -38,7 +38,7 @@ public sealed class CrewLoadRefusalExitTests
         var crew = scratch.WriteScript("crew.yaml", UnloadableCrew);
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true });
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true });
 
         Assert.True(exit == 2, $"exit {exit}: {console.Stderr}");
         Assert.Contains("llm", console.Stderr + console.Stdout, StringComparison.OrdinalIgnoreCase);
@@ -52,7 +52,7 @@ public sealed class CrewLoadRefusalExitTests
         var crew = scratch.WriteScript("crew.yaml", UnloadableCrew);
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Validate = true });
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Validate = true });
 
         Assert.True(exit == 1, $"exit {exit}: {console.Stderr}");
         Assert.Contains("llm", console.Stderr + console.Stdout, StringComparison.OrdinalIgnoreCase);

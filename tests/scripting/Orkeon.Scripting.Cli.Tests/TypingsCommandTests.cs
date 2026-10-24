@@ -24,7 +24,7 @@ public sealed class TypingsCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await TypingsCommand.DispatchAsync([], _workspace);
+        var exit = await TypingsCommand.DispatchAsync(console, [], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         var dsl = await File.ReadAllTextAsync(Path.Combine(_workspace, ".orkeon", "orkeon.d.ts"), TestContext.Current.CancellationToken);
@@ -55,7 +55,7 @@ public sealed class TypingsCommandTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(target, "orkeon.d.ts"), "// stale", TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exit = await TypingsCommand.DispatchAsync(["--out", "crews/.orkeon"], _workspace);
+        var exit = await TypingsCommand.DispatchAsync(console, ["--out", "crews/.orkeon"], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         var dsl = await File.ReadAllTextAsync(Path.Combine(target, "orkeon.d.ts"), TestContext.Current.CancellationToken);
@@ -68,7 +68,7 @@ public sealed class TypingsCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await TypingsCommand.DispatchAsync(["--bogus"], _workspace);
+        var exit = await TypingsCommand.DispatchAsync(console, ["--bogus"], _workspace);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unknown argument '--bogus'", console.Stderr, StringComparison.Ordinal);
@@ -82,7 +82,7 @@ public sealed class TypingsCommandTests : IDisposable
         var target = Path.Combine(_workspace, "attached");
         using var console = new TestConsole();
 
-        var exit = await TypingsCommand.DispatchAsync(["--out=" + target], _workspace);
+        var exit = await TypingsCommand.DispatchAsync(console, ["--out=" + target], _workspace);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.True(File.Exists(Path.Combine(target, "orkeon.d.ts")));
@@ -95,7 +95,7 @@ public sealed class TypingsCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await TypingsCommand.DispatchAsync(["--out="], _workspace);
+        var exit = await TypingsCommand.DispatchAsync(console, ["--out="], _workspace);
 
         Assert.NotEqual(Program.ExitOk, exit);
         Assert.Contains("--out needs", console.Stderr, StringComparison.Ordinal);
@@ -108,7 +108,7 @@ public sealed class TypingsCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["typings", "--help"]);
+        var exit = await Program.DispatchAsync(console, ["typings", "--help"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("orkeon typings [--out <dir>]", console.Stdout, StringComparison.Ordinal);

@@ -56,7 +56,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["--edit"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["--edit"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("--edit only applies to `forge resume`", console.Stderr, StringComparison.Ordinal);
@@ -70,7 +70,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         var amended = ForgeDocuments.ValidBlueprint.Replace("Web Researcher", "Chercheur", StringComparison.Ordinal);
         using var console = new TestConsole(stdin: BlueprintLine(amended) + Environment.NewLine);
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["resume", "veille", "--edit", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
 
         Assert.Equal(0, exitCode);
@@ -106,7 +106,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         using var console = new TestConsole(
             stdin: """{"kind":"blueprint.edited","blueprint":{"agents":[]}}""" + Environment.NewLine);
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["resume", "veille", "--edit", "--dry", "--events", "jsonl", "--settings", settings], _workspace);
 
         Assert.Equal(1, exitCode);
@@ -128,7 +128,7 @@ public sealed class ForgeEditAtPauseTests : IDisposable
         session.Save(DateTimeOffset.UtcNow);
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["resume", "veille", "--edit", "--events", "jsonl", "--settings", settings], _workspace);
 
         Assert.Equal(1, exitCode);

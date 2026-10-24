@@ -179,27 +179,28 @@ internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 internal static class RagCommand
 {
     /// <summary>Parses <paramref name="args"/> (already stripped of the leading <c>rag</c>) and dispatches to a verb.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return await CliGrammar.DispatchAsync("rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions), typeof(RagEvalCommandOptions)], options => options switch
+        return await CliGrammar.DispatchAsync(console, "rag", args, [typeof(RagIngestCommandOptions), typeof(RagSearchCommandOptions), typeof(RagEvalCommandOptions)], (console, options) => options switch
         {
-            RagIngestCommandOptions o => ExecuteIngestAsync(o),
-            RagSearchCommandOptions o => ExecuteSearchAsync(o),
-            RagEvalCommandOptions o => ExecuteEvalAsync(o),
+            RagIngestCommandOptions o => ExecuteIngestAsync(console, o),
+            RagSearchCommandOptions o => ExecuteSearchAsync(console, o),
+            RagEvalCommandOptions o => ExecuteEvalAsync(console, o),
             _ => Task.FromResult(Program.ExitScriptError),
         }).ConfigureAwait(false);
     }
 
     /// <summary>Runs the ingestion described by <paramref name="options"/>; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteIngestAsync(RagIngestCommandOptions options)
+    public static Task<int> ExecuteIngestAsync(IRunnerConsole console, RagIngestCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("ingest", async ct =>
+        return GuardedAsync(console, "ingest", async ct =>
         {
             var cwd = ResolveCwd(options);
-            using var host = BuildHost(options, cwd);
+            using var host = BuildHost(console, options, cwd);
             if (host is null)
                 return Program.ExitScriptError;
 
@@ -211,14 +212,14 @@ internal static class RagCommand
                 .ToList();
             if (patterns.Count == 0)
             {
-                await Console.Error.WriteLineAsync("orkeon rag ingest: at least one --source is required.").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync("orkeon rag ingest: at least one --source is required.").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
             var sources = await SourceGlobExpander.ExpandAsync(fileSystem, patterns, ct).ConfigureAwait(false);
             if (sources.Count == 0)
             {
-                await Console.Error.WriteLineAsync(
+                await console.ErrorOutput.WriteLineAsync(
                     $"orkeon rag ingest: no source matched: {string.Join(", ", options.Sources)}").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
@@ -233,25 +234,26 @@ internal static class RagCommand
             }, ct).ConfigureAwait(false);
 
             // Same report text as the rag_ingest agent tool — one format for both surfaces.
-            Console.WriteLine(RagIngestTool.FormatReport(report));
+            await console.Output.WriteLineAsync(RagIngestTool.FormatReport(report)).ConfigureAwait(false);
             return Program.ExitOk;
         });
     }
 
     /// <summary>Runs the query described by <paramref name="options"/>; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteSearchAsync(RagSearchCommandOptions options)
+    public static Task<int> ExecuteSearchAsync(IRunnerConsole console, RagSearchCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("search", async ct =>
+        return GuardedAsync(console, "search", async ct =>
         {
             if (string.IsNullOrWhiteSpace(options.Question))
             {
-                await Console.Error.WriteLineAsync("orkeon rag search: a question is required.").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync("orkeon rag search: a question is required.").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
             var cwd = ResolveCwd(options);
-            using var host = BuildHost(options, cwd);
+            using var host = BuildHost(console, options, cwd);
             if (host is null)
                 return Program.ExitScriptError;
 
@@ -263,18 +265,18 @@ internal static class RagCommand
                 TopN = options.TopN,
             }, ct).ConfigureAwait(false);
 
-            Console.WriteLine(answer.Text);
+            await console.Output.WriteLineAsync(answer.Text).ConfigureAwait(false);
             if (answer.Citations.Count > 0)
             {
-                Console.WriteLine();
-                Console.WriteLine("Sources:");
+                await console.Output.WriteLineAsync().ConfigureAwait(false);
+                await console.Output.WriteLineAsync("Sources:").ConfigureAwait(false);
                 foreach (var citation in answer.Citations)
                 {
                     var snippet = citation.Snippet ?? string.Empty;
                     var preview = snippet.Length > 100 ? snippet[..100] + "..." : snippet;
-                    Console.WriteLine(string.Create(
+                    await console.Output.WriteLineAsync(string.Create(
                         CultureInfo.InvariantCulture,
-                        $"- [{citation.Marker}] {citation.SourceId} (score: {citation.Score:F2}): {preview}"));
+                        $"- [{citation.Marker}] {citation.SourceId} (score: {citation.Score:F2}): {preview}")).ConfigureAwait(false);
                 }
             }
 
@@ -290,14 +292,15 @@ internal static class RagCommand
     /// (<c>--min-recall</c>/<c>--min-mrr</c>, cases tagged
     /// '<see cref="Orkeon.Rag.Abstractions.Models.RagEvalCase.CorrectiveTag"/>' excluded).
     /// </summary>
-    public static Task<int> ExecuteEvalAsync(RagEvalCommandOptions options)
+    public static Task<int> ExecuteEvalAsync(IRunnerConsole console, RagEvalCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return GuardedAsync("eval", async ct =>
+        return GuardedAsync(console, "eval", async ct =>
         {
             if (string.IsNullOrWhiteSpace(options.Dataset))
             {
-                await Console.Error.WriteLineAsync("orkeon rag eval: --dataset is required.").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync("orkeon rag eval: --dataset is required.").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
@@ -317,7 +320,7 @@ internal static class RagCommand
             }
 
             var cwd = ResolveCwd(options);
-            using var host = BuildHost(options, cwd);
+            using var host = BuildHost(console, options, cwd);
             if (host is null)
                 return Program.ExitScriptError;
 
@@ -348,9 +351,9 @@ internal static class RagCommand
             }, ct).ConfigureAwait(false);
 
             // Same summary text as the rag_eval agent tool — one format for both surfaces.
-            Console.WriteLine(RagEvalTool.FormatResult(result));
+            await console.Output.WriteLineAsync(RagEvalTool.FormatResult(result)).ConfigureAwait(false);
 
-            return await ApplyGatesAsync(options, result).ConfigureAwait(false);
+            return await ApplyGatesAsync(console.ErrorOutput, options, result).ConfigureAwait(false);
         });
     }
 
@@ -361,7 +364,7 @@ internal static class RagCommand
     /// (those are seeded to fail plain retrieval — RAG-06 material). Any profile
     /// below a threshold fails the run with exit code 1.
     /// </summary>
-    private static async Task<int> ApplyGatesAsync(RagEvalCommandOptions options, RagEvalRunResult result)
+    private static async Task<int> ApplyGatesAsync(TextWriter error, RagEvalCommandOptions options, RagEvalRunResult result)
     {
         if (options.MinRecall is null && options.MinMrr is null)
             return Program.ExitOk;
@@ -375,7 +378,7 @@ internal static class RagCommand
             if (options.MinRecall is { } minRecall && (gatedRecall is null || gatedRecall < minRecall))
             {
                 failed = true;
-                await Console.Error.WriteLineAsync(string.Create(
+                await error.WriteLineAsync(string.Create(
                     CultureInfo.InvariantCulture,
                     $"orkeon rag eval: REGRESSION — profile '{report.Profile}' recall@{report.K} = {gatedRecall ?? 0:F3} < threshold {minRecall:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
             }
@@ -383,7 +386,7 @@ internal static class RagCommand
             if (options.MinMrr is { } minMrr && (gatedMrr is null || gatedMrr < minMrr))
             {
                 failed = true;
-                await Console.Error.WriteLineAsync(string.Create(
+                await error.WriteLineAsync(string.Create(
                     CultureInfo.InvariantCulture,
                     $"orkeon rag eval: REGRESSION — profile '{report.Profile}' MRR = {gatedMrr ?? 0:F3} < threshold {minMrr:F3} (cases tagged '{RagEvalCase.CorrectiveTag}' excluded).")).ConfigureAwait(false);
             }
@@ -398,14 +401,14 @@ internal static class RagCommand
     /// anything unexpected → 2. Mirrors the exit-code contract of the run verb.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: unexpected failures are converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
-    private static async Task<int> GuardedAsync(string verb, Func<CancellationToken, Task<int>> body)
+    private static async Task<int> GuardedAsync(IRunnerConsole console, string verb, Func<CancellationToken, Task<int>> body)
     {
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cts.Cancel();
-        };
+            return true;
+        });
 
         try
         {
@@ -422,16 +425,16 @@ internal static class RagCommand
             or FileAccessDeniedException)
         {
             var root = Orkeon.Scripting.Internal.JsExceptionUnwrap.UnwrapToInnermost(ex);
-            await Console.Error.WriteLineAsync($"orkeon rag {verb}: {root.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon rag {verb}: {root.Message}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
         catch (Exception ex)
         {
             var root = Orkeon.Scripting.Internal.JsExceptionUnwrap.UnwrapToInnermost(ex);
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon rag {verb}: unexpected error [{root.GetType().FullName}]: {root.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }
     }
@@ -446,11 +449,11 @@ internal static class RagCommand
     /// for ingestion manifests) are injected unless the caller already claimed those
     /// virtual roots via <c>--mount</c>.
     /// </summary>
-    private static IHost? BuildHost(RagCommandOptionsBase options, string cwd)
+    private static IHost? BuildHost(IRunnerConsole console, RagCommandOptionsBase options, string cwd)
     {
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
         if (settingsPath != null)
-            Console.Error.WriteLine($"Using settings: {settingsPath}");
+            console.ErrorOutput.WriteLine($"Using settings: {settingsPath}");
 
         var cliMounts = options.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
 
@@ -467,7 +470,7 @@ internal static class RagCommand
         // unconditionally, so claiming it is always a collision, and rag was the one verb that
         // never asked the guard about anything. `--mount x:/sandbox:rw` reached the registry and
         // came back as the raw duplicate-path exception this guard exists to replace.
-        if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, Console.Error, RunnerVirtualRoots.Sandbox))
+        if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, console.ErrorOutput, RunnerVirtualRoots.Sandbox))
             return null;
 
         // Two settings entries of one root (VFS-90) have no crew here to pick one and this verb
@@ -475,7 +478,7 @@ internal static class RagCommand
         // refuses in one line - naming --mount, the one way this verb has (GAP-49, decision 3) -
         // instead of the host throwing out of its configuration.
         if (!RunnerExecution.EnsureMountSelectionIsResolvable(
-                cliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.MountOption, Console.Error, out _))
+                cliMounts, [], CrewMountDeclarations.None, settingsPath, OfferedMountSelectors.MountOption, console.ErrorOutput, out _))
         {
             return null;
         }
@@ -508,6 +511,7 @@ internal static class RagCommand
                 : null,
             configureServices: (ctx, services) =>
             {
+                services.AddSingleton(console);
                 // The RAG subsystem and its tools come with every runner host (GAP-02), and
                 // test doubles registered here are the last registration, so they win.
                 options.ConfigureTestServices?.Invoke(ctx, services);

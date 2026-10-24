@@ -28,7 +28,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "fr"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "fr"));
 
         Assert.Equal(Program.ExitOk, exit);
         // The example's crew, as it is.
@@ -62,7 +62,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en"));
+        await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en"));
 
         Assert.Equal(
             """
@@ -85,7 +85,7 @@ public sealed class UseCasesExportTests : IDisposable
         var destination = Path.Combine(_root, "digest");
 
         // Studio says «zh», the catalogue «zh-Hans»: both are read.
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "zh"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "zh"));
 
         Assert.Equal(Program.ExitOk, exit);
         var sidecar = Sidecar(destination);
@@ -107,7 +107,7 @@ public sealed class UseCasesExportTests : IDisposable
             UseCaseFixtures.Manifest,
             UseCaseFixtures.Files().With("09-experimental/05-untitled-example/config.yaml", "name: \"untitled\"\n"));
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.Untitled, destination, "fr", catalog));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.Untitled, destination, "fr", catalog));
 
         Assert.Equal(Program.ExitOk, exit);
         var sidecar = Sidecar(destination);
@@ -126,7 +126,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en", events: true));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en", events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         var exported = SingleEvent(console.Stdout, UseCaseEventKinds.Exported);
@@ -147,7 +147,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "digest");
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en"));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains(UseCaseFixtures.MailDigest, console.Stdout, StringComparison.Ordinal);
@@ -165,7 +165,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "invoices");
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.InvoiceMatching, destination, "en"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.InvoiceMatching, destination, "en"));
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(UseCaseErrorCodes.NotImportable, console.Stderr, StringComparison.Ordinal);
@@ -179,7 +179,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "trading");
 
-        var exit = await Program.DispatchAsync(["usecases", "export", "31-algo-trading", "--to", destination, "--events", "jsonl"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "export", "31-algo-trading", "--to", destination, "--events", "jsonl"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         var error = SingleEvent(console.Stdout, UseCaseEventKinds.Error);
@@ -194,7 +194,7 @@ public sealed class UseCasesExportTests : IDisposable
         using var console = new TestConsole();
         var destination = Path.Combine(_root, "nothing");
 
-        var exit = await Program.DispatchAsync(["usecases", "export", "99-no-such-example", "--to", destination]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "export", "99-no-such-example", "--to", destination]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(UseCaseErrorCodes.UnknownId, console.Stderr, StringComparison.Ordinal);
@@ -210,7 +210,7 @@ public sealed class UseCasesExportTests : IDisposable
         Directory.CreateDirectory(destination);
         await File.WriteAllTextAsync(Path.Combine(destination, "notes.txt"), "mine", TestContext.Current.CancellationToken);
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en"));
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(UseCaseErrorCodes.DestinationNotEmpty, console.Stderr, StringComparison.Ordinal);
@@ -226,7 +226,7 @@ public sealed class UseCasesExportTests : IDisposable
         Directory.CreateDirectory(_root);
         await File.WriteAllTextAsync(destination, "mine", TestContext.Current.CancellationToken);
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en"));
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(UseCaseErrorCodes.DestinationNotEmpty, console.Stderr, StringComparison.Ordinal);
@@ -240,7 +240,7 @@ public sealed class UseCasesExportTests : IDisposable
         var destination = Path.Combine(_root, "empty");
         Directory.CreateDirectory(destination);
 
-        var exit = await UseCasesCommand.ExecuteExportAsync(Export(UseCaseFixtures.MailDigest, destination, "en"));
+        var exit = await UseCasesCommand.ExecuteExportAsync(console, Export(UseCaseFixtures.MailDigest, destination, "en"));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.True(File.Exists(Path.Combine(destination, "crew", "config.yaml")));
@@ -257,7 +257,7 @@ public sealed class UseCasesExportTests : IDisposable
         var destination = Path.Combine(_root, "research");
         const string id = "01-research-assistant";
 
-        var exit = await Program.DispatchAsync(["usecases", "export", id, "--to", destination, "--lang", "en", "--events", "jsonl"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "export", id, "--to", destination, "--lang", "en", "--events", "jsonl"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var catalog = UseCaseCatalog.Embedded;

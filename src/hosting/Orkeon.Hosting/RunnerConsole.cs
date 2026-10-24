@@ -20,6 +20,12 @@ public interface IRunnerConsole
     TextReader Input { get; }
 
     /// <summary>
+    /// True when <see cref="Input"/> is not a terminal a person types into (a pipe, a file, a
+    /// buffer): an interactive assistant refuses to wait on it.
+    /// </summary>
+    bool IsInputRedirected { get; }
+
+    /// <summary>
     /// Calls <paramref name="handler"/> on each interrupt key press (Ctrl+C) until the returned
     /// registration is disposed. The handler returns <see langword="true"/> when it consumed the
     /// key press, which then does not end the process.
@@ -51,6 +57,9 @@ public sealed class SystemRunnerConsole : IRunnerConsole
 
     /// <inheritdoc />
     public TextReader Input => Console.In;
+
+    /// <inheritdoc />
+    public bool IsInputRedirected => Console.IsInputRedirected;
 
     /// <inheritdoc />
     public IDisposable OnInterrupt(Func<bool> handler)
