@@ -148,8 +148,18 @@
             <ItemsControl ItemsSource="{Binding Launcher.Log.Lines}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1"
-                             Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
+                  <!-- The same line as the Run screen's journal: the time Studio read it, then the
+                       text coloured by what it is (command, verdict, warning, error). -->
+                  <Grid Margin="6,1">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto"/>
+                      <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Opacity="0.55" Margin="0,0,10,0"
+                               Foreground="{DynamicResource ConsoleFgBrush}" Text="{Binding Time}"/>
+                    <TextBlock Grid.Column="1" FontFamily="{StaticResource MonoFont}" FontSize="11.5" TextWrapping="Wrap"
+                               Style="{StaticResource ConsoleLineText}" Text="{Binding Text}"/>
+                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

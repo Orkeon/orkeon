@@ -1251,4 +1251,28 @@
     </Border>
   </DataTemplate>
 
+
+  <!-- One line of a run console — the Run screen's journal and the Test screen's console. The
+       console palette has four brushes and used two of them: the echoed command and the closing
+       verdict were the same grey as every other line, so the two moments worth finding in a long
+       log were the hardest to find. The classification comes from the producer or from the CLI
+       logger's level token, never from localized text: the verdict sentence is localized. -->
+  <Style x:Key="ConsoleLineText" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource ConsoleFgBrush}"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsCommand}" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource ConsoleCmdBrush}"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsOutcome}" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource ConsoleOkBrush}"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsWarning}" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource ConsoleWarnBrush}"/>
+      </DataTrigger>
+      <DataTrigger Binding="{Binding IsError}" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource ConsoleErrBrush}"/>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
 </ResourceDictionary>

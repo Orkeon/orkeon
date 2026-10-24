@@ -1023,32 +1023,7 @@
                        from the text (CliLogLine): one clock per line. -->
                   <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
                              Foreground="{DynamicResource ConsoleFgBrush}"/>
-                <TextBlock Text="{Binding Text}">
-                  <TextBlock.Style>
-                    <!-- The console palette has four brushes and used two of them: the
-                         echoed command and the closing verdict were the same grey as every
-                         other line, so the two moments worth finding in a long log were the
-                         hardest to find. The classification comes from the producer, never
-                         from the text — the verdict sentence is localized. -->
-                    <Style TargetType="TextBlock">
-                      <Setter Property="Foreground" Value="{DynamicResource ConsoleFgBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCommand}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleCmdBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsOutcome}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleOkBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleWarnBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsError}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleErrBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
-                </TextBlock>
+                <TextBlock Text="{Binding Text}" Style="{StaticResource ConsoleLineText}"/>
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
