@@ -211,8 +211,9 @@ like the e-mail secrets: the process environment, then — on Windows — the us
   whole drive, OneDrive personal may), so `drive_search` drops what lies outside the account's root
   and reads further provider pages, up to five, to fill the page asked for. A page can still come
   back short, even empty, with a `next_cursor` that goes on from there.
-- **Drive traffic stays out of the LLM exchange log.** `--llm-log` captures LLM calls only: the
-  drive client's requests, file contents and upload session addresses are never written there.
+- **Drive traffic stays out of the LLM exchange log.** The drive client is excluded from what
+  `--llm-log` captures: its requests, file contents and upload session addresses are never written
+  there.
 
 ## Using the tools
 

@@ -92,8 +92,7 @@ internal sealed partial class OneDrive : IDrive
         if (_parents.Ids.Equals(item.Id, root.Id))
             return true;
 
-        // An item shared from another drive is never inside, whatever its path.
-        if (item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase))
+        if (IsOtherDrive(item, root))
             return false;
 
         // The path, when Graph gives it, answers at once. A search result may come without one,
@@ -113,6 +112,9 @@ internal sealed partial class OneDrive : IDrive
                 return false;
             }
 
+            // Read again, the hit may turn out to live in another drive (shared with the account).
+            if (IsOtherDrive(item, root))
+                return false;
             if (UnderPath(item, root) is { } read)
                 return read;
         }
@@ -317,6 +319,10 @@ internal sealed partial class OneDrive : IDrive
         var rest = Uri.UnescapeDataString(path[(cut + RootPathPrefix.Length)..]).TrimEnd('/');
         return rest.Length == 0 ? "/" : rest;
     }
+
+    /// <summary>An item shared from another drive is never inside, whatever its path.</summary>
+    private static bool IsOtherDrive(DriveItem item, DriveItem root) =>
+        item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether the path of <paramref name="item"/> lies under <paramref name="root"/>; null when either has no path.</summary>
     private static bool? UnderPath(DriveItem item, DriveItem root) =>

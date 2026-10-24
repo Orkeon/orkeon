@@ -88,7 +88,7 @@ internal sealed class DriveAccess
         var kept = new List<DriveItem>(items.Count);
         foreach (var item in items)
         {
-            if (!string.Equals(item.Id, root.Id, StringComparison.OrdinalIgnoreCase) && await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
+            if (item.Id != root.Id && await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
                 kept.Add(item);
         }
 

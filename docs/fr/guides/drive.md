@@ -219,8 +219,8 @@ Windows — les variables propres à l'utilisateur.
   `drive_search` écarte ce qui est hors de la racine du compte et lit d'autres pages du fournisseur,
   jusqu'à cinq, pour remplir la page demandée. Une page peut encore revenir courte, voire vide, avec
   un `next_cursor` qui reprend de là.
-- **Le trafic drive reste hors du journal des échanges LLM.** `--llm-log` ne capture que les appels
-  aux LLM : les requêtes du client drive, le contenu des fichiers et les adresses des sessions de
+- **Le trafic drive reste hors du journal des échanges LLM.** Le client drive est exclu de ce que
+  capture `--llm-log` : ses requêtes, le contenu des fichiers et les adresses des sessions de
   chargement n'y sont jamais écrits.
 
 ## Utiliser les outils

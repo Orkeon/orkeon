@@ -13,7 +13,7 @@ namespace Orkeon.Tools.Drive.Tools;
 /// <summary>Searches a drive.</summary>
 [ToolContract("drive_search",
     Name = "drive_search",
-    Description = "Search a cloud drive by words (names and content), name, MIME type, kind (file or folder), modification date or folder, inside the account's root folder; page with `cursor`. OneDrive needs `text` or `name_contains`. Needs the Read right.",
+    Description = "Search a cloud drive by words (names and content), name, MIME type, kind (file or folder), modification date or folder, inside the account's root folder; page with `cursor` (a page may come back short, even empty, while `next_cursor` is set: call again with it). OneDrive needs `text` or `name_contains`. Needs the Read right.",
     Category = "Drive")]
 internal sealed partial class DriveSearchTool : ToolBase<DriveSearchRequest, DriveSearchResponse>
 {

@@ -86,6 +86,18 @@ public sealed class OneDriveTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_keep_out_a_parentless_hit_that_read_again_lives_in_another_drive()
+    {
+        // Same path as the root, other drive: an item shared with the account.
+        MapRoot();
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/shared-id?$select=id,name", FakeHttpResponse.Json(
+            """{"id":"shared-id","name":"x.txt","file":{"mimeType":"text/plain"},"parentReference":{"id":"p","driveId":"other","path":"/drives/other/root:/Orkeon/agents"}}"""));
+        var root = await _fixture.Drive.GetRootAsync(Token) with { DriveId = "mine" };
+
+        Assert.False(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "shared-id", Name = "x.txt", IsFolder = false }, root, Token));
+    }
+
+    [Fact]
     public async Task Should_compare_OneDrive_ids_without_regard_to_case()
     {
         MapRoot();
