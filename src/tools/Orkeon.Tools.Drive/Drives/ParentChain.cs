@@ -15,16 +15,22 @@ namespace Orkeon.Tools.Drive.Drives;
 /// <param name="ids">How the provider compares ids: OneDrive's are case-insensitive.</param>
 internal sealed class ParentChain(Func<string, CancellationToken, Task<(string Id, string? ParentId)>> fetchParent, StringComparer ids)
 {
-    private readonly ConcurrentDictionary<string, string?> _parents = new(ids);
+    // By the id an item was asked or seen with: the id the provider gives it, and its parent.
+    private readonly ConcurrentDictionary<string, (string Id, string? ParentId)> _parents = new(ids);
 
     /// <summary>How the provider compares ids.</summary>
     public StringComparer Ids => ids;
 
-    /// <summary>Records the parent of <paramref name="item"/> and returns it, for use in a projection.</summary>
+    /// <summary>
+    /// Records the parent of <paramref name="item"/> and returns it, for use in a projection. An
+    /// item read without its parent's id (a OneDrive search hit) is not recorded: an unknown parent
+    /// is not the root of the drive.
+    /// </summary>
     public DriveItem Remember(DriveItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        _parents[item.Id] = item.ParentId;
+        if (item.ParentId is not null)
+            _parents[item.Id] = (item.Id, item.ParentId);
         return item;
     }
 
@@ -67,10 +73,10 @@ internal sealed class ParentChain(Func<string, CancellationToken, Task<(string I
     private async Task<(string Id, string? ParentId)> ReadAsync(string id, CancellationToken cancellationToken)
     {
         if (_parents.TryGetValue(id, out var known))
-            return (id, known);
-        var (canonical, parent) = await fetchParent(id, cancellationToken).ConfigureAwait(false);
-        _parents[id] = parent;
-        _parents[canonical] = parent;
-        return (canonical, parent);
+            return known;
+        var read = await fetchParent(id, cancellationToken).ConfigureAwait(false);
+        _parents[id] = read;
+        _parents[read.Id] = read;
+        return read;
     }
 }

@@ -76,6 +76,16 @@ public sealed class OneDriveTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_answer_from_a_path_outside_the_root_without_climbing()
+    {
+        MapRoot();
+        var root = await _fixture.Drive.GetRootAsync(Token);
+
+        Assert.False(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "elsewhere-id", ParentPath = "/Elsewhere" }, root, Token));
+        Assert.Single(_fixture.Handler.Requests);
+    }
+
+    [Fact]
     public async Task Should_compare_OneDrive_ids_without_regard_to_case()
     {
         MapRoot();
@@ -93,17 +103,35 @@ public sealed class OneDriveTests : IDisposable
         var root = await _fixture.Drive.GetRootAsync(Token);
 
         Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "alias-id" }, root, Token));
+        // The second hit under the same alias is answered from what the first climb learned.
+        Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "j", Name = "m", IsFolder = false, ParentId = "alias-id" }, root, Token));
+        Assert.Single(_fixture.Handler.RequestsTo(HttpMethod.Get, Graph + "items/alias-id"));
+    }
+
+    [Fact]
+    public async Task Should_not_take_a_search_hit_without_a_parent_id_for_the_root_of_the_drive()
+    {
+        // The folder came from a search without its parent's id; a file under it climbs through it.
+        MapRoot();
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/agents-id/search(q='sub')", FakeHttpResponse.Json(
+            """{"value":[{"id":"sub-id","name":"sub","folder":{"childCount":1},"parentReference":{"driveId":"d"}}]}"""));
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/sub-id?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"sub-id","parentReference":{"id":"agents-id"}}"""));
+        var root = await _fixture.Drive.GetRootAsync(Token);
+        await _fixture.Drive.SearchAsync(new DriveSearchQuery { Text = "sub" }, 5, null, Token);
+
+        Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "f", Name = "f.txt", IsFolder = false, ParentId = "sub-id" }, root, Token));
     }
 
     [Fact]
     public async Task Should_keep_out_a_search_hit_whose_parents_climb_to_the_drive_root()
     {
+        // No path: only the climb by ids can tell.
         MapRoot();
         _fixture.Handler.Map(HttpMethod.Get, Graph + "items/elsewhere-id?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"elsewhere-id","parentReference":{"id":"drive-root"}}"""));
         _fixture.Handler.Map(HttpMethod.Get, Graph + "items/drive-root?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"drive-root"}"""));
         var root = await _fixture.Drive.GetRootAsync(Token);
 
-        Assert.False(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "elsewhere-id", ParentPath = "/Elsewhere" }, root, Token));
+        Assert.False(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "elsewhere-id" }, root, Token));
     }
 
     [Fact]

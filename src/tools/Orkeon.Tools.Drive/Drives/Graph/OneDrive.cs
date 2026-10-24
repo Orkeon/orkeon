@@ -96,11 +96,11 @@ internal sealed partial class OneDrive : IDrive
         if (item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase))
             return false;
 
-        // The path, when Graph gives it, says yes at once. A search result may come without one,
-        // or without the parent's id (a parentReference holding the drive alone, on OneDrive
+        // The path, when Graph gives it, answers at once. A search result may come without one,
+        // or without the parent's id too (a parentReference holding the drive alone, on OneDrive
         // personal): the item is read again, then the climb by ids decides.
-        if (IsUnderPath(item, root))
-            return true;
+        if (UnderPath(item, root) is { } under)
+            return under;
 
         if (item.ParentId is null)
         {
@@ -113,8 +113,8 @@ internal sealed partial class OneDrive : IDrive
                 return false;
             }
 
-            if (IsUnderPath(item, root))
-                return true;
+            if (UnderPath(item, root) is { } read)
+                return read;
         }
 
         return await _parents.ReachesAsync(item, root.Id, cancellationToken).ConfigureAwait(false);
@@ -318,10 +318,11 @@ internal sealed partial class OneDrive : IDrive
         return rest.Length == 0 ? "/" : rest;
     }
 
-    private static bool IsUnderPath(DriveItem item, DriveItem root) =>
+    /// <summary>Whether the path of <paramref name="item"/> lies under <paramref name="root"/>; null when either has no path.</summary>
+    private static bool? UnderPath(DriveItem item, DriveItem root) =>
         item.ParentPath is { } parentPath && FullPath(root) is { } rootPath
-        && (string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase)
-            || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase));
+            ? string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase) || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase)
+            : null;
 
     private static string? FullPath(DriveItem folder) =>
         folder.ParentPath is null ? null : folder.ParentPath == "/" ? "/" + folder.Name : $"{folder.ParentPath}/{folder.Name}";
