@@ -1,3 +1,4 @@
+using Orkeon.Compliance.Vfs;
 using Orkeon.Cli.Abstractions.Console.LineEditing;
 
 namespace Orkeon.Cli.Abstractions.Console;
@@ -9,6 +10,7 @@ namespace Orkeon.Cli.Abstractions.Console;
 /// process owns an interactive TTY; when stdin is redirected it transparently falls back to
 /// <see cref="System.Console.ReadLine"/> so pipes and tests stay byte-exact.
 /// </summary>
+[SuppressConsoleCompliance("CONSOLE-ADAPTER: IConsoleAdapter over the process console, with line editing.")]
 public sealed class LineEditingConsoleAdapter : IConsoleAdapter
 {
     private readonly LineEditor _editor;

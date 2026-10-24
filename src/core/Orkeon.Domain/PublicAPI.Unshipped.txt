@@ -1379,3 +1379,6 @@ Orkeon.Domain.Tools.IBoundedToolResponse
 Orkeon.Domain.Tools.IBoundedToolResponse.AlreadyBounded.get -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.get -> bool
 Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.init -> void
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.Reason.get -> string!
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.SuppressConsoleComplianceAttribute(string! reason) -> void

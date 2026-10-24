@@ -1,8 +1,10 @@
+using Orkeon.Compliance.Vfs;
 namespace Orkeon.Cli.Abstractions.Console;
 
 /// <summary>
 /// Production adapter that delegates to System.Console.
 /// </summary>
+[SuppressConsoleCompliance("CONSOLE-ADAPTER: IConsoleAdapter over the process console.")]
 public sealed class SystemConsoleAdapter : IConsoleAdapter
 {
     public void Write(string text) => System.Console.Write(text);
