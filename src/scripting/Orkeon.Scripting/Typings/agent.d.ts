@@ -45,6 +45,16 @@ declare global {
         /** The agent's execution time limit, in whole seconds. */
         maxExecutionTime(seconds: number): this;
         verbose(value?: boolean): this;
+        /**
+         * YAML parity `working_root:` (RT-06) — the virtual directory the agent's file and shell tools
+         * (`file_*`, `node_*`, `edit_batch`, `shell_command`) stay inside, whether `ctx.llm.act(...)`
+         * or the body's code (`ctx.tools`, `tools`) calls them: a relative path resolves under it, a
+         * path outside it is refused, a command runs there. An absolute VFS path under a mount, with
+         * no `..`; one that is not refuses the agent's run when it starts, never at build. A child
+         * started by `spawn_agent` or `ctx.spawnBackground` without a root of its own runs under its
+         * parent's, and so does each later `crew.send` to it. Left out, the run is unrooted.
+         */
+        workingRoot(path: string): this;
         concurrency(n: number): this;
         withState<S>(factory: (() => S) | S): AgentBuilder<TIn, TOut, S>;
         /**

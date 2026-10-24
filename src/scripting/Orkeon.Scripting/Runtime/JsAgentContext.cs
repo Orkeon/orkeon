@@ -66,6 +66,19 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     // (CloseAttempt, or the run's release of an attempt left open) ends it.
     private readonly AgentRunScope _runScope;
 
+    /// <summary>The run scope of this attempt: its working root (RT-06) holds every tool the body runs.</summary>
+    internal AgentRunScope RunScope => _runScope;
+
+    private readonly IReadOnlyList<Orkeon.Domain.Tools.IBaseTool> _builtInTools;
+    private IDictionary<string, object?>? _tools;
+
+    /// <summary>
+    /// The host's tools, as the global <c>tools</c> namespace names them, called as this agent: in its run
+    /// scope, held to its working root (RT-06) however many agents run beside it.
+    /// </summary>
+    public IDictionary<string, object?> tools
+        => _tools ??= Orkeon.Scripting.Bindings.ToolsNamespaceBinding.BuildNamespace(_builtInTools, _ => _runScope);
+
     public JsValue state { get; private set; }
 
     /// <summary>The id (<c>a1</c>…) of the agent instance this body runs as; <c>undefined</c> for a run that is not one (RT-03).</summary>
@@ -89,7 +102,8 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
                 Agent = _self.name,
             }.ToString(), environment.Ct)
             : new JsMemoryScope();
-        _runScope = AgentRunScope.Create(_self.id, _self.name);
+        _runScope = AgentRunScope.Create(_self.id, _self.name, environment.WorkingRoot);
+        _builtInTools = environment.BuiltInTools ?? [];
         llm.AttachRunScope(_runScope);
         state = BuildStateProxy(_stateRaw);
     }

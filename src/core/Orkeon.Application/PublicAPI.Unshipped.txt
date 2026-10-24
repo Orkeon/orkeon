@@ -2474,3 +2474,5 @@ static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator !=(Orke
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator ==(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? right) -> bool
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Parse(string! key) -> Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey!
 const Orkeon.Application.Constants.Orchestration.LoggingDefaults.MaxLlmResponseLogLength = 300 -> int
+Orkeon.Application.Agent.AgentWorkingRoot
+static Orkeon.Application.Agent.AgentWorkingRoot.NormalizeMounted(string? root, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts) -> string?

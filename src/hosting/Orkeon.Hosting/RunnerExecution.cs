@@ -1557,6 +1557,8 @@ public static partial class RunnerExecution
                 AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                 ToolLimits = sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
+                // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
+                FileSystem = sp.GetService<IFileSystemService>(),
             },
             ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 

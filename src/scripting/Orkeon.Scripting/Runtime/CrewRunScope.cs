@@ -145,6 +145,9 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>The agent instance this run is a (follow-up) run of; null for a run that is not one.</summary>
     internal AgentInstanceRun? Instance { get; set; }
 
+    /// <summary>The working root of the agent that started this run (a spawned child): an agent without its own runs under it (RT-06).</summary>
+    internal string? InheritedRoot { get; set; }
+
     /// <summary>The <c>crew.run</c> span (<see cref="Start"/>, listener permitting).</summary>
     internal Activity? Activity { get; private set; }
 
@@ -288,10 +291,14 @@ internal sealed class CrewRunScope : IDisposable
     internal AgentAttempt OpenAttempt(JsAgent agent, JsValue initialState)
     {
         ThrowIfNotRunning();
-        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance), initialState);
+        // RT-06: a working root under no mount never starts the attempt — thrown before the body's
+        // try, so onError is not consulted and nothing retries it.
+        var root = _crew.ResolveWorkingRoot(agent, InheritedRoot);
+        var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token, Permit, Instance, root), initialState);
         try
         {
             var attribution = _crew.BeginBrokerScope(agent, this);
+            attribution.RunScope = ctx.RunScope;
             var handle = new AgentAttempt(ctx, attribution);
             lock (_sync)
             {
@@ -510,4 +517,13 @@ internal sealed class BrokerAttribution(string agentId, CrewRunScope scope)
     internal string AgentId { get; } = agentId;
     internal CrewRunScope Scope { get; } = scope;
     internal CancellationToken Ct => Scope.Token;
+
+    /// <summary>The run scope of the attempt this attribution belongs to: a tool called from code runs in it (RT-06).</summary>
+    internal Orkeon.Domain.Execution.AgentRunScope? RunScope { get; set; }
 }
+
+/// <summary>
+/// The working root a parent hands its spawned child through the run options (RT-06): a CLR object, so a
+/// script's own <c>crew.run({ root })</c> cannot pass one.
+/// </summary>
+internal sealed record InheritedWorkingRoot(string Root);

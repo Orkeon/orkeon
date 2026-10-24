@@ -43,6 +43,12 @@ public sealed record ScriptingHostPorts
     /// <summary>The cut of each tool result and the fan-out bound of <c>ctx.llm.act</c>. Null keeps the defaults.</summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
 
+    /// <summary>
+    /// The file system whose mounts a script agent's <c>.workingRoot(path)</c> must sit under (RT-06).
+    /// Null refuses every working root at the start of the agent's run.
+    /// </summary>
+    public Orkeon.Domain.FileSystem.IFileSystemService? FileSystem { get; init; }
+
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 }

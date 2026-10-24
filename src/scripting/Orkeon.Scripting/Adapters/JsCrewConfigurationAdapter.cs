@@ -138,6 +138,8 @@ public static class JsCrewConfigurationAdapter
             MaxExecutionTime = builder.MaxExecutionTimeValue,
             Verbose = builder.VerboseFlag,
             LlmConfig = llmConfig,
+            // RT-06: checked against the mounts when the agent's task starts (AgentExecutionService).
+            WorkingRoot = builder.WorkingRootValue,
         };
     }
 

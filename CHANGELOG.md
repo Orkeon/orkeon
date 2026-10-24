@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a script agent takes a working root: `agentBuilder().workingRoot(path)` (#186)
+
+A script agent of `.ork.ts` can now be held to a virtual directory, as RT-06's `working_root:` holds a declared
+agent. `.workingRoot("/workspace/.orkeon/worktrees/a")` roots the agent's run scope: `file_*`, `node_*`,
+`edit_batch` and `shell_command` resolve a relative path under it, refuse a path outside it and run there, whether
+the body's `ctx.llm.act(...)` or its code calls them. A root under no mount, relative or holding `..` refuses the
+agent's run when it starts, with the runtime's own message (`AgentWorkingRoot.NormalizeMounted`, now shared with
+`AgentExecutionService`); on the declarative shape the root reaches `AgentConfiguration.WorkingRoot`. A child
+started by `spawn_agent` or `ctx.spawnBackground` without a root of its own runs under its parent's, and so does each later `crew.send` to it. The new
+`ctx.tools` calls the host's tools as the body's agent; the global `tools` namespace follows the open agents' root
+while they share one and refuses a call when agents with different roots run at once. Hosts hand the mounts through
+`ScriptingHostPorts.FileSystem` (wired in `orkeon run`, the runner, the REPL's scripting commands and Forge); without
+it every root is refused. No root: nothing changes.
+
 ### Fixed — `drive_search` keeps to the root without coming back empty (DRIVE-07)
 
 The first real campaign found two gaps. On Google Drive, a search with a `limit` came back empty with a

@@ -159,6 +159,7 @@ public static class ScriptingCliServiceCollectionExtensions
                     AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                     ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
                     AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
+                    FileSystem = sp.GetService<IFileSystemService>(),
                 },
                 ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });

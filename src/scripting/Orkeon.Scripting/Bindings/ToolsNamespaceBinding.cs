@@ -6,7 +6,9 @@ using Jint;
 using Jint.Native;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting.Runtime;
 using Orkeon.Scripting.Telemetry;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
@@ -32,20 +34,38 @@ public static partial class ToolsNamespaceBinding
         ArgumentNullException.ThrowIfNull(tools);
         var log = logger ?? NullLogger.Instance;
 
-        IDictionary<string, object?> ns = new ExpandoObject();
+        // A call from code runs in the scope of the agent attempt open on the engine (RT-06), unless
+        // it already runs in one (a tool of ctx.llm.act).
+        var ns = BuildNamespace(tools, jsName => AgentRunScope.Current is null ? JsEngineAttempts.ScopeForCode(engine, jsName) : null);
         foreach (var tool in tools)
         {
             var jsName = ToCamelCase(tool.Name);
-            ns[jsName] = WrapTool(tool);
             LogToolExposed(log, tool.Name, jsName);
         }
         engine.SetValue(GlobalName, ns);
     }
 
-    private static Func<JsValue, Task<object?>> WrapTool(IBaseTool tool)
+    /// <summary>
+    /// The namespace object of <paramref name="tools"/>, each under its camelCase name. Each call runs in
+    /// the run scope <paramref name="scopeFor"/> names (its working root holds the file and shell tools),
+    /// or in the caller's own when it names none.
+    /// </summary>
+    internal static IDictionary<string, object?> BuildNamespace(IEnumerable<IBaseTool> tools, Func<string, AgentRunScope?> scopeFor)
+    {
+        IDictionary<string, object?> ns = new ExpandoObject();
+        foreach (var tool in tools)
+        {
+            var jsName = ToCamelCase(tool.Name);
+            ns[jsName] = WrapTool(tool, jsName, scopeFor);
+        }
+        return ns;
+    }
+
+    private static Func<JsValue, Task<object?>> WrapTool(IBaseTool tool, string jsName, Func<string, AgentRunScope?> scopeFor)
     {
         return async input =>
         {
+            using var entered = scopeFor(jsName)?.Enter();
             using var activity = ScriptingActivitySource.Instance.StartActivity(
                 Orkeon.Constants.Llm.GenAiAttributes.SpanName(ScriptingActivitySource.ToolCallSpan, tool.Name));
             activity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.OperationName, Orkeon.Constants.Llm.GenAiAttributes.OperationExecuteTool);

@@ -64,4 +64,7 @@ internal sealed record JsExecutionEnvironment
     /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.
     /// </summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions ToolLimits { get; init; } = new();
+
+    /// <summary>The agent run's working root (RT-06), already checked against the mounts; null for an unrooted run or a context that is no run.</summary>
+    internal string? WorkingRoot { get; init; }
 }

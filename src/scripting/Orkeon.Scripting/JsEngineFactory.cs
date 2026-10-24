@@ -24,6 +24,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
     private readonly Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? _agentInstances;
+    private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Bindings.RagScriptingBackend? _ragBackend;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? _llmProfiles;
 
@@ -61,6 +62,7 @@ public sealed class JsEngineFactory
         _agentMemoryStore = hostPorts?.AgentMemoryStore;
         _toolLimits = hostPorts?.ToolLimits;
         _agentInstances = hostPorts?.AgentInstances;
+        _mounts = hostPorts?.FileSystem is { } fileSystem ? fileSystem.GetAvailableMounts : null;
         _llmProfiles = hostPorts?.LlmProfiles;
         _ragBackend = ragBackend;
     }
@@ -169,7 +171,7 @@ public sealed class JsEngineFactory
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
-        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation, _agentMemoryStore, _toolLimits, _agentInstances);
+        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation, _agentMemoryStore, _toolLimits, _agentInstances, _mounts);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider, _llmProfiles);

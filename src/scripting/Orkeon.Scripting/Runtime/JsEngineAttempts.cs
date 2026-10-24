@@ -42,6 +42,25 @@ internal static class JsEngineAttempts
         lock (registry.Sync) return registry.Entries.Count == 0 ? null : registry.Entries[^1];
     }
 
+    /// <summary>
+    /// RT-06: the run scope a tool called from code through the global <c>tools</c> namespace runs in, which
+    /// holds it to the open agents' working root. <c>null</c> when no open attempt has a root (nothing
+    /// changes); the innermost attempt's scope when every open attempt has the same root; otherwise the
+    /// call cannot be held to one root, and is refused rather than run under a neighbour's or none.
+    /// </summary>
+    internal static Orkeon.Domain.Execution.AgentRunScope? ScopeForCode(Engine engine, string jsName)
+    {
+        if (!Registries.TryGetValue(engine, out var registry)) return null;
+        List<BrokerAttribution> open;
+        lock (registry.Sync) open = [.. registry.Entries];
+        var roots = open.Select(entry => entry.RunScope?.Root).Distinct(StringComparer.Ordinal).ToList();
+        if (roots.All(root => root is null)) return null;
+        if (roots.Count == 1) return open[^1].RunScope;
+        throw new InvalidOperationException(
+            $"tools.{jsName} was called from code while agents with different working roots run: the call cannot be held to one of them. " +
+            $"Call it as ctx.tools.{jsName}(...) from the agent's body.");
+    }
+
     private sealed class Registry
     {
         internal readonly Lock Sync = new();

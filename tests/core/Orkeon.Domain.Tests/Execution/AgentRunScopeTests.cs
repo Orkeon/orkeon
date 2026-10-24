@@ -20,6 +20,19 @@ public sealed class AgentRunScopeTests
     }
 
     [Fact]
+    [Trait("BR", "RT-06")]
+    public async System.Threading.Tasks.Task ShouldCarryRootWithoutBecomingCurrent_WhenCreatedWithRoot()
+    {
+        var scope = AgentRunScope.Create("agent-1", "Writer", "/workspace/wt/a");
+
+        Assert.Equal("/workspace/wt/a", scope.Root);
+        Assert.Null(AgentRunScope.Current);
+        using (scope.Enter())
+            Assert.Equal("/workspace/wt/a", AgentRunScope.Current?.Root);
+        await scope.DisposeAsync();
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ShouldDisposeRegisteredResource_WhenScopeEnds()
     {
         var resource = new FakeAsyncDisposable();

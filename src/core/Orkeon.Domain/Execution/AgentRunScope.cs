@@ -84,6 +84,13 @@ public sealed class AgentRunScope : IAsyncDisposable
     public static AgentRunScope Create(string? agentId = null, string? agentRole = null)
         => new(agentId, agentRole, s_current.Value);
 
+    /// <summary>Creates a scope with a virtual working root without making it current (see <see cref="Create(string?, string?)"/>).</summary>
+    /// <param name="agentId">The agent's identifier, for diagnostics.</param>
+    /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
+    /// <param name="root">The virtual working root, or <c>null</c>.</param>
+    public static AgentRunScope Create(string? agentId, string? agentRole, string? root)
+        => new(agentId, agentRole, s_current.Value, root);
+
     /// <summary>
     /// Creates a scope and makes it current for the calling flow. Disposing it restores the scope
     /// that was current before, then ends it: use it with <c>await using</c> at a run's entry point.

@@ -62,6 +62,7 @@ déduit.
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
 | `maxExecutionTime(seconds)` — le `maxExecutionTime:` du YAML : les secondes qu'une tâche peut prendre chez cet agent (aucun par défaut ; 0, négatif, décimal ou au-dessus de 4294967 refusé à `build()`) | ❌ (avertit : le moteur procédural n'exécute aucune tâche) | ✅ |
+| `workingRoot(path)` — le `working_root:` du YAML : le répertoire virtuel où restent ses outils fichier et shell ([racine de travail d'un agent](../architecture/vfs-compliance.md#racine-de-travail-dun-agent-et-mount) ; aucune par défaut ; un chemin vide refusé à `build()`, une racine hors de tout mount, relative ou contenant `..` refusée au démarrage du run de l'agent) | ✅ chaque outil que le corps exécute — par `ctx.llm.act`, `ctx.tools` ou `tools` — y reste ; un enfant lancé par `spawn_agent` ou `ctx.spawnBackground` sans racine propre s'exécute sous elle, comme chaque `crew.send` ultérieur à cet enfant | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (par appel : `{ responseFormat }`) | ✅ |
 | `body` | ✅ **tout l'intérêt** | ❌ jamais invoqué |
 | `withState` → `ctx.state` | ✅ | ❌ |

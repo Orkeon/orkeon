@@ -71,6 +71,9 @@ public sealed partial class JsCrewBuilder
     /// <summary>The agent-instance transcript caps the host wired.</summary>
     internal Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 
+    /// <summary>The mounts a script agent's working root is checked against (RT-06); null refuses every root.</summary>
+    internal Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
+
     public JsCrewBuilder name(string value) { _name = value; _nameSet = true; return this; }
 
     public JsCrewBuilder goal(string value) { _goal = value; return this; }
@@ -222,6 +225,7 @@ public sealed partial class JsCrewBuilder
             AgentMemoryStore = AgentMemoryStore,
             ToolLimits = ToolLimits,
             AgentInstances = AgentInstances,
+            Mounts = Mounts,
             Goal = _goal,
         });
         crew._onCrewStart = _onCrewStart;

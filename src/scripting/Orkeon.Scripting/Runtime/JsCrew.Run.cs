@@ -286,6 +286,7 @@ public sealed partial class JsCrew
                 scope.Budget = childBudget;
             scope.Permit = options is not null && options.IsObject() ? options.Get("permit").ToObject() as GatePermit : null;
             scope.Instance = options is not null && options.IsObject() ? options.Get("instance").ToObject() as AgentInstanceRun : null;
+            scope.InheritedRoot = options is not null && options.IsObject() ? (options.Get("root").ToObject() as InheritedWorkingRoot)?.Root : null;
             return scope;
         }),
         start = scope => JsHostError.Guard(_engine, scope.Start),
@@ -336,6 +337,8 @@ public sealed partial class JsCrew
             options.Set("budget", JsValue.FromObject(_engine, send.Budget));
             options.Set("instance", JsValue.FromObject(_engine, send.Run));
             options.Set("bare", true);
+            if (send.InheritedRoot is { } root)
+                options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(root)));
             return (JsValue)options;
         }),
         finishInstance = (id, succeeded) => JsHostError.Guard(_engine, () => Instances.Finish(id, succeeded)),

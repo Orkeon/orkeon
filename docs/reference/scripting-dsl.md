@@ -58,6 +58,7 @@ inferred.
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
 | `maxExecutionTime(seconds)` — YAML `maxExecutionTime:`: the seconds a task may take on this agent (none by default; 0, negative, decimal or above 4294967 refused at `build()`) | ❌ (warned: the procedural engine runs no task) | ✅ |
+| `workingRoot(path)` — YAML `working_root:`: the virtual directory its file and shell tools stay inside ([agent working root](../architecture/vfs-compliance.md#agent-working-root-vs-mount); none by default; an empty path refused at `build()`, a root under no mount, relative or holding `..` refused when the agent's run starts) | ✅ every tool the body runs — through `ctx.llm.act`, `ctx.tools` or `tools` — stays inside it; a child started by `spawn_agent` or `ctx.spawnBackground` without a root of its own runs under it, and so does each later `crew.send` to it | ✅ |
 | `withResponseFormat(type)` / `withResponseSchema(name, schema, strict?)` | ❌ (per call: `{ responseFormat }`) | ✅ |
 | `body` | ✅ **the whole point** | ❌ never invoked |
 | `withState` → `ctx.state` | ✅ | ❌ |

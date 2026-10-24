@@ -143,7 +143,8 @@ override) does not grant it. `MountVisibility` is `AgentFacing` (the default, li
 
 ## Agent working root vs mount
 
-An agent may declare a `working_root` (YAML; `AgentBuilder.WorkingRoot(string)`): a virtual path
+An agent may declare a `working_root` (YAML; `AgentBuilder.WorkingRoot(string)`; `.workingRoot(path)` on a
+script agent of `.ork.ts`): a virtual path
 such as `/workspace/.orkeon/worktrees/x` that must lie under a mount, else the run is refused at
 start with an error naming the root. It is an intersection with the mounts, never an extension:
 
@@ -153,6 +154,12 @@ start with an error naming the root. It is an intersection with the mounts, neve
 - `shell_command` refuses a working directory or a path argument outside the root, defaults its
   working directory to the root, and narrows its sandbox's confined paths to it;
 - a refusal reuses the VFS denial shape: physical paths are redacted.
+
+A script agent's root holds every tool its body runs. `ctx.llm.act` and `ctx.tools` run as the agent.
+The global `tools` namespace cannot tell which agent calls it, so it follows the open agents' root while
+they share one and refuses the call when agents with different roots run at once: a body that runs beside
+others calls `ctx.tools`. A child started by `spawn_agent` or `ctx.spawnBackground` without a root of its
+own runs under its parent's, and so does each later `crew.send` to that instance.
 
 Absent, nothing changes: the mounts alone confine the agent.
 

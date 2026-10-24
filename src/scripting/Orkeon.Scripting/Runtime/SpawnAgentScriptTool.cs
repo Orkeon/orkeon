@@ -82,13 +82,17 @@ internal sealed class SpawnAgentScriptTool : ToolBase<SpawnAgentScriptRequest, S
         var engine = _environment.Engine;
         var instances = crew.Instances;
         var stop = CancellationTokenSource.CreateLinkedTokenSource(signal);
-        var instanceId = instances.Register(agent, childBudget, stop);
+        var inheritedRoot = _environment.WorkingRoot;
+        var instanceId = instances.Register(agent, childBudget, stop, inheritedRoot);
         var options = new Jint.Native.JsObject(engine);
         options.Set("signal", JsValue.FromObject(engine, stop.Token));
         options.Set("budget", JsValue.FromObject(engine, childBudget));
         options.Set("instance", JsValue.FromObject(engine, new AgentInstanceRun(instances, instanceId, [])));
         if (inheritPermit && _environment.Permit is { } permit)
             options.Set("permit", JsValue.FromObject(engine, permit));
+        // RT-06: a child without a working root of its own runs under its parent's.
+        if (inheritedRoot is { } root)
+            options.Set("root", JsValue.FromObject(engine, new InheritedWorkingRoot(root)));
         JsValue promise;
         try { promise = engine.Invoke(crew.runChild, [JsValue.FromObject(engine, agent), input, options]); }
         catch
