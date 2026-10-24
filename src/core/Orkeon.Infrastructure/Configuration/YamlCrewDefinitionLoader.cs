@@ -284,16 +284,13 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         return await _fs.GetEntryKindAsync(path, ct).ConfigureAwait(false) == VirtualEntryKind.Directory;
     }
 
+    private static readonly string[] s_yamlExtensions = [".yaml", ".yml"];
+
     private static string StemOf(string virtualPath)
     {
         var name = virtualPath[(virtualPath.LastIndexOf('/') + 1)..];
-        foreach (var extension in new[] { ".yaml", ".yml" })
-        {
-            if (name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-                return name[..^extension.Length];
-        }
-
-        return name;
+        var extension = Array.Find(s_yamlExtensions, e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase));
+        return extension is null ? name : name[..^extension.Length];
     }
 
     /// <inheritdoc />

@@ -1386,3 +1386,5 @@ Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.SuppressConsoleComplian
 Orkeon.Domain.Tools.LlmExchangeLogExclusion
 Orkeon.Domain.Tools.LlmExchangeLogExclusion.ClientName.get -> string!
 Orkeon.Domain.Tools.LlmExchangeLogExclusion.LlmExchangeLogExclusion(string! clientName) -> void
+Orkeon.Domain.Exceptions.DomainException.DomainException(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void

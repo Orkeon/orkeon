@@ -55,6 +55,9 @@ public sealed class AgentRunScope : IAsyncDisposable
     /// <summary>The scope that was current when this one was created (the caller of a delegated run), or <c>null</c>.</summary>
     public AgentRunScope? Parent { get; }
 
+    /// <summary>The virtual working root the run's file tools stay inside, or <c>null</c> when unrestricted.</summary>
+    public string? Root { get; }
+
     /// <summary>Whether <see cref="EndAsync"/> has been called.</summary>
     public bool IsEnded
     {
@@ -99,9 +102,6 @@ public sealed class AgentRunScope : IAsyncDisposable
     /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
     public static AgentRunScope Begin(string? agentId = null, string? agentRole = null)
         => Begin(agentId, agentRole, root: null);
-
-    /// <summary>The virtual working root the run's file tools stay inside, or <c>null</c> when unrestricted.</summary>
-    public string? Root { get; }
 
     /// <summary>Creates a scope with a virtual working root and makes it current.</summary>
     /// <param name="agentId">The agent's identifier, for diagnostics.</param>

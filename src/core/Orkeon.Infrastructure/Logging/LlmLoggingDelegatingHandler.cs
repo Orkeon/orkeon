@@ -93,33 +93,14 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
 
             if (IsStreamedResponse(response) || request.Options.TryGetValue(LlmExchangeOptions.Rebuilt, out _))
             {
-                // Handed over as the bytes arrive: the exchange is logged when the caller
-                // disposes the content, from what went through or what the provider rebuilt.
-                var streamed = response;
-                // The provider finds the capture holder through the response's request; a pipeline
-                // that does not set it would leave the holder unreachable.
-                streamed.RequestMessage ??= request;
-                var status = statusCode;
-                response.Content = new LoggedStreamContent(
-                    response.Content,
-                    _options.MaxBodyLengthChars > 0 ? checked(_options.MaxBodyLengthChars * 4) : 0,
-                    text => TryLogExchange(new RawExchangeCapture(
-                        exchangeId, timestamp, provider, request,
-                        requestBody, status, streamed, RebuiltOrCaptured(request, text),
-                        DateTimeOffset.UtcNow - timestamp,
-                        streamed.IsSuccessStatusCode ? null : $"HTTP {status}: {TruncateForError(text)}"),
-                        CancellationToken.None));
+                LogWhenStreamed(response, request, new StreamedExchange(exchangeId, timestamp, provider, requestBody));
                 deferred = true;
                 return response;
             }
 
             // Read the response body — buffer it so downstream consumers can still read it
             responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                errorMessage = $"HTTP {statusCode}: {TruncateForError(responseBody)}";
-            }
+            errorMessage = response.IsSuccessStatusCode ? null : $"HTTP {statusCode}: {TruncateForError(responseBody)}";
 
             return response;
         }
@@ -141,6 +122,30 @@ public sealed partial class LlmLoggingDelegatingHandler : DelegatingHandler
             }
         }
         }
+    }
+
+    /// <summary>What a deferred exchange record carries from the request side.</summary>
+    private sealed record StreamedExchange(string ExchangeId, DateTimeOffset Timestamp, string Provider, string RequestBody);
+
+    /// <summary>
+    /// Hands the response over as the bytes arrive: the exchange is logged when the caller
+    /// disposes the content, from what went through or what the provider rebuilt.
+    /// </summary>
+    private void LogWhenStreamed(HttpResponseMessage response, HttpRequestMessage request, StreamedExchange exchange)
+    {
+        // The provider finds the capture holder through the response's request; a pipeline
+        // that does not set it would leave the holder unreachable.
+        response.RequestMessage ??= request;
+        var status = (int)response.StatusCode;
+        response.Content = new LoggedStreamContent(
+            response.Content,
+            _options.MaxBodyLengthChars > 0 ? checked(_options.MaxBodyLengthChars * 4) : 0,
+            text => TryLogExchange(new RawExchangeCapture(
+                exchange.ExchangeId, exchange.Timestamp, exchange.Provider, request,
+                exchange.RequestBody, status, response, RebuiltOrCaptured(request, text),
+                DateTimeOffset.UtcNow - exchange.Timestamp,
+                response.IsSuccessStatusCode ? null : $"HTTP {status}: {TruncateForError(text)}"),
+                CancellationToken.None));
     }
 
     private static bool IsStreamedResponse(HttpResponseMessage response) =>

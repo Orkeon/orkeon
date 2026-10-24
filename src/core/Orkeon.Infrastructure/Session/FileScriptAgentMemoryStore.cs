@@ -161,10 +161,16 @@ public sealed class FileScriptAgentMemoryStore : IScriptAgentMemoryStore
         document.Entries = next;
     }
 
-    private sealed class FileDocument(string path)
+    private sealed class FileDocument
     {
-        public string Path { get; } = path;
-        public SemaphoreSlim Gate { get; } = new(1, 1);
+        public FileDocument(string path)
+        {
+            Path = path;
+            Gate = new SemaphoreSlim(1, 1);
+        }
+
+        public string Path { get; }
+        public SemaphoreSlim Gate { get; }
         public IReadOnlyDictionary<string, JsonElement>? Entries { get; set; }
     }
 }

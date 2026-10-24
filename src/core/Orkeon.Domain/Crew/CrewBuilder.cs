@@ -304,6 +304,15 @@ public sealed class CrewBuilder
     /// A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a manager
     /// agent ran it as one more worker, and only two modes ever call a manager LLM.
     /// </summary>
+    // The manager agent the builder carries: the one given, else the member its id names.
+    private DomainAgent? ResolveManagerAgent()
+    {
+        if (_managerAgent is not null)
+            return _managerAgent;
+
+        return _managerAgentId is { } managerId ? _agents.FirstOrDefault(a => a.Id == managerId) : null;
+    }
+
     private void EnsureManagerAccepted()
     {
         if (_managerAgentId is not null && !_processType.AcceptsManagerAgent)
@@ -356,9 +365,7 @@ public sealed class CrewBuilder
         if (_processType == ProcessType.Hierarchical && _managerAgentId is null && _managerLlm is null)
             throw new BuilderValidationException("Crew", "Hierarchical process requires either a manager agent or a manager LLM.");
 
-        var limitedManager = _processType == ProcessType.Hierarchical
-            ? _managerAgent ?? (_managerAgentId is { } managerId ? _agents.FirstOrDefault(a => a.Id == managerId) : null)
-            : null;
+        var limitedManager = _processType == ProcessType.Hierarchical ? ResolveManagerAgent() : null;
         if (limitedManager?.MaxExecutionTime is not null)
             throw new BuilderValidationException("Crew", $"The manager agent '{limitedManager.Role}' carries a MaxExecutionTime: a hierarchical manager runs no task of its own, so the limit would never apply. Remove it.");
 

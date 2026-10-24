@@ -310,7 +310,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     /// </summary>
     private sealed record HierarchicalRun(
         List<DomainAgent> WorkerAgents,
-        ManagerLlm ManagerLlm,
+        ManagerLlm Manager,
         string ManagerRole,
         List<ApplicationTaskOutput> ApplicationTaskOutputs,
         TokenUsageTally TokenTally,
@@ -354,7 +354,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     {
         LogManagerProcessingTask(task.Id);
 
-        var assignment = await _managerAgent.AssignTaskAsync(task, run.WorkerAgents, context, run.ManagerLlm).ConfigureAwait(false);
+        var assignment = await _managerAgent.AssignTaskAsync(task, run.WorkerAgents, context, run.Manager).ConfigureAwait(false);
         LogManagerAssignedTaskToAgent(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
 
         var assignedAgent = run.WorkerAgents.FirstOrDefault(a => a.Id == assignment.AssignedAgent);
@@ -372,7 +372,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         await run.Outcome.RecordStartAsync(task, assignedAgent).ConfigureAwait(false);
 
         var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
-            assignedAgent, task, task.Id, run.ManagerLlm, context, run.ApplicationTaskOutputs, run.TokenTally, cancellationToken).ConfigureAwait(false);
+            assignedAgent, task, task.Id, run.Manager, context, run.ApplicationTaskOutputs, run.TokenTally, cancellationToken).ConfigureAwait(false);
 
         // Derived, never rebuilt: a context's init settings survive from task to task (GAP-30).
         var updatedContext = context with { PreviousOutputs = run.ApplicationTaskOutputs };

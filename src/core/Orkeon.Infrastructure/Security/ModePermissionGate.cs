@@ -106,14 +106,39 @@ public sealed class ModePermissionGate : IPermissionGate
 
         // Session rules come first: a deny rule refuses whatever the mode, an allow rule spares the
         // question in every mode but plan, which promises a turn that changes nothing.
-        var rules = Rules?.Current ?? [];
+        if (RuleVerdict(Rules?.Current ?? [], toolName, arguments, effectiveMode) is { } ruled)
+            return Task.FromResult(ruled);
+
+        var verdict = ModeVerdict(effectiveMode, toolName, isRead, isEdit);
+
+        if (verdict.Action == PermissionAction.Ask && _approvalChannel is not null)
+            return AskOperatorAsync(_approvalChannel, toolName, arguments, effectiveMode, verdict.Message!, cancellationToken);
+
+        if (verdict.Action == PermissionAction.Ask && !_isInteractive)
+        {
+            verdict = PermissionVerdict.Deny(
+                $"{verdict.Message} No interactive approval channel is available in this session, so the call is denied.");
+        }
+
+        return Task.FromResult(verdict);
+    }
+
+    // The verdict of the session rules, or null when no rule decides.
+    private static PermissionVerdict? RuleVerdict(
+        IReadOnlyList<ToolPermissionRule> rules, string toolName, IReadOnlyDictionary<string, object?> arguments, string effectiveMode)
+    {
         if (rules.FirstOrDefault(r => r.Effect == ToolPermissionEffect.Deny && r.Matches(toolName, arguments)) is { } deny)
-            return Task.FromResult(PermissionVerdict.Deny($"tool '{toolName}' is denied by the session rule '{deny}'."));
+            return PermissionVerdict.Deny($"tool '{toolName}' is denied by the session rule '{deny}'.");
         if (effectiveMode != "plan"
             && rules.Any(r => r.Effect == ToolPermissionEffect.Allow && r.Matches(toolName, arguments)))
-            return Task.FromResult(PermissionVerdict.Allow());
+            return PermissionVerdict.Allow();
 
-        var verdict = effectiveMode switch
+        return null;
+    }
+
+    // The verdict of the mode's table, before any approval channel is consulted.
+    private static PermissionVerdict ModeVerdict(string effectiveMode, string toolName, bool isRead, bool isEdit) =>
+        effectiveMode switch
         {
             "bypassPermissions" => PermissionVerdict.Allow(),
             "plan" => isRead
@@ -129,18 +154,6 @@ public sealed class ModePermissionGate : IPermissionGate
                 ? PermissionVerdict.Allow()
                 : PermissionVerdict.Ask($"tool '{toolName}' requires approval (mode 'default')."),
         };
-
-        if (verdict.Action == PermissionAction.Ask && _approvalChannel is not null)
-            return AskOperatorAsync(_approvalChannel, toolName, arguments, effectiveMode, verdict.Message!, cancellationToken);
-
-        if (verdict.Action == PermissionAction.Ask && !_isInteractive)
-        {
-            verdict = PermissionVerdict.Deny(
-                $"{verdict.Message} No interactive approval channel is available in this session, so the call is denied.");
-        }
-
-        return Task.FromResult(verdict);
-    }
 
     private static async Task<PermissionVerdict> AskOperatorAsync(
         IToolApprovalChannel channel, string toolName, IReadOnlyDictionary<string, object?> arguments,

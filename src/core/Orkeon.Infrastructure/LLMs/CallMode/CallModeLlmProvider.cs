@@ -174,34 +174,31 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
         }
 
         call.Wire(wire);
+        await foreach (var ev in StreamedEvents(streaming, messages, config, call, wire, cancellationToken).ConfigureAwait(false))
+            yield return ev;
+    }
+
+    // The provider's own stream; a refusal before the first event falls back to one buffered
+    // call in Auto, and fails in Stream.
+    private async IAsyncEnumerable<LlmStreamEvent> StreamedEvents(
+        IStreamingLlmProvider streaming, LlmMessage[] messages, LlmConfig? config, ObservedCall call, LlmWireMode wire,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         var events = streaming.ChatStreamingAsync(messages, config, cancellationToken).GetAsyncEnumerator(cancellationToken);
         await using var disposal = events.ConfigureAwait(false);
         var started = false;
+        Exception refusal;
         while (true)
         {
             bool more;
-            var refused = false;
-            Exception? refusal = null;
             try
             {
                 more = await events.MoveNextAsync().ConfigureAwait(false);
             }
             catch (Exception ex) when (!started && wire == LlmWireMode.Stream && IsStreamingRefusal(ex))
             {
-                more = false;
-                refused = true;
                 refusal = ex;
-            }
-
-            if (refused)
-            {
-                if (Mode != LlmCallMode.Auto)
-                    throw Refused(refusal!);
-                RecordFallback();
-                call.Wire(LlmWireMode.BufferFallback);
-                await foreach (var ev in BufferedEvents(messages, config, cancellationToken).ConfigureAwait(false))
-                    yield return ev;
-                yield break;
+                break;
             }
 
             if (!more)
@@ -209,6 +206,13 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
             started = true;
             yield return events.Current;
         }
+
+        if (Mode != LlmCallMode.Auto)
+            throw Refused(refusal);
+        RecordFallback();
+        call.Wire(LlmWireMode.BufferFallback);
+        await foreach (var ev in BufferedEvents(messages, config, cancellationToken).ConfigureAwait(false))
+            yield return ev;
     }
 
     private async IAsyncEnumerable<LlmStreamEvent> BufferedEvents(
@@ -259,26 +263,36 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
             || ((int)status is 400 or 422 && http.Message.Contains("stream", StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>One observed chat call: announces itself when its wire mode is known, follows the deltas, closes once.</summary>
-    private sealed class ObservedCall(CallModeLlmProvider owner, LlmMessage[] messages)
+    private sealed class ObservedCall
     {
-        private readonly string _id = Guid.NewGuid().ToString("N");
+        private readonly CallModeLlmProvider _owner;
+        private readonly LlmMessage[] _messages;
+        private readonly string _id;
         private int _receivedTokens;
         private bool _announced;
         private bool _closed;
         private bool _fellBack;
-        private LlmCallMode _mode = LlmCallMode.Buffer;
+        private LlmCallMode _mode;
         private LlmResponse? _response;
+
+        public ObservedCall(CallModeLlmProvider owner, LlmMessage[] messages)
+        {
+            _owner = owner;
+            _messages = messages;
+            _id = Guid.NewGuid().ToString("N");
+            _mode = LlmCallMode.Buffer;
+        }
 
         public void Wire(LlmWireMode wire)
         {
-            owner._lastWireMode = (int)wire;
+            _owner._lastWireMode = (int)wire;
             _mode = wire == LlmWireMode.Stream ? LlmCallMode.Stream : LlmCallMode.Buffer;
             _fellBack |= wire == LlmWireMode.BufferFallback;
             if (_announced)
                 return;
             _announced = true;
-            var prompt = messages.Sum(m => owner._tokenCounter.CountTokens(m.Content ?? string.Empty));
-            owner._observer.Started(_id, _mode, prompt);
+            var prompt = _messages.Sum(m => _owner._tokenCounter.CountTokens(m.Content ?? string.Empty));
+            _owner._observer.Started(_id, _mode, prompt);
         }
 
         public void Observe(LlmStreamEvent ev)
@@ -291,8 +305,8 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
 
             if (ev.Kind != LlmStreamEventKind.ContentDelta || string.IsNullOrEmpty(ev.Delta) || _mode != LlmCallMode.Stream)
                 return;
-            _receivedTokens += owner._tokenCounter.CountTokens(ev.Delta);
-            owner._observer.Progress(_id, _receivedTokens);
+            _receivedTokens += _owner._tokenCounter.CountTokens(ev.Delta);
+            _owner._observer.Progress(_id, _receivedTokens);
         }
 
         public LlmResponse Close(LlmResponse response)
@@ -306,7 +320,7 @@ internal sealed partial class CallModeLlmProvider : ILlmProvider, IStreamingLlmP
             if (!_announced || _closed)
                 return;
             _closed = true;
-            owner._observer.Finished(_id, _mode, _fellBack, _response?.PromptTokens, _response?.CompletionTokens);
+            _owner._observer.Finished(_id, _mode, _fellBack, _response?.PromptTokens, _response?.CompletionTokens);
         }
     }
 

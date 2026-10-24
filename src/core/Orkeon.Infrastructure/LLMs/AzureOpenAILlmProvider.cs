@@ -246,28 +246,39 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         // Azure OpenAI uses OpenAI-compatible SSE format
         await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
         {
-            using var doc = JsonDocument.Parse(data);
-            var choices = doc.RootElement.GetProperty("choices");
-            foreach (var choice in choices.EnumerateArray())
+            var (tokens, stop) = ReadStreamChunk(data);
+            finished |= stop;
+            foreach (var token in tokens)
             {
-                if (choice.TryGetProperty("finish_reason", out var finishReason) && finishReason.ValueKind == JsonValueKind.String)
-                    finished = true;
-
-                if (choice.TryGetProperty("delta", out var delta) &&
-                    delta.TryGetProperty("content", out var content))
-                {
-                    var token = content.GetString();
-                    if (token is not null)
-                    {
-                        yieldedAnything = yieldedAnything || token.Length > 0;
-                        yield return token;
-                    }
-                }
+                yieldedAnything = yieldedAnything || token.Length > 0;
+                yield return token;
             }
         }
 
         if (StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName) is { } failure)
             throw new HttpRequestException(failure);
+    }
+
+    // One OpenAI-shaped SSE chunk: the delta texts of its choices in order, and whether a choice finished.
+    private static (List<string> Tokens, bool Finished) ReadStreamChunk(string data)
+    {
+        using var doc = JsonDocument.Parse(data);
+        var tokens = new List<string>();
+        var finished = false;
+        foreach (var choice in doc.RootElement.GetProperty("choices").EnumerateArray())
+        {
+            if (choice.TryGetProperty("finish_reason", out var finishReason) && finishReason.ValueKind == JsonValueKind.String)
+                finished = true;
+
+            if (choice.TryGetProperty("delta", out var delta) &&
+                delta.TryGetProperty("content", out var content) &&
+                content.GetString() is { } token)
+            {
+                tokens.Add(token);
+            }
+        }
+
+        return (tokens, finished);
     }
 
     /// <summary>

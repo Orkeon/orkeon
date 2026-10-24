@@ -76,7 +76,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools, _verboseLogger);
 
     private NativeToolCallingAgentLoop NativeLoop =>
-        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools, _verboseLogger, ToolLimits);
+        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools,
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(_verboseLogger, ToolLimits));
 
     /// <summary>
     /// One agent loop per host profile an agent or a task of this scope named (GAP-17): the
@@ -316,6 +317,56 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _verboseLogger = verboseLogger;
     }
 
+    // A call the provider never answered leaves nothing to validate, and a correction
+    // round would only ask the same model again — the retries belong to the provider
+    // layer (LLM-11). Every other exit keeps its validation pass.
+    private async System.Threading.Tasks.Task<(string Output, object? Structured)> ValidateLoopOutputAsync(
+        AgentLoopResult loopResult, OutputValidationRequest request, CancellationToken cancellationToken)
+    {
+        if (loopResult.ExitReason == AgentExitReason.LlmCallFailed)
+        {
+            return (loopResult.Output, null);
+        }
+
+        return await OutputValidation.ValidateAndParseOutputAsync(request, MaxOutputRetries, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static TaskResult CompletedResult(
+        AgentLoopResult loopResult,
+        string finalOutput,
+        object? structuredOutput,
+        List<Domain.Tools.ToolUsage> toolsUsed,
+        TimeSpan executionTime,
+        DeliverableFqnOutcome fqnOutcome)
+    {
+        // Success is the exit reason, and a failed exit names its reason in Error —
+        // the strategies, AUTO_SUMMARY and the runner read Error, and it used to stay
+        // null on every non-Completed exit ("Task failed: unknown error").
+        var succeeded = loopResult.ExitReason == AgentExitReason.Completed;
+        return new TaskResult(
+            Success: succeeded,
+            Output: finalOutput,
+            StructuredOutput: structuredOutput,
+            ToolsUsed: toolsUsed,
+            ExecutionTime: executionTime,
+            Error: succeeded
+                ? null
+                : loopResult.LastError ?? $"Agent exited with reason {loopResult.ExitReason}",
+            TokensUsed: loopResult.TokensUsed)
+        {
+            ExitReason = loopResult.ExitReason,
+            IterationsUsed = loopResult.IterationsUsed,
+            LastError = loopResult.LastError,
+            UnknownFqns = fqnOutcome.UnknownFqns,
+            RewrittenFqns = fqnOutcome.RewrittenFqns,
+            AmbiguousFqns = fqnOutcome.AmbiguousFqns,
+            PromptTokens = loopResult.PromptTokens,
+            CompletionTokens = loopResult.CompletionTokens,
+            CacheHitTokens = loopResult.CacheHitTokens,
+            CacheMissTokens = loopResult.CacheMissTokens,
+        };
+    }
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}]: the task ran past its maximum execution time of {LimitSeconds}s and is cancelled")]
     private static partial void LogExecutionTimeExceeded(ILogger logger, object agentRole, double limitSeconds);
 
@@ -436,16 +487,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // A call the provider never answered leaves nothing to validate, and a correction
                 // round would only ask the same model again — the retries belong to the provider
                 // layer (LLM-11). Every other exit keeps its validation pass.
-                var (validatedOutput, structuredOutput) = loopResult.ExitReason == AgentExitReason.LlmCallFailed
-                    ? (loopResult.Output, null)
-                    : await OutputValidation.ValidateAndParseOutputAsync(
-                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed)
-                        {
-                            // A correction round asks the model that answered: the profile's or the
-                            // agent's own provider's, when there is one.
-                            ChatLoop = llm.Loop,
-                        },
-                        MaxOutputRetries, taskToken).ConfigureAwait(false);
+                var (validatedOutput, structuredOutput) = await ValidateLoopOutputAsync(
+                    loopResult,
+                    new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed)
+                    {
+                        // A correction round asks the model that answered: the profile's or the
+                        // agent's own provider's, when there is one.
+                        ChatLoop = llm.Loop,
+                    },
+                    taskToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);
@@ -455,32 +505,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // file_write tool-call flow; no resolver is invoked for them.
                 var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, taskToken).ConfigureAwait(false);
 
-                // Success is the exit reason, and a failed exit names its reason in Error —
-                // the strategies, AUTO_SUMMARY and the runner read Error, and it used to stay
-                // null on every non-Completed exit ("Task failed: unknown error").
-                var succeeded = loopResult.ExitReason == AgentExitReason.Completed;
-                return new TaskResult(
-                    Success: succeeded,
-                    Output: finalOutput,
-                    StructuredOutput: structuredOutput,
-                    ToolsUsed: toolsUsed,
-                    ExecutionTime: DateTime.UtcNow - startTime,
-                    Error: succeeded
-                        ? null
-                        : loopResult.LastError ?? $"Agent exited with reason {loopResult.ExitReason}",
-                    TokensUsed: loopResult.TokensUsed)
-                {
-                    ExitReason = loopResult.ExitReason,
-                    IterationsUsed = loopResult.IterationsUsed,
-                    LastError = loopResult.LastError,
-                    UnknownFqns = fqnOutcome.UnknownFqns,
-                    RewrittenFqns = fqnOutcome.RewrittenFqns,
-                    AmbiguousFqns = fqnOutcome.AmbiguousFqns,
-                    PromptTokens = loopResult.PromptTokens,
-                    CompletionTokens = loopResult.CompletionTokens,
-                    CacheHitTokens = loopResult.CacheHitTokens,
-                    CacheMissTokens = loopResult.CacheMissTokens,
-                };
+                return CompletedResult(loopResult, finalOutput, structuredOutput, toolsUsed, DateTime.UtcNow - startTime, fqnOutcome);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
