@@ -18,14 +18,14 @@ public sealed class TuiClipboardTests : IDisposable
     public void Dispose()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = null;
+        TuiClipboard.TerminalWriter = null;
         GC.SuppressFinalize(this);
     }
 
     [Fact]
     public void Copy_then_TryGetText_round_trips_through_the_cache()
     {
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
 
         Assert.True(TuiClipboard.Copy("ligne 1\nligne 2"));
         Assert.True(TuiClipboard.TryGetText(out var text));
@@ -44,7 +44,7 @@ public sealed class TuiClipboardTests : IDisposable
     public void Copy_emits_a_well_formed_osc52_sequence()
     {
         var writer = new StringWriter();
-        TuiClipboard.TerminalWriterOverride = writer;
+        TuiClipboard.TerminalWriter = writer;
 
         TuiClipboard.Copy("héllo ── monde");
 
@@ -56,7 +56,7 @@ public sealed class TuiClipboardTests : IDisposable
     public void Copy_skips_osc52_for_oversize_payloads_but_still_caches()
     {
         var writer = new StringWriter();
-        TuiClipboard.TerminalWriterOverride = writer;
+        TuiClipboard.TerminalWriter = writer;
         // Base64 grows by 4/3: this is comfortably past MaxOsc52Base64Length once encoded.
         var big = new string('x', TuiClipboard.MaxOsc52Base64Length);
 
@@ -70,7 +70,7 @@ public sealed class TuiClipboardTests : IDisposable
     [Fact]
     public void PasteInto_inserts_the_cached_copy_at_the_caret_multiline_included()
     {
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         TuiClipboard.Copy("COLLÉ\nligne 2");
         using var input = new MouseClipboardTextView { Text = "", ReadOnly = false };
 

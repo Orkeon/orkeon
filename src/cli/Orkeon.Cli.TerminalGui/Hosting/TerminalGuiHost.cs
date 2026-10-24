@@ -23,9 +23,9 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     private bool _ownsApplicationInit;
     private bool? _previousTreatControlCAsInput;
 
-    private static void Diag(string msg)
+    private void Diag(string msg)
     {
-        if (DiagEnabled) System.Console.Error.WriteLine($"[tui-diag] {msg}");
+        if (DiagEnabled) _options.Terminal.Diagnostics.WriteLine($"[tui-diag] {msg}");
     }
 
     public TerminalGuiHost(TerminalGuiOptions options)
@@ -49,7 +49,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
     {
         if (_initialized) return;
         Diag($"Initialize() — TERM={Environment.GetEnvironmentVariable(EnvironmentVariableNames.Terminal)} " +
-             $"IsInputRedirected={System.Console.IsInputRedirected} IsOutputRedirected={System.Console.IsOutputRedirected}");
+             $"IsInputRedirected={_options.Terminal.IsInputRedirected} IsOutputRedirected={_options.Terminal.IsOutputRedirected}");
         // Skip Application.Init() if Terminal.Gui has already been initialized externally
         // (e.g. by a test fixture). The flag drives the matching DisposeAsync decision.
         if (Application.Driver is null)
@@ -98,8 +98,8 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // We capture and restore the previous value to avoid surprising other code paths.
         try
         {
-            _previousTreatControlCAsInput = System.Console.TreatControlCAsInput;
-            System.Console.TreatControlCAsInput = true;
+            _previousTreatControlCAsInput = _options.Terminal.TreatControlCAsInput;
+            _options.Terminal.TreatControlCAsInput = true;
             Diag("Console.TreatControlCAsInput = true (Ctrl+C now reaches Terminal.Gui)");
         }
         catch (Exception ex)
@@ -108,6 +108,9 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             // Not fatal — Ctrl+C just won't be capturable as a TUI shortcut.
             Diag($"Could not set TreatControlCAsInput: {ex.Message}");
         }
+
+        // OSC 52 clipboard sequences go to this terminal's own stream from now on.
+        Layout.TuiClipboard.TerminalWriter = _options.Terminal.Output;
 
         // NOTE: do NOT do System.Console.SetOut here. Terminal.Gui v2.0.1's DOTNET driver
         // writes its rendering bytes through System.Console (verified the hard way: the
@@ -164,7 +167,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         return true;
     }
 
-    internal static void HandleCtrlC(Terminal.Gui.Input.Key key, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, ReplPaneView repl)
+    internal static void HandleCtrlC(Terminal.Gui.Input.Key key, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, ReplPaneView repl, Action<string>? diag = null)
     {
         var stripped = key.KeyCode & ~(Terminal.Gui.Drivers.KeyCode.CtrlMask
                                      | Terminal.Gui.Drivers.KeyCode.AltMask
@@ -177,11 +180,11 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // clipboard; without one the hint names the key that interrupts the turn.
         if (Layout.PaneClipboard.CopySelection(Application.Navigation?.GetFocused()))
         {
-            Diag("Ctrl+C → copied focused selection to clipboard");
+            diag?.Invoke("Ctrl+C → copied focused selection to clipboard");
             return;
         }
 
-        Diag($"Ctrl+C without selection (running={runner.IsCommandRunning})");
+        diag?.Invoke($"Ctrl+C without selection (running={runner.IsCommandRunning})");
         repl.AppendOutputLine("Ctrl+C copies a selection — esc esc interrupts the turn.");
     }
 
@@ -193,7 +196,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
         // Belt-and-suspenders Ctrl+C handler: the status-bar Shortcut is swallowed by focused
         // TextField bindings in real terminals (TUI-20); Application.KeyDown is focus-independent.
-        EventHandler<Terminal.Gui.Input.Key> ctrlCHandler = (_, key) => HandleCtrlC(key, runner, _toplevel!.Repl);
+        EventHandler<Terminal.Gui.Input.Key> ctrlCHandler = (_, key) => HandleCtrlC(key, runner, _toplevel!.Repl, Diag);
         EventHandler<Terminal.Gui.Input.Key> ctrlVHandler = (_, key) => HandleCtrlV(key, _toplevel!.Repl);
         Application.KeyDown += ctrlCHandler;
         Application.KeyDown += ctrlVHandler;
@@ -316,17 +319,7 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             _toplevel!.Repl.AppendOutputLine(line);
     }
 
-    private static bool OutputEncodingIsUtf8()
-    {
-        try
-        {
-            return System.Console.OutputEncoding.CodePage is 65001;
-        }
-        catch (System.IO.IOException)
-        {
-            return false;
-        }
-    }
+    private bool OutputEncodingIsUtf8() => TerminalUtf8.IsUtf8(_options.Terminal);
 
     /// <summary>
     /// Maximum time we'll wait for the runner to exit its REPL loop after the user
@@ -344,10 +337,12 @@ public sealed class TerminalGuiHost : IAsyncDisposable
         // don't inherit our TreatControlCAsInput=true.
         if (_previousTreatControlCAsInput is { } previous)
         {
-            try { System.Console.TreatControlCAsInput = previous; }
+            try { _options.Terminal.TreatControlCAsInput = previous; }
             catch { /* same exception class as set — best effort restore */ }
             _previousTreatControlCAsInput = null;
         }
+        if (ReferenceEquals(Layout.TuiClipboard.TerminalWriter, _options.Terminal.Output))
+            Layout.TuiClipboard.TerminalWriter = null;
         if (_initialized && _ownsApplicationInit)
             Application.Shutdown();
         // Dispose the toplevel window after the application loop has shut down so the

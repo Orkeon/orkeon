@@ -10,18 +10,28 @@ namespace Orkeon.Studio.Run.Views;
 /// Owns the Terminal.Gui lifecycle of the launcher: pick a driver, run the one window,
 /// shut the application down whatever happened.
 /// </summary>
-internal static class LauncherApplication
+internal sealed class LauncherApplication
 {
+    private readonly TextWriter _error;
+    private readonly ITerminalProbe _terminal;
+
+    /// <summary>Creates the launcher over the error stream and the terminal it reports and probes.</summary>
+    internal LauncherApplication(TextWriter error, ITerminalProbe terminal)
+    {
+        _error = error ?? throw new ArgumentNullException(nameof(error));
+        _terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
+    }
+
     /// <summary>Exit code returned when the terminal could not host the UI at all.</summary>
     internal const int TerminalUnavailableExitCode = 1;
 
     /// <summary>Opens the launcher and returns the process exit code.</summary>
-    internal static int Run(RunLauncherViewModel? viewModel = null)
+    internal int Run(RunLauncherViewModel? viewModel = null)
     {
         // Checked before Init rather than left to it: a redirected stdin is not an error the
         // driver reliably raises, and a launcher that renders a full screen into a pipe (or
         // waits forever for a keystroke that cannot come) is worse than one that says so.
-        if (!TtyDetector.IsInteractiveTty())
+        if (!TtyDetector.IsInteractiveTty(_terminal))
         {
             ReportNoTerminal("this process has no interactive terminal (input or output is redirected, or TERM is unset).");
             return TerminalUnavailableExitCode;
@@ -52,10 +62,10 @@ internal static class LauncherApplication
     }
 
     /// <summary>Says why the UI cannot open, and what to do instead.</summary>
-    private static void ReportNoTerminal(string reason)
+    private void ReportNoTerminal(string reason)
     {
-        System.Console.Error.WriteLine($"{Cli.StudioRunInfo.ToolName} needs an interactive terminal: {reason}");
-        System.Console.Error.WriteLine(
+        _error.WriteLine($"{Cli.StudioRunInfo.ToolName} needs an interactive terminal: {reason}");
+        _error.WriteLine(
             $"Run `{Cli.StudioRunInfo.ToolName} --help` for what it does, or launch crews with `orkeon run` directly.");
     }
 
