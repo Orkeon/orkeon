@@ -67,6 +67,20 @@ public sealed partial class ScriptHost
         => RunFromFileAsync(physicalPath: null, virtualPath, ct);
 
     /// <summary>
+    /// Same as <see cref="RunAsync(string, CancellationToken)"/> with a <c>console</c> global bound for this run:
+    /// <c>log</c>, <c>info</c>, <c>warn</c>, <c>error</c> and <c>debug</c> hand one line each to
+    /// <paramref name="consoleSink"/> (arguments joined by a space).
+    /// </summary>
+    /// <param name="virtualPath">Virtual path resolved through <see cref="IFileSystemService"/>.</param>
+    /// <param name="consoleSink">Receives every line the script prints.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public Task<object?> RunAsync(string virtualPath, Action<string> consoleSink, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(consoleSink);
+        return RunCoreAsync(null, virtualPath, null, engine => BindConsole(engine, consoleSink), ct);
+    }
+
+    /// <summary>
     /// Same as <see cref="RunAsync(string, CancellationToken)"/> but additionally hands the
     /// script's physical path to the transpiler so it can <c>--bundle</c> relative imports.
     /// The virtual path is still used for VFS-backed version validation and logging.
@@ -81,20 +95,6 @@ public sealed partial class ScriptHost
     public Task<object?> RunFromFileAsync(
         string? physicalPath, string virtualPath, CancellationToken ct, string? inputsJson = null)
         => RunCoreAsync(physicalPath, virtualPath, inputsJson, configure: null, ct);
-
-    /// <summary>
-    /// Same as <see cref="RunAsync(string, CancellationToken)"/> with a <c>console</c> global bound for this run:
-    /// <c>log</c>, <c>info</c>, <c>warn</c>, <c>error</c> and <c>debug</c> hand one line each to
-    /// <paramref name="consoleSink"/> (arguments joined by a space).
-    /// </summary>
-    /// <param name="virtualPath">Virtual path resolved through <see cref="IFileSystemService"/>.</param>
-    /// <param name="consoleSink">Receives every line the script prints.</param>
-    /// <param name="ct">Cancellation token.</param>
-    public Task<object?> RunAsync(string virtualPath, Action<string> consoleSink, CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(consoleSink);
-        return RunCoreAsync(null, virtualPath, null, engine => BindConsole(engine, consoleSink), ct);
-    }
 
     private static void BindConsole(Jint.Engine engine, Action<string> sink)
     {

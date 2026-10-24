@@ -89,12 +89,6 @@ public sealed class LlmRetryProgressObserver : ILlmRetryObserver
         OnCallSettled();
     }
 
-    /// <summary>Clears the last settlement; a pending retry stays.</summary>
-    public void Reset()
-    {
-        lock (_gate) _settled = (null, Orkeon.Cli.Abstractions.ModelAvailability.Available);
-    }
-
     /// <inheritdoc />
     public void OnCallSettled()
     {
@@ -103,5 +97,11 @@ public sealed class LlmRetryProgressObserver : ILlmRetryObserver
         if (label is null) return;
         _lastLabel = null;
         _broker.ClearLabel(label);
+    }
+
+    /// <summary>Clears the last settlement; a pending retry stays.</summary>
+    public void Reset()
+    {
+        lock (_gate) _settled = (null, Orkeon.Cli.Abstractions.ModelAvailability.Available);
     }
 }

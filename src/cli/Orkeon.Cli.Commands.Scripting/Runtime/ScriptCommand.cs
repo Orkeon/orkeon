@@ -274,16 +274,23 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CommandInstance, AdmissionCount> _admissionOf = new();
 
     /// <summary>Instances of one invocation still unsettled; the slot is released when it reaches zero.</summary>
-    private sealed class AdmissionCount(SemaphoreSlim gate, int count)
+    private sealed class AdmissionCount
     {
-        private int _remaining = count;
+        private readonly SemaphoreSlim _gate;
+        private int _remaining;
+
+        public AdmissionCount(SemaphoreSlim gate, int count)
+        {
+            _gate = gate;
+            _remaining = count;
+        }
 
         public void Join(int n) => Interlocked.Add(ref _remaining, n);
 
         public void Settle()
         {
             if (Interlocked.Decrement(ref _remaining) == 0)
-                gate.Release();
+                _gate.Release();
         }
     }
 

@@ -163,8 +163,10 @@ internal static partial class BuiltInToolTypings
     {
         for (var type = tool.GetType(); type is not null; type = type.BaseType)
         {
-            var execute = type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
-                .FirstOrDefault(m => m.Name == "ExecuteTypedAsync"
+            // The methods the type declares itself, as the reflection metadata lists them: the
+            // protected (non-public) instance ExecuteTypedAsync is the one a typed family declares.
+            var execute = type.GetTypeInfo().DeclaredMethods
+                .FirstOrDefault(m => !m.IsStatic && !m.IsPublic && m.Name == "ExecuteTypedAsync"
                     && m.GetParameters() is [var request, var token]
                     && token.ParameterType == typeof(CancellationToken)
                     && request.ParameterType.IsClass && request.ParameterType != typeof(string));
@@ -207,6 +209,10 @@ internal static partial class BuiltInToolTypings
         }
     }
 
+    /// <summary>The fields a tool that reads its parameters itself declares in its schema.</summary>
+    private static IEnumerable<Field> FieldsOf(ToolSchema schema) =>
+        (schema.Parameters ?? []).Select(p => new Field(p.Key, p.Value.Required, TypeOf(p.Value), p.Value.Description));
+
     /// <summary>
     /// Whether the member takes a JSON <c>null</c>: a <see cref="Nullable{T}"/>, or a reference type
     /// annotated nullable (<c>SessionStoreRequest.Value</c>: null removes the key). Read on the
@@ -232,10 +238,6 @@ internal static partial class BuiltInToolTypings
 
     [ThreadStatic]
     private static NullabilityInfoContext? t_nullability;
-
-    /// <summary>The fields a tool that reads its parameters itself declares in its schema.</summary>
-    private static IEnumerable<Field> FieldsOf(ToolSchema schema) =>
-        (schema.Parameters ?? []).Select(p => new Field(p.Key, p.Value.Required, TypeOf(p.Value), p.Value.Description));
 
     /// <summary>The TypeScript type of a CLR property type, by the JSON shape it reads.</summary>
     private static string TypeOf(Type clr) => TypeOf(clr, expand: false, []);
@@ -280,22 +282,6 @@ internal static partial class BuiltInToolTypings
         return ScalarType(schemaType);
     }
 
-    private const int MaxRecordDepth = 4;
-
-    private static Type? DictionaryValueType(Type type) =>
-        (type.IsGenericType ? [type, .. type.GetInterfaces()] : type.GetInterfaces())
-            .FirstOrDefault(i => i.IsGenericType
-                && i.GetGenericTypeDefinition() is var d
-                && (d == typeof(IDictionary<,>) || d == typeof(IReadOnlyDictionary<,>)))
-            ?.GetGenericArguments()[1];
-
-    private static Type? ElementType(Type type) =>
-        type.IsArray
-            ? type.GetElementType()
-            : (type.IsGenericType ? [type, .. type.GetInterfaces()] : type.GetInterfaces())
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                ?.GetGenericArguments()[0];
-
     private static string TypeOf(ParameterSchema schema)
     {
         if (schema.Values is { } values)
@@ -305,6 +291,26 @@ internal static partial class BuiltInToolTypings
         return schema.Type == "array"
             ? $"readonly {Parenthesize(ScalarType(schema.ItemsType))}[]"
             : ScalarType(schema.Type);
+    }
+
+    private const int MaxRecordDepth = 4;
+
+    private static Type? DictionaryValueType(Type type) =>
+        (type.IsGenericType ? [type, .. type.GetInterfaces()] : type.GetInterfaces())
+            .FirstOrDefault(i => i.IsGenericType
+                && i.GetGenericTypeDefinition() is var d
+                && (d == typeof(IDictionary<,>) || d == typeof(IReadOnlyDictionary<,>)))
+            ?.GetGenericArguments()[1];
+
+    private static Type? ElementType(Type type)
+    {
+        if (type.IsArray)
+            return type.GetElementType();
+
+        Type[] candidates = type.IsGenericType ? [type, .. type.GetInterfaces()] : type.GetInterfaces();
+        return candidates
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            ?.GetGenericArguments()[0];
     }
 
     private static string Parenthesize(string type) =>

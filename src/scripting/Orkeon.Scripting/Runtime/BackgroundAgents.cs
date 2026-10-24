@@ -117,9 +117,8 @@ internal sealed class BackgroundAgents
         lock (_sync)
         {
             _acts.Remove(act);
-            foreach (var running in _running.Values)
-                if (ReferenceEquals(running.Owner, act))
-                    running.Cts.Cancel();
+            foreach (var running in _running.Values.Where(running => ReferenceEquals(running.Owner, act)))
+                running.Cts.Cancel();
         }
     }
 

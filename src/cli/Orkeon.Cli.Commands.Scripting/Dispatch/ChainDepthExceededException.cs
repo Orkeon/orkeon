@@ -1,6 +1,9 @@
+using System.Runtime.Serialization;
+
 namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
 /// <summary>A chain of async commands reached the configured maximum depth.</summary>
+[Serializable]
 public sealed class ChainDepthExceededException : InvalidOperationException
 {
     public ChainDepthExceededException()
@@ -25,4 +28,11 @@ public sealed class ChainDepthExceededException : InvalidOperationException
     public int Depth { get; }
 
     public int Limit { get; }
+
+    /// <summary>The formatter-based serialization constructor the <see cref="ISerializable"/> pattern asks for.</summary>
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private ChainDepthExceededException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+    }
 }

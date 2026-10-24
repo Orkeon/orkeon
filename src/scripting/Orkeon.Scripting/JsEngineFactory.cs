@@ -127,10 +127,11 @@ public sealed class JsEngineFactory
     /// negative or infinite — but pausable: <c>ctx.llm.act</c> stops it while the permission gate decides
     /// (<see cref="Runtime.PausableTimeConstraint"/>).
     /// </summary>
-    private static Jint.Options ApplyTimeLimit(Jint.Options options, TimeSpan limit)
-        => limit > TimeSpan.Zero && limit < TimeSpan.MaxValue
-            ? options.Constraint(new Runtime.PausableTimeConstraint(limit))
-            : options;
+    private static void ApplyTimeLimit(Jint.Options options, TimeSpan limit)
+    {
+        if (limit > TimeSpan.Zero && limit < TimeSpan.MaxValue)
+            options.Constraint(new Runtime.PausableTimeConstraint(limit));
+    }
 
     /// <summary>
     /// The <c>PromiseTimeout</c> every engine <see cref="Create"/> builds is given. Test-side guard only:
@@ -171,7 +172,19 @@ public sealed class JsEngineFactory
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
-        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _toolInvocation, _agentMemoryStore, _toolLimits, _agentInstances, _mounts);
+        CrewBuilderBinding.Register(engine, new CrewBuilderBinding.CrewBuilderServices
+        {
+            Logger = _scriptLogger,
+            LlmProvider = _llmProvider,
+            BuiltInTools = _builtInTools,
+            PermissionGate = _permissionGate,
+            DeltaSink = _deltaSink,
+            ToolInvocation = _toolInvocation,
+            AgentMemoryStore = _agentMemoryStore,
+            ToolLimits = _toolLimits,
+            AgentInstances = _agentInstances,
+            Mounts = _mounts,
+        });
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _scriptLogger, _llmProvider, _llmProfiles);

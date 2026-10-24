@@ -403,12 +403,15 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     /// <summary>What went up to the models (↑); null while nothing was spent.</summary>
     public string? TokensUp => Figure is { } figure
         ? StatusBarText.Count(figure.Up)
-        : _progress?.TokensUp is { Length: > 0 } up ? up : null;
+        : Reported(_progress?.TokensUp);
 
     /// <summary>What came back (↓); null while nothing was spent.</summary>
     public string? TokensDown => Figure is { } figure
         ? StatusBarText.Count(figure.Down)
-        : _progress?.TokensDown is { Length: > 0 } down ? down : null;
+        : Reported(_progress?.TokensDown);
+
+    /// <summary>A figure the progress reported, null when it reported none.</summary>
+    private static string? Reported(string? figure) => figure is { Length: > 0 } ? figure : null;
 
     /// <summary>Whether ↑ is on the bar — in both modes, once measured.</summary>
     public bool ShowsTokensUp => TokensUp is not null;

@@ -161,17 +161,26 @@ internal sealed class AgentInstanceRegistry
 
     private enum State { Running, Completed, Failed, Stopped }
 
-    private sealed class Entry(string id, JsAgent agent, AgentExecutionBudget budget)
+    private sealed class Entry
     {
-        internal string Id { get; } = id;
-        internal JsAgent Agent { get; } = agent;
-        internal AgentExecutionBudget Budget { get; } = budget;
+        internal Entry(string id, JsAgent agent, AgentExecutionBudget budget)
+        {
+            Id = id;
+            Agent = agent;
+            Budget = budget;
+            // The run that started the instance is one of the spawns its budget allows; each send takes another.
+            Allowance = new() { MaxSpawnedAgents = Math.Max(0, budget.MaxSpawnedAgents - 1) };
+            State = State.Running;
+            Transcript = [];
+        }
 
-        // The run that started the instance is one of the spawns its budget allows; each send takes another.
-        internal AgentExecutionBudget Allowance { get; } = new() { MaxSpawnedAgents = Math.Max(0, budget.MaxSpawnedAgents - 1) };
-        internal State State { get; set; } = State.Running;
+        internal string Id { get; }
+        internal JsAgent Agent { get; }
+        internal AgentExecutionBudget Budget { get; }
+        internal AgentExecutionBudget Allowance { get; }
+        internal State State { get; set; }
         internal CancellationTokenSource? Cancellation { get; set; }
         internal string? InheritedRoot { get; init; }
-        internal IReadOnlyList<LlmMessage> Transcript { get; set; } = [];
+        internal IReadOnlyList<LlmMessage> Transcript { get; set; }
     }
 }

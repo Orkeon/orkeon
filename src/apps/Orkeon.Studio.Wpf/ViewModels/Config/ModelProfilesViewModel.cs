@@ -317,13 +317,21 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         set
         {
             if (SetProperty(ref _modelFilter, value ?? ""))
-                OnPropertyChanged(nameof(FilteredModels));
+                RefreshFilteredModels();
         }
     }
 
     /// <summary>The found names that contain <see cref="ModelFilter"/>, in the order the probe gave them.</summary>
-    public IEnumerable<string> FilteredModels =>
-        AvailableModels.Where(name => name.Contains(_modelFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+    public IEnumerable<string> FilteredModels => _filteredModels;
+
+    private IReadOnlyList<string> _filteredModels = [];
+
+    /// <summary>Narrows <see cref="AvailableModels"/> to <see cref="ModelFilter"/> again, and says so.</summary>
+    private void RefreshFilteredModels()
+    {
+        _filteredModels = AvailableModels.Where(name => name.Contains(_modelFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+        OnPropertyChanged(nameof(FilteredModels));
+    }
 
     /// <summary>True when the last test found names to list.</summary>
     public bool HasAvailableModels => AvailableModels.Count > 0;
@@ -755,7 +763,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         foreach (var name in names)
             AvailableModels.Add(name);
 
-        OnPropertyChanged(nameof(FilteredModels));
+        RefreshFilteredModels();
         OnPropertyChanged(nameof(HasAvailableModels));
     }
 

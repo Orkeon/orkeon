@@ -247,20 +247,7 @@ internal sealed record ForgeCommandOptions
         }
 
         if (verb is "schedule" or "unschedule" or "rename")
-        {
-            // The folder comes first: `forge schedule --check` without one names no folder,
-            // rather than one called «--check» — nor `forge rename --name X` one called «--name».
-            if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
-                return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
-
-            var folder = args[++i];
-            return verb switch
-            {
-                "schedule" => options with { ScheduleDirectory = folder },
-                "unschedule" => options with { UnscheduleDirectory = folder },
-                _ => options with { RenameDirectory = folder },
-            };
-        }
+            return ParseFolderVerb(verb, args, ref i, options);
 
         // The slug is taken as written: it is positional, so it is whatever follows the verb.
         if (i + 1 >= args.Length)
@@ -270,6 +257,23 @@ internal sealed record ForgeCommandOptions
         return verb == "resume"
             ? options with { ResumeSlug = slug }
             : options with { PromoteSlug = slug };
+    }
+
+    /// <summary><c>schedule</c>, <c>unschedule</c> and <c>rename</c>: the promoted team folder comes first.</summary>
+    private static ForgeCommandOptions ParseFolderVerb(string verb, string[] args, ref int i, ForgeCommandOptions options)
+    {
+        // The folder comes first: `forge schedule --check` without one names no folder,
+        // rather than one called «--check» — nor `forge rename --name X` one called «--name».
+        if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
+            return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
+
+        var folder = args[++i];
+        return verb switch
+        {
+            "schedule" => options with { ScheduleDirectory = folder },
+            "unschedule" => options with { UnscheduleDirectory = folder },
+            _ => options with { RenameDirectory = folder },
+        };
     }
 
     /// <summary>One option, one flag — or one word of the need typed on the command line.</summary>

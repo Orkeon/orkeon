@@ -244,31 +244,35 @@ public sealed record ModelProfile
             overrides[prefix + "TimeoutSeconds"] = timeout.ToString(CultureInfo.InvariantCulture);
         if (StreamIdleSeconds is { } idle and > 0)
             overrides[prefix + "StreamIdleSeconds"] = idle.ToString(CultureInfo.InvariantCulture);
-        if (CallMode is { } callMode
-            && (string.Equals(callMode, "Buffer", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(callMode, "Stream", StringComparison.OrdinalIgnoreCase)))
-        {
+        if (CallMode is { } callMode && IsKnownCallMode(callMode))
             overrides[prefix + "CallMode"] = callMode;
-        }
-
         if (MaxTokens is { } maxTokens and > 0)
             overrides[prefix + "MaxTokens"] = maxTokens.ToString(CultureInfo.InvariantCulture);
         if (ThinkingEnabled is { } thinking)
             overrides[prefix + "Thinking__Enabled"] = thinking ? "true" : "false";
         if (ThinkingEffort is { } effort && !string.IsNullOrWhiteSpace(effort))
             overrides[prefix + "Thinking__Effort"] = effort.Trim();
+        if (ApiKeyOf(environment) is { } apiKey)
+            overrides[prefix + "ApiKey"] = apiKey;
+
+        return overrides;
+    }
+
+    private static bool IsKnownCallMode(string callMode)
+        => string.Equals(callMode, "Buffer", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(callMode, "Stream", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The key the launch passes: the variable <see cref="KeyEnvName"/> names, else the preset's placeholder.</summary>
+    private string? ApiKeyOf(Func<string, string?> environment)
+    {
         if (KeyEnvName is { Length: > 0 } name
             && environment(name) is { } key
             && !string.IsNullOrWhiteSpace(key))
         {
-            overrides[prefix + "ApiKey"] = key.Trim();
-        }
-        else if (LlmPresets.PlaceholderKeyOf(LlmPresets.CardOf(this)) is { } placeholder)
-        {
-            // Docker Model Runner checks no key, but the run reads it as OpenAI, which wants one.
-            overrides[prefix + "ApiKey"] = placeholder;
+            return key.Trim();
         }
 
-        return overrides;
+        // Docker Model Runner checks no key, but the run reads it as OpenAI, which wants one.
+        return LlmPresets.PlaceholderKeyOf(LlmPresets.CardOf(this));
     }
 }

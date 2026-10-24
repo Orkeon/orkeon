@@ -336,12 +336,12 @@ public sealed class AgentsPaneView : View
         _rows = rows.ToList();
         if (TranscriptSink is { } sink)
         {
-            foreach (var line in _tracker.Observe(_rows, ReadFinished())) sink(line);
+            foreach (var line in _tracker.Observe(_rows, TryReadFinished(out var finished) ? finished : null)) sink(line);
         }
         if (Navigator is { } navigator)
         {
-            // The machine keeps the selection by ticket and decides what an emptied list does;
-            // the repaint comes after it, so the recipient's ● follows a recipient that changed.
+            // The machine keeps the selection by ticket and decides what an emptied list does,
+            // and the repaint comes after it, so the recipient's ● follows a recipient that changed.
             navigator.RowsRefreshed(_rows);
             Repaint();
             return;
@@ -356,17 +356,22 @@ public sealed class AgentsPaneView : View
         Repaint();
     }
 
-    /// <summary>The ended tasks the host reports, read after the rows; null when not wired or faulted.</summary>
+    /// <summary>The ended tasks the host reports, read after the rows; false when not wired or faulted.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing feed degrades to the rows-only transcript lines.")]
-    private IReadOnlyList<AgentRowInfo>? ReadFinished()
+    private bool TryReadFinished(out IReadOnlyList<AgentRowInfo> finished)
     {
+        finished = [];
+        if (_integration?.FinishedAgentRows is not { } feed)
+            return false;
+
         try
         {
-            return _integration?.FinishedAgentRows?.Invoke();
+            finished = feed();
+            return true;
         }
         catch
         {
-            return null;
+            return false;
         }
     }
 

@@ -152,7 +152,7 @@ internal static class UseCasesCommand
 
             if (text.Length == 0)
             {
-                return await RunSessionAsync(console.Input, engine, catalog, policy, options.Top, language, output.Events!, cancellationToken)
+                return await RunSessionAsync(console.Input, engine, catalog, policy, new QueryDefaults(options.Top, language), output.Events!, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -302,12 +302,15 @@ internal static class UseCasesCommand
         });
     }
 
+    /// <summary>What a session query takes when it names no <c>top</c> or <c>lang</c>: the command line's <c>--top</c> and <c>--lang</c>.</summary>
+    private readonly record struct QueryDefaults(int Top, string? Language);
+
     /// <summary>
     /// The session mode (D-07): announces itself, then answers each query line until stdin
     /// closes. A line that is not a query is skipped — the inbound stream is tolerant, as in
     /// every other verb; a query that cannot run is answered with an error naming it, and the
     /// session goes on. A query without <c>top</c> or <c>lang</c> takes the command line's
-    /// <c>--top</c> (<paramref name="defaultTop"/>) and <c>--lang</c> (<paramref name="defaultLanguage"/>).
+    /// <c>--top</c> and <c>--lang</c> (<paramref name="defaults"/>).
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification =
         "Session fault barrier: one query that fails is answered with a recoverable error event, and the next query is still served.")]
@@ -316,8 +319,7 @@ internal static class UseCasesCommand
         UseCaseSearchEngine engine,
         UseCaseCatalog catalog,
         UseCaseSearchPolicy policy,
-        int defaultTop,
-        string? defaultLanguage,
+        QueryDefaults defaults,
         UseCaseEventWriter events,
         CancellationToken cancellationToken)
     {
@@ -325,7 +327,7 @@ internal static class UseCasesCommand
 
         while (await ReadLineAsync(input, cancellationToken).ConfigureAwait(false) is { } line)
         {
-            if (!TryReadQuery(line, defaultTop, defaultLanguage, out var correlationId, out var query, out var problem))
+            if (!TryReadQuery(line, defaults.Top, defaults.Language, out var correlationId, out var query, out var problem))
             {
                 if (problem is not null)
                     events.Error(UseCaseErrorCodes.QueryInvalid, problem, recoverable: true, correlationId);

@@ -37,10 +37,10 @@ public static partial class ToolsNamespaceBinding
         // A call from code runs in the scope of the agent attempt open on the engine (RT-06), unless
         // it already runs in one (a tool of ctx.llm.act).
         var ns = BuildNamespace(tools, jsName => AgentRunScope.Current is null ? JsEngineAttempts.ScopeForCode(engine, jsName) : null);
-        foreach (var tool in tools)
+        foreach (var toolName in tools.Select(tool => tool.Name))
         {
-            var jsName = ToCamelCase(tool.Name);
-            LogToolExposed(log, tool.Name, jsName);
+            var jsName = ToCamelCase(toolName);
+            LogToolExposed(log, toolName, jsName);
         }
         engine.SetValue(GlobalName, ns);
     }

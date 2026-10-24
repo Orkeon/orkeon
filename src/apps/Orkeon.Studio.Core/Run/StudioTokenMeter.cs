@@ -211,16 +211,26 @@ public sealed class ExecutionMeter
         return true;
     }
 
-    private static string? NormalizeMode(string? mode) =>
-        string.Equals(mode, Stream, StringComparison.OrdinalIgnoreCase) ? Stream
-        : string.Equals(mode, Buffer, StringComparison.OrdinalIgnoreCase) ? Buffer
-        : null;
-
-    private sealed class Call(string? mode, long order)
+    private static string? NormalizeMode(string? mode)
     {
-        public string? Mode { get; } = mode;
+        if (string.Equals(mode, Stream, StringComparison.OrdinalIgnoreCase))
+            return Stream;
+        if (string.Equals(mode, Buffer, StringComparison.OrdinalIgnoreCase))
+            return Buffer;
+        return null;
+    }
 
-        public long Order { get; } = order;
+    private sealed class Call
+    {
+        public Call(string? mode, long order)
+        {
+            Mode = mode;
+            Order = order;
+        }
+
+        public string? Mode { get; }
+
+        public long Order { get; }
 
         public long Up { get; init; }
 

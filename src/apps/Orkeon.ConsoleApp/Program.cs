@@ -450,8 +450,8 @@ static class Program
 
     static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)
     {
-        // The durable session loads for the project (the workspace root), then the start script runs once;
-        // the runner saves the session when the REPL ends. A hook that was not registered (a bare host) is skipped.
+        // The durable session loads for the project (the workspace root), then the start script runs once,
+        // and the runner saves the session when the REPL ends. A hook that was not registered (a bare host) is skipped.
         if (host.Services.GetService<Orkeon.Application.Interfaces.Ports.ISessionBufferService>() is Orkeon.Infrastructure.Session.FileSessionBufferService durable)
         {
             // The project key is the physical root the REPL mounted as /workspace, resolved by the VFS (not the
