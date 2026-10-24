@@ -4,7 +4,7 @@
 
 # RaggableTree
 
-Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 15 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
+Graphe sémantique multi-langage du code source : parsing Tree-sitter, enrichissement embeddings, stockage vectoriel, et exposition aux agents via 19 tools. Remplace la lecture de fichiers brute par un index structuré à cinq niveaux stratifiés (L0 monorepo → L1 package → L2 module → L3 symbole → L4 statement) plus la couche d'arêtes entre eux.
 
 ## Vue d'ensemble
 
@@ -44,7 +44,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 {
     Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.OpenAI, ApiKey = apiKey },
 });
-services.AddRaggableTreeTools();   // les 15 tools agents (Orkeon.Tools.Analysis)
+services.AddRaggableTreeTools();   // les 28 tools agents (Orkeon.Tools.Analysis)
 ```
 
 `AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les cinq
@@ -112,6 +112,15 @@ Chaque phase rapporte sa progression (`IndexBuildPhase` : Discovery, Parse, Reso
 
 La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2 pour les fichiers changés uniquement, réutilise les nœuds des fichiers inchangés, et ne lance les phases 4-6 que sur les `newNodes`.
 
+### Documents Markdown
+
+Markdown est un langage de premier rang de l'index, hors du chemin Tree-sitter : les fichiers `.md` ou `.markdown` sont découverts comme langage `markdown` et analysés avec Markdig par `MarkdownDocumentMapper` (`Orkeon.Analysis.Adapters`), une lecture par fichier. Chaque fichier produit :
+
+- un nœud `Section` par titre (niveaux 1 à 6, FQN imbriqué `<fichier>::Titre/Sous`, niveau L3) dont la plage court jusqu'au titre suivant de même niveau ou supérieur ;
+- un nœud `CodeFence` par bloc délimité (le langage est son tag ; un bloc `mermaid` porte aussi le tag `mermaid`), un nœud `Link` par lien (tag `target:<cible brute>`, plus `resolved:<fqn>` quand `MarkdownDocumentMapper.ResolveLinksAsync` retrouve la cible dans le store, par chemin ou par nom local ; un lien non résolu ne garde que sa cible brute) et un nœud `FrontMatter` pour un bloc YAML initial (les clés de premier niveau sont ses tags), tous de niveau L4.
+
+Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`), comme pour les autres langages. Les quatre nouvelles valeurs de `UniversalNodeKind` (`Section`, `CodeFence`, `Link`, `FrontMatter`) sont ajoutées après `Unknown` car le graphe persisté stocke l'enum par nom. `codebase_search` restreint au langage `markdown` (son option `FilterLanguages`) renvoie les sections. Limites : un fichier `.md` n'a pas de nœud module dans l'arbre, donc un lien fichier vers fichier ne se résout que contre un store qui en contient un, et le build n'appelle pas encore `ResolveLinksAsync`.
+
 ## Catalogue de tools
 
 | Tool | Usage | Requête type |
@@ -130,9 +139,15 @@ La réindexation incrémentale (`IncrementalReindexEngine`) repart de la phase 2
 | `flow_trace` | Chemins d'appel entre deux FQN | `{ "from": "A", "to": "B", "max_paths": 5 }` |
 | `impact_analysis` | Impacts transitifs d'un changement | `{ "target": "...", "direction": "Backward" }` |
 | `complexity_report` | Top-N par métrique (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
+| `access_cost` | Coût d'accès aux ports (lectures, écritures, appels en boucle, filtres en mémoire) des membres par `fqns` ou `changed_files`, restreint à `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | Requêtes structurelles L4 (if, try, return...) — chaque index porte les statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
+| `node_outline` | Membres d'un fichier C# ou TypeScript avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
+| `node_read` | Un membre par sélecteur : texte, plage et SHA-256, lu sans coupure | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
+| `node_replace` | Remplace un nœud par sélecteur et SHA-256 attendu (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
+| `node_insert` | Ajoute un nœud `inside`, `before` ou `after` un sélecteur d'ancrage (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
+| `edit_batch` | Plusieurs opérations `node_replace` / `node_insert` sur plusieurs fichiers en une transaction (classe Edit) | `{ "operations": [{ "kind": "node_replace", "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }], "validate": "parse" }` |
 
-Les 15 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
+Les 28 tools sont enregistrés via `AddRaggableTreeTools` (`Orkeon.Tools.Analysis.DependencyInjection.RaggableToolsExtensions`).
 
 `index_codebase` porte les réglages de construction à chaque appel
 (`IndexCodebaseRequest`) : `root_path` (obligatoire, un chemin virtuel), `languages`
@@ -181,6 +196,11 @@ L'index reste fidèle à un workspace en cours d'édition grâce à une concepti
   recherches énumèrent en sécurité PENDANT une réindexation incrémentale (auparavant une
   recherche concurrente pouvait lever sur les dictionnaires mutés). Le rafraîchissement
   publie `RaggableTreeUpdated` sur l'`IRaggableTreeEventBus`.
+- **Borne** — la réindexation remplace les nœuds et arêtes de chaque fichier modifié et
+  réutilise tous les autres nœuds : son coût est proportionnel aux fichiers modifiés, pas
+  au dépôt ; un fichier de 2 000 lignes se réindexe en moins de 2 s. `incremental_reindex`
+  rapporte les totaux de l'index (`node_count`, `edge_count`), les fichiers analysés et
+  la durée mesurée par le moteur.
 - **Barrière d'échec** — un rafraîchissement en échec sert l'index courant (périmé) et
   conserve la dette de saleté pour la tentative suivante : un résultat périmé vaut mieux
   qu'une recherche morte.
@@ -192,6 +212,167 @@ existait, rien ne la lisait, et elle a été supprimée avec la clé `IndexMode`
 `ICodebaseWatcher` (`FileSystemWatcherCodebaseWatcher`, qu'aucun hôte livré n'enregistre)
 reste disponible pour les hôtes qui veulent une invalidation en push
 par-dessus la passe paresseuse.
+
+## Sélecteurs
+
+`node_outline` et `node_read` adressent une déclaration d'un fichier par un sélecteur, sous l'une de trois formes :
+
+- **Lisible** : `Ns.Type.Member(paramTypes)`, p. ex. `Demo.Calc.Add(int)`. Les types de paramètres sont optionnels et requis seulement quand des surcharges existent ; une surcharge ambiguë est une erreur qui liste les sélecteurs candidats.
+- **Markdown** : `Section/Sub` (chemin de titres), servi pour les fichiers `.md` et `.markdown` : une section va de son titre à la ligne précédant le titre suivant de même niveau ou supérieur. Des titres frères de même nom sous un même parent se distinguent par un ordinal à partir de 1 sur n'importe quel segment : `A/Notes[2]`, `A[2]/Notes[1]`. Sans ordinal, un chemin ambigu est une erreur qui liste `A/Notes[1]`, `A/Notes[2]` ; le plan montre la forme avec ordinal pour les doublons (et `A[2]/Notes` pour leurs descendants) et la forme simple pour un nom unique. Un ordinal égal à 0 ou au-delà des frères est une erreur de sélecteur introuvable.
+- **Repli** : `@ts:<node-path>`, le chemin tree-sitter `root/<index>/<kind>/...` (`index` la position à partir de 0 parmi les enfants nommés), pour un nœud que la forme lisible ne peut pas nommer.
+
+Un sélecteur résout exactement un nœud ou échoue en listant les candidats. L'étendue d'un nœud inclut ses commentaires de tête et ses attributs ou décorateurs.
+
+Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
+
+`node_outline` liste les membres avec sélecteur, genre, plage d'octets et plage de lignes. `node_read` renvoie le texte d'un membre, sa plage et le SHA-256 de ses octets, sans coupure : l'outil porte sa propre borne de résultat (`node_read` = 256 000 caractères dans `AgentDefaults`), la coupure par défaut des résultats d'outil ne s'applique donc pas.
+
+## Éditeur structurel
+
+`node_replace` remplace un nœud (sélecteur de `node_outline`, hash de `node_read`) via `StructuralEditEngine` :
+
+- **Épissure d'octets** : seuls les octets du nœud changent ; le reste du fichier est identique à l'octet près.
+- **Refus d'un hash périmé** : le SHA-256 courant du nœud est comparé à `expected_hash` avant toute écriture ; un écart est refusé par une `StaleHashException` qui nomme le hash attendu et le hash réel.
+- **Validation par ré-analyse** : le résultat est analysé de nouveau et les diagnostics comparés par position ; un remplacement est refusé s'il introduit un diagnostic absent avant (Markdown n'a pas de validation d'analyse).
+- **Étendue remplacée** : elle inclut les commentaires et attributs de tête du nœud, donc un remplacement qui les omet les supprime. Une section Markdown remplace aussi ses sous-sections.
+- **Fins de ligne** du remplacement normalisées sur celles du fichier.
+- **Écriture** : protégée par une copie de sauvegarde restaurée en cas d'échec. Elle n'est pas atomique.
+- Un refus (hash périmé, erreur d'analyse, montage en lecture seule, chemin hors de la racine de travail de l'agent) est un résultat en échec, fichier intact ; une écriture réussie marque l'index sale.
+
+## Opérations d'intention
+
+`node_ensure` et le champ `op` de `edit_batch` appliquent une opération idempotente ; chacune est un no-op qui n'écrit rien et renvoie `applied: false` quand sa cible est déjà satisfaite.
+
+| Opération | Paramètres | Règle d'idempotence | Règle de placement |
+|---|---|---|---|
+| `ensure_using` | `name` | le using est déjà présent | dans le bloc des using, à sa place triée |
+| `ensure_import` | `name`, `module` | l'import est déjà présent | dans le bloc des imports |
+| `ensure_field` | `selector` (type), `text` | un membre de ce nom existe | près des champs du type |
+| `ensure_member` | `selector` (type), `text` | un membre de ce nom existe | près des membres du type |
+| `ensure_section` | `name` (chemin de titres), `level?` | chaque titre du chemin existe | titres manquants ajoutés en fin de fichier, chacun au niveau de sa profondeur |
+| `insert_under_heading` | `selector` (titre), `text` | aucune : ajoute toujours | en fin de section, avant le titre suivant de même niveau ou supérieur |
+| `replace_mermaid` | `selector` (section), `index` (base 0), `text` | le corps du bloc vaut déjà `text` | seul le corps du n-ième bloc `mermaid` (``` ou ~~~) de la section et de ses sous-sections change ; moins de blocs : refusé, fichier intact |
+
+## Types de graphe
+
+`GraphKindNames` (`Orkeon.Analysis.Abstractions`) fait correspondre des noms de workflow en minuscules aux énumérations existantes.
+
+| Nom d'arête | `EdgeKind` |
+|---|---|
+| `contains` | `Contains` |
+| `calls` | `Calls` |
+| `imports` | `Imports` |
+| `inherits` | `Extends` + `Implements` |
+| `tests` | `Tests` |
+| `documents` | `Documents` |
+| `project_depends` | `ProjectDepends` |
+
+| Nom de nœud | Nœud du graphe |
+|---|---|
+| `file` | nœud fichier (`Module`) |
+| `project` | nœud `Package` d'un csproj ou package.json marqueur |
+| `namespace` | `Namespace` |
+| `type` | classe, interface, trait, struct, enum, record, type |
+| `member` | fonction, méthode, constructeur, destructeur, opérateur, propriété, champ, constante, variable |
+| `doc_section` | `Section` |
+| `test` | nœud `Method` portant le tag `test` |
+
+`EdgeKind` gagne `Tests`, `Documents` et `ProjectDepends` (flags `1<<5` à `1<<7`). Il n'y a pas de genre `references` : rien ne le produit. Les arêtes `documents` relient une section Markdown aux symboles qu'elle nomme (voir [Requêtes sur le graphe](#requêtes-sur-le-graphe)).
+
+### Utiliser les noms
+
+- `edge_kinds` et `node_kinds` de `dependency_graph` et `sub_graph` prennent les noms de workflow en minuscules. Les noms d'énumération historiques (`Imports`) restent acceptés, sans tenir compte de la casse. Un nom inconnu est refusé, en le nommant. Les réponses gardent les noms d'énumération.
+- Quand `node_kinds` est donné, `dependency_graph` respecte toujours `Scope` : les genres et les tags passent dans la requête de nœuds, et `MaxNodes` borne le résultat.
+
+### Construction du graphe
+
+- `ProjectGraphBuilder` lit chaque csproj déjà trouvé par le découvreur (une lecture par csproj) et transforme chaque `ProjectReference` en arête `project_depends` (`\` et `..` sont normalisés), plus des arêtes `Contains` du parent vers l'enfant.
+- `TestEdgeLinker` tague `test` les méthodes `[Fact]` et `[Theory]` (et le propriétaire d'un appel TypeScript `test` ou `it`), et relie par des arêtes `tests` les symboles qu'elles appellent dans les projets référencés.
+- Les deux s'exécutent à la construction complète et à la réindexation incrémentale, où ils passent après les fingerprinters.
+
+### Limites
+
+- Le FQN ne porte que le nom : une arête `tests` vers un membre surchargé relie toutes les surcharges.
+- Un test qui appelle un symbole récemment ajouté dans un autre fichier n'a pas d'arête `tests` avant une réindexation complète.
+- Un callback de test TypeScript n'a pas de nœud : ses appels appartiennent au symbole englobant, sinon au nœud fichier. Aujourd'hui seul le tag est posé sur le nœud fichier ; les arêtes `tests` d'un test TypeScript au niveau fichier ne sont pas encore produites.
+
+## Requêtes sur le graphe
+
+Quatre tools de classe Read répondent à des questions sur le graphe sans lire le code. Tous reportent dans `unresolved` les noms qu'ils n'ont pas pu résoudre.
+
+### `affected_tests`
+
+Entrée : `changed_files` ou `base` (une ref git dont le diff donne les fichiers) ; sans l'un ni l'autre, `base` vaut `HEAD`, soit les changements de l'arbre de travail. Réponse : `all`, `test_projects` (dossiers), `test_classes` (atteintes par les arêtes `tests`), `unresolved`.
+
+- Une extension neutre (`.md`, `.txt`, `.png`, ...) est exemptée. `.claude/` et le dossier de travail sont ignorés.
+- `all` vaut `true` quand un fichier non neutre n'est pas dans l'index, n'a pas de projet propriétaire, ou quand l'expansion est tronquée.
+- Limites : `project_depends` vient des seuls csproj ; les tests TypeScript sont étiquetés mais sans arêtes `tests` ; une arête `tests` entre fichiers n'existe qu'après une réindexation complète.
+- Parité : la réponse correspond au script du harness `affected-tests.py`.
+
+### `batch_anchors`
+
+Entrée : `action`, puis `fqns` / `files` pour `closure`, ou `a` / `b` (chacun `{fqns, files}`) pour `overlap`.
+
+- `closure` : les nœuds contenus sous les ancres, plus leurs appelants à profondeur 1, plus les `tests` entrants. Réponse : `nodes`, `unresolved`, `truncated`.
+- `overlap` : liste dans `shared` les nœuds communs aux deux fermetures, ou renseigne `disjoint`. La réponse porte aussi `unresolved_a`, `unresolved_b`, `truncated`.
+- Une fermeture tronquée, ou une ancre non résolue d'un côté, ne prouve jamais la disjonction ; une ancre non résolue présente des deux côtés figure dans `shared`.
+
+### `documented_in` et `documents_of`
+
+- `documented_in` (`fqn`) : `sections[]` avec `path`, `heading_path`, `start_line`.
+- `documents_of` (`path`) : `symbols[]` avec `fqn`, `kind`, `file` (relatif au dépôt), `heading_path`.
+- L'arête `Documents` va d'une `Section` vers un symbole. Elle est construite à partir des spans de code, textes de lien et titres égaux au nom local d'un symbole, résolus par nom local : un nom ambigu relie tous les candidats. `DocumentsEdgeLinker` construit les arêtes au build complet et à la réindexation incrémentale.
+- Le mapper Markdown étiquette une `Section` `code:<text>` ou `link:<text>` pour chaque span ou lien de ce type.
+
+## Recherche structurelle
+
+`structural_search` (classe Read) trouve des nœuds de syntaxe par motif ou par règle. Le moteur est natif (aucun binaire ast-grep) : chaque fichier candidat est analysé de nouveau par le matcher, un résultat ne vient donc jamais d'un index périmé. Donner exactement un de `pattern`, `rule` (un objet) ou `rule_file`.
+
+Sous-ensemble de règles :
+
+| Clé | Signification |
+|---|---|
+| `kind` | Le genre du nœud (nom de la grammaire tree-sitter) |
+| `pattern` | Un motif de code avec métavariables |
+| `regex` | Une expression régulière sur le texte du nœud |
+| `field` | Le nom du champ que le nœud occupe chez son parent |
+| `inside` | Le nœud a un parent qui satisfait la sous-règle : le parent direct sauf avec `stopBy: end` |
+| `has` | Le nœud a un enfant qui satisfait la sous-règle : un enfant direct sauf avec `stopBy: end` |
+| `not` | La sous-règle ne doit pas correspondre |
+| `all` / `any` | Toutes / au moins une des sous-règles correspondent |
+| `stopBy` | Où `inside` / `has` cessent de monter ou de descendre : `neighbor` (défaut), `end`, ou un objet de règle |
+
+Toute autre clé (`follows`, `precedes`, `matches`, `constraints`, `transform`, …) est refusée par son nom.
+
+Métavariables : `$A` capture un nœud, et un nom répété doit correspondre à un texte égal ; `$$$ARGS` capture une suite de nœuds frères. Les captures sont renvoyées avec chaque correspondance.
+
+Langages : C# (`cs`), TypeScript (`ts`), Markdown (`md`) et les autres grammaires livrées par l'index. En Markdown les genres sont `heading`, `fence`, `link` et `front_matter` ; `regex` porte sur le texte du titre ou sur la chaîne d'information de la clôture, et `pattern` n'est pas disponible.
+
+Un fichier de règles YAML (`id`, `language`, `rule`, `message`, `severity`, `fix`) est lu via le VFS sous une racine montée ; `fix` est lu, jamais appliqué.
+
+Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (500 par défaut) ; le résultat indique `truncated` et `files_scanned`. Chaque correspondance porte chemin, ligne, colonne, texte, symbole englobant et captures.
+
+`node_insert` ajoute un nœud à une position relative à un sélecteur d'ancrage :
+
+- **`inside`** ajoute le texte comme dernier membre d'un corps de classe, struct, interface ou namespace (C#, TypeScript), ou à la fin de la section d'un titre Markdown ; les membres d'enum reçoivent la virgule de séparation. L'indentation est celle du premier frère, sinon celle du parent plus l'unité détectée du fichier (espaces ou tabulations) ; un corps vide utilise la seconde règle.
+- **`before`** insère au-dessus des commentaires et attributs de tête de l'ancre, **`after`** en dessous ; un texte multi-ligne est ré-indenté ligne à ligne sur l'indentation de l'ancre. Aucun hash d'ancrage n'est requis pour `before`/`after`.
+- Le résultat est ré-analysé comme pour `node_replace` et refusé s'il introduit un diagnostic.
+
+`edit_batch` applique des opérations `node_replace` et `node_insert` sur plusieurs fichiers en une transaction (`EditTransaction`) :
+
+- `expected_hash` est requis pour `node_replace`, absent pour `node_insert`. Les opérations d'un même fichier s'appliquent dans l'ordre sur les octets déjà modifiés : le second hash est vérifié contre l'état après la première.
+- Le droit d'écriture de chaque chemin est vérifié avant toute écriture ; chaque fichier est ré-analysé en mémoire (`validate: "parse"`) avant la première écriture.
+- Avant la première écriture, un journal `/output/edit-batch/<id>.journal` garde les octets d'origine de chaque fichier ; il est supprimé en cas de succès, et le `edit_batch` suivant sur le montage rejoue un journal resté. Un échec d'écriture restaure les fichiers déjà écrits depuis la mémoire ; si cette restauration échoue aussi, le journal reste et l'appel lève une `AggregateException`. Un `edit_batch` concurrent sur un fichier tenu est refusé (le verrou est dans le processus).
+- `validate: "build"` écrit les fichiers, puis `DotnetBuildValidator` construit le `.csproj`/`.sln` le plus proche au-dessus des fichiers modifiés (`dotnet build --no-restore`, délai maximal, processus tué à l'annulation). Un build rouge restaure les octets d'origine ; sans projet trouvé, la vérification est ignorée et signalée.
+- Le résultat liste le chemin et la plage de chaque opération, et l'issue de la validation.
+
+## Réécriture structurelle
+
+`structural_rewrite` (classe Edit) réécrit chaque nœud trouvé par un `pattern` ou une `rule` avec un modèle `fix`, sur les fichiers de `paths` / `glob` (bornés par `max_files`).
+
+- `dry_run` vaut `true` par défaut : rien n'est écrit, le résultat porte un diff unifié par fichier, le nombre de correspondances et le nombre appliqué.
+- Chaque fichier réécrit est ré-analysé en mémoire ; un fichier dont la réécriture ne s'analyse pas est refusé seul (`refused_reason`), les autres sont appliqués.
+- C# et TypeScript uniquement : les fichiers Markdown sont refusés.
 
 ## Extensibilité
 

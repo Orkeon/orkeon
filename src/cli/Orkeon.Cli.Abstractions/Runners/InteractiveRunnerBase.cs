@@ -94,6 +94,12 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
 
     protected virtual Task OnStartAsync(CancellationToken ct) => Task.CompletedTask;
     protected virtual Task OnExitAsync(CommandResult? lastResult, CancellationToken ct) => Task.CompletedTask;
+    /// <summary>
+    /// Called, awaited with the REPL token, after each command that completed with a result and before the
+    /// next prompt is read. Not called for empty lines, unknown commands, or cancelled or failed commands.
+    /// An exception thrown here is logged and never stops the loop.
+    /// </summary>
+    protected virtual Task OnAfterCommandAsync(string commandName, CommandResult result, CancellationToken ct) => Task.CompletedTask;
 
     /// <summary>
     /// Default 2-token hierarchical parser. Returns (CommandName, Args).
@@ -340,6 +346,15 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         if (!string.IsNullOrEmpty(result.Message))
             Console.WriteLine(result.Message);
 
+        try
+        {
+            await OnAfterCommandAsync(command.Name, result, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogAfterCommandFailed(Logger, ex, command.Name);
+        }
+
         return (result.ShouldExit ? IterationAction.Break : IterationAction.Continue, result);
     }
 
@@ -356,4 +371,7 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Error, Message = "Command '{Command}' threw an exception")]
     static partial void LogCommandFailed(ILogger logger, Exception ex, string command);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "OnAfterCommandAsync threw an exception after command '{Command}'")]
+    static partial void LogAfterCommandFailed(ILogger logger, Exception ex, string command);
 }

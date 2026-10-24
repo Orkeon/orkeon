@@ -352,6 +352,45 @@ public sealed class DslTypingsRuntimeAlignmentTests
         Assert.Contains("tool exploded", output, StringComparison.Ordinal);
     }
 
+    // ---- RT-24: the rag_eval golden-dataset schema is published --------------------------
+
+    [Fact]
+    [Trait("BR", "RT-24")]
+    public void ShouldDeclareRagEvalDataset_WhenTypingsConcatenated()
+    {
+        var typings = ConcatenatedTypings();
+
+        var dataset = DeclarationBody(typings, "RagEvalDataset");
+        foreach (var field in new[] { "name", "corpus", "collection", "cases" })
+            Assert.Matches($@"\b{field}\??\s*:", dataset);
+
+        var evalCase = DeclarationBody(typings, "RagEvalCase");
+        foreach (var field in new[] { "id", "question", "relevant", "expected_substrings", "reference_answer", "tags" })
+            Assert.Matches($@"\b{field}\??\s*:", evalCase);
+    }
+
+    private static string DeclarationBody(string typings, string name)
+    {
+        var start = typings.IndexOf($"interface {name} ", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"interface {name} is not declared in the typings");
+        return typings[start..typings.IndexOf('}', start)];
+    }
+
+    private static string ConcatenatedTypings()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "src", "scripting", "Orkeon.Scripting", "Typings");
+            if (Directory.Exists(candidate))
+                return string.Join("\n", Directory.EnumerateFiles(candidate, "*.d.ts")
+                    .Order(StringComparer.Ordinal).Select(File.ReadAllText));
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Typings folder not found above the test base directory.");
+    }
+
     private static Exception Innermost(Exception ex)
     {
         for (Exception? cur = ex; cur is not null; )

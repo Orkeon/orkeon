@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Analysis.TreeSitter;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Analysis.Core;
@@ -9,15 +10,9 @@ namespace Orkeon.Analysis.Core;
 public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
 {
     private static readonly Dictionary<string, string> LanguageByExtension =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            [".ts"] = "typescript",
-            [".tsx"] = "typescript",
-            [".py"] = "python",
-            [".cs"] = "csharp",
-            [".go"] = "go",
-            [".rs"] = "rust",
-        };
+        LanguageRegistry.Shipped
+            .SelectMany(g => g.Extensions.Select(e => (Extension: e, g.Language)))
+            .ToDictionary(x => x.Extension, x => x.Language, StringComparer.OrdinalIgnoreCase);
 
     private static readonly IReadOnlySet<string> AlwaysExcludedFileSuffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -250,6 +245,23 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         if (string.Equals(virtualPath, virtualRoot, StringComparison.Ordinal))
             return string.Empty;
         return virtualPath.TrimStart('/');
+    }
+
+    /// <summary>
+    /// The language a full index would give <paramref name="virtualPath"/>, or <c>null</c> when
+    /// the exclude set, the always-excluded suffixes, the supported extensions or the language
+    /// filter keep it out: the one rule a single-file reindex shares with discovery.
+    /// </summary>
+    internal static string? IndexableLanguage(
+        string virtualRoot, string virtualPath, IReadOnlyCollection<string> exclude, ImmutableArray<string> languages)
+    {
+        var relative = ToRelative(virtualRoot, virtualPath);
+        if (HasExcludedSegment(relative, new HashSet<string>(exclude, StringComparer.OrdinalIgnoreCase))) return null;
+
+        var fileName = Path.GetFileName(relative);
+        if (AlwaysExcludedFileSuffixes.Any(suffix => fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))) return null;
+        if (!LanguageByExtension.TryGetValue(Path.GetExtension(fileName), out var language)) return null;
+        return languages.IsDefaultOrEmpty || languages.Contains(language, StringComparer.OrdinalIgnoreCase) ? language : null;
     }
 
     private static bool HasExcludedSegment(string relative, HashSet<string> excludeSet)

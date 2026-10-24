@@ -376,6 +376,120 @@ public class NativeToolCallingAgentLoopTests
         Assert.Equal(string.Empty, Assert.Single(provider.ReceivedConfigs)!.Model);
     }
 
+    // ── RT-07: the read calls of one turn run together, between barriers ──────────────
+
+    private static readonly string[] ReleaseOrder = ["glob", "grep", "file_read"];
+
+    private static async System.Threading.Tasks.Task<bool> ReachedAsync(System.Threading.Tasks.Task task) =>
+        await System.Threading.Tasks.Task.WhenAny(task, System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)) == task;
+
+    [Fact]
+    [Trait("BR", "RT-07")]
+    public async System.Threading.Tasks.Task ShouldRunReadCallsConcurrently_WhenOneTurnHoldsThreeFileReads()
+    {
+        var probe = new ConcurrencyProbe(expected: 3);
+        var tools = new IBaseTool[]
+        {
+            new GatedTool("file_read", ToolAccess.Read, probe),
+            new GatedTool("grep", ToolAccess.Read, probe),
+            new GatedTool("glob", ToolAccess.Read, probe),
+        };
+        var agent = BuildAgent(5, tools);
+        var (loop, provider, _) = BuildLoop(agent, registeredTools: tools);
+        provider.EnqueueOpenAiToolCalls(("c1", "file_read"), ("c2", "grep"), ("c3", "glob"));
+        provider.EnqueueText("done");
+
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, probe.Max);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-07")]
+    public async System.Threading.Tasks.Task ShouldAppendToolMessagesInCallOrder_WhenReadsCompleteOutOfOrder()
+    {
+        var probe = new ConcurrencyProbe(expected: 3);
+        var names = new[] { "file_read", "grep", "glob" };
+        var holds = names.ToDictionary(n => n, _ => new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
+        var tools = names.Select(n => (IBaseTool)new GatedTool(n, ToolAccess.Read, probe, hold: holds[n])).ToArray();
+        var agent = BuildAgent(5, tools);
+        var (loop, provider, _) = BuildLoop(agent, registeredTools: tools);
+        provider.EnqueueOpenAiToolCalls(("c1", "file_read"), ("c2", "grep"), ("c3", "glob"));
+        provider.EnqueueText("done");
+
+        var run = loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
+        try
+        {
+            Assert.True(await ReachedAsync(probe.AllEntered));
+            foreach (var name in ReleaseOrder)
+            {
+                holds[name].TrySetResult(true);
+                await System.Threading.Tasks.Task.Yield();
+            }
+        }
+        finally
+        {
+            foreach (var hold in holds.Values) hold.TrySetResult(true);
+        }
+
+        await run;
+
+        var toolMessages = provider.ReceivedTurns[1].Where(m => m.Role == "tool").ToList();
+        Assert.Equal(["c1", "c2", "c3"], toolMessages.Select(m => m.ToolCallId));
+        Assert.Equal(["file_read", "grep", "glob"], toolMessages.Select(m => m.Content));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-07")]
+    public async System.Threading.Tasks.Task ShouldRunWriteCallsSequentially_WhenTurnMixesReadsAndWrites()
+    {
+        var probe = new ConcurrencyProbe(expected: 2);
+        var tools = new IBaseTool[]
+        {
+            new GatedTool("file_read", ToolAccess.Read, probe),
+            new GatedTool("grep", ToolAccess.Read, probe),
+            new GatedTool("file_write", ToolAccess.Edit, probe, joinsBarrier: false),
+            new GatedTool("glob", ToolAccess.Read, probe),
+        };
+        var agent = BuildAgent(5, tools);
+        var (loop, provider, _) = BuildLoop(agent, registeredTools: tools);
+        provider.EnqueueOpenAiToolCalls(("c1", "file_read"), ("c2", "grep"), ("c3", "file_write"), ("c4", "glob"));
+        provider.EnqueueText("done");
+
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
+
+        var events = probe.Events();
+        Assert.Equal(2, probe.Max);
+        Assert.True(events.IndexOf("end:file_read") < events.IndexOf("start:file_write"));
+        Assert.True(events.IndexOf("end:grep") < events.IndexOf("start:file_write"));
+        Assert.True(events.IndexOf("end:file_write") < events.IndexOf("start:glob"));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-07")]
+    public async System.Threading.Tasks.Task ShouldSerialiseApprovals_WhenConcurrentReadsNeedTheGate()
+    {
+        var probe = new ConcurrencyProbe(expected: 3);
+        var inner = new RecordingApprovalChannel();
+        var gate = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(inner);
+        var tools = new IBaseTool[]
+        {
+            new GatedTool("file_read", ToolAccess.Read, probe, approval: gate),
+            new GatedTool("grep", ToolAccess.Read, probe, approval: gate),
+            new GatedTool("glob", ToolAccess.Read, probe, approval: gate),
+        };
+        var agent = BuildAgent(5, tools);
+        var (loop, provider, _) = BuildLoop(agent, registeredTools: tools);
+        provider.EnqueueOpenAiToolCalls(("c1", "file_read"), ("c2", "grep"), ("c3", "glob"));
+        provider.EnqueueText("done");
+
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["file_read", "grep", "glob"], inner.Requested);
+        Assert.Equal(1, inner.MaxConcurrent);
+        Assert.Equal(3, probe.Max);
+    }
+
     /// <summary>Reads the Anthropic content[].tool_use body shape.</summary>
     private sealed class AnthropicShapedParser : IAppToolCallParser
     {

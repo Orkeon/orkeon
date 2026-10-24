@@ -29,6 +29,7 @@ public sealed partial class JsCrewBuilder
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private string _name = "crew";
+    private bool _nameSet;
     private string? _goal;
     private string _process = "sequential";
     private readonly List<JsAgent> _agents = new();
@@ -39,6 +40,8 @@ public sealed partial class JsCrewBuilder
     private bool _memory;
     private bool _planning;
     private int? _maxRpm;
+    private int _concurrency = 4;
+    private int _maxInstances = 32;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
 
     public JsCrewBuilder(
@@ -59,7 +62,16 @@ public sealed partial class JsCrewBuilder
         _toolInvocation = toolInvocation;
     }
 
-    public JsCrewBuilder name(string value) { _name = value; return this; }
+    /// <summary>The durable store behind <c>ctx.memory.agent</c> the host wired (RT-16).</summary>
+    internal Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+    /// <summary>The tool-result limits the host wired.</summary>
+    internal Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>The agent-instance transcript caps the host wired.</summary>
+    internal Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
+
+    public JsCrewBuilder name(string value) { _name = value; _nameSet = true; return this; }
 
     public JsCrewBuilder goal(string value) { _goal = value; return this; }
 
@@ -149,6 +161,18 @@ public sealed partial class JsCrewBuilder
     /// </summary>
     public JsCrewBuilder maxRpm(int value) { _maxRpm = value; return this; }
 
+    /// <summary>
+    /// The crew-wide cap on children running at once, background and <c>spawn_agent</c> alike; default 4.
+    /// Zero or less is refused at <see cref="build"/>.
+    /// </summary>
+    public JsCrewBuilder concurrency(int value) { _concurrency = value; return this; }
+
+    /// <summary>
+    /// The most agent instances (<c>crew.instances()</c>) the crew keeps; default 32. The oldest ended one
+    /// goes first, a running one never. Zero or less is refused at <see cref="build"/>.
+    /// </summary>
+    public JsCrewBuilder maxInstances(int value) { _maxInstances = value; return this; }
+
     public JsCrewBuilder verbose() { _verbose = true; return this; }
     public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
     public JsCrewBuilder onCrewStart(JsValue hook) { _onCrewStart = hook; return this; }
@@ -166,11 +190,18 @@ public sealed partial class JsCrewBuilder
                 "or more. Leave .maxRpm(...) out for no limit of its own.");
         }
 
+        if (_concurrency < 1)
+            throw new InvalidScriptException($"crewBuilder() '{_name}': .concurrency({_concurrency}) must be 1 or more.");
+
+        if (_maxInstances < 1)
+            throw new InvalidScriptException($"crewBuilder() '{_name}': .maxInstances({_maxInstances}) must be 1 or more.");
+
         WarnOnAutonomousToolsWithoutSchema();
 
         var crew = new JsCrew(_engine, new JsCrewDefinition
         {
             Name = _name,
+            NameSet = _nameSet,
             Process = _process,
             Agents = _agents,
             Tasks = _tasks,
@@ -180,12 +211,17 @@ public sealed partial class JsCrewBuilder
             Memory = _memory,
             Planning = _planning,
             MaxRpm = _maxRpm,
+            Concurrency = _concurrency,
+            MaxInstances = _maxInstances,
             Logger = _logger,
             LlmProvider = _llmProvider,
             BuiltInTools = _builtInTools,
             PermissionGate = _permissionGate,
             DeltaSink = _deltaSink,
             ToolInvocation = _toolInvocation,
+            AgentMemoryStore = AgentMemoryStore,
+            ToolLimits = ToolLimits,
+            AgentInstances = AgentInstances,
             Goal = _goal,
         });
         crew._onCrewStart = _onCrewStart;

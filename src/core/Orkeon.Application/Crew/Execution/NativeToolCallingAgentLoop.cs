@@ -1,5 +1,6 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Interfaces.Services;
@@ -23,6 +24,7 @@ internal sealed class NativeToolCallingAgentLoop
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly LlmCallGate _llmGate;
     private readonly IToolInvocationPipeline _toolInvocation;
+    private readonly int _maxParallelToolCalls;
 
     internal NativeToolCallingAgentLoop(
         ILogger logger,
@@ -31,8 +33,10 @@ internal sealed class NativeToolCallingAgentLoop
         IEnumerable<Domain.Tools.IBaseTool>? registeredTools,
         LlmCallGate llmGate,
         IToolInvocationPipeline toolInvocation,
-        ILogger? verboseLogger = null)
+        ILogger? verboseLogger = null,
+        IOptions<ToolResultLimitsOptions>? limits = null)
     {
+        _maxParallelToolCalls = (limits?.Value ?? new ToolResultLimitsOptions()).MaxParallelToolCalls;
         _logger = logger;
         _verboseLogger = verboseLogger;
         _fullProvider = fullProvider;
@@ -117,10 +121,16 @@ internal sealed class NativeToolCallingAgentLoop
 
             // Execute each tool call
             ExecutionLog.LogLegacyToolCallsDetected(turnLogger, agent.Role, iteration + 1, parsedCalls.Count);
-            foreach (var call in parsedCalls)
+            var outcomes = await ToolCallScheduler.RunAsync(
+                parsedCalls,
+                call => availableTools.TryGetValue(call.ToolName, out var tool) && ToolCallScheduler.IsParallelRead(tool.Name, tool.Access),
+                (call, ct) => ExecuteNativeToolCallAsync(call, availableTools, agent, task, ct),
+                _maxParallelToolCalls,
+                cancellationToken).ConfigureAwait(false);
+            foreach (var outcome in outcomes)
             {
-                await ExecuteNativeToolCallAsync(
-                    call, availableTools, messages, toolsUsed, agent, task, cancellationToken).ConfigureAwait(false);
+                messages.Add(outcome.Message);
+                if (outcome.Usage is not null) toolsUsed.Add(outcome.Usage);
             }
 
             // Circuit breaker check after tool execution
@@ -201,14 +211,12 @@ internal sealed class NativeToolCallingAgentLoop
 
     /// <summary>
     /// Executes a single native tool call (parsed by <see cref="Interfaces.LLM.IToolCallParser"/>)
-    /// and appends the tool result (or error) message to the conversation history.
+    /// and returns the tool result (or error) message with its usage, for the caller to append in call order.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any tool failure is recorded as a failed ToolUsage and returned to the LLM as a tool error message so one tool cannot crash the native tool-calling loop.")]
-    private async System.Threading.Tasks.Task ExecuteNativeToolCallAsync(
+    private async System.Threading.Tasks.Task<ToolCallOutcome<Domain.SharedKernel.ValueObjects.LlmMessage>> ExecuteNativeToolCallAsync(
         Interfaces.LLM.ParsedToolCall call,
         Dictionary<string, Domain.Tools.IBaseTool> availableTools,
-        List<Domain.SharedKernel.ValueObjects.LlmMessage> messages,
-        List<Domain.Tools.ToolUsage> toolsUsed,
         DomainAgent agent,
         Domain.Task.CrewTask task,
         CancellationToken cancellationToken)
@@ -216,13 +224,12 @@ internal sealed class NativeToolCallingAgentLoop
         if (!availableTools.TryGetValue(call.ToolName, out var tool))
         {
             ExecutionLog.LogUnknownToolRequested(_logger, call.ToolName);
-            messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
+            return new(new Domain.SharedKernel.ValueObjects.LlmMessage
             {
                 Role = "tool",
                 Content = $"Error: Unknown tool: {call.ToolName}",
                 ToolCallId = call.Id
-            });
-            return;
+            }, null);
         }
 
         var toolStartTime = DateTime.UtcNow;
@@ -233,16 +240,14 @@ internal sealed class NativeToolCallingAgentLoop
             var toolDuration = DateTime.UtcNow - toolStartTime;
             if (outcome.Blocked)
             {
-                toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
-                    new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
-                    toolDuration, outcome.ConversationText));
-                messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
+                return new(new Domain.SharedKernel.ValueObjects.LlmMessage
                 {
                     Role = "tool",
                     Content = outcome.ConversationText,
                     ToolCallId = call.Id
-                });
-                return;
+                }, Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, outcome.ConversationText));
             }
 
             var toolResponse = outcome.Response!;
@@ -258,36 +263,32 @@ internal sealed class NativeToolCallingAgentLoop
                     truncatedResult);
             }
 
-            toolsUsed.Add(Domain.Tools.ToolUsage.CreateSuccess(
+            return new(new Domain.SharedKernel.ValueObjects.LlmMessage
+            {
+                Role = "tool",
+                Content = contextResultText,
+                ToolCallId = call.Id
+            }, Domain.Tools.ToolUsage.CreateSuccess(
                 new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
                 toolDuration,
                 Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
                     .AddInput(System.Text.Json.JsonSerializer.Serialize(call.Arguments))
                     .AddOutput(resultText)
                     .Build()));
-
-            messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
-            {
-                Role = "tool",
-                Content = contextResultText,
-                ToolCallId = call.Id
-            });
         }
         catch (Exception ex)
         {
             var toolDuration = DateTime.UtcNow - toolStartTime;
             ExecutionLog.LogNativeToolExecutionFailed(_logger, ex, call.ToolName);
 
-            toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
-                new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
-                toolDuration, ex.Message));
-
-            messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
+            return new(new Domain.SharedKernel.ValueObjects.LlmMessage
             {
                 Role = "tool",
                 Content = $"Error: {ex.Message}",
                 ToolCallId = call.Id
-            });
+            }, Domain.Tools.ToolUsage.CreateFailure(
+                new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
+                toolDuration, ex.Message));
         }
     }
 }

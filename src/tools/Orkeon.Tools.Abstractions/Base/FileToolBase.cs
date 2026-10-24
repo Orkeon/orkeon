@@ -58,6 +58,8 @@ public abstract partial class FileToolBase : ToolBase
     protected PathValidationResult ResolveVirtualPath(string path, FileAccessRights requiredRight)
     {
         var result = _fileSystemService.ResolveAndValidate(path, requiredRight);
+        if (result.IsAllowed && AgentRootGuard.Check(_fileSystemService, path) is { } outsideRoot)
+            return outsideRoot;
         if (result.IsAllowed && _pathValidator is not null && result.ResolvedPath is not null)
         {
             var defenseInDepth = _pathValidator.ValidatePath(result.ResolvedPath);

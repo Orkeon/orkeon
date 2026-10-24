@@ -34,4 +34,15 @@ public sealed record ScriptingHostPorts
     /// default profile alone: <c>llm.profile</c> of any other name throws, listing it.
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry? LlmProfiles { get; init; }
+
+    /// <summary>
+    /// The durable store behind <c>ctx.memory.agent</c> (RT-16). Null keeps the scope in memory.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+    /// <summary>The cut of each tool result and the fan-out bound of <c>ctx.llm.act</c>. Null keeps the defaults.</summary>
+    public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
+    public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 }

@@ -200,8 +200,12 @@ public static class LlmSettings
             GrammarEnabled = ReadBool(section, ConfigurationKeys.LlmGrammar) ?? LlmProfileShape.DefaultGrammar,
         };
 
-        return ReadInt(section, "MaxRetries", strict) is { } maxRetries
-            ? config with { MaxRetries = Math.Max(0, maxRetries) }
+        if (ReadInt(section, "MaxRetries", strict) is { } maxRetries)
+            config = config with { MaxRetries = Math.Max(0, maxRetries) };
+
+        // Absent = ResilienceDefaults.DefaultMaxRateLimitWait.
+        return ReadTimeSpan(section, "MaxRateLimitWait", strict) is { } maxRateLimitWait
+            ? config with { MaxRateLimitWait = maxRateLimitWait }
             : config;
     }
 
@@ -329,6 +333,16 @@ public static class LlmSettings
         if (string.IsNullOrWhiteSpace(raw))
             return null;
         if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            return value;
+        return strict ? throw NotANumber(section, key, raw) : null;
+    }
+
+    private static TimeSpan? ReadTimeSpan(IConfigurationSection section, string key, bool strict)
+    {
+        var raw = section[key];
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        if (TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out var value) && value >= TimeSpan.Zero)
             return value;
         return strict ? throw NotANumber(section, key, raw) : null;
     }

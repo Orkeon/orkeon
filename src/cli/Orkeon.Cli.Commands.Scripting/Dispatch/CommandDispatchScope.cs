@@ -12,14 +12,18 @@ public sealed class CommandDispatchScope : IDisposable
     private readonly List<CommandInstance> _captured = new();
     private readonly List<CommandInstance> _turn = new();
 
-    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null)
+    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0)
     {
+        Depth = depth;
         PromptOwner = isPrompt ? this : promptOwner;
         CommandName = commandName;
         CancellationToken = cancellationToken;
         Timeout = timeout;
         _onDispose = onDispose;
     }
+
+    /// <summary>Chain depth of this scope.</summary>
+    public int Depth { get; }
 
     /// <summary>Name of the command currently executing.</summary>
     public string CommandName { get; }

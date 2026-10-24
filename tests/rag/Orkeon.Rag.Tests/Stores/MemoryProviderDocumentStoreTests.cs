@@ -479,4 +479,26 @@ public partial class MemoryProviderDocumentStoreTests
         var betaHits = await store.SearchAsync("beta", MakeQuery([1f, 0f, 0f]), Ct);
         Assert.Equal("b1", Assert.Single(betaHits).Chunk.Id);
     }
+
+    // ---------------------------------------------------------------- concurrency
+
+    [Fact]
+    [Trait("BR", "RT-28")]
+    public async Task ShouldUpdateRegistryAtomically_WhenTwoSourcesStoredConcurrently()
+    {
+        var provider = new GatedFakeMemoryProvider();
+        var store = new MemoryProviderDocumentStore(provider);
+
+        // The first store blocks after reading the registry; the second runs while it is blocked
+        // (to completion without a lock, parked on the lock with one).
+        var first = store.UpsertAsync("docs", [MakeChunk("c1", [1f, 0f, 0f], sourceId: "one.md")], Ct);
+        var second = store.UpsertAsync("docs", [MakeChunk("c2", [0f, 1f, 0f], sourceId: "two.md")], Ct);
+        provider.Release();
+        await Task.WhenAll(first, second);
+
+        var hashes = provider.Items["rag:docs:sources"].Content
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, hashes.Distinct().Count());
+        Assert.Equal(2, provider.Items.Keys.Count(key => ManifestKeyRegex().IsMatch(key)));
+    }
 }

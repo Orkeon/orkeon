@@ -75,6 +75,15 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.
+- **Tâches.** `action = start_job` lance une commande de l'allowlist en tâche détachée, avec le
+  même confinement qu'un appel bloquant, et renvoie un `job_id` et le chemin virtuel de son fichier
+  de sortie, `/output/jobs/<id>.log` (le premier montage avec droit d'écriture quand `/output`
+  n'est pas inscriptible ; refusé quand aucun ne l'est). `job_status` indique `running` ou le
+  `exit_code` ; `job_tail` renvoie les `tail_lines` dernières lignes (lecture bornée depuis la fin
+  du fichier). Une exécution garde 16 tâches vivantes au plus, un identifiant de tâche vaut pour
+  l'exécution qui l'a lancée, et la fin de l'exécution tue les tâches encore en cours. Les
+  opérateurs `>`, `>>`, `<`, `|`, `;` et `&` restent refusés dans la commande : la redirection vers
+  le journal est celle de la session, par flux, jamais un opérateur shell.
 - **Commandes Windows.** Un programme est cherché sur le `PATH` seulement (jamais le répertoire de
   travail, un montage où l'agent écrit), `.exe` puis `.com`. Une commande interne de cmd.exe (`echo`, `dir`,
   `type`) tourne en `cmd.exe /d /v:off /s /c "<commande> <arguments>"`, chaque argument qui n'est

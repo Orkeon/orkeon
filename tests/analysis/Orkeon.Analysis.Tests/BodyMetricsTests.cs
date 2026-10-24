@@ -88,4 +88,45 @@ public class BodyMetricsTests
         Assert.True(body.TryCatchCount >= 1);
         Assert.True(body.EarlyReturnCount >= 1);
     }
+
+    [Fact]
+    [Trait("BR", "RT-35")]
+    public void ShouldNotCountLambdaBodyStatements_WhenMemberHoldsLambdaWithReturn()
+    {
+        const string baseline = """
+            export class X {
+                run(xs: number[], a: boolean): void {
+                    if (a) {
+                        return;
+                    }
+                    xs.map(f);
+                }
+            }
+            """;
+        const string withLambda = """
+            export class X {
+                run(xs: number[], a: boolean): void {
+                    if (a) {
+                        return;
+                    }
+                    xs.map(x => {
+                        if (x > 1) {
+                            return log(x);
+                        }
+                        return x;
+                    });
+                }
+            }
+            """;
+        var expected = Extract(baseline, "run").Body;
+        var actual = Extract(withLambda, "run").Body;
+        Assert.NotNull(expected);
+        Assert.NotNull(actual);
+        Assert.Equal(1, expected!.EarlyReturnCount);
+        Assert.Equal(expected.EarlyReturnCount, actual!.EarlyReturnCount);
+        Assert.Equal(expected.CallCount, actual.CallCount);
+        Assert.Equal(expected.BranchCount, actual.BranchCount);
+        Assert.Equal(expected.AwaitCount, actual.AwaitCount);
+        Assert.Equal(expected.MaxDepth, actual.MaxDepth);
+    }
 }

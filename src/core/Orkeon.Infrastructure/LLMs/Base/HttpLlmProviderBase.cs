@@ -164,7 +164,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         // Clamped: Polly rejects a negative retry count at construction.
         ResiliencePolicy = resiliencePolicy ?? ResiliencePolicies.GetLlmApiPolicy(
             Logger, Math.Max(0, config.MaxRetries),
-            onRetry: (attempt, delay, reason) => NotifyRetryScheduled(attempt, delay, reason));
+            onRetry: (attempt, delay, reason) => NotifyRetryScheduled(attempt, delay, reason),
+            delay: DelayAsync,
+            maxRateLimitWait: config.MaxRateLimitWait);
 
         JsonOptions = new JsonSerializerOptions
         {
@@ -831,7 +833,19 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                         }
 
                         var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        var delay = RetryAfterDelay(response) ?? StreamingBackoff(attempt);
+                        TimeSpan? window;
+                        try
+                        {
+                            window = RateLimitResetHeaders.WindowOf(response, DateTimeOffset.UtcNow, Config.MaxRateLimitWait);
+                        }
+                        catch (Orkeon.Domain.Exceptions.LlmRateLimitException)
+                        {
+                            response.Dispose();
+                            throw;
+                        }
+
+                        var delay = window ?? StreamingBackoff(attempt);
+                        if (window is not null) reason = RateLimitResetHeaders.Reason;
                         LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
                         NotifyRetryScheduled(attempt, delay, reason, endpoint?.Host);
                         if (!await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false))
@@ -868,12 +882,18 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         }
     }
 
+    /// <summary>The wait a streaming connect retry performs; overridable so tests never sleep.</summary>
+    /// <param name="delay">The wait.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    protected virtual Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+        => System.Threading.Tasks.Task.Delay(delay, cancellationToken);
+
     /// <summary>The retry wait; false when <paramref name="cancellationToken"/> ended it first.</summary>
-    private static async Task<bool> WaitBeforeRetryAsync(TimeSpan delay, CancellationToken cancellationToken)
+    private async Task<bool> WaitBeforeRetryAsync(TimeSpan delay, CancellationToken cancellationToken)
     {
         try
         {
-            await System.Threading.Tasks.Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            await DelayAsync(delay, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (OperationCanceledException)
@@ -896,14 +916,6 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         return ms >= StreamingRetryAfterCap.TotalMilliseconds
             ? StreamingRetryAfterCap
             : TimeSpan.FromMilliseconds(ms);
-    }
-
-    /// <summary>Server-provided Retry-After delta when present, capped so an interactive turn never parks for minutes.</summary>
-    private static TimeSpan? RetryAfterDelay(HttpResponseMessage response)
-    {
-        var delta = response.Headers.RetryAfter?.Delta;
-        if (delta is null) return null;
-        return delta.Value <= StreamingRetryAfterCap ? delta.Value : StreamingRetryAfterCap;
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "LLM streaming connect retry {Attempt} in {Delay}ms. Reason: {Reason}")]

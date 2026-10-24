@@ -11,6 +11,8 @@ namespace Orkeon.Infrastructure.HumanInput;
 public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
 {
     private readonly ILogger<ConsoleHumanInputProvider> _logger;
+    private readonly TextReader? _input;
+    private readonly TextWriter? _output;
 
     /// <summary>Initializes a new instance of <see cref="ConsoleHumanInputProvider"/>.</summary>
     /// <param name="logger">The logger.</param>
@@ -18,6 +20,19 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+    }
+
+    /// <summary>Initializes a new instance reading from <paramref name="input"/> and writing to <paramref name="output"/>.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="input">The reader answers come from.</param>
+    /// <param name="output">The writer prompts go to.</param>
+    public ConsoleHumanInputProvider(ILogger<ConsoleHumanInputProvider> logger, TextReader input, TextWriter output)
+        : this(logger)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(output);
+        _input = input;
+        _output = output;
     }
 
     /// <summary>
@@ -30,20 +45,26 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
     public static Task<string> RequestInputAsync(HumanInputRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return RequestInputAsync(request, Console.In, Console.Out, ct);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literal is an interactive console prompt.")]
+    private static Task<string> RequestInputAsync(HumanInputRequest request, TextReader reader, TextWriter writer, CancellationToken ct)
+    {
         return RequestInputCoreAsync();
 
         async Task<string> RequestInputCoreAsync()
         {
-            Console.WriteLine($"\n[Human Input Required]\n{request.Prompt}");
+            await writer.WriteLineAsync($"\n[Human Input Required]\n{request.Prompt}").ConfigureAwait(false);
 
             if (request.Options?.Count > 0)
             {
                 for (int i = 0; i < request.Options.Count; i++)
-                    Console.WriteLine($"{i + 1}. {request.Options[i]}");
+                    await writer.WriteLineAsync($"{i + 1}. {request.Options[i]}").ConfigureAwait(false);
             }
 
-            Console.Write("> ");
-            var input = await System.Threading.Tasks.Task.Run(() => Console.ReadLine(), ct).ConfigureAwait(false);
+            await writer.WriteAsync("> ").ConfigureAwait(false);
+            var input = await System.Threading.Tasks.Task.Run(() => reader.ReadLine(), ct).ConfigureAwait(false);
 
             // Return default value if input is null, empty, or whitespace
             if (string.IsNullOrWhiteSpace(input))
@@ -71,7 +92,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 context.DefaultValue
             );
 
-            return await RequestInputAsync(request, cancellationToken).ConfigureAwait(false);
+            return await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -91,7 +112,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 "n"
             );
 
-            var response = await RequestInputAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
             return string.Equals(response.Trim(), "y", StringComparison.OrdinalIgnoreCase) || string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
         }
     }
@@ -116,10 +137,10 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 context.Prompt,
                 HumanInputType.Choice,
                 context.DefaultValue,
-                context.Options.ToArray()
+                MarkRecommended(context)
             );
 
-            var response = await RequestInputAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
 
             // If user entered a number, convert to the actual choice
             if (int.TryParse(response, out var index) && index > 0 && index <= context.Options.Count)
@@ -131,6 +152,37 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
             return response;
         }
     }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return GetMultiChoiceCoreAsync();
+
+        async Task<IReadOnlyList<string>> GetMultiChoiceCoreAsync()
+        {
+            var request = HumanInputRequest.Create(
+                context.Prompt + " (comma-separated numbers or values)",
+                HumanInputType.Choice,
+                context.DefaultValue,
+                MarkRecommended(context)
+            );
+
+            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
+            var chosen = new List<string>();
+            foreach (var part in response.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                chosen.Add(int.TryParse(part, out var index) && index > 0 && index <= context.Options.Count
+                    ? context.Options[index - 1]
+                    : part);
+            }
+
+            return chosen;
+        }
+    }
+
+    private static string[] MarkRecommended(HumanInputContext context) =>
+        [.. context.Options.Select((option, i) => i == context.Recommended ? option + " (recommended)" : option)];
 
     /// <inheritdoc />
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)

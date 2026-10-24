@@ -2,10 +2,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Configuration;
+using Orkeon.ConsoleApp.Services;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.Hosting;
+using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.HumanInput;
 
 namespace Orkeon.ConsoleApp;
 
@@ -134,11 +140,53 @@ internal static class ReplStartup
         {
             SettingsValidation.CheckLogging(context.Configuration);
             Program.ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap);
+            RegisterReplHumanInput(services);
+
+            // The REPL keeps its session per project unless the settings say otherwise; the start script
+            // runs from Program.RunHostAsync, once the host is built, never from Prepare.
+            services.PostConfigure<Orkeon.Infrastructure.Session.CliSessionOptions>(options =>
+            {
+                if (context.Configuration[Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionPersist] is null)
+                    options.Persist = true;
+            });
+            services.AddSingleton<Services.IStartScriptRunner, Services.ScriptHostStartScriptRunner>();
+            services.AddSingleton<Services.ReplStartScriptHook>();
         }
         catch (InvalidOperationException ex) when (ex is not RunnerSettingsException)
         {
             throw new RunnerSettingsException(ex.Message, ex);
         }
+    }
+
+    /// <summary>
+    /// <c>human_input</c> answered through the read loop (RT-08): the REPL provider is the inner provider, and
+    /// the loop's single interceptor becomes a composite of the approval channel's and the provider's.
+    /// </summary>
+    private static void RegisterReplHumanInput(IServiceCollection services)
+    {
+        const string approvalsKey = "orkeon.repl.approvals-interceptor";
+        services.AddSingleton(sp => new ReplHumanInputProvider(() => sp.GetRequiredService<Orkeon.Cli.Abstractions.Console.IConsoleAdapter>()));
+        services.AddSingleton<IHumanInputProvider>(sp => sp.GetRequiredService<ReplHumanInputProvider>());
+        services.AddOrkeonHumanInput();
+
+        var index = services.ToList().FindLastIndex(static d => d.ServiceType == typeof(IReplLineInterceptor) && !d.IsKeyedService);
+        if (index < 0)
+        {
+            services.AddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ReplHumanInputProvider>());
+            return;
+        }
+
+        var existing = services[index];
+        services.RemoveAt(index);
+        services.AddKeyedSingleton<IReplLineInterceptor>(approvalsKey, (sp, _) =>
+            existing.ImplementationFactory?.Invoke(sp) as IReplLineInterceptor
+            ?? existing.ImplementationInstance as IReplLineInterceptor
+            ?? (IReplLineInterceptor)ActivatorUtilities.CreateInstance(sp, existing.ImplementationType!));
+        services.AddSingleton(sp => new CompositeLineInterceptor(
+            sp.GetRequiredKeyedService<IReplLineInterceptor>(approvalsKey),
+            sp.GetRequiredService<ReplHumanInputProvider>()));
+        services.AddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<CompositeLineInterceptor>());
+        services.AddSingleton<IToolApprovalChannel>(sp => sp.GetRequiredService<CompositeLineInterceptor>());
     }
 
     /// <summary>

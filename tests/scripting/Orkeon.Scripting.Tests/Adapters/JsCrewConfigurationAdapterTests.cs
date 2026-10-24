@@ -253,6 +253,38 @@ public sealed class JsCrewConfigurationAdapterTests
     }
 
     [Fact]
+    [Trait("BR", "RT-15")]
+    public void ShouldCarryEffortToAgentConfig_WhenAgentBuilderEffortCalled()
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const a = agentBuilder().name("a").role("R").goal("G").effort("high").build();
+            const t = taskBuilder().name("t").agent(a).description("d").expectedOutput("o").build();
+            crewBuilder().name("c").withAgent(a).withTask(t).build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        var thinking = config.Agents[0].LlmConfig?.Thinking;
+        Assert.NotNull(thinking);
+        Assert.True(thinking!.Enabled);
+        Assert.Equal("high", thinking.Effort);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-15")]
+    public void ShouldRefuseEffort_WhenValueUnknown()
+    {
+        var engine = NewEngine();
+
+        var ex = Assert.ThrowsAny<Exception>(() => BuildCrew(engine, """
+            agentBuilder().name("a").role("R").goal("G").effort("extreme").build();
+            """));
+
+        Assert.Contains("low|medium|high", ex.Message);
+    }
+
+    [Fact]
     public void Adapt_tools_single_string_overload_works()
     {
         var engine = NewEngine();

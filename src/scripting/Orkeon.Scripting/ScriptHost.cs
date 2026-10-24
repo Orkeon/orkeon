@@ -78,12 +78,45 @@ public sealed partial class ScriptHost
     /// <param name="virtualPath">Virtual path resolved through <see cref="IFileSystemService"/>.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <param name="inputsJson">Optional JSON injected as a <c>globalThis.inputs</c> object before evaluation.</param>
-    public async Task<object?> RunFromFileAsync(
+    public Task<object?> RunFromFileAsync(
         string? physicalPath, string virtualPath, CancellationToken ct, string? inputsJson = null)
+        => RunCoreAsync(physicalPath, virtualPath, inputsJson, configure: null, ct);
+
+    /// <summary>
+    /// Same as <see cref="RunAsync(string, CancellationToken)"/> with a <c>console</c> global bound for this run:
+    /// <c>log</c>, <c>info</c>, <c>warn</c>, <c>error</c> and <c>debug</c> hand one line each to
+    /// <paramref name="consoleSink"/> (arguments joined by a space).
+    /// </summary>
+    /// <param name="virtualPath">Virtual path resolved through <see cref="IFileSystemService"/>.</param>
+    /// <param name="consoleSink">Receives every line the script prints.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public Task<object?> RunAsync(string virtualPath, Action<string> consoleSink, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(consoleSink);
+        return RunCoreAsync(null, virtualPath, null, engine => BindConsole(engine, consoleSink), ct);
+    }
+
+    private static void BindConsole(Jint.Engine engine, Action<string> sink)
+    {
+        var console = new Jint.Native.JsObject(engine);
+        foreach (var name in new[] { "log", "info", "warn", "error", "debug" })
+        {
+            console.Set(name, new Jint.Runtime.Interop.ClrFunction(engine, name, (_, args) =>
+            {
+                sink(string.Join(' ', args.Select(a => a.IsString() ? a.AsString() : a.ToString())));
+                return JsValue.Undefined;
+            }));
+        }
+
+        engine.SetValue("console", console);
+    }
+
+    private async Task<object?> RunCoreAsync(
+        string? physicalPath, string virtualPath, string? inputsJson, Action<Jint.Engine>? configure, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
 
-        var (engine, completion) = await EvaluateAsync(physicalPath, virtualPath, ct, inputsJson).ConfigureAwait(false);
+        var (engine, completion) = await EvaluateAsync(physicalPath, virtualPath, ct, inputsJson, configure).ConfigureAwait(false);
 
         // Convention: a script that ends with `globalThis.crew = crewBuilder()…build()` hands its crew to the host
         // instead of running it. This is the declarative shape's contract — `orkeon run` detects the handoff on the
@@ -177,7 +210,8 @@ public sealed partial class ScriptHost
     /// promise when needed. Returns the engine plus the final completion value.
     /// </summary>
     private async Task<(Jint.Engine engine, JsValue completion)> EvaluateAsync(
-        string? physicalPath, string virtualPath, CancellationToken ct, string? inputsJson = null)
+        string? physicalPath, string virtualPath, CancellationToken ct, string? inputsJson = null,
+        Action<Jint.Engine>? configure = null)
     {
         var source = await _fileSystem.TryReadAllTextAsync(virtualPath, ct).ConfigureAwait(false);
         if (source is null)
@@ -199,6 +233,7 @@ public sealed partial class ScriptHost
         LogExecutingScript(virtualPath, source.Length, js.Length);
 
         var engine = _engineFactory.Create();
+        configure?.Invoke(engine);
 
         var gate = Runtime.JsEngineGate.For(engine);
         await gate.WaitAsync(ct).ConfigureAwait(false);

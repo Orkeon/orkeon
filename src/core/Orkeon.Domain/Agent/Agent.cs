@@ -76,6 +76,9 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// </summary>
     public TimeSpan? MaxExecutionTime { get; private set; }
 
+    /// <summary>The virtual working root the agent runs under (RT-06); null when it declares none.</summary>
+    public string? WorkingRoot { get; internal set; }
+
     /// <summary>
     /// Gets the system template for prompts.
     /// </summary>

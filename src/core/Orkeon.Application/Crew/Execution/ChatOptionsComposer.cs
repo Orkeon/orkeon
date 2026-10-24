@@ -138,6 +138,8 @@ internal sealed class ChatOptionsComposer
         {
             options.AdditionalProperties ??= new AdditionalPropertiesDictionary();
             options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.Cache] = llm.Cache;
+            if (!string.IsNullOrWhiteSpace(llm.Cache.Ttl))
+                options.AdditionalProperties[Application.Common.DTOs.LlmChatOptionsKeys.CacheTtl] = llm.Cache.Ttl;
         }
     }
 

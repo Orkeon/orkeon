@@ -96,6 +96,25 @@ utilisateur, et la gestion native du system des fournisseurs (Anthropic `system`
 niveau, `cache_control`) ne se déclenchait jamais. Un message system au niveau conversation
 l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
+**Appels d'outils en lecture, en parallèle.** Les appels d'outils d'un même tour du modèle qui
+sont de classe lecture — l'outil déclare l'`Access` `Read` **et** son nom figure sur la liste
+d'autorisation explicite (`file_read`, `directory_read`, `directory_search`, `count_pattern`,
+`glob`, `grep`, `rag_search`, `codebase_*`, `symbol_*`, `index_status`, `node_outline`,
+`node_read` ; la session shell n'y figure pas) — s'exécutent en parallèle, dans la limite de
+`MaxParallelToolCalls` (4 par défaut) de
+[`Orkeon:Tools:ResultLimits`](../../reference/configuration.md#securitytoolresults). Un appel d'écriture, ou dont l'accès est `Unspecified`, est une
+barrière : une lecture placée après lui l'attend et voit son effet. Les résultats, et les messages
+d'outil renvoyés au modèle, gardent l'ordre des appels. Hooks : pour chaque groupe parallèle,
+`onToolCall` s'exécute d'abord pour toutes les lectures (séquentiellement, dans l'ordre des
+appels, sur le fil du moteur), puis les exécutions, puis `onToolResult` dans l'ordre des appels ;
+aucun callback ne s'exécute jamais en même temps qu'un autre. Quand un appel frère échoue, est
+annulé ou lève `BudgetExhaustedException`, les autres vont à leur terme et sont consignés, et la
+première erreur est relancée après le groupe. Les approbations que demandent les lectures
+concurrentes sont sérialisées (`SerialisingToolApprovalChannel`, enregistré par
+`AddConsoleToolApproval`). Les boucles natives d'une crew YAML et le dispatcher de chat se
+déploient de la même façon ; les sites en repli texte (le chemin texte de `ChatToolDispatcher` et
+`LegacyTextAgentLoop`) restent séquentiels.
+
 ## Permissions et budget
 
 Le garde de permissions est un service DI de premier rang, `IPermissionGate`
@@ -125,6 +144,22 @@ Trois ports portent ce qu'une conversation doit conserver entre deux exécutions
 - **`ICategoryMemoryStore`** — CRUD mémoire typé sur quatre catégories
   (user/project/feedback/reference).
 - **`ICostBudgetManager`** — télémétrie cumulée coût/tokens/appels.
+
+### Session durable et script de démarrage
+
+Dans le REPL, la session survit à un redémarrage. Avec `Orkeon:Cli:Session:Persist` activé (valeur par
+défaut du REPL quand la clé est absente), `FileSessionBufferService` décore le tampon en mémoire et
+conserve la dernière session de chaque projet — messages, état, identifiant et titre — dans
+`<SessionsDirectory>/<projet>-<hash>/last.json` via `IFileSystemService`. Le projet est la racine
+physique de l'espace de travail que le REPL monte en `/workspace` ; le fichier est lu une fois au
+démarrage, réhydraté sans revalidation, et écrit après chaque tour et à la sortie du REPL. Un fichier corrompu démarre une
+session vide. `session_store` lit le tampon réhydraté comme n'importe quel autre.
+
+`Orkeon:Cli:Session:StartScript` désigne un script exécuté une fois, l'hôte construit : un `.ork.ts`
+via l'hôte de scripts, tout autre fichier comme script shell. Sa sortie standard, son chemin et sa
+source sont stockés dans l'état sous `SessionStateKeys.SessionStartOutput` et placés avant le premier
+tour en texte libre, de sorte qu'un script de démarrage puisse nommer le travail en cours. Un script en
+échec est journalisé et ne bloque jamais le démarrage.
 
 `AddOrkeonSessionTools()` les expose aux scripts sous forme de six outils — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogués

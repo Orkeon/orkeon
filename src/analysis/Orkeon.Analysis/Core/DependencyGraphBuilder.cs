@@ -38,19 +38,41 @@ public sealed class DependencyGraphBuilder
         IReferenceResolver resolver, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(resolver);
-        return BuildDependenciesCoreAsync(resolver, ct);
+        return BuildDependenciesCoreAsync(resolver, [.. _files.Keys], ct);
+    }
+
+    /// <summary>
+    /// Builds the edges of <paramref name="files"/> only. The nodes of the unchanged files are
+    /// registered from the store (no source, no parse) so that references resolve against the
+    /// whole graph, and only the changed files are parsed.
+    /// </summary>
+    public Task<IReadOnlyList<RaggableEdge>> BuildForFilesAsync(
+        IEnumerable<string> files,
+        IEnumerable<RaggableNode> unchangedNodes,
+        IReferenceResolver resolver,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(unchangedNodes);
+        ArgumentNullException.ThrowIfNull(resolver);
+        foreach (var group in unchangedNodes.GroupBy(n => n.VirtualFilePath, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_files.ContainsKey(group.Key)) RegisterFile(group.Key, string.Empty, [.. group]);
+        }
+        return BuildDependenciesCoreAsync(resolver, [.. files], ct);
     }
 
     private async Task<IReadOnlyList<RaggableEdge>> BuildDependenciesCoreAsync(
-        IReferenceResolver resolver, CancellationToken ct)
+        IReferenceResolver resolver, IReadOnlyList<string> filePaths, CancellationToken ct)
     {
         var index = BuildGlobalIndex();
         var edges = new List<RaggableEdge>();
         var unresolvedCalls = new List<UnresolvedRef>();
 
-        foreach (var (filePath, ctx) in _files)
+        foreach (var filePath in filePaths)
         {
             ct.ThrowIfCancellationRequested();
+            var ctx = _files[filePath];
             var moduleNode = ctx.Nodes.FirstOrDefault(n => n.Level == NodeLevel.L2_Module);
             if (moduleNode is null) continue;
 
@@ -77,7 +99,7 @@ public sealed class DependencyGraphBuilder
 
         CollectImports(edges, index, filePath, moduleNode, parsed.Root, language);
         CollectInheritance(edges, index, ctx, parsed.Root, language);
-        CollectCalls(unresolvedCalls, ctx, parsed.Root, language);
+        CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, language);
     }
 
     private void CollectImports(
@@ -160,6 +182,7 @@ public sealed class DependencyGraphBuilder
     private void CollectCalls(
         List<UnresolvedRef> unresolved,
         FileContext ctx,
+        RaggableNode moduleNode,
         TsNode root,
         TsLanguage language)
     {
@@ -167,9 +190,15 @@ public sealed class DependencyGraphBuilder
         foreach (var call in calls)
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
-            if (ownerSymbol is null) continue;
             var name = ExtractCallName(call);
-            if (string.IsNullOrEmpty(name)) continue;
+            if (_adapter.LanguageName == "typescript")
+            {
+                ownerSymbol ??= moduleNode;
+                if (ownerSymbol is not null && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
+                    TestEdgeLinker.MarkTest(ownerSymbol);
+            }
+
+            if (ownerSymbol is null || string.IsNullOrEmpty(name)) continue;
 
             var location = new SourceLocation(
                 ownerSymbol.VirtualFilePath,
@@ -177,9 +206,22 @@ public sealed class DependencyGraphBuilder
                 call.EndPosition.Row + 1,
                 ComputeSha(call.Text ?? string.Empty));
 
+            TagCall(moduleNode, name, ownerSymbol.Id);
+
             var kind = call.Type == "new_expression" ? ReferenceKind.Instantiate : ReferenceKind.Call;
             unresolved.Add(new UnresolvedRef(ownerSymbol.Fqn, name, kind, location));
         }
+    }
+
+    internal const string CallsTagPrefix = "calls:";
+
+    // The names a file calls, with the ids of the symbols that call them, stay on its module node so an
+    // incremental reindex can relink the file when a changed file defines or drops one of them.
+    private static void TagCall(RaggableNode module, string name, string ownerId)
+    {
+        var key = CallsTagPrefix + name;
+        if (!module.TagsMutable.TryGetValue(key, out var owners)) module.TagsMutable[key] = ownerId;
+        else if (!owners.Split('\n').Contains(ownerId)) module.TagsMutable[key] = owners + '\n' + ownerId;
     }
 
     private static void ApplyInverseLinks(
@@ -199,7 +241,7 @@ public sealed class DependencyGraphBuilder
         }
     }
 
-    private static void LinkNodes(EdgeKind kind, RaggableNode fromNode, RaggableNode toNode)
+    internal static void LinkNodes(EdgeKind kind, RaggableNode fromNode, RaggableNode toNode)
     {
         switch (kind)
         {
@@ -311,6 +353,9 @@ public sealed class DependencyGraphBuilder
             }
         }
     }
+
+    private static bool IsBareIdentifierCall(TsNode call) =>
+        (call.GetChildForField("function") ?? call.GetChildForField("callee"))?.Type == "identifier";
 
     private static string ExtractCallName(TsNode call)
     {

@@ -131,6 +131,7 @@ public static class SettingsCategories
 
             ["Orkeon:Tools:Shell"] = Tools,
             ["Orkeon:Tools:Email"] = Tools,
+            ["Orkeon:Tools:ResultLimits"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
             ["MCP"] = Tools,
             ["RaggableTree"] = Tools,
@@ -144,6 +145,8 @@ public static class SettingsCategories
             ["Orkeon:Checkpointing"] = OrchestrationAndPersistence,
 
             ["Orkeon:Scripting"] = ScriptsAndConsole,
+            ["Orkeon:Scripting:AgentInstances"] = ScriptsAndConsole,
+            ["Orkeon:Scripting:AgentMemory"] = ScriptsAndConsole,
             ["Orkeon:Cli"] = ScriptsAndConsole,
 
             ["Orkeon:Host"] = ServiceHostAndA2A,

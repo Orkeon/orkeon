@@ -40,7 +40,7 @@ public class SubGraphToolTests
             new SubGraphRequest
             {
                 Seeds = TestGraph.Arr("/src::a"),
-                EdgeKinds = TestGraph.Arr(EdgeKind.Calls),
+                EdgeKinds = TestGraph.Arr("calls"),
                 Depth = 2,
                 IncludeMermaid = true,
             },
@@ -50,5 +50,23 @@ public class SubGraphToolTests
         Assert.Single(resp.Edges);
         Assert.Contains(resp.Nodes, n => n.Fqn == "/src::a" && n.IsSeed);
         Assert.NotNull(resp.MermaidFlowchart);
+    }
+
+    [Trait("BR", "RT-33")]
+    [Fact]
+    public async Task ShouldRefuseUnknownEdgeKindByName_WhenSubGraphAsked()
+    {
+        var a = TestGraph.Symbol("/src::a", "/src/a.ts");
+        using var tool = new SubGraphTool(TestGraph.Store([a], []));
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => tool.ExecuteTypedForTest(
+            new SubGraphRequest
+            {
+                Seeds = TestGraph.Arr("/src::a"),
+                EdgeKinds = TestGraph.Arr("nonsense"),
+            },
+            CancellationToken.None));
+
+        Assert.Contains("nonsense", ex.Message);
     }
 }

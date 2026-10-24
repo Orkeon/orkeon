@@ -31,8 +31,9 @@ public sealed class AgentRunScope : IAsyncDisposable
     private bool _began;
     private AgentRunScope? _previous;
 
-    private AgentRunScope(string? agentId, string? agentRole, AgentRunScope? parent)
+    private AgentRunScope(string? agentId, string? agentRole, AgentRunScope? parent, string? root = null)
     {
+        Root = root;
         RunId = Guid.NewGuid().ToString("N");
         AgentId = agentId;
         AgentRole = agentRole;
@@ -90,9 +91,19 @@ public sealed class AgentRunScope : IAsyncDisposable
     /// <param name="agentId">The agent's identifier, for diagnostics.</param>
     /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
     public static AgentRunScope Begin(string? agentId = null, string? agentRole = null)
+        => Begin(agentId, agentRole, root: null);
+
+    /// <summary>The virtual working root the run's file tools stay inside, or <c>null</c> when unrestricted.</summary>
+    public string? Root { get; }
+
+    /// <summary>Creates a scope with a virtual working root and makes it current.</summary>
+    /// <param name="agentId">The agent's identifier, for diagnostics.</param>
+    /// <param name="agentRole">The agent's role or name, for diagnostics.</param>
+    /// <param name="root">The virtual working root, or <c>null</c>.</param>
+    public static AgentRunScope Begin(string? agentId, string? agentRole, string? root)
     {
         var previous = s_current.Value;
-        var scope = new AgentRunScope(agentId, agentRole, previous)
+        var scope = new AgentRunScope(agentId, agentRole, previous, root)
         {
             _began = true,
             _previous = previous,
@@ -188,7 +199,7 @@ public sealed class AgentRunScope : IAsyncDisposable
     }
 
     /// <summary>
-    /// Restores the scope that was current before <see cref="Begin"/> (synchronously, so the
+    /// Restores the scope that was current before <see cref="Begin(string?, string?, string?)"/> (synchronously, so the
     /// calling flow sees it), then ends the run (<see cref="EndAsync"/>).
     /// </summary>
     public ValueTask DisposeAsync()

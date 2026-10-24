@@ -158,16 +158,24 @@ public sealed partial class ScriptHostFacade
 
         var safeName = SanitizeName(name);
         var inputsJson = ToInputsJson(input);
-        return _dispatch.postWork(safeName, $"crew:{safeName}", async ct =>
+        try
         {
-            var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
-            return new CommandResponse(
-                agent: "script-host",
-                intent: safeName,
-                success: output.ok,
-                payload: output.summary ?? string.Empty,
-                error: output.error);
-        });
+            return _dispatch.postWork(safeName, $"crew:{safeName}", async ct =>
+            {
+                var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
+                return new CommandResponse(
+                    agent: "script-host",
+                    intent: safeName,
+                    success: output.ok,
+                    payload: output.summary ?? string.Empty,
+                    error: output.error);
+            });
+        }
+        catch (ChainDepthExceededException refused)
+        {
+            // A bare CLR exception unwinds through the script (SCR-25): hand the refusal over as a JS throw.
+            throw new Jint.Runtime.JavaScriptException(new Jint.Native.JsString(refused.Message));
+        }
     }
 
     /// <summary>Lists the discovered crew names (directories holding a crew entry file).</summary>

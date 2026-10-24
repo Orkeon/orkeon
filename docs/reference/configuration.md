@@ -182,19 +182,19 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 46 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:TokenCounter`](#orkeontokencounter) | 50 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 30 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 70 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
-| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 21 |
+| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 28 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-68 sections, 371 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+71 sections, 384 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -277,6 +277,7 @@ the same way with its own keys.
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
+| `MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
 | `MaxTokens` | integer | — | The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know. |
 | `Model` | string | — | The model's name. Left out, the provider runs its own default model. |
@@ -285,6 +286,7 @@ the same way with its own keys.
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
 | `Profiles:<name>:Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
+| `Profiles:<name>:MaxRateLimitWait` | duration | `"00:05:00"` | The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing. |
 | `Profiles:<name>:MaxRetries` | integer | `10` | How many times a call that fails on a passing error is tried again; `0` never retries. |
 | `Profiles:<name>:MaxTokens` | integer | — | The most tokens an answer may hold: a pin. Left out, a request carries the documented maximum of its model, and 4096 for a model the catalogue does not know. |
 | `Profiles:<name>:Model` | string | — | The model's name. Left out, the provider runs its own default model. |
@@ -593,6 +595,8 @@ behavior. The caps on the number of calls are [`RateLimiting`](#ratelimiting).
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
+| `CustomPricings:<i>:CacheReadPricePerMillion` | number | — | Cost per million cache-read tokens; null when the model declares none. |
+| `CustomPricings:<i>:CacheWritePricePerMillion` | number | — | Cost per million cache-write tokens; null when the model declares none. |
 | `CustomPricings:<i>:CompletionPricePerMillion` | number | `0` | Cost per million completion (output) tokens in the specified currency. |
 | `CustomPricings:<i>:Currency` | string | `"USD"` | Currency for pricing (default: USD). |
 | `CustomPricings:<i>:EffectiveDate` | date-time | the moment the value is read | Date when this pricing became effective. |
@@ -1196,9 +1200,9 @@ prompt — see [Security](../architecture/security.md).
 
 Tool-result screening: `Policy` is `Warn` by default — tagged as data and reported —, `Block`
 withholds High/Critical, `None` passes everything; `TrustedTools` are added to the `email_*`
-defaults. The length bound is not configured here: one rule,
-`AgentDefaults.ResolveMaxToolResultLength`. Bound by `AddOrkeonInfrastructure()` and applied to
-every tool result by `IToolInvocationPipeline`.
+defaults. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
+(below). Bound by `AddOrkeonInfrastructure()` and applied to every tool result by
+`IToolInvocationPipeline`.
 
 <!-- settings:Security:ToolResults -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1302,6 +1306,30 @@ DLP policies and PII detection. Opt-in: `AddOrkeonDlp()`.
 ## Tools
 
 What the tools of an agent may do, and which servers and indexes they reach.
+
+### `Orkeon:Tools:ResultLimits`
+
+The cut of a tool result and the fan-out of a tool-call batch. `Limits` maps a tool name
+(case-insensitive) to the most characters of its result; it starts as the `AgentDefaults` map
+(`shell_command`: 10_000), each value is at least 1, and a tool absent from the map keeps its
+`AgentDefaults` bound. `MaxParallelToolCalls` (default `4`, at least 1) is the most read-class tool
+calls of one model turn that run at once ([parallel calls](../architecture/coding-agent-ts.md#an-agent-loop-in-a-crew--ctxllmact)).
+
+A result past its bound is cut and ends with a notice, `N chars omitted. …`, naming how much was
+dropped. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
+`ctx.llm.act` falls back on when no pipeline applies one. A tool that has already cut its own output
+(`shell_command` with its notice) flags the result as already bounded, and the pipeline does not cut
+it a second time. The `ResultBudget` of the Drive and
+Email tools is a separate bound, out of this setting.
+
+<!-- settings:Orkeon:Tools:ResultLimits -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Limits:<name>` | integer | — | The cut in characters, by tool name (case-insensitive). |
+| `MaxParallelToolCalls` | integer | `4` | The most tool calls of one batch that run at once. |
+<!-- /settings -->
 
 ### `Orkeon:Tools:Shell`
 
@@ -1615,6 +1643,31 @@ The Postgres state store (`CheckpointingExtensions`). Opt-in:
 
 The sandbox of `.ork.ts` scripts, the esbuild toolchain, and the interactive console.
 
+### `Orkeon:Scripting:AgentInstances`
+
+The transcript caps of the agent instances of a crew.
+
+<!-- settings:Orkeon:Scripting:AgentInstances -->
+**Read by**: `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `MaxTranscriptCharacters` | integer | `32000` | The most characters (sum of message contents) one instance keeps in its transcript. |
+| `MaxTranscriptMessages` | integer | `40` | The most messages one instance keeps in its transcript. |
+<!-- /settings -->
+
+### `Orkeon:Scripting:AgentMemory`
+
+The durable memory behind `ctx.memory.agent`.
+
+<!-- settings:Orkeon:Scripting:AgentMemory -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `RootDirectory` | string | `"/workspace/.orkeon/agent-memory"` | Root directory of the memory files. |
+<!-- /settings -->
+
 ### `Orkeon:Scripting:Limits`
 
 The Jint sandbox of every script engine (`Orkeon.Scripting`): about 100 MB of memory, a recursion
@@ -1664,6 +1717,7 @@ profile tighter than the scripts' own.
 | `Limits:ExecutionTimeout` | duration | `"00:05:00"` | Hard timeout for a single command invocation. Default: 5 minutes. |
 | `Limits:MemoryLimitBytes` | integer | `67108864` | Memory cap in bytes. Default: 64 MB (spec §8.1 CLI profile). |
 | `Limits:RecursionLimit` | integer | `100` | Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global). |
+| `MaxChainDepth` | integer | `8` | Maximum depth of a chain of async commands launched from completed handlers. |
 | `MaxScripts` | integer | `200` | Hard cap on the number of `*.cmd.ts` files the loader keeps; past it, the remaining files, in path order, are dropped with a warning. Default 200: above a real command set. |
 <!-- /settings -->
 
@@ -1703,6 +1757,9 @@ The context window used by `token_budget` (`TokenBudgetTool`) and the TUI.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `ContextWindowTokens` | integer | — | The model's context window, in tokens: a number above zero. Unset is `200000`. |
+| `Persist` | boolean | `false` | Whether the session is persisted per project under `SessionsDirectory`; off unless a host turns it on. |
+| `SessionsDirectory` | string | `"/workspace/.orkeon/sessions"` | Virtual directory holding one folder of persisted session per project. |
+| `StartScript` | string | — | The script run once at the REPL's start (`Orkeon:Cli:Session:StartScript`); unset runs none. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Tui`

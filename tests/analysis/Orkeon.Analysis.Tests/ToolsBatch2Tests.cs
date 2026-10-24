@@ -46,7 +46,7 @@ public class ToolsBatch2Tests
         {
             var tool = new DependencyGraphTool(store);
             var resp = await tool.ExecuteTypedForTest(
-                new DependencyGraphRequest { Scope = NodeLevel.L2_Module, EdgeKinds = [EdgeKind.Imports], IncludeMermaid = true },
+                new DependencyGraphRequest { Scope = NodeLevel.L2_Module, EdgeKinds = ["imports"], IncludeMermaid = true },
                 CancellationToken.None);
             Assert.NotNull(resp.MermaidFlowchart);
             Assert.Contains("flowchart TD", resp.MermaidFlowchart);
@@ -61,7 +61,7 @@ public class ToolsBatch2Tests
         var store = BuildSyntheticStore();
         using var tool = new SubGraphTool(store);
         var resp = await tool.ExecuteTypedForTest(
-            new SubGraphRequest { Seeds = ["a"], EdgeKinds = [EdgeKind.Calls], Depth = 2 },
+            new SubGraphRequest { Seeds = ["a"], EdgeKinds = ["calls"], Depth = 2 },
             CancellationToken.None);
         Assert.Contains(resp.Nodes, n => n.Fqn == "a" && n.IsSeed);
         Assert.Contains(resp.Nodes, n => n.Fqn == "c");

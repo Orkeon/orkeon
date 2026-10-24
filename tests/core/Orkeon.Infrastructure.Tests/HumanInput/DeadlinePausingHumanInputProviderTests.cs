@@ -1,4 +1,5 @@
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.HumanInput;
 using Orkeon.Infrastructure.HumanInput;
@@ -14,6 +15,8 @@ namespace Orkeon.Infrastructure.Tests.HumanInput;
 public sealed class DeadlinePausingHumanInputProviderTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    private static readonly string[] Expected = ["a", "b"];
 
     private static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);
 
@@ -65,5 +68,27 @@ public sealed class DeadlinePausingHumanInputProviderTests
 
         Assert.True(deadline.HasExpired);
         Assert.True(deadline.Token.IsCancellationRequested);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async System.Threading.Tasks.Task ShouldForwardMultiChoice_WhenDecoratorWrapsProvider()
+    {
+        var clock = new ManualTimeProvider();
+        var pending = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var inner = new MockHumanInputProvider { PendingMultiChoice = pending };
+        IHumanInputProvider provider = new DeadlinePausingHumanInputProvider(inner);
+        var context = NewContext();
+        using var deadline = TaskDeadline.Begin(Limit, clock, Ct);
+
+        var call = provider.GetMultiChoiceAsync(context, Ct);
+        await inner.MultiChoiceEntered.Task.WaitAsync(Polling.DefaultTimeout, Ct);
+        clock.Advance(Limit * 10);
+        pending.SetResult(Expected);
+        var answer = await call.WaitAsync(Polling.DefaultTimeout, Ct);
+
+        Assert.Equal(Expected, answer);
+        Assert.Same(context, inner.LastGetMultiChoiceContext);
+        Assert.False(deadline.HasExpired);
     }
 }

@@ -39,6 +39,9 @@ public sealed record IngestionReport
     /// </summary>
     public int SourcesReingested { get; init; }
 
+    /// <summary>Sources removed from the collection by <see cref="IngestionRequest.Prune"/>.</summary>
+    public int SourcesPruned { get; init; }
+
     /// <summary>Total wall-clock duration of the run.</summary>
     public TimeSpan Duration { get; init; }
 

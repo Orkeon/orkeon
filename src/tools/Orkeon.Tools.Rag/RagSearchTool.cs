@@ -6,6 +6,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Tools.Abstractions.Base;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Tools.Rag;
@@ -15,10 +16,10 @@ namespace Orkeon.Tools.Rag;
 /// the RAG subsystem's <see cref="IRagPipeline"/> or, when
 /// <c>collection = "raggable-tree"</c>, to the <see cref="IRaggableStore"/> semantic
 /// code search. Replaces the legacy Infrastructure <c>RagTool</c>
-/// (RAG-02/C5) with the same agent-facing name, schema, and output format
-/// (answer + <c>Sources:</c> block with scores).
+/// (RAG-02/C5) with the same agent-facing name; the result is
+/// <c>{answer, citations}</c>.
 /// </summary>
-public class RagSearchTool : IBaseTool
+public class RagSearchTool : ToolBase<RagSearchRequest, RagSearchResponse>
 {
     /// <summary>
     /// Collection queried when the agent names none and the host configures no
@@ -34,18 +35,18 @@ public class RagSearchTool : IBaseTool
     private readonly Func<string?> _defaultCollection;
 
     /// <inheritdoc />
-    public string Name => "rag_search";
+    public override string Name => "rag_search";
 
     /// <inheritdoc />
-    public string Description =>
+    public override string Description =>
         "Search knowledge bases and retrieve answers grounded in documents. " +
         "Use this when you need factual information from the agent's knowledge sources.";
 
     /// <summary>Querying the index changes nothing: a read for the permission gate (#126).</summary>
-    public ToolAccess Access => ToolAccess.Read;
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <inheritdoc />
-    public ToolSchema Schema => new(
+    public override ToolSchema Schema => new(
         Name: Name,
         Description: Description,
         Parameters: new Dictionary<string, ParameterSchema>
@@ -105,46 +106,38 @@ public class RagSearchTool : IBaseTool
     }
 
     /// <inheritdoc />
-    public Task<ToolCallResponse> CallAsync(
-        ToolCallRequest request, CancellationToken cancellationToken = default)
+    protected override Task<RagSearchResponse> ExecuteTypedAsync(
+        RagSearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return CallCoreAsync();
+        return ExecuteCoreAsync();
 
-        async Task<ToolCallResponse> CallCoreAsync()
+        async Task<RagSearchResponse> ExecuteCoreAsync()
         {
-            var question = request.Parameters.TryGetValue("question", out var q)
-                ? q?.ToString()
-                : null;
-
-            if (string.IsNullOrWhiteSpace(question))
-                return new ToolCallResponse(false, null, "question parameter is required");
-
-            var topK = request.Parameters.TryGetValue("top_k", out var k) && k is not null
-                ? Convert.ToInt32(k, CultureInfo.InvariantCulture)
-                : 3;
-
-            var collection = request.Parameters.TryGetValue("collection", out var c)
-                ? c?.ToString()
-                : null;
-
-            if (IsRaggableTreeCollection(collection) && _raggableStore is not null)
+            if (IsRaggableTreeCollection(request.Collection) && _raggableStore is not null)
             {
-                var hits = await SearchRaggableTreeAsync(question!, topK, cancellationToken).ConfigureAwait(false);
-                return new ToolCallResponse(true, FormatRaggableHits(hits), null);
+                var hits = await SearchRaggableTreeAsync(request.Question, request.TopK, cancellationToken).ConfigureAwait(false);
+                return new RagSearchResponse { Answer = FormatRaggableHits(hits) };
             }
 
             var answer = await _ragPipeline.QueryAsync(
                 new RagQuery
                 {
-                    Text = question!,
-                    Collection = string.IsNullOrWhiteSpace(collection) ? ResolveDefaultCollection() : collection!,
-                    TopN = topK,
+                    Text = request.Question,
+                    Collection = string.IsNullOrWhiteSpace(request.Collection) ? ResolveDefaultCollection() : request.Collection,
+                    TopN = request.TopK,
                 },
                 cancellationToken).ConfigureAwait(false);
 
-            return new ToolCallResponse(true, FormatAnswer(answer), null);
+            return new RagSearchResponse { Answer = answer.Text, Citations = answer.Citations };
         }
+    }
+
+    /// <inheritdoc />
+    protected override string? ValidateTypedRequest(RagSearchRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return string.IsNullOrWhiteSpace(request.Question) ? "question parameter is required" : null;
     }
 
     /// <summary>The configured default collection, else <see cref="DefaultCollection"/>.</summary>
@@ -152,54 +145,6 @@ public class RagSearchTool : IBaseTool
         => _defaultCollection() is { Length: > 0 } configured && !string.IsNullOrWhiteSpace(configured)
             ? configured
             : DefaultCollection;
-
-    /// <inheritdoc />
-    public async Task<ToolResult> ExecuteAsync(
-        string input, CancellationToken cancellationToken = default)
-    {
-        var request = new ToolCallRequest(
-            Name,
-            new Dictionary<string, object?> { ["question"] = input });
-
-        var response = await CallAsync(request, cancellationToken).ConfigureAwait(false);
-
-        return new ToolResult
-        {
-            Success = response.Success,
-            Output = response.Result?.ToString(),
-            Error = response.Error
-        };
-    }
-
-    /// <inheritdoc />
-    public bool ValidateInput(string input) => !string.IsNullOrWhiteSpace(input);
-
-    /// <summary>
-    /// Formats a <see cref="RagAnswer"/> the way the legacy tool did — the answer text,
-    /// then a <c>Sources:</c> block listing each citation with its score and a content
-    /// preview — so agent prompts keep working unchanged.
-    /// </summary>
-    private static string FormatAnswer(RagAnswer answer)
-    {
-        var response = new StringBuilder();
-        response.AppendLine(answer.Text);
-
-        if (answer.Citations.Count > 0)
-        {
-            response.AppendLine();
-            response.AppendLine("Sources:");
-            foreach (var citation in answer.Citations)
-            {
-                var content = citation.Snippet ?? string.Empty;
-                var preview = content.Length > 100 ? content[..100] + "..." : content;
-                response.AppendLine(string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"- [{citation.SourceId}] (score: {citation.Score:F2}): {preview}"));
-            }
-        }
-
-        return response.ToString();
-    }
 
     private static bool IsRaggableTreeCollection(string? collection)
         => string.Equals(collection, RaggableTreeCollection, StringComparison.OrdinalIgnoreCase);

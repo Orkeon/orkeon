@@ -23,6 +23,17 @@ public class MockHumanInputProvider : IHumanInputProvider
     public int GetChoiceCallCount { get; private set; }
     public HumanInputContext? LastGetChoiceContext { get; private set; }
 
+    public int GetMultiChoiceCallCount { get; private set; }
+    public HumanInputContext? LastGetMultiChoiceContext { get; private set; }
+    private IReadOnlyList<string> _multiChoiceResult = ["option1"];
+    public void SetMultiChoiceResult(IReadOnlyList<string> result) => _multiChoiceResult = result;
+
+    /// <summary>When set, GetMultiChoiceAsync answers with this pending result: the test releases it.</summary>
+    public TaskCompletionSource<IReadOnlyList<string>>? PendingMultiChoice { get; set; }
+
+    /// <summary>Completed when GetMultiChoiceAsync was entered.</summary>
+    public TaskCompletionSource MultiChoiceEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     public int IsAvailableCallCount { get; private set; }
 
     /// <summary>When set, GetInputAsync answers with this pending result: the test releases it.</summary>
@@ -60,6 +71,16 @@ public class MockHumanInputProvider : IHumanInputProvider
         GetChoiceCallCount++;
         LastGetChoiceContext = context;
         return Task.FromResult(_choiceResult);
+    }
+
+    public Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default)
+    {
+        GetMultiChoiceCallCount++;
+        LastGetMultiChoiceContext = context;
+        MultiChoiceEntered.TrySetResult();
+        if (PendingMultiChoice is { } pending)
+            return pending.Task;
+        return Task.FromResult(_multiChoiceResult);
     }
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)

@@ -92,7 +92,8 @@ declare global {
 
     /**
      * Thrown by `ctx.llm.act` when the agent's `.tools([...])` names a tool the host does not
-     * offer — a typo is never run as a loop without that tool. Names match case-insensitively.
+     * offer — a typo is never run as a loop without that tool. Also thrown by the `tools` option
+     * of `act` for a name the agent does not hold. Names match case-insensitively.
      */
     class UnknownToolError extends Error implements HostError {
         /** The agent whose `.tools([...])` names them. */

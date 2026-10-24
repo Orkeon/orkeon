@@ -184,7 +184,7 @@ public sealed class ScriptHostFacadeTests : IDisposable
         var facade = BuildFacade(dispatch);
 
         string ticket;
-        using (CommandDispatchService.BeginCommand("assistant", CancellationToken.None))
+        using (dispatch.BeginCommand("assistant", CancellationToken.None))
         {
             ticket = facade.runCrewAsync("echo", JsObject("{ msg: 'async' }"));
         }
@@ -269,5 +269,28 @@ public sealed class ScriptHostFacadeTests : IDisposable
         Assert.Throws<TimeoutException>(() =>
             ScriptHostFacade.WaitAnsweringApprovals(never.Task, TimeSpan.FromMilliseconds(200), channel));
         Assert.Equal("", console.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-20")]
+    public void ShouldRefuseChain_WhenDepthExceedsLimit()
+    {
+        var dispatch = new CommandDispatchService(
+            new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance),
+            new AgentCommandDirectory(),
+            new CommandInstanceRegistry(),
+            NullLogger<CommandDispatchService>.Instance,
+            maxChainDepth: 2);
+        Task<CommandResponse> Work(CancellationToken _) => Task.FromResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
+
+        using (dispatch.BeginCommand("assistant", CancellationToken.None, parentDepth: 1))
+            Assert.False(string.IsNullOrEmpty(dispatch.postWork("below", "crew:x", Work)));
+
+        using var scope = dispatch.BeginCommand("assistant", CancellationToken.None, parentDepth: 2);
+        var ex = Assert.Throws<ChainDepthExceededException>(() => dispatch.postWork("at-limit", "crew:x", Work));
+
+        Assert.Equal(2, ex.Depth);
+        Assert.Equal(2, ex.Limit);
+        Assert.Contains("2", ex.Message, StringComparison.Ordinal);
     }
 }

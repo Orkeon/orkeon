@@ -439,7 +439,63 @@ public sealed class GitHubToolTests : IDisposable
         toolWithoutToken.Dispose();
     }
 
+    // ── create_pr ────────────────────────────────────────────────────────
+
+    [Fact]
+    [Trait("BR", "RT-17")]
+    public async Task ShouldReturnPrUrl_WhenCreatePrSucceeds()
+    {
+        SetupResponse(HttpStatusCode.Created,
+            """{"number":7,"title":"Add X","html_url":"https://github.com/octocat/hello/pull/7","state":"open","body":"Details","created_at":"2026-03-27T08:00:00Z"}""");
+
+        var result = await CallPrAsync("create_pr", baseBranch: "main", head: "feature/x");
+
+        Assert.True(result.Success);
+        Assert.NotNull(_mockHandler.LastRequest);
+        Assert.Equal(HttpMethod.Post, _mockHandler.LastRequest.Method);
+        Assert.Equal("https://api.github.com/repos/octocat/hello/pulls",
+            _mockHandler.LastRequest.RequestUri?.ToString());
+        var sent = await _mockHandler.LastRequest.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var sentDoc = System.Text.Json.JsonDocument.Parse(sent);
+        Assert.Equal("main", sentDoc.RootElement.GetProperty("base").GetString());
+        Assert.Equal("feature/x", sentDoc.RootElement.GetProperty("head").GetString());
+        Assert.Equal("Add X", sentDoc.RootElement.GetProperty("title").GetString());
+        Assert.Equal("Details", sentDoc.RootElement.GetProperty("body").GetString());
+
+        using var resultDoc = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(result.Result));
+        var first = resultDoc.RootElement.EnumerateObject()
+            .First(p => string.Equals(p.Name, "items", StringComparison.OrdinalIgnoreCase)).Value[0];
+        var url = first.EnumerateObject()
+            .First(p => string.Equals(p.Name, "url", StringComparison.OrdinalIgnoreCase)).Value.GetString();
+        Assert.Equal("https://github.com/octocat/hello/pull/7", url);
+    }
+
+    [Theory]
+    [Trait("BR", "RT-17")]
+    [InlineData(null, "feature/x", "Base")]
+    [InlineData("main", null, "Head")]
+    public async Task ShouldRefuseCreatePr_WhenBaseOrHeadMissing(string? baseBranch, string? head, string field)
+    {
+        var result = await CallPrAsync("create_pr", baseBranch, head);
+
+        Assert.False(result.Success);
+        Assert.Equal($"{field} is required for action 'create_pr'", result.Error);
+        Assert.Equal(0, _mockHandler.SendCallCount);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    private async Task<ToolCallResponse> CallPrAsync(string action, string? baseBranch, string? head)
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            ["action"] = action, ["owner"] = "octocat", ["repo"] = "hello",
+            ["title"] = "Add X", ["body"] = "Details"
+        };
+        if (baseBranch is not null) parameters["base"] = baseBranch;
+        if (head is not null) parameters["head"] = head;
+        return await _tool.CallAsync(new ToolCallRequest(ToolName: "github", Parameters: parameters));
+    }
 
     private void SetupResponse(HttpStatusCode statusCode, string content)
     {

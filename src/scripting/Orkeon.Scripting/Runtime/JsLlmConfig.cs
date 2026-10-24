@@ -21,7 +21,7 @@ namespace Orkeon.Scripting.Runtime;
 #pragma warning disable CS1591 // JS-interop mirror of LlmConfig in Typings/llm.d.ts; that declaration is the contract scripts read.
 public sealed class JsLlmConfig
 {
-    private static readonly string[] s_overridable = ["model", "temperature", "maxTokens", "responseFormat"];
+    private static readonly string[] s_overridable = ["model", "temperature", "maxTokens", "responseFormat", "effort"];
 
     public string provider { get; }
     public string model { get; }
@@ -71,7 +71,12 @@ public sealed class JsLlmConfig
         var newMax = overrides.Get("maxTokens");
         var newResponseFormat = overrides.Get("responseFormat");
 
+        var newEffort = overrides.Get("effort");
+
         var domain = newModel.IsString() ? Domain with { Model = RequireModel(newModel.AsString()) } : Domain;
+
+        if (newEffort.IsString())
+            domain = domain with { Thinking = ThinkingAt(newEffort.AsString()) };
 
         // ResponseFormat sits on Domain (consumed by adapter → provider). 'text' = clear.
         if (newResponseFormat.IsString())
@@ -103,6 +108,15 @@ public sealed class JsLlmConfig
         throw new InvalidScriptException(
             "LlmConfig.with(...) maxTokens must be an integer between 1 and 2147483647; omit it to keep the inherited cap.");
     }
+
+    /// <summary>The thinking setting every <c>effort</c> option builds: enabled, at the validated level.</summary>
+    internal static LlmThinkingConfig ThinkingAt(string? effort)
+        => new() { Enabled = true, Effort = RequireEffort(effort) };
+
+    internal static string RequireEffort(string? value)
+        => value is "low" or "medium" or "high"
+            ? value
+            : throw new InvalidScriptException($"effort must be low|medium|high, not '{value}'.");
 
     internal static string RequireModel(string? value)
         => string.IsNullOrWhiteSpace(value)

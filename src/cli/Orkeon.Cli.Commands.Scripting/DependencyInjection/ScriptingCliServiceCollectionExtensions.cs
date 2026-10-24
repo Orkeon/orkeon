@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
@@ -47,7 +48,7 @@ public static class ScriptingCliServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(sp => new ConsoleToolApprovalChannel(() => sp.GetRequiredService<IConsoleAdapter>()));
-        services.TryAddSingleton<IToolApprovalChannel>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
+        services.TryAddSingleton<IToolApprovalChannel>(sp => new SerialisingToolApprovalChannel(sp.GetRequiredService<ConsoleToolApprovalChannel>()));
         services.TryAddSingleton<IReplLineInterceptor>(sp => sp.GetRequiredService<ConsoleToolApprovalChannel>());
         // The session's rules, read by the gate before the mode and set by commands (ctx.services.get("permissions")).
         services.TryAddSingleton<SessionToolPermissionRules>();
@@ -74,6 +75,9 @@ public static class ScriptingCliServiceCollectionExtensions
             services.AddOptions<ScriptCommandsConfiguration>()
                 .Bind(configuration.GetSection(ScriptCommandsConfiguration.SectionName))
                 .DeclareSettings(ScriptCommandsConfiguration.SectionName);
+            services.AddOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>()
+                .Bind(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName))
+                .DeclareSettings(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName);
         }
         else
         {
@@ -152,7 +156,11 @@ public static class ScriptingCliServiceCollectionExtensions
                     DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
                     ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                     LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
-                });
+                    AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
+                    ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                    AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
+                },
+                ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });
 
         // Transpiler: fall back to PassThrough when esbuild isn't configured.
@@ -195,7 +203,8 @@ public static class ScriptingCliServiceCollectionExtensions
                 new AgentCommandDirectory(),
                 new CommandInstanceRegistry(),
                 lf.CreateLogger<CommandDispatchService>(),
-                sp.GetService<ProgressBroker>());
+                sp.GetService<ProgressBroker>(),
+                sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.MaxChainDepth);
         });
 
         // The loader needs a live service locator (so ctx.services.get("commands") resolves)

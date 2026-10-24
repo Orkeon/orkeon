@@ -1,6 +1,7 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Constants.Llm;
@@ -23,9 +24,13 @@ internal sealed class ChatToolDispatcher
     private readonly ILogger _logger;
     private readonly ILogger? _verboseLogger;
     private readonly IToolInvocationPipeline _toolInvocation;
+    private readonly int _maxParallelToolCalls;
 
-    internal ChatToolDispatcher(ILogger logger, IToolInvocationPipeline toolInvocation, ILogger? verboseLogger = null)
+    internal ChatToolDispatcher(
+        ILogger logger, IToolInvocationPipeline toolInvocation, ILogger? verboseLogger = null,
+        IOptions<ToolResultLimitsOptions>? limits = null)
     {
+        _maxParallelToolCalls = (limits?.Value ?? new ToolResultLimitsOptions()).MaxParallelToolCalls;
         _logger = logger;
         _verboseLogger = verboseLogger;
         _toolInvocation = toolInvocation;
@@ -165,25 +170,31 @@ internal sealed class ChatToolDispatcher
         int iteration,
         CancellationToken cancellationToken)
     {
-        foreach (var fc in functionCalls)
-        {
-            ExecutionLog.LogExecutingTool(_logger, fc.Name, iteration + 1);
+        Domain.Tools.IBaseTool? Find(FunctionCallContent fc) => callContext.AvailableTools.FirstOrDefault(t => t.Name == fc.Name);
 
-            var tool = callContext.AvailableTools.FirstOrDefault(t => t.Name == fc.Name);
-            if (tool is null)
+        var outcomes = await ToolCallScheduler.RunAsync(
+            functionCalls,
+            fc => Find(fc) is { } tool && ToolCallScheduler.IsParallelRead(tool.Name, tool.Access),
+            (fc, ct) =>
             {
-                HandleMissingTool(fc, callContext.Agent, callContext.Messages);
-                continue;
-            }
-
-            await ExecuteAndRecordToolCallAsync(tool, fc, callContext.Messages, callContext.ToolsUsed, callContext.Agent, callContext.Task, cancellationToken).ConfigureAwait(false);
+                ExecutionLog.LogExecutingTool(_logger, fc.Name, iteration + 1);
+                return Find(fc) is { } tool
+                    ? ExecuteAndRecordToolCallAsync(tool, fc, callContext.Agent, callContext.Task, ct)
+                    : System.Threading.Tasks.Task.FromResult(HandleMissingTool(fc, callContext.Agent));
+            },
+            _maxParallelToolCalls,
+            cancellationToken).ConfigureAwait(false);
+        foreach (var outcome in outcomes)
+        {
+            callContext.Messages.Add(outcome.Message);
+            if (outcome.Usage is not null) callContext.ToolsUsed.Add(outcome.Usage);
         }
     }
 
-    private void HandleMissingTool(FunctionCallContent fc, DomainAgent agent, List<ChatMessage> messages)
+    private ToolCallOutcome<ChatMessage> HandleMissingTool(FunctionCallContent fc, DomainAgent agent)
     {
         ExecutionLog.LogToolNotFound(_logger, fc.Name, agent.Role);
-        messages.Add(BuildMissingToolMessage(fc.CallId, fc.Name));
+        return new(BuildMissingToolMessage(fc.CallId, fc.Name), null);
     }
 
     // OpenAI-compat strict providers (DeepSeek included) reject the next request with HTTP 400
@@ -264,11 +275,9 @@ internal sealed class ChatToolDispatcher
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any tool failure is recorded as a failed ToolUsage and returned to the LLM as a FunctionResultContent error so one tool cannot crash the agent loop.")]
-    private async System.Threading.Tasks.Task ExecuteAndRecordToolCallAsync(
+    private async System.Threading.Tasks.Task<ToolCallOutcome<ChatMessage>> ExecuteAndRecordToolCallAsync(
         Domain.Tools.IBaseTool tool,
         FunctionCallContent fc,
-        List<ChatMessage> messages,
-        List<Domain.Tools.ToolUsage> toolsUsed,
         DomainAgent agent,
         CrewTask task,
         CancellationToken cancellationToken)
@@ -301,12 +310,11 @@ internal sealed class ChatToolDispatcher
             {
                 toolActivity?.SetTag(GenAiAttributes.ErrorType, "guardian_blocked");
                 toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, outcome.ConversationText);
-                messages.Add(new ChatMessage(ChatRole.Tool,
-                    [new FunctionResultContent(fc.CallId, outcome.ConversationText)]));
-                toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
-                    new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
-                    toolDuration, outcome.ConversationText));
-                return;
+                return new(new ChatMessage(ChatRole.Tool,
+                    [new FunctionResultContent(fc.CallId, outcome.ConversationText)]),
+                    Domain.Tools.ToolUsage.CreateFailure(
+                        new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
+                        toolDuration, outcome.ConversationText));
             }
 
             var result = outcome.Response!;
@@ -327,16 +335,15 @@ internal sealed class ChatToolDispatcher
                     truncatedResult);
             }
 
-            messages.Add(new ChatMessage(ChatRole.Tool,
-                [new FunctionResultContent(fc.CallId, contextResultText)]));
-
-            toolsUsed.Add(Domain.Tools.ToolUsage.CreateSuccess(
-                new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
-                toolDuration,
-                Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
-                    .AddInput(System.Text.Json.JsonSerializer.Serialize(parameters))
-                    .AddOutput(resultText)
-                    .Build()));
+            return new(new ChatMessage(ChatRole.Tool,
+                [new FunctionResultContent(fc.CallId, contextResultText)]),
+                Domain.Tools.ToolUsage.CreateSuccess(
+                    new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration,
+                    Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
+                        .AddInput(System.Text.Json.JsonSerializer.Serialize(parameters))
+                        .AddOutput(resultText)
+                        .Build()));
         }
         catch (Exception ex)
         {
@@ -345,12 +352,11 @@ internal sealed class ChatToolDispatcher
             toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
             ExecutionLog.LogToolCallResult(turnLogger, tool.Name, toolDuration.TotalMilliseconds, "ERROR", ex.Message);
 
-            messages.Add(new ChatMessage(ChatRole.Tool,
-                [new FunctionResultContent(fc.CallId, $"Error: {ex.Message}")]));
-
-            toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
-                new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
-                toolDuration, ex.Message));
+            return new(new ChatMessage(ChatRole.Tool,
+                [new FunctionResultContent(fc.CallId, $"Error: {ex.Message}")]),
+                Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, ex.Message));
         }
     }
 

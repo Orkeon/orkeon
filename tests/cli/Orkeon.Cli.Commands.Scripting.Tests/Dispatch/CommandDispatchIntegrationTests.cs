@@ -230,7 +230,7 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
         RegisterEchoAgent(service);
 
         string earlier;
-        using (CommandDispatchService.BeginCommand("index", CancellationToken.None, timeout: null, promptLine: "/index"))
+        using (service.BeginCommand("index", CancellationToken.None, timeout: null, promptLine: "/index"))
         {
             earlier = service.postWork("index", "crew:x", async ct =>
             {

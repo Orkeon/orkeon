@@ -777,8 +777,21 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             GrammarGbnf = structuredOutput.Grammar ?? (structuredOutput.SchemaFormat is null ? baseConfig.GrammarGbnf : null),
             Thinking = ExtractThinkingFromOptions(options) ?? baseConfig.Thinking,
             ResponseFormat = ExtractResponseFormatFromOptions(options) ?? structuredOutput.SchemaFormat ?? baseConfig.ResponseFormat,
-            Cache = ExtractCacheFromOptions(options) ?? baseConfig.Cache
+            Cache = WithCallTtl(ExtractCacheFromOptions(options) ?? baseConfig.Cache, options)
         };
+    }
+
+    /// <summary>
+    /// Applies the per-call TTL under <see cref="LlmChatOptionsKeys.CacheTtl"/>; it wins over the
+    /// configured one. Absent, the cache configuration is returned as is.
+    /// </summary>
+    private static LlmCacheConfig? WithCallTtl(LlmCacheConfig? cache, ChatOptions options)
+    {
+        if (options.AdditionalProperties is null
+            || !options.AdditionalProperties.TryGetValue(LlmChatOptionsKeys.CacheTtl, out var raw)
+            || raw is not string ttl || string.IsNullOrWhiteSpace(ttl))
+            return cache;
+        return (cache ?? new LlmCacheConfig()) with { Ttl = ttl };
     }
 
     /// <summary>

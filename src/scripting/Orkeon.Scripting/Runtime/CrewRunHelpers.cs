@@ -94,6 +94,21 @@ internal sealed record CrewRunHelpers
     /// <summary><c>(scope, hookName, err)</c> — logs a crew hook's own failure.</summary>
     public required Action<CrewRunScope, string, JsValue> logHookFailure { get; init; }
 
+    /// <summary><c>()</c> — a permit of the crew-wide concurrency gate, not yet taken.</summary>
+    public required Func<GatePermit> openPermit { get; init; }
+
+    /// <summary><c>(permit, options) =&gt; Task</c> — takes the permit from the crew-wide concurrency gate, cancelled by <c>options.signal</c>.</summary>
+    public required Func<GatePermit, JsValue, Task<JsValue>> gateAcquire { get; init; }
+
+    /// <summary><c>(permit)</c> — hands the crew-wide concurrency permit back if held.</summary>
+    public required Action<GatePermit> gateRelease { get; init; }
+
+    /// <summary><c>(id) =&gt; options</c> — starts a follow-up run of an agent instance: the options <c>runChild</c> takes, or a refusal.</summary>
+    public required Func<string, JsValue> beginSend { get; init; }
+
+    /// <summary><c>(id, succeeded)</c> — ends the follow-up run begun by <c>beginSend</c>.</summary>
+    public required Action<string, bool> finishInstance { get; init; }
+
     /// <summary><c>(scope, agentOrName) =&gt; agent</c> — <c>runAgent</c>'s target, with the membership and re-entrance checks.</summary>
     public required Func<CrewRunScope, JsValue, JsAgent> resolveAgent { get; init; }
 }

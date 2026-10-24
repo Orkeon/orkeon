@@ -69,6 +69,7 @@ agents:
     maxIter: int          # default: 20 — the turns the agent may take on a task (C# and .ork.ts too). 0 or less fails the load
     maxRpm: int           # default: none — at most N model requests per minute for this agent; one more waits its turn. The host's RateLimiting:AgentRequestsPerMinute bounds it too, the stricter winning. 0 or less fails the load
     maxExecutionTime: int # default: none — the seconds a task may take on this agent (alias max_execution_time); 0 or less, or above 4294967 (about 49.7 days), fails the load, and so does a limit on the hierarchical manager
+    working_root: string  # default: none — a virtual path (alias workingRoot, C# AgentBuilder.WorkingRoot) under a mount that confines this agent's file tools and shell_command to it; refused at run start, naming the root, when no mount holds it
     verbose: bool         # default: false — detailed logs for this agent (tool calls, tool results, model responses, at Information, category Orkeon.Verbose)
     llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
       profile: string     # Host LLM profile (Llm:Profiles:<name>): the provider this agent runs on; "default" = the Llm section

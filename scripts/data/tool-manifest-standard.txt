@@ -1,7 +1,10 @@
 # Runtime tool manifest — standard `orkeon` CLI registry (one tool name per line).
 # Regenerate with neutral settings (an empty appsettings.json: no MCP server or API key of this machine may add a tool): dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run --list-tools --settings <empty appsettings.json> 2>/dev/null, then put these three header lines back on top.
 # Consumed by scripts/lint-example-configs.py as the manifest for every category.
+access_cost
+affected_tests
 arcadedb_query
+batch_anchors
 cache_search
 codebase_map
 codebase_search
@@ -12,6 +15,8 @@ database_schema
 dependency_graph
 directory_read
 directory_search
+documented_in
+documents_of
 docx_reader
 docx_writer
 drive_accounts
@@ -25,6 +30,7 @@ drive_read
 drive_search
 drive_share
 drive_upload
+edit_batch
 email_accounts
 email_create_folder
 email_delete
@@ -40,10 +46,13 @@ email_search
 email_send
 file_read
 file_write
+edit_file
 flow_trace
 get_last_value
 github
+glob
 graph_schema
+grep
 http_api
 human_input
 image_generation
@@ -61,7 +70,12 @@ mdx_search
 memory_store
 mongodb_query
 mongodb_schema
+node_ensure
+node_insert
 mysql_query
+node_outline
+node_read
+node_replace
 package_summary
 pdf_reader
 pdf_search
@@ -84,6 +98,8 @@ session_store
 shell_command
 sqlserver_query
 statement_query
+structural_rewrite
+structural_search
 sub_graph
 symbol_detail
 symbol_source

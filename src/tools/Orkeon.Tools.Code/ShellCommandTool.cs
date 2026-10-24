@@ -1,7 +1,9 @@
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Code.Confinement;
 using Orkeon.Tools.Code.Constants.Shell;
 using Orkeon.Tools.Code.Sessions;
@@ -15,7 +17,7 @@ namespace Orkeon.Tools.Code;
 public sealed record ShellCommandRequest
 {
     /// <summary>Gets the shell command to execute.</summary>
-    [FieldSchema(Description = "Shell command to execute", IsRequired = true, Example = "echo hello")]
+    [FieldSchema(Description = "Shell command to execute; required by the run and start_job actions", IsRequired = true, Example = "echo hello")]
     public string Command { get; init; } = "";
 
     /// <summary>
@@ -38,11 +40,34 @@ public sealed record ShellCommandRequest
     /// <summary>Gets the timeout in seconds.</summary>
     [FieldSchema(Description = "Timeout in seconds", IsRequired = false, Default = "30")]
     public int TimeoutSeconds { get; init; } = ShellDefaults.DefaultTimeoutSeconds;
+
+    /// <summary>
+    /// Gets the action: <c>run</c> (default) runs the command and waits for it; <c>start_job</c> starts it
+    /// detached with its output in a log file; <c>job_status</c> and <c>job_tail</c> read a job started
+    /// earlier in the same run.
+    /// </summary>
+    [FieldSchema(
+        Description = "run (default): run the command and wait; start_job: start it detached, output to a log file; job_status: running or exit code of a job; job_tail: last lines of a job's log",
+        IsRequired = false,
+        Default = "run",
+        Example = "start_job")]
+    public string Action { get; init; } = ShellCommandTool.RunAction;
+
+    /// <summary>Gets the id of the job to inspect, for <c>job_status</c> and <c>job_tail</c>.</summary>
+    [FieldSchema(Description = "Id returned by start_job, for job_status and job_tail", IsRequired = false, Example = "3f9a1c0b27d4")]
+    public string JobId { get; init; } = "";
+
+    /// <summary>Gets how many lines <c>job_tail</c> returns.</summary>
+    [FieldSchema(Description = "Lines job_tail returns from the end of the log", IsRequired = false, Default = "50")]
+    public int TailLines { get; init; } = ShellCommandTool.DefaultTailLines;
 }
 
 /// <summary>Strongly-typed response for <see cref="ShellCommandTool"/>.</summary>
-public sealed record ShellCommandResponse
+public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResponse
 {
+    /// <summary>Gets whether the shell cut its own output.</summary>
+    public bool AlreadyBounded { get; init; }
+
     /// <summary>Gets the process exit code.</summary>
     [ReturnSchema(Description = "Process exit code", Example = 0)]
     public int ExitCode { get; init; }
@@ -58,6 +83,22 @@ public sealed record ShellCommandResponse
     /// <summary>Gets whether the command completed within the timeout.</summary>
     [ReturnSchema(Description = "Whether the command completed within the timeout", Example = true)]
     public bool Completed { get; init; }
+
+    /// <summary>Gets the id of the job, for the job actions.</summary>
+    [ReturnSchema(Description = "Job id, for the job actions", Example = "3f9a1c0b27d4")]
+    public string JobId { get; init; } = "";
+
+    /// <summary>Gets the virtual path of the job's log.</summary>
+    [ReturnSchema(Description = "Virtual path of the job's log file", Example = "/output/jobs/3f9a1c0b27d4.log")]
+    public string OutputPath { get; init; } = "";
+
+    /// <summary>Gets the job's status: <c>running</c> or <c>exited</c>.</summary>
+    [ReturnSchema(Description = "Job status: running or exited", Example = "running")]
+    public string Status { get; init; } = "";
+
+    /// <summary>Gets the last lines of the job's log, for <c>job_tail</c>.</summary>
+    [ReturnSchema(Description = "Last lines of the job's log", Example = "done")]
+    public string Tail { get; init; } = "";
 }
 
 // ── Tool implementation ────────────────────────────────────────────────
@@ -181,9 +222,22 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
 
+    /// <summary>The action that runs a command and waits for it (the default).</summary>
+    public const string RunAction = "run";
+
+    /// <summary>The lines <c>job_tail</c> returns when the request names none.</summary>
+    public const int DefaultTailLines = 50;
+
+    private const string StartJobAction = "start_job";
+    private const string JobStatusAction = "job_status";
+    private const string JobTailAction = "job_tail";
+    private const int MaxTailLines = 500;
+    private const int MaxTailBytes = 64 * 1024;
+
     private readonly HashSet<string> _allowedCommands;
     private readonly List<string> _blockedPatterns;
     private readonly IFileSystemService _fileSystem;
+    private readonly int _outputLimit;
 
     /// <summary>
     /// True when interpreters were re-enabled via opt-in AND no explicit custom
@@ -331,16 +385,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <paramref name="allowInterpreters"/> nor the git read-only restriction. An empty
     /// enumerable is harmless (union of nothing).
     /// </param>
+    /// <param name="limits">The configured result cuts; the <c>shell_command</c> entry sets the output limit, the default map's (<see cref="MaxOutputLength"/>) otherwise.</param>
     public ShellCommandTool(
         IFileSystemService fileSystem,
         IEnumerable<string>? allowedCommands = null,
         IEnumerable<string>? blockedPatterns = null,
         ILogger<ShellCommandTool>? logger = null,
         bool allowInterpreters = false,
-        IEnumerable<string>? extraAllowedCommands = null)
+        IEnumerable<string>? extraAllowedCommands = null,
+        Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null)
         : base(logger)
     {
         ArgumentNullException.ThrowIfNull(fileSystem);
+        _outputLimit = (limits ?? new Orkeon.Domain.Tools.ToolResultLimitsOptions()).ResolveFor("shell_command");
         _fileSystem = fileSystem;
         _interpretersAllowed = allowInterpreters && allowedCommands is null;
         _allowedCommands = BuildAllowedCommands(allowedCommands, allowInterpreters);
@@ -375,10 +432,33 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return set;
     }
 
+    /// <summary>A job action names a job, not a command: the schema's required command is met for it.</summary>
+    protected override ValidationResult ValidateParameters(Dictionary<string, object?> parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (parameters.TryGetValue("action", out var raw) && ActionName(raw) is JobStatusAction or JobTailAction && !parameters.ContainsKey("command"))
+            parameters = new Dictionary<string, object?>(parameters) { ["command"] = "" };
+        return base.ValidateParameters(parameters);
+    }
+
+    /// <summary>The action as a string, whether it arrives as a CLR string or as a JSON string element.</summary>
+    private static string? ActionName(object? value) => value switch
+    {
+        string text => text,
+        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element => element.GetString(),
+        _ => null,
+    };
+
     /// <inheritdoc />
     protected override string? ValidateTypedRequest(ShellCommandRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var action = string.IsNullOrWhiteSpace(request.Action) ? RunAction : request.Action;
+        if (action is JobStatusAction or JobTailAction)
+            return ShellJobRegistry.Current()?.Find(request.JobId) is null ? $"Unknown job '{request.JobId}' in this run" : null;
+        if (action is not (RunAction or StartJobAction))
+            return $"Unknown action '{request.Action}': run, start_job, job_status or job_tail";
+
         if (string.IsNullOrWhiteSpace(request.Command))
             return "Command cannot be empty";
 
@@ -440,10 +520,39 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (argumentDenial is not null)
             return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
 
+        if (!string.IsNullOrWhiteSpace(request.WorkingDirectory)
+            && AgentRootGuard.Check(_fileSystem, request.WorkingDirectory) is { } workingDirectoryDenial)
+            return $"WorkingDirectory denied: {workingDirectoryDenial.DenialReason}";
+
+        // A root whose rights are None grants nothing to bind: the command does not run (RT-06).
+        if (AgentRunScope.Current?.Root is { } agentRoot
+            && _fileSystem.ResolveAndValidate(agentRoot, FileAccessRights.None).IsAllowed
+            && RightsAt(agentRoot) == FileAccessRights.None)
+            return $"WorkingDirectory denied: the agent working root '{agentRoot}' grants no access.";
+
         if (request.TimeoutSeconds <= 0)
             return "Timeout must be greater than 0";
 
-        return null;
+        return action == StartJobAction ? ValidateStartJob() : null;
+    }
+
+    /// <summary>Null when a job may start: a run holds the registry, it has room, and a mount takes the log.</summary>
+    private string? ValidateStartJob()
+    {
+        if (ShellJobRegistry.Current() is not { } registry)
+            return "start_job needs a running agent run";
+        if (registry.IsFull)
+            return $"{ShellJobRegistry.MaxLiveJobs} jobs are already running: wait for one to exit";
+        return JobDirectory() is null ? "start_job needs a writable mount for the job log, and none is available" : null;
+    }
+
+    /// <summary>The virtual directory of the job logs: <c>/output/jobs</c> when /output is writable, else under the first writable mount.</summary>
+    private string? JobDirectory()
+    {
+        var mount = _fileSystem.ResolveAndValidate("/output", FileAccessRights.Write).IsAllowed
+            ? "/output"
+            : _fileSystem.GetAvailableMounts().FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Write))?.VirtualPath;
+        return mount is null ? null : mount.TrimEnd('/') + "/jobs";
     }
 
     /// <inheritdoc />
@@ -451,7 +560,98 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ExecuteCoreAsync(request, cancellationToken);
+        return request.Action switch
+        {
+            JobStatusAction => Task.FromResult(JobStatus(request.JobId)),
+            JobTailAction => TailAsync(request, cancellationToken),
+            _ => ExecuteCoreAsync(request, cancellationToken),
+        };
+    }
+
+    private static ShellCommandResponse JobStatus(string jobId)
+    {
+        var job = ShellJobRegistry.Current()?.Find(jobId) ?? throw new InvalidOperationException($"Unknown job '{jobId}' in this run");
+        var status = ShellJobRegistry.Status(job);
+        return new ShellCommandResponse
+        {
+            JobId = job.Handle.Id,
+            OutputPath = job.OutputPath,
+            Status = status.Running ? "running" : "exited",
+            ExitCode = status.ExitCode,
+        };
+    }
+
+    /// <summary>The last lines of a job's log: one read of at most <see cref="MaxTailBytes"/> bytes from the end of the file.</summary>
+    private async Task<ShellCommandResponse> TailAsync(ShellCommandRequest request, CancellationToken cancellationToken)
+    {
+        var job = ShellJobRegistry.Current()?.Find(request.JobId) ?? throw new InvalidOperationException($"Unknown job '{request.JobId}' in this run");
+        var lines = Math.Clamp(request.TailLines, 1, MaxTailLines);
+
+        var running = ShellJobRegistry.Status(job).Running;
+        string text;
+
+        // A running job whose session keeps its output in memory is read there: the file is held open for writing.
+        if (running && job.Handle.LiveTail?.Invoke() is { } live)
+        {
+            text = LastLines(live.Text, live.Truncated, lines);
+        }
+        else
+        {
+            var stream = await _fileSystem.OpenReadStreamAsync(job.OutputPath, cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false))
+            {
+                var start = Math.Max(0, stream.Length - MaxTailBytes);
+                stream.Seek(start, SeekOrigin.Begin);
+                var buffer = new byte[stream.Length - start];
+                var filled = 0;
+                int read;
+                while (filled < buffer.Length
+                       && (read = await stream.ReadAsync(buffer.AsMemory(filled), cancellationToken).ConfigureAwait(false)) > 0)
+                    filled += read;
+
+                text = LastLines(System.Text.Encoding.UTF8.GetString(buffer, 0, filled), start > 0, lines);
+            }
+        }
+
+        return new ShellCommandResponse
+        {
+            JobId = job.Handle.Id,
+            OutputPath = job.OutputPath,
+            Status = running ? "running" : "exited",
+            Tail = Truncate(RewriteOutboundPaths(text, BuildOutboundReplacements())),
+        };
+    }
+
+    /// <summary>The last <paramref name="lines"/> lines of <paramref name="text"/>; the first line is dropped when the text starts mid-line.</summary>
+    private static string LastLines(string text, bool startsMidLine, int lines)
+    {
+        var parts = text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var skip = startsMidLine && parts.Length > 1 ? 1 : 0;
+        var end = parts.Length > 0 && parts[^1].Length == 0 ? parts.Length - 1 : parts.Length;
+        return string.Join('\n', parts[Math.Max(skip, end - lines)..Math.Max(skip, end)]);
+    }
+
+    private async Task<ShellCommandResponse> StartJobAsync(
+        IShellSandbox sandbox, ShellSessionView view, ShellInvocation invocation, CancellationToken cancellationToken)
+    {
+        var registry = ShellJobRegistry.Current() ?? throw new InvalidOperationException("start_job needs a running agent run");
+        var directory = JobDirectory() ?? throw new InvalidOperationException("start_job needs a writable mount for the job log, and none is available");
+        var id = Guid.NewGuid().ToString("N")[..12];
+        var outputPath = $"{directory}/{id}.log";
+
+        // Creating the empty log makes the directory and checks the rights; the job then writes into it.
+        await _fileSystem.WriteAllTextAsync(outputPath, "", cancellationToken).ConfigureAwait(false);
+        var logPath = _fileSystem.ResolveAndValidate(outputPath, FileAccessRights.Write).ResolvedPath
+            ?? throw new InvalidOperationException("The job log could not be resolved");
+
+        var job = await registry.StartAsync(
+            () => Sessions.StartDetachedAsync(sandbox, view, invocation, logPath, ct => _fileSystem.OpenWriteStreamAsync(outputPath, ct), cancellationToken), outputPath).ConfigureAwait(false);
+        return new ShellCommandResponse
+        {
+            JobId = job.Handle.Id,
+            OutputPath = outputPath,
+            Status = "running",
+        };
     }
 
     /// <summary>What a result adds when the agent's shell session was killed after the command.</summary>
@@ -460,6 +660,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private async Task<ShellCommandResponse> ExecuteCoreAsync(
         ShellCommandRequest request, CancellationToken cancellationToken)
     {
+        var detached = request.Action == StartJobAction;
         var (executable, arguments) = ParseCommand(request.Command);
         var rights = RequiredPathRights(executable);
         var sandbox = ActiveSandbox;
@@ -512,12 +713,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // ValidateTypedRequest.
         var windowsBuiltin = !confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable);
         var invocation = new ShellInvocation(
-            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin);
+            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin, _outputLimit);
 
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
         var outboundReplacements = BuildOutboundReplacements();
         var view = new ShellSessionView(BuildConfinedPaths(), [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork);
+
+        if (detached)
+            return await StartJobAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
 
         ShellRunResult result;
         try
@@ -546,23 +750,28 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (result.TimedOut)
         {
             LogCommandTimedOut(request.Command, request.TimeoutSeconds);
+            var timedOutStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
+            var timedOutStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]";
             return new ShellCommandResponse
             {
                 ExitCode = -1,
-                Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
-                Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]")
-                    + (result.SessionReset ? SessionResetNote : ""),
-                Completed = false
+                Stdout = Truncate(timedOutStdout),
+                Stderr = Truncate(timedOutStderr) + (result.SessionReset ? SessionResetNote : ""),
+                Completed = false,
+                AlreadyBounded = IsCut(timedOutStdout) || IsCut(timedOutStderr)
             };
         }
 
         LogCommandCompleted(request.Command, result.ExitCode);
+        var completedStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
+        var completedStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements);
         return new ShellCommandResponse
         {
             ExitCode = result.ExitCode,
-            Stdout = Truncate(RewriteOutboundPaths(result.Stdout, outboundReplacements)),
-            Stderr = Truncate(RewriteOutboundPaths(result.Stderr, outboundReplacements)),
-            Completed = true
+            Stdout = Truncate(completedStdout),
+            Stderr = Truncate(completedStderr),
+            Completed = true,
+            AlreadyBounded = IsCut(completedStdout) || IsCut(completedStderr)
         };
     }
 
@@ -613,6 +822,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private List<ConfinedPath> BuildConfinedPaths()
     {
         var paths = new List<ConfinedPath>();
+        var agentRoot = AgentRunScope.Current?.Root?.TrimEnd('/');
         foreach (var mount in _fileSystem.GetAvailableMounts())
         {
             var virtualRoot = mount.VirtualPath.TrimEnd('/');
@@ -624,13 +834,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
                 continue;
 
-            if (Granted(mount.DefaultRights) is { } access)
+            // A declared agent root narrows the mount that holds it to the root, at its physical path,
+            // never the whole mount (RT-06); the other mounts stay bound as they are.
+            var holdsRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot);
+            if (holdsRoot)
+            {
+                // The rights in force at the root, as the file system resolves them (an override above
+                // the root counts), not the mount's default.
+                var narrowed = _fileSystem.ResolveAndValidate(agentRoot!, FileAccessRights.None);
+                if (narrowed.IsAllowed && !string.IsNullOrEmpty(narrowed.ResolvedPath) && Granted(RightsAt(agentRoot!)) is { } rootAccess)
+                    paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot!, rootAccess));
+            }
+            else if (Granted(mount.DefaultRights) is { } access)
                 paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
 
             foreach (var subPath in mount.Overrides)
             {
                 var relative = subPath.RelativePath.Trim('/');
                 if (relative.Length == 0)
+                    continue;
+
+                if (holdsRoot && !MatchesMountPrefix($"{virtualRoot}/{relative}", agentRoot!))
                     continue;
 
                 var source = Path.Combine(root.ResolvedPath, relative);
@@ -642,6 +866,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         return paths;
     }
+
+    /// <summary>The Read and Write rights in force at <paramref name="virtualPath"/>, as the file system resolves them.</summary>
+    private FileAccessRights RightsAt(string virtualPath) =>
+        (_fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read).IsAllowed ? FileAccessRights.Read : FileAccessRights.None)
+        | (_fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Write).IsAllowed ? FileAccessRights.Write : FileAccessRights.None);
 
     /// <summary>How a path with <paramref name="rights"/> is bound, or null when it grants neither Read nor Write.</summary>
     private static ConfinedAccess? Granted(FileAccessRights rights)
@@ -775,6 +1004,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
         string requested, FileAccessRights rights)
     {
+        if (string.IsNullOrWhiteSpace(requested))
+            requested = AgentRunScope.Current?.Root ?? requested;
+
         if (!string.IsNullOrWhiteSpace(requested))
         {
             var named = _fileSystem.ResolveAndValidate(requested, rights);
@@ -852,7 +1084,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         if (mounts.Any(m => MatchesMountPrefix(token, m.VirtualPath)))
         {
-            var result = _fileSystem.ResolveAndValidate(token, rights);
+            var result = AgentRootGuard.Check(_fileSystem, token) ?? _fileSystem.ResolveAndValidate(token, rights);
             return result.IsAllowed
                 ? (result.ResolvedPath!, null)
                 : (token, result.DenialReason ?? "access denied");
@@ -864,7 +1096,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             var right = token[(eq + 1)..];
             if (mounts.Any(m => MatchesMountPrefix(right, m.VirtualPath)))
             {
-                var result = _fileSystem.ResolveAndValidate(right, rights);
+                var result = AgentRootGuard.Check(_fileSystem, right) ?? _fileSystem.ResolveAndValidate(right, rights);
                 return result.IsAllowed
                     ? (string.Concat(token.AsSpan(0, eq + 1), result.ResolvedPath), null)
                     : (token, result.DenialReason ?? "access denied");
@@ -1106,14 +1338,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return false;
     }
 
-    /// <summary>Truncates a string to <see cref="MaxOutputLength"/> characters.</summary>
-    private static string Truncate(string value)
-    {
-        if (value.Length <= MaxOutputLength)
-            return value;
+    private bool IsCut(string value) => value.Length > _outputLimit;
 
-        return value[..MaxOutputLength] + "\n[Output truncated]";
-    }
+    /// <summary>Truncates a string to the configured output limit, telling how many characters were omitted.</summary>
+    private string Truncate(string value) =>
+        Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(value, _outputLimit);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Shell command completed: {Command} (exit code: {ExitCode})")]
     private partial void LogCommandCompleted(string command, int exitCode);

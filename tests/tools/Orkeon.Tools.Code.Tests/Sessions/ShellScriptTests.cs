@@ -97,6 +97,18 @@ public sealed class ShellScriptTests
     }
 
     [Fact]
+    [Trait("BR", "RT-10")]
+    public void ShouldFollowConfiguredBoundForStreamCap_WhenShellLimitSet()
+    {
+        var byteCap = ShellScript.ByteCapFor(50_000);
+        var fragment = ShellScript.Command(new ShellInvocation("pwd", [], null, TimeSpan.FromSeconds(5)), Nonce, byteCap);
+
+        Assert.Equal(150_003, byteCap);
+        Assert.Equal(ShellScript.ByteCap, ShellScript.ByteCapFor(ShellCommandTool.MaxOutputLength));
+        Assert.Contains("head -c 150003 \"$_ork_o\"", fragment, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Command_ShouldRefuseAnArgumentHoldingANulCharacter()
     {
         Assert.Throws<ArgumentException>(() =>

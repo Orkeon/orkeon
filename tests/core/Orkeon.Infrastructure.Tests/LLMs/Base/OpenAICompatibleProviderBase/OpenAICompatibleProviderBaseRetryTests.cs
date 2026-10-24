@@ -1,6 +1,10 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.Tests.Doubles;
+using Polly;
 using Orkeon.Infrastructure.Resilience;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using static Orkeon.Tests.Shared.Constants.TestLlmConstants;
 using static Orkeon.Tests.Shared.Constants.TestDataConstants;
@@ -236,5 +240,81 @@ public class OpenAICompatibleProviderBaseRetryTests
         // Assert — no retry, only 1 call
         Assert.Empty(result.Content);
         Assert.Equal(1, callCount);
+    }
+
+    /// <summary>The provider with its retry wait recorded, never slept.</summary>
+    private sealed class DelayRecordingProvider(LlmConfig config, IHttpClientFactory factory, IAsyncPolicy<HttpResponseMessage> policy)
+        : TestableOpenAICompatibleProvider(config, factory, policy, NullLogger<TestableOpenAICompatibleProvider>.Instance)
+    {
+        public List<TimeSpan> Delays { get; } = [];
+
+        protected override Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            Delays.Add(delay);
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldDelayUntilResetAndRetry_WhenStreamingConnectReturns429WithReset()
+    {
+        using var factory = new MockHttpClientFactory();
+        var handler = factory.SetupDefaultHandler();
+        handler.SetResponseFactory(_ =>
+        {
+            if (handler.SendCallCount == 1)
+            {
+                var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("slow down") };
+                limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromMinutes(2));
+                return limited;
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(
+                    "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\ndata: [DONE]\n\n"))),
+            };
+        });
+        var config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 2 };
+        var observer = new RecordingLlmRetryObserver();
+        using var provider = new DelayRecordingProvider(config, factory, Policy.NoOpAsync<HttpResponseMessage>());
+        provider.RetryObserver = observer;
+
+        var content = new StringBuilder();
+        await foreach (var ev in provider.ChatStreamingAsync([LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken))
+            if (ev.Kind == LlmStreamEventKind.ContentDelta) content.Append(ev.Delta);
+
+        Assert.Equal(TimeSpan.FromMinutes(2), Assert.Single(provider.Delays));
+        Assert.Equal("Hello", content.ToString());
+        Assert.Equal(2, handler.SendCallCount);
+        var retry = Assert.Single(observer.Retries);
+        Assert.Equal("rate-limit window", retry.Reason);
+        Assert.Equal(TimeSpan.FromMinutes(2), retry.Delay);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldFailWithReason_WhenStreamingConnectResetExceedsMaxRateLimitWait()
+    {
+        using var factory = new MockHttpClientFactory();
+        var handler = factory.SetupDefaultHandler();
+        handler.SetResponseFactory(_ =>
+        {
+            var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("slow down") };
+            limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(600));
+            return limited;
+        });
+        var config = LlmConfig.Create(TestModelName, TestApiKey) with { MaxRetries = 2, MaxRateLimitWait = TimeSpan.FromMinutes(1) };
+        using var provider = new DelayRecordingProvider(config, factory, Policy.NoOpAsync<HttpResponseMessage>());
+
+        var ex = await Assert.ThrowsAsync<Orkeon.Domain.Exceptions.LlmRateLimitException>(async () =>
+        {
+            await foreach (var _ in provider.ChatStreamingAsync([LlmMessage.User("hi")], cancellationToken: TestContext.Current.CancellationToken)) { }
+        });
+
+        Assert.Contains("rate-limit window", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(TimeSpan.FromMinutes(10), ex.Wait);
+        Assert.Equal(1, handler.SendCallCount);
+        Assert.Empty(provider.Delays);
     }
 }

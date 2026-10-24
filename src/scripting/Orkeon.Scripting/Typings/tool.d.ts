@@ -30,11 +30,16 @@ declare global {
          * pipeline, `ctx` is `undefined` — reach shared capabilities through the
          * `tools.*` / `rag.*` globals instead. A script calling
          * `myTool.execute(input, something)` forwards its own second argument.
+         * Under `withAutonomousTool` in `act`, the permission gate is asked once
+         * per model-initiated call: the `tools.*` calls made inside this body are
+         * not asked a second time.
          */
         execute(fn: (input: TIn, ctx?: unknown) => Promise<TOut> | TOut): this;
         /**
          * Declared access class for permission gates. Undeclared tools are
-         * treated fail-closed (as writes) by gated autonomous calls.
+         * treated fail-closed (as writes) by gated autonomous calls: this
+         * declaration is the only input of the gate for a script tool (`read`
+         * allowed, `edit` denied in `plan` and asked in `default`).
          */
         access(value: "read" | "edit" | "execute"): this;
         build(): Tool<TIn, TOut>;

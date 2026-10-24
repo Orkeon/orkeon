@@ -6,3 +6,37 @@ Orkeon.Scripting.ScriptToolCatalogue.ScriptToolCatalogue(System.Collections.Gene
 Orkeon.Scripting.Runtime.JsLlmFacade.permissionGate.get -> Orkeon.Scripting.Runtime.JsPermissionGateState!
 Orkeon.Scripting.Runtime.JsPermissionGateState
 Orkeon.Scripting.Runtime.JsPermissionGateState.enabled.get -> bool
+Orkeon.Scripting.Builders.JsAgentBuilder.effort(string! level) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.ScriptHost.RunAsync(string! virtualPath, System.Action<string!>! consoleSink, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<object?>!
+Orkeon.Scripting.Builders.JsCrewBuilder.concurrency(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Runtime.JsAgentContext.spawnBackground.get -> System.Func<string!, string!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Bindings.RagScriptingBackendFactory
+static Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(System.IServiceProvider! services) -> Orkeon.Scripting.Bindings.RagScriptingBackend?
+Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.get -> Orkeon.Domain.Tools.ToolResultLimitsOptions!
+Orkeon.Scripting.Runtime.JsLlmFacade.ToolLimits.init -> void
+Orkeon.Scripting.Builders.JsCrewBuilder.maxInstances(int value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
+Orkeon.Scripting.Runtime.JsCrew.instances() -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.send.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.stop(string! id) -> bool
+Orkeon.Scripting.Runtime.JsAgentContext.instanceId.get -> Jint.Native.JsValue!
+Orkeon.Scripting.ScriptingHostPorts.AgentMemoryStore.get -> Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore?
+Orkeon.Scripting.ScriptingHostPorts.AgentMemoryStore.init -> void
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.<Clone>$() -> Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions!
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.Equals(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? other) -> bool
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.MaxTranscriptCharacters.get -> int
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.MaxTranscriptCharacters.init -> void
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.MaxTranscriptMessages.get -> int
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.MaxTranscriptMessages.init -> void
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.ScriptAgentInstanceOptions() -> void
+Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.Validate() -> void
+const Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName = "Orkeon:Scripting:AgentInstances" -> string!
+Orkeon.Scripting.ScriptingHostPorts.AgentInstances.get -> Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions?
+Orkeon.Scripting.ScriptingHostPorts.AgentInstances.init -> void
+Orkeon.Scripting.ScriptingHostPorts.ToolLimits.get -> Orkeon.Domain.Tools.ToolResultLimitsOptions?
+Orkeon.Scripting.ScriptingHostPorts.ToolLimits.init -> void
+override Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.Equals(object? obj) -> bool
+override Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.GetHashCode() -> int
+override Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.ToString() -> string!
+static Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.operator !=(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? left, Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? right) -> bool
+static Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.operator ==(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? left, Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? right) -> bool

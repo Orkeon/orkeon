@@ -35,6 +35,9 @@ public sealed class CommandInstance
     /// </summary>
     internal string? LaunchInput { get; set; }
 
+    /// <summary>Chain depth: 0 for a user-launched instance, parent depth + 1 for one launched from a <c>completed</c> handler.</summary>
+    internal int Depth { get; set; }
+
     internal CommandInstance(
         string ticket,
         string name,

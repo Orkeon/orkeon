@@ -63,6 +63,10 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
     private readonly RagIngestionOptions _options;
     private readonly ILogger<DefaultIngestionPipeline> _logger;
 
+    // The pipeline is a singleton: this table is host-global. One lock per collection.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _collectionLocks
+        = new(StringComparer.Ordinal);
+
     /// <summary>Initializes the ingestion pipeline.</summary>
     /// <param name="dependencies">The stage collaborators the pipeline drives.</param>
     /// <param name="options">Pipeline options; <c>null</c> selects the defaults.</param>
@@ -111,68 +115,83 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
             Dimensions = _embeddingProvider.Dimensions,
         };
 
-        // Missing or corrupt manifest loads as null → full ingestion, no crash.
-        var manifest = await _manifestStore.LoadAsync(request.Collection, cancellationToken)
-            .ConfigureAwait(false);
-
-        // A manifest can OUTLIVE the data it describes. The manifest is persisted
-        // through the virtual file system while the document store may be
-        // in-memory (the CLI default), so a second process finds a manifest
-        // claiming every source is unchanged, embeds nothing, and reports success
-        // against an empty store — every later query then returns zero citations,
-        // with no error anywhere. Measured 2026-08-03: two `orkeon run` processes
-        // over the same collection gave 3 citations then 0.
-        //
-        // When the store can be probed and says the collection is empty while the
-        // manifest claims sources, the manifest is stale: drop it and ingest in
-        // full. Stores that cannot be probed keep the previous behaviour.
-        if (manifest is not null
-            && manifest.Sources.Count > 0
-            && !request.Reindex
-            && _store is IDocumentStoreCollectionProbe probe
-            && !await probe.HasContentAsync(request.Collection, cancellationToken).ConfigureAwait(false))
+        // Ingests of one collection are serialized: the manifest is read-modify-write.
+        var collectionLock = _collectionLocks.GetOrAdd(request.Collection, static _ => new SemaphoreSlim(1, 1));
+        await collectionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        IngestionTally tally;
+        try
         {
-            LogStaleManifestDiscarded(manifest.Sources.Count, request.Collection);
-            manifest = null;
-        }
-
-        EnsureNoEmbeddingDrift(request, manifest, embeddingProfile);
-
-        var previousSources = manifest?.Sources
-            ?? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal);
-
-        if (request.Reindex && manifest is not null)
-            await PurgeCollectionAsync(request, manifest, cancellationToken).ConfigureAwait(false);
-
-        var tally = new IngestionTally
-        {
-            // Reindex rebuilds the manifest from this run only; otherwise entries of
-            // sources absent from the request are preserved (no implicit purge).
-            Entries = request.Reindex
-                ? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal)
-                : new Dictionary<string, ManifestSourceEntry>(previousSources, StringComparer.Ordinal),
-            ManifestDirty = manifest is null || request.Reindex,
-        };
-
-        foreach (var source in request.Sources)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await IngestSourceAsync(
-                request, strategy, chunkerProfile, previousSources, source, tally, cancellationToken)
+            // Missing or corrupt manifest loads as null → full ingestion, no crash.
+            var manifest = await _manifestStore.LoadAsync(request.Collection, cancellationToken)
                 .ConfigureAwait(false);
-        }
 
-        if (tally.ManifestDirty)
+            // A manifest can OUTLIVE the data it describes. The manifest is persisted
+            // through the virtual file system while the document store may be
+            // in-memory (the CLI default), so a second process finds a manifest
+            // claiming every source is unchanged, embeds nothing, and reports success
+            // against an empty store — every later query then returns zero citations,
+            // with no error anywhere. Measured 2026-08-03: two `orkeon run` processes
+            // over the same collection gave 3 citations then 0.
+            //
+            // When the store can be probed and says the collection is empty while the
+            // manifest claims sources, the manifest is stale: drop it and ingest in
+            // full. Stores that cannot be probed keep the previous behaviour.
+            if (manifest is not null
+                && manifest.Sources.Count > 0
+                && !request.Reindex
+                && _store is IDocumentStoreCollectionProbe probe
+                && !await probe.HasContentAsync(request.Collection, cancellationToken).ConfigureAwait(false))
+            {
+                LogStaleManifestDiscarded(manifest.Sources.Count, request.Collection);
+                manifest = null;
+            }
+
+            EnsureNoEmbeddingDrift(request, manifest, embeddingProfile);
+
+            var previousSources = manifest?.Sources
+                ?? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal);
+
+            if (request.Reindex && manifest is not null)
+                await PurgeCollectionAsync(request, manifest, cancellationToken).ConfigureAwait(false);
+
+            tally = new IngestionTally
+            {
+                // Reindex rebuilds the manifest from this run only; otherwise entries of
+                // sources absent from the request are preserved (no implicit purge).
+                Entries = request.Reindex
+                    ? new Dictionary<string, ManifestSourceEntry>(StringComparer.Ordinal)
+                    : new Dictionary<string, ManifestSourceEntry>(previousSources, StringComparer.Ordinal),
+                ManifestDirty = manifest is null || request.Reindex,
+            };
+
+            foreach (var source in request.Sources)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await IngestSourceAsync(
+                    request, strategy, chunkerProfile, previousSources, source, tally, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            // A failed load leaves its source ids unknown: with errors, nothing is pruned.
+            if (request.Prune && manifest is not null && tally.Errors.Count == 0)
+                await PruneAbsentSourcesAsync(request, tally, cancellationToken).ConfigureAwait(false);
+
+            if (tally.ManifestDirty)
+            {
+                await _manifestStore.SaveAsync(
+                    new IngestionManifest
+                    {
+                        Collection = request.Collection,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                        Embedding = embeddingProfile,
+                        Sources = tally.Entries,
+                    },
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
         {
-            await _manifestStore.SaveAsync(
-                new IngestionManifest
-                {
-                    Collection = request.Collection,
-                    UpdatedAt = DateTimeOffset.UtcNow,
-                    Embedding = embeddingProfile,
-                    Sources = tally.Entries,
-                },
-                cancellationToken).ConfigureAwait(false);
+            collectionLock.Release();
         }
 
         stopwatch.Stop();
@@ -186,6 +205,7 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
             SourcesAdded = tally.SourcesAdded,
             SourcesUnchanged = tally.SourcesUnchanged,
             SourcesReingested = tally.SourcesReingested,
+            SourcesPruned = tally.SourcesPruned,
             Duration = stopwatch.Elapsed,
             Errors = tally.Errors.ToImmutable(),
         };
@@ -208,6 +228,38 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         }
 
         LogCollectionPurged(manifest.Sources.Count, request.Collection);
+    }
+
+    /// <summary>
+    /// Deletes the chunks and manifest entries of every manifest source this run did
+    /// not encounter. Sources outside the requested set only; runs under the collection lock.
+    /// </summary>
+    private async Task PruneAbsentSourcesAsync(
+        IngestionRequest request,
+        IngestionTally tally,
+        CancellationToken cancellationToken)
+    {
+        var absent = tally.Entries.Keys.Where(id => !tally.SeenSourceIds.Contains(id)).ToList();
+        foreach (var sourceId in absent)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await _store.DeleteBySourceAsync(request.Collection, sourceId, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException)
+            {
+                // The entry stays in the manifest so a later prune retries this source.
+                LogSourceFailed(sourceId, ex.Message);
+                tally.Errors.Add($"Prune of source '{sourceId}' failed: {ex.Message}");
+                continue;
+            }
+
+            tally.Entries.Remove(sourceId);
+            tally.SourcesPruned++;
+            tally.ManifestDirty = true;
+        }
     }
 
     /// <summary>
@@ -283,6 +335,7 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         CancellationToken cancellationToken)
     {
         var sourceId = group.Key;
+        tally.SeenSourceIds.Add(sourceId);
         var contentHash = ComputeContentHash(group);
         var known = previousSources.TryGetValue(sourceId, out var previousEntry);
 
@@ -359,6 +412,10 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
         public int SourcesAdded { get; set; }
         public int SourcesUnchanged { get; set; }
         public int SourcesReingested { get; set; }
+        public int SourcesPruned { get; set; }
+
+        /// <summary>Logical source ids encountered in this run (the requested set).</summary>
+        public HashSet<string> SeenSourceIds { get; } = new(StringComparer.Ordinal);
     }
 
     /// <summary>

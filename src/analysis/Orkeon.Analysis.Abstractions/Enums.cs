@@ -16,7 +16,12 @@ public enum UniversalNodeKind
 
     Decorator,
 
-    Unknown
+    Unknown,
+
+    Section,
+    CodeFence,
+    Link,
+    FrontMatter
 }
 
 [SuppressMessage("Naming", "CA1707", Justification = "The L<n>_ prefix encodes the graph stratification ordinal and is part of the public JSON serialization contract (e.g. \"L3_Symbol\"); renaming would break persisted RaggableTree data and round-tripping.")]
@@ -42,7 +47,10 @@ public enum EdgeKind
     Calls = 1 << 1,
     Extends = 1 << 2,
     Implements = 1 << 3,
-    Contains = 1 << 4
+    Contains = 1 << 4,
+    Tests = 1 << 5,
+    Documents = 1 << 6,
+    ProjectDepends = 1 << 7
 }
 #pragma warning restore S2342
 

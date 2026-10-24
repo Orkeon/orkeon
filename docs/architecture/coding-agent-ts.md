@@ -93,6 +93,22 @@ policy travelled with user-level authority, and the providers' native system han
 (Anthropic top-level `system`, `cache_control`) never fired. A conversation-level system
 message wins over `LlmConfig.SystemMessage` on every provider.
 
+**Parallel read-class tool calls.** The tool calls of one model turn that are read-class — the
+tool declares `Access` `Read` **and** its name is on the explicit allow-list (`file_read`,
+`directory_read`, `directory_search`, `count_pattern`, `glob`, `grep`, `rag_search`, `codebase_*`,
+`symbol_*`, `index_status`, `node_outline`, `node_read`; the shell session is not on it) — run
+concurrently, bounded by `MaxParallelToolCalls` (default 4) of
+[`Orkeon:Tools:ResultLimits`](../reference/configuration.md#securitytoolresults). A write call, or one whose access is `Unspecified`, is a
+barrier: a read after it waits for it and sees its effect. The results, and the tool messages sent
+back to the model, keep the call order. Hooks: for each parallel group, `onToolCall` runs for every
+read first (sequentially, in call order, on the engine thread), then the executions, then
+`onToolResult` in call order; no callback ever runs concurrently with another. When a sibling
+faults, is cancelled or throws `BudgetExhaustedException`, the others complete and are recorded,
+and the first fault is rethrown after the group. The approvals that concurrent reads ask are
+serialised (`SerialisingToolApprovalChannel`, registered by `AddConsoleToolApproval`). The
+native loops of a YAML crew and the chat dispatcher fan out the same way; the text-fallback sites
+(the `ChatToolDispatcher` text path and `LegacyTextAgentLoop`) stay sequential.
+
 ## Permissions and budget
 
 The permission gate is a first-class DI service, `IPermissionGate`
@@ -121,6 +137,21 @@ Three ports carry what a conversation needs to survive between runs:
 - **`ICategoryMemoryStore`** — typed memory CRUD over four categories
   (user/project/feedback/reference).
 - **`ICostBudgetManager`** — cumulative cost/token/call telemetry.
+
+### Durable session and start-up script
+
+In the REPL the session survives a restart. With `Orkeon:Cli:Session:Persist` on (the REPL's default
+when the key is unset), `FileSessionBufferService` decorates the in-memory buffer and keeps the last
+session of each project — messages, state bag, id and title — at
+`<SessionsDirectory>/<project>-<hash>/last.json` through `IFileSystemService`. The project is the
+physical workspace root the REPL mounts as `/workspace`; the file is read once at start, rehydrated
+without re-validation, and written after each turn and when the REPL exits. A corrupt file starts an empty session.
+`session_store` reads the rehydrated buffer like any other.
+
+`Orkeon:Cli:Session:StartScript` names a script run once after the host is built: an `.ork.ts`
+through the script host, any other file as a shell script. Its stdout, path and source are stored in
+the state bag under `SessionStateKeys.SessionStartOutput` and prepended to the first free-text turn,
+so a start-up script can name the open work. A failing script is logged and never blocks the start.
 
 `AddOrkeonSessionTools()` exposes them to scripts as six tools — `session_store`,
 `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` — catalogued

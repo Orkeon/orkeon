@@ -430,6 +430,28 @@ renvoyée vers une adresse interne.
   aussi le seul moyen de ré-ingérer après un changement de profil d'embedding : une dérive
   entre le profil consigné au manifeste et le provider actif fait échouer la passe
   bruyamment plutôt que de mélanger en silence des vecteurs incompatibles.
+- **`prune`** (option de `rag_ingest`, `rag.ingest({ prune: true })`) : supprime les chunks
+  et les entrées de manifeste des sources du manifeste absentes de l'ensemble de sources
+  ingéré, et les rapporte en `SourcesPruned` (`<n> pruned` dans la sortie de l'outil,
+  `sourcesPruned` dans le payload du script). L'élagage est sauté pour une passe ayant
+  enregistré une erreur : un chargement en échec ne provoque jamais de perte de données.
+- **Portée et concurrence** :
+  - *La persistance du store* suit `Orkeon:Rag:Provider` : le store in-memory par défaut est
+    perdu à la fin du processus ; `sqlite`, `redis`, `chromadb`, `pinecone` et `lancedb`
+    persistent.
+  - *Le document store est global à l'hôte* : un store par hôte, partagé par chaque
+    workspace et chaque crew. Les chunks ingérés via un workspace sont récupérables depuis
+    un autre.
+  - *Le manifeste d'ingestion est par workspace* (`/output/rag/manifests/{collection}.json`
+    via le VFS de chaque workspace). Un second workspace partageant un store persistant voit
+    un manifeste vide ou différent et ré-ingère.
+  - *Les ingestions d'une même collection sont sérialisées* par un verrou en processus par
+    collection (de la lecture du manifeste à son écriture) ; des collections différentes
+    s'exécutent en parallèle. La mise à jour du registre de collections du store est
+    atomique par provider.
+  - Le verrou ne vaut qu'en processus : un verrou inter-processus requiert le provider et
+    est hors périmètre, donc deux processus hôtes partageant un store peuvent encore entrer
+    en concurrence.
 - Les sources en glob (`*`, `**`, `?`) sont dépliées via le VFS par `SourceGlobExpander` sur
   chaque surface consommatrice (scripting `rag.ingest`, outil `rag_ingest`, CLI
   `orkeon rag ingest`, corpus du harnais d'évaluation, et le bloc `rag:` de la crew). Une
@@ -584,6 +606,13 @@ chiffre publié plutôt qu'en une affirmation :
   bloc `env:` du workflow). Les cas étiquetés `correctif`
   sont exclus des gates : ils sont conçus exprès pour mettre en échec un retrieval en une
   passe (voir plus bas).
+- **Schéma** : publié comme `interface RagEvalDataset` / `RagEvalCase` dans les typings de
+  scripting (`src/scripting/Orkeon.Scripting/Typings/rag.d.ts`). Un cas sans `question` est
+  refusé avec une erreur nommant `case #<index> ('<id>')` et le champ manquant.
+- **Hôtes** : l'espace de noms de script `rag` (`rag.retrieve`, `rag.ingest`, …) est lié dans
+  les trois hôtes — `orkeon run`, le REPL et le daemon (`RunnerExecution`) — par une seule
+  `RagScriptingBackendFactory.Build(IServiceProvider)` qui résout `IIngestionPipeline` depuis
+  le DI ; le verrou d'ingestion par collection est donc partagé avec `rag_ingest`.
 
 ## RAG correctif (CRAG)
 

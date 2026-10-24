@@ -19,12 +19,12 @@ public sealed partial class ToolCatalogTests
 {
     /// <summary>
     /// The <c>orkeon run</c> column, counted by hand from the matrix: Web core 5, search 5
-    /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 5,
+    /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 6 (edit_file joined),
     /// data 22, e-mail 13 (the twelve account tools and email_parser, which left the files
-    /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 15, collaboration 3
+    /// family), drive 11, shell_command, session 6, EventHub 7, Analysis 18, collaboration 3
     /// (human_input and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 94;
+    private const int ToolsARunExposes = 110;
 
     /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
     private const string EmailParser = "email_parser";
@@ -55,18 +55,30 @@ public sealed partial class ToolCatalogTests
     }
 
     [Fact]
+    [Trait("BR", "RT-35")]
+    [Trait("BR", "RT-32")]
+    [Trait("BR", "RT-42")]
     public void The_catalogue_lists_exactly_the_tools_a_run_exposes_once_each()
     {
         var names = ToolCatalog.All.Select(t => t.Name).ToList();
 
-        Assert.Equal(ToolsARunExposes, names.Count);
+        Assert.Equal(ToolsARunExposes + 1, names.Count);
         Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
-        // The three families the matrix keeps out of a run never appear: RAG, Slack, the
-        // code interpreter (concrete type only), spawn_agent (wired by no shipped root).
+        // The families the matrix keeps out of a run never appear: RAG, Slack, the
+        // code interpreter (concrete type only).
+        Assert.Contains("structural_rewrite", names);
         Assert.DoesNotContain("rag_search", names);
         Assert.DoesNotContain("slack_send_message", names);
         Assert.DoesNotContain("code_interpreter", names);
-        Assert.DoesNotContain("spawn_agent", names);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public void ShouldContainSpawnAgent_WhenCatalogListed()
+    {
+        var names = ToolCatalog.All.Select(t => t.Name).ToList();
+
+        Assert.Single(names, n => n == "spawn_agent");
     }
 
     [Fact]

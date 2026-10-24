@@ -24,6 +24,8 @@ public class AgentYamlConfig
     public string? Goal { get; set; }
     /// <summary>Gets or sets the agent backstory.</summary>
     public string? Backstory { get; set; }
+    /// <summary>Gets or sets the virtual working root of the agent (<c>working_root:</c>, RT-06).</summary>
+    public string? WorkingRoot { get; set; }
     /// <summary>Gets or sets the list of tool names.</summary>
     public Collection<string>? Tools { get; set; }
     /// <summary>Gets or sets whether the agent allows delegation.</summary>

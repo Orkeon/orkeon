@@ -433,6 +433,168 @@ public sealed class ResiliencePoliciesTests : IDisposable
         Assert.Equal(2, attemptCount); // Initial + 1 retry
     }
 
+    private static HttpResponseMessage WithReset(HttpStatusCode status, string header, string value)
+    {
+        var response = new HttpResponseMessage(status);
+        response.Headers.TryAddWithoutValidation(header, value);
+        return response;
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldDelayUntilResetAndRetry_WhenResponseIs429WithReset()
+    {
+        var delays = new List<TimeSpan>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1),
+            delay: (wait, _) => { delays.Add(wait); return System.Threading.Tasks.Task.CompletedTask; },
+            maxRateLimitWait: TimeSpan.FromMinutes(5));
+        _httpHandler.SetupResponses(
+            WithReset(HttpStatusCode.TooManyRequests, "x-ratelimit-reset-requests", "2m0s"),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, _httpHandler.CallCount);
+        // 2 minutes: beyond the old 30 s cap, within Llm:MaxRateLimitWait.
+        Assert.Equal(TimeSpan.FromMinutes(2), Assert.Single(delays));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldUseBackoff_WhenResponseIs529WithoutHeader()
+    {
+        var delays = new List<TimeSpan>();
+        var notified = new List<(int Attempt, TimeSpan Delay, string Reason)>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(5),
+            onRetry: (attempt, wait, reason) => notified.Add((attempt, wait, reason)),
+            delay: (wait, _) => { delays.Add(wait); return System.Threading.Tasks.Task.CompletedTask; });
+        _httpHandler.SetupResponses(
+            new HttpResponseMessage((HttpStatusCode)529),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, _httpHandler.CallCount);
+        Assert.Empty(delays);
+        var retry = Assert.Single(notified);
+        Assert.Equal(TimeSpan.FromMilliseconds(5), retry.Delay);
+        Assert.NotEqual("rate-limit window", retry.Reason);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldFailWithReason_WhenResetExceedsMaxRateLimitWait()
+    {
+        var delays = new List<TimeSpan>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1),
+            delay: (wait, _) => { delays.Add(wait); return System.Threading.Tasks.Task.CompletedTask; },
+            maxRateLimitWait: TimeSpan.FromMinutes(1));
+        _httpHandler.SetupResponses(
+            WithReset(HttpStatusCode.TooManyRequests, "x-ratelimit-reset-requests", "10m0s"),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var failure = await Assert.ThrowsAsync<Orkeon.Domain.Exceptions.LlmRateLimitException>(() =>
+            policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com")));
+
+        Assert.Contains("rate-limit window", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(TimeSpan.FromMinutes(10), failure.Wait);
+        Assert.Equal(1, _httpHandler.CallCount);
+        Assert.Empty(delays);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldNotifyObserverWithWindow_WhenWaitScheduled()
+    {
+        var observer = new Doubles.RecordingLlmRetryObserver();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1),
+            onRetry: (attempt, wait, reason) => observer.OnRetryScheduled(new Orkeon.Application.Interfaces.Ports.LlmRetryEvent
+            {
+                Provider = "Anthropic",
+                Attempt = attempt,
+                MaxRetries = 3,
+                Delay = wait,
+                Reason = reason,
+            }),
+            delay: (_, _) => System.Threading.Tasks.Task.CompletedTask);
+        _httpHandler.SetupResponses(
+            WithReset(HttpStatusCode.TooManyRequests, "x-ratelimit-reset-requests", "20s"),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        var retry = Assert.Single(observer.Retries);
+        Assert.Equal("rate-limit window", retry.Reason);
+        Assert.Equal(TimeSpan.FromSeconds(20), retry.Delay);
+        Assert.Equal(1, retry.Attempt);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldNotWaitForWindow_WhenA503WithoutHeaderFollowsA429WithRetryAfter()
+    {
+        var delays = new List<TimeSpan>();
+        var observer = new Doubles.RecordingLlmRetryObserver();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1),
+            onRetry: (attempt, wait, reason) => observer.OnRetryScheduled(new Orkeon.Application.Interfaces.Ports.LlmRetryEvent
+            {
+                Provider = "Anthropic",
+                Attempt = attempt,
+                MaxRetries = 3,
+                Delay = wait,
+                Reason = reason,
+            }),
+            delay: (wait, _) => { delays.Add(wait); return System.Threading.Tasks.Task.CompletedTask; });
+        var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(2));
+        _httpHandler.SetupResponses(
+            limited,
+            new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+            new HttpResponseMessage(HttpStatusCode.OK));
+
+        var response = await policy.ExecuteAsync(async () => await _httpClient.GetAsync("http://test.com"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(3, _httpHandler.CallCount);
+        Assert.Equal(TimeSpan.FromSeconds(2), Assert.Single(delays));
+        Assert.Equal(2, observer.Retries.Count);
+        Assert.Equal("rate-limit window", observer.Retries[0].Reason);
+        Assert.NotEqual("rate-limit window", observer.Retries[1].Reason);
+        Assert.Equal(TimeSpan.FromMilliseconds(2), observer.Retries[1].Delay);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-13")]
+    public async Task ShouldObserveCallerCancellation_WhenWaitingForWindow()
+    {
+        using var caller = new CancellationTokenSource();
+        var seamToken = CancellationToken.None;
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(1),
+            delay: async (_, token) =>
+            {
+                seamToken = token;
+                await caller.CancelAsync();
+                token.ThrowIfCancellationRequested();
+            });
+        var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(240));
+        _httpHandler.SetupResponses(limited, new HttpResponseMessage(HttpStatusCode.OK));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => policy.ExecuteAsync(
+            async token => await _httpClient.GetAsync("http://test.com", token), caller.Token));
+
+        Assert.True(seamToken.CanBeCanceled);
+        Assert.True(seamToken.IsCancellationRequested);
+    }
+
     public void Dispose()
     {
         _httpClient.Dispose();

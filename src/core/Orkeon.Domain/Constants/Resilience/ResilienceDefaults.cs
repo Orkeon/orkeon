@@ -12,6 +12,9 @@ public static class ResilienceDefaults
     /// <summary>Upper bound on retry delay / circuit-breaker break duration (30 s).</summary>
     public static readonly TimeSpan DefaultRetryMaxDelay = TimeSpan.FromSeconds(30);
 
+    /// <summary>Longest rate-limit window a call waits out before it fails (5 min, <c>Llm:MaxRateLimitWait</c>).</summary>
+    public static readonly TimeSpan DefaultMaxRateLimitWait = TimeSpan.FromMinutes(5);
+
     /// <summary>
     /// How many times a buffered LLM call that hit <c>Llm:TimeoutSeconds</c> is re-sent — once.
     /// A stalled connection deserves a second chance, but two consecutive timeouts mean the

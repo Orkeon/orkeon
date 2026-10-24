@@ -1,0 +1,35 @@
+<Project>
+  <!-- Native libraries of the current runtime only (2026-10-22).
+
+       A build without a RuntimeIdentifier copies every native asset of every
+       package for every runtime it ships (`runtimes/<rid>/native/`): with
+       TreeSitter.DotNet and ONNX Runtime that is 36 runtime folders, ~920 MB
+       and ~300 files per test project, 46 GB for the test tree in Debug and
+       Release, 26 GB per built worktree, and most of a build's time on a slow
+       mount. The host only ever probes the folders of the machine's own RID and
+       of its fallbacks (`linux-x64` → `linux` → `unix` → `any`), so the rest is
+       dead weight.
+
+       This target drops the foreign runtimes from the copy list right after the
+       package assets are resolved. The output path, the restore and the assets
+       file are untouched; `dotnet pack` copies nothing local and
+       `dotnet publish -r <rid>` resolves a RID-specific graph where this item
+       is empty, so both are unaffected. A build that must stay portable across
+       machines opts out with `-p:OrkeonAllRuntimes=true`. -->
+  <Target Name="OrkeonTrimForeignRuntimes"
+          AfterTargets="ResolvePackageAssets"
+          Condition="'$(OrkeonAllRuntimes)' != 'true' and '$(RuntimeIdentifier)' == '' and '$(NETCoreSdkRuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_OrkeonRid>$(NETCoreSdkRuntimeIdentifier)</_OrkeonRid>
+      <_OrkeonRidFamily>$(_OrkeonRid)</_OrkeonRidFamily>
+      <_OrkeonRidFamily Condition="$(_OrkeonRid.IndexOf('-')) &gt; 0">$(_OrkeonRid.Substring(0, $(_OrkeonRid.IndexOf('-'))))</_OrkeonRidFamily>
+    </PropertyGroup>
+    <ItemGroup>
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
+        Condition="'%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != '$(_OrkeonRid)'
+                   and '%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != '$(_OrkeonRidFamily)'
+                   and '%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != 'unix'
+                   and '%(RuntimeTargetsCopyLocalItems.RuntimeIdentifier)' != 'any'" />
+    </ItemGroup>
+  </Target>
+</Project>

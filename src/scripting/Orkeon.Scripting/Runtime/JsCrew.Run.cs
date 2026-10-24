@@ -37,7 +37,8 @@ public sealed partial class JsCrew
                 describeError, decideAction, delay,
                 recordResult, finishRun,
                 crewHookOf, hookContext, displayMessage, logHookFailure,
-                resolveAgent,
+                resolveAgent, openPermit, gateAcquire, gateRelease,
+                beginSend, finishInstance,
             } = h;
 
             // One run's JS-side handle: the CLR scope plus `wait`, which races a script promise
@@ -81,7 +82,7 @@ public sealed partial class JsCrew
             // and fallback settle here, retry loops after its delay (the finally below releases; the
             // next iteration re-acquires and re-creates the context), anything else rethrows the
             // ORIGINAL error. A cancelled run never consults onError (describeError returns null).
-            const runAttempts = async (t, agent, input) => {
+            const runAttempts = async (t, agent, input, bare) => {
                 const { scope, wait } = t;
                 const body = bodyOf(agent);
                 const onError = onErrorOf(agent);
@@ -94,7 +95,7 @@ public sealed partial class JsCrew
                         const initial = typeof seed === "function" ? await wait(seed()) : seed;
                         a = openAttempt(scope, agent, initial);
                         try {
-                            return await wait(body(input, a.ctx));
+                            return await wait(bare ? a.ctx.llm.act(input).then(r => r.output) : body(input, a.ctx));
                         } catch (err) {
                             const errCtx = onError === undefined ? null : describeError(scope, agent, err, attempt);
                             if (errCtx === null) throw err;
@@ -175,7 +176,7 @@ public sealed partial class JsCrew
                 }
             };
 
-            return {
+            const api = {
                 run: async (options) => runWith(open("run", options)),
                 runFromHost: (scope) => runWith(scope),
                 async *runStream(options) { return yield* steps(open("stream", options)); },
@@ -191,9 +192,36 @@ public sealed partial class JsCrew
                     try {
                         start(scope);
                         const agent = resolveAgent(scope, agentOrName);
-                        return bodyOf(agent) === undefined ? null : await runAttempts(t, agent, input);
+                        return bodyOf(agent) === undefined ? null : await runAttempts(t, agent, input, options?.bare === true);
                     } finally {
                         endRun(scope);
+                    }
+                },
+
+                // A child spawned by spawn_agent or ctx.spawnBackground: one permit of the crew-wide
+                // concurrency gate, taken before (and as a separate acquisition from) the agent's own
+                // instance semaphore, handed back on success, failure and cancellation.
+                async runChild(agentOrName, input, options) {
+                    const inherited = options.permit != null;
+                    const permit = inherited ? options.permit : openPermit();
+                    if (!inherited) await gateAcquire(permit, options);
+                    try { return await api.runAgent(agentOrName, input, { ...options, permit }); }
+                    finally { if (!inherited) gateRelease(permit); }
+                },
+
+                // crew.send(id, message) (RT-03): one bare act on the instance's agent, seeded with its kept
+                // transcript, as a child under the crew gate with a fresh child budget. The instance is
+                // running from `beginSend` (which refuses an unknown id, a running instance and a spawn past
+                // the budget) until the act settles.
+                async send(id, message) {
+                    const begun = beginSend(id);
+                    try {
+                        const reply = await api.runChild(begun.agent, message, begun);
+                        finishInstance(id, true);
+                        return reply;
+                    } catch (err) {
+                        finishInstance(id, false);
+                        throw err;
                     }
                 },
 
@@ -202,6 +230,7 @@ public sealed partial class JsCrew
                 // rejection. Never awaited, never drained.
                 observe: (promise, onRejected) => { Promise.resolve(promise).then(undefined, onRejected); },
             };
+            return api;
         }
         """;
 
@@ -212,6 +241,12 @@ public sealed partial class JsCrew
 
     /// <summary>JS <c>async (agentOrName, input, options?) =&gt; TOut</c>; see the class remarks.</summary>
     public JsValue runAgent => RunModuleInstance.Get("runAgent");
+
+    /// <summary>JS <c>async (agentOrName, input, options?) =&gt; TOut</c>: <see cref="runAgent"/> under the crew-wide concurrency gate.</summary>
+    internal JsValue runChild => RunModuleInstance.Get("runChild");
+
+    /// <summary>JS <c>async (id, message) =&gt; string</c>: a follow-up act on the agent instance <c>id</c> (RT-03).</summary>
+    public JsValue send => RunModuleInstance.Get("send");
 
     /// <summary>JS <c>async function* (options?) =&gt; CrewStreamEvent</c>; see the class remarks.</summary>
     public JsValue runStream => RunModuleInstance.Get("runStream");
@@ -244,8 +279,14 @@ public sealed partial class JsCrew
         open = (kind, options) => JsHostError.Guard(_engine, () =>
         {
             var (signal, timeout) = CrewRunOptions.From(options);
-            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
+            var scope = new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
                 CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
+            // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
+            if (options is not null && options.IsObject() && options.Get("budget").ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
+                scope.Budget = childBudget;
+            scope.Permit = options is not null && options.IsObject() ? options.Get("permit").ToObject() as GatePermit : null;
+            scope.Instance = options is not null && options.IsObject() ? options.Get("instance").ToObject() as AgentInstanceRun : null;
+            return scope;
         }),
         start = scope => JsHostError.Guard(_engine, scope.Start),
         endRun = scope => JsHostError.Guard(_engine, scope.End),
@@ -283,6 +324,21 @@ public sealed partial class JsCrew
         logHookFailure = (scope, hookName, err) => JsHostError.Guard(_engine,
             () => LogCrewHookFailed(_logger, name, hookName, DisplayMessage(err))),
         resolveAgent = (scope, value) => JsHostError.Guard(_engine, () => ResolveAgent(value)),
+        openPermit = () => new GatePermit(ConcurrencyGate),
+        gateAcquire = (permit, options) => AcquireGateAsync(permit, CrewRunOptions.From(options).Signal),
+        gateRelease = permit => JsHostError.Guard(_engine, permit.Close),
+        beginSend = id => JsHostError.Guard(_engine, () =>
+        {
+            var send = Instances.BeginSend(id);
+            var options = new Jint.Native.JsObject(_engine);
+            options.Set("agent", JsValue.FromObject(_engine, send.Agent));
+            options.Set("signal", JsValue.FromObject(_engine, send.Signal));
+            options.Set("budget", JsValue.FromObject(_engine, send.Budget));
+            options.Set("instance", JsValue.FromObject(_engine, send.Run));
+            options.Set("bare", true);
+            return (JsValue)options;
+        }),
+        finishInstance = (id, succeeded) => JsHostError.Guard(_engine, () => Instances.Finish(id, succeeded)),
     };
 
     private static CrewRunKind ParseKind(string kind) => kind switch

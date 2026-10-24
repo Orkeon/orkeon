@@ -1,3 +1,4 @@
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
@@ -61,5 +62,31 @@ public class DataFlowAnalyzerTests
         var run = Extract(src, "run");
         var links = DataFlowAnalyzer.Analyze(run.Statements);
         Assert.Contains(links, l => l.VariableName == "a");
+    }
+
+    private static StatementNode Node(string id, StatementKind kind) => new()
+    {
+        Id = id,
+        ParentSymbolId = "m",
+        Kind = kind,
+        StartLine = 1,
+        Expression = id,
+    };
+
+    [Theory]
+    [InlineData(StatementKind.ArrowFunction)]
+    [InlineData(StatementKind.Closure)]
+    public void Analyze_LambdaBody_IsNotFlattenedIntoTheEnclosingMember(StatementKind lambdaKind)
+    {
+        var write = Node("w", StatementKind.Assignment);
+        write.AddReference(new SymbolReference("a", null, ReferenceKind.Write));
+        var lambda = Node("lambda", lambdaKind);
+        var inner = Node("inner", StatementKind.FunctionCall);
+        inner.AddReference(new SymbolReference("a", null, ReferenceKind.Read));
+        lambda.AddChild(inner);
+
+        var links = DataFlowAnalyzer.Analyze([write, lambda]);
+
+        Assert.Empty(links);
     }
 }

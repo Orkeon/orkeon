@@ -32,6 +32,12 @@ internal sealed record JsExecutionEnvironment
     /// </summary>
     public Orkeon.Domain.Autonomous.AgentExecutionBudget? Budget { get; init; }
 
+    /// <summary>The permit of the crew's concurrency gate the agent runs under as a child, null for a run holding none.</summary>
+    internal GatePermit? Permit { get; init; }
+
+    /// <summary>The agent instance (RT-03) this agent runs as, null for a run that is not one.</summary>
+    internal AgentInstanceRun? Instance { get; init; }
+
     /// <summary>
     /// Optional per-tool-call permission gate consulted by <c>ctx.llm.act</c> before each
     /// tool execution. Null = ungated (pre-F2 behaviour).
@@ -49,4 +55,13 @@ internal sealed record JsExecutionEnvironment
     /// through after the permission gate. Null = the tool is called directly.
     /// </summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
+
+    /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
+    public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+    /// <summary>
+    /// The configured tool-result cuts and fan-out bound of <c>ctx.llm.act</c>; a host sets it from
+    /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.
+    /// </summary>
+    public Orkeon.Domain.Tools.ToolResultLimitsOptions ToolLimits { get; init; } = new();
 }

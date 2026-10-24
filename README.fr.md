@@ -34,7 +34,7 @@ flowchart LR
     you --> code["Orkeon Code<br/>un assistant de codage<br/>sur votre dépôt"]
     you --> cli["CLI orkeon<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Votre propre application .NET<br/>builders C#, NuGet"]
-    studio & workshop & code & cli & app --> runtime["Le runtime Orkeon<br/>système de fichiers virtuel · budgets · bac à sable<br/>102 outils · 16 fournisseurs LLM"]
+    studio & workshop & code & cli & app --> runtime["Le runtime Orkeon<br/>système de fichiers virtuel · budgets · bac à sable<br/>119 outils · 16 fournisseurs LLM"]
     runtime --> world(["Vos fichiers, boîtes aux lettres, drives, API<br/>— seulement ceux que vous avez montés, avec les droits que vous avez donnés"])
 ```
 
@@ -85,7 +85,7 @@ L'équipe que vous composez dans Studio est le YAML que le CLI exécute, et l'é
 
 ## Ce qu'il y a dans la boîte
 
-102 outils intégrés (mail en IMAP, SMTP et Microsoft Graph ; Google Drive et OneDrive ; web, HTTP, bases de données, Office et PDF, exécution de code sécurisée, analyse sémantique de code) · 16 fournisseurs LLM, modèles locaux compris (Ollama, Docker Model Runner, llama.cpp embarqué) · 6 fournisseurs de mémoire · 6 stratégies d'orchestration, de la simple séquence au graphe ou à l'équipe autonome sous budget · points de reprise · plugins dans des contextes de chargement isolés · 104 exemples exécutables. Chaque nombre de cette page est recalculé par la CI à chaque changement — un README qui s'en écarte fait échouer le build.
+119 outils intégrés (mail en IMAP, SMTP et Microsoft Graph ; Google Drive et OneDrive ; web, HTTP, bases de données, Office et PDF, exécution de code sécurisée, analyse sémantique de code) · 16 fournisseurs LLM, modèles locaux compris (Ollama, Docker Model Runner, llama.cpp embarqué) · 6 fournisseurs de mémoire · 6 stratégies d'orchestration, de la simple séquence au graphe ou à l'équipe autonome sous budget · points de reprise · plugins dans des contextes de chargement isolés · 104 exemples exécutables. Chaque nombre de cette page est recalculé par la CI à chaque changement — un README qui s'en écarte fait échouer le build.
 
 ## Installer
 

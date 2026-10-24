@@ -51,6 +51,30 @@ internal sealed class ShellSessionManager
             return await session.RunAsync(invocation, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Starts <paramref name="invocation"/> detached in the current run's session of <paramref name="sandbox"/>.</summary>
+    /// <param name="sandbox">How the session is run.</param>
+    /// <param name="view">The view the command needs.</param>
+    /// <param name="invocation">The command, validated by the tool.</param>
+    /// <param name="physicalLogPath">The host path the job's output goes to.</param>
+    /// <param name="openLogAsync">Opens the job log for writing through the VFS.</param>
+    /// <param name="cancellationToken">Cancels the start.</param>
+    /// <exception cref="InvalidOperationException">No run holds the session, or the run has ended.</exception>
+    /// <exception cref="ShellSessionException">The session could not start or died.</exception>
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "An instance member: the tool receives the manager by injection, which keeps it replaceable.")]
+    public async Task<ShellJobHandle> StartDetachedAsync(
+        IShellSandbox sandbox, ShellSessionView view, ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(sandbox);
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(invocation);
+
+        var slot = SlotOf(sandbox);
+        return slot is null
+            ? throw new InvalidOperationException("A job needs a running agent run.")
+            : await slot.UseAsync(sandbox, view, (session, token) => session.StartDetachedAsync(invocation, physicalLogPath, openLogAsync, token), cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("The agent run has ended.");
+    }
+
     private static ShellSessionSlot? SlotOf(IShellSandbox sandbox)
     {
         var scope = AgentRunScope.Current;
@@ -85,8 +109,25 @@ internal sealed class ShellSessionManager
         private bool _disposed;
 
         /// <summary>Runs the command in the slot's session, or returns null when the slot has ended.</summary>
-        public async Task<ShellRunResult?> RunAsync(
+        public Task<ShellRunResult?> RunAsync(
             IShellSandbox sandbox, ShellSessionView view, ShellInvocation invocation, CancellationToken cancellationToken)
+            => UseAsync(sandbox, view, async (session, token) =>
+            {
+                var result = await session.RunAsync(invocation, token).ConfigureAwait(false);
+                if (!result.TimedOut)
+                    return result;
+
+                await ResetAsync(session).ConfigureAwait(false);
+                return result with { SessionReset = true };
+            }, cancellationToken);
+
+        /// <summary>
+        /// Runs <paramref name="operation"/> on the slot's session, one at a time, opening it first when
+        /// needed; null when the slot has ended. An operation that throws leaves the session reset.
+        /// </summary>
+        public async Task<T?> UseAsync<T>(
+            IShellSandbox sandbox, ShellSessionView view, Func<IShellSession, CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+            where T : class
         {
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -127,10 +168,9 @@ internal sealed class ShellSessionManager
                     }
                 }
 
-                ShellRunResult result;
                 try
                 {
-                    result = await session.RunAsync(invocation, cancellationToken).ConfigureAwait(false);
+                    return await operation(session, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -138,12 +178,6 @@ internal sealed class ShellSessionManager
                     await ResetAsync(session).ConfigureAwait(false);
                     throw;
                 }
-
-                if (!result.TimedOut)
-                    return result;
-
-                await ResetAsync(session).ConfigureAwait(false);
-                return result with { SessionReset = true };
             }
             finally
             {

@@ -103,7 +103,10 @@ public abstract partial class ToolBase<TRequest, TResponse> : ToolBase
                     error = ExtractErrorMessage(resultDict);
                 }
 
-                return new ProtocolToolCallResponse(Success: success, Result: filteredResult, Error: error);
+                return new ProtocolToolCallResponse(Success: success, Result: filteredResult, Error: error)
+                {
+                    AlreadyBounded = typedResponse is Orkeon.Domain.Tools.IBoundedToolResponse { AlreadyBounded: true }
+                };
             }
             catch (JsonException ex)
             {

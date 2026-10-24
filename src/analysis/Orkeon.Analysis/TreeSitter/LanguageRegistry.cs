@@ -2,8 +2,21 @@ using TsLanguage = TreeSitter.Language;
 
 namespace Orkeon.Analysis.TreeSitter;
 
+internal sealed record GrammarInfo(string Language, IReadOnlyList<string> Extensions);
+
 internal static class LanguageRegistry
 {
+    /// <summary>The languages the index serves and the file extensions each one claims.</summary>
+    public static IReadOnlyList<GrammarInfo> Shipped { get; } =
+    [
+        new("typescript", [".ts", ".tsx"]),
+        new("python", [".py"]),
+        new("csharp", [".cs"]),
+        new("go", [".go"]),
+        new("rust", [".rs"]),
+        new("markdown", [".md", ".markdown"]),
+    ];
+
     private static readonly Dictionary<string, (string Library, string Function)> Map =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -22,6 +35,16 @@ internal static class LanguageRegistry
             throw new ArgumentException($"Unsupported tree-sitter language '{language}'.", nameof(language));
         return new TsLanguage(entry.Library, entry.Function);
     }
+
+    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cs"] = "csharp",
+        ["ts"] = "typescript",
+        ["md"] = "markdown",
+    };
+
+    /// <summary>The canonical language name of an alias (<c>cs</c>, <c>ts</c>); any other name is returned as given.</summary>
+    public static string Resolve(string language) => Aliases.GetValueOrDefault(language, language);
 
     public static bool IsSupported(string language) => Map.ContainsKey(language);
 

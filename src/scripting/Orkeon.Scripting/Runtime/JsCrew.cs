@@ -47,9 +47,14 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
+    private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
+    private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
     public string name { get; }
+
+    /// <summary>True when the script set the name with <c>.name(...)</c>.</summary>
+    internal bool HasName { get; }
 
     internal string? Goal { get; }
     internal string Process { get; }
@@ -68,6 +73,7 @@ public sealed partial class JsCrew
         ArgumentNullException.ThrowIfNull(definition);
         _engine = engine;
         name = definition.Name;
+        HasName = definition.NameSet;
         Goal = definition.Goal;
         Process = definition.Process;
         Manager = definition.Manager;
@@ -76,12 +82,16 @@ public sealed partial class JsCrew
         Memory = definition.Memory;
         Planning = definition.Planning;
         MaxRpm = definition.MaxRpm;
+        ConcurrencyGate = new SemaphoreSlim(definition.Concurrency, definition.Concurrency);
+        Instances = new AgentInstanceRegistry(definition.MaxInstances, definition.AgentInstances);
         _logger = definition.Logger ?? NullLogger.Instance;
         _llmProvider = definition.LlmProvider;
         _builtInTools = definition.BuiltInTools;
         _permissionGate = definition.PermissionGate;
         _deltaSink = definition.DeltaSink;
         _toolInvocation = definition.ToolInvocation;
+        _agentMemoryStore = definition.AgentMemoryStore;
+        _toolLimits = definition.ToolLimits;
         _agents = new List<JsAgent>();
         _tasks = new List<JsTask>(definition.Tasks);
 
@@ -97,7 +107,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts are intentionally unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -111,9 +121,13 @@ public sealed partial class JsCrew
         LlmProvider = agent.Builder.LlmConfig?.ProfileProvider ?? _llmProvider,
         BuiltInTools = _builtInTools,
         Budget = budget,
+        Permit = permit,
+        Instance = instance,
         PermissionGate = _permissionGate,
         DeltaSink = _deltaSink,
         ToolInvocation = _toolInvocation,
+        AgentMemoryStore = _agentMemoryStore,
+        ToolLimits = _toolLimits ?? new(),
     };
 
     private JsEventBroker? _eventBroker;
@@ -468,6 +482,31 @@ public sealed partial class JsCrew
 
     internal SemaphoreSlim GetInstanceSemaphore(JsAgent agent)
         => _instanceSemaphores.GetOrAdd(agent.id, _ => new SemaphoreSlim(1, 1));
+
+    /// <summary>The crew-wide cap on children running at once (<c>crewBuilder().concurrency(n)</c>, default 4).</summary>
+    internal SemaphoreSlim ConcurrencyGate { get; }
+
+    /// <summary>The addressable children of this crew: background tickets and <c>spawn_agent</c> calls (RT-03).</summary>
+    internal AgentInstanceRegistry Instances { get; }
+
+    /// <summary>The kept instances, oldest first: <c>{ id, agent, state }</c> with the state <c>running</c>, <c>completed</c>, <c>failed</c> or <c>stopped</c>.</summary>
+    public JsValue instances() => new Jint.Native.JsArray(_engine, [.. Instances.List().Select(i =>
+    {
+        var row = new Jint.Native.JsObject(_engine);
+        row.Set("id", i.Id);
+        row.Set("agent", i.Agent);
+        row.Set("state", i.State);
+        return (JsValue)row;
+    })]);
+
+    /// <summary>Cancels the running instance <paramref name="id"/> at once; <c>false</c> when none runs under it.</summary>
+    public bool stop(string id) => Instances.Stop(id);
+
+    private static async Task<JsValue> AcquireGateAsync(GatePermit permit, CancellationToken? signal)
+    {
+        await permit.AcquireAsync(signal ?? CancellationToken.None).ConfigureAwait(false);
+        return JsValue.Undefined;
+    }
 
     // The open attempts of this crew in opening order; the last one is what the broker attributes to.
     // Guarded by its own lock: attempts open on the draining thread and close there or, when a host

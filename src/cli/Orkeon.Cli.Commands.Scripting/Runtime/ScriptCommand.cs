@@ -117,7 +117,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     private async Task<CommandResult> ExecuteSyncCommand(CommandContext context, JsValue argsObj, CancellationToken ct)
     {
         var ctxObj = PushContext(context.Console, context.RawInput, ct);
-        using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
+        using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
 
         JsValue result;
         try
@@ -168,7 +168,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         var ctxObj = PushContext(context.Console, context.RawInput, ct);
         try
         {
-            using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
+            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, ct, promptLine: context.RawInput) : null;
 
             JsValue result;
             try
@@ -199,7 +199,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();
             if (captured.Count > 0)
             {
-                WireCompletions(context.Console, context.RawInput, captured, gateAcquired ? _admissionGate : null);
+                WireCompletions(context.Console, context.RawInput, captured, gateAcquired ? new AdmissionCount(_admissionGate!, captured.Count) : null);
                 releaseGate = false; // ownership handed to the completion countdown
             }
 
@@ -215,16 +215,17 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// <summary>
     /// Attaches the terminal callback to each instance a <c>dispatch</c> created: enqueue the
     /// <c>completed</c> drain, emit terse host feedback, and release the admission slot once
-    /// every instance of this invocation is terminal (design §4.3, §5). Each instance keeps the
+    /// every instance of this invocation, chained <c>completed</c> launches included, is terminal
+    /// and its last <c>completed</c> drained (design §4.3, §5). Each instance keeps the
     /// line that launched it, so its <c>completed</c> replay reads that line in
     /// <c>ctx.command.rawInput</c> — not the line of whichever later invocation pumps the queue.
     /// </summary>
-    private void WireCompletions(IConsoleAdapter console, string rawInput, IReadOnlyList<CommandInstance> instances, SemaphoreSlim? gate)
+    private void WireCompletions(IConsoleAdapter console, string rawInput, IReadOnlyList<CommandInstance> instances, AdmissionCount? admission)
     {
-        var remaining = new int[] { instances.Count };
         foreach (var instance in instances)
         {
             instance.LaunchInput = rawInput;
+            if (admission is not null) _admissionOf.Add(instance, admission);
             instance.AttachTerminalCallback(settled =>
             {
                 _drainQueue.Enqueue(_descriptor.Completed, settled);
@@ -234,9 +235,6 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 var view = settled.Snapshot();
                 var mark = view.state == "done" ? "✓" : "✗";
                 console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
-
-                if (Interlocked.Decrement(ref remaining[0]) == 0)
-                    gate?.Release();
 
                 // Push-render: run the JS completed(result) callback now, instead of deferring
                 // it to this command's next invocation. Off the pool thread, serialised on the
@@ -271,20 +269,59 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
+    // Static: the commands of one file share a drain queue, so whichever command drains an
+    // item must find the count of the invocation that launched it.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CommandInstance, AdmissionCount> _admissionOf = new();
+
+    /// <summary>Instances of one invocation still unsettled; the slot is released when it reaches zero.</summary>
+    private sealed class AdmissionCount(SemaphoreSlim gate, int count)
+    {
+        private int _remaining = count;
+
+        public void Join(int n) => Interlocked.Add(ref _remaining, n);
+
+        public void Settle()
+        {
+            if (Interlocked.Decrement(ref _remaining) == 0)
+                gate.Release();
+        }
+    }
+
     private async Task DrainCompletionsAsync(IConsoleAdapter console)
     {
         var pending = _drainQueue.DrainAll();
         if (pending.Count == 0) return;
 
-        foreach (var item in pending)
+        var next = 0;
+        try
         {
-            if (item.Completed is null) continue;
+            while (next < pending.Count)
+                await DrainOneAsync(console, pending[next++]).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Items taken by DrainAll but not reached (an engine limit escaped) still free their slot.
+            for (; next < pending.Count; next++)
+                if (_admissionOf.TryGetValue(pending[next].Instance, out var skipped)) skipped.Settle();
+        }
+    }
+
+    private async Task DrainOneAsync(IConsoleAdapter console, PendingCompletion item)
+    {
+        _admissionOf.TryGetValue(item.Instance, out var admission);
+        try
+        {
+            if (item.Completed is null) return;
 
             var view = item.Instance.Snapshot();
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
-            var ctxObj = PushContext(console, item.Instance.LaunchInput ?? _descriptor.Name, CancellationToken.None);
+            var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;
+            var ctxObj = PushContext(console, launchInput, CancellationToken.None);
 
+            // A completed() may launch more async work (runCrewAsync): give it an ambient scope of
+            // this command so the new instances are captured and wired to drain like any dispatch.
+            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth) : null;
             try
             {
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });
@@ -302,6 +339,16 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {ConciseErrors.Message(rejected)}");
             }
+
+            if (scope is { Captured.Count: > 0 })
+            {
+                admission?.Join(scope.Captured.Count);
+                WireCompletions(console, launchInput, scope.Captured, admission);
+            }
+        }
+        finally
+        {
+            admission?.Settle();
         }
     }
 

@@ -58,6 +58,15 @@ public static class ConfigurationKeys
     /// </summary>
     public const string CliSessionContextWindowTokens = "Orkeon:Cli:Session:ContextWindowTokens";
 
+    /// <summary>The script run once at the REPL's start.</summary>
+    public const string CliSessionStartScript = "Orkeon:Cli:Session:StartScript";
+
+    /// <summary>Whether the REPL session is persisted per project and rehydrated at the next start.</summary>
+    public const string CliSessionPersist = "Orkeon:Cli:Session:Persist";
+
+    /// <summary>The virtual directory holding one folder of persisted session per project.</summary>
+    public const string CliSessionSessionsDirectory = "Orkeon:Cli:Session:SessionsDirectory";
+
     /// <summary>
     /// The LLM section, at the configuration ROOT rather than under <c>Orkeon:</c> - the one
     /// section that is, for historical reasons the settings files already carry. Read by the

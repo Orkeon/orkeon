@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tests.Shared.Timing;
+using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests;
 
@@ -821,6 +823,119 @@ public sealed class ShellCommandToolTests : IDisposable
             if (pid is { } leftover && IsAlive(leftover))
                 System.Diagnostics.Process.GetProcessById(leftover).Kill();
         }
+    }
+
+    private static async Task<Dictionary<string, object?>> RunWithShellLimitAsync(int limit, int producedChars)
+    {
+        var limits = new Orkeon.Domain.Tools.ToolResultLimitsOptions();
+        limits.Limits["shell_command"] = limit;
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new Orkeon.Tools.Code.Sessions.ShellRunResult(0, new string('x', producedChars), ""),
+        };
+        using var tool = new ShellCommandTool(new FakeFileSystemService(), limits: limits)
+        {
+            Sandbox = sandbox,
+            Confinement = TestConfinement.Off(),
+        };
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            response = await tool.CallAsync(
+                new ToolCallRequest("shell_command", new Dictionary<string, object?> { ["command"] = "echo hello" }),
+                TestContext.Current.CancellationToken);
+        }
+
+        Assert.True(response.Success, response.Error);
+        return Assert.IsType<Dictionary<string, object?>>(response.Result);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async Task ShouldNotCutTwice_WhenShellLimitRaisedBySetting()
+    {
+        var whole = await RunWithShellLimitAsync(limit: 50_000, producedChars: 30_000);
+        var cut = await RunWithShellLimitAsync(limit: 50_000, producedChars: 60_000);
+
+        Assert.Equal(new string('x', 30_000), whole["stdout"]);
+        var stdout = Assert.IsType<string>(cut["stdout"]);
+        Assert.StartsWith(new string('x', 50_000), stdout, StringComparison.Ordinal);
+        Assert.Contains("10000 chars omitted", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Output truncated]", stdout, StringComparison.Ordinal);
+    }
+
+    private static async Task<ToolCallResponse> CallShellAsync(int? limit, int producedChars, string stderr, Orkeon.Application.Services.Security.ToolInvocationPipeline? pipeline, Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null)
+    {
+        if (limit is { } l)
+        {
+            limits = new Orkeon.Domain.Tools.ToolResultLimitsOptions();
+            limits.Limits["shell_command"] = l;
+        }
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new Orkeon.Tools.Code.Sessions.ShellRunResult(0, new string('x', producedChars), stderr),
+        };
+        using var tool = new ShellCommandTool(new FakeFileSystemService(), limits: limits)
+        {
+            Sandbox = sandbox,
+            Confinement = TestConfinement.Off(),
+        };
+        var args = new Dictionary<string, object?> { ["command"] = "echo hello" };
+        await using (AgentRunScope.Begin("agent-1"))
+        {
+            if (pipeline is null)
+                return await tool.CallAsync(new ToolCallRequest("shell_command", args), TestContext.Current.CancellationToken);
+            var result = await pipeline.InvokeAsync(
+                new Orkeon.Application.Interfaces.Security.ToolInvocation(
+                    tool, args, new Orkeon.Application.Interfaces.Security.ToolInvocationCaller("agent-1", "dev")),
+                TestContext.Current.CancellationToken);
+            return new ToolCallResponse(result.Success, result.ConversationText, null);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async Task ShouldFlagAlreadyBounded_WhenShellCutsItsOutput()
+    {
+        var response = await CallShellAsync(limit: null, producedChars: 12_000, stderr: "", pipeline: null);
+
+        Assert.True(response.Success, response.Error);
+        Assert.True(response.AlreadyBounded);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-10")]
+    public async Task ShouldNotFlagAlreadyBounded_WhenShellOutputIsWithinBound()
+    {
+        var response = await CallShellAsync(limit: null, producedChars: 100, stderr: "", pipeline: null);
+
+        Assert.True(response.Success, response.Error);
+        Assert.False(response.AlreadyBounded);
+    }
+
+    [Theory]
+    [InlineData(null, 2_000)]
+    [InlineData(50_000, 10_000)]
+    [Trait("BR", "RT-10")]
+    public async Task ShouldKeepNoticeStderrAndLaterKeys_WhenRealShellResponseGoesThroughPipeline(int? limit, int omitted)
+    {
+        var raw = await CallShellAsync(limit, producedChars: limit is null ? 12_000 : 60_000, stderr: "warning-from-stderr", pipeline: null);
+        var dict = Assert.IsType<Dictionary<string, object?>>(raw.Result);
+        var later = dict.Keys.SkipWhile(k => k != "stdout").Skip(1).ToList();
+        Assert.NotEmpty(later);
+
+        var pipelineLimits = new Orkeon.Domain.Tools.ToolResultLimitsOptions();
+        if (limit is { } l) pipelineLimits.Limits["shell_command"] = l;
+        var pipeline = new Orkeon.Application.Services.Security.ToolInvocationPipeline(
+            limits: Microsoft.Extensions.Options.Options.Create(pipelineLimits));
+        var response = await CallShellAsync(limit, producedChars: limit is null ? 12_000 : 60_000, stderr: "warning-from-stderr", pipeline: pipeline, limits: null);
+
+        var text = Assert.IsType<string>(response.Result);
+        Assert.Contains($"{omitted} chars omitted", text, StringComparison.Ordinal);
+        Assert.Contains("warning-from-stderr", text, StringComparison.Ordinal);
+        foreach (var key in later)
+            Assert.Contains(key, text, StringComparison.Ordinal);
     }
 
     /// <summary>The pid of the <c>sleep</c> whose argument is <paramref name="marker"/>, or null.</summary>

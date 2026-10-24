@@ -1345,3 +1345,37 @@ static Orkeon.Domain.Execution.AgentRunScope.Begin(string? agentId = null, strin
 static Orkeon.Domain.Execution.AgentRunScope.Create(string? agentId = null, string? agentRole = null) -> Orkeon.Domain.Execution.AgentRunScope!
 static Orkeon.Domain.Execution.AgentRunScope.Current.get -> Orkeon.Domain.Execution.AgentRunScope?
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.PauseWallClock() -> System.IDisposable!
+static Orkeon.Domain.Execution.AgentRunScope.Begin(string? agentId, string? agentRole, string? root) -> Orkeon.Domain.Execution.AgentRunScope!
+Orkeon.Domain.Execution.AgentRunScope.Root.get -> string?
+Orkeon.Domain.Agent.Agent.WorkingRoot.get -> string?
+Orkeon.Domain.Agent.AgentBuilder.WorkingRoot(string! virtualPath) -> Orkeon.Domain.Agent.AgentBuilder!
+Orkeon.Domain.Configuration.AgentConfiguration.WorkingRoot.get -> string?
+Orkeon.Domain.Configuration.AgentConfiguration.WorkingRoot.init -> void
+
+Orkeon.Domain.HumanInput.HumanInputContext.Multi.get -> bool
+Orkeon.Domain.HumanInput.HumanInputContext.Multi.init -> void
+Orkeon.Domain.HumanInput.HumanInputContext.Recommended.get -> int?
+Orkeon.Domain.HumanInput.HumanInputContext.Recommended.init -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException() -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message, System.Exception! innerException) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.LlmRateLimitException(string! message, System.TimeSpan wait) -> void
+Orkeon.Domain.Exceptions.LlmRateLimitException.Wait.get -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.get -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRateLimitWait.init -> void
+static readonly Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultMaxRateLimitWait -> System.TimeSpan
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.get -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.CacheWriteTokens.init -> void
+const Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName = "Orkeon:Tools:ResultLimits" -> string!
+Orkeon.Domain.Tools.ToolResultLimitsOptions
+Orkeon.Domain.Tools.ToolResultLimitsOptions.Limits.get -> System.Collections.Generic.Dictionary<string!, int>!
+Orkeon.Domain.Tools.ToolResultLimitsOptions.MaxParallelToolCalls.get -> int
+Orkeon.Domain.Tools.ToolResultLimitsOptions.MaxParallelToolCalls.set -> void
+Orkeon.Domain.Tools.ToolResultLimitsOptions.ResolveFor(string! toolName) -> int
+Orkeon.Domain.Tools.ToolResultLimitsOptions.ToolResultLimitsOptions() -> void
+static Orkeon.Domain.Tools.ToolResultLimitsOptions.Cut(string! result, int maxLength) -> string!
+Orkeon.Domain.Tools.IBoundedToolResponse
+Orkeon.Domain.Tools.IBoundedToolResponse.AlreadyBounded.get -> bool
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.get -> bool
+Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.init -> void

@@ -1,4 +1,11 @@
+using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Infrastructure.CostTracking;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Session;
 using Orkeon.Infrastructure.Tools;
@@ -267,6 +274,39 @@ public sealed class SessionBufferAndToolsTests
         Assert.Equal(2, buffer.MessageCount);                            // head + 1
         Assert.Equal(3, Convert.ToInt32(dict["removed_count"]));
         Assert.Equal(2, Convert.ToInt32(dict["retained_count"]));
+    }
+
+    // ── SessionStatsTool ────────────────────────────────────────────────────
+
+    [Fact]
+    [Trait("BR", "RT-12")]
+    public async Task ShouldReportCacheWriteAndReadByModel_WhenSessionStatsCalled()
+    {
+        var sink = new MockLlmUsageSink();
+        var mock = new MockLlmProvider { CacheWriteTokens = 100, CacheHitTokens = 40 };
+        mock.SetGenerateResult(new LlmResponse { Content = "ok", Model = "stats-model", PromptTokens = 200, CompletionTokens = 20, TokensUsed = 220 });
+        var metered = MeteredLlmProvider.Wrap(mock, sink);
+        await metered.GenerateAsync("p", cancellationToken: TestContext.Current.CancellationToken);
+
+        var manager = new CostBudgetManager(
+            new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(new CostTrackingOptions()), NullLogger<CostBudgetManager>.Instance);
+        foreach (var e in sink.Recorded)
+            manager.RecordUsage(e);
+        using var tool = new SessionStatsTool(new InMemorySessionBufferService(), manager);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("session_stats", new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Assert.True(resp.Success, resp.Error);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(resp.Result));
+        Assert.True(doc.RootElement.TryGetProperty("by_model", out _));
+        Assert.True(doc.RootElement.TryGetProperty("by_model_tokens", out var entries));
+        var entry = Assert.Single(entries.EnumerateArray());
+        Assert.Equal("stats-model", entry.GetProperty("model").GetString());
+        Assert.Equal(200, entry.GetProperty("prompt_tokens").GetInt64());
+        Assert.Equal(20, entry.GetProperty("completion_tokens").GetInt64());
+        Assert.Equal(100, entry.GetProperty("cache_write_tokens").GetInt64());
+        Assert.Equal(40, entry.GetProperty("cache_read_tokens").GetInt64());
     }
 
     // ── TokenBudgetTool ─────────────────────────────────────────────────────

@@ -431,6 +431,9 @@ public static class InfrastructureExtensions
         // Prompt injection defense (P0-5)
         services.AddOrkeonSettings<PromptSecurityOptions>("Security:Prompt");
         services.AddOrkeonSettings<ToolResultSecurityOptions>("Security:ToolResults");
+        services.AddOrkeonSettings<Orkeon.Domain.Tools.ToolResultLimitsOptions>(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName)
+            .Validate(o => o.MaxParallelToolCalls >= 1, "Orkeon:Tools:ResultLimits:MaxParallelToolCalls must be at least 1.")
+            .Validate(o => o.Limits.Values.All(v => v >= 1), "Orkeon:Tools:ResultLimits: every limit must be at least 1.");
         services.AddSingleton<IPromptSanitizer, PromptSanitizer>();
         // Applied to every tool result by the tool-invocation pipeline (GAP-09).
         services.AddSingleton<IToolResultSanitizer, ToolResultSanitizer>();

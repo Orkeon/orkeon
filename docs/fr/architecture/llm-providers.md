@@ -6,6 +6,8 @@
 
 **Budget de retry.** `Llm:MaxRetries` (10 par défaut) couvre les échecs qui reviennent en quelques secondes — erreurs de requête, 5xx, 429. Un appel bufferisé qui atteint `Llm:TimeoutSeconds` est réessayé **une fois** (`ResilienceDefaults.LlmTimeoutRetries` : chaque tentative coûte le délai entier), puis le provider répond par un échec qui nomme le réglage et les deux issues (un délai plus long, la réflexion coupée) ; une annulation de l'appelant n'est jamais réessayée. Un appel échoué voyage en `LlmResponse.Error` et, à travers l'adaptateur de chat client, en exception — il n'est jamais confondu avec une réponse vide, si bien que la boucle agent fait échouer la tâche immédiatement avec la raison du provider au lieu de relancer sans outils (LLM-11).
 
+**Fenêtre de limite de débit.** Un 429, ou un 529 qui porte un en-tête de réinitialisation, n'est pas réessayé sur l'échelle de recul : l'appel attend la réinitialisation de la fenêtre, sur le chemin tamponné comme sur la connexion de flux (`RateLimitResetHeaders`). Il lit `Retry-After` (secondes ou date HTTP), `anthropic-ratelimit-requests-reset` et `anthropic-ratelimit-tokens-reset` (RFC 3339) et `x-ratelimit-reset-requests` et `x-ratelimit-reset-tokens` (durées OpenAI comme `6m0s`), et la plus longue l'emporte. L'attente ne dépasse jamais `Llm:MaxRateLimitWait` (5 minutes par défaut, distinct du plafond de 30 secondes de l'échelle 5xx) : une réinitialisation au-delà fait échouer l'appel aussitôt avec la raison (`LlmRateLimitException`) au lieu de garer une exécution sans surveillance. Chaque attente est annoncée à `ILlmRetryObserver` avec la raison `rate-limit window` et le délai. Un 529 sans en-tête garde l'échelle.
+
 **Un appel streamé est borné de la même façon (LLM-12).** Une requête streamée part en `ResponseHeadersRead`, et `HttpClient.Timeout` cesse de compter dès que les en-têtes sont arrivés : le corps était lu sur le seul token de l'appelant, si bien qu'un modèle qui réfléchit plusieurs minutes avant son premier token faisait pendre un run Studio au-delà de tout `Llm:TimeoutSeconds`. Chaque chemin de streaming (dialecte OpenAI, Azure, Anthropic, Ollama — flux chat et flux texte) court désormais sous un `StreamReadBudget` : `Llm:TimeoutSeconds` borne l'appel entier, en-têtes et corps, et `Llm:StreamIdleSeconds`, optionnel, borne le silence entre deux lignes du corps (non posé par défaut). Une borne atteinte termine le flux chat par un événement `Completed` dont la réponse porte `error` (la phrase qui nomme le réglage) et `error_type` (`TaskCanceledException` pour la borne de l'appel entier, `StreamIdleTimeout` pour celle du silence) par-dessus le contenu déjà arrivé, sans `RawResponseBody` ; le flux texte lève une `HttpRequestException` portant la même phrase. Un flux que le provider ferme sans son marqueur de fin (`finish_reason` ou `[DONE]`, `message_stop`, `done: true`) est lui aussi un appel échoué quand aucun texte de réponse ni appel d'outil n'est arrivé (`error_type` `StreamTruncated`, la phrase disant combien de raisonnement a été streamé) ; avec un début de réponse, il est servi tel quel, marqué `stream_truncated` dans ses métadonnées. L'adaptateur de client de chat fait échouer un tour streamé sur tout `error`, contenu partiel ou non ; la phase des en-têtes renvoie une fois un `HttpClient.Timeout` atteint (`LlmTimeoutRetries`), comme le chemin bufferisé.
 
 Fournisseurs implémentés :
@@ -211,6 +213,26 @@ pas par des copies du constructeur de payload :
 | `CostCurrency` | aucune | OpenRouter (`USD`) |
 | `TryAdaptRejectedPayload` | ré-émet une fois sans le plafond de sortie quand celui du catalogue a été refusé | Kimi (la température imposée, puis la règle de la base) |
 | `BuildEndpoint` | `{baseUrl}/chat/completions` | Azure OpenAI (URL datée par déploiement, ou la surface v1 avec `api_version: v1`) |
+
+## Jetons du cache de prompt et TTL
+
+`LlmResponse` porte trois compteurs de cache : `CacheHitTokens` (lus dans le cache), `CacheWriteTokens`
+(écrits dans le cache — le `cache_creation_input_tokens` d'Anthropic) et `CacheMissTokens` (entrée non servie
+par le cache). `PromptTokens` inclut déjà les jetons écrits et lus : une écriture n'est jamais comptée deux
+fois. `MeteredLlmProvider` les enregistre une fois par appel dans le `CostUsageEvent` ; `CostBudgetManager`
+conserve par modèle les jetons de prompt, de complétion, d'écriture et de lecture du cache et le coût
+(`CostReport.ModelUsageByModel`), et `session_stats` les renvoie dans `by_model_tokens[]` à côté de la table
+de coûts `by_model`, inchangée. Un modèle dont le `ModelPricing` déclare `CacheWritePricePerMillion` /
+`CacheReadPricePerMillion` est tarifé `(prompt - écriture - lecture) x tarif prompt + écriture x tarif
+d'écriture + lecture x tarif de lecture + complétion x tarif de complétion` ; sans ces tarifs, le coût est
+inchangé.
+
+Le TTL du cache est `LlmCacheConfig.Ttl` (`5m` ou `1h`). Un appel peut le porter comme option
+`LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), que `ChatOptionsComposer` remplit depuis le
+`llm.cache.ttl` de l'agent ; l'adaptateur de client de chat le replie dans le `Cache.Ttl` de l'appel et
+Anthropic l'émet dans `cache_control`. Les fournisseurs compatibles OpenAI ne peuvent pas l'honorer et
+journalisent l'avertissement structuré d'option non honorée (événement 110, `cache_ttl`) au lieu de
+l'abandonner en silence.
 
 ## Décorateurs et enregistrement
 

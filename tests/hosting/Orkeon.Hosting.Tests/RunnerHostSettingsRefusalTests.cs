@@ -127,8 +127,10 @@ public sealed class RunnerHostSettingsRefusalTests : IDisposable
         { "HybridRetrievalOptions", "Orkeon:Rag:Retrieval:Hybrid", "yes", "Orkeon:Rag:Retrieval:Hybrid" },
         { "WebSearchRetrieverOptions", "Orkeon:Rag:WebFallback:MaxResults", "three", "Orkeon:Rag:WebFallback:MaxResults" },
         { "ShellToolOptions", "Orkeon:Tools:Shell:AllowInterpreters", "yes", "Orkeon:Tools:Shell:AllowInterpreters" },
+        { "ToolResultLimitsOptions", "Orkeon:Tools:ResultLimits:MaxParallelToolCalls", "many", "Orkeon:Tools:ResultLimits:MaxParallelToolCalls" },
         { "ScriptingLimitsOptions", "Orkeon:Scripting:Limits:ExecutionTimeout", "2 minutes", "Orkeon:Scripting:Limits:ExecutionTimeout" },
         { "ScriptingToolchainOptions", "Orkeon:Scripting:Toolchain:EsbuildTimeout", "soon", "Orkeon:Scripting:Toolchain:EsbuildTimeout" },
+        { "ScriptAgentMemoryOptions", "Orkeon:Scripting:AgentMemory:RootDirectory", "", "Orkeon:Scripting:AgentMemory:RootDirectory" },
         { "TelemetryOptions", "Telemetry:Enabled", "maybe", "Telemetry:Enabled" },
     };
 

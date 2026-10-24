@@ -113,6 +113,101 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 | Les réglages de modèle de l'agent (`llm.default_`, `llm.model(...)`) | `llm.d.ts` |
 | RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
+## Outils autonomes dans act
+
+Un outil construit avec `toolBuilder()` et attaché à un agent par `withAutonomousTool` est proposé
+au modèle dans la boucle `act` du REPL. Le garde-fou de permissions le traite d'après ce que le
+script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`) :
+
+- **Proposé et exécuté.** Un outil déclaré avec `access("read")` est proposé au modèle ; son
+  `execute` peut appeler `tools.fileRead(...)` et la valeur retournée parvient au modèle encodée
+  en JSON dans le résultat de l'outil.
+- **L'`access` déclaré est la seule entrée du garde-fou.** `read` est autorisé. Un outil `edit` est
+  refusé en mode `plan` et soumis à confirmation en mode `default` : la demande passe par le canal
+  d'approbation, et sous `orkeon run`, qui n'en a pas, un Ask devient un Deny
+  (`ModePermissionGate.cs`). Un outil sans `access` déclaré compte comme une écriture, par défaut
+  restrictif.
+- **Une approbation par appel initié par le modèle.** Les appels `tools.*` faits dans `execute` ne
+  sont pas redemandés : approuver l'outil du script couvre ce que fait son corps.
+
+## Options de act
+
+`ctx.llm.act(prompt, options)` accepte quatre options en plus des réglages du modèle. Elles sont fixées
+au début de l'appel (une `ActSession` par appel) :
+
+- **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
+  l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé.
+- **`effort: "low" | "medium" | "high"`** règle la réflexion du fournisseur pour l'appel
+  (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
+  `ctx.llm`, par `ctx.llm.with({...})` et par `agent().effort(level)` ; toute autre valeur est refusée
+  avec `effort must be low|medium|high`.
+- **`onToolCall(call)`** s'exécute avant chaque appel d'outil, après la porte de permission. Il renvoie
+  `"allow"` ; `"ask"` (l'appel passe par le canal d'approbation comme une édition en mode `default`, et
+  une réponse négative vaut refus) ; `{ deny: raison }` (l'appel ne s'exécute pas, le modèle lit
+  `DENIED: <raison>`) ; ou `{ input }` (l'appel s'exécute avec l'entrée réécrite, qui repasse par la
+  porte). Un rappel qui lève une exception refuse avec le message de l'exception ; toute autre valeur
+  renvoyée (rien compris) refuse aussi, et `"ask"` sans porte de permission refuse.
+- **`onToolResult(call, result)`** s'exécute après chaque appel d'outil avec l'appel et son résultat (le
+  JSON analysé, ou le texte s'il n'est pas du JSON). Un `{ context: "..." }` renvoyé remplace la ligne
+  montrée au modèle pour ce résultat ; ne rien renvoyer la conserve.
+
+Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
+le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
+
+## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
+
+- **`spawn_agent`** est un outil appelable par le modèle, toujours proposé dans `act`. Il exécute un
+  agent nommé de la crew comme enfant (`{ "agent", "input" }`) et renvoie sa sortie. L'enfant tourne
+  sous un budget enfant (profondeur de délégation + 1) ; un refus (profondeur ou budget de spawn
+  épuisé, agent inconnu) est un résultat d'outil en échec que le modèle lit, jamais une exception.
+  L'exécution est du travail du moteur : elle passe par la pompe racine, comme les outils de script
+  (voir le modèle de threading ci-dessous).
+- **`ctx.spawnBackground(agent, input)`** démarre un agent de la crew en arrière-plan et renvoie son
+  ticket (`{ id, agent }`) aussitôt. Sa complétion arrive dans la boîte de réception du contexte de
+  script, et le tour suivant d'`act` la lit comme un message utilisateur : `agent <name> completed: <text>`
+  ou `agent <name> failed: <reason>`.
+- **`waitFor: "children"`** (option d'`act`) : quand le modèle répond alors que des enfants en
+  arrière-plan tournent encore, la boucle les attend et réinjecte leurs messages. Les enfants encore
+  actifs à la fin d'`act` sont annulés.
+- **`crew.concurrency(n)`** borne le nombre d'enfants simultanés (4 par défaut, `n` >= 1). Le créneau
+  est acquis avant le sémaphore par agent.
+
+### Instances d'agents : `crew.instances`, `crew.send`, `crew.stop`
+
+Chaque ticket d'arrière-plan et chaque appel à `spawn_agent` est une **instance d'agent** de sa crew,
+d'identifiant `a<ticket>` (`a1`, `a2`, ...). Les identifiants ne sont visibles que du script : la
+réponse de l'outil `spawn_agent` ne change pas.
+
+- **`crew.instances()`** liste des lignes `{ id, agent, state }` ; `state` vaut `running`,
+  `completed`, `failed` ou `stopped`. `ctx.instanceId` est l'identifiant de l'instance dont le corps
+  d'un enfant est l'exécution.
+- **`crew.send(id, message)`** lance un `act` nu de plus sur le même agent (ses outils et son message
+  système, un budget enfant neuf) amorcé par la transcription conservée de l'instance, ajoute le
+  résultat à cette transcription et se résout avec le texte de la réponse. Il prend un permis de la
+  porte de la crew, compte comme un spawn contre `MaxSpawnedAgents` et prend le sémaphore de l'agent.
+  Un `send` sur un identifiant inconnu ou évincé, sur une instance en cours, ou pendant qu'un autre
+  `send` du même identifiant s'exécute, est refusé.
+- **`crew.stop(id)`** annule aussitôt une instance en cours et renvoie `true` (`false` pour un
+  identifiant terminé ou inconnu). Le créneau de la porte est libéré quand l'`act` s'achève, après la
+  fin des appels d'outils en vol.
+- **Bornes** (un seul propriétaire, APP-05) : `crew.maxInstances(n)` (32 par défaut) garde au plus `n`
+  instances, en évinçant la plus ancienne terminée, jamais une instance en cours ; chaque
+  transcription est plafonnée en nombre de messages et en nombre total de caractères, les plus anciens
+  messages étant retirés d'abord. Un `act` échoué ou annulé ne stocke aucune transcription (la
+  précédente reste) ; un `act` terminé par `{ interrupted: true }` stocke sa transcription sans le
+  dernier tour d'assistant dont les appels d'outils n'ont pas de résultat.
+
+### Mémoire durable d'agent : `ctx.memory.agent`
+
+`ctx.memory.agent` (`store`, `get`, `search`, `delete`) survit à l'exécution quand l'hôte fournit un
+`IScriptAgentMemoryStore` : la CLI orkeon et le runner hébergé le font, avec un fichier JSON par
+projet et par agent sous `/workspace/.orkeon/agent-memory/<projet>/`. Une valeur stockée par l'agent
+`a` est renvoyée à l'exécution suivante pour `a`, jamais pour `b` ; la clé est
+`agent:<projet>:<nom de l'agent>`. Une écriture remplace tout le fichier sous un verrou par fichier et
+restaure une sauvegarde si elle échoue ; une clé contenant un saut de ligne est refusée. Les hôtes sans
+ce port (`run`, l'assistant et le banc d'essai de Forge) gardent `ctx.memory.agent` en mémoire, le
+temps de l'exécution.
+
 ## Coexistence avec YAML
 
 La voie de configuration YAML reste supportée et inchangée. Les scripts et les crews

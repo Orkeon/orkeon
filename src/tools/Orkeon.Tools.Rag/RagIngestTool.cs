@@ -65,6 +65,11 @@ public class RagIngestTool : IBaseTool
                 "Force a full reindex of the collection (required after an embedding model change)",
                 Required: false,
                 Default: false),
+            ["prune"] = new ParameterSchema(
+                "boolean",
+                "Delete the chunks and manifest entries of previously ingested sources absent from 'sources'",
+                Required: false,
+                Default: false),
         });
 
     /// <summary>
@@ -106,6 +111,8 @@ public class RagIngestTool : IBaseTool
 
             var reindex = request.Parameters.TryGetValue("reindex", out var r) && ToBool(r);
 
+            var prune = request.Parameters.TryGetValue("prune", out var pr) && ToBool(pr);
+
             var sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
             if (sources.Count == 0)
                 return new ToolCallResponse(false, null, $"no source matched: {string.Join(", ", locations)}");
@@ -117,6 +124,7 @@ public class RagIngestTool : IBaseTool
                     Sources = [.. sources],
                     ChunkingStrategy = string.IsNullOrWhiteSpace(chunkingStrategy) ? null : chunkingStrategy,
                     Reindex = reindex,
+                    Prune = prune,
                 },
                 cancellationToken).ConfigureAwait(false);
 
@@ -131,7 +139,7 @@ public class RagIngestTool : IBaseTool
         => Task.FromResult(new ToolResult
         {
             Success = false,
-            Error = "rag_ingest requires structured parameters: { collection, sources[, chunking_strategy, reindex] }",
+            Error = "rag_ingest requires structured parameters: { collection, sources[, chunking_strategy, reindex, prune] }",
         });
 
     /// <inheritdoc />
@@ -152,7 +160,7 @@ public class RagIngestTool : IBaseTool
             $"Ingestion report for collection '{report.Collection}':"));
         sb.AppendLine(string.Create(
             CultureInfo.InvariantCulture,
-            $"- Sources: {report.SourcesAdded} added, {report.SourcesUnchanged} unchanged, {report.SourcesReingested} re-ingested"));
+            $"- Sources: {report.SourcesAdded} added, {report.SourcesUnchanged} unchanged, {report.SourcesReingested} re-ingested, {report.SourcesPruned} pruned"));
         sb.AppendLine(string.Create(
             CultureInfo.InvariantCulture,
             $"- Documents loaded: {report.DocumentsLoaded}"));

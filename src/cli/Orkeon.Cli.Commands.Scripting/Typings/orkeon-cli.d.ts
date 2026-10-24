@@ -219,7 +219,10 @@ export interface ScriptHostFacade {
   /**
    * Post the crew on a pool thread and return a ticket immediately. The completion is drained
    * to a `defineAsyncCommand`'s `completed(result)` (the same ticket cycle as `commands.post`);
-   * `result.payload` carries the crew summary. Use for long workflows.
+   * `result.payload` carries the crew summary. Use for long workflows. It may be called from a
+   * `completed` handler: the second crew's completion drains to its own command (the same command
+   * name). The chain is bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
+   * a deeper call is refused with `ChainDepthExceededException` (depth and limit in the message).
    */
   runCrewAsync(name: string, input?: Record<string, unknown>): string;
   /** The discovered crew names. */

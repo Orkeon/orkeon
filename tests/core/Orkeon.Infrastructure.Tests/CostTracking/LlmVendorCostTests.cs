@@ -1,5 +1,10 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.CostTracking;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.Tests.Doubles;
 
 namespace Orkeon.Infrastructure.Tests.CostTracking;
 
@@ -16,6 +21,82 @@ public sealed class LlmVendorCostTests
         if (currency is not null)
             metadata["cost_currency"] = currency;
         return new LlmResponse { Content = "ok", Metadata = metadata };
+    }
+
+    private static CostBudgetManager NewManager(ModelPricingRegistry? registry = null) =>
+        new(registry ?? new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance),
+            Options.Create(new CostTrackingOptions()), NullLogger<CostBudgetManager>.Instance);
+
+    [Fact]
+    [Trait("BR", "RT-12")]
+    public async Task ShouldAccumulateCacheWriteAndReadPerModel_WhenMeteredCallsComplete()
+    {
+        var sink = new MockLlmUsageSink();
+        var mock = new MockLlmProvider();
+        var metered = MeteredLlmProvider.Wrap(mock, sink);
+        var ct = TestContext.Current.CancellationToken;
+
+        async Task Call(string model, int prompt, int completion, int write, int read)
+        {
+            mock.CacheWriteTokens = write;
+            mock.CacheHitTokens = read;
+            mock.SetGenerateResult(new LlmResponse { Content = "ok", Model = model, PromptTokens = prompt, CompletionTokens = completion, TokensUsed = prompt + completion });
+            await metered.GenerateAsync("p", cancellationToken: ct);
+        }
+
+        await Call("unpriced-model-a", 200, 20, 100, 40);
+        await Call("unpriced-model-a", 150, 10, 50, 10);
+        await Call("unpriced-model-b", 70, 5, 7, 3);
+
+        var manager = NewManager();
+        foreach (var e in sink.Recorded)
+            manager.RecordUsage(e);
+        var report = manager.GetReport();
+
+        var a = report.ModelUsageByModel["unpriced-model-a"];
+        Assert.Equal((350L, 30L, 150L, 50L), (a.PromptTokens, a.CompletionTokens, a.CacheWriteTokens, a.CacheReadTokens));
+        var b = report.ModelUsageByModel["unpriced-model-b"];
+        Assert.Equal((70L, 5L, 7L, 3L), (b.PromptTokens, b.CompletionTokens, b.CacheWriteTokens, b.CacheReadTokens));
+        Assert.Equal(2, report.ModelUsageByModel.Count);
+        Assert.True(report.ByModel.ContainsKey("unpriced-model-a"));
+        Assert.True(report.ByModel.ContainsKey("unpriced-model-b"));
+        Assert.Equal(2, report.ByModel.Count);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-12")]
+    public void ShouldPriceCacheWriteAndRead_WhenPricingDeclaresCacheRates()
+    {
+        var registry = new ModelPricingRegistry(Options.Create(new CostTrackingOptions()), NullLogger<ModelPricingRegistry>.Instance);
+        registry.RegisterPricing("cache-model", new ModelPricing
+        {
+            ModelPattern = "cache-model",
+            PromptPricePerMillion = 3m,
+            CompletionPricePerMillion = 15m,
+            CacheWritePricePerMillion = 3.75m,
+            CacheReadPricePerMillion = 0.30m,
+        });
+        registry.RegisterPricing("plain-model", new ModelPricing
+        {
+            ModelPattern = "plain-model",
+            PromptPricePerMillion = 3m,
+            CompletionPricePerMillion = 15m,
+        });
+        var manager = NewManager(registry);
+
+        CostUsageEvent Event(string model) => new()
+        {
+            Model = model, PromptTokens = 1000, CompletionTokens = 500, CacheWriteTokens = 200, CacheHitTokens = 300,
+        };
+        manager.RecordUsage(Event("cache-model"));
+        manager.RecordUsage(Event("plain-model"));
+        var report = manager.GetReport();
+
+        // PromptTokens is inclusive of the cache tokens: (1000-200-300)*3/1M + 200*3.75/1M + 300*0.30/1M + 500*15/1M
+        // = 0.0015 + 0.00075 + 0.00009 + 0.0075
+        Assert.Equal(0.00984m, report.ByModel["cache-model"]);
+        // No cache rates declared: prompt and completion only, as before.
+        Assert.Equal(0.0105m, report.ByModel["plain-model"]);
     }
 
     [Fact]

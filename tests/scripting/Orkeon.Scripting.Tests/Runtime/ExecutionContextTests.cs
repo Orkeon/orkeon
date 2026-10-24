@@ -113,6 +113,49 @@ public sealed class ExecutionContextTests
     }
 
     [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldCompleteDelegate_WhenCalledFromAgentBodyUnderRootPump()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const out = await ctx.delegate(ctx.crew.findByName("B"), { x: 4 });
+                    return `A<${out}>`;
+                }).build();
+            const b = agentBuilder().name("B").role("R").goal("G")
+                .body(async (input, ctx) => `B(${input ? input.x : 0})`).build();
+            crewBuilder().withAgent(a).withAgent(b).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromMinutes(2), TestContext.Current.CancellationToken);
+
+        Assert.Equal("A<B(4)>", result.tasks[0].output!.ToString());
+    }
+
+    [Fact]
+    [Trait("BR", "RT-01")]
+    public async Task ShouldCompleteNestedDelegate_WhenThreeLevelsDeep()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => `A<${await ctx.delegate(ctx.crew.findByName("B"), {})}>`).build();
+            const b = agentBuilder().name("B").role("R").goal("G")
+                .body(async (input, ctx) => `B<${await ctx.delegate(ctx.crew.findByName("C"), {})}>`).build();
+            const c = agentBuilder().name("C").role("R").goal("G")
+                .body(async (input, ctx) => `C<${await ctx.delegate(ctx.crew.findByName("D"), {})}>`).build();
+            const d = agentBuilder().name("D").role("R").goal("G")
+                .body(async () => "D").build();
+            crewBuilder().withAgent(a).withAgent(b).withAgent(c).withAgent(d).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromMinutes(2), TestContext.Current.CancellationToken);
+
+        Assert.Equal("A<B<C<D>>>", result.tasks[0].output!.ToString());
+    }
+
+    [Fact]
     public async Task ExecutionContext_send_then_receive_passes_message()
     {
         var engine = NewEngine();

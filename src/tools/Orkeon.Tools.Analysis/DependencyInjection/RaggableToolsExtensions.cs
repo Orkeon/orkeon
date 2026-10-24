@@ -9,14 +9,27 @@ public static class RaggableToolsExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.AddTransient<IBaseTool, AccessCostTool>();
+        services.AddTransient<IBaseTool, AffectedTestsTool>();
+        services.AddTransient<IBaseTool, BatchAnchorsTool>();
         services.AddTransient<IBaseTool, CodebaseMapTool>();
         services.AddTransient<IBaseTool, CodebaseSearchTool>();
         services.AddTransient<IBaseTool, ComplexityReportTool>();
         services.AddTransient<IBaseTool, DependencyGraphTool>();
+        services.AddTransient<IBaseTool, DocumentedInTool>();
+        services.AddTransient<IBaseTool, DocumentsOfTool>();
+        services.AddTransient<IBaseTool, EditBatchTool>();
         services.AddTransient<IBaseTool, FlowTraceTool>();
         services.AddTransient<IBaseTool, ImpactAnalysisTool>();
+        services.AddTransient<IBaseTool, NodeEnsureTool>();
+        services.AddTransient<IBaseTool, NodeInsertTool>();
+        services.AddTransient<IBaseTool, NodeOutlineTool>();
+        services.AddTransient<IBaseTool, NodeReadTool>();
+        services.AddTransient<IBaseTool, NodeReplaceTool>();
         services.AddTransient<IBaseTool, PackageSummaryTool>();
         services.AddTransient<IBaseTool, StatementQueryTool>();
+        services.AddTransient<IBaseTool, StructuralRewriteTool>();
+        services.AddTransient<IBaseTool, StructuralSearchTool>();
         services.AddTransient<IBaseTool, SubGraphTool>();
         services.AddTransient<IBaseTool, SymbolDetailTool>();
         services.AddTransient<IBaseTool, SymbolSourceTool>();

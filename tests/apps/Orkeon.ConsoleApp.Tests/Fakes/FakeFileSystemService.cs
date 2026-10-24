@@ -9,6 +9,9 @@ public sealed class FakeFileSystemService : IFileSystemService
     private readonly HashSet<string> _existingPaths = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _files = new(StringComparer.Ordinal);
 
+    /// <summary>Files written or added so far, by virtual path.</summary>
+    public IReadOnlyDictionary<string, string> Files => _files;
+
     public void AddFile(string path, string content = "")
     {
         _existingPaths.Add(path);

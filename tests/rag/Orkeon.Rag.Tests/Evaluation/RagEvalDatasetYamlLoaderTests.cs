@@ -139,6 +139,62 @@ public sealed class RagEvalDatasetYamlLoaderTests
             .LoadAsync("/workspace/absent.yaml", TestContext.Current.CancellationToken));
     }
 
+    // --- RT-24: the published golden-dataset schema ---
+
+    [Fact]
+    [Trait("BR", "RT-24")]
+    public void ShouldLoadExampleGolden_WhenSchemaPublished()
+    {
+        var root = FindRepositoryRoot();
+        var goldenPath = Path.Combine(root, "examples", "rag", "eval", "golden.yaml");
+        var dataset = RagEvalDatasetYamlLoader.Parse(File.ReadAllText(goldenPath), "golden", goldenPath);
+
+        Assert.NotEmpty(dataset.Cases);
+        Assert.All(dataset.Cases, c =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(c.Id));
+            Assert.False(string.IsNullOrWhiteSpace(c.Question));
+        });
+
+        var typings = File.ReadAllText(Path.Combine(
+            root, "src", "scripting", "Orkeon.Scripting", "Typings", "rag.d.ts"));
+        var datasetFields = FieldNames(DeclarationOf(typings, "RagEvalDataset")).ToList();
+        var caseFields = FieldNames(DeclarationOf(typings, "RagEvalCase")).ToList();
+        foreach (var field in new[] { "name", "corpus", "collection", "cases" })
+            Assert.Contains(field, datasetFields);
+        foreach (var field in new[] { "id", "question", "relevant", "expected_substrings", "reference_answer", "tags" })
+            Assert.Contains(field, caseFields);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-24")]
+    public void ShouldRefuseDatasetNamingField_WhenCaseLacksQuestion()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            RagEvalDatasetYamlLoader.Parse("""
+                cases:
+                  - { id: q-1, question: "a?" }
+                  - { id: q-2 }
+                """, "x", "x.yaml"));
+
+        Assert.Contains("'question'", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("case #2 ('q-2')", ex.Message, StringComparison.Ordinal);
+    }
+
+    private static string DeclarationOf(string typings, string name)
+    {
+        var start = typings.IndexOf($"interface {name} ", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"interface {name} is not declared in rag.d.ts");
+        return typings[start..typings.IndexOf('}', start)];
+    }
+
+    private static IEnumerable<string> FieldNames(string declaration) =>
+        declaration.Split('\n')
+            .Select(l => l.Trim())
+            .Select(l => l.StartsWith("readonly ", StringComparison.Ordinal) ? l[9..] : l)
+            .Where(l => l.Length > 0 && char.IsLetter(l[0]) && !l.StartsWith("interface ", StringComparison.Ordinal))
+            .Select(l => new string(l.TakeWhile(ch => char.IsLetterOrDigit(ch) || ch == '_').ToArray()));
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

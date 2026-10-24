@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
@@ -32,10 +33,12 @@ public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
 
         async Task<SubGraphResponse> ExecuteTypedCoreAsync()
         {
+            var edgeKinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
+            var nodeFilter = GraphKindNames.ParseNodeKinds(request.NodeKinds);
             var query = new ExpandQuery
             {
                 Seeds = request.Seeds,
-                EdgeKinds = request.EdgeKinds,
+                EdgeKinds = edgeKinds,
                 Direction = request.Direction,
                 MaxDepth = request.Depth,
                 MaxNodes = request.MaxNodes,
@@ -43,7 +46,7 @@ public sealed class SubGraphTool : ToolBase<SubGraphRequest, SubGraphResponse>
             var expanded = await _store.ExpandAsync(query, cancellationToken).ConfigureAwait(false);
 
             var seedSet = new HashSet<string>(request.Seeds.Where(s => !string.IsNullOrEmpty(s)), StringComparer.Ordinal);
-            var graphNodes = expanded.Nodes.Select(n => new GraphNode
+            var graphNodes = expanded.Nodes.Where(n => request.NodeKinds.IsDefaultOrEmpty || nodeFilter(n)).Select(n => new GraphNode
             {
                 Fqn = n.Fqn,
                 Name = n.Name,

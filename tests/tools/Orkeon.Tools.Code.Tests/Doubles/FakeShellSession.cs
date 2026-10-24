@@ -67,9 +67,81 @@ internal sealed class FakeShellSession : IShellSession
         }
     }
 
+    /// <summary>When set, the handles of the jobs started expose it as their live tail.</summary>
+    public ShellLiveTail? LiveTailForJobs { get; set; }
+
+    /// <summary>The detached jobs started, in order.</summary>
+    public List<FakeDetachedJob> Jobs { get; } = [];
+
+    /// <summary>When set, a job started opens its log through the opener it was handed and writes this text.</summary>
+    public string? PumpedLogText { get; set; }
+
+    public async Task<ShellJobHandle> StartDetachedAsync(
+        ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync,
+        CancellationToken cancellationToken)
+    {
+        var job = new FakeDetachedJob(invocation, physicalLogPath) { LiveTailText = LiveTailForJobs, LogOpener = openLogAsync };
+        if (PumpedLogText is { } text)
+        {
+            var stream = await openLogAsync(cancellationToken);
+            await using (stream)
+            await using (var writer = new StreamWriter(stream, leaveOpen: true))
+                await writer.WriteAsync(text);
+        }
+
+        lock (Jobs)
+            Jobs.Add(job);
+        return new ShellJobHandle(job.Id, job.ExitSource.Task, job.Kill)
+        {
+            LiveTail = LiveTailForJobs is null ? null : () => job.LiveTailText,
+        };
+    }
+
     public ValueTask DisposeAsync()
     {
         DisposeCount++;
         return ValueTask.CompletedTask;
+    }
+}
+
+/// <summary>A job started by <see cref="FakeShellSession.StartDetachedAsync"/>: the test decides when it exits.</summary>
+internal sealed class FakeDetachedJob(ShellInvocation invocation, string physicalLogPath)
+{
+    /// <summary>The id: the name of the log file the job was given.</summary>
+    public string Id { get; } = Path.GetFileNameWithoutExtension(physicalLogPath);
+
+    /// <summary>The command started.</summary>
+    public ShellInvocation Invocation { get; } = invocation;
+
+    /// <summary>The physical path the output was asked to go to.</summary>
+    public string LogPath { get; } = physicalLogPath;
+
+    /// <summary>Completed by <see cref="Exit"/>.</summary>
+    public TaskCompletionSource<int> ExitSource { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>The in-memory output the handle exposes as its live tail; null for a session that keeps none.</summary>
+    public ShellLiveTail? LiveTailText { get; set; }
+
+    /// <summary>The log opener the session was handed.</summary>
+    public Func<CancellationToken, Task<Stream>>? LogOpener { get; init; }
+
+    /// <summary>How many times the job was killed.</summary>
+    public int KillCount { get; private set; }
+
+    /// <summary>Ends the job with <paramref name="exitCode"/>.</summary>
+    public void Exit(int exitCode) => ExitSource.TrySetResult(exitCode);
+
+    /// <summary>Writes lines to the log file, as the detached process would.</summary>
+    public void WriteLog(params string[] lines)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+        File.WriteAllLines(LogPath, lines);
+    }
+
+    /// <summary>Records the kill and ends the job as a killed process does.</summary>
+    public void Kill()
+    {
+        KillCount++;
+        ExitSource.TrySetResult(137);
     }
 }

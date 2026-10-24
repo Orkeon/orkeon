@@ -147,6 +147,33 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore, IIndexInvali
         WriteLocked(() => ReplaceLocked(nodes, edges));
     }
 
+    /// <summary>
+    /// Swaps one file's nodes and outgoing edges in a single write, patching the lexical index
+    /// node by node. Edges that other files hold toward the file are kept; an edge already
+    /// indexed is not added twice.
+    /// </summary>
+    public void ReplaceFile(string path, IReadOnlyList<RaggableNode> nodes, IReadOnlyList<RaggableEdge> edges)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentNullException.ThrowIfNull(nodes);
+        ArgumentNullException.ThrowIfNull(edges);
+        WriteLocked(() =>
+        {
+            RemoveFilesAndDescendantsLocked([path]);
+            var now = _clock();
+            foreach (var node in nodes)
+            {
+                IndexNode(node, now);
+            }
+
+            foreach (var edge in edges)
+            {
+                if (_edgesBySource.TryGetValue(edge.FromId, out var existing) && existing.Any(e => e.Id == edge.Id)) continue;
+                IndexEdge(edge);
+            }
+        });
+    }
+
     private void ReplaceLocked(IReadOnlyList<RaggableNode> nodes, IReadOnlyList<RaggableEdge> edges)
     {
         // Deliberately does NOT clear the dirty set: a write can race a reindex pass,
@@ -246,7 +273,16 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore, IIndexInvali
             _statementsByParent.Remove(id);
             _statementsByParent.Remove(node.Fqn);
         }
-        _edgesBySource.Remove(id);
+        if (_edgesBySource.Remove(id, out var outgoing))
+        {
+            foreach (var e in outgoing)
+            {
+                if (_edgesByTarget.TryGetValue(e.ToId, out var inList))
+                {
+                    inList.RemoveAll(x => x.Id == e.Id);
+                }
+            }
+        }
         if (_edgesByTarget.TryGetValue(id, out var incoming))
         {
             foreach (var e in incoming)

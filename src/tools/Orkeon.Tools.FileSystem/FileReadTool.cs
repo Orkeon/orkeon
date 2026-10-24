@@ -32,13 +32,23 @@ public sealed class FileReadRequest
 
     /// <summary>Maximum number of characters to read (default: no limit).</summary>
     [JsonPropertyName("max_length")]
-    [FieldSchema(Description = "Maximum number of characters to read (default: no limit)", IsRequired = false, Example = 10000)]
+    [FieldSchema(Description = "Maximum number of characters to read (default: no limit). Applied after offset/limit: when it cuts a line range, only whole lines are kept and has_more is true, except that when the first line alone exceeds max_length it is cut by characters.", IsRequired = false, Example = 10000)]
     public int? MaxLength { get; set; }
 
     /// <summary>When true, attempts to serve content from the RaggableTree index if a module matches by path and SHA-256.</summary>
     [JsonPropertyName("use_raggable_cache")]
     [FieldSchema(Description = "Serve from RaggableTree index when available (path + SHA-256 match); falls back to disk otherwise.", IsRequired = false, Example = false, Default = false)]
     public bool UseRaggableCache { get; set; }
+
+    /// <summary>First line to return (1-based).</summary>
+    [JsonPropertyName("offset")]
+    [FieldSchema(Description = "First line to return (1-based, default 1 when limit is given). With offset/limit the file is streamed and not read beyond the range; max_length then caps the range", IsRequired = false, Example = 1)]
+    public int? Offset { get; set; }
+
+    /// <summary>Maximum number of lines to return.</summary>
+    [JsonPropertyName("limit")]
+    [FieldSchema(Description = "Maximum number of lines to return (default: up to the end of the file); max_length caps the result further", IsRequired = false, Example = 100)]
+    public int? Limit { get; set; }
 
     /// <summary>Initializes a new instance of <see cref="FileReadRequest"/>.</summary>
     public FileReadRequest() { }
@@ -63,6 +73,21 @@ public sealed class FileReadResponse
     [JsonPropertyName("truncated")]
     [ReturnSchema(Description = "Whether the content was truncated due to max_length", Example = false)]
     public bool Truncated { get; set; }
+
+    /// <summary>First line served (1-based).</summary>
+    [JsonPropertyName("start_line")]
+    [ReturnSchema(Description = "First line served (1-based)", Example = 1)]
+    public int? StartLine { get; set; }
+
+    /// <summary>Last line served.</summary>
+    [JsonPropertyName("end_line")]
+    [ReturnSchema(Description = "Last line served", Example = 100)]
+    public int? EndLine { get; set; }
+
+    /// <summary>Whether the file continues after the served range.</summary>
+    [JsonPropertyName("has_more")]
+    [ReturnSchema(Description = "Whether the file continues after the served range", Example = false)]
+    public bool HasMore { get; set; }
 
     /// <summary>Whether the content was served from the RaggableTree index rather than disk.</summary>
     [JsonPropertyName("served_from_cache")]
@@ -106,6 +131,10 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Path))
             return "Path parameter is required";
+        if (request.Offset is <= 0)
+            return "Offset must be at least 1 (lines are 1-based)";
+        if (request.Limit is <= 0)
+            return "Limit must be at least 1";
         return null;
     }
 
@@ -133,13 +162,16 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
 
             var encoding = GetEncoding(request.Encoding);
 
-            var (content, servedFromCache) = await LoadContentAsync(
+            var (content, servedFromCache, range) = await LoadContentAsync(
                 request, virtualPath, resolvedPath, encoding, cancellationToken).ConfigureAwait(false);
 
             bool truncated = false;
             if (request.MaxLength.HasValue && content.Length > request.MaxLength.Value)
             {
-                content = content.Substring(0, request.MaxLength.Value);
+                if (range is { } r)
+                    (content, range) = CapToWholeLines(r, request.MaxLength.Value);
+                else
+                    content = content.Substring(0, request.MaxLength.Value);
                 truncated = true;
             }
 
@@ -156,6 +188,9 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
                     ["full_path"] = displayPath
                 },
                 Truncated = truncated,
+                StartLine = range?.Start,
+                EndLine = range?.End,
+                HasMore = range?.HasMore ?? false,
                 ServedFromCache = servedFromCache
             };
 
@@ -164,18 +199,86 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
         }
     }
 
-    private async Task<(string Content, bool ServedFromCache)> LoadContentAsync(
+    private readonly record struct LineRange(IReadOnlyList<string> Lines, int Start, int End, bool HasMore);
+
+    private async Task<(string Content, bool ServedFromCache, LineRange? Range)> LoadContentAsync(
         FileReadRequest request, string virtualPath, string resolvedPath, Encoding encoding, CancellationToken ct)
     {
+        var ranged = request.Offset.HasValue || request.Limit.HasValue;
+        var start = request.Offset ?? 1;
+
         if (request.UseRaggableCache && _raggableStore is not null)
         {
             var cached = await TryReadFromCacheAsync(virtualPath, resolvedPath, encoding, ct).ConfigureAwait(false);
             if (cached is not null)
-                return (cached, true);
+            {
+                if (!ranged)
+                    return (cached, true, null);
+                using var cachedReader = new StringReader(cached);
+                var cutRange = await ReadRangeAsync(cachedReader, start, request.Limit, ct).ConfigureAwait(false);
+                return (string.Join('\n', cutRange.Lines), true, cutRange);
+            }
         }
 
-        var content = await ReadContentAsync(virtualPath, encoding, ct).ConfigureAwait(false);
-        return (content, false);
+        if (!ranged)
+            return (await ReadContentAsync(virtualPath, encoding, ct).ConfigureAwait(false), false, null);
+
+        try
+        {
+            var stream = await _fileSystemService.OpenReadStreamAsync(virtualPath, ct).ConfigureAwait(false);
+            await using var __stream = stream.ConfigureAwait(false);
+            using var reader = new System.IO.StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: false);
+            var range = await ReadRangeAsync(reader, start, request.Limit, ct).ConfigureAwait(false);
+            return (string.Join('\n', range.Lines), false, range);
+        }
+        catch (System.IO.IOException ex)
+        {
+            throw new System.IO.IOException($"Error reading file: {ex.Message}", ex);
+        }
+    }
+
+    private static async Task<LineRange> ReadRangeAsync(TextReader reader, int start, int? limit, CancellationToken ct)
+    {
+        var lines = new List<string>();
+        var lineNumber = 0;
+        var hasMore = false;
+        while (await reader.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
+        {
+            lineNumber++;
+            if (lineNumber < start)
+                continue;
+            if (lines.Count == limit)
+            {
+                hasMore = true;
+                break;
+            }
+            lines.Add(line);
+        }
+
+        if (lines.Count == 0 && start > 1)
+            throw new InvalidOperationException($"Offset {start} is beyond the end of the file ({lineNumber} lines)");
+
+        return new LineRange(lines, start, lines.Count == 0 ? start : start + lines.Count - 1, hasMore);
+    }
+
+    private static (string Content, LineRange Range) CapToWholeLines(LineRange range, int maxLength)
+    {
+        var kept = 0;
+        var length = 0;
+        foreach (var line in range.Lines)
+        {
+            var next = length + (kept == 0 ? 0 : 1) + line.Length;
+            if (next > maxLength)
+                break;
+            length = next;
+            kept++;
+        }
+
+        if (kept == 0)
+            return (range.Lines[0][..maxLength], range with { End = range.Start, HasMore = true });
+
+        return (string.Join('\n', range.Lines.Take(kept)),
+            range with { End = range.Start + kept - 1, HasMore = true });
     }
 
     private async Task<string> ReadContentAsync(string virtualPath, Encoding encoding, CancellationToken ct)

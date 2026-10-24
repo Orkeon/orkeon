@@ -34,4 +34,10 @@ public sealed record IngestionRequest
     /// drift fails the run loudly. Defaults to <c>false</c>.
     /// </summary>
     public bool Reindex { get; init; }
+
+    /// <summary>
+    /// Deletes the chunks and manifest entries of sources recorded in the collection
+    /// manifest but absent from <see cref="Sources"/>. Defaults to <c>false</c>.
+    /// </summary>
+    public bool Prune { get; init; }
 }

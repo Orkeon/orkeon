@@ -135,6 +135,7 @@ public sealed partial class YamlCrewMapper
                 Role = kvp.Value.Role ?? kvp.Key,
                 Goal = kvp.Value.Goal ?? string.Empty,
                 Backstory = kvp.Value.Backstory ?? string.Empty,
+                WorkingRoot = kvp.Value.WorkingRoot,
                 Tools = kvp.Value.Tools ?? [],
                 AllowDelegation = kvp.Value.AllowDelegation ?? true,
                 MaxIterations = kvp.Value.MaxIter ?? Orkeon.Domain.Constants.Agent.AgentDefaults.MaxIterations,

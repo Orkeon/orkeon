@@ -6,6 +6,8 @@
 
 **Retry budget.** `Llm:MaxRetries` (10 by default) covers the failures that come back in seconds — request errors, 5xx, 429. A buffered call that hits `Llm:TimeoutSeconds` is retried **once** (`ResilienceDefaults.LlmTimeoutRetries`: every attempt costs the whole timeout), then the provider answers with a failure naming the setting and the two ways out (a longer timeout, thinking off); a caller's cancellation is never retried. A failed call travels as `LlmResponse.Error` and, through the chat-client adapter, as an exception — it is never mistaken for an empty answer, so the agent loop fails the task at once with the provider's reason instead of retrying without tools (LLM-11).
 
+**Rate-limit window.** A 429, or a 529 that carries a reset header, is not retried on the backoff ladder: the call waits until the window resets, on the buffered path and on the streaming connect alike (`RateLimitResetHeaders`). It reads `Retry-After` (seconds or an HTTP date), `anthropic-ratelimit-requests-reset` and `anthropic-ratelimit-tokens-reset` (RFC 3339) and `x-ratelimit-reset-requests` and `x-ratelimit-reset-tokens` (OpenAI durations such as `6m0s`), and the longest wins. The wait never exceeds `Llm:MaxRateLimitWait` (5 minutes by default, separate from the 30-second cap of the 5xx ladder): a reset beyond it fails the call at once with the reason (`LlmRateLimitException`) instead of parking an unattended run. Each wait is announced to `ILlmRetryObserver` with the reason `rate-limit window` and the delay. A 529 without a header keeps the ladder.
+
 **A streamed call is bounded the same way (LLM-12).** A streamed request is sent with `ResponseHeadersRead`, and `HttpClient.Timeout` stops counting once the headers are in: the body used to be read on the caller's token alone, so a model that thinks for minutes before its first token hung a Studio run past any `Llm:TimeoutSeconds`. Every streaming path (the OpenAI dialect, Azure, Anthropic, Ollama — chat and text streams) now runs under a `StreamReadBudget`: `Llm:TimeoutSeconds` bounds the whole call, headers and body, and the optional `Llm:StreamIdleSeconds` bounds the silence between two lines of the body (unset by default). An elapsed bound ends the chat stream with a `Completed` event whose response carries `error` (the sentence naming the setting) and `error_type` (`TaskCanceledException` for the whole-call bound, `StreamIdleTimeout` for the idle one) over whatever content had arrived, with no `RawResponseBody`; the text stream throws an `HttpRequestException` with the same sentence. A stream the provider closes without its finish marker (`finish_reason` or `[DONE]`, `message_stop`, `done: true`) is a failed call too when no answer text and no tool call arrived (`error_type` `StreamTruncated`, the sentence saying how much reasoning was streamed); with some answer it is served as it came, flagged `stream_truncated` in its metadata. The chat-client adapter fails a streamed turn on any `error`, partial content or not; the headers phase re-sends an elapsed `HttpClient.Timeout` once (`LlmTimeoutRetries`), like the buffered path.
 
 Implemented providers:
@@ -203,6 +205,24 @@ members, not through copies of the payload builder:
 | `CostCurrency` | none | OpenRouter (`USD`) |
 | `TryAdaptRejectedPayload` | re-sends once without the output cap when the catalogue's cap was refused | Kimi (the mandated temperature, then the base rule) |
 | `BuildEndpoint` | `{baseUrl}/chat/completions` | Azure OpenAI (dated deployment URL, or the v1 surface with `api_version: v1`) |
+
+## Prompt-cache tokens and TTL
+
+`LlmResponse` carries three cache counts: `CacheHitTokens` (read from the cache), `CacheWriteTokens`
+(written to it — Anthropic's `cache_creation_input_tokens`) and `CacheMissTokens` (input not served from
+the cache). `PromptTokens` already includes the written and read tokens: a write is never counted twice.
+`MeteredLlmProvider` records them once per call in the `CostUsageEvent`; `CostBudgetManager` keeps per model
+the prompt, completion, cache-write and cache-read tokens and the cost (`CostReport.ModelUsageByModel`), and
+`session_stats` returns them in `by_model_tokens[]` beside the unchanged `by_model` cost map. A model whose
+`ModelPricing` declares `CacheWritePricePerMillion` / `CacheReadPricePerMillion` is priced as
+`(prompt - write - read) x prompt rate + write x write rate + read x read rate + completion x completion rate`;
+without those rates the cost is unchanged.
+
+The cache TTL is `LlmCacheConfig.Ttl` (`5m` or `1h`). A call can carry it as the option
+`LlmChatOptionsKeys.CacheTtl` (`orkeon:cache_ttl`), which `ChatOptionsComposer` fills from the agent's
+`llm.cache.ttl`; the chat client adapter folds it into the call's `Cache.Ttl` and Anthropic emits it in
+`cache_control`. The OpenAI-compatible providers cannot honour it and log the structured unhonoured-option
+warning (event 110, `cache_ttl`) instead of dropping it silently.
 
 ## Decorators and registration
 

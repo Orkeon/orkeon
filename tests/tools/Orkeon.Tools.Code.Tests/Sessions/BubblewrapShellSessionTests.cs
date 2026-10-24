@@ -62,6 +62,32 @@ public sealed class BubblewrapShellSessionTests
     }
 
     [Fact]
+    [Trait("BR", "RT-11")]
+    public async Task ShouldMapLogPathLikeRun_WhenBubblewrapStartsDetachedJob()
+    {
+        var sandbox = new BubblewrapShellSandbox();
+        var root = Directory.CreateTempSubdirectory("orkeon-bwrap-job-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "jobs"));
+            var log = Path.Combine(root, "jobs", "j1.log");
+            var view = new ShellSessionView([new ConfinedPath(root, "/output", ConfinedAccess.ReadWrite)], [], false);
+            await using var session = await sandbox.OpenAsync(view, Ct);
+
+            var handle = await session.StartDetachedAsync(
+                new ShellInvocation("echo", ["detached"], "/output", TimeSpan.FromSeconds(30)), log,
+                _ => Task.FromResult<Stream>(new FileStream(log, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)), Ct);
+
+            Assert.Equal(0, await handle.Exit.WaitAsync(TimeSpan.FromSeconds(30), Ct));
+            Assert.Equal("detached", (await File.ReadAllTextAsync(log, Ct)).Trim());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ShouldKillTheConfinedTree_WhenTheRunEnds()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux(), "The test reads /proc.");

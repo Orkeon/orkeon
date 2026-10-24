@@ -2,6 +2,9 @@ using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Models;
+using Orkeon.Analysis.Adapters;
+using Orkeon.Analysis.Core;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Tools.Analysis.Tests;
 
@@ -130,5 +133,36 @@ public class CodebaseSearchToolTests
 
         var hit = Assert.Single(resp.Hits);
         Assert.Null(hit.Signature);
+    }
+
+    // Regression pin: green at its first run; the filter already honours any language tag, the markdown nodes are what this proves.
+    [Fact]
+    [Trait("BR", "RT-29")]
+    public async Task ShouldReturnSectionHits_WhenFilterLanguagesIsMarkdown()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "codebase-search-md", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(dir, "docs"));
+        Directory.CreateDirectory(Path.Combine(dir, "src"));
+        await File.WriteAllTextAsync(Path.Combine(dir, "docs", "guide.md"),
+            "# Guide\n## Installing the widget\ntext about widgets\n", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "src", "a.cs"),
+            "namespace Demo; public class Widget { public void Install() { } }\n", TestContext.Current.CancellationToken);
+        try
+        {
+            var fs = new DiskBackedFileSystemService(dir, "/src");
+            var builder = new RaggableTreeBuilder(new CSharpAdapter(), fs);
+            var built = await builder.BuildAsync(
+                "/src", new IndexCodebaseRequest { RootPath = "/src" }, CancellationToken.None);
+            var store = new InMemoryRaggableStore(built.Tree, new FakeFileSystemService());
+            using var tool = new CodebaseSearchTool(store);
+
+            var resp = await tool.ExecuteTypedForTest(
+                new CodebaseSearchRequest { Query = "widget", TopK = 10, FilterLanguages = ["markdown"] },
+                CancellationToken.None);
+
+            Assert.Contains(resp.Hits, h => h.Fqn == "/src/docs/guide.md::Guide/Installing the widget");
+            Assert.All(resp.Hits, h => Assert.StartsWith("/src/docs/guide.md::", h.Fqn));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 }

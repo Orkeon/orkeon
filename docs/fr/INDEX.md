@@ -79,7 +79,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 
 | Fichier | Description |
 |---------|-------------|
-| [Inventaire des outils](./tools/inventory.md) | 102 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
+| [Inventaire des outils](./tools/inventory.md) | 119 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
 | [Créer un nouvel outil](./tools/new-tool-pattern.md) | Pipeline typé, attributs FieldSchema/ReturnSchema, pattern composition, enregistrement |
 
 ### Guides

@@ -175,7 +175,7 @@ public sealed partial class IndexFreshnessService : IDisposable
         // The store keeps no index-id; a content stamp of the node count is informative
         // enough for subscribers to correlate before/after.
         var previousId = $"nodes:{nodes.Count}";
-        _store.Replace(result.Tree.Nodes, result.Tree.Edges);
+        PatchStore(result.Tree, changed);
         _store.ClearDirty(changed);
 
         // The bus existed with no producer; the freshness pass is its first. A
@@ -190,6 +190,21 @@ public sealed partial class IndexFreshnessService : IDisposable
 
         LogRefreshed(result.ChangedFileCount, result.ReusedFileCount);
         return result;
+    }
+
+    /// <summary>Swaps each changed file's nodes and edges in the store; the other files are left as they are.</summary>
+    private void PatchStore(RaggableTree tree, HashSet<string> changed)
+    {
+        var nodesByPath = tree.Nodes
+            .Where(n => changed.Contains(n.VirtualFilePath))
+            .ToLookup(n => n.VirtualFilePath, StringComparer.Ordinal);
+        foreach (var path in changed)
+        {
+            var fileNodes = nodesByPath[path].ToList();
+            var ids = new HashSet<string>(fileNodes.Select(n => n.Id), StringComparer.Ordinal);
+            _store.ReplaceFile(
+                path, fileNodes, [.. tree.Edges.Where(e => ids.Contains(e.FromId) || ids.Contains(e.ToId))]);
+        }
     }
 
     /// <summary>Dirty set ∪ git working-tree changes, normalized to virtual paths under the root.</summary>

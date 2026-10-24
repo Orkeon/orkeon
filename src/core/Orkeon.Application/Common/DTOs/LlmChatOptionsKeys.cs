@@ -20,6 +20,9 @@ public static class LlmChatOptionsKeys
     /// <summary>Carries an <c>Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig</c>.</summary>
     public const string Cache = "orkeon:cache";
 
+    /// <summary>Carries the per-call prompt-cache TTL (a <see cref="string"/>: "5m" or "1h").</summary>
+    public const string CacheTtl = "orkeon:cache_ttl";
+
     /// <summary>
     /// Carries the GBNF grammar (a <see cref="string"/>) converted from a <c>structured_output</c>
     /// deliverable's schema. Reaches the wire only on an endpoint configured to take it

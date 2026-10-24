@@ -70,6 +70,8 @@ public static class AgentDefaults
         new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["file_read"] = 32_000,
+            ["node_read"] = 256_000,
+            ["shell_command"] = 10_000,
         };
 
     /// <summary>

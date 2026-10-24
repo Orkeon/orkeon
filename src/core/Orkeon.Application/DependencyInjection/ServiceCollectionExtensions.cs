@@ -169,6 +169,7 @@ public static class ServiceCollectionExtensions
             // default once the infrastructure registers the guardian (Orkeon:Guardian:Enabled).
             orchestrator.Guardian = sp.GetService<Interfaces.Security.IGuardianPipeline>();
             orchestrator.ToolInvocation = sp.GetService<Interfaces.Security.IToolInvocationPipeline>();
+            orchestrator.ToolLimits = sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>();
 
             // GAP-06 — each tool call of the agent loops reaches the ICallbackHandler
             // registrations as a step (OnStepStartedAsync / OnStepCompletedAsync).

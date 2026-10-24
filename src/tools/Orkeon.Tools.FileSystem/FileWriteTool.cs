@@ -285,7 +285,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         };
     }
 
-    private static string BuildBackupVirtualPath(string virtualFilePath)
+    internal static string BuildBackupVirtualPath(string virtualFilePath)
     {
         var directory = Path.GetDirectoryName(virtualFilePath) ?? ".";
         var fileName = Path.GetFileNameWithoutExtension(virtualFilePath);
@@ -300,7 +300,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
     /// fenced code block that has both <c>// FQN  :</c> and <c>// SHA  :</c> header lines,
     /// indicating it is a citation block that should be validated.
     /// </summary>
-    private static bool HasCitationHeaders(string content) =>
+    internal static bool HasCitationHeaders(string content) =>
         content.Contains("// FQN  :", StringComparison.Ordinal) &&
         content.Contains("// SHA  :", StringComparison.Ordinal);
 

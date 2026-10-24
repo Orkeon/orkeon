@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
+using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.TreeSitter;
@@ -24,6 +26,9 @@ public sealed class RaggableTreeBuilder
     private readonly IEmbeddingProvider? _embedder;
     private readonly IVectorStoreProvider? _vectorStore;
     private readonly IProgress<IndexBuildProgress>? _buildProgress;
+
+    internal const string MarkdownLanguage = "markdown";
+    internal static readonly MarkdownDocumentMapper MarkdownMapper = new();
 
     public RaggableTreeBuilder(ILanguageAdapter adapter, IFileSystemService fileSystem)
         : this(
@@ -113,6 +118,14 @@ public sealed class RaggableTreeBuilder
         {
             ct.ThrowIfCancellationRequested();
             _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
+            if (file.Language == MarkdownLanguage)
+            {
+                var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+                if (markdown is null) continue;
+                allNodes.AddRange(MarkdownMapper.Map(file.VirtualPath, markdown));
+                continue;
+            }
+
             if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
 
             var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
@@ -127,6 +140,8 @@ public sealed class RaggableTreeBuilder
                 .RegisterFile(file.VirtualPath, source, fileNodes);
         }
 
+        ResolveMarkdownLinks(allNodes, new MarkdownLinkIndex(allNodes));
+
         // Phase 3b — Resolve dependencies per language
         _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Resolve, 0, 0));
         var allEdges = new List<RaggableEdge>();
@@ -135,6 +150,9 @@ public sealed class RaggableTreeBuilder
             var edges = await gb.BuildDependenciesAsync(_resolver, ct).ConfigureAwait(false);
             allEdges.AddRange(edges);
         }
+        allEdges.AddRange(await ProjectGraphBuilder.BuildEdgesAsync(allNodes, _fileSystem, ct).ConfigureAwait(false));
+        allEdges.AddRange(TestEdgeLinker.Link(allNodes, allEdges));
+        allEdges.AddRange(DocumentsEdgeLinker.Link(allNodes, allEdges));
 
         // Phase 3c — Fingerprinters
         foreach (var fp in _fingerprinters)
@@ -184,6 +202,12 @@ public sealed class RaggableTreeBuilder
 
         var indexId = TreeAssembly.ComputeIndexId(discovery.Files);
         return new BuildResult(tree, indexId, discovery.Files.Length, embeddingStats, discovery.FilterStats);
+    }
+
+    internal static void ResolveMarkdownLinks(IEnumerable<RaggableNode> nodes, MarkdownLinkIndex index)
+    {
+        foreach (var file in nodes.Where(n => n.Kind == UniversalNodeKind.Link).GroupBy(n => n.VirtualFilePath, StringComparer.Ordinal))
+            MarkdownDocumentMapper.ResolveLinks(file, file.Key, index);
     }
 
     private DependencyGraphBuilder GetOrCreateBuilder(

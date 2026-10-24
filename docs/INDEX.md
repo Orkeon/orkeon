@@ -79,7 +79,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 102 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 119 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides

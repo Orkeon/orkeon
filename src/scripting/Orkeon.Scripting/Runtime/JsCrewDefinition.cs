@@ -14,6 +14,7 @@ namespace Orkeon.Scripting.Runtime;
 internal sealed record JsCrewDefinition
 {
     public required string Name { get; init; }
+    public bool NameSet { get; init; }
     public required string Process { get; init; }
     public required IEnumerable<JsAgent> Agents { get; init; }
     public required IEnumerable<JsTask> Tasks { get; init; }
@@ -35,7 +36,22 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional single tool-invocation point applied inside <c>ctx.llm.act</c> (GAP-09).</summary>
     public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 
+    /// <summary>Optional durable store behind <c>ctx.memory.agent</c> (RT-16).</summary>
+    public Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? AgentMemoryStore { get; init; }
+
+    /// <summary>Optional cut of each tool result and fan-out bound of <c>ctx.llm.act</c>.</summary>
+    public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+
+    /// <summary>Optional transcript caps of the agent instances.</summary>
+    public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
+
     public string? Goal { get; init; }
+
+    /// <summary>The crew-wide cap on children running at once; 4 unless the script says otherwise.</summary>
+    public int Concurrency { get; init; } = 4;
+
+    /// <summary>The most agent instances the crew keeps (RT-03); 32 unless the script says otherwise.</summary>
+    public int MaxInstances { get; init; } = 32;
 
     /// <summary>
     /// YAML parity <c>memory: true</c> — the crew remembers: each run stores the result of its tasks

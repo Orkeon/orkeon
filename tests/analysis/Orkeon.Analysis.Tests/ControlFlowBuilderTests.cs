@@ -87,4 +87,31 @@ public class ControlFlowBuilderTests
         var loop = run.Statements.First(s => s.Kind == StatementKind.ForOf);
         Assert.Contains(cfg.Edges, e => e.ToId == loop.Id && e.FromId != loop.Id);
     }
+
+    private static StatementNode Node(string id, StatementKind kind, string expression) => new()
+    {
+        Id = id,
+        ParentSymbolId = "m",
+        Kind = kind,
+        StartLine = 1,
+        Expression = expression,
+    };
+
+    [Fact]
+    public void Build_LoopWhoseLastStatementHoldsALambda_BackEdgeLandsOnTheStatementNotInsideTheLambda()
+    {
+        // while (c) { xs.forEach(x => { log(x); }); }
+        var loop = Node("loop", StatementKind.While, "while (c)");
+        var forEach = Node("forEach", StatementKind.MethodCall, "xs.forEach(x => { log(x); })");
+        var lambda = Node("lambda", StatementKind.ArrowFunction, "x => { log(x); }");
+        var log = Node("log", StatementKind.FunctionCall, "log(x)");
+        lambda.AddChild(log);
+        forEach.AddChild(lambda);
+        loop.AddChild(forEach);
+
+        var cfg = ControlFlowBuilder.Build([loop]);
+
+        Assert.Contains(cfg.Edges, e => e.FromId == "forEach" && e.ToId == "loop");
+        Assert.DoesNotContain(cfg.Edges, e => e.FromId == "log" || e.ToId == "log");
+    }
 }

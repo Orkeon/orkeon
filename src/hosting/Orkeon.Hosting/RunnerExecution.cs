@@ -1560,7 +1560,11 @@ public static partial class RunnerExecution
                 ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
-            });
+                AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
+                ToolLimits = sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
+            },
+            ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the
         // script resolve consistently across .ork.ts authors. EsbuildNotFoundException

@@ -56,6 +56,9 @@ public static class ResiliencePolicies
                 onRetry: (exception, timespan, retryCount, context) => { ResiliencePoliciesLog.LogRedisRetry(safeLogger, retryCount, timespan.TotalMilliseconds, exception.Message); });
     }
 
+    private const string RateLimitWindowKey = "rate-limit-window";
+    private const string CallerTokenKey = "caller-token";
+
     /// <summary>
     /// Creates a specialized retry policy for LLM API calls with aggressive backoff and Retry-After header support.
     /// </summary>
@@ -63,34 +66,51 @@ public static class ResiliencePolicies
     /// <param name="maxRetryAttempts">Maximum retry attempts; defaults to <see cref="Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries"/>.</param>
     /// <param name="baseDelay">Base delay between retries; defaults to 1 second.</param>
     /// <param name="onRetry">Optional per-retry notification hook: (retry number, effective delay, reason). Must not throw.</param>
+    /// <param name="delay">Delay seam for rate-limit windows; defaults to <see cref="System.Threading.Tasks.Task.Delay(TimeSpan, CancellationToken)"/>.</param>
+    /// <param name="maxRateLimitWait">Longest rate-limit window waited out; defaults to <see cref="ResilienceDefaults.DefaultMaxRateLimitWait"/>. A longer one throws <see cref="Orkeon.Domain.Exceptions.LlmRateLimitException"/>.</param>
     /// <returns>An async retry policy for LLM API HTTP calls.</returns>
     public static IAsyncPolicy<HttpResponseMessage> GetLlmApiPolicy(
         ILogger? logger = null,
         int maxRetryAttempts = Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxRetries,
         TimeSpan? baseDelay = null,
-        Action<int, TimeSpan, string>? onRetry = null)
+        Action<int, TimeSpan, string>? onRetry = null,
+        Func<TimeSpan, CancellationToken, System.Threading.Tasks.Task>? delay = null,
+        TimeSpan? maxRateLimitWait = null)
     {
-        var delay = baseDelay ?? ResilienceDefaults.DefaultRetryInitialDelay;
+        var ladderBase = baseDelay ?? ResilienceDefaults.DefaultRetryInitialDelay;
         var safeLogger = logger ?? NullLogger.Instance;
+
+        var rateLimitCap = maxRateLimitWait ?? ResilienceDefaults.DefaultMaxRateLimitWait;
+        var wait = delay ?? System.Threading.Tasks.Task.Delay;
 
         // The failures that come back in seconds take the whole Llm:MaxRetries budget.
         var transient = HandleTransientHttpStatusOrRequestError()
             .OrResult(msg => msg.StatusCode == HttpStatusCode.TooManyRequests)
             .WaitAndRetryAsync(maxRetryAttempts,
-                retryAttempt => LlmRetryDelay(retryAttempt, delay),
-                onRetry: async (outcome, timespan, retryCount, context) =>
+                (int retryAttempt, DelegateResult<HttpResponseMessage> outcome, Context context) =>
+                {
+                    // Each attempt answers for itself: a window replaces the ladder, and the
+                    // wait happens in onRetry.
+                    context.Remove(RateLimitWindowKey);
+                    var window = outcome.Result is { } response
+                        ? RateLimitResetHeaders.WindowOf(response, DateTimeOffset.UtcNow, rateLimitCap)
+                        : null;
+                    if (window is null)
+                        return LlmRetryDelay(retryAttempt, ladderBase);
+                    context[RateLimitWindowKey] = window.Value;
+                    return TimeSpan.Zero;
+                },
+                onRetryAsync: async (outcome, timespan, retryCount, context) =>
                 {
                     var reason = outcome.Result?.StatusCode.ToString() ?? outcome.Exception?.Message ?? "Error";
-                    if (outcome.Result?.Headers.RetryAfter?.Delta != null)
+                    if (context.TryGetValue(RateLimitWindowKey, out var stored) && stored is TimeSpan window)
                     {
-                        // Capped like the streaming path's Retry-After: an interactive turn
-                        // never parks for minutes on a server-suggested wait.
-                        var retryAfter = outcome.Result.Headers.RetryAfter.Delta.Value;
-                        if (retryAfter > ResilienceDefaults.DefaultRetryMaxDelay)
-                            retryAfter = ResilienceDefaults.DefaultRetryMaxDelay;
-                        ResiliencePoliciesLog.LogLlmApiRateLimited(safeLogger, retryAfter.TotalSeconds);
-                        onRetry?.Invoke(retryCount, timespan + retryAfter, reason);
-                        await System.Threading.Tasks.Task.Delay(retryAfter).ConfigureAwait(false);
+                        ResiliencePoliciesLog.LogLlmApiRateLimited(safeLogger, window.TotalSeconds);
+                        onRetry?.Invoke(retryCount, window, RateLimitResetHeaders.Reason);
+                        var token = context.TryGetValue(CallerTokenKey, out var carried) && carried is CancellationToken ct
+                            ? ct
+                            : CancellationToken.None;
+                        await wait(window, token).ConfigureAwait(false);
                     }
                     else
                     {
@@ -108,7 +128,7 @@ public static class ResiliencePolicies
         var timedOut = Policy<HttpResponseMessage>
             .Handle<TaskCanceledException>(IsHttpClientTimeout)
             .WaitAndRetryAsync(timeoutRetries,
-                retryAttempt => LlmRetryDelay(retryAttempt, delay),
+                retryAttempt => LlmRetryDelay(retryAttempt, ladderBase),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
                     var reason = outcome.Exception?.Message ?? "HTTP timeout";
@@ -116,7 +136,21 @@ public static class ResiliencePolicies
                     onRetry?.Invoke(retryCount, timespan, reason);
                 });
 
-        return Policy.WrapAsync(transient, timedOut);
+        return Policy.WrapAsync(new CallerTokenCarrier(), transient, timedOut);
+    }
+
+    /// <summary>Hands the caller's token to the retry hooks, which Polly gives none.</summary>
+    private sealed class CallerTokenCarrier : AsyncPolicy<HttpResponseMessage>
+    {
+        protected override Task<HttpResponseMessage> ImplementationAsync(
+            Func<Context, CancellationToken, Task<HttpResponseMessage>> action,
+            Context context,
+            CancellationToken cancellationToken,
+            bool continueOnCapturedContext)
+        {
+            context[CallerTokenKey] = cancellationToken;
+            return action(context, cancellationToken);
+        }
     }
 
     /// <summary>

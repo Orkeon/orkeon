@@ -49,6 +49,9 @@ internal static class ShellScript
     /// </summary>
     public const int ByteCap = (ShellCommandTool.MaxOutputLength + 1) * 3;
 
+    /// <summary>The per-stream byte cap for a tool keeping <paramref name="outputLimit"/> characters.</summary>
+    public static int ByteCapFor(int outputLimit) => (outputLimit + 1) * 3;
+
     private const string DirectoryVariable = "_ork_d";
     private const string StdoutVariable = "_ork_o";
     private const string StderrVariable = "_ork_e";

@@ -34,7 +34,7 @@ flowchart LR
     you --> code["Orkeon Code<br/>a coding assistant<br/>on your repository"]
     you --> cli["orkeon CLI<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Your own .NET app<br/>C# builders, NuGet"]
-    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>102 tools · 16 LLM providers"]
+    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>119 tools · 16 LLM providers"]
     runtime --> world(["Your files, mailboxes, drives, APIs<br/>— only the ones you mounted, with the rights you gave"])
 ```
 
@@ -85,7 +85,7 @@ The team you compose in Studio is the YAML the CLI runs, and the crew your own .
 
 ## What's in the box
 
-102 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers, local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
+119 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers, local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
 
 ## Install
 

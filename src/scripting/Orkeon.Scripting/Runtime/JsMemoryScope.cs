@@ -1,47 +1,89 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Scripting.Runtime;
 
 /// <summary>
-/// Simple in-memory key/value store exposed to scripts as <c>ctx.memory.crew</c> (and,
-/// in SCR-08, <c>ctx.memory.agent</c>). Search returns a tiny substring-match ranking
-/// suitable for tests; real semantic search lands when the DSL is wired through to
-/// <c>IMemoryProvider</c> implementations.
+/// Key/value store exposed to scripts as <c>ctx.memory.crew</c> and <c>ctx.memory.agent</c>. In memory
+/// by default (search is a tiny substring-match ranking); when built over an
+/// <see cref="IScriptAgentMemoryStore"/> every call goes to that durable store for one agent key (RT-16).
 /// </summary>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of MemoryScope/MemoryHit in Typings/context.d.ts; that declaration is the contract scripts read.
 public sealed class JsMemoryScope
 {
     private readonly ConcurrentDictionary<string, object?> _store = new(StringComparer.Ordinal);
+    private readonly IScriptAgentMemoryStore? _durable;
+    private readonly string _agentKey = "";
+    private readonly CancellationToken _ct;
 
     public JsMemoryScope()
     {
         search = Search;
     }
 
+    internal JsMemoryScope(IScriptAgentMemoryStore durable, string agentKey, CancellationToken ct)
+        : this()
+    {
+        _durable = durable;
+        _agentKey = agentKey;
+        _ct = ct;
+    }
+
     public Func<string, object?, Task> store => (key, value) =>
     {
+        if (_durable is not null) return _durable.StoreAsync(_agentKey, key, JsonSerializer.Serialize(value), _ct);
         _store[key] = value;
         return Task.CompletedTask;
     };
 
-    public Func<string, Task<object?>> get => key
-        => Task.FromResult(_store.TryGetValue(key, out var v) ? v : null);
+    public Func<string, Task<object?>> get => async key =>
+    {
+        if (_durable is null) return _store.TryGetValue(key, out var v) ? v : null;
+        var json = await _durable.GetAsync(_agentKey, key, _ct).ConfigureAwait(false);
+        return json is null ? null : FromJson(json);
+    };
 
     public Func<string, Task<bool>> delete => key
-        => Task.FromResult(_store.TryRemove(key, out _));
+        => _durable is not null
+            ? _durable.DeleteAsync(_agentKey, key, _ct)
+            : Task.FromResult(_store.TryRemove(key, out _));
 
     public Func<string, int, Task<IReadOnlyList<JsMemoryHit>>> search { get; }
 
-    private Task<IReadOnlyList<JsMemoryHit>> Search(string query, int k)
+    private async Task<IReadOnlyList<JsMemoryHit>> Search(string query, int k)
     {
-        var hits = _store
+        var limit = Math.Max(1, k <= 0 ? 5 : k);
+        if (_durable is not null)
+        {
+            var found = await _durable.SearchAsync(_agentKey, query, limit, _ct).ConfigureAwait(false);
+            return found.Select((h, idx) => new JsMemoryHit(h.Key, 1.0 - (idx * 0.1), FromJson(h.ValueJson))).ToList();
+        }
+
+        return _store
             .Where(kv => MatchesQuery(kv.Key, kv.Value, query))
-            .Take(Math.Max(1, k <= 0 ? 5 : k))
+            .Take(limit)
             .Select((kv, idx) => new JsMemoryHit(kv.Key, 1.0 - (idx * 0.1), kv.Value))
             .ToList();
-        return Task.FromResult<IReadOnlyList<JsMemoryHit>>(hits);
     }
+
+    private static object? FromJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return ToClr(doc.RootElement);
+    }
+
+    private static object? ToClr(JsonElement e) => e.ValueKind switch
+    {
+        JsonValueKind.Object => e.EnumerateObject().ToDictionary(p => p.Name, p => ToClr(p.Value), StringComparer.Ordinal),
+        JsonValueKind.Array => e.EnumerateArray().Select(ToClr).ToArray(),
+        JsonValueKind.String => e.GetString(),
+        JsonValueKind.Number => e.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        _ => null,
+    };
 
     private static bool MatchesQuery(string key, object? value, string query)
     {

@@ -98,11 +98,12 @@ public class RagToolsServiceCollectionExtensionsTests
 
         // The first call is where the subsystem is resolved — and where it fails.
         var search = Assert.Single(tools, t => t.Name == "rag_search");
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => search.CallAsync(
+        var response = await search.CallAsync(
             new Orkeon.Domain.Tools.Protocol.ToolCallRequest("rag_search",
                 new Dictionary<string, object?> { ["question"] = "q" }),
-            TestContext.Current.CancellationToken));
-        Assert.Equal("pipeline resolved", error.Message);
+            TestContext.Current.CancellationToken);
+        Assert.False(response.Success);
+        Assert.Contains("pipeline resolved", response.Error, StringComparison.Ordinal);
     }
 
     [Fact]

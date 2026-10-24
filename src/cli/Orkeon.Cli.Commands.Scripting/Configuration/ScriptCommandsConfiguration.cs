@@ -45,6 +45,9 @@ public sealed record ScriptCommandsConfiguration
     /// </summary>
     public string FallbackCommandName { get; set; } = "assistant";
 
+    /// <summary>Maximum depth of a chain of async commands launched from completed handlers.</summary>
+    public int MaxChainDepth { get; set; } = 8;
+
     /// <summary>CLI-specific sandbox limits applied to the dedicated <c>JsEngineFactory</c>.</summary>
     public CliScriptLimitsOptions Limits { get; set; } = new();
 }

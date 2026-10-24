@@ -68,6 +68,9 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
 
     public JsValue state { get; private set; }
 
+    /// <summary>The id (<c>a1</c>…) of the agent instance this body runs as; <c>undefined</c> for a run that is not one (RT-03).</summary>
+    public JsValue instanceId { get; }
+
     internal JsAgentContext(JsExecutionEnvironment environment, JsValue initialState)
         : base(environment)
     {
@@ -75,8 +78,17 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _engineRef = environment.Engine;
         _self = environment.Self;
         _crewRef = environment.Crew;
+        instanceId = environment.Instance is { } instance ? instance.Id : JsValue.Undefined;
         _stateRaw = initialState ?? JsValue.Undefined;
-        memory.agent = new JsMemoryScope();
+        // RT-16: durable per (project, crew, agent name) when the host wired a store; the host's working directory is the project.
+        memory.agent = environment.AgentMemoryStore is { } durable
+            ? new JsMemoryScope(durable, new Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey
+            {
+                Project = Environment.CurrentDirectory,
+                Crew = _crewRef.HasName ? _crewRef.name : null,
+                Agent = _self.name,
+            }.ToString(), environment.Ct)
+            : new JsMemoryScope();
         _runScope = AgentRunScope.Create(_self.id, _self.name);
         llm.AttachRunScope(_runScope);
         state = BuildStateProxy(_stateRaw);
@@ -147,6 +159,11 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _crewRef.Add(spawned);
         return spawned;
     });
+
+    // Synchronous and bridged like spawn: the child starts on the engine thread, and a refusal
+    // (unknown agent, spent budget) is a JavaScript throw at the call site.
+    public Func<string, string, JsValue> spawnBackground => (agent, input) =>
+        JsHostError.Guard(_engineRef, () => Background.Spawn(agent, input));
 
     /// <summary>
     /// The read-only view of <paramref name="raw"/> the body sees: a Proxy whose <c>with</c>

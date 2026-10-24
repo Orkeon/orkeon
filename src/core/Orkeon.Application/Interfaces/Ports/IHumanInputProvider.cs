@@ -23,6 +23,12 @@ public interface IHumanInputProvider
     System.Threading.Tasks.Task<string> GetChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Requests several choices from a human user.
+    /// </summary>
+    System.Threading.Tasks.Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("This provider does not support multiple choices.");
+
+    /// <summary>
     /// Checks if human input is available.
     /// </summary>
     System.Threading.Tasks.Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default);

@@ -6,3 +6,4 @@ Orkeon.Cli.Abstractions.ModelAvailability
 Orkeon.Cli.Abstractions.ModelAvailability.Available = 0 -> Orkeon.Cli.Abstractions.ModelAvailability
 Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting = 1 -> Orkeon.Cli.Abstractions.ModelAvailability
 Orkeon.Cli.Abstractions.ModelAvailability.Unavailable = 2 -> Orkeon.Cli.Abstractions.ModelAvailability
+virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnAfterCommandAsync(string! commandName, Orkeon.Cli.Abstractions.Commands.CommandResult! result, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!

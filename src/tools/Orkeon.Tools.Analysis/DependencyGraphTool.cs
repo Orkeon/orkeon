@@ -33,8 +33,9 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
         async Task<DependencyGraphResponse> ExecuteCoreAsync()
         {
+            var edgeKinds = GraphKindNames.ParseEdgeKinds(request.EdgeKinds);
             var nodes = await ResolveNodesAsync(request, cancellationToken).ConfigureAwait(false);
-            var kindMask = ResolveKindMask(request);
+            var kindMask = ResolveKindMask(edgeKinds);
             var edges = await CollectEdgesAsync(request, nodes, kindMask, cancellationToken).ConfigureAwait(false);
 
             var graphNodes = nodes.Select(n => new GraphNode
@@ -46,7 +47,7 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
             }).ToImmutableArray();
             var graphEdges = edges.ToImmutableArray();
 
-            var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = request.EdgeKinds }, cancellationToken).ConfigureAwait(false);
+            var cycles = await _store.FindCyclesAsync(new CycleQuery { Scope = request.Scope, EdgeKinds = edgeKinds }, cancellationToken).ConfigureAwait(false);
             var metrics = BuildMetrics(graphNodes, graphEdges, cycles.Count);
             var truncated = nodes.Count >= request.MaxNodes;
 
@@ -64,9 +65,26 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
 
     private async Task<IReadOnlyList<RaggableNode>> ResolveNodesAsync(DependencyGraphRequest request, CancellationToken cancellationToken)
     {
-        var nodes = await _store.QueryAsync(
-            new NodeQuery { Level = request.Scope, Take = Math.Max(1, request.MaxNodes) },
-            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<RaggableNode> nodes;
+        if (request.NodeKinds.IsDefaultOrEmpty)
+        {
+            nodes = await _store.QueryAsync(
+                new NodeQuery { Level = request.Scope, Take = Math.Max(1, request.MaxNodes) },
+                cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            var take = Math.Max(1, request.MaxNodes);
+            var found = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
+            foreach (var query in GraphKindNames.ParseNodeQueries(request.NodeKinds))
+            {
+                var batch = await _store.QueryAsync(query with { Level = request.Scope, Take = take }, cancellationToken).ConfigureAwait(false);
+                foreach (var n in batch) found.TryAdd(n.Id, n);
+            }
+
+            nodes = [.. found.Values.Take(take)];
+        }
+
         if (!string.IsNullOrEmpty(request.RootFqn))
         {
             var root = await _store.GetAsync(request.RootFqn, cancellationToken).ConfigureAwait(false);
@@ -79,10 +97,10 @@ public sealed class DependencyGraphTool : ToolBase<DependencyGraphRequest, Depen
         return nodes;
     }
 
-    private static EdgeKind ResolveKindMask(DependencyGraphRequest request)
+    private static EdgeKind ResolveKindMask(ImmutableArray<EdgeKind> edgeKinds)
     {
         var kindMask = EdgeKind.None;
-        foreach (var k in request.EdgeKinds) kindMask |= k;
+        foreach (var k in edgeKinds) kindMask |= k;
         if (kindMask == EdgeKind.None) kindMask = EdgeKind.Imports;
         return kindMask;
     }

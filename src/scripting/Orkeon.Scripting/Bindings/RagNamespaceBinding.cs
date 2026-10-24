@@ -12,7 +12,7 @@ namespace Orkeon.Scripting.Bindings;
 
 /// <summary>
 /// Registers the global <c>rag</c> namespace on a Jint engine (RAG-03/C3, plan §8.4):
-/// first-class <c>rag.ingest({ collection, sources, chunkingStrategy?, reindex? })</c>,
+/// first-class <c>rag.ingest({ collection, sources, chunkingStrategy?, reindex?, prune? })</c>,
 /// <c>rag.query(question, { collection, profile?, topN? })</c> and
 /// <c>rag.retrieve(question, { … })</c> over the RAG subsystem pipelines. The
 /// namespace is always registered — calls fail loudly with an actionable message
@@ -61,7 +61,7 @@ public static partial class RagNamespaceBinding
             }
 
             if (options is null || !options.IsObject())
-                throw new ArgumentException("rag.ingest expects an options object: { collection, sources[, chunkingStrategy, reindex] }.");
+                throw new ArgumentException("rag.ingest expects an options object: { collection, sources[, chunkingStrategy, reindex, prune] }.");
 
             var obj = options.AsObject();
             var collection = GetRequiredString(obj, "collection", "rag.ingest");
@@ -72,6 +72,8 @@ public static partial class RagNamespaceBinding
             var chunking = GetOptionalString(obj, "chunkingStrategy");
             var reindexValue = obj.Get("reindex");
             var reindex = reindexValue.IsBoolean() && reindexValue.AsBoolean();
+            var pruneValue = obj.Get("prune");
+            var prune = pruneValue.IsBoolean() && pruneValue.AsBoolean();
 
             IReadOnlyList<SourceDescriptor> sources = locations.Any(SourceGlobExpander.HasWildcard)
                 ? await SourceGlobExpander.ExpandAsync(backend.FileSystem, locations).ConfigureAwait(false)
@@ -86,6 +88,7 @@ public static partial class RagNamespaceBinding
                 Sources = [.. sources],
                 ChunkingStrategy = chunking,
                 Reindex = reindex,
+                Prune = prune,
             }).ConfigureAwait(false);
 
             var payload = new Dictionary<string, object?>
@@ -98,6 +101,7 @@ public static partial class RagNamespaceBinding
                 ["sourcesAdded"] = report.SourcesAdded,
                 ["sourcesUnchanged"] = report.SourcesUnchanged,
                 ["sourcesReingested"] = report.SourcesReingested,
+                ["sourcesPruned"] = report.SourcesPruned,
                 ["durationMs"] = report.Duration.TotalMilliseconds,
                 ["errors"] = report.Errors.ToArray(),
             };

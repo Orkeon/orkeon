@@ -256,7 +256,7 @@
       "category": "security",
       "hosts": [],
       "registration": "AddOrkeonInfrastructure",
-      "description": "Configuration options for tool result sanitization (`Security:ToolResults`). The length of a result is bounded by one rule only, `AgentDefaults.ResolveMaxToolResultLength`, applied by the tool-invocation pipeline before this sanitizer runs."
+      "description": "Configuration options for tool result sanitization (`Security:ToolResults`). The length of a result is bounded by one rule only, `ToolResultLimitsOptions.ResolveFor` (`Orkeon:Tools:ResultLimits`, defaulting to `AgentDefaults`), applied by the tool-invocation pipeline before this sanitizer runs."
     },
     {
       "path": "Security:Url",
@@ -312,6 +312,13 @@
       "hosts": [],
       "registration": "AddOrkeonEmailTools",
       "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
+    },
+    {
+      "path": "Orkeon:Tools:ResultLimits",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonInfrastructure",
+      "description": "The cut of each tool's result, bound from `Orkeon:Tools:ResultLimits`, and the fan-out bound of a tool-call batch."
     },
     {
       "path": "Orkeon:Tools:Shell",
@@ -387,6 +394,20 @@
       "hosts": [],
       "registration": "AddOrkeonSessionTools",
       "description": "The `Orkeon:Cli:Session` section: what a session budgets against. Bound and judged at the host's start by `AddOrkeonSessionTools` — `token_budget` used to read it at each call and fall back on its default, in silence, for a value it could not read."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentInstances",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddScriptCommands",
+      "description": "Transcript caps of an agent instance, bound to the `Orkeon:Scripting:AgentInstances` section."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentMemory",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddOrkeonSessionTools",
+      "description": "Configuration of the durable agent memory."
     },
     {
       "path": "Orkeon:Scripting:Limits",
@@ -498,6 +519,13 @@
       "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
     },
     {
+      "path": "Llm:MaxRateLimitWait",
+      "section": "Llm",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing."
+    },
+    {
       "path": "Llm:MaxRetries",
       "section": "Llm",
       "type": "integer",
@@ -548,6 +576,13 @@
       "type": "boolean",
       "default": false,
       "description": "Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning."
+    },
+    {
+      "path": "Llm:Profiles:<name>:MaxRateLimitWait",
+      "section": "Llm",
+      "type": "duration",
+      "default": "00:05:00",
+      "description": "The longest rate-limit window a call waits out before it fails: a provider that announces a longer one makes the call fail at once with a rate-limit error. `00:00:00` waits for nothing."
     },
     {
       "path": "Llm:Profiles:<name>:MaxRetries",
@@ -650,6 +685,18 @@
       "type": "integer",
       "default": 0,
       "description": "The most characters logged of one request or response body; `0` logs it whole."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:CacheReadPricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Cost per million cache-read tokens; null when the model declares none."
+    },
+    {
+      "path": "Orkeon:CostTracking:CustomPricings:<i>:CacheWritePricePerMillion",
+      "section": "Orkeon:CostTracking",
+      "type": "number",
+      "description": "Cost per million cache-write tokens; null when the model declares none."
     },
     {
       "path": "Orkeon:CostTracking:CustomPricings:<i>:CompletionPricePerMillion",
@@ -2325,6 +2372,19 @@
       "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
     },
     {
+      "path": "Orkeon:Tools:ResultLimits:Limits:<name>",
+      "section": "Orkeon:Tools:ResultLimits",
+      "type": "integer",
+      "description": "The cut in characters, by tool name (case-insensitive)."
+    },
+    {
+      "path": "Orkeon:Tools:ResultLimits:MaxParallelToolCalls",
+      "section": "Orkeon:Tools:ResultLimits",
+      "type": "integer",
+      "default": 4,
+      "description": "The most tool calls of one batch that run at once."
+    },
+    {
       "path": "Orkeon:Tools:Shell:AllowedCommands",
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
@@ -2647,6 +2707,13 @@
       "description": "Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global)."
     },
     {
+      "path": "Orkeon:Cli:ScriptCommands:MaxChainDepth",
+      "section": "Orkeon:Cli:ScriptCommands",
+      "type": "integer",
+      "default": 8,
+      "description": "Maximum depth of a chain of async commands launched from completed handlers."
+    },
+    {
       "path": "Orkeon:Cli:ScriptCommands:MaxScripts",
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "integer",
@@ -2679,6 +2746,47 @@
       "section": "Orkeon:Cli:Session",
       "type": "integer",
       "description": "The model's context window, in tokens: a number above zero. Unset is `200000`."
+    },
+    {
+      "path": "Orkeon:Cli:Session:Persist",
+      "section": "Orkeon:Cli:Session",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the session is persisted per project under `SessionsDirectory`; off unless a host turns it on."
+    },
+    {
+      "path": "Orkeon:Cli:Session:SessionsDirectory",
+      "section": "Orkeon:Cli:Session",
+      "type": "string",
+      "default": "/workspace/.orkeon/sessions",
+      "description": "Virtual directory holding one folder of persisted session per project."
+    },
+    {
+      "path": "Orkeon:Cli:Session:StartScript",
+      "section": "Orkeon:Cli:Session",
+      "type": "string",
+      "description": "The script run once at the REPL's start (`Orkeon:Cli:Session:StartScript`); unset runs none."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentInstances:MaxTranscriptCharacters",
+      "section": "Orkeon:Scripting:AgentInstances",
+      "type": "integer",
+      "default": 32000,
+      "description": "The most characters (sum of message contents) one instance keeps in its transcript."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentInstances:MaxTranscriptMessages",
+      "section": "Orkeon:Scripting:AgentInstances",
+      "type": "integer",
+      "default": 40,
+      "description": "The most messages one instance keeps in its transcript."
+    },
+    {
+      "path": "Orkeon:Scripting:AgentMemory:RootDirectory",
+      "section": "Orkeon:Scripting:AgentMemory",
+      "type": "string",
+      "default": "/workspace/.orkeon/agent-memory",
+      "description": "Root directory of the memory files."
     },
     {
       "path": "Orkeon:Scripting:Limits:ExecutionTimeout",

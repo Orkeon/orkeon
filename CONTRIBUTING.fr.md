@@ -278,6 +278,11 @@ ce qu'un hôte refuse porte `<!-- settings-check:off -->` sur la ligne au-dessus
   pas atteindre est une garde contre le blocage (`Polling.DefaultTimeout`), et aucun test
   unitaire ne borne une durée — un horodatage se vérifie entre deux lectures de l'horloge, et
   deux fins concurrentes viennent dans l'ordre qu'impose un rendez-vous
+* Un build copie les bibliothèques natives (grammaires Tree-sitter, ONNX Runtime) du seul runtime
+  de la machine, par la cible `OrkeonTrimForeignRuntimes` du `Directory.Build.targets` racine : la
+  sortie d'un projet de test pèse ~150 Mo au lieu de ~1 Go, et un worktree construit quelques Go au
+  lieu de 26. Un `bin` qui doit tourner sur une autre machine se construit avec
+  `-p:OrkeonAllRuntimes=true`
 * Un test qui attend un moteur de script attend sous `HangGuards.EnginePromise`
   (`Orkeon.Tests.Shared.Timing`), jamais sous les 10 secondes implicites de Jint — voir le modèle de
   threading de [`docs/fr/architecture/scripting.md`](docs/fr/architecture/scripting.md#modèle-de-threading)

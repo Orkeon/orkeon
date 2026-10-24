@@ -75,3 +75,89 @@ Orkeon.Infrastructure.Security.ModePermissionGate.Rules.init -> void
 Orkeon.Infrastructure.Configuration.SettingReference
 static Orkeon.Infrastructure.Configuration.SettingReference.Phrase(string! settingPath, string? value) -> string?
 static Orkeon.Infrastructure.Configuration.SettingReference.Refuse(string! settingPath, string? value) -> void
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.get -> string?
+Orkeon.Infrastructure.Configuration.AgentYamlConfig.WorkingRoot.set -> void
+
+Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider.AutoApproveHumanInputProvider(Orkeon.Infrastructure.HumanInput.HumanInputOptions! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider!>? logger = null) -> void
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy.Default = 0 -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy.Refuse = 1 -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputOptions
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HeadlessPolicy.get -> Orkeon.Infrastructure.HumanInput.HumanInputHeadlessPolicy
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HeadlessPolicy.set -> void
+Orkeon.Infrastructure.HumanInput.HumanInputOptions.HumanInputOptions() -> void
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputRequest.Recommended.get -> int?
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputRequest.Recommended.init -> void
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputResponse.Values.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.Tools.HumanInput.HumanInputResponse.Values.init -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException(string! message) -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException() -> void
+Orkeon.Infrastructure.HumanInput.HumanInputRefusedException.HumanInputRefusedException(string! message, System.Exception! innerException) -> void
+Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.ConsoleHumanInputProvider(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider!>! logger, System.IO.TextReader! input, System.IO.TextWriter! output) -> void
+Orkeon.Infrastructure.HumanInput.DeadlinePausingHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.HumanInput.AutoApproveHumanInputProvider.GetMultiChoiceAsync(Orkeon.Domain.HumanInput.HumanInputContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Infrastructure.Resilience.RateLimitResetHeaders
+Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.Wait.get -> System.TimeSpan?
+static Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.Parse(System.Net.Http.Headers.HttpResponseHeaders! headers, System.DateTimeOffset now) -> Orkeon.Infrastructure.Resilience.RateLimitResetHeaders!
+*REMOVED*static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetLlmApiPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 10, System.TimeSpan? baseDelay = null, System.Action<int, System.TimeSpan, string!>? onRetry = null) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetLlmApiPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 10, System.TimeSpan? baseDelay = null, System.Action<int, System.TimeSpan, string!>? onRetry = null, System.Func<System.TimeSpan, System.Threading.CancellationToken, System.Threading.Tasks.Task!>? delay = null, System.TimeSpan? maxRateLimitWait = null) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DelayAsync(System.TimeSpan delay, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+const Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.Reason = "rate-limit window" -> string!
+static Orkeon.Infrastructure.Resilience.RateLimitResetHeaders.WindowOf(System.Net.Http.HttpResponseMessage! response, System.DateTimeOffset now, System.TimeSpan maximum) -> System.TimeSpan?
+Orkeon.Infrastructure.Tools.SessionStatsResponse.ByModelTokens.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Tools.ModelTokensEntry!>!
+Orkeon.Infrastructure.Tools.SessionStatsResponse.ByModelTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry
+Orkeon.Infrastructure.Tools.ModelTokensEntry.ModelTokensEntry() -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.Model.get -> string!
+Orkeon.Infrastructure.Tools.ModelTokensEntry.Model.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.PromptTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.PromptTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CompletionTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CompletionTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheWriteTokens.init -> void
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.get -> long
+Orkeon.Infrastructure.Tools.ModelTokensEntry.CacheReadTokens.init -> void
+Orkeon.Infrastructure.Session.CliSessionOptions.SessionsDirectory.get -> string!
+Orkeon.Infrastructure.Session.CliSessionOptions.SessionsDirectory.set -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService
+Orkeon.Infrastructure.Session.FileSessionBufferService.AppendNote(string! note) -> bool
+Orkeon.Infrastructure.Session.FileSessionBufferService.EstimateTokenCount() -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.FileSessionBufferService(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Infrastructure.Session.CliSessionOptions! options) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetMessages() -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.SessionMessage!>!
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetMetadata() -> Orkeon.Application.Interfaces.Ports.SessionMetadata!
+Orkeon.Infrastructure.Session.FileSessionBufferService.GetState(string! key) -> string?
+Orkeon.Infrastructure.Session.FileSessionBufferService.LoadAsync(string! projectKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.FileSessionBufferService.MessageCount.get -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.ReplaceMessages(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.SessionMessage!>! messages) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.Reset() -> int
+Orkeon.Infrastructure.Session.FileSessionBufferService.SaveAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.FileSessionBufferService.SetState(string! key, string? value) -> void
+Orkeon.Infrastructure.Session.FileSessionBufferService.SetTitle(string! title) -> bool
+Orkeon.Infrastructure.Session.FileSessionBufferService.Truncate(int retainCount) -> int
+Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.get -> string?
+Orkeon.Infrastructure.Session.CliSessionOptions.StartScript.set -> void
+Orkeon.Infrastructure.Session.CliSessionOptions.Persist.get -> bool
+Orkeon.Infrastructure.Session.CliSessionOptions.Persist.set -> void
+Orkeon.Infrastructure.Session.ProjectKey
+static Orkeon.Infrastructure.Session.ProjectKey.Slug(string! projectKey) -> string!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.FileScriptAgentMemoryStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! rootDirectory) -> void
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.DeleteAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.GetAsync(string! agentKey, string! key, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.SearchAsync(string! agentKey, string! query, int limit, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryHit!>!>!
+Orkeon.Infrastructure.Session.FileScriptAgentMemoryStore.StoreAsync(string! agentKey, string! key, string! valueJson, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.get -> string!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.RootDirectory.init -> void
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ScriptAgentMemoryOptions() -> void
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.<Clone>$() -> Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions!
+Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? other) -> bool
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.Equals(object? obj) -> bool
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.GetHashCode() -> int
+override Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.ToString() -> string!
+const Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.SectionName = "Orkeon:Scripting:AgentMemory" -> string!
+static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator !=(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? left, Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? right) -> bool
+static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator ==(Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? left, Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions? right) -> bool

@@ -116,6 +116,9 @@ public static class JsCrewConfigurationAdapter
             };
         }
 
+        if (builder.EffortValue is not null)
+            llmConfig = (llmConfig ?? LlmConfig.OnProfile()) with { Thinking = JsLlmConfig.ThinkingAt(builder.EffortValue) };
+
         return new AgentConfiguration
         {
             Id = id,

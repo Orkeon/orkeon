@@ -43,20 +43,24 @@ public sealed partial class CommandDispatchService
 
     private static readonly AsyncLocal<CommandDispatchScope?> _ambient = new();
 
-    private static volatile CommandDispatchScope? _promptScope;
+    private volatile CommandDispatchScope? _promptScope;
+
+    private readonly int _maxChainDepth;
 
     public CommandDispatchService(
         IAgentChannel channel,
         AgentCommandDirectory directory,
         CommandInstanceRegistry registry,
         ILogger<CommandDispatchService>? logger = null,
-        ProgressBroker? progress = null)
+        ProgressBroker? progress = null,
+        int maxChainDepth = 8)
     {
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _directory = directory ?? throw new ArgumentNullException(nameof(directory));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _logger = logger ?? (ILogger)NullLogger.Instance;
         _progress = progress;
+        _maxChainDepth = maxChainDepth;
     }
 
     /// <summary>The instance registry (used by built-in ps/inspect/result/cancel commands).</summary>
@@ -75,10 +79,10 @@ public sealed partial class CommandDispatchService
     /// in this so <c>request</c>/<c>post</c> can read the command name + token and record the
     /// async instances created during <c>dispatch</c>.
     /// </summary>
-    public static CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null)
+    public CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0)
     {
         var previous = _ambient.Value;
-        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner);
+        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner, parentDepth);
         if (promptLine is not null) _promptScope = scope;
         _ambient.Value = scope;
         return scope;
@@ -187,9 +191,12 @@ public sealed partial class CommandDispatchService
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
+        var depth = scope?.Depth ?? 0;
+        if (depth >= _maxChainDepth) throw new ChainDepthExceededException(depth, _maxChainDepth);
         var correlationId = Guid.NewGuid();
         var instance = _registry.Register(
             scope?.CommandName ?? label ?? "postWork", CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, correlationId);
+        instance.Depth = depth + 1;
         scope?.Capture(instance);
 
         var cts = scope?.Timeout is { } t ? new CancellationTokenSource(t) : new CancellationTokenSource();

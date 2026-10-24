@@ -90,7 +90,7 @@ public sealed class RagEvalDatasetYamlLoader : IRagEvalDatasetLoader
             if (!seenIds.Add(raw.Id))
                 throw new InvalidOperationException($"Dataset '{origin}': duplicate case id '{raw.Id}'.");
             if (string.IsNullOrWhiteSpace(raw.Question))
-                throw new InvalidOperationException($"Dataset '{origin}': case '{raw.Id}' has no 'question'.");
+                throw new InvalidOperationException($"Dataset '{origin}': case #{i + 1} ('{raw.Id}') has no 'question'.");
 
             cases.Add(new RagEvalCase
             {

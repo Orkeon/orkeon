@@ -1,0 +1,125 @@
+{
+  "produced_by": "affected-tests.py (dev-implement/scripts) run with python3 -I on a throwaway git repo holding exactly these projects and files, one case at a time: the changed files appended to (or created untracked), output captured, tree reset.",
+  "projects": [
+    {
+      "name": "A",
+      "references": [],
+      "is_test": false
+    },
+    {
+      "name": "B",
+      "references": [
+        "A"
+      ],
+      "is_test": false
+    },
+    {
+      "name": "C",
+      "references": [],
+      "is_test": false
+    },
+    {
+      "name": "A.Tests",
+      "references": [
+        "A"
+      ],
+      "is_test": true
+    },
+    {
+      "name": "B.Tests",
+      "references": [
+        "B"
+      ],
+      "is_test": true
+    },
+    {
+      "name": "C.Tests",
+      "references": [
+        "C"
+      ],
+      "is_test": true
+    }
+  ],
+  "files": [
+    {
+      "path": "A/Alpha.cs",
+      "content": "public class Alpha { public static void Foo() { } }\n"
+    },
+    {
+      "path": "B/Beta.cs",
+      "content": "public class Beta { public static void Bar() { } }\n"
+    },
+    {
+      "path": "C/Gamma.cs",
+      "content": "public class Gamma { public static void Baz() { } }\n"
+    },
+    {
+      "path": "A.Tests/AlphaTests.cs",
+      "content": "public class AlphaTests\n{\n    [Fact]\n    public void Exercises()\n    {\n        Alpha.Foo();\n    }\n}\n"
+    },
+    {
+      "path": "B.Tests/BetaTests.cs",
+      "content": "public class BetaTests\n{\n    [Fact]\n    public void Exercises()\n    {\n        Beta.Bar();\n    }\n}\n"
+    },
+    {
+      "path": "C.Tests/GammaTests.cs",
+      "content": "public class GammaTests\n{\n    [Fact]\n    public void Exercises()\n    {\n        Gamma.Baz();\n    }\n}\n"
+    },
+    {
+      "path": "docs/guide.md",
+      "content": "# Guide\n"
+    }
+  ],
+  "cases": [
+    {
+      "changed": [
+        "A/Alpha.cs"
+      ],
+      "all": false,
+      "test_projects": [
+        "A.Tests",
+        "B.Tests"
+      ]
+    },
+    {
+      "changed": [
+        "B.Tests/BetaTests.cs"
+      ],
+      "all": false,
+      "test_projects": [
+        "B.Tests"
+      ]
+    },
+    {
+      "changed": [
+        "docs/guide.md"
+      ],
+      "all": false,
+      "test_projects": []
+    },
+    {
+      "changed": [
+        "Directory.Build.props"
+      ],
+      "all": true,
+      "test_projects": []
+    },
+    {
+      "changed": [
+        "Ghost/Ghost.cs"
+      ],
+      "all": true,
+      "test_projects": []
+    },
+    {
+      "changed": [
+        "C/Gamma.cs",
+        "docs/guide.md"
+      ],
+      "all": false,
+      "test_projects": [
+        "C.Tests"
+      ]
+    }
+  ]
+}

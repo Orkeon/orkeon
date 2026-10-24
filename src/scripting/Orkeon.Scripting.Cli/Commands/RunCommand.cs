@@ -749,7 +749,7 @@ internal static partial class RunCommand
         // loop keeps its buffered behaviour unless the script passes onDelta.
         var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
 
-        var ragBackend = BuildRagBackend(host.Services, fileSystem, logger);
+        var ragBackend = Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(host.Services);
 
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
@@ -764,6 +764,8 @@ internal static partial class RunCommand
                 ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
+                ToolLimits = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName)),
+                AgentInstances = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName)),
             },
             ragBackend: ragBackend);
 
@@ -861,35 +863,6 @@ internal static partial class RunCommand
     }
 
     /// <summary>
-    /// Assembles the backend of the first-class <c>rag.*</c> scripting namespace, or returns
-    /// null when the host resolves no RAG pipeline. Resolution is best-effort: a host without
-    /// embedding/chat defaults must not break scripts that never touch <c>rag.*</c> (the
-    /// binding itself fails loudly on use when null).
-    /// </summary>
-    private static Orkeon.Scripting.Bindings.RagScriptingBackend? BuildRagBackend(
-        IServiceProvider services, IFileSystemService fileSystem, ILogger logger)
-    {
-        var ingestionPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline>(services, logger);
-        var ragPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline>(services, logger);
-        if (ingestionPipeline is null || ragPipeline is null)
-            return null;
-
-        return new Orkeon.Scripting.Bindings.RagScriptingBackend
-        {
-            IngestionPipeline = ingestionPipeline,
-            RagPipeline = ragPipeline,
-            FileSystem = fileSystem,
-            // Lets `rag.query({ profile: "corrective" })` select a pipeline per
-            // call instead of being stuck with the host-wide
-            // Orkeon:Rag:Profile. Best-effort like the two above: absent
-            // resolver ⇒ the binding refuses a profile request loudly rather
-            // than silently serving the default.
-            ProfileResolver = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver>(
-                services, logger),
-        };
-    }
-
-    /// <summary>
     /// The inputs surface handed to the script as <c>globalThis.inputs</c>: the inline
     /// <c>--inputs</c> JSON, or the contents of <c>--inputs-file</c> when the inline form is
     /// absent, or null when neither was given.
@@ -922,25 +895,6 @@ internal static partial class RunCommand
             return false;
         var source = await File.ReadAllTextAsync(scriptPath).ConfigureAwait(false);
         return CrewHandoffDetector.DeclaresHandoff(source);
-    }
-
-    /// <summary>
-    /// Resolves an optional service without letting a mis-configured dependency chain
-    /// (e.g. a RAG pipeline missing its embedding provider) crash script runs that
-    /// never touch the service. Logs the resolution failure at debug level.
-    /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort optional resolution: any activation failure must degrade to 'service unavailable' (the scripting binding fails loudly on use), never crash scripts that don't use it.")]
-    private static T? SafeGetService<T>(IServiceProvider services, ILogger logger) where T : class
-    {
-        try
-        {
-            return services.GetService<T>();
-        }
-        catch (Exception ex)
-        {
-            LogOptionalServiceUnavailable(logger, typeof(T).Name, ex.Message);
-            return null;
-        }
     }
 
     /// <summary>
@@ -1022,7 +976,4 @@ internal static partial class RunCommand
         Message = "Jint memory limit overridden to {Mb} MB (--memory-limit-mb)")]
     static partial void LogMemoryLimitOverridden(ILogger logger, string mb);
 
-    [LoggerMessage(EventId = 5, Level = LogLevel.Debug,
-        Message = "Optional service {Service} unavailable for scripting bindings: {Reason}")]
-    static partial void LogOptionalServiceUnavailable(ILogger logger, string service, string reason);
 }

@@ -12,7 +12,7 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
     private readonly object _gate = new();
     private readonly List<SessionMessage> _messages = new();
     private readonly Dictionary<string, string> _state = new(StringComparer.Ordinal);
-    private readonly string _sessionId = Guid.NewGuid().ToString("N");
+    private string _sessionId = Guid.NewGuid().ToString("N");
     private string? _title;
     private readonly string? _model;
     private readonly IReadOnlyList<string> _availableModels;
@@ -34,6 +34,26 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
                 .Select(m => m.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+    }
+
+    /// <summary>Copies the session id, title, messages and state bag, for a decorator that persists them.</summary>
+    internal (string SessionId, string? Title, SessionMessage[] Messages, Dictionary<string, string> State) Snapshot()
+    {
+        lock (_gate) return (_sessionId, _title, _messages.ToArray(), new Dictionary<string, string>(_state, StringComparer.Ordinal));
+    }
+
+    /// <summary>Puts back a persisted session as it was saved: no validation, the file is the source.</summary>
+    internal void Restore(string sessionId, string? title, IEnumerable<SessionMessage> messages, IReadOnlyDictionary<string, string> state)
+    {
+        lock (_gate)
+        {
+            _sessionId = sessionId;
+            _title = title;
+            _messages.Clear();
+            _messages.AddRange(messages);
+            _state.Clear();
+            foreach (var (key, value) in state) _state[key] = value;
+        }
     }
 
     /// <inheritdoc />

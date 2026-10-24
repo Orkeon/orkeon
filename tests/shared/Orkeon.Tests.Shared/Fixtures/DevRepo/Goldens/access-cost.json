@@ -1,0 +1,148 @@
+{
+  "fixtures": [
+    {
+      "path": "cost/FlatHandler.cs",
+      "kind": "text",
+      "content": "public sealed class FlatHandler\n{\n    public async Task Handle(Command command, CancellationToken ct)\n    {\n        var configuration = await _taskRepository.GetByIdAsync(command.Id, ct);\n        var names = await _taskRepository.ListNamesAsync(command.OrganizationId, ct);\n        var allowed = await quotaChecker.HasAvailableQuota(command.OrganizationId, ct);\n        configuration.Rename(command.Name, names, allowed);\n        await _taskRepository.AddAsync(configuration, ct);\n    }\n}\n"
+    },
+    {
+      "path": "cost/LoopHandler.cs",
+      "kind": "text",
+      "content": "public sealed class LoopHandler\n{\n    public async Task Handle(Command command, CancellationToken ct)\n    {\n        var signatures = new List<Signature>();\n        foreach (var id in command.SignatureIds)\n        {\n            signatures.Add(await signatureRepository.GetSignature(id, ct));\n        }\n        await signatureRepository.Save(signatures, ct);\n    }\n}\n"
+    },
+    {
+      "path": "cost/LambdaHandler.cs",
+      "kind": "text",
+      "content": "public sealed class LambdaHandler\n{\n    public async Task Handle(Command command, CancellationToken ct)\n    {\n        var tasks = command.Ids.Select(async id => await _store.LoadAsync(id, ct));\n        await Task.WhenAll(tasks);\n    }\n}\n"
+    },
+    {
+      "path": "cost/FilterHandler.cs",
+      "kind": "text",
+      "content": "public sealed class FilterHandler\n{\n    public async Task<int> Handle(Query query, CancellationToken ct)\n    {\n        var open = (await configurationRepository.GetAll(ct)).Where(c => c.IsOpen).ToList();\n        return open.Count;\n    }\n}\n"
+    },
+    {
+      "path": "cost/FsHandler.cs",
+      "kind": "text",
+      "content": "public sealed class FsHandler\n{\n    public async Task Handle(Command command, CancellationToken ct)\n    {\n        var text = await _fs.ReadAllTextAsync(command.Path, ct);\n        await _toolInvocation.InvokeAsync(command.Tool, text, ct);\n    }\n}\n"
+    }
+  ],
+  "cases": [
+    {
+      "name": "a flat handler: two reads and one write through its ports, exit 0, the Cost line last",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/FlatHandler.cs); rc=$?; last=$(printf '%s' \"$out\" | tail -n 1); [ \"$rc\" = 0 ] && [ \"$last\" = 'Cost: 2 reads + 1 write through ports outside loops; in a loop, a lambda or a memory filter: none' ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$last\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "a receiver the heuristic does not know is listed to classify, not counted",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/FlatHandler.cs | grep -qF 'Other awaits, to classify (1): L7 quotaChecker.HasAvailableQuota [outside loops]' && printf ok || printf BAD-missing",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "--receivers names that receiver as a port: it is counted as a read",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" --receivers 'quotaChecker' cost/FlatHandler.cs | tail -n 1 | grep -qF 'Cost: 3 reads + 1 write' && printf ok || printf BAD-count",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "a port awaited inside a foreach is flagged, exit 2, and the Cost line says back to design",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/LoopHandler.cs); rc=$?; printf '%s' \"$out\" | grep -qF 'Ports in a loop (1): L8 signatureRepository.GetSignature' && [ \"$rc\" = 2 ] && [ \"$(printf '%s' \"$out\" | tail -n 1)\" = 'Cost: 0 reads + 1 write through ports outside loops; in a loop, a lambda or a memory filter: 1 - back to design' ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$out\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "a port awaited inside a lambda over the input is flagged, exit 2",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/LambdaHandler.cs); rc=$?; printf '%s' \"$out\" | grep -qF 'Ports in a lambda (1): L5 _store.LoadAsync' && [ \"$rc\" = 2 ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$out\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "an in-memory Where on an awaited result is flagged, exit 2",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/FilterHandler.cs); rc=$?; printf '%s' \"$out\" | grep -qF 'Memory filter on an awaited result (1): L5' && [ \"$rc\" = 2 ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$out\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "several files: one Cost line for the whole set, exit 2 as soon as one is flagged",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/FlatHandler.cs cost/LoopHandler.cs); rc=$?; [ \"$rc\" = 2 ] && [ \"$(printf '%s' \"$out\" | grep -c '^Cost: ')\" = 1 ] && [ \"$(printf '%s' \"$out\" | tail -n 1)\" = 'Cost: 2 reads + 2 writes through ports outside loops; in a loop, a lambda or a memory filter: 1 - back to design' ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$out\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "Orkeon's receivers (repo.yaml tools.access_cost.receivers of repo-orkeon): the file system and the tool pipeline count as ports (a call that is not a write verb counts as a read)",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; python3 -c 'import yaml' 2>/dev/null || { printf 'ok (skipped: PyYAML is missing)'; exit 0; }; r=$(python3 -c 'import sys,yaml; print(yaml.safe_load(open(sys.argv[1]))[\"tools\"][\"access_cost\"][\"receivers\"])' \"$P/repo-orkeon/references/repo.yaml\"); cd {{FIX}} && out=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" --receivers \"$r\" cost/FsHandler.cs); rc=$?; [ \"$rc\" = 0 ] && [ \"$(printf '%s' \"$out\" | tail -n 1)\" = 'Cost: 2 reads + 0 writes through ports outside loops; in a loop, a lambda or a memory filter: none' ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$out\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "--diff in a checkout: a pre-existing port call in a loop is marked and does not fail the run; an added one does",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; d=$(mktemp -d \"${TMPDIR:-/tmp}/claude-cost-{{SID}}-XXXXXX\"); mkdir -p \"$d/src/App\" && cp {{FIX}}/cost/LoopHandler.cs \"$d/src/App/\" && cd \"$d\" && git init -q && git add -A && git -c user.name=e -c user.email=e@e commit -qm init && printf '\\n// touch\\n' >> src/App/LoopHandler.cs && o1=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" --diff); r1=$?; printf 'public sealed class Later { public async Task Go(IEnumerable<int> ids) { foreach (var i in ids) { await _store.LoadAsync(i); } } }\\n' >> src/App/LoopHandler.cs; o2=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" --diff); r2=$?; cd / && rm -rf \"$d\"; case \"$o1\" in *'L8 signatureRepository.GetSignature (pre-existing)'*) m=marked ;; *) m=unmarked ;; esac; case \"$o2\" in *'_store.LoadAsync'*) a=added ;; *) a=missing ;; esac; r=\"pre=$r1/$m added=$r2/$a\"; [ \"$r\" = 'pre=0/marked added=2/added' ] && printf ok || printf 'BAD-%s' \"$r\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "--diff with nothing changed under the roots says so, exit 0",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; command -v ast-grep >/dev/null 2>&1 || { printf 'ok (skipped: ast-grep is missing)'; exit 0; }; d=$(mktemp -d \"${TMPDIR:-/tmp}/claude-cost-{{SID}}-XXXXXX\"); cd \"$d\" && git init -q && git -c user.name=e -c user.email=e@e commit -q --allow-empty -m init && o=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" --diff); rc=$?; cd / && rm -rf \"$d\"; [ \"$rc\" = 0 ] && [ \"$o\" = 'no .cs file changed under src' ] && printf ok || printf 'BAD-rc=%s:%s' \"$rc\" \"$o\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "no argument prints the usage, exit 2; a missing file is named, exit 2",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; cd {{FIX}} && u=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\"); r1=$?; m=$(python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/Nope.cs); r2=$?; case \"$u\" in *'--diff'*) uu=usage ;; *) uu=nousage ;; esac; r=\"$r1/$uu $r2/$m\"; [ \"$r\" = '2/usage 2/not found: cost/Nope.cs' ] && printf ok || printf 'BAD-%s' \"$r\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "ast-grep missing: exit 3 and one line saying the cost is stated by hand (and /usr/bin/sg, the setgid tool, is never taken for it)",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; cd {{FIX}} && o=$(PATH=/usr/bin:/bin python3 \"$P/dev/claude/skills/dev-implement/scripts/access-cost.py\" cost/FlatHandler.cs); rc=$?; [ \"$rc\" = 3 ] && case \"$o\" in *'cost not measured, state it by hand and say so'*) printf ok ;; *) printf 'BAD-%s' \"$o\" ;; esac || printf 'BAD-rc=%s' \"$rc\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    },
+    {
+      "name": "the script, its project file and its four rules ship with the dev pack, the script executable, no accented letter",
+      "cmd": "P={{CLAUDE}}/../packs; [ -d \"$P\" ] || { printf 'ok (skipped: no packs/ beside claude/ - a deployed harness)'; exit 0; }; S=\"$P/dev/claude/skills/dev-implement/scripts\"; bad=; [ -x \"$S/access-cost.py\" ] || bad=\"$bad not-executable\"; [ -f \"$S/access-cost/sgconfig.yml\" ] || bad=\"$bad no-sgconfig\"; for r in await-member await-member-in-loop await-member-in-lambda memory-filter; do [ -f \"$S/access-cost/rules/$r.yml\" ] || bad=\"$bad no-rule:$r\"; done; [ -z \"$bad\" ] && printf ok || printf 'BAD-%s' \"$bad\"",
+      "expect": {
+        "exit": 0,
+        "stdout": "ok",
+        "stdout_absent": "BAD-"
+      }
+    }
+  ]
+}

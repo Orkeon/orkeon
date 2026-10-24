@@ -7,6 +7,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Evaluation;
+using Orkeon.Tools.Abstractions.Base;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Tools.Rag;
@@ -20,25 +21,27 @@ namespace Orkeon.Tools.Rag;
 /// judge mode labelled), and the markdown/JSON reports are written through the
 /// VFS.
 /// </summary>
-public class RagEvalTool : IBaseTool
+public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
 {
     /// <summary>Metric cutoff applied when the caller gives no <c>k</c>.</summary>
     private const int DefaultMetricCutoff = 5;
+
+    private const string DatasetRequired = "dataset parameter is required";
 
     private readonly IRagEvalHarness _harness;
     private readonly Func<string?> _defaultCollection;
 
     /// <inheritdoc />
-    public string Name => "rag_eval";
+    public override string Name => "rag_eval";
 
     /// <inheritdoc />
-    public string Description =>
+    public override string Description =>
         "Evaluate a RAG knowledge collection against a golden dataset (YAML): recall@k, precision@k, MRR, " +
         "groundedness and answer-relevance (judge mode labelled: llm or heuristic). " +
         "Writes markdown/JSON reports and returns the aggregate summary.";
 
     /// <inheritdoc />
-    public ToolSchema Schema => new(
+    public override ToolSchema Schema => new(
         Name: Name,
         Description: Description,
         Parameters: new Dictionary<string, ParameterSchema>
@@ -105,72 +108,75 @@ public class RagEvalTool : IBaseTool
     }
 
     /// <inheritdoc />
-    public Task<ToolCallResponse> CallAsync(
-        ToolCallRequest request, CancellationToken cancellationToken = default)
+    protected override async Task<RagEvalResponse> ExecuteTypedAsync(
+        RagEvalRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var dataset = ReadString(request.Parameters, "dataset");
-        if (string.IsNullOrWhiteSpace(dataset))
-            return Task.FromResult(new ToolCallResponse(false, null, "dataset parameter is required"));
-
-        return RunAndFormatAsync(
-            BuildRunRequest(request.Parameters, dataset) with { DefaultCollection = _defaultCollection() },
-            cancellationToken);
-    }
-
-    private async Task<ToolCallResponse> RunAndFormatAsync(
-        RagEvalRunRequest runRequest, CancellationToken cancellationToken)
-    {
-        var result = await _harness.RunAsync(runRequest, cancellationToken).ConfigureAwait(false);
-        return new ToolCallResponse(true, FormatResult(result), null);
-    }
-
-    /// <summary>
-    /// Maps the tool parameters onto a harness run request. <c>compare</c> wins over
-    /// <c>profile</c>; neither given means "the default pipeline".
-    /// </summary>
-    private static RagEvalRunRequest BuildRunRequest(
-        Dictionary<string, object?> parameters, string dataset)
-    {
-        var compare = ExtractProfiles(parameters.GetValueOrDefault("compare"));
-        var profile = ReadString(parameters, "profile");
+        var compare = ExtractProfiles(request.Compare);
         ImmutableList<string> singleProfile =
-            string.IsNullOrWhiteSpace(profile) ? [] : ImmutableList.Create(profile);
+            string.IsNullOrWhiteSpace(request.Profile) ? [] : ImmutableList.Create(request.Profile);
 
-        var collection = ReadString(parameters, "collection");
+        var result = await _harness.RunAsync(
+            new RagEvalRunRequest
+            {
+                DatasetPath = request.Dataset,
+                Profiles = compare.Count > 0 ? compare : singleProfile,
+                Collection = string.IsNullOrWhiteSpace(request.Collection) ? null : request.Collection,
+                K = request.K,
+                UseLlmJudge = request.UseLlmJudge,
+                ReindexCorpus = request.Reindex,
+                DefaultCollection = _defaultCollection(),
+            },
+            cancellationToken).ConfigureAwait(false);
 
-        return new RagEvalRunRequest
+        return new RagEvalResponse
         {
-            DatasetPath = dataset,
-            Profiles = compare.Count > 0 ? compare : singleProfile,
-            Collection = string.IsNullOrWhiteSpace(collection) ? null : collection,
-            K = ReadInt(parameters, "k", DefaultMetricCutoff),
-            UseLlmJudge = ToBool(parameters.GetValueOrDefault("use_llm_judge")),
-            ReindexCorpus = ToBool(parameters.GetValueOrDefault("reindex")),
+            Metrics =
+            [
+                .. result.Reports.Select(r => new RagEvalProfileMetrics
+                {
+                    Profile = r.Profile,
+                    Judge = RagEvalReportWriter.JudgeLabel(r),
+                    K = r.K,
+                    RecallAtK = r.Aggregate.RecallAtK,
+                    PrecisionAtK = r.Aggregate.PrecisionAtK,
+                    Mrr = r.Aggregate.Mrr,
+                    Groundedness = r.Aggregate.Groundedness,
+                    AnswerRelevance = r.Aggregate.AnswerRelevance,
+                }),
+            ],
+            Cases =
+            [
+                .. result.Reports.SelectMany(r => r.Cases.Select(c => new RagEvalCaseMetrics
+                {
+                    Profile = r.Profile,
+                    CaseId = c.CaseId,
+                    RecallAtK = c.RecallAtK,
+                    ReciprocalRank = c.ReciprocalRank,
+                })),
+            ],
+            Reports = result.ComparisonFile is null
+                ? [.. result.WrittenFiles]
+                : [.. result.WrittenFiles, result.ComparisonFile],
         };
     }
 
-    private static string? ReadString(Dictionary<string, object?> parameters, string key)
-        => parameters.TryGetValue(key, out var value) ? value?.ToString() : null;
-
-    private static int ReadInt(Dictionary<string, object?> parameters, string key, int fallback)
-        => parameters.TryGetValue(key, out var value) && value is not null
-            ? Convert.ToInt32(value, CultureInfo.InvariantCulture)
-            : fallback;
+    /// <inheritdoc />
+    protected override ValidationResult ValidateParameters(Dictionary<string, object?> parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        return parameters.ContainsKey("dataset")
+            ? base.ValidateParameters(parameters)
+            : ValidationResult.Failed(DatasetRequired);
+    }
 
     /// <inheritdoc />
-    public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
-        // The legacy single-string entrypoint carries no dataset/profile structure  —
-        // rag_eval is only meaningful through the structured protocol.
-        => Task.FromResult(new ToolResult
-        {
-            Success = false,
-            Error = "rag_eval requires structured parameters: { dataset[, collection, profile, compare, k, use_llm_judge] }",
-        });
-
-    /// <inheritdoc />
-    public bool ValidateInput(string input) => false;
+    protected override string? ValidateTypedRequest(RagEvalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return string.IsNullOrWhiteSpace(request.Dataset) ? DatasetRequired : null;
+    }
 
     /// <summary>
     /// Formats a harness result as the agent-facing text block: one aggregate line
@@ -272,15 +278,4 @@ public class RagEvalTool : IBaseTool
 
         return profiles.ToImmutable();
     }
-
-    private static bool ToBool(object? value) => value switch
-    {
-        null => false,
-        bool b => b,
-        JsonElement { ValueKind: JsonValueKind.True } => true,
-        JsonElement { ValueKind: JsonValueKind.False } => false,
-        JsonElement { ValueKind: JsonValueKind.String } s => bool.TryParse(s.GetString(), out var parsed) && parsed,
-        string text => bool.TryParse(text, out var parsed) && parsed,
-        _ => Convert.ToBoolean(value, CultureInfo.InvariantCulture),
-    };
 }

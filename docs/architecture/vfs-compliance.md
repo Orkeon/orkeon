@@ -141,6 +141,21 @@ states the right it needs and the registry refuses the call when the mount (or t
 override) does not grant it. `MountVisibility` is `AgentFacing` (the default, listed by
 `GetAvailableMounts` and in the agent prompt) or `Internal` (below).
 
+## Agent working root vs mount
+
+An agent may declare a `working_root` (YAML; `AgentBuilder.WorkingRoot(string)`): a virtual path
+such as `/workspace/.orkeon/worktrees/x` that must lie under a mount, else the run is refused at
+start with an error naming the root. It is an intersection with the mounts, never an extension:
+
+- file tools (`FileToolBase.ResolveVirtualPath`, through `AgentRootGuard`) refuse, before any I/O,
+  a path on the same mount that lies outside the root; other mounts (`/output`, `/tmp`) keep their
+  own rights;
+- `shell_command` refuses a working directory or a path argument outside the root, defaults its
+  working directory to the root, and narrows its sandbox's confined paths to it;
+- a refusal reuses the VFS denial shape: physical paths are redacted.
+
+Absent, nothing changes: the mounts alone confine the agent.
+
 ## Internal roots and privileged access
 
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,

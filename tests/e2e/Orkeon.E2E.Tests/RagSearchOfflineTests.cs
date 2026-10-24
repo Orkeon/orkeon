@@ -113,7 +113,10 @@ public class RagSearchOfflineTests
             ct);
 
         Assert.True(response.Success, response.Error);
-        var text = Assert.IsType<string>(response.Result);
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result);
+        // The answer and the cited passages (the old "Sources:" block) together: the semantic hit
+        // must surface the refund policy and none of the unrelated document.
+        var text = result["answer"] + " " + System.Text.Json.JsonSerializer.Serialize(result["citations"]);
         Assert.Contains("refund", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("entanglement", text, StringComparison.OrdinalIgnoreCase);
     }

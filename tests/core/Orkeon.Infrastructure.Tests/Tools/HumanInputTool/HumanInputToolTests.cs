@@ -1,6 +1,7 @@
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.HumanInput;
 using Orkeon.Domain.HumanInput;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Tools.HumanInput;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
@@ -23,6 +24,9 @@ public class HumanInputToolTests
 
         public Task<string> GetChoiceAsync(HumanInputContext context, CancellationToken ct = default)
         { LastContext = context; return Task.FromResult(ChoiceReply); }
+
+        public Task<IReadOnlyList<string>> GetMultiChoiceAsync(HumanInputContext context, CancellationToken ct = default)
+        { LastContext = context; return Task.FromResult<IReadOnlyList<string>>([]); }
 
         public Task<bool> IsAvailableAsync(CancellationToken ct = default) => Task.FromResult(true);
     }
@@ -231,5 +235,70 @@ public class HumanInputToolTests
         Assert.True(result.Success);
         var resp = Decode(result.Result);
         Assert.True(resp.WasDefault);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldMarkRecommendedOption_WhenChoiceDeclaresOne()
+    {
+        var provider = new MockHumanInputProvider();
+        using var tool = new Infrastructure.Tools.HumanInput.HumanInputTool(provider);
+        var req = new ProtocolToolCallRequest("human_input", new Dictionary<string, object?>
+        {
+            ["prompt"] = "Pick",
+            ["input_type"] = "choice",
+            ["choices"] = new List<string> { "a", "b", "c" },
+            ["recommended"] = 1,
+        });
+
+        var result = await tool.CallAsync(req, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.NotNull(provider.LastGetChoiceContext);
+        Assert.Equal(1, provider.LastGetChoiceContext!.Recommended);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldReturnList_WhenInputTypeIsMulti()
+    {
+        var provider = new MockHumanInputProvider();
+        provider.SetMultiChoiceResult(["a", "c"]);
+        using var tool = new Infrastructure.Tools.HumanInput.HumanInputTool(provider);
+        var req = new ProtocolToolCallRequest("human_input", new Dictionary<string, object?>
+        {
+            ["prompt"] = "Pick several",
+            ["input_type"] = "multi",
+            ["choices"] = new List<string> { "a", "b", "c" },
+        });
+
+        var result = await tool.CallAsync(req, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        var dict = (Dictionary<string, object?>)result.Result!;
+        var values = ((System.Collections.IEnumerable)dict["values"]!).Cast<object?>().Select(v => v!.ToString()).ToList();
+        Assert.Equal(["a", "c"], values);
+        Assert.True(provider.LastGetMultiChoiceContext!.Multi);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-08")]
+    public async Task ShouldRefuseRecommended_WhenIndexOutsideChoices()
+    {
+        var provider = new MockHumanInputProvider();
+        using var tool = new Infrastructure.Tools.HumanInput.HumanInputTool(provider);
+        var req = new ProtocolToolCallRequest("human_input", new Dictionary<string, object?>
+        {
+            ["prompt"] = "Pick",
+            ["input_type"] = "choice",
+            ["choices"] = new List<string> { "a", "b", "c" },
+            ["recommended"] = 5,
+        });
+
+        var result = await tool.CallAsync(req, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("recommended", result.Error ?? "");
+        Assert.Equal(0, provider.GetChoiceCallCount);
     }
 }
