@@ -212,6 +212,31 @@ public sealed class ScheduledRunCheckTests : IDisposable
         Assert.Equal(ScheduledRunIssue.OnDefault, onDefault[1].Issue);
         Assert.Equal(folder, ScheduledRunCheck.First(Team("模型", mounts), Settings, Saved(null)));
     }
+    /// <summary>
+    /// STUDIO-73: a team that follows the default names no profile — its scheduled run takes the
+    /// <c>Llm</c> section as saved: an echo when the file has none, an older version when the election
+    /// since moved the default and the settings were not saved, nothing to say otherwise.
+    /// </summary>
+    [Fact]
+    public void A_team_that_follows_the_default_is_judged_against_the_saved_llm_section()
+    {
+        var team = Team(null);
+        var elected = Settings.WithDefault("GLM");
+        var current = AppSettingsDocument.CreateEmpty();
+        Assert.True(HostLlmProfiles.ElectDefault(current, Glm));
+        var older = AppSettingsDocument.CreateEmpty();
+        Assert.True(HostLlmProfiles.ElectDefault(older, Glm with { Model = "glm-4.6" }));
+
+        var missing = Assert.Single(ScheduledRunCheck.Of(team, elected, AppSettingsDocument.CreateEmpty()));
+        Assert.Equal(ScheduledRunIssue.DefaultMissing, missing.Issue);
+        Assert.Equal(
+            "The scheduled run will answer as an echo: the saved settings file has no default model. Save the settings.",
+            Line(missing));
+        Assert.Equal(new ScheduledRunNotice(ScheduledRunIssue.Outdated, "GLM"), Assert.Single(ScheduledRunCheck.Of(team, elected, older)));
+        Assert.Empty(ScheduledRunCheck.Of(team, elected, current));
+        Assert.Empty(ScheduledRunCheck.Of(team, Settings with { DefaultProfile = null }, older));
+    }
+
     // ── STUDIO-63: launchers another tool wrote ──
 
     /// <summary>

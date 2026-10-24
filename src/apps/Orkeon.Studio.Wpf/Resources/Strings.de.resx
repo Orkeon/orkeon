@@ -3688,4 +3688,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
     <value>Der Prüfschalter des Cloud-Speicher-Abschnitts ist weder true noch false: Die Engine stellt alle Konten zurück, bis er es ist.</value>
   </data>
+  <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>Modell: {0}</value></data>
+  <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>Standard ({0})</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>Kein Standard gewählt: Der Lauf nimmt den Abschnitt Llm der Einstellungsdatei</value></data>
+  <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>Standard der Einstellungsdatei des Teams</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>Der geplante Lauf antwortet als Echo: Die gespeicherte Einstellungsdatei hat kein Standardmodell. Speichern Sie die Einstellungen.</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} Agent(en) oder Aufgabe(n) dieses Teams nennen ihr eigenes Modell: Die Wahl gilt nur für die anderen.</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Standardmodell verwenden ({0})</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Standardmodell verwenden</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Aktiviert läuft das Team auf der beim Start gewählten Standardeinstellung und folgt ihr, wenn sie sich ändert. Deaktiviert bleibt es bei der unten gewählten Einstellung.</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>Oder mit dieser Einstellung laufen:</value></data>
+  <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>Modell ändern</value></data>
+  <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} läuft jetzt auf: {1}.</value></data>
+  <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Ein Modell einrichten</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Dieser Lauf: {0}</value></data>
+  <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Für dieses Team merken</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} Team(s), davon {1} per Standard</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Standard-Modelleinstellung: {0}. Die Teams, die dem Standard folgen, laufen darauf.</value></data>
 </root>

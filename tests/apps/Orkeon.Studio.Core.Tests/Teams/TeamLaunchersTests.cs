@@ -249,6 +249,23 @@ public sealed class TeamLaunchersTests : IDisposable
         Assert.DoesNotContain("--llm-profile", Windows(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// STUDIO-73: a team that follows the default names no profile, even with a name left beside the
+    /// flag — its scheduled run takes the default of the settings file as saved, election after
+    /// election, without its launchers being written again.
+    /// </summary>
+    [Fact]
+    public void A_team_that_follows_the_default_names_no_profile()
+    {
+        Adopt("DeepSeek");
+        TeamCatalog.UpdateMetadata(_team, metadata => metadata with { UseDefaultLlm = true });
+
+        TeamLaunchers.Regenerate(_team, Context());
+
+        Assert.DoesNotContain("--llm-profile", Posix(), StringComparison.Ordinal);
+        Assert.DoesNotContain("--llm-profile", Windows(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void The_team_on_the_elected_setting_still_names_it_so_a_new_election_does_not_move_it()
     {

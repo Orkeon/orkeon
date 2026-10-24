@@ -1745,6 +1745,57 @@ public static class StudioStringKeys
     /// </summary>
     public const string TeamsSettingMissing = "Studio.Teams.SettingMissing";
 
+    /// <summary>"Model: {0}" - the card's model part: the default followed, or the setting pinned (STUDIO-73).</summary>
+    public const string TeamsLlmLine = "Studio.Teams.LlmLine";
+
+    /// <summary>"Default ({0})" - a team that follows the default, {0} the setting elected (STUDIO-73).</summary>
+    public const string TeamsLlmLabelDefault = "Studio.Teams.LlmLabelDefault";
+
+    /// <summary>"No default elected: the run takes the Llm section of the settings file" (STUDIO-73).</summary>
+    public const string TeamsLlmNoDefault = "Studio.Teams.LlmNoDefault";
+
+    /// <summary>"Default of the team's settings file" - a team that follows the default and has its own settings file (STUDIO-73, D7).</summary>
+    public const string TeamsLlmTeamFileDefault = "Studio.Teams.LlmTeamFileDefault";
+
+    /// <summary>"The scheduled run will answer as an echo: the saved settings file has no default model. Save the settings." (STUDIO-73)</summary>
+    public const string TeamsScheduledRunNoDefault = "Studio.Teams.ScheduledRunNoDefault";
+
+    /// <summary>"{0} agent(s) or task(s) of this team name their own model: the choice applies to the others only." (STUDIO-73)</summary>
+    public const string TeamsCrewOverridesLlm = "Studio.Teams.CrewOverridesLlm";
+
+    /// <summary>"Use the default model ({0})" - {0} the setting elected (STUDIO-73).</summary>
+    public const string TeamsUseDefaultLlm = "Studio.Teams.UseDefaultLlm";
+
+    /// <summary>"Use the default model" - while no default is elected (STUDIO-73).</summary>
+    public const string TeamsUseDefaultLlmNone = "Studio.Teams.UseDefaultLlmNone";
+
+    /// <summary>The tooltip of the default model box (STUDIO-73).</summary>
+    public const string TeamsUseDefaultLlmHint = "Studio.Teams.UseDefaultLlmHint";
+
+    /// <summary>"Or run on this setting:" - the list under the default model box (STUDIO-73).</summary>
+    public const string TeamsPinnedLlm = "Studio.Teams.PinnedLlm";
+
+    /// <summary>"Change the model" - the card's link that opens the model editor in place (STUDIO-73).</summary>
+    public const string TeamsChangeLlm = "Studio.Teams.ChangeLlm";
+
+    /// <summary>"{0} now runs on: {1}." - the status line after the card's model was saved (STUDIO-73).</summary>
+    public const string TeamsLlmSaved = "Studio.Teams.LlmSaved";
+
+    /// <summary>"Configure a model" - the link to Settings &gt; Models when no setting exists (STUDIO-73).</summary>
+    public const string TeamsConfigureModel = "Studio.Teams.ConfigureModel";
+
+    /// <summary>"This run: {0}" - the model the next launch of the Run or Test screen takes (STUDIO-73).</summary>
+    public const string RunLlmForThisRun = "Studio.Run.LlmForThisRun";
+
+    /// <summary>"Remember for this team" - writes the Run screen's model choice into the team (STUDIO-73).</summary>
+    public const string RunRememberLlmForTeam = "Studio.Run.RememberLlmForTeam";
+
+    /// <summary>"{0} team(s), {1} by default" - the elected setting's teams, those that follow the default counted (STUDIO-73).</summary>
+    public const string SettingsUsedByDefault = "Studio.Settings.UsedByDefault";
+
+    /// <summary>"Default model setting: {0}. The teams that follow the default run on it." - the idle segment's tooltip (STUDIO-34, STUDIO-73).</summary>
+    public const string StatusBarProfileTipTeams = "Studio.Shell.StatusProfileTipTeams";
+
     /// <summary>
     /// "Scheduled, this team runs on the default setting, not on “{0}”. {1}" — {1} says why no crew
     /// can name the setting (STUDIO-52): the card of a scheduled team, and the schedule offer.
@@ -2974,6 +3025,23 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsDuplicateSettingsCopied] = "Its settings followed the copy: {0}.",
         [StudioStringKeys.TeamsDuplicateSettingsNotCopied] = "The copy runs on the default setting: {0} could not be copied.",
         [StudioStringKeys.TeamsSettingMissing] = "{0} — absent from this machine: the default setting runs in its place",
+        [StudioStringKeys.TeamsLlmLine] = "Model: {0}",
+        [StudioStringKeys.TeamsLlmLabelDefault] = "Default ({0})",
+        [StudioStringKeys.TeamsLlmNoDefault] = "No default elected: the run takes the Llm section of the settings file",
+        [StudioStringKeys.TeamsLlmTeamFileDefault] = "Default of the team's settings file",
+        [StudioStringKeys.TeamsScheduledRunNoDefault] = "The scheduled run will answer as an echo: the saved settings file has no default model. Save the settings.",
+        [StudioStringKeys.TeamsCrewOverridesLlm] = "{0} agent(s) or task(s) of this team name their own model: the choice applies to the others only.",
+        [StudioStringKeys.TeamsUseDefaultLlm] = "Use the default model ({0})",
+        [StudioStringKeys.TeamsUseDefaultLlmNone] = "Use the default model",
+        [StudioStringKeys.TeamsUseDefaultLlmHint] = "Checked, the team runs on the setting elected default when a run starts, and follows it when it changes. Unchecked, it stays on the setting chosen below.",
+        [StudioStringKeys.TeamsPinnedLlm] = "Or run on this setting:",
+        [StudioStringKeys.TeamsChangeLlm] = "Change the model",
+        [StudioStringKeys.TeamsLlmSaved] = "{0} now runs on: {1}.",
+        [StudioStringKeys.TeamsConfigureModel] = "Configure a model",
+        [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
+        [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
+        [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
+        [StudioStringKeys.StatusBarProfileTipTeams] = "Default model setting: {0}. The teams that follow the default run on it.",
         [StudioStringKeys.TeamsScheduledRunOnDefault] = "Scheduled, this team runs on the default setting, not on “{0}”. {1}",
         [StudioStringKeys.TeamsScheduledRunNoModel] = "“{0}” has no model: from Studio, the team answers as an echo.",
         [StudioStringKeys.TeamsScheduledRunRefused] =

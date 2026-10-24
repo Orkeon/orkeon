@@ -43,6 +43,15 @@ public sealed record StudioTeamMetadata
     public string? Profile { get; init; }
 
     /// <summary>
+    /// Whether the team runs on the machine's default model setting, whatever it is when a run
+    /// starts (STUDIO-73): <see cref="Profile"/> is then ignored, and written null. Absent from an
+    /// older file, whose <see cref="Profile"/> keeps the team pinned (<see cref="TeamLlmChoice.Of"/>).
+    /// </summary>
+    [JsonPropertyName("useDefaultLlm")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? UseDefaultLlm { get; init; }
+
+    /// <summary>
     /// The engine schedule (<c>daily@HH:mm</c> / <c>hourly</c>), or null for on demand. What the
     /// user chose; whether the operating system runs it is the engine's to say
     /// (<c>forge schedule --check</c>, STUDIO-27), never this field's.
@@ -140,6 +149,9 @@ public sealed record TargetDescription
     /// <summary>The model profile recorded by adoption, when present.</summary>
     public string? Profile { get; init; }
 
+    /// <summary>The model the sidecar says the team runs on (STUDIO-73); null for a target that is not an adopted team.</summary>
+    public TeamLlmChoice? LlmChoice { get; init; }
+
     /// <summary>Agent definitions counted in a multi-file team directory; null when unknown.</summary>
     public int? AgentCount { get; init; }
 
@@ -197,7 +209,10 @@ public sealed record TeamSummary
     public string? Schedule => Metadata?.Schedule;
 
     /// <summary>Name of the team's model profile, when one was chosen.</summary>
-    public string? Profile => Metadata?.Profile;
+    public string? Profile => LlmChoice.Profile;
+
+    /// <summary>The model the team runs on, read from its companion file (STUDIO-73).</summary>
+    public TeamLlmChoice LlmChoice => TeamLlmChoice.Of(Metadata);
 
     /// <summary>The need, in the user's words, when recorded.</summary>
     public string? Description => Metadata?.Description;
@@ -592,7 +607,8 @@ public static partial class TeamCatalog
             {
                 Name = metadata?.Name is { Length: > 0 } name ? name : fallbackName,
                 Description = metadata?.Description,
-                Profile = metadata?.Profile,
+                Profile = TeamLlmChoice.Of(metadata).Profile,
+                LlmChoice = metadata is null ? null : TeamLlmChoice.Of(metadata),
                 AgentCount = agentCount,
                 Mounts = resolved.Select(m => m.Effective).ToList(),
                 ResolvedMounts = resolved,
@@ -611,7 +627,13 @@ public static partial class TeamCatalog
     /// the target's own folder, or its parent when the target is a definition file. Null for
     /// anything that is not an adopted team, which is most launches.
     /// </summary>
-    public static string? ProfileFor(string targetPath)
+    public static string? ProfileFor(string targetPath) => LlmChoiceFor(targetPath)?.Profile;
+
+    /// <summary>
+    /// The model a launch target runs on, from the team sidecar next to it — found as
+    /// <see cref="ProfileFor"/> finds it (STUDIO-73). Null for anything that is not an adopted team.
+    /// </summary>
+    public static TeamLlmChoice? LlmChoiceFor(string targetPath)
     {
         if (string.IsNullOrWhiteSpace(targetPath))
             return null;
@@ -621,12 +643,29 @@ public static partial class TeamCatalog
             var directory = Directory.Exists(targetPath)
                 ? targetPath
                 : Path.GetDirectoryName(Path.GetFullPath(targetPath));
-            return directory is { Length: > 0 } ? TryReadMetadata(directory)?.Profile : null;
+            return directory is { Length: > 0 } && TryReadMetadata(directory) is { } metadata
+                ? TeamLlmChoice.Of(metadata)
+                : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Records the model the team runs on (STUDIO-73): the default, followed — the flag written, the
+    /// name cleared — or one setting pinned by its name; every other field kept. Rewriting the team's
+    /// launchers is the caller's, as for every change of the sidecar.
+    /// </summary>
+    public static void SaveLlmChoice(string teamDirectory, TeamLlmChoice choice)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(choice);
+
+        UpdateMetadata(teamDirectory, metadata => choice.UseDefault
+            ? metadata with { UseDefaultLlm = true, Profile = null }
+            : metadata with { UseDefaultLlm = null, Profile = choice.Profile });
     }
 
     /// <summary>
@@ -832,7 +871,8 @@ public static partial class TeamCatalog
         foreach (var team in List(root, TeamListFilter.All))
         {
             // A companion file that cannot be read names no setting here: it is never written over.
-            if (team.Metadata is { } metadata
+            // A team that follows the default names no setting, whatever name was left beside the flag.
+            if (team.Metadata is { UseDefaultLlm: not true } metadata
                 && string.Equals(metadata.Profile, from, StringComparison.Ordinal)
                 && TryWriteMetadata(team.Path, metadata with { Profile = to }))
             {

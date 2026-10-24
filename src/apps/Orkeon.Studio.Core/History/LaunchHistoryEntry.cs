@@ -24,6 +24,14 @@ public sealed record LaunchHistoryEntry
     [JsonPropertyName("arguments")]
     public IReadOnlyList<string> Arguments { get; init; } = [];
 
+    /// <summary>
+    /// The model the run was launched on (STUDIO-73): the default, or a setting by its name — what
+    /// « Relancer » launches again. Null for a target that is not an adopted team and for entries
+    /// written before the field existed.
+    /// </summary>
+    [JsonPropertyName("llm")]
+    public TeamLlmChoice? LlmChoice { get; init; }
+
     /// <summary>Working directory of the run.</summary>
     [JsonPropertyName("working_directory")]
     public string? WorkingDirectory { get; init; }
