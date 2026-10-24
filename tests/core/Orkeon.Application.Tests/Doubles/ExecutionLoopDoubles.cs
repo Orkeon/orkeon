@@ -287,8 +287,8 @@ internal sealed class ConcurrencyProbe
         }
 
         if (_broken) return;
-        var done = await System.Threading.Tasks.Task.WhenAny(_allEntered.Task, System.Threading.Tasks.Task.Delay(_guard)).ConfigureAwait(false);
-        if (done != _allEntered.Task) _broken = true;
+        try { await _allEntered.Task.WaitAsync(_guard).ConfigureAwait(false); }
+        catch (TimeoutException) { _broken = true; }
     }
 
     public void Leave() { lock (_lock) _current--; }
