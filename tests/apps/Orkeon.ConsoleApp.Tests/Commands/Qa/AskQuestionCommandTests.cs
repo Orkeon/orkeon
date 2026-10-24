@@ -13,12 +13,14 @@ using Orkeon.ConsoleApp.Registries;
 using Orkeon.ConsoleApp.Runners;
 using Orkeon.ConsoleApp.Tests.Fakes;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.Serialization;
 
 namespace Orkeon.ConsoleApp.Tests.Commands.Qa;
 
 public sealed class AskQuestionCommandTests
 {
-    private static (AskQuestionCommand cmd, CommandContext ctx, TestConsoleAdapter console, FakeCrewFactory factory, FakeCrewOrchestrationService orch, QaRunner runner) Build(string? configPath = "/some/path.yaml")
+    private static (AskQuestionCommand cmd, CommandContext ctx, TestConsoleAdapter console, FakeCrewFactory factory, FakeCrewOrchestrationService orch, QaRunner runner) Build(string? configPath = "/some/path.yaml", bool builtInCrew = false)
     {
         var console = new TestConsoleAdapter();
         var fs = new FakeFileSystemService();
@@ -36,6 +38,8 @@ public sealed class AskQuestionCommandTests
         services.AddSingleton<QaCommandRegistry>(_ => new QaCommandRegistry());
         services.AddSingleton<ICrewFactory>(factory);
         services.AddSingleton<ICrewOrchestrationService>(orch);
+        services.AddSingleton<ICrewDefinitionLoader>(new YamlCrewDefinitionLoader(
+            new YamlDotNetSerializer(), fs, NullLogger<YamlCrewDefinitionLoader>.Instance));
         services.AddSingleton<QaRunner>();
         var sp = services.BuildServiceProvider();
 
@@ -44,6 +48,11 @@ public sealed class AskQuestionCommandTests
         {
             typeof(QaRunner).GetProperty(nameof(QaRunner.CrewConfigPath))!
                 .SetValue(runner, configPath);
+        }
+        if (builtInCrew)
+        {
+            typeof(QaRunner).GetProperty(nameof(QaRunner.UsesBuiltInCrew))!
+                .SetValue(runner, true);
         }
 
         var cmd = new AskQuestionCommand(NullLogger<AskQuestionCommand>.Instance);
@@ -77,6 +86,21 @@ public sealed class AskQuestionCommandTests
 
         Assert.Single(factory.PathsLoaded);
         Assert.Equal("/some/path.yaml", factory.PathsLoaded[0]);
+        Assert.Single(orch.Calls);
+    }
+
+    [Fact]
+    public async Task Execute_loads_the_builtin_crew_from_its_yaml_without_a_file()
+    {
+        var (cmd, ctx, _, factory, orch, _) = Build(configPath: null, builtInCrew: true);
+
+        await cmd.ExecuteAsync(ctx, CancellationToken.None);
+
+        Assert.Empty(factory.PathsLoaded);
+        var config = Assert.Single(factory.ConfigsLoaded);
+        Assert.Equal("interactive-qa", config.Name);
+        Assert.Equal(2, config.Agents.Count);
+        Assert.Equal(2, config.Tasks.Count);
         Assert.Single(orch.Calls);
     }
 

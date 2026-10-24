@@ -55,6 +55,13 @@ tool-calling loops; the text-fallback loop and the dispatcher text path do not f
 `JsExecutionEnvironment.ToolLimits` for the script path, so a scripted `act` always uses the built-in defaults: see
 [limitations](docs/reference/limitations.md).
 
+### Fixed — `orkeon-repl`'s `qa` mode answers with its built-in crew without a `/tmp` mount
+
+- Pressing Enter at `qa`'s crew prompt used to write the built-in crew to `/tmp/interactive-qa/…` and read it back:
+  the REPL mounts no `/tmp` unless asked, so the mode stopped with `No mount found for virtual path` and a stack
+  trace. The built-in crew is now loaded from its YAML in memory and writes no file; a crew path you type is read as
+  before.
+
 ### Added — `orkeon-repl` writes the LLM exchange log (`--llm-log`, `--llm-log-path`)
 
 - The interactive console takes `orkeon run`'s two flags: every request and response sent to the model as JSONL under

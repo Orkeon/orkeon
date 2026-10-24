@@ -9,8 +9,13 @@ public sealed class FakeCrewFactory : ICrewFactory
     public List<string> PathsLoaded { get; } = new();
     public Func<string, Crew>? CrewFromFile { get; set; }
 
+    public List<CrewConfiguration> ConfigsLoaded { get; } = new();
+
     public System.Threading.Tasks.Task<Crew> CreateFromConfigAsync(CrewConfiguration config, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    {
+        ConfigsLoaded.Add(config);
+        return System.Threading.Tasks.Task.FromResult(Crew.Create(goal: "g"));
+    }
 
     public System.Threading.Tasks.Task<Crew> CreateFromFileAsync(string yamlFilePath, CancellationToken ct = default)
     {

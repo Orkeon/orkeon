@@ -91,7 +91,10 @@ public sealed class QaRunnerIntegrationTests
 
         await DriveAsync(runner, console, "", "exit");
 
-        Assert.Equal("/tmp/interactive-qa", runner.CrewConfigPath?.Substring(0, "/tmp/interactive-qa".Length));
+        // No file is written: the REPL mounts no /tmp unless asked.
+        Assert.True(runner.UsesBuiltInCrew);
+        Assert.Null(runner.CrewConfigPath);
+        Assert.Equal(["/some/crew.yaml"], fs.Files.Keys);
         Assert.Contains("Using built-in interactive Q&A crew.", console.GetOutput());
     }
 
