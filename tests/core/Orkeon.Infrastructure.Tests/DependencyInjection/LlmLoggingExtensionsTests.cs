@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Logging;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Logging;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Infrastructure.Tests.DependencyInjection;
@@ -71,6 +73,32 @@ public class LlmLoggingExtensionsTests
     }
 
     [Fact]
+    public async Task AnExcludedClient_LeavesTheExchangeLog_WhileTheOthersStayInIt()
+    {
+        var services = NewServices();
+        var exchanges = new RecordingExchangeLogger();
+        services.AddSingleton<ILlmExchangeLogger>(exchanges);
+        services.AddLlmExchangeLogging("/logs");
+        services.AddSingleton(new LlmExchangeLogExclusion("orkeon.drive"));
+        foreach (var name in new[] { "orkeon.drive", "llm" })
+            services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => new MockHttpMessageHandler());
+
+        using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IHttpClientFactory>();
+        using (var drive = factory.CreateClient("orkeon.drive"))
+            await drive.GetAsync(new Uri("https://www.googleapis.com/drive/v3/files?upload_id=secret"), TestContext.Current.CancellationToken);
+        using (var llm = factory.CreateClient("llm"))
+            await llm.GetAsync(new Uri("https://api.example.com/v1/models"), TestContext.Current.CancellationToken);
+
+        var exchange = Assert.Single(exchanges.Records);
+        Assert.Equal("api.example.com", exchange.RequestUrl?.Host);
+    }
+
+    [Fact]
+    public void TheExclusion_RefusesAnEmptyClientName() =>
+        Assert.Throws<ArgumentException>(() => new LlmExchangeLogExclusion(" "));
+
+    [Fact]
     public void TheExtensions_GuardTheirArguments()
     {
         var services = NewServices();
@@ -80,5 +108,22 @@ public class LlmLoggingExtensionsTests
         Assert.Throws<ArgumentException>(() => services.AddLlmExchangeLogging(" "));
         Assert.Throws<ArgumentNullException>(() =>
             LlmLoggingExtensions.AddLlmExchangeLogging((IHttpClientBuilder)null!));
+    }
+
+    private sealed class RecordingExchangeLogger : ILlmExchangeLogger
+    {
+        private readonly List<LlmExchangeRecord> _records = [];
+
+        public IReadOnlyList<LlmExchangeRecord> Records
+        {
+            get { lock (_records) { return [.. _records]; } }
+        }
+
+        public Task LogExchangeAsync(LlmExchangeRecord exchange, CancellationToken cancellationToken = default)
+        {
+            lock (_records)
+                _records.Add(exchange);
+            return Task.CompletedTask;
+        }
     }
 }

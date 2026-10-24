@@ -4,6 +4,7 @@ using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Drive.Accounts;
 using Orkeon.Tools.Drive.Configuration;
+using Orkeon.Tools.Drive.Constants;
 using Orkeon.Tools.Drive.Drives;
 using Orkeon.Tools.Drive.Dtos;
 
@@ -12,9 +13,9 @@ namespace Orkeon.Tools.Drive.Tools;
 /// <summary>Searches a drive.</summary>
 [ToolContract("drive_search",
     Name = "drive_search",
-    Description = "Search a cloud drive by words (names and content), name, MIME type, kind (file or folder), modification date or folder, inside the account's root folder; page with `cursor`. OneDrive needs `text` or `name_contains`. Needs the Read right.",
+    Description = "Search a cloud drive by words (names and content), name, MIME type, kind (file or folder), modification date or folder, inside the account's root folder; page with `cursor` (a page may come back short, even empty, while `next_cursor` is set: call again with it). OneDrive needs `text` or `name_contains`. Needs the Read right.",
     Category = "Drive")]
-internal sealed class DriveSearchTool : ToolBase<DriveSearchRequest, DriveSearchResponse>
+internal sealed partial class DriveSearchTool : ToolBase<DriveSearchRequest, DriveSearchResponse>
 {
     private readonly DriveAccess _access;
 
@@ -67,13 +68,7 @@ internal sealed class DriveSearchTool : ToolBase<DriveSearchRequest, DriveSearch
 
         var (_, response) = await DriveToolHelpers.FitPageAsync(
             DriveToolHelpers.Limit(request.Limit),
-            async limit =>
-            {
-                var page = await drive.SearchAsync(query, limit, request.Cursor, cancellationToken).ConfigureAwait(false);
-                // Google Drive cannot bound a search to a subtree: what lies outside the root is dropped here.
-                var kept = await DriveAccess.WithinRootAsync(drive, page.Items, cancellationToken).ConfigureAwait(false);
-                return page with { Items = kept };
-            },
+            limit => FillAsync(drive, account, query, limit, request.Cursor, cancellationToken),
             page => new DriveSearchResponse
             {
                 Account = account.Name,
@@ -84,4 +79,36 @@ internal sealed class DriveSearchTool : ToolBase<DriveSearchRequest, DriveSearch
             DriveToolHelpers.ResultBudget(Name)).ConfigureAwait(false);
         return response;
     }
+
+    /// <summary>
+    /// A page of up to <paramref name="limit"/> items inside the account's root. Neither provider
+    /// bounds a search to the root's subtree (Google cannot, OneDrive personal may not), so the
+    /// first provider pages can hold nothing but items from elsewhere in the drive: provider pages
+    /// are read on, each asked for what is still missing so nothing kept is cut, up to
+    /// <see cref="DriveDefaults.MaxSearchPages"/>. The cursor resumes after the last page read.
+    /// </summary>
+    private async Task<DrivePage> FillAsync(IDrive drive, ResolvedDriveAccount account, DriveSearchQuery query, int limit, string? cursor, CancellationToken cancellationToken)
+    {
+        var kept = new List<DriveItem>(limit);
+        for (var pages = 0; pages < DriveDefaults.MaxSearchPages; pages++)
+        {
+            var page = await drive.SearchAsync(query, limit - kept.Count, cursor, cancellationToken).ConfigureAwait(false);
+            var within = await DriveAccess.WithinRootAsync(drive, page.Items, cancellationToken).ConfigureAwait(false);
+            if (within.Count < page.Items.Count && _logger.IsEnabled(LogLevel.Debug))
+            {
+                foreach (var item in page.Items.Except(within))
+                    LogDropped(_logger, account.Name, item.Id, item.ParentId, item.ParentPath, item.DriveId);
+            }
+
+            kept.AddRange(within);
+            cursor = page.Cursor;
+            if (kept.Count >= limit || cursor is null)
+                break;
+        }
+
+        return new DrivePage(kept, cursor);
+    }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "drive_search: account {Account} dropped {Id} outside its root (parent {ParentId}, parent path {ParentPath}, drive {DriveId})")]
+    private static partial void LogDropped(ILogger logger, string account, string id, string? parentId, string? parentPath, string? driveId);
 }

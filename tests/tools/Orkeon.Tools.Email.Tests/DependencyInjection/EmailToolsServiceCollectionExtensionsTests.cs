@@ -34,6 +34,7 @@ public sealed class EmailToolsServiceCollectionExtensionsTests
         var tools = provider.GetServices<IBaseTool>().ToList();
 
         Assert.Equal(ToolNames, tools.Select(tool => tool.Name).Order(StringComparer.Ordinal));
+        Assert.Contains(provider.GetServices<LlmExchangeLogExclusion>(), exclusion => exclusion.ClientName == "orkeon.email");
     }
 
     [Fact]

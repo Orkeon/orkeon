@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `drive_search` keeps to the root without coming back empty (DRIVE-07)
+
+The first real campaign found two gaps. On Google Drive, a search with a `limit` came back empty with a
+`next_cursor` (G4.5d): the whole-drive query's first hits lay outside the account's root and were all dropped.
+`drive_search` now reads further provider pages, up to `MaxSearchPages` (5), each asked for what is still missing,
+to fill the page. On OneDrive personal, word searches found no file of the root (O12.a): the root check compared ids
+case-sensitively, stopped at a search hit without a parent id, and did not recognise the root under another id. It
+now compares OneDrive ids without regard to case, reads such a hit again, and matches the id Graph gives back for
+each parent; a dropped item is logged at `Debug` (`Orkeon.Tools.Drive`).
+
+### Fixed — drive and e-mail traffic no longer lands in the LLM exchange log
+
+`AddLlmExchangeLogging` wrapped every `IHttpClientFactory` client: with `--llm-log`, drive and mailbox calls were
+logged as `LLM exchange custom/unknown`, a Google `308 Resume Incomplete` as `FAILED`, the Google upload session
+address in clear, and file and message bodies in the JSONL. A tool family now registers
+`LlmExchangeLogExclusion(clientName)` (`Orkeon.Domain.Tools`) for its client; the drive and e-mail families do.
+
 ### Added — a team follows the default model, or pins one, from adoption to the Run screen (STUDIO-73)
 
 A team's companion file carries `useDefaultLlm`: a team that follows the default runs on the

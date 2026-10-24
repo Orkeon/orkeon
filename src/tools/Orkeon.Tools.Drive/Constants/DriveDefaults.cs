@@ -88,6 +88,12 @@ internal static class DriveDefaults
     /// <summary>How many items <c>drive_list</c> and <c>drive_search</c> return when the call does not say.</summary>
     public const int DefaultListLimit = 20;
 
+    /// <summary>
+    /// How many provider pages one <c>drive_search</c> call reads to fill its page with items from
+    /// inside the account's root, which neither provider can search alone.
+    /// </summary>
+    public const int MaxSearchPages = 5;
+
     /// <summary>The largest page <c>drive_list</c> and <c>drive_search</c> accept.</summary>
     public const int MaxListLimit = 50;
 
