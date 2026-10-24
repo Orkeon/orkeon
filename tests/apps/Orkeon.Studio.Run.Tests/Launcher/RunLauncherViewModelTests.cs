@@ -306,6 +306,35 @@ public class RunLauncherViewModelTests
     }
 
     [Fact]
+    public void The_available_options_follow_the_detected_dialect()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli();
+        var crew = fixture.WithYamlCrew();
+        var launcher = fixture.Build();
+
+        launcher.Target.Select(crew);
+
+        Assert.Contains(RunOption.Variables, launcher.AvailableOptions);
+        Assert.DoesNotContain(RunOption.Inputs, launcher.AvailableOptions);
+        Assert.All(launcher.AvailableOptions, option => Assert.True(launcher.IsOptionAvailable(option)));
+    }
+
+    [Fact]
+    public void A_malformed_settings_file_becomes_a_notice_not_an_exception()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli();
+        fixture.Settings.WithFile("/etc/orkeon/broken.json", "{ not json");
+        var launcher = fixture.Build();
+        launcher.Options.UseAutomaticSettings = false;
+        launcher.Options.ExplicitSettingsPath = "/etc/orkeon/broken.json";
+
+        launcher.RefreshSettingsMounts();
+
+        Assert.Empty(launcher.SettingsMounts);
+        Assert.False(string.IsNullOrWhiteSpace(launcher.SettingsMountsNotice));
+    }
+
+    [Fact]
     public void An_unreadable_settings_file_becomes_a_notice_not_an_exception()
     {
         var fixture = new LauncherFixture().WithInstalledCli();
