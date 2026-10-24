@@ -627,7 +627,7 @@ Le côté opérateur de la famille — jamais celui d'un agent :
 | `orkeon email accounts [--settings <fichier>] [--json]` | Liste les comptes déclarés, leur préréglage, leurs protocoles, leurs droits et s'ils sont prêts, avec ce qu'il faut corriger — prêt signifie que la variable du mot de passe est définie, ou que le secret client que nomme le compte est défini et qu'un jeton utilisable (valide ou rafraîchissable) est enregistré. Sans réseau, sans afficher aucun secret. `--json` écrit un tableau JSON des entrées que liste `email_accounts` (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `default`, `ready`, `problem`), plus `auth` (`Password` ou `OAuth2`) |
 | `orkeon email login <compte> [--settings <fichier>] [--events jsonl]` | Connecte un compte OAuth2 et enregistre ses jetons (code d'appareil pour Microsoft, navigateur et bouclage pour Google). `--events jsonl` écrit chaque étape comme un événement JSON pour un programme qui la pilote — ce que fait Orkeon Studio |
 | `orkeon email logout <compte> [--settings <fichier>]` | Oublie les jetons enregistrés d'un compte OAuth |
-| `orkeon email check <compte> [--settings <fichier>]` | Se connecte, s'authentifie, liste les dossiers et affiche les compteurs de la boîte de réception |
+| `orkeon email check <compte> [--settings <fichier>] [--events jsonl]` | Se connecte, s'authentifie, liste les dossiers et affiche les compteurs de la boîte de réception |
 
 Les réglages se résolvent comme pour `orkeon run`, ancrés sur le répertoire courant :
 `--settings`, sinon `appsettings.json` dans le répertoire courant, sinon un

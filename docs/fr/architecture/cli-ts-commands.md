@@ -70,9 +70,12 @@ a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REP
 | `--mount <phys:virt:droits>`      | Ajoute un montage VFS (répétable) — p. ex. pour rendre un dossier de commandes accessible. Placé et gardé comme pour `orkeon run` (GAP-49) : sur une racine que les settings déclarent, il remplace les entrées de cette racine pour la session, sur une racine neuve il s'ajoute ; un montage que le REPL ne peut honorer — `/sandbox`, `/credentials`, une racine qu'il monte lui-même (`/cli-commands…`, `/crews…` tant qu'un `--commands-dir` ou un `--crews-dir` les y met), une racine deux fois en ligne de commande, un dossier absent — est refusé avant que la console s'ouvre, code `1`, d'où qu'il ait été déclaré. Sans `--commands-dir`, `--mount <dossier>:/cli-commands:ro` atteint toujours un dossier de commandes. |
 | `--allow-external-mounts`         | Un `--mount` hors du répertoire de travail est lisible (ou `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), comme pour `orkeon run` ; sans lui, le REPL refuse de démarrer (code de sortie `1`) avant l'ouverture de la console. Toute entrée des settings en vigueur (une entrée choisie par id comprise) et les dossiers de `--commands-dir` et `--crews-dir` — des entrées du REPL, comme le script d'`orkeon run` — sont lisibles où qu'ils soient, sans lui. |
 | `--crews-dir <chemin>`            | Ajoute un répertoire de résolution de crews (répétable ; monté en lecture seule comme `/crews`, `/crews-1`, …) — ce qui rend `script-host` / `runCrewAsync("nom")` résoluble. |
+| `--llm-log` / `--llm-log-path <rép>` | Le journal des échanges LLM d'`orkeon run` : JSONL sous `./llm-logs`, ou `<rép>`, qui implique `--llm-log` (le dernier `--llm-log-path` l'emporte). Un dossier hors du répertoire de travail demande `--allow-external-mounts` ; sans lui, le REPL refuse de démarrer (code de sortie `1`). |
 
-Chaque option à valeur accepte `--option valeur` et `--option=valeur`. `orkeon-repl` prend aussi
-`--ui` et `--repl-wrap` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
+Chaque option à valeur accepte `--option valeur` et `--option=valeur`. `--commands-dir`,
+`--settings`, `--mount` et `--crews-dir` s'additionnent quand on les répète ;
+`--allow-external-mounts` prend aussi `=true` ou `=false`. `orkeon-repl` prend aussi `--ui` et
+`--repl-wrap` ([référence du CLI](../reference/cli.md#orkeon-repl--la-console-interactive-séparée)).
 
 ## appsettings.json
 

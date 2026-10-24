@@ -557,7 +557,7 @@ place d'une entrée écrite à la main sont refusés.
   carte (STUDIO-54) : un réglage Docker Model Runner élu écrit `"ApiKey": "not-needed"` là où `Llm` ne
   porte aucune clé, et l'élection de toute autre carte retire exactement cette valeur — laissée, elle
   passerait avant l'`ApiKeyEnvVar` du réglage élu ; le fichier qu'a écrit
-  `orkeon init --preset docker-model-runner`, puis DeepSeek élu dans Studio, compris. Toute autre
+  `orkeon init --provider docker-model-runner`, puis DeepSeek élu dans Studio, compris. Toute autre
   `ApiKey` reste. Une équipe lancée sur un autre réglage pose tous ces champs sur son processus enfant
   en `ORKEON_Llm__*`, valeur ou vide, `ORKEON_Llm__ApiKeyEnvVar` compris : une équipe sur Z.AI dont la
   clé n'est pas mémorisée échoue sans clé au lieu d'envoyer à Z.AI la clé DeepSeek du défaut ; une

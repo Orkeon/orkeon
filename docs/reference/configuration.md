@@ -526,7 +526,7 @@ to, and a name that would take over an entry written by hand are refused.
   `AvailableModels` and `Profiles` stay. Docker Model Runner's placeholder alone follows the card
   (STUDIO-54): an elected Docker Model Runner setting writes `"ApiKey": "not-needed"` where `Llm`
   holds no key, and electing any other card takes exactly that value out — left, it would pass
-  before the elected setting's `ApiKeyEnvVar`; the file `orkeon init --preset docker-model-runner`
+  before the elected setting's `ApiKeyEnvVar`; the file `orkeon init --provider docker-model-runner`
   wrote, then DeepSeek elected in Studio, included. Any other `ApiKey` stays. A team launched on
   another setting lays all those fields over its child as `ORKEON_Llm__*`, value or blank,
   `ORKEON_Llm__ApiKeyEnvVar` included: a team on Z.AI whose key is not remembered fails without a

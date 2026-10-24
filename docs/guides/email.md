@@ -595,7 +595,7 @@ The operator's side of the family — never an agent's:
 | `orkeon email accounts [--settings <file>] [--json]` | Lists the declared accounts, their preset, protocols, rights and readiness, with what to fix — ready means the password variable is set, or the client secret the account names is set and a usable (valid or refreshable) token is stored. No network, no secret printed. `--json` writes a JSON array of the entries `email_accounts` lists (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `default`, `ready`, `problem`), plus `auth` (`Password` or `OAuth2`) |
 | `orkeon email login <account> [--settings <file>] [--events jsonl]` | Signs an OAuth2 account in and stores its tokens (device code for Microsoft, browser and loopback for Google). `--events jsonl` writes each step as one JSON event for a program that drives it — what Orkeon Studio does |
 | `orkeon email logout <account> [--settings <file>]` | Forgets the stored tokens of an OAuth account |
-| `orkeon email check <account> [--settings <file>]` | Connects, authenticates, lists the folders and prints the inbox counts |
+| `orkeon email check <account> [--settings <file>] [--events jsonl]` | Connects, authenticates, lists the folders and prints the inbox counts |
 
 Settings resolve like `orkeon run`, anchored at the current directory: `--settings`, else
 `appsettings.json` in the current directory, else an `appsettings/appsettings.json` found

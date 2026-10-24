@@ -68,9 +68,12 @@ TUI hides at startup.
 | `--mount <phys:virt:rights>`      | Add a VFS mount (repeatable) — e.g. to make a commands directory reachable. Placed and guarded as for `orkeon run` (GAP-49): on a root the settings declare it replaces that root's entries for the session, on a new root it is appended; a mount the REPL cannot honour — `/sandbox`, `/credentials`, a root it mounts itself (`/cli-commands…`, `/crews…` while a `--commands-dir` or `--crews-dir` puts them there), a root twice on the command line, a missing folder — is refused before the console opens, exit `1`, wherever it was declared. Without `--commands-dir`, `--mount <folder>:/cli-commands:ro` still reaches a commands directory. |
 | `--allow-external-mounts`         | A `--mount` outside the working directory is readable (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), as for `orkeon run`; without it, the REPL refuses to start (exit code `1`) before the console opens. Every settings entry in force (one chosen by id included) and the `--commands-dir` and `--crews-dir` folders — entries of the REPL, like the script of `orkeon run` — are readable wherever they are, without it. |
 | `--crews-dir <path>`              | Add a crew-resolution directory (repeatable; mounted read-only as `/crews`, `/crews-1`, …) — what makes `script-host` / `runCrewAsync("name")` resolvable. |
+| `--llm-log` / `--llm-log-path <dir>` | The LLM exchange log of `orkeon run`: JSONL under `./llm-logs`, or `<dir>`, which implies `--llm-log` (the last `--llm-log-path` wins). A folder outside the working directory needs `--allow-external-mounts`; without it, the REPL refuses to start (exit code `1`). |
 
-Every value flag accepts `--flag value` and `--flag=value`. `orkeon-repl` also takes `--ui` and
-`--repl-wrap` ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+Every value flag accepts `--flag value` and `--flag=value`. `--commands-dir`, `--settings`,
+`--mount` and `--crews-dir` add up when repeated; `--allow-external-mounts` also takes `=true` or
+`=false`. `orkeon-repl` also takes `--ui` and `--repl-wrap`
+([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
 
 ## appsettings.json
 

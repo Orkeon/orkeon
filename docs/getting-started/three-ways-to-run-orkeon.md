@@ -29,7 +29,9 @@ config is the positional argument to `orkeon run <config>`; the option flags (`-
 ## 1. From source
 
 Clone, build, and run any `config.yaml` under `examples/` through the `orkeon`
-CLI project:
+CLI project. The settings file is yours to create: copy
+`examples/appsettings/appsettings.deepseek.local.json.example` to the same name without
+`.example` and put your key in it ([choose an LLM profile](./run-your-first-example.md#3-choose-an-llm-profile)).
 
 ```bash
 git clone https://github.com/Orkeon/orkeon.git
