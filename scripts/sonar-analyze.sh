@@ -66,6 +66,11 @@ CE_TASK_WAIT_TIMEOUT=300    # 5 minutes
 QUALITY_GATE_NAME="Orkeon Transitional"
 QUALITY_GATE_TIMEOUT=600    # seconds the scanner 'end' step waits for the gate verdict
 QUALITY_GATE_STATUS="UNKNOWN"  # filled by check_quality_gate (for the summary)
+# SonarScanner for .NET pinned to a release that still talks to the 9.9 LTS server:
+# 12.0 refuses any server below 2025.1 ("Pre-processing failed"), and an
+# unpinned install takes the latest. Override with SONAR_SCANNER_VERSION when the
+# server is upgraded.
+SONAR_SCANNER_VERSION="${SONAR_SCANNER_VERSION:-10.4.1}"
 
 # ── Logging utilities ─────────────────────────────────────────────────────────
 log_info()    { printf "\033[1;34m[INFO]\033[0m  %s\n" "$*"; }
@@ -100,13 +105,16 @@ check_prerequisites() {
         exit 1
     fi
 
-    if ! command -v dotnet-sonarscanner &>/dev/null; then
-        if dotnet tool list -g 2>/dev/null | grep -qi "dotnet-sonarscanner"; then
-            log_warn "'dotnet-sonarscanner' installed but not in PATH. Check ~/.dotnet/tools/"
-        else
-            log_warn "'dotnet-sonarscanner' not found globally. Installing..."
-            dotnet tool install --global dotnet-sonarscanner
-        fi
+    local scanner_installed
+    scanner_installed=$(dotnet tool list -g 2>/dev/null | awk 'tolower($1) == "dotnet-sonarscanner" { print $2 }')
+    if [[ -z "$scanner_installed" ]]; then
+        log_warn "'dotnet-sonarscanner' not found globally. Installing $SONAR_SCANNER_VERSION..."
+        dotnet tool install --global dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION"
+    elif [[ "$scanner_installed" != "$SONAR_SCANNER_VERSION" ]]; then
+        log_warn "'dotnet-sonarscanner' $scanner_installed installed, $SONAR_SCANNER_VERSION expected. Aligning..."
+        dotnet tool update --global dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION" --allow-downgrade
+    elif ! command -v dotnet-sonarscanner &>/dev/null; then
+        log_warn "'dotnet-sonarscanner' installed but not in PATH. Check ~/.dotnet/tools/"
     fi
 
     # ReportGenerator merges Cobertura files into the SonarQube generic format.
