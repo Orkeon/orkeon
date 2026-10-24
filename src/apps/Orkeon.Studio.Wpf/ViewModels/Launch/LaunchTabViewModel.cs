@@ -578,9 +578,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>
     /// The one line that says where the model comes from, shown beside the command line and
-    /// outside the « Advanced » fold: the team's settings file, and — when the card names a
-    /// model setting of this machine — that the setting overrides the file's <c>Llm</c> section
-    /// (the card's instruction, laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
+    /// outside the « Advanced » fold: the team's settings file, and — when the run pins a model
+    /// setting of this machine (STUDIO-73: the card's choice, or the one made here for this run) —
+    /// that the setting overrides the file's <c>Llm</c> section (laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
     /// file applies — and while a pinned file overrides it: the line would then say the run reads
     /// a file it does not.
     /// </summary>
@@ -599,12 +599,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Whether the card names a model setting the launch will lay over the run: one this machine
-    /// has (<see cref="TeamSettingStanding"/>); a tab built without the model settings takes the
-    /// card at its word, as the meta line does.
+    /// Whether the run pins a model setting the launch will lay over it: one this machine has
+    /// (<see cref="TeamSettingStanding"/>); a tab built without the model settings takes the choice
+    /// at its word, as the meta line does. A run that follows the default reads the file's.
     /// </summary>
     private bool CardNamesAKnownSetting() =>
-        _team.Profile is { Length: > 0 } profile
+        RunLlmChoice is { UseDefault: false, Profile: { Length: > 0 } profile }
         && (_modelSettings is null || TeamSettingStanding.Of(profile, _modelSettings()).Kind != TeamSettingKind.Missing);
 
     /// <summary>
@@ -1193,7 +1193,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void RaiseRunLlmChanged()
     {
         OnPropertiesChanged(nameof(RunUsesDefaultLlm), nameof(RunLlmProfile), nameof(LlmProfiles), nameof(HasLlmProfiles),
-            nameof(UseDefaultLlmLabel), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam));
+            nameof(UseDefaultLlmLabel), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
+            nameof(TeamSettingsLine));
         RememberLlmForTeamCommand.RaiseCanExecuteChanged();
     }
 
@@ -1233,8 +1234,10 @@ public sealed class LaunchTabViewModel : ObservableObject
         if (_modelSettings is null)
             return choice.Profile ?? _strings[StudioStringKeys.TeamsLlmNoDefault];
 
+        // The team's choice from now on: a follower takes the default of its own settings file (D7).
         var settings = _modelSettings();
-        return TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings).LlmLabel(_strings, settings);
+        return TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings)
+            .LlmLabel(_strings, settings, ownSettingsFile: choice.UseDefault && TeamSettingsPath is { Length: > 0 });
     }
 
     /// <summary>

@@ -1366,6 +1366,7 @@
             <!-- STUDIO-73: checked (D2), the team follows the default elected when a run starts;
                  unchecked, the card below pins one setting. -->
             <CheckBox Margin="0,0,0,8" IsChecked="{Binding AdoptUsesDefaultLlm}"
+                      IsEnabled="{Binding Profiles.IsEmpty, Converter={StaticResource Negate}}"
                       Content="{Binding AdoptUseDefaultLlmLabel}"
                       ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
             <StackPanel Visibility="{Binding AdoptUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">

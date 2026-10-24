@@ -186,6 +186,9 @@ public sealed class TeamSettingFollowsTests : IDisposable
         Assert.Contains("--llm-profile='z-ai'", Posix(team), StringComparison.Ordinal);
         Assert.Equal("Model: Z.AI", Card(window, team).ProfileDisplay);
         Assert.Equal("Veille now runs on: Z.AI.", window.Teams.StatusMessage);
+        // « Used by » moves the team from the default to the setting it now pins.
+        Assert.Equal(["Veille"], window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI").UsedByTeams);
+        Assert.Empty(window.Settings.Profiles.Profiles.Single(profile => profile.Name == "DeepSeek").UsedByTeams);
 
         // Back to the default: the flag, no name, and no --llm-profile.
         card = Card(window, team);

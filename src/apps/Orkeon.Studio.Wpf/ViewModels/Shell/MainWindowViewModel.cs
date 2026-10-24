@@ -444,6 +444,8 @@ public sealed class MainWindowViewModel : ObservableObject
             Teams.Refresh();
             Test.RefreshTeams();
             _ = Teams.CheckScheduleAsync(e.Path);
+            // STUDIO-73: « Used by » lists the team under the setting it runs on.
+            Settings.Profiles.RefreshTeamUsage();
             // STUDIO-52: the folder ids the adopted team names are saved when the file lacks them.
             _ = SaveFolderIdsGuarded(e.Path);
         };
@@ -1038,6 +1040,7 @@ public sealed class MainWindowViewModel : ObservableObject
         Test.RefreshTeams();
         Launch.RefreshTeamDescription();
         Test.Launcher.RefreshTeamDescription();
+        Settings.Profiles.RefreshTeamUsage();
         return null;
     }
 }

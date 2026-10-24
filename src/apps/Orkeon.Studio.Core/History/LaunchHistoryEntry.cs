@@ -26,8 +26,8 @@ public sealed record LaunchHistoryEntry
 
     /// <summary>
     /// The model the run was launched on (STUDIO-73): the default, or a setting by its name — what
-    /// « Relancer » launches again. Null for a target that is not an adopted team and for entries
-    /// written before the field existed.
+    /// « Relancer » launches again — any target's, chosen on the Run or Test screen. Null for an
+    /// entry written before the field existed: its replay takes the team's choice of today.
     /// </summary>
     [JsonPropertyName("llm")]
     public TeamLlmChoice? LlmChoice { get; init; }

@@ -1663,6 +1663,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
         _llm.ElectDefault(profile);
     }
 
+    /// <summary>
+    /// Reads the teams again for « Used by » (STUDIO-73): a team's model changed on its card or from
+    /// the Run screen, or a team adopted, moves it from one card to another.
+    /// </summary>
+    public void RefreshTeamUsage() => Rebuild();
+
     private void Rebuild()
     {
         var (usage, following) = TeamsByProfile();

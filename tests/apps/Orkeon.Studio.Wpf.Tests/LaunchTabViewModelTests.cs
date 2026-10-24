@@ -1371,6 +1371,11 @@ public sealed class LaunchTabViewModelTests
             tab.Target.Select(team);
             Assert.EndsWith("The card's model setting overrides its Llm section.", tab.TeamSettingsLine, StringComparison.Ordinal);
 
+            // STUDIO-73: this run follows the default — the file's Llm section decides, nothing overrides it.
+            tab.RunUsesDefaultLlm = true;
+            Assert.DoesNotContain("overrides", tab.TeamSettingsLine, StringComparison.Ordinal);
+            Assert.Equal("This run: Default of the team's settings file", tab.RunLlmLine);
+
             // The setting is absent from this machine: the default runs, nothing overrides the file.
             var missing = BuildWith(() => Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty);
             missing.Target.Select(team);
