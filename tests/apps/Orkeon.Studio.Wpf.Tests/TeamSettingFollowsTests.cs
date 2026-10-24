@@ -113,6 +113,56 @@ public sealed class TeamSettingFollowsTests : IDisposable
         ProcessOutputChannel.StandardOutput,
         """{"v":2,"seq":1,"ts":"t","kind":"schedule.state","path":"p","state":"installed","expression":"daily@07:30","family":"systemd","names":["orkeon-veille"]}""");
 
+    // ── STUDIO-73: a team that follows the default moves with the election, a pinned one does not ──
+
+    [Fact]
+    public async Task Electing_another_default_moves_the_next_run_of_a_follower_and_not_of_a_pinned_team()
+    {
+        var follower = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var pinned = PromotedTeam("autre", new StudioTeamMetadata { Name = "Autre", Profile = "DeepSeek" });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+
+        window.Launch.Target.Select(follower);
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+
+        window.Settings.Profiles.SetDefault("Z.AI");
+
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("glm-5.2", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+        window.Launch.Target.Select(pinned);
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+
+        // The Run screen's choice for one run wins over the team's, and leaves the team as it was.
+        window.Launch.Target.Select(follower);
+        window.Launch.RunUsesDefaultLlm = false;
+        window.Launch.RunLlmProfile = "DeepSeek";
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(follower));
+    }
+
+    [Fact]
+    public void Remembering_the_runs_model_writes_the_team_and_its_launchers()
+    {
+        var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+        window.Launch.Target.Select(team);
+
+        window.Launch.RunUsesDefaultLlm = false;
+        window.Launch.RunLlmProfile = "Z.AI";
+        window.Launch.RememberLlmForTeamCommand.Execute(null);
+
+        Assert.Equal(TeamLlmChoice.Pinned("Z.AI"), TeamCatalog.LlmChoiceFor(team));
+        Assert.Contains("--llm-profile='z-ai'", Posix(team), StringComparison.Ordinal);
+        Assert.Equal("Z.AI", Card(window, team).Summary.Profile);
+    }
+
     // ── decision 1: a renamed setting carries its teams ──
 
     [Fact]

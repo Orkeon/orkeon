@@ -524,7 +524,7 @@ public sealed class LaunchTabViewModelTests
             TargetProbe = probe,
             Directories = new FakeDirectoryProbe(),
             SettingsStore = new FakeAppSettingsStore(),
-            EnvironmentForTarget = _ => new Dictionary<string, string>(StringComparer.Ordinal)
+            EnvironmentForTarget = (_, _, _) => new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["ORKEON_Llm__Model"] = "qwen2.5:32b",
             },
@@ -1376,6 +1376,205 @@ public sealed class LaunchTabViewModelTests
             missing.Target.Select(team);
             Assert.NotNull(missing.TeamSettingsLine);
             Assert.DoesNotContain("overrides", missing.TeamSettingsLine, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // ---- STUDIO-73: the model a run takes — the team's, changed here for this run, remembered on demand ----
+
+    private static readonly Orkeon.Studio.Core.Profiles.ModelProfile Glm =
+        new() { Name = "GLM", Provider = "zai", Model = "glm-5.2" };
+
+    private static readonly Orkeon.Studio.Core.Profiles.ModelProfile Qwen =
+        new() { Name = "Qwen", Provider = "ollama", Model = "qwen3" };
+
+    /// <summary>GLM elected default (the first upserted), Qwen beside it.</summary>
+    private static readonly Orkeon.Studio.Core.Profiles.ModelProfileSet TwoSettings =
+        Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty.Upsert(Glm).Upsert(Qwen);
+
+    /// <summary>What the environment seam was asked: the target, the run's model and the settings file.</summary>
+    private sealed record EnvironmentAsk(string Target, TeamLlmChoice? Choice, string? SettingsPath);
+
+    private static (LaunchTabViewModel Tab, List<EnvironmentAsk> Asks, FakeLaunchHistoryStore History) BuildForModel(
+        string team,
+        Orkeon.Studio.Core.Profiles.ModelProfileSet? settings = null,
+        Func<string, TeamLlmChoice, string?>? remember = null)
+    {
+        var asks = new List<EnvironmentAsk>();
+        var history = new FakeLaunchHistoryStore();
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = TeamProbe(team),
+            Directories = new FakeDirectoryProbe(team),
+            SettingsStore = new FakeAppSettingsStore(),
+            HistoryStore = history,
+            ModelSettings = () => settings ?? TwoSettings,
+            RememberLlmChoice = remember,
+            EnvironmentForTarget = (target, choice, settingsPath) =>
+            {
+                asks.Add(new EnvironmentAsk(target, choice, settingsPath));
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+            },
+        });
+        return (tab, asks, history);
+    }
+
+    private static (string Root, string Team) ModelTeamOnDisk(string? profile, bool? useDefault)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-studio-73-{Guid.NewGuid():N}");
+        var team = Path.Combine(root, "veille");
+        Directory.CreateDirectory(Path.Combine(team, "agents"));
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "veille", Profile = profile, UseDefaultLlm = useDefault });
+        return (root, team);
+    }
+
+    [Fact]
+    public void Should_PrefillTheRunsModelWithTheTeams_When_ATeamIsSelected()
+    {
+        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var (tab, _, _) = BuildForModel(pinned);
+            tab.Target.Select(pinned);
+
+            Assert.False(tab.RunUsesDefaultLlm);
+            Assert.Equal("Qwen", tab.RunLlmProfile);
+            Assert.Equal("This run: Qwen", tab.RunLlmLine);
+            Assert.Equal("Use the default model (GLM)", tab.UseDefaultLlmLabel);
+            Assert.Equal(["GLM", "Qwen"], tab.LlmProfiles);
+            Assert.False(tab.CanRememberLlmForTeam);
+
+            TeamCatalog.SaveLlmChoice(pinned, TeamLlmChoice.Default);
+            var (follower, _, _) = BuildForModel(pinned);
+            follower.Target.Select(pinned);
+
+            Assert.True(follower.RunUsesDefaultLlm);
+            Assert.Equal("This run: Default (GLM)", follower.RunLlmLine);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_LaunchAndRecordTheModelChosenForThisRun_When_TheTeamIsLeftAsItWas()
+    {
+        var (root, team) = ModelTeamOnDisk(null, useDefault: true);
+        try
+        {
+            var (tab, asks, history) = BuildForModel(team);
+            tab.Target.Select(team);
+
+            tab.RunUsesDefaultLlm = false;
+            tab.RunLlmProfile = "Qwen";
+            Assert.True(tab.CanRememberLlmForTeam);
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(TeamLlmChoice.Pinned("Qwen"), Assert.Single(asks).Choice);
+            Assert.Equal(TeamLlmChoice.Pinned("Qwen"), Assert.Single(history.Recorded).LlmChoice);
+            // The team still follows the default: the choice was this run's (criterion 8).
+            Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(team));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_MakeTheRunsModelTheTeams_When_RememberIsChosen()
+    {
+        var (root, team) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var remembered = new List<(string Team, TeamLlmChoice Choice)>();
+            var (tab, _, _) = BuildForModel(team, remember: (path, choice) =>
+            {
+                remembered.Add((path, choice));
+                TeamCatalog.SaveLlmChoice(path, choice);
+                return null;
+            });
+            tab.Target.Select(team);
+
+            tab.RunUsesDefaultLlm = true;
+            tab.RememberLlmForTeamCommand.Execute(null);
+
+            Assert.Equal((team, TeamLlmChoice.Default), Assert.Single(remembered));
+            Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(team));
+            Assert.Equal("veille now runs on: Default (GLM).", tab.StatusMessage);
+            Assert.False(tab.CanRememberLlmForTeam);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_ReplayOnTheModelTheRunTook_When_TheEntryRecordsOne()
+    {
+        var (root, team) = ModelTeamOnDisk(null, useDefault: true);
+        try
+        {
+            var (tab, asks, _) = BuildForModel(team);
+            var entry = LaunchHistoryEntry.Starting(team, ["run", team], null, team) with { LlmChoice = TeamLlmChoice.Pinned("Qwen") };
+
+            await tab.ReplayAsync(entry, TestContext.Current.CancellationToken);
+
+            Assert.Equal(TeamLlmChoice.Pinned("Qwen"), Assert.Single(asks).Choice);
+            Assert.Equal("Qwen", tab.RunLlmProfile);
+
+            // A setting since removed is named as missing: the run takes the default (STUDIO-52).
+            var (gone, _, _) = BuildForModel(team, Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty.Upsert(Glm));
+            await gone.ReplayAsync(entry, TestContext.Current.CancellationToken);
+            Assert.StartsWith("This run: ", gone.RunLlmLine, StringComparison.Ordinal);
+            Assert.NotEqual("This run: Qwen", gone.RunLlmLine);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_WarnThatTheChoiceStopsShort_When_AnAgentNamesItsOwnModel()
+    {
+        var (root, team) = ModelTeamOnDisk(null, useDefault: true);
+        try
+        {
+            File.WriteAllText(Path.Combine(team, "agents", "writer.yaml"), "name: writer\nllm:\n  profile: careful\n");
+            var (tab, _, _) = BuildForModel(team);
+            tab.Target.Select(team);
+
+            Assert.Equal(
+                "1 agent(s) or task(s) of this team name their own model: the choice applies to the others only.",
+                tab.CrewLlmWarning);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Should_GreyTheChoice_When_ThisMachineHasNoSetting()
+    {
+        var (root, team) = ModelTeamOnDisk(null, useDefault: true);
+        try
+        {
+            var (tab, _, _) = BuildForModel(team, Orkeon.Studio.Core.Profiles.ModelProfileSet.Empty);
+            tab.Target.Select(team);
+
+            Assert.False(tab.HasLlmProfiles);
+            Assert.True(tab.RunUsesDefaultLlm);
+            Assert.Equal("Use the default model", tab.UseDefaultLlmLabel);
         }
         finally
         {

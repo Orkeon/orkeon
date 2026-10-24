@@ -40,6 +40,34 @@
               <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Launcher.Target.StatusDisplay}"/>
 
+              <!-- STUDIO-73: the model this run takes, pre-filled with the team's; « Remember for this team »
+                   makes it the team's. Greyed with « Configure a model » while this machine has no setting. -->
+              <StackPanel Margin="0,12,0,0">
+                <CheckBox IsChecked="{Binding Launcher.RunUsesDefaultLlm}" IsEnabled="{Binding Launcher.HasLlmProfiles}"
+                          Foreground="{DynamicResource InkBrush}" Content="{Binding Launcher.UseDefaultLlmLabel}"
+                          ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
+                            Visibility="{Binding Launcher.RunUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
+                             Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
+                  <ComboBox Width="240" ItemsSource="{Binding Launcher.LlmProfiles}" SelectedItem="{Binding Launcher.RunLlmProfile}"/>
+                </StackPanel>
+                <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding Launcher.ConfigureModelCommand}"
+                        Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
+                        Visibility="{Binding Launcher.HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                <DockPanel Margin="0,7,0,0" Visibility="{Binding Launcher.RunLlmLine, Converter={StaticResource StringPresentToVisibility}}">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Padding="10,5" Margin="12,0,0,0"
+                          VerticalAlignment="Center" Command="{Binding Launcher.RememberLlmForTeamCommand}"
+                          Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding Launcher.CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
+                  <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                             Text="{Binding Launcher.RunLlmLine}"/>
+                </DockPanel>
+                <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                           Text="{Binding Launcher.CrewLlmWarning}"
+                           Visibility="{Binding Launcher.CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
+              </StackPanel>
+
               <!-- sample inputs (script targets): rides the inputs flag on the trial run -->
               <StackPanel Visibility="{Binding Launcher.Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"

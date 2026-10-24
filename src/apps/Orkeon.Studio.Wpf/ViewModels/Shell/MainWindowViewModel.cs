@@ -150,6 +150,7 @@ public sealed class MainWindowViewModel : ObservableObject
             // a launch naming a folder id the file as saved lacks saves the settings first.
             ModelSettings = ModelSettings,
             PrepareLaunch = PrepareLaunchAsync,
+            RememberLlmChoice = RememberLlmChoice,
         });
 
         // VFS-90: each settings row says which teams name it by id, and removing one asks
@@ -288,6 +289,7 @@ public sealed class MainWindowViewModel : ObservableObject
                 RestoreTeam = RestoreArchivedTeam,
                 ModelSettings = ModelSettings,
                 PrepareLaunch = PrepareLaunchAsync,
+                RememberLlmChoice = RememberLlmChoice,
             }),
             teamsHome);
 
@@ -410,6 +412,9 @@ public sealed class MainWindowViewModel : ObservableObject
         CreateTeam.OpenDiagnosticRequested += (_, _) => Config.Diagnostic.RunCommand.Execute(null);
         Launch.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
         Test.Launcher.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        // STUDIO-73: « Configure a model » on a machine without one lands on the model tab.
+        Launch.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
+        Test.Launcher.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
 
         // An adopted team is an ordinary folder: the Launch action hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
@@ -861,6 +866,8 @@ public sealed class MainWindowViewModel : ObservableObject
         CreateTeam.ScheduleOffer.RefreshNotice();
         Launch.RefreshTeamDescription();
         Test.Launcher.RefreshTeamDescription();
+        Launch.RefreshLlmSettings();
+        Test.Launcher.RefreshLlmSettings();
     }
 
     /// <summary>What the schedule offer says under its question for <paramref name="teamPath"/> (STUDIO-52); null when the scheduled run takes what Studio shows.</summary>
@@ -996,12 +1003,35 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>
     /// The environment a launch lays over its child. Every launch carries the model settings as
     /// the host profiles a crew may name, keys included (<c>ORKEON_Llm__Profiles__&lt;id&gt;__*</c>,
-    /// STUDIO-48); an adopted team whose sidecar names a model profile also gets that profile as
-    /// its default, the <c>ORKEON_Llm__*</c> overrides. A target that is not a team, or names no
-    /// (or an unknown) profile, runs on the settings file's default.
+    /// STUDIO-48). The run's model — <paramref name="runChoice"/>, the Run screen's, else the team's
+    /// (STUDIO-73) — is laid as its default, the <c>ORKEON_Llm__*</c> overrides: a setting pinned by
+    /// a name this machine knows, or the default elected now. A run that follows the default on a
+    /// settings file of its own — the team's (D7) or a pin — takes that file's <c>Llm</c> section; an
+    /// unknown name, or no default elected, runs on the settings file's default.
     /// </summary>
-    private IReadOnlyDictionary<string, string> TeamEnvironment(string targetPath) =>
-        Settings.Profiles.Set.Find(TeamCatalog.ProfileFor(targetPath)) is { } profile
-            ? Settings.Profiles.LaunchEnvironmentOf(profile)
-            : Settings.Profiles.LaunchEnvironment();
+    private IReadOnlyDictionary<string, string> TeamEnvironment(string targetPath, TeamLlmChoice? runChoice, string? settingsPath)
+    {
+        var profiles = Settings.Profiles;
+        var profile = (runChoice ?? TeamCatalog.LlmChoiceFor(targetPath)) switch
+        {
+            null => null,
+            { UseDefault: false } pinned => profiles.Set.Find(pinned.Profile),
+            _ when settingsPath is { Length: > 0 } => null,
+            _ => profiles.Set.Default,
+        };
+        return profile is null ? profiles.LaunchEnvironment() : profiles.LaunchEnvironmentOf(profile);
+    }
+
+    /// <summary>
+    /// « Remember for this team » (STUDIO-73): the team's companion file takes the model, and its
+    /// launchers say it again — a scheduled run follows. Null: done.
+    /// </summary>
+    private string? RememberLlmChoice(string teamPath, TeamLlmChoice choice)
+    {
+        TeamCatalog.SaveLlmChoice(teamPath, choice);
+        TeamLaunchers.Regenerate(teamPath, _launcherContext());
+        Teams.Refresh();
+        Test.RefreshTeams();
+        return null;
+    }
 }
