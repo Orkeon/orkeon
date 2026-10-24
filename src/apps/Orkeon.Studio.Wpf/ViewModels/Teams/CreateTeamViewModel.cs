@@ -3482,7 +3482,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>The whole stderr of the current run, oldest line first (D-04) — never the last line alone.</summary>
     private string StderrText() =>
-        string.Join(Environment.NewLine, RawLog.Lines.Where(line => line.Channel == ProcessOutputChannel.StandardError).Select(line => line.Text));
+        string.Join(Environment.NewLine, RawLog.Lines.Where(line => line.Channel == ProcessOutputChannel.StandardError).Select(line => line.Line.Text));
 
     /// <summary>The engine's own code and message, then whatever it printed on stderr.</summary>
     private string ConfigRefusedDetail()

@@ -402,6 +402,48 @@ public sealed class RunLogViewModelTests
     }
 
     [Fact]
+    public void Should_ColourAContinuationLine_AsTheLogEntryItFollows()
+    {
+        // A multi-line message and the « === Crew Output === » block reach stderr without a level.
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:16.532 info: Orkeon.Verbose[0] LLM response for [x]:"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "# /log/journal.md"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "=== Crew Output ==="));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:16.600 fail: Orkeon.Tools[1] Error calling tool x"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "   at Somewhere()"));
+
+        Assert.False(log.Lines[1].IsError);
+        Assert.False(log.Lines[2].IsError);
+        Assert.Equal(CliLogLevel.Information, log.Lines[2].Level);
+        Assert.True(log.Lines[3].IsError);
+        Assert.True(log.Lines[4].IsError);
+    }
+
+    [Fact]
+    public void Should_StartAfresh_When_ANewCommandIsEchoed()
+    {
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:16.532 info: Orkeon.Hosting[0] ready"));
+        log.AppendCommand("orkeon run ./crew");
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "Unhandled exception. boom"));
+
+        Assert.True(log.Lines[2].IsError);
+    }
+
+    [Fact]
+    public void Should_KeepStudiosOwnErrors_Red_After_AnInfoLine()
+    {
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:16.532 info: Orkeon.Hosting[0] ready"));
+        log.AppendError("The run could not start.");
+
+        Assert.True(log.Lines[1].IsError);
+    }
+
+    [Fact]
     public void Should_ShowOneTimestamp_When_TheCliLoggerStampedTheLine()
     {
         var log = new RunLogViewModel();
