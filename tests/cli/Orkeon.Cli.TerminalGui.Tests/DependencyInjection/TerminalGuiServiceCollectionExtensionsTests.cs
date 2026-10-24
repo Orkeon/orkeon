@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Logging;
+using Orkeon.Cli.TerminalGui.Tests.Doubles;
 
 namespace Orkeon.Cli.TerminalGui.Tests.DependencyInjection;
 
@@ -65,6 +66,28 @@ public class TerminalGuiServiceCollectionExtensionsTests
         services.AddOrkeonCliTerminalGui();
         Assert.Single(services, d => d.ServiceType == typeof(TerminalGuiHost));
         Assert.Single(services, d => d.ServiceType == typeof(IConsoleAdapter));
+    }
+
+    [Fact]
+    public void ShouldRemoveEveryLoggerProvider_WhenClearStdoutLoggersCalled()
+    {
+        var builder = new StubLoggingBuilder();
+        builder.Services.AddSingleton<ILoggerProvider>(_ => throw new InvalidOperationException("never built"));
+        builder.Services.AddSingleton<ILoggerProvider>(_ => throw new InvalidOperationException("never built"));
+        builder.Services.AddSingleton(new TerminalGuiOptions());
+
+        var returned = builder.ClearStdoutLoggersForTerminalGui();
+
+        Assert.Same(builder, returned);
+        Assert.DoesNotContain(builder.Services, d => d.ServiceType == typeof(ILoggerProvider));
+        Assert.Single(builder.Services);
+        Assert.Throws<ArgumentNullException>(() => ((ILoggingBuilder)null!).ClearStdoutLoggersForTerminalGui());
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenOptionsInstanceIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddOrkeonCliTerminalGui((TerminalGuiOptions)null!));
     }
 
     private sealed class StubConsoleAdapter : IConsoleAdapter

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Cli.TerminalGui.Tests.Doubles;
@@ -73,5 +74,43 @@ public class GlobalKeyBindingsTests
         GlobalKeyBindings.OnInterruptRequested(top, Wire(false));
         Assert.Equal(2, runner.CancelRequests);
         Assert.Equal(2, interrupts);
+    }
+
+    [Theory]
+    [InlineData(LogLevel.Trace, LogLevel.Trace)]
+    [InlineData(LogLevel.Debug, LogLevel.Trace)]
+    [InlineData(LogLevel.Information, LogLevel.Debug)]
+    [InlineData(LogLevel.Warning, LogLevel.Information)]
+    [InlineData(LogLevel.Error, LogLevel.Warning)]
+    [InlineData(LogLevel.Critical, LogLevel.Trace)]
+    [InlineData(LogLevel.None, LogLevel.Trace)]
+    public void ShouldStepDownTheLadder_WhenMoreVerboseRequested(LogLevel current, LogLevel expected)
+    {
+        Assert.Equal(expected, GlobalKeyBindings.MoreVerbose(current));
+    }
+
+    [Theory]
+    [InlineData(LogLevel.Trace, LogLevel.Debug)]
+    [InlineData(LogLevel.Debug, LogLevel.Information)]
+    [InlineData(LogLevel.Information, LogLevel.Warning)]
+    [InlineData(LogLevel.Warning, LogLevel.Error)]
+    [InlineData(LogLevel.Error, LogLevel.Error)]
+    [InlineData(LogLevel.Critical, LogLevel.Information)]
+    [InlineData(LogLevel.None, LogLevel.Information)]
+    public void ShouldStepUpTheLadder_WhenLessVerboseRequested(LogLevel current, LogLevel expected)
+    {
+        Assert.Equal(expected, GlobalKeyBindings.LessVerbose(current));
+    }
+
+    [Fact]
+    public void ShouldPrefixLevelName_WhenLabelFormatted()
+    {
+        Assert.Equal("Level: Warning", GlobalKeyBindings.FormatLevelLabel(LogLevel.Warning));
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenInstallArgumentsAreNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => GlobalKeyBindings.Install(null!, null!, null!));
     }
 }
