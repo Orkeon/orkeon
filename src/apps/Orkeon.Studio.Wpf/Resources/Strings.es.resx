@@ -144,9 +144,6 @@
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
     <value>quedan {0} tokens</value>
   </data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
-    <value>Ajuste de modelo predeterminado: {0}</value>
-  </data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
     <value>{0} — facturado por el proveedor</value>
   </data>

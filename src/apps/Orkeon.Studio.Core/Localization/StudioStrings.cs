@@ -1099,9 +1099,6 @@ public static class StudioStringKeys
     /// <summary>"{0} tokens left" — the assistant session's remaining token allowance.</summary>
     public const string StatusBarBudgetLeft = "Studio.Shell.StatusBudgetLeft";
 
-    /// <summary>"Default model setting: {0}" — the tooltip of the profile shown at rest.</summary>
-    public const string StatusBarProfileTip = "Studio.Shell.StatusProfileTip";
-
     /// <summary>"{0} — billed by the provider" — a real charge, never an estimate (DD-1).</summary>
     public const string StatusBarCostBilled = "Studio.Shell.StatusCostBilled";
 
@@ -2808,7 +2805,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.StatusBarDelegations] = "{0} delegation(s)",
         [StudioStringKeys.StatusBarDelegationsTitle] = "Delegations under way",
         [StudioStringKeys.StatusBarBudgetLeft] = "{0} tokens left",
-        [StudioStringKeys.StatusBarProfileTip] = "Default model setting: {0}",
         [StudioStringKeys.StatusBarCostBilled] = "{0} — billed by the provider",
 
         // STUDIO-35: the provider balance

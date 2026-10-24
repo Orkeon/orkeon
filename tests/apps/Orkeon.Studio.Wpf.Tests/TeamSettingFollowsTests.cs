@@ -198,6 +198,31 @@ public sealed class TeamSettingFollowsTests : IDisposable
     }
 
     [Fact]
+    public void Used_by_lists_the_followers_under_the_elected_default_and_counts_them()
+    {
+        PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        PromotedTeam("autre", new StudioTeamMetadata { Name = "Autre", Profile = "DeepSeek" });
+        PromotedTeam("chinois", new StudioTeamMetadata { Name = "Chinois", Profile = "Z.AI" });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+
+        var deepSeek = window.Settings.Profiles.Profiles.Single(profile => profile.Name == "DeepSeek");
+        Assert.Equal(["Autre", "Veille"], deepSeek.UsedByTeams.Order(StringComparer.Ordinal));
+        Assert.Equal("2 team(s), 1 by default", deepSeek.UsedByCountLine);
+        Assert.Null(window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI").UsedByCountLine);
+
+        // Another default elected: the follower moves with it.
+        window.Settings.Profiles.SetDefault("Z.AI");
+        var zai = window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI");
+        Assert.Equal(["Chinois", "Veille"], zai.UsedByTeams.Order(StringComparer.Ordinal));
+        Assert.Equal("2 team(s), 1 by default", zai.UsedByCountLine);
+        Assert.Equal(
+            "Default model setting: Z.AI. The teams that follow the default run on it.",
+            window.StatusBar.ProfileTip);
+    }
+
+    [Fact]
     public void Cancelling_the_model_editor_leaves_the_team_as_it_was()
     {
         var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", Profile = "DeepSeek" });

@@ -61,7 +61,6 @@
   <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} délégation(s)</value></data>
   <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve"><value>Délégations en cours</value></data>
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve"><value>{0} jetons restants</value></data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Réglage de modèle par défaut : {0}</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — facturé par le fournisseur</value></data>
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Ouvrir l'écran de cette activité</value></data>
   <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->

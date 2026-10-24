@@ -280,6 +280,9 @@
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
                     </StackPanel>
+                    <!-- STUDIO-73: on the elected default, how many of its teams follow it. -->
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" Text="{Binding UsedByCountLine}"
+                               Visibility="{Binding UsedByCountLine, Converter={StaticResource StringPresentToVisibility}}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
                       <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"

@@ -144,9 +144,6 @@
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
     <value>剩余 {0} 个 token</value>
   </data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
-    <value>默认模型设置：{0}</value>
-  </data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
     <value>{0} — 由提供方计费</value>
   </data>
