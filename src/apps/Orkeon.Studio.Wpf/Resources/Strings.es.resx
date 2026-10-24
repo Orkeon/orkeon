@@ -144,9 +144,6 @@
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
     <value>quedan {0} tokens</value>
   </data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
-    <value>Ajuste de modelo predeterminado: {0}</value>
-  </data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
     <value>{0} — facturado por el proveedor</value>
   </data>
@@ -2507,9 +2504,6 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>Probar</value>
   </data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
-    <value>Ajuste: {0}</value>
-  </data>
   <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>lee {0}</value>
   </data>
@@ -3688,4 +3682,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
     <value>El interruptor de filtrado de la sección de almacenamiento en la nube no es ni true ni false: el motor aparta todas las cuentas hasta que lo sea.</value>
   </data>
+  <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>Modelo: {0}</value></data>
+  <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>Predeterminado ({0})</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>Ningún predeterminado elegido: la ejecución toma la sección Llm del archivo de ajustes</value></data>
+  <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>Predeterminado del archivo de ajustes del equipo</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>La ejecución programada responderá como eco: el archivo de ajustes guardado no tiene modelo predeterminado. Guarde los ajustes.</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} agente(s) o tarea(s) de este equipo nombran su propio modelo: la elección solo se aplica a los demás.</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Usar el modelo predeterminado ({0})</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Usar el modelo predeterminado</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Marcada, el equipo se ejecuta con el ajuste elegido como predeterminado al iniciar, y lo sigue cuando cambia. Desmarcada, se queda en el ajuste elegido abajo.</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>O ejecutar con este ajuste:</value></data>
+  <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>Cambiar el modelo</value></data>
+  <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} se ejecuta ahora con: {1}.</value></data>
+  <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configurar un modelo</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Esta ejecución: {0}</value></data>
+  <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Recordar para este equipo</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} equipo(s), {1} por defecto</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Ajuste de modelo predeterminado: {0}. Los equipos que siguen el predeterminado se ejecutan con él.</value></data>
 </root>

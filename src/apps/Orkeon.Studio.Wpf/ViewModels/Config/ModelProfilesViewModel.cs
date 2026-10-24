@@ -31,12 +31,14 @@ public sealed class HostProfilesChangedEventArgs(IReadOnlySet<string> names) : E
 /// <summary>
 /// Where a setting stands among the others, as its card says it: the default, the assistant's,
 /// the teams naming it, and its host-profile verdict (null when it is not offered to crews).
+/// <paramref name="FollowingTeams"/> counts, among the teams, those that follow the default (STUDIO-73).
 /// </summary>
 internal sealed record ModelProfileStanding(
     bool IsDefault,
     bool IsStudio,
     IReadOnlyList<string>? UsedByTeams = null,
-    HostProfileCheck? Host = null);
+    HostProfileCheck? Host = null,
+    int FollowingTeams = 0);
 
 /// <summary>
 /// The seams the setting editor works over: the probe of the connection test, the key store, the
@@ -92,6 +94,7 @@ public sealed class ModelProfileItemViewModel : ObservableObject
         IsDefault = standing.IsDefault;
         IsStudio = standing.IsStudio;
         UsedByTeams = standing.UsedByTeams ?? [];
+        FollowingTeams = standing.FollowingTeams;
         _balances = balances;
         _strings = strings ?? EnglishStudioStrings.Instance;
         _host = standing.Host;
@@ -132,6 +135,14 @@ public sealed class ModelProfileItemViewModel : ObservableObject
 
     /// <summary>Whether the "used by" row shows.</summary>
     public bool IsUsedByTeams => UsedByTeams.Count > 0;
+
+    /// <summary>How many of <see cref="UsedByTeams"/> follow the default rather than name this setting (STUDIO-73).</summary>
+    public int FollowingTeams { get; }
+
+    /// <summary>« 3 team(s), 2 by default » — on the elected default, when teams follow it; null otherwise.</summary>
+    public string? UsedByCountLine => FollowingTeams > 0
+        ? _strings.Format(StudioStringKeys.SettingsUsedByDefault, UsedByTeams.Count, FollowingTeams)
+        : null;
 
     /// <summary>
     /// The host profile this setting is in the settings file — what a crew writes,
@@ -1652,9 +1663,15 @@ public sealed class ModelProfilesViewModel : ObservableObject
         _llm.ElectDefault(profile);
     }
 
+    /// <summary>
+    /// Reads the teams again for « Used by » (STUDIO-73): a team's model changed on its card or from
+    /// the Run screen, or a team adopted, moves it from one card to another.
+    /// </summary>
+    public void RefreshTeamUsage() => Rebuild();
+
     private void Rebuild()
     {
-        var usage = TeamsByProfile();
+        var (usage, following) = TeamsByProfile();
         var standing = HostLlmProfiles.Classify(_set);
 
         Profiles.Clear();
@@ -1664,7 +1681,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 IsDefault: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal),
                 IsStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
                 UsedByTeams: usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : [],
-                Host: standing.GetValueOrDefault(profile.Name));
+                Host: standing.GetValueOrDefault(profile.Name),
+                FollowingTeams: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal) ? following : 0);
             Profiles.Add(new ModelProfileItemViewModel(profile, profileStanding, this, _balances, _strings));
         }
 
@@ -1746,18 +1764,25 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     /// <summary>
     /// The "used by" chips of the audit of 07/16: which adopted teams name each profile in
-    /// their sidecar. Best-effort — an unreadable teams root simply yields no chips.
+    /// their sidecar. Best-effort — an unreadable teams root simply yields no chips. An adopted team
+    /// that follows the default is listed under the elected default, and counted apart (STUDIO-73);
+    /// a folder without a companion file is no adopted team and is listed nowhere.
     /// </summary>
-    private Dictionary<string, List<string>> TeamsByProfile()
+    private (Dictionary<string, List<string>> Usage, int Following) TeamsByProfile()
     {
         var usage = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var following = 0;
         if (_loadTeams is null)
-            return usage;
+            return (usage, following);
 
-        foreach (var team in _loadTeams())
+        foreach (var team in _loadTeams().Where(team => team.HasMetadata))
         {
-            if (team.Profile is not { Length: > 0 } profileName)
+            var profileName = team.LlmChoice.UseDefault ? _set.DefaultProfile : team.LlmChoice.Profile;
+            if (profileName is not { Length: > 0 })
                 continue;
+
+            if (team.LlmChoice.UseDefault)
+                following++;
 
             if (!usage.TryGetValue(profileName, out var teams))
                 usage[profileName] = teams = [];
@@ -1765,7 +1790,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
             teams.Add(team.Name);
         }
 
-        return usage;
+        return (usage, following);
     }
 
     /// <summary>

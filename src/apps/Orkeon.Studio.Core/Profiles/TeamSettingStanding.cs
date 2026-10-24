@@ -63,6 +63,29 @@ public sealed record TeamSettingStanding
             : Name;
     }
 
+    /// <summary>
+    /// The model as a team card, the Run and the Test screens name it (STUDIO-73): « Default (X) » for
+    /// a team that follows the default — or that the default of the team's own settings file runs,
+    /// or that no default is elected for —, else <see cref="Label"/>.
+    /// </summary>
+    /// <param name="strings">The localization port.</param>
+    /// <param name="settings">The model settings of this machine, the elected default among them.</param>
+    /// <param name="ownSettingsFile">Whether the team runs with its own settings file (STUDIO-62), whose default a follower takes.</param>
+    public string LlmLabel(IStudioStrings strings, ModelProfileSet settings, bool ownSettingsFile = false)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (Kind != TeamSettingKind.None)
+            return Label(strings)!;
+        if (ownSettingsFile)
+            return strings[StudioStringKeys.TeamsLlmTeamFileDefault];
+
+        return settings.Default is { } elected
+            ? strings.Format(StudioStringKeys.TeamsLlmLabelDefault, elected.Name)
+            : strings[StudioStringKeys.TeamsLlmNoDefault];
+    }
+
     /// <summary>The standing of <paramref name="setting"/> among <paramref name="settings"/>.</summary>
     /// <param name="setting">The setting the team's companion file names; null or empty when it names none.</param>
     /// <param name="settings">The model settings of this machine.</param>

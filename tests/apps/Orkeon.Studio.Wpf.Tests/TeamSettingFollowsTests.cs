@@ -113,6 +113,169 @@ public sealed class TeamSettingFollowsTests : IDisposable
         ProcessOutputChannel.StandardOutput,
         """{"v":2,"seq":1,"ts":"t","kind":"schedule.state","path":"p","state":"installed","expression":"daily@07:30","family":"systemd","names":["orkeon-veille"]}""");
 
+    // ── STUDIO-73: a team that follows the default moves with the election, a pinned one does not ──
+
+    [Fact]
+    public async Task Electing_another_default_moves_the_next_run_of_a_follower_and_not_of_a_pinned_team()
+    {
+        var follower = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var pinned = PromotedTeam("autre", new StudioTeamMetadata { Name = "Autre", Profile = "DeepSeek" });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+
+        window.Launch.Target.Select(follower);
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+
+        window.Settings.Profiles.SetDefault("Z.AI");
+
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("glm-5.2", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+        window.Launch.Target.Select(pinned);
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+
+        // The Run screen's choice for one run wins over the team's, and leaves the team as it was.
+        window.Launch.Target.Select(follower);
+        window.Launch.RunUsesDefaultLlm = false;
+        window.Launch.RunLlmProfile = "DeepSeek";
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("deepseek-v4-flash", _processes.LastRequest!.Environment["ORKEON_Llm__Model"]);
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(follower));
+    }
+
+    [Fact]
+    public void Remembering_the_runs_model_writes_the_team_and_its_launchers()
+    {
+        var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+        window.Launch.Target.Select(team);
+
+        window.Launch.RunUsesDefaultLlm = false;
+        window.Launch.RunLlmProfile = "Z.AI";
+        window.Launch.RememberLlmForTeamCommand.Execute(null);
+
+        Assert.Equal(TeamLlmChoice.Pinned("Z.AI"), TeamCatalog.LlmChoiceFor(team));
+        Assert.Contains("--llm-profile='z-ai'", Posix(team), StringComparison.Ordinal);
+        Assert.Equal("Z.AI", Card(window, team).Summary.Profile);
+    }
+
+    // ── STUDIO-73, D6: the card shows the model and changes it in place ──
+
+    [Fact]
+    public void Changing_the_model_on_a_card_writes_the_team_and_its_launchers()
+    {
+        var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+        var card = Card(window, team);
+        Assert.Equal("Model: Default (DeepSeek)", card.ProfileDisplay);
+
+        card.ChangeLlmCommand.Execute(null);
+        Assert.True(card.IsChangingLlm);
+        Assert.True(card.EditUsesDefaultLlm);
+        card.EditUsesDefaultLlm = false;
+        card.EditLlmProfile = "Z.AI";
+        card.ConfirmLlmCommand.Execute(null);
+
+        Assert.Equal(TeamLlmChoice.Pinned("Z.AI"), TeamCatalog.LlmChoiceFor(team));
+        Assert.Contains("--llm-profile='z-ai'", Posix(team), StringComparison.Ordinal);
+        Assert.Equal("Model: Z.AI", Card(window, team).ProfileDisplay);
+        Assert.Equal("Veille now runs on: Z.AI.", window.Teams.StatusMessage);
+        // « Used by » moves the team from the default to the setting it now pins.
+        Assert.Equal(["Veille"], window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI").UsedByTeams);
+        Assert.Empty(window.Settings.Profiles.Profiles.Single(profile => profile.Name == "DeepSeek").UsedByTeams);
+
+        // Back to the default: the flag, no name, and no --llm-profile.
+        card = Card(window, team);
+        card.ChangeLlmCommand.Execute(null);
+        card.EditUsesDefaultLlm = true;
+        card.ConfirmLlmCommand.Execute(null);
+
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(team));
+        Assert.DoesNotContain("--llm-profile", Posix(team), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Used_by_lists_the_followers_under_the_elected_default_and_counts_them()
+    {
+        PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        PromotedTeam("autre", new StudioTeamMetadata { Name = "Autre", Profile = "DeepSeek" });
+        PromotedTeam("chinois", new StudioTeamMetadata { Name = "Chinois", Profile = "Z.AI" });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+
+        var deepSeek = window.Settings.Profiles.Profiles.Single(profile => profile.Name == "DeepSeek");
+        Assert.Equal(["Autre", "Veille"], deepSeek.UsedByTeams.Order(StringComparer.Ordinal));
+        Assert.Equal("2 team(s), 1 by default", deepSeek.UsedByCountLine);
+        Assert.Null(window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI").UsedByCountLine);
+
+        // Another default elected: the follower moves with it.
+        window.Settings.Profiles.SetDefault("Z.AI");
+        var zai = window.Settings.Profiles.Profiles.Single(profile => profile.Name == "Z.AI");
+        Assert.Equal(["Chinois", "Veille"], zai.UsedByTeams.Order(StringComparer.Ordinal));
+        Assert.Equal("2 team(s), 1 by default", zai.UsedByCountLine);
+        Assert.Equal(
+            "Default model setting: Z.AI. The teams that follow the default run on it.",
+            window.StatusBar.ProfileTip);
+    }
+
+    [Fact]
+    public void Cancelling_the_model_editor_leaves_the_team_as_it_was()
+    {
+        var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", Profile = "DeepSeek" });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+        var card = Card(window, team);
+
+        card.ChangeLlmCommand.Execute(null);
+        Assert.False(card.EditUsesDefaultLlm);
+        Assert.Equal("DeepSeek", card.EditLlmProfile);
+        card.EditLlmProfile = "Z.AI";
+        card.CancelLlmCommand.Execute(null);
+
+        Assert.False(card.IsChangingLlm);
+        Assert.Equal(TeamLlmChoice.Pinned("DeepSeek"), TeamCatalog.LlmChoiceFor(team));
+    }
+
+    [Fact]
+    public void An_archived_card_offers_no_model_change_and_the_search_finds_a_team_by_its_setting()
+    {
+        var archived = PromotedTeam("archive", new StudioTeamMetadata { Name = "Archive", Profile = "Z.AI", ArchivedAt = DateTimeOffset.UnixEpoch, Archived = true });
+        var pinned = PromotedTeam("autre", new StudioTeamMetadata { Name = "Autre", Profile = "Z.AI" });
+        PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        var window = Window();
+        window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
+        window.Settings.Profiles.CommitEdit(Zai, previousName: null);
+
+        Assert.False(Card(window, archived).ChangeLlmCommand.CanExecute(null));
+
+        window.Teams.SearchText = "glm";
+        Assert.Empty(window.Teams.Cards);
+        window.Teams.SearchText = "z.ai";
+        Assert.Equal([pinned], window.Teams.Cards.Select(card => card.Summary.Path));
+    }
+
+    [Fact]
+    public void A_crew_that_names_its_own_model_is_said_on_the_card()
+    {
+        var team = PromotedTeam("veille", new StudioTeamMetadata { Name = "Veille", UseDefaultLlm = true });
+        File.WriteAllText(
+            Path.Combine(team, "crew", "agents.yaml"),
+            "agents:\n  - name: writer\n    llm:\n      profile: claude\n  - name: reader\n");
+        var window = Window();
+
+        Assert.Equal(
+            "1 agent(s) or task(s) of this team name their own model: the choice applies to the others only.",
+            Card(window, team).CrewLlmWarning);
+    }
+
     // ── decision 1: a renamed setting carries its teams ──
 
     [Fact]

@@ -227,6 +227,34 @@
           </StackPanel>
         </DockPanel>
 
+        <!-- STUDIO-73: the model this run takes, pre-filled with the team's; « Remember for this team »
+             makes it the team's. Greyed with « Configure a model » while this machine has no setting. -->
+        <StackPanel Margin="0,12,0,0">
+          <CheckBox IsChecked="{Binding RunUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
+                    Foreground="{DynamicResource InkBrush}" Content="{Binding UseDefaultLlmLabel}"
+                    ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+          <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
+                      Visibility="{Binding RunUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
+            <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
+                       Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
+            <ComboBox Width="240" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding RunLlmProfile}"/>
+          </StackPanel>
+          <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding ConfigureModelCommand}"
+                  Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+          <DockPanel Margin="0,7,0,0" Visibility="{Binding RunLlmLine, Converter={StaticResource StringPresentToVisibility}}">
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Padding="10,5" Margin="12,0,0,0"
+                    VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
+                    Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
+                    Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="{Binding RunLlmLine}"/>
+          </DockPanel>
+          <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                     Text="{Binding CrewLlmWarning}"
+                     Visibility="{Binding CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
+        </StackPanel>
+
         <!-- The run is refused: this team reaches outside « Réglages › Dossiers autorisés ».
              Naming the folders and the way out beats a run that fails halfway. -->
         <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
@@ -924,7 +952,7 @@
       <StackPanel>
         <DockPanel>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5"
-                  Margin="0,0,8,0" Click="OnCopyJournal"
+                  Margin="8,0,0,0" Click="OnCopyJournal"
                   Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
@@ -959,7 +987,8 @@
           </StackPanel>
         </DockPanel>
 
-        <!-- open when toggled, and always in expert -->
+        <!-- open when toggled; expert mode opens it by default (MainWindowViewModel), the
+             toggle still closes it -->
         <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="6" Margin="0,12,0,0"
                 MaxHeight="240">
           <Border.Style>
@@ -967,9 +996,6 @@
               <Setter Property="Visibility" Value="Collapsed"/>
               <Style.Triggers>
                 <DataTrigger Binding="{Binding IsJournalOpen}" Value="True">
-                  <Setter Property="Visibility" Value="Visible"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                   <Setter Property="Visibility" Value="Visible"/>
                 </DataTrigger>
               </Style.Triggers>
@@ -993,33 +1019,11 @@
               <DataTemplate>
                 <StackPanel Orientation="Horizontal">
                   <!-- When Studio read the line (STUDIO-17): a long run has to say when it last
-                       spoke. Local time, to the second. The CLI's own log lines keep their
-                       millisecond prefix — same clock, a few milliseconds apart. -->
+                       spoke. Local time, to the second. The CLI logger's own timestamp is dropped
+                       from the text (CliLogLine): one clock per line. -->
                   <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
                              Foreground="{DynamicResource ConsoleFgBrush}"/>
-                <TextBlock Text="{Binding Text}">
-                  <TextBlock.Style>
-                    <!-- The console palette has four brushes and used two of them: the
-                         echoed command and the closing verdict were the same grey as every
-                         other line, so the two moments worth finding in a long log were the
-                         hardest to find. The classification comes from the producer, never
-                         from the text — the verdict sentence is localized. -->
-                    <Style TargetType="TextBlock">
-                      <Setter Property="Foreground" Value="{DynamicResource ConsoleFgBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCommand}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleCmdBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsOutcome}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleOkBrush}"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsError}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource ConsoleErrBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
-                </TextBlock>
+                <TextBlock Text="{Binding Text}" Style="{StaticResource ConsoleLineText}"/>
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>

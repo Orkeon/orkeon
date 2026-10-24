@@ -61,7 +61,6 @@
   <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} delegation(s)</value></data>
   <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve"><value>Delegations under way</value></data>
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve"><value>{0} tokens left</value></data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Default model setting: {0}</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — billed by the provider</value></data>
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Open this activity's screen</value></data>
   <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
@@ -881,7 +880,6 @@
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Change the folders</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Export</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Try out</value></data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve"><value>Setting: {0}</value></data>
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>reads {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>
@@ -1916,4 +1914,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve"><value>A limit of a drive account is out of range (the upload size, the timeout): the run sets the account aside until it is corrected.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve"><value>The default drive account names no declared account: a call that names no account fails.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve"><value>The screening switch of the drive section is neither true nor false: the run sets every account aside until it is.</value></data>
+  <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>Model: {0}</value></data>
+  <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>Default ({0})</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>No default elected: the run takes the Llm section of the settings file</value></data>
+  <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>Default of the team's settings file</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>The scheduled run will answer as an echo: the saved settings file has no default model. Save the settings.</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} agent(s) or task(s) of this team name their own model: the choice applies to the others only.</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Use the default model ({0})</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Use the default model</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Checked, the team runs on the setting elected default when a run starts, and follows it when it changes. Unchecked, it stays on the setting chosen below.</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>Or run on this setting:</value></data>
+  <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>Change the model</value></data>
+  <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} now runs on: {1}.</value></data>
+  <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configure a model</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>This run: {0}</value></data>
+  <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Remember for this team</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} team(s), {1} by default</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Default model setting: {0}. The teams that follow the default run on it.</value></data>
 </root>

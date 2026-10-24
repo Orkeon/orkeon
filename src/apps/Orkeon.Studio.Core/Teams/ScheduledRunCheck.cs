@@ -1,4 +1,5 @@
 using System.Globalization;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.Common;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
@@ -21,6 +22,12 @@ public enum ScheduledRunIssue
 
     /// <summary>The settings file as saved holds another version of the team's setting: the scheduled run takes it.</summary>
     Outdated,
+
+    /// <summary>
+    /// The team follows the default (STUDIO-73) and the settings file as saved describes none: the
+    /// run answers as an echo.
+    /// </summary>
+    DefaultMissing,
 
     /// <summary>
     /// The team's launchers were written by another tool (STUDIO-63): the scheduled run executes
@@ -91,6 +98,9 @@ public static class ScheduledRunCheck
     {
         switch (standing.Kind)
         {
+            case TeamSettingKind.None:
+                return DefaultNotice(settings, saved);
+
             case TeamSettingKind.NotOffered:
                 return new ScheduledRunNotice(ScheduledRunIssue.OnDefault, standing.Name!, standing.Check);
 
@@ -112,6 +122,31 @@ public static class ScheduledRunCheck
                 // takes the default as Studio's own launch does; a team naming none has nothing to say.
                 return null;
         }
+    }
+
+    /// <summary>
+    /// What the scheduled run of a team that follows the default makes of it (STUDIO-73): its
+    /// launchers name no profile, so the run takes the <c>Llm</c> section as saved — an echo when
+    /// there is none, an older version when the election since changed it and the settings were not
+    /// saved. Without an elected default, the section is the user's and taken as it is; without a
+    /// saved file, the run's own resolution chain is not Studio's to judge.
+    /// </summary>
+    private static ScheduledRunNotice? DefaultNotice(ModelProfileSet settings, AppSettingsDocument? saved)
+    {
+        if (saved is null)
+            return null;
+        if (!saved.Llm.Exists)
+            return new ScheduledRunNotice(ScheduledRunIssue.DefaultMissing, settings.Default?.Name ?? "");
+
+        if (settings.Default is not { } elected)
+            return null;
+
+        // The section as the election writes it (STUDIO-49): writing it again over a copy of the
+        // saved file changes nothing when the run takes the default Studio shows.
+        var expected = elected.ToHostEntry(LlmProfileNames.Default);
+        return saved.Clone().Llm.Set(expected) || !saved.Llm.KeyAgrees(expected)
+            ? new ScheduledRunNotice(ScheduledRunIssue.Outdated, elected.Name)
+            : null;
     }
 
     /// <summary>
@@ -156,6 +191,7 @@ public static class ScheduledRunCheck
         {
             ScheduledRunIssue.SettingRefused => strings.Format(StudioStringKeys.TeamsScheduledRunRefused, notice.Subject),
             ScheduledRunIssue.FolderRefused => strings.Format(StudioStringKeys.TeamsScheduledRunFolderRefused, notice.Subject),
+            ScheduledRunIssue.DefaultMissing => strings[StudioStringKeys.TeamsScheduledRunNoDefault],
             ScheduledRunIssue.Outdated => strings.Format(StudioStringKeys.TeamsScheduledRunOutdated, notice.Subject),
             ScheduledRunIssue.ForeignLaunchers => strings[StudioStringKeys.TeamsScheduledForeignLaunchers],
             _ => strings.Format(

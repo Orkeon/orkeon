@@ -668,7 +668,8 @@ public partial class CreateTeamWizardTests
             // The sidecar records what the crew definition cannot say.
             var summary = TeamCatalog.Describe(promoted);
             Assert.Equal("Ma veille quotidienne", summary.Name);
-            Assert.Equal("Local", summary.Profile);
+            // STUDIO-73, D2: left checked, the team follows the default rather than pinning it.
+            Assert.Equal(TeamLlmChoice.Default, summary.LlmChoice);
             Assert.Equal("daily@07:30", summary.Schedule);
 
             // And the wizard is back where a creation starts.
@@ -678,6 +679,7 @@ public partial class CreateTeamWizardTests
             Assert.Equal("", vm.Need);
             Assert.Equal("", vm.ComposeNotes.Consigne);
             Assert.Empty(vm.TeamMounts);
+            Assert.True(vm.AdoptUsesDefaultLlm);
             Assert.True(vm.Chat.IsEmpty);
             Assert.False(vm.HasDraft);
             Assert.False(vm.CanSaveTeam);

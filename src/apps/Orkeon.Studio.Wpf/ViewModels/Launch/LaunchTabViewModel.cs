@@ -42,7 +42,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly IAppSettingsStore _settingsStore;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
-    private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
+    private readonly Func<string, TeamLlmChoice?, string?, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
+    private readonly Func<string, TeamLlmChoice, string?>? _rememberLlmChoice;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly string? _teamSettingsRoot;
     private readonly IDirectoryProbe _directories;
@@ -54,6 +55,11 @@ public sealed class LaunchTabViewModel : ObservableObject
     private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
+    /// <summary>The model this run takes (STUDIO-73): the default, or the setting <see cref="_runLlmProfile"/>.</summary>
+    private bool _runUsesDefaultLlm = true;
+    private string? _runLlmProfile;
+    /// <summary>How many agents and tasks of the target's crew name their own model.</summary>
+    private int _crewLlmDeclarations;
     /// <summary>The pinned settings file the panel's settings mounts were read from; null for the live declared list.</summary>
     private string? _settingsMountsSource;
     private string? _commandLinePreview;
@@ -90,6 +96,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         _teamSettingsRoot = seams.TeamSettingsRoot ?? seams.TeamsRoot;
         _restoreTeam = seams.RestoreTeam;
         _modelSettings = seams.ModelSettings;
+        _rememberLlmChoice = seams.RememberLlmChoice;
         _prepareLaunch = seams.PrepareLaunch;
         _settingsStore = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;
         _dispatcher = seams.Dispatcher ?? ImmediateUiDispatcher.Instance;
@@ -98,7 +105,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
                 nameof(CliBanner), nameof(TeamMetaLine), nameof(TeamDescription), nameof(OpenResultLabel), nameof(ArchivedTargetMessage),
-                nameof(TeamSettingsLine));
+                nameof(TeamSettingsLine), nameof(RunLlmLine), nameof(UseDefaultLlmLabel), nameof(CrewLlmWarning));
             RaiseRunStateChanged();
         };
 
@@ -133,6 +140,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         ChooseTeamCommand = new RelayCommand(() => ChooseTeamRequested?.Invoke(this, EventArgs.Empty));
         CreateTeamCommand = new RelayCommand(() => CreateTeamRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
+        RememberLlmForTeamCommand = new RelayCommand(RememberLlmForTeam, () => CanRememberLlmForTeam);
+        ConfigureModelCommand = new RelayCommand(() => ConfigureModelRequested?.Invoke(this, EventArgs.Empty));
         OpenResultCommand = new RelayCommand(OpenResult, () => CanOpenResult);
         OpenLogsCommand = new RelayCommand(OpenLogs, CanOpenLogs);
         CheckOptionsCommand = new RelayCommand(() => CheckOptions());
@@ -569,9 +578,9 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>
     /// The one line that says where the model comes from, shown beside the command line and
-    /// outside the « Advanced » fold: the team's settings file, and — when the card names a
-    /// model setting of this machine — that the setting overrides the file's <c>Llm</c> section
-    /// (the card's instruction, laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
+    /// outside the « Advanced » fold: the team's settings file, and — when the run pins a model
+    /// setting of this machine (STUDIO-73: the card's choice, or the one made here for this run) —
+    /// that the setting overrides the file's <c>Llm</c> section (laid over the run as <c>ORKEON_Llm__*</c>). Null when no team
     /// file applies — and while a pinned file overrides it: the line would then say the run reads
     /// a file it does not.
     /// </summary>
@@ -590,12 +599,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Whether the card names a model setting the launch will lay over the run: one this machine
-    /// has (<see cref="TeamSettingStanding"/>); a tab built without the model settings takes the
-    /// card at its word, as the meta line does.
+    /// Whether the run pins a model setting the launch will lay over it: one this machine has
+    /// (<see cref="TeamSettingStanding"/>); a tab built without the model settings takes the choice
+    /// at its word, as the meta line does. A run that follows the default reads the file's.
     /// </summary>
     private bool CardNamesAKnownSetting() =>
-        _team.Profile is { Length: > 0 } profile
+        RunLlmChoice is { UseDefault: false, Profile: { Length: > 0 } profile }
         && (_modelSettings is null || TeamSettingStanding.Of(profile, _modelSettings()).Kind != TeamSettingKind.Missing);
 
     /// <summary>
@@ -605,7 +614,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void RefreshTeamSettingsPath()
     {
         TeamSettingsPath = TeamSettingsFile.Find(_teamSettingsRoot, Target.SelectedPath, _directories, _settingsStore.Exists);
-        OnPropertiesChanged(nameof(TeamSettingsPath), nameof(ResolvedSettingsPath), nameof(TeamSettingsLine));
+        OnPropertiesChanged(nameof(TeamSettingsPath), nameof(ResolvedSettingsPath), nameof(TeamSettingsLine), nameof(RunLlmLine));
     }
 
     // A launch is an invocation of the orkeon CLI, so an absent CLI is a refusal, not a
@@ -668,7 +677,9 @@ public sealed class LaunchTabViewModel : ObservableObject
                 // A dry run is not a launch: recording it would fill the replayable history with
                 // entries that never ran a crew. The terminal launcher makes the same exclusion.
                 RecordInHistory = !validate,
-                EnvironmentOverrides = EnvironmentFor(target.SelectedPath),
+                EnvironmentOverrides = EnvironmentFor(target.SelectedPath, RunLlmChoice, ResolvedSettingsPath),
+                // Kept for « Relancer » (STUDIO-73, D8): the replay runs on the model this run took.
+                LlmChoice = RunLlmChoice,
             },
             validate,
             cancellationToken);
@@ -724,6 +735,10 @@ public sealed class LaunchTabViewModel : ObservableObject
         }
 
         LoadIntoForm(entry);
+        // The model the run took (STUDIO-73, D8); an entry recorded before has none and takes the
+        // team's choice of today. A setting since removed reads as missing and runs on the default.
+        if (entry.LlmChoice is { } recorded)
+            ApplyRunLlmChoice(recorded);
 
         return await ExecuteAsync(
             new RunLaunchRequest
@@ -732,17 +747,21 @@ public sealed class LaunchTabViewModel : ObservableObject
                 Arguments = entry.Arguments,
                 SettingsPath = entry.SettingsPath,
                 WorkingDirectory = entry.WorkingDirectory,
-                // The argv is replayed verbatim; the profile is resolved fresh — a team
-                // re-elected onto another model replays on what it runs on today.
-                EnvironmentOverrides = EnvironmentFor(entry.Target),
+                // The argv is replayed verbatim; the model is the one the run took, the setting behind
+                // its name read fresh — a default since re-elected replays on the default of today.
+                EnvironmentOverrides = EnvironmentFor(entry.Target, entry.LlmChoice, entry.SettingsPath),
+                LlmChoice = entry.LlmChoice,
             },
             dryRun: false,
             cancellationToken);
     }
 
-    /// <summary>The environment an adopted team's model profile lays over the launch; empty otherwise.</summary>
-    private IReadOnlyDictionary<string, string> EnvironmentFor(string targetPath) =>
-        _environmentForTarget?.Invoke(targetPath)
+    /// <summary>
+    /// The environment the run's model lays over the launch — <paramref name="choice"/>, else the
+    /// team's — given the settings file it reads (null: the machine's); empty when nothing is wired.
+    /// </summary>
+    private IReadOnlyDictionary<string, string> EnvironmentFor(string targetPath, TeamLlmChoice? choice, string? settingsPath) =>
+        _environmentForTarget?.Invoke(targetPath, choice, settingsPath)
         ?? new Dictionary<string, string>(StringComparer.Ordinal);
 
     /// <summary>
@@ -977,14 +996,19 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public void RefreshTeamDescription()
     {
+        var saved = _team.LlmChoice;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        _crewLlmDeclarations = CrewLlmDeclarations.CountIn(Target.SelectedPath);
+        // A choice saved from the card replaces the run's; a choice made here for this run stays.
+        if (_team.LlmChoice != saved)
+            ApplyRunLlmChoice(_team.LlmChoice);
         RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(TeamDescription), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
             nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
-            nameof(IsTargetArchived), nameof(ArchivedTargetMessage));
+            nameof(IsTargetArchived), nameof(ArchivedTargetMessage), nameof(CrewLlmWarning));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         RestoreTargetCommand.RaiseCanExecuteChanged();
@@ -1058,6 +1082,162 @@ public sealed class LaunchTabViewModel : ObservableObject
 
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
         }
+    }
+
+    // ── STUDIO-73: the model this run takes ──
+
+    /// <summary>« Remember for this team »: the run's model becomes the team's.</summary>
+    public RelayCommand RememberLlmForTeamCommand { get; }
+
+    /// <summary>« Configure a model », when this machine has no setting yet: the settings' model tab.</summary>
+    public RelayCommand ConfigureModelCommand { get; }
+
+    /// <summary>Raised by <see cref="ConfigureModelCommand"/>; the shell opens the model settings.</summary>
+    public event EventHandler? ConfigureModelRequested;
+
+    /// <summary>Whether this run takes the default elected when it starts, rather than one setting.</summary>
+    public bool RunUsesDefaultLlm
+    {
+        get => _runUsesDefaultLlm;
+        set
+        {
+            if (_runUsesDefaultLlm == value)
+                return;
+
+            _runUsesDefaultLlm = value;
+            // Unticked, the list offers the first setting rather than nothing.
+            if (!value && _runLlmProfile is null && LlmProfiles is [var first, ..])
+                _runLlmProfile = first;
+            RaiseRunLlmChanged();
+        }
+    }
+
+    /// <summary>The setting this run takes when it does not follow the default, by its name.</summary>
+    public string? RunLlmProfile
+    {
+        get => _runLlmProfile;
+        set
+        {
+            if (string.Equals(_runLlmProfile, value, StringComparison.Ordinal))
+                return;
+
+            _runLlmProfile = value;
+            RaiseRunLlmChanged();
+        }
+    }
+
+    /// <summary>The settings of this machine a run can take, by name; empty without model settings.</summary>
+    public IReadOnlyList<string> LlmProfiles =>
+        _modelSettings is null ? [] : [.. _modelSettings().Profiles.Select(profile => profile.Name)];
+
+    /// <summary>Whether this machine has a setting at all: otherwise the box is greyed and « Configure a model » shows.</summary>
+    public bool HasLlmProfiles => LlmProfiles.Count > 0;
+
+    /// <summary>« Use the default model (X) », X the setting elected; without one, says so.</summary>
+    public string UseDefaultLlmLabel =>
+        _modelSettings?.Invoke().Default is { } elected
+            ? _strings.Format(StudioStringKeys.TeamsUseDefaultLlm, elected.Name)
+            : _strings[StudioStringKeys.TeamsUseDefaultLlmNone];
+
+    /// <summary>The model this run takes, as the launch and the history record it.</summary>
+    public TeamLlmChoice RunLlmChoice =>
+        _runUsesDefaultLlm ? TeamLlmChoice.Default : TeamLlmChoice.Pinned(_runLlmProfile);
+
+    /// <summary>
+    /// « This run: Default (X) » or « This run: Y » — with the words of the card when the setting is
+    /// absent from this machine (STUDIO-52), or when the team's own settings file decides (D7). Null
+    /// without model settings, or without a target.
+    /// </summary>
+    public string? RunLlmLine
+    {
+        get
+        {
+            if (_modelSettings is null || !Target.IsResolved)
+                return null;
+
+            var settings = _modelSettings();
+            var choice = RunLlmChoice;
+            var label = choice.UseDefault
+                ? TeamSettingStanding.None.LlmLabel(_strings, settings, ownSettingsFile: ResolvedSettingsPath is { Length: > 0 })
+                : TeamSettingStanding.Of(choice.Profile, settings).LlmLabel(_strings, settings);
+            return _strings.Format(StudioStringKeys.RunLlmForThisRun, label);
+        }
+    }
+
+    /// <summary>Whether « Remember for this team » applies: a team whose recorded model differs from the run's.</summary>
+    public bool CanRememberLlmForTeam =>
+        _team.LlmChoice is { } saved && saved != RunLlmChoice && !IsTargetArchived && !IsRunning;
+
+    /// <summary>
+    /// The agents and tasks of the crew that name their own model: the choice above does not reach
+    /// them (STUDIO-73). Null when there is none.
+    /// </summary>
+    public string? CrewLlmWarning =>
+        _crewLlmDeclarations > 0 ? _strings.Format(StudioStringKeys.TeamsCrewOverridesLlm, _crewLlmDeclarations) : null;
+
+    /// <summary>
+    /// Re-reads the model settings — a setting added, removed or elected elsewhere — for the list,
+    /// the labels and the line; a setting the run named that is gone stays named, and runs on the default.
+    /// </summary>
+    public void RefreshLlmSettings() => RaiseRunLlmChanged();
+
+    /// <summary>Sets the run's model to <paramref name="choice"/>; null (no team) is the default.</summary>
+    private void ApplyRunLlmChoice(TeamLlmChoice? choice)
+    {
+        var applied = choice ?? TeamLlmChoice.Default;
+        _runUsesDefaultLlm = applied.UseDefault;
+        _runLlmProfile = applied.UseDefault ? null : applied.Profile;
+        RaiseRunLlmChanged();
+    }
+
+    private void RaiseRunLlmChanged()
+    {
+        OnPropertiesChanged(nameof(RunUsesDefaultLlm), nameof(RunLlmProfile), nameof(LlmProfiles), nameof(HasLlmProfiles),
+            nameof(UseDefaultLlmLabel), nameof(RunLlmChoice), nameof(RunLlmLine), nameof(CanRememberLlmForTeam),
+            nameof(TeamSettingsLine));
+        RememberLlmForTeamCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>« Remember for this team »: the team's companion file and launchers take the run's model.</summary>
+    private void RememberLlmForTeam()
+    {
+        if (_team.TeamDirectory is not { Length: > 0 } team || !CanRememberLlmForTeam)
+            return;
+
+        var choice = RunLlmChoice;
+        string? refusal;
+        if (_rememberLlmChoice is { } remember)
+        {
+            refusal = remember(team, choice);
+        }
+        else
+        {
+            TeamCatalog.SaveLlmChoice(team, choice);
+            refusal = null;
+        }
+
+        if (refusal is not null)
+        {
+            StatusMessage = refusal;
+            return;
+        }
+
+        _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        StatusMessage = _strings.Format(StudioStringKeys.TeamsLlmSaved, TeamHeadline, RunLlmLabelOf(choice));
+        OnPropertiesChanged(nameof(TeamMetaLine));
+        RaiseRunLlmChanged();
+    }
+
+    /// <summary>The model <paramref name="choice"/> names, in the words of the card.</summary>
+    private string RunLlmLabelOf(TeamLlmChoice choice)
+    {
+        if (_modelSettings is null)
+            return choice.Profile ?? _strings[StudioStringKeys.TeamsLlmNoDefault];
+
+        // The team's choice from now on: a follower takes the default of its own settings file (D7).
+        var settings = _modelSettings();
+        return TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings)
+            .LlmLabel(_strings, settings, ownSettingsFile: choice.UseDefault && TeamSettingsPath is { Length: > 0 });
     }
 
     /// <summary>
@@ -1363,6 +1543,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
             nameof(RunButtonLabel), nameof(CanOpenResult), nameof(OpenResultLabel));
         OpenResultCommand.RaiseCanExecuteChanged();
+        RememberLlmForTeamCommand.RaiseCanExecuteChanged();
+        OnPropertiesChanged(nameof(CanRememberLlmForTeam));
         OnPropertiesChanged(nameof(ShowsOpenLogs));
         RefreshOpenLogs();
     }
@@ -1371,13 +1553,16 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         Options.Target = Target.Target;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        _crewLlmDeclarations = CrewLlmDeclarations.CountIn(Target.SelectedPath);
+        // The run takes the team's model unless changed here (STUDIO-73); a target that is no team, the default.
+        ApplyRunLlmChoice(_team.LlmChoice);
         RefreshTeamSettingsPath();
         Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(TeamDescription), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
             nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
-            nameof(IsTargetArchived), nameof(ArchivedTargetMessage));
+            nameof(IsTargetArchived), nameof(ArchivedTargetMessage), nameof(CrewLlmWarning));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         RestoreTargetCommand.RaiseCanExecuteChanged();
@@ -1429,7 +1614,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // The settings in force decide which team mounts go on the command line at all, so
         // they are refreshed before the arguments are built. A pin set or cleared changes which
         // file that is, and whether the team's file line still holds (STUDIO-62).
-        OnPropertiesChanged(nameof(ResolvedSettingsPath), nameof(TeamSettingsLine));
+        OnPropertiesChanged(nameof(ResolvedSettingsPath), nameof(TeamSettingsLine), nameof(RunLlmLine));
         PublishSettingsMounts();
 
         // The mount table's appended rows depend on the mount the runner injects ahead of the
@@ -1485,7 +1670,11 @@ public sealed record LaunchTabDependencies
     public IStudioStrings? Strings { get; init; }
 
     /// <summary>The ORKEON_* environment a given target's model profile rides on.</summary>
-    public Func<string, IReadOnlyDictionary<string, string>?>? EnvironmentForTarget { get; init; }
+    /// <remarks>
+    /// Given the target, the model the run takes (null: the team's own choice, STUDIO-73) and the
+    /// settings file it reads (null: the machine's).
+    /// </remarks>
+    public Func<string, TeamLlmChoice?, string?, IReadOnlyDictionary<string, string>?>? EnvironmentForTarget { get; init; }
 
     /// <summary>Opens a result folder in the shell; null hides the open-result button.</summary>
     public IShellOpener? ShellOpener { get; init; }
@@ -1534,4 +1723,11 @@ public sealed record LaunchTabDependencies
     /// save was refused otherwise: the run does not start. Null wires none: the run starts as it is.
     /// </summary>
     public Func<IReadOnlyList<string>, string?, Task<string?>>? PrepareLaunch { get; init; }
+
+    /// <summary>
+    /// « Remember for this team » (STUDIO-73): records the model of a team, given its folder, and
+    /// writes its launchers again — null once done, the refusal otherwise. Null records it through
+    /// the catalog alone.
+    /// </summary>
+    public Func<string, TeamLlmChoice, string?>? RememberLlmChoice { get; init; }
 }

@@ -157,6 +157,35 @@ public sealed class ToolBaseTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldLogTheMessageWithoutTheException_WhenTheToolRefusesWithAnExpectedError()
+    {
+        // An expected error tells the user what to fix: its message is enough, its stack trace
+        // was a wall of frames in the run's journal.
+        _tool.ExceptionToThrow = new TestExpectedToolException("Several accounts are configured: pass `account`.");
+        var request = new ToolCallRequest(ToolName: "TestTool", Parameters: new Dictionary<string, object?> { ["input"] = "test" });
+
+        var response = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Equal("Tool execution failed: Several accounts are configured: pass `account`.", response.Error);
+        Assert.Equal(nameof(TestExpectedToolException), response.Metadata!["exception_type"]);
+        Assert.True(_logger.HasLoggedError(
+            "Error calling tool TestTool: TestExpectedToolException: Several accounts are configured: pass `account`."));
+        Assert.Null(_logger.LastErrorException);
+    }
+
+    [Fact]
+    public async Task ShouldLogTheException_WhenTheToolFailsUnexpectedly()
+    {
+        _tool.ShouldThrowOnExecute = true;
+        var request = new ToolCallRequest(ToolName: "TestTool", Parameters: new Dictionary<string, object?> { ["input"] = "test" });
+
+        await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.IsType<InvalidOperationException>(_logger.LastErrorException);
+    }
+
+    [Fact]
     public async Task ShouldParseAndExecute_WhenInputIsValidJson()
     {
         // Arrange
@@ -340,6 +369,7 @@ public class TestTool : ToolBase
 
     private Dictionary<string, ParameterSchema> _parameters = [];
     public bool ShouldThrowOnExecute { get; set; }
+    public Exception? ExceptionToThrow { get; set; }
     public bool ShouldCancelOperation { get; set; }
 
     public override ToolSchema Schema => new ToolSchema(
@@ -386,6 +416,9 @@ public class TestTool : ToolBase
         {
             cancellationToken.ThrowIfCancellationRequested();
         }
+
+        if (ExceptionToThrow is not null)
+            throw ExceptionToThrow;
 
         if (ShouldThrowOnExecute)
         {
@@ -439,6 +472,9 @@ public class MinimalTestTool : ToolBase
     }
 }
 
+// An expected tool error: its message is written for the user
+public sealed class TestExpectedToolException(string message) : Exception(message), IExpectedToolError;
+
 // Test logger implementation
 public class TestLogger<T> : ILogger<T>
 {
@@ -453,10 +489,15 @@ public class TestLogger<T> : ILogger<T>
         var message = formatter(state, exception);
 
         if (logLevel == LogLevel.Error)
+        {
             _errorLogs.Add(message);
+            LastErrorException = exception;
+        }
         else if (logLevel == LogLevel.Debug)
             _debugLogs.Add(message);
     }
+
+    public Exception? LastErrorException { get; private set; }
 
     public bool HasLoggedError(string containing) =>
         _errorLogs.Any(log => log.Contains(containing));

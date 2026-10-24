@@ -152,6 +152,9 @@ public sealed class TeamCardViewModel : ObservableObject
     private bool _isRenaming;
     private string _renameText = "";
     private string _renameRefusal = "";
+    private bool _isChangingLlm;
+    private bool _editUsesDefaultLlm;
+    private string? _editLlmProfile;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -228,7 +231,93 @@ public sealed class TeamCardViewModel : ObservableObject
         RenameCommand = new RelayCommand(() => owner.BeginRename(this), () => owner.CanRename && !IsArchived);
         ConfirmRenameCommand = new AsyncRelayCommand(() => owner.RenameAsync(this), () => CanConfirmRename);
         CancelRenameCommand = new RelayCommand(() => IsRenaming = false);
+        // STUDIO-73 (D6): « Change the model » opens an editor on the card, like the rename one; an
+        // archived team keeps its model as it is.
+        ChangeLlmCommand = new RelayCommand(BeginChangeLlm, () => !IsArchived && !IsRenaming && !IsConfirmingDelete);
+        ConfirmLlmCommand = new RelayCommand(() => owner.SaveLlmChoice(this, EditLlmChoice), () => _isChangingLlm);
+        CancelLlmCommand = new RelayCommand(() => IsChangingLlm = false);
+        ConfigureModelCommand = new RelayCommand(() => owner.RequestConfigureModel());
+        var declarations = CrewLlmDeclarations.CountIn(summary.Path);
+        CrewLlmWarning = declarations > 0 ? strings.Format(StudioStringKeys.TeamsCrewOverridesLlm, declarations) : null;
         _scheduledRun = ReadScheduledRun();
+    }
+
+    // ── STUDIO-73: the model the team runs on, changed on its card ──
+
+    /// <summary>« Change the model »: opens the editor, pre-filled with the team's choice.</summary>
+    public RelayCommand ChangeLlmCommand { get; }
+
+    /// <summary>« Save »: the companion file and the launchers take the choice.</summary>
+    public RelayCommand ConfirmLlmCommand { get; }
+
+    /// <summary>« Cancel »: the editor closes, nothing written.</summary>
+    public RelayCommand CancelLlmCommand { get; }
+
+    /// <summary>« Configure a model », in the editor while this machine has no setting: the settings' model tab.</summary>
+    public RelayCommand ConfigureModelCommand { get; }
+
+    /// <summary>Whether the model editor is open in place of the model line.</summary>
+    public bool IsChangingLlm
+    {
+        get => _isChangingLlm;
+        set
+        {
+            if (!SetProperty(ref _isChangingLlm, value))
+                return;
+
+            ConfirmLlmCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>The editor's box: the team follows the default.</summary>
+    public bool EditUsesDefaultLlm
+    {
+        get => _editUsesDefaultLlm;
+        set
+        {
+            if (!SetProperty(ref _editUsesDefaultLlm, value))
+                return;
+
+            // Unticked, the list offers the first setting rather than nothing.
+            if (!value && _editLlmProfile is null && LlmProfiles is [var first, ..])
+                EditLlmProfile = first;
+        }
+    }
+
+    /// <summary>The editor's setting, when the box is unticked.</summary>
+    public string? EditLlmProfile
+    {
+        get => _editLlmProfile;
+        set => SetProperty(ref _editLlmProfile, value);
+    }
+
+    /// <summary>The choice the editor holds.</summary>
+    public TeamLlmChoice EditLlmChoice =>
+        _editUsesDefaultLlm ? TeamLlmChoice.Default : TeamLlmChoice.Pinned(_editLlmProfile);
+
+    /// <summary>The settings of this machine, by name.</summary>
+    public IReadOnlyList<string> LlmProfiles => _owner.LlmProfiles;
+
+    /// <summary>Whether this machine has a setting: otherwise the box is greyed and « Configure a model » shows.</summary>
+    public bool HasLlmProfiles => LlmProfiles.Count > 0;
+
+    /// <summary>« Use the default model (X) ».</summary>
+    public string UseDefaultLlmLabel => _owner.UseDefaultLlmLabel;
+
+    /// <summary>The agents and tasks of the team's crew that name their own model; null when none does.</summary>
+    public string? CrewLlmWarning { get; }
+
+    /// <summary>Whether the warning shows.</summary>
+    public bool HasCrewLlmWarning => CrewLlmWarning is not null;
+
+    private void BeginChangeLlm()
+    {
+        var choice = Summary.LlmChoice;
+        _editUsesDefaultLlm = choice.UseDefault;
+        _editLlmProfile = choice.Profile;
+        OnPropertiesChanged(nameof(EditUsesDefaultLlm), nameof(EditLlmProfile), nameof(LlmProfiles), nameof(HasLlmProfiles),
+            nameof(UseDefaultLlmLabel));
+        IsChangingLlm = true;
     }
 
     /// <summary>« Rename » (STUDIO-28, D-07): opens the editor on the team's name, in place of the action row.</summary>
@@ -253,6 +342,9 @@ public sealed class TeamCardViewModel : ObservableObject
             // A refusal belongs to the attempt it answered: a closed editor forgets it.
             if (!value)
                 RefuseRename("");
+            else
+                IsChangingLlm = false;
+            ChangeLlmCommand.RaiseCanExecuteChanged();
             _owner.OnQuestionChanged();
         }
     }
@@ -481,7 +573,8 @@ public sealed class TeamCardViewModel : ObservableObject
     internal void RefreshSetting()
     {
         _scheduledRun = ReadScheduledRun();
-        OnPropertiesChanged(nameof(ProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine), nameof(HasScheduledRunLine));
+        OnPropertiesChanged(nameof(ProfileDisplay), nameof(HasProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine),
+            nameof(HasScheduledRunLine), nameof(UseDefaultLlmLabel), nameof(LlmProfiles), nameof(HasLlmProfiles));
     }
 
     /// <summary>The first thing the scheduled run cannot follow — only for a team that holds a schedule.</summary>
@@ -522,6 +615,7 @@ public sealed class TeamCardViewModel : ObservableObject
             if (!SetProperty(ref _isConfirmingDelete, value))
                 return;
 
+            ChangeLlmCommand.RaiseCanExecuteChanged();
             OnPropertyChanged(nameof(IsIdle));
             // A refusal belongs to the attempt it answered: a disarmed banner forgets it.
             if (!value)
@@ -803,13 +897,17 @@ public sealed class TeamCardViewModel : ObservableObject
     public bool HasAgentCount => Summary.AgentCount is not null;
 
     /// <summary>
-    /// The setting-name part ("setting: X") — the meta line's model-profile part; a setting no setting
-    /// of this machine bears says that the default runs in its place (STUDIO-52), as the Run screen does.
+    /// The model line ("Model: Default (X)", "Model: X", STUDIO-73) — a setting no setting of this
+    /// machine bears says that the default runs in its place (STUDIO-52), as the Run screen does. A
+    /// card built without the model settings names a pinned setting as recorded, and nothing else.
     /// </summary>
     public string? ProfileDisplay =>
-        Summary.Profile is { Length: > 0 } profile
-            ? _strings.Format(StudioStringKeys.TeamsSettingLabel, _owner.SettingOf(Summary)?.Label(_strings) ?? profile)
+        _owner.LlmLabelOf(Summary) is { } label
+            ? _strings.Format(StudioStringKeys.TeamsLlmLine, label)
             : null;
+
+    /// <summary>Whether the model line shows.</summary>
+    public bool HasProfileDisplay => ProfileDisplay is not null;
 
     /// <summary>
     /// The card's one meta line, « · »-joined like the launcher's (v3 F-02):
@@ -817,11 +915,12 @@ public sealed class TeamCardViewModel : ObservableObject
     /// </summary>
     public string MetaLine => string.Join(
         " · ",
-        new[] { AgentCountDisplay, IsArchived ? ArchivedDisplay : ScheduleDisplay, LastRunDisplay, ProfileDisplay }
+        new[] { AgentCountDisplay, IsArchived ? ArchivedDisplay : ScheduleDisplay, LastRunDisplay }
             .Where(part => !string.IsNullOrWhiteSpace(part)));
 
     /// <summary>What the search reads (STUDIO-32, D-01): the name and the whole need, as a reader of the card sees them.</summary>
-    internal string SearchableText => $"{Name} {Description}";
+    /// <remarks>The model line too (STUDIO-73): a search by a setting's name finds the teams that run on it.</remarks>
+    internal string SearchableText => $"{Name} {Description} {ProfileDisplay}";
 
     internal void SetLastRun(DateTimeOffset? startedAt, RunOutcome? outcome)
     {
@@ -973,6 +1072,19 @@ public sealed record TeamsDependencies
     /// written again for this machine. Null installs the folder as it stands.
     /// </summary>
     public Func<string, Task>? PrepareSchedule { get; init; }
+
+    /// <summary>
+    /// A card's « Save » of its model (STUDIO-73): records the choice of the team at the given folder
+    /// and writes its launchers again — null once done, the refusal otherwise. Null records it
+    /// through the catalog alone.
+    /// </summary>
+    public Func<string, TeamLlmChoice, string?>? SaveLlmChoice { get; init; }
+
+    /// <summary>
+    /// Whether the team at the given folder has a settings file of its own (STUDIO-62): a team that
+    /// follows the default then runs on that file's (D7). Null: none has.
+    /// </summary>
+    public Func<string, bool>? HasOwnSettingsFile { get; init; }
 }
 
 /// <summary>
@@ -1004,6 +1116,8 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly Func<ModelProfileSet>? _modelSettings;
     private readonly Func<TeamSummary, ScheduledRunNotice?>? _scheduledRun;
     private readonly Func<string, Task>? _prepareSchedule;
+    private readonly Func<string, TeamLlmChoice, string?>? _saveLlmChoice;
+    private readonly Func<string, bool>? _hasOwnSettingsFile;
     private readonly string _workspace;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1054,6 +1168,8 @@ public sealed class TeamsViewModel : ObservableObject
         _modelSettings = wired.ModelSettings;
         _scheduledRun = wired.ScheduledRun;
         _prepareSchedule = wired.PrepareSchedule;
+        _saveLlmChoice = wired.SaveLlmChoice;
+        _hasOwnSettingsFile = wired.HasOwnSettingsFile;
         _lastRunsKnown = _historyStore is null;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         TeamsRoot = root;
@@ -1439,9 +1555,64 @@ public sealed class TeamsViewModel : ObservableObject
     /// <summary>Whether « Rename » can reach the engine — the folder, its session and its schedule are the engine's to move (STUDIO-28).</summary>
     public bool CanRename => _forge is not null;
 
-    /// <summary>The standing of <paramref name="team"/>'s setting among the settings shown (STUDIO-52); null when none are wired.</summary>
-    internal TeamSettingStanding? SettingOf(TeamSummary team) =>
-        _modelSettings is null ? null : TeamSettingStanding.Of(team.Profile, _modelSettings());
+    /// <summary>
+    /// The model <paramref name="team"/> runs on, in the card's words (STUDIO-73): « Default (X) »,
+    /// the setting's standing, or the team's own settings file (D7); without the model settings, a
+    /// pinned name as recorded and nothing for a follower.
+    /// </summary>
+    internal string? LlmLabelOf(TeamSummary team)
+    {
+        var choice = team.LlmChoice;
+        if (_modelSettings is null)
+            return choice.Profile;
+
+        var settings = _modelSettings();
+        return TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings)
+            .LlmLabel(_strings, settings, ownSettingsFile: choice.UseDefault && _hasOwnSettingsFile?.Invoke(team.Path) == true);
+    }
+
+    /// <summary>Raised by a card's « Configure a model »; the shell opens the model settings.</summary>
+    public event EventHandler? ConfigureModelRequested;
+
+    internal void RequestConfigureModel() => ConfigureModelRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>The settings of this machine, by name, for a card's model editor.</summary>
+    internal IReadOnlyList<string> LlmProfiles =>
+        _modelSettings is null ? [] : [.. _modelSettings().Profiles.Select(profile => profile.Name)];
+
+    /// <summary>« Use the default model (X) », X the setting elected; without one, says so.</summary>
+    internal string UseDefaultLlmLabel =>
+        _modelSettings?.Invoke().Default is { } elected
+            ? _strings.Format(StudioStringKeys.TeamsUseDefaultLlm, elected.Name)
+            : _strings[StudioStringKeys.TeamsUseDefaultLlmNone];
+
+    /// <summary>
+    /// The card's « Save » (STUDIO-73): the team runs on <paramref name="choice"/> from now on — its
+    /// companion file and its launchers, through the shell when wired — and the list says so.
+    /// </summary>
+    internal void SaveLlmChoice(TeamCardViewModel card, TeamLlmChoice choice)
+    {
+        ArgumentNullException.ThrowIfNull(card);
+
+        var refusal = _saveLlmChoice is { } save ? save(card.Summary.Path, choice) : SaveThroughCatalog(card.Summary.Path, choice);
+        if (refusal is not null)
+        {
+            StatusMessage = refusal;
+            return;
+        }
+
+        card.IsChangingLlm = false;
+        var name = card.Name;
+        Refresh();
+        var label = LlmLabelOf(TeamCatalog.Describe(card.Summary.Path)) ?? choice.Profile ?? "";
+        StatusMessage = _strings.Format(StudioStringKeys.TeamsLlmSaved, name, label);
+
+        static string? SaveThroughCatalog(string team, TeamLlmChoice choice)
+        {
+            TeamCatalog.SaveLlmChoice(team, choice);
+            return null;
+        }
+    }
 
     /// <summary>What <paramref name="team"/>'s scheduled run cannot follow (STUDIO-52); null when nothing, or nothing is wired.</summary>
     internal ScheduledRunNotice? ScheduledRunOf(TeamSummary team) => _scheduledRun?.Invoke(team);

@@ -34,17 +34,18 @@ public sealed class VerboseAgentLogTests
         new AgentBuilder().Role("Talker").Goal("Talk").MaxIterations(5).Verbose(verbose).WithTool(tool).Build();
 
     private static async System.Threading.Tasks.Task<List<CategoryLogLine>> RunTurnAsync(
-        DomainAgent agent, string toolNameCalled = "worker")
+        DomainAgent agent, string toolNameCalled = "worker", string answer = "the answer",
+        LogLevel verboseMinimum = LogLevel.Trace)
     {
         var lines = new ConcurrentQueue<CategoryLogLine>();
         var provider = new ScriptedFullLlmProvider();
         provider.EnqueueOpenAiToolCall("call-1", toolNameCalled, "{\"input\":\"x\"}");
-        provider.EnqueueText("the answer");
+        provider.EnqueueText(answer);
         using var chatClient = new LlmProviderToChatClientAdapter(provider);
         var orchestrator = new ExecutionOrchestrator(
             new RecordingCategoryLogger(OrchestratorCategory, lines), new LlmProviderAdapter(provider),
             chatClient, [new SpyTool("worker")], new FakeFileSystemService(),
-            new RecordingCategoryLogger(ExecutionLogCategories.Verbose, lines));
+            new RecordingCategoryLogger(ExecutionLogCategories.Verbose, lines) { MinimumLevel = verboseMinimum });
         var task = DomainTask.Create(TaskDescription.From("Do it"), ExpectedOutput.From("An answer"));
 
         await orchestrator.ExecuteTaskCoreAsync(
@@ -83,6 +84,33 @@ public sealed class VerboseAgentLogTests
         var lines = await RunTurnAsync(BuildAgent(false, new SpyTool("worker")));
 
         AssertTurnLinesUnder(lines, OrchestratorCategory, ExecutionLogCategories.Verbose);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldLogAOneLinePreviewOfTheAnswer_WhenTheLoggerIsAtInformation()
+    {
+        // The run's final answer is printed whole under « === Crew Output === »: at -v 1 the
+        // journal showed it twice.
+        var answer = "# Report\n\n" + new string('x', 1000);
+
+        var lines = await RunTurnAsync(BuildAgent(true, new SpyTool("worker")), answer: answer, verboseMinimum: LogLevel.Information);
+
+        var line = Assert.Single(lines, l => l.Message.StartsWith("LLM response", StringComparison.Ordinal));
+        Assert.DoesNotContain('\n', line.Message);
+        Assert.Contains($"({answer.Length} chars): # Report xxx", line.Message, StringComparison.Ordinal);
+        Assert.EndsWith("...", line.Message, StringComparison.Ordinal);
+        Assert.True(line.Message.Length < 400);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldLogTheWholeAnswer_WhenTheLoggerIsAtDebug()
+    {
+        var answer = "# Report\n\n" + new string('x', 1000);
+
+        var lines = await RunTurnAsync(BuildAgent(true, new SpyTool("worker")), answer: answer);
+
+        var line = Assert.Single(lines, l => l.Message.StartsWith("LLM response", StringComparison.Ordinal));
+        Assert.EndsWith(answer, line.Message, StringComparison.Ordinal);
     }
 
     [Fact]
