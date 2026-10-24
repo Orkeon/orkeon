@@ -183,12 +183,7 @@ internal sealed class RunCommandOptions : CliOptions
         /// <summary>Computed log path or null when logging is disabled.</summary>
         internal string? ResolvedLlmLogPath
         {
-            get
-            {
-                if (!LlmLogEnabled && string.IsNullOrWhiteSpace(LlmLogPath)) return null;
-                var dir = string.IsNullOrWhiteSpace(LlmLogPath) ? "llm-logs" : LlmLogPath;
-                return Path.GetFullPath(dir);
-            }
+            get => RunnerLlmLog.ResolvePath(LlmLogEnabled, LlmLogPath);
         }
 
         /// <summary>
@@ -670,15 +665,7 @@ internal static partial class RunCommand
         // an "allowed-external" mount regardless of cwd because the script is the input.
         cliMounts.Insert(0, $"{FileSystemMount.Quote(scriptDir)}:{RunnerVirtualRoots.Script}:ro");
         // The exchange log is infrastructure — reachable by the VFS, invisible to agents.
-        var internalMounts = Array.Empty<string>();
-        if (llmLogPath != null)
-        {
-            // A mount base path must exist before the registry is built, or
-            // FileSystemServiceRegistration throws DirectoryNotFoundException — the YAML
-            // runner has done this since the flag existed.
-            Directory.CreateDirectory(llmLogPath);
-            internalMounts = [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw"];
-        }
+        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
@@ -815,21 +802,8 @@ internal static partial class RunCommand
         // input, not a user-declared mount — so we don't gate it behind
         // --allow-external-mounts. Only LLM log directories outside the cwd require
         // explicit opt-in (parity with the YAML runner's safety stance for writes).
-        // "Outside" asked of the same predicate PathValidator enforces the rule with: a bare
-        // StartsWith reads ~/proj-old as inside ~/proj and skips the opt-in the validator then
-        // needs (see PhysicalPathContainment).
-        var llmLogOutsideCwd = llmLogPath != null
-            && !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(llmLogPath, cwd);
-        if (llmLogOutsideCwd && !options.EffectiveAllowExternalMounts)
-        {
-            await Console.Error.WriteLineAsync(
-                "ERROR: --allow-external-mounts is required when --llm-log-path "
-                + "points outside the current working directory "
-                + "(or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1).").ConfigureAwait(false);
-            await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
-            await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
+        if (!RunnerLlmLog.EnsureAllowed(llmLogPath, options.EffectiveAllowExternalMounts, Console.Error, cwd))
             return null;
-        }
 
         // Same guards as the YAML runner's TryBuildHost: two --mount arguments on one root, or
         // a user mount claiming a root this runner needs, would otherwise surface as a

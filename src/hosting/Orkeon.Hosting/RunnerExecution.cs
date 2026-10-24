@@ -124,7 +124,7 @@ public static partial class RunnerExecution
 
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
-        var internalMounts = CreateLlmLogMounts(llmLogPath);
+        var internalMounts = RunnerLlmLog.CreateMounts(llmLogPath);
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
@@ -299,22 +299,6 @@ public static partial class RunnerExecution
             configPath, configDir, virtualRoot, virtualConfigPath,
             inspection.IsCrewDirectory, isScript, settingsPath);
         return true;
-    }
-
-    /// <summary>
-    /// The internal mount carrying the LLM exchange log, or nothing when logging is off. The
-    /// log is infrastructure: the VFS must reach it (AppendAllTextAsync), no agent has any
-    /// business addressing it — hence the internal-mount list rather than <c>--mount</c>.
-    /// </summary>
-    private static IReadOnlyList<string> CreateLlmLogMounts(string? llmLogPath)
-    {
-        if (llmLogPath is null)
-            return [];
-
-        // Mount base paths must exist before FileSystemRegistry is built
-        // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
-        Directory.CreateDirectory(llmLogPath);
-        return [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw"];
     }
 
     /// <summary>

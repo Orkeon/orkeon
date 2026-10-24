@@ -557,7 +557,7 @@ place d'une entrée écrite à la main sont refusés.
   carte (STUDIO-54) : un réglage Docker Model Runner élu écrit `"ApiKey": "not-needed"` là où `Llm` ne
   porte aucune clé, et l'élection de toute autre carte retire exactement cette valeur — laissée, elle
   passerait avant l'`ApiKeyEnvVar` du réglage élu ; le fichier qu'a écrit
-  `orkeon init --preset docker-model-runner`, puis DeepSeek élu dans Studio, compris. Toute autre
+  `orkeon init --provider docker-model-runner`, puis DeepSeek élu dans Studio, compris. Toute autre
   `ApiKey` reste. Une équipe lancée sur un autre réglage pose tous ces champs sur son processus enfant
   en `ORKEON_Llm__*`, valeur ou vide, `ORKEON_Llm__ApiKeyEnvVar` compris : une équipe sur Z.AI dont la
   clé n'est pas mémorisée échoue sans clé au lieu d'envoyer à Z.AI la clé DeepSeek du défaut ; une
@@ -605,13 +605,14 @@ place d'une entrée écrite à la main sont refusés.
 
 ### `LlmLogging`
 
-Règle la capture des échanges LLM. Lue uniquement quand le run passe `--llm-log`, qui dit où va
-le journal (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`). Un interrupteur qui
+Règle la capture des échanges LLM. Lue uniquement quand le run passe `--llm-log` ou
+`--llm-log-path`, qui disent où va le journal (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`) :
+aucune clé de cette section n'active le journal ni ne choisit son dossier. Un interrupteur qui
 ne vaut ni `true` ni `false`, une longueur qui n'est pas un nombre entier, ou une autre clé
-refuse le démarrage d'un run qui passe `--llm-log`.
+refuse le démarrage d'un run qui passe `--llm-log`. Recette : [suivre le run et garder les échanges LLM](../getting-started/run-your-first-example.md#suivre-le-run-et-garder-les-échanges-llm).
 
 <!-- settings:LlmLogging -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|

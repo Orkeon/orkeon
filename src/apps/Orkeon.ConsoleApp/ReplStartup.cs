@@ -234,11 +234,13 @@ internal static class ReplStartup
         string[] reserved =
         [
             Orkeon.Constants.FileSystem.RunnerVirtualRoots.Sandbox,
+            .. scriptedOpts.ResolvedLlmLogPath is null ? Array.Empty<string>() : [Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs],
             .. ownMounts.Select(MountSelection.TryGetVirtualRoot).OfType<string>(),
         ];
 
         using var lines = new StringWriter(System.Globalization.CultureInfo.InvariantCulture);
-        var honoured = RunnerExecution.EnsureVirtualRootsAreUnique(scriptedOpts.Mounts, layers, label, lines)
+        var honoured = RunnerLlmLog.EnsureAllowed(scriptedOpts.ResolvedLlmLogPath, scriptedOpts.EffectiveAllowExternalMounts, lines)
+            && RunnerExecution.EnsureVirtualRootsAreUnique(scriptedOpts.Mounts, layers, label, lines)
             && RunnerExecution.EnsureReservedRootsAreFree(scriptedOpts.Mounts, layers, lines, reserved)
             && RunnerExecution.EnsureMountSelectionIsResolvable(
                 scriptedOpts.Mounts, [], CrewMountDeclarations.None, layers, label, OfferedMountSelectors.MountOption, lines, out var selection)

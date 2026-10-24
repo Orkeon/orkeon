@@ -30,7 +30,9 @@ seule fois, en détail, dans
 ## 1. Depuis les sources
 
 Clonez, compilez, et exécutez n'importe quel `config.yaml` sous `examples/` via
-le projet CLI `orkeon` :
+le projet CLI `orkeon`. Le fichier de settings est à créer : copiez
+`examples/appsettings/appsettings.deepseek.local.json.example` sous le même nom sans
+`.example` et mettez-y votre clé ([choisir un profil LLM](./run-your-first-example.md#3-choisir-un-profil-llm)).
 
 ```bash
 git clone https://github.com/Orkeon/orkeon.git

@@ -108,6 +108,33 @@ That single command runs the crew end-to-end and exits. The writer agent's
 > or `dotnet tool install`, the same run is just:
 > `orkeon run examples/01-enterprise/01-research-assistant/config.yaml --settings … --mount ./out:/output:rw -v 1`.
 
+### Follow the run and keep the LLM exchanges
+
+To watch the run in the terminal **and** keep every request and response sent to the
+model in a folder of your choice, add `--llm-log-path`:
+
+```bash
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run \
+  examples/01-enterprise/01-research-assistant/config.yaml \
+  --settings examples/appsettings/appsettings.deepseek.local.json \
+  --mount ./out:/output:rw \
+  --llm-log-path ./logs-llm \
+  -v 1
+```
+
+- `-v 1` prints what the agents and tools do on the console, and one line per LLM exchange
+  (provider, model, status, duration) once the log is on. It never prints the bodies.
+- `--llm-log-path ./logs-llm` writes each exchange **in full** (request and response, headers
+  and payload) as `.jsonl` files in `./logs-llm`, created if missing. It turns the log on by
+  itself; `--llm-log` alone writes to `./llm-logs`.
+- A folder **outside** the current directory (`/tmp/logs`, `~/logs`) also needs
+  `--allow-external-mounts`; without it the run stops before calling the model.
+
+The settings section [`LlmLogging`](../reference/configuration.md#llmlogging) tunes what the
+files keep (`FullEmbeddingLog`, `LogStreamingExchanges`, `MaxBodyLengthChars`). It is read only
+with one of the two flags, and no setting chooses the folder. The interactive console
+`orkeon-repl` takes the same two flags ([CLI reference](../reference/cli.md#orkeon-repl--the-separate-interactive-console)).
+
 ## Every flag, explained
 
 The `orkeon` CLI options you will actually reach for:
@@ -116,7 +143,7 @@ The `orkeon` CLI options you will actually reach for:
 |---|---|---|
 | `<config>` (positional) | — | **Required** (except with `--list-tools`). The crew definition passed to `orkeon run <config>` — a `.yaml` file, an `.ork.ts` [scripting](../architecture/scripting.md) file, or a directory holding a multi-file YAML crew. The `run` verb itself is optional: `orkeon <config>` does the same. |
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
-| `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
+| `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = agent and tool activity, plus one summary line per LLM exchange when `--llm-log` is on, `2` = full debug. The bodies of the exchanges are only in the `--llm-log` files. |
 | `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro`, `rw` or `rwnd` (read-write, no delete); `;<subpath>:<rights>` segments override the rights below the mount. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
 | `--mount-id <id>` | | When several `Orkeon:FileSystem:Mounts` entries of the settings declare the same virtual root, keep the one whose id (the 26-character prefix before its `\|`) is given. Several ids go space-separated after a single flag. |
 | `--allow-external-mounts` | | Permit mounts (and a `<config>` path or `--llm-log-path`) located **outside** the current working directory. Without it, a `--mount` outside the working directory is refused at start (exit `1`); the script's folder and every settings entry in force (one chosen by id included) need no flag. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
@@ -125,8 +152,8 @@ The `orkeon` CLI options you will actually reach for:
 | `--inputs <json>` | | Inline JSON inputs forwarded to a script as the global `inputs` variable (`.ork.ts` path). |
 | `--inputs-file <path>` | | Same as `--inputs`, read from a JSON file. |
 | `--llm-profile <id>` | | Run on the host LLM profile `<id>` (`Llm:Profiles:<id>` in the settings or the `ORKEON_` environment) as this run's default: the `Llm` section becomes that profile, whole. An id the configuration does not define is refused with exit 1 before any host is built — see [the CLI reference](../reference/cli.md). |
-| `--llm-log` | | Capture every LLM HTTP exchange (request + response, headers + payload) as `.jsonl` under `./llm-logs`. |
-| `--llm-log-path <dir>` | | Same as `--llm-log`, but writes to `<dir>` (and implies `--llm-log`). |
+| `--llm-log` | | Capture every LLM HTTP exchange (request + response, headers + payload) as `.jsonl` under `./llm-logs`. The [`LlmLogging`](../reference/configuration.md#llmlogging) settings tune what is kept. |
+| `--llm-log-path <dir>` | | Same as `--llm-log`, but writes to `<dir>` (and implies `--llm-log`). A `<dir>` outside the working directory needs `--allow-external-mounts`. |
 | `--validate` | | Dry-run: resolve settings, build the host and load the crew (strict tool resolution) **without** probing the LLM or running anything. Prints `VALIDATION OK/FAILED` and exits 0 / non-zero. |
 | `--list-tools` | | Build the host and print the sorted registered tool names, one per line, then exit — no crew required. |
 | `--events jsonl` | | Emit the versioned JSONL event protocol on stdout instead of plain text (how Orkeon Studio drives a run) — see [the run event bus](../architecture/run-event-bus.md). |

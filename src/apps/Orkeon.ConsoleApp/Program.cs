@@ -161,6 +161,8 @@ static class Program
             new Orkeon.Hosting.RunnerMountPlan
             {
                 CliMounts = CliWorkspaceMountBootstrapper.ResolvePhysicalSegments(scriptedOpts.Mounts),
+                // The exchange log (--llm-log), as orkeon run mounts it: reachable by the VFS, invisible to agents.
+                InternalMounts = Orkeon.Hosting.RunnerLlmLog.CreateMounts(scriptedOpts.ResolvedLlmLogPath),
                 InputDirectories = [.. scriptedOpts.CommandDirs, .. scriptedOpts.CrewDirs],
                 AllowExternalMounts = scriptedOpts.EffectiveAllowExternalMounts,
             },
@@ -248,6 +250,9 @@ static class Program
         // MCP:Servers, as the runners read it: registered when servers are declared, connected by the
         // runner before it loads the commands (ScriptedCommandsRunner.OnStartAsync).
         Orkeon.Hosting.RunnerHost.RegisterMcp(context, services);
+        // --llm-log / --llm-log-path: the exchange log orkeon run writes, on the folder mounted above.
+        if (scriptedOpts.ResolvedLlmLogPath is not null)
+            Orkeon.Hosting.RunnerHost.RegisterLlmExchangeLogging(context, services, Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs);
         services.AddOrkeonFileSystem(context.Configuration);
 
         services.AddOrkeonFileSystemTools();

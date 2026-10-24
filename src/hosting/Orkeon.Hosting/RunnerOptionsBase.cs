@@ -140,15 +140,7 @@ public abstract class RunnerOptionsBase
     /// </summary>
     public string? ResolvedLlmLogPath
     {
-        get
-        {
-            if (!LlmLogEnabled && string.IsNullOrWhiteSpace(LlmLogPath))
-                return null;
-
-            // --llm-log-path implies --llm-log
-            var dir = string.IsNullOrWhiteSpace(LlmLogPath) ? "llm-logs" : LlmLogPath;
-            return Path.GetFullPath(dir);
-        }
+        get => RunnerLlmLog.ResolvePath(LlmLogEnabled, LlmLogPath);
     }
 
     /// <summary>
