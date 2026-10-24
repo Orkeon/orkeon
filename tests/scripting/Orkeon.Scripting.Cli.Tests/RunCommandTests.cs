@@ -19,7 +19,7 @@ public sealed class RunCommandTests
         // Validation is eager (synchronous) so a null argument surfaces at the call site
         // rather than being captured inside the returned Task. Wrap in an Action so the
         // synchronous throw is observed (not the async overload of Assert.Throws).
-        Action act = () => _ = RunCommand.ExecuteAsync(null!);
+        Action act = () => _ = RunCommand.ExecuteAsync(Orkeon.Hosting.SystemRunnerConsole.Instance, null!);
         Assert.Throws<ArgumentNullException>(act);
     }
 
@@ -41,7 +41,7 @@ public sealed class RunCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
         });
@@ -68,7 +68,7 @@ public sealed class RunCommandTests
         string refusedErr;
         using (var console = new TestConsole())
         {
-            refused = await RunCommand.ExecuteAsync(new RunCommandOptions
+            refused = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = script,
                 Mounts = new[] { $"{other.OutDir}:/data:ro" },
@@ -81,7 +81,7 @@ public sealed class RunCommandTests
         Assert.Contains("--allow-external-mounts", refusedErr, StringComparison.Ordinal);
 
         using var console2 = new TestConsole();
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions { ScriptPath = script });
+        var exit = await RunCommand.ExecuteAsync(console2, new RunCommandOptions { ScriptPath = script });
 
         // A denied read throws in the script and turns the exit code: ExitOk is the read.
         Assert.Equal(Program.ExitOk, exit);
@@ -94,7 +94,7 @@ public sealed class RunCommandTests
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = Path.Combine(scratch.ScriptDir, "nope.ork.ts"),
         });
@@ -110,7 +110,7 @@ public sealed class RunCommandTests
         var script = scratch.WriteScript("hello.ork.ts", ResultOne);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
         });
@@ -130,7 +130,7 @@ public sealed class RunCommandTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             Mounts = new[] { $"{scratch.OutDir}:/output:rw" },
@@ -152,7 +152,7 @@ public sealed class RunCommandTests
         var script = scratch.WriteScript("v.ork.ts", ResultOne);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             Verbose = verbose,
@@ -170,7 +170,7 @@ public sealed class RunCommandTests
         var script = scratch.WriteScript("clamp.ork.ts", ResultOne);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             Verbose = 99, // Math.Clamp(_, 0, 2) keeps it at 2.
@@ -186,7 +186,7 @@ public sealed class RunCommandTests
         var script = scratch.WriteScript("s.ork.ts", ResultOne);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             SettingsPath = Path.Combine(scratch.Root, "does-not-exist.json"),
@@ -204,7 +204,7 @@ public sealed class RunCommandTests
         var settings = scratch.WriteFile("appsettings.json", "{}");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             SettingsPath = settings,
@@ -222,7 +222,7 @@ public sealed class RunCommandTests
         var inputsFile = scratch.WriteFile("inputs.json", "{\"x\":1}");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             InputsJson = "{\"y\":2}",
@@ -241,7 +241,7 @@ public sealed class RunCommandTests
         var script = scratch.WriteScript("mem.ork.ts", ResultOne);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             MemoryLimitMb = limitMb,

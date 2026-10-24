@@ -229,25 +229,26 @@ internal static partial class RunCommand
     };
 
     /// <summary>Loads the script and executes it; returns the CLI exit code.</summary>
-    public static Task<int> ExecuteAsync(RunCommandOptions options)
+    public static Task<int> ExecuteAsync(IRunnerConsole console, RunCommandOptions options)
     {
         // Validate eagerly (synchronously) so a null argument surfaces at the call
         // site rather than being captured inside the returned Task (S4457).
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
-        return ExecuteCoreAsync(options);
+        return ExecuteCoreAsync(console, options);
     }
 
-    private static async Task<int> ExecuteCoreAsync(RunCommandOptions options)
+    private static async Task<int> ExecuteCoreAsync(IRunnerConsole console, RunCommandOptions options)
     {
-        var rejected = await ValidateStreamingOptionsAsync(options).ConfigureAwait(false);
+        var rejected = await ValidateStreamingOptionsAsync(console, options).ConfigureAwait(false);
         if (rejected is not null)
             return rejected.Value;
 
-        var routed = await TryRouteToSharedRunnerAsync(options).ConfigureAwait(false);
+        var routed = await TryRouteToSharedRunnerAsync(console, options).ConfigureAwait(false);
         if (routed is not null)
             return routed.Value;
 
-        return await RunProceduralScriptAsync(options).ConfigureAwait(false);
+        return await RunProceduralScriptAsync(console, options).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -255,14 +256,14 @@ internal static partial class RunCommand
     /// otherwise be ignored in silence. Returns the exit code to report, or <c>null</c>
     /// when the invocation is coherent and the run may proceed.
     /// </summary>
-    private static async Task<int?> ValidateStreamingOptionsAsync(RunCommandOptions options)
+    private static async Task<int?> ValidateStreamingOptionsAsync(IRunnerConsole console, RunCommandOptions options)
     {
         // --events accepts exactly one spelling. Any other value used to produce JSONL
         // silently — a caller asking for a format we do not have must hear "no", not receive
         // a stream they did not ask for.
         if (options.Events is not null && !string.Equals(options.Events, "jsonl", StringComparison.OrdinalIgnoreCase))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon run: unsupported --events format '{options.Events}' (only: jsonl).").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
@@ -271,7 +272,7 @@ internal static partial class RunCommand
         // the bridge opens. Saying so beats silently ignoring the option.
         if (!options.EmitsEvents && !string.Equals(options.Client, "studio", StringComparison.Ordinal))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon run: --client has no effect without --events jsonl.").ConfigureAwait(false);
         }
 
@@ -280,7 +281,7 @@ internal static partial class RunCommand
         if (options.EmitsEvents
             && (string.IsNullOrWhiteSpace(options.Client) || options.Client.Contains('/', StringComparison.Ordinal)))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon run: --client '{options.Client}' is not a valid peer name (non-empty, no '/').").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
@@ -294,19 +295,19 @@ internal static partial class RunCommand
     /// its crew off - and rejects an invocation that names no crew at all. Returns the exit
     /// code, or <c>null</c> when the target is a procedural script the caller must run itself.
     /// </summary>
-    private static async Task<int?> TryRouteToSharedRunnerAsync(RunCommandOptions options)
+    private static async Task<int?> TryRouteToSharedRunnerAsync(IRunnerConsole console, RunCommandOptions options)
     {
         // --list-tools dumps the runtime tool registry and needs no crew definition: it goes
         // straight to the shared runner (same host, same tool set as a real kickoff), so the
         // emitted manifest matches the standard runner byte-for-byte. Handled BEFORE the
         // config-path checks precisely because it must run without a path.
         if (options.ListTools)
-            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
 
         // Every remaining mode (validate or run) needs a crew definition path.
         if (string.IsNullOrWhiteSpace(options.ScriptPath))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon run: a crew definition path is required (unless --list-tools).").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
@@ -324,26 +325,26 @@ internal static partial class RunCommand
             var inspection = CrewDirectoryLayout.Inspect(options.ScriptPath);
             if (!inspection.IsCrewDirectory)
             {
-                await Console.Error.WriteLineAsync($"orkeon run: {inspection.Error}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon run: {inspection.Error}").ConfigureAwait(false);
                 return Program.ExitScriptError;
             }
 
             // Same shared one-shot runner as a .yaml crew — it owns --validate, the mounts and
             // the exit codes, so every option behaves identically on a directory and on a file.
-            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         // --validate is a crew-load concern (YAML or .ork.ts crew definition): the shared runner
         // loads the crew strictly and never probes the LLM, dispatching on the config extension.
         if (options.Validate)
-            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
 
         // Dispatch by extension BEFORE any script-specific setup (esbuild, /script:ro mount).
         // YAML crews delegate entirely to the shared one-shot runner — the same code path the
         // standalone standard runner uses — so a single published `orkeon` tool runs both
         // crew.ork.ts and crew.yaml without the consumer having to compile a runner.
         if (IsYamlConfig(options.ScriptPath))
-            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
 
         // A .ork.ts that hands its crew off via `globalThis.crew = …` is a DECLARATIVE
         // crew definition, not a procedural script: it runs through the same shared
@@ -355,8 +356,8 @@ internal static partial class RunCommand
         if (RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
             && await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false))
         {
-            await WarnAboutScriptOnlyOptionsAsync(options).ConfigureAwait(false);
-            return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
+            await WarnAboutScriptOnlyOptionsAsync(console, options).ConfigureAwait(false);
+            return await RunViaSharedRunnerAsync(console, options).ConfigureAwait(false);
         }
 
         return null;
@@ -368,14 +369,14 @@ internal static partial class RunCommand
     /// exit code.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
-    private static async Task<int> RunProceduralScriptAsync(RunCommandOptions options)
+    private static async Task<int> RunProceduralScriptAsync(IRunnerConsole console, RunCommandOptions options)
     {
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true; // let the script wind down rather than crash.
             cts.Cancel();
-        };
+            return true; // let the script wind down rather than crash.
+        });
 
         // BUS-02 on the script path too: the first version consulted EmitsEvents only on the
         // shared-runner branch, so `--events jsonl` on a .ork.ts printed plain text and not a
@@ -383,14 +384,14 @@ internal static partial class RunCommand
         Run.ObservedRunContext? observed = null;
         if (options.EmitsEvents)
         {
-            var events = new Events.OrkeonEventWriter(Console.Out);
+            var events = new Events.OrkeonEventWriter(console.Output);
             events.Emit(Run.RunEventKinds.RunStarted, new
             {
                 target = options.ScriptPath,
                 stream = options.Stream,
             });
 #pragma warning disable CA2000 // Disposed on every path: FinishAsync below tears the context down, including when the run threw.
-            observed = new Run.ObservedRunContext(events, options.Stream, options.Client);
+            observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
 #pragma warning restore CA2000
         }
 
@@ -404,12 +405,12 @@ internal static partial class RunCommand
             // opened and closed the stream properly.
             if (!File.Exists(options.ScriptPath))
             {
-                await Console.Error.WriteLineAsync($"orkeon run: script not found: {options.ScriptPath}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon run: script not found: {options.ScriptPath}").ConfigureAwait(false);
                 exitCode = Program.ExitScriptError;
             }
             else
             {
-                exitCode = await RunWithHostAsync(options, observed, cts.Token).ConfigureAwait(false);
+                exitCode = await RunWithHostAsync(console, options, observed, cts.Token).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -421,26 +422,26 @@ internal static partial class RunCommand
             // A setting the host refuses is a configuration error here as on the YAML path: the
             // sentence, exit 1 (GAP-35) — not an "unexpected error" with its type in front of it.
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
-            await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
             exitCode = Program.ExitScriptError;
         }
         catch (FileNotFoundException ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon run: {ex.Message}").ConfigureAwait(false);
             exitCode = Program.ExitScriptError;
         }
         catch (EsbuildNotFoundException ex)
         {
-            exitCode = ReportEsbuildNotFound(ex);
+            exitCode = ReportEsbuildNotFound(console.ErrorOutput, ex);
         }
         catch (EsbuildTranspileException ex)
         {
-            exitCode = ReportEsbuildTranspileError(ex);
+            exitCode = ReportEsbuildTranspileError(console.ErrorOutput, ex);
         }
         catch (Exception ex)
         {
-            exitCode = ReportUnexpectedError(ex);
+            exitCode = ReportUnexpectedError(console.ErrorOutput, ex);
         }
 
         // The stream closes on the real exit code — a failed transpile is an event, not
@@ -471,7 +472,7 @@ internal static partial class RunCommand
     /// <see cref="Program.ExitOk"/>/<see cref="Program.ExitScriptError"/>/<see cref="Program.ExitRuntimeError"/>/<see cref="Program.ExitCancelled"/>,
     /// so we return its code verbatim.
     /// </summary>
-    private static async Task<int> RunViaSharedRunnerAsync(RunCommandOptions options)
+    private static async Task<int> RunViaSharedRunnerAsync(IRunnerConsole console, RunCommandOptions options)
     {
         // The diagnostic modes are not runs: --list-tools prints a manifest and --validate a
         // verdict, both as plain text on stdout by their own contract. Wrapping them in the
@@ -479,7 +480,7 @@ internal static partial class RunCommand
         // JSONL — worse than either format alone. Say so instead of guessing.
         if (options.EmitsEvents && (options.ListTools || options.Validate))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 "orkeon run: --events has no effect with --list-tools or --validate; plain output follows.")
                 .ConfigureAwait(false);
         }
@@ -487,7 +488,7 @@ internal static partial class RunCommand
         if (!options.EmitsEvents || options.ListTools || options.Validate)
         {
             return await RunnerExecution.RunOneShotAsync(
-                ToRunnerOptions(options),
+                ToRunnerOptions(console, options),
                 "orkeon",
                 configureServices: (_, services) =>
                 {
@@ -497,7 +498,7 @@ internal static partial class RunCommand
                 .ConfigureAwait(false);
         }
 
-        return await RunWithEventsAsync(options).ConfigureAwait(false);
+        return await RunWithEventsAsync(console, options).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -519,20 +520,20 @@ internal static partial class RunCommand
     /// on the runner's own exit code, so a configuration failure is reported as an event
     /// rather than as silence.
     /// </summary>
-    private static async Task<int> RunWithEventsAsync(RunCommandOptions options)
+    private static async Task<int> RunWithEventsAsync(IRunnerConsole console, RunCommandOptions options)
     {
-        var events = new Events.OrkeonEventWriter(Console.Out);
+        var events = new Events.OrkeonEventWriter(console.Output);
         events.Emit(Run.RunEventKinds.RunStarted, new
         {
             target = options.ScriptPath,
             stream = options.Stream,
         });
 
-        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client);
+        var observed = new Run.ObservedRunContext(events, options.Stream, options.Client, console.Input);
         await using var lifetime = observed.ConfigureAwait(false);
 
         var exitCode = await RunnerExecution.RunOneShotAsync(
-            ToRunnerOptions(options),
+            ToRunnerOptions(console, options),
             "orkeon",
             configureServices: (_, services) =>
             {
@@ -555,7 +556,7 @@ internal static partial class RunCommand
     /// problem — a script that reads <c>globalThis.inputs</c> and hands its crew off reads
     /// <c>undefined</c>, having been passed the flag it asked for.
     /// </remarks>
-    private static async Task WarnAboutScriptOnlyOptionsAsync(RunCommandOptions options)
+    private static async Task WarnAboutScriptOnlyOptionsAsync(IRunnerConsole console, RunCommandOptions options)
     {
         var given = new List<string>();
         if (!string.IsNullOrWhiteSpace(options.InputsJson)) given.Add(RunOptionNames.Inputs);
@@ -563,7 +564,7 @@ internal static partial class RunCommand
         if (options.MemoryLimitMb is not null) given.Add(RunOptionNames.MemoryLimitMb);
         if (given.Count == 0) return;
 
-        await Console.Error.WriteLineAsync(
+        await console.ErrorOutput.WriteLineAsync(
             $"orkeon run: {string.Join(", ", given)} {(given.Count == 1 ? "has" : "have")} no effect on this script. "
             + "It ends with `globalThis.crew = crew`, so it runs as a crew definition through the shared "
             + "pipeline, where those options have no equivalent — globalThis.inputs is never planted. "
@@ -577,9 +578,10 @@ internal static partial class RunCommand
     /// fields (<c>--inputs</c>, <c>--inputs-file</c>, <c>--memory-limit-mb</c>) have no YAML equivalent
     /// and are intentionally not carried over.
     /// </summary>
-    internal static RunnerOptionsBase ToRunnerOptions(RunCommandOptions options)
+    internal static RunnerOptionsBase ToRunnerOptions(IRunnerConsole console, RunCommandOptions options)
         => new YamlRunnerOptions
         {
+            RunnerConsole = console,
             MachineReadableStdout = options.EmitsEvents,
             ConfigPath = options.ScriptPath,
             SettingsPath = options.SettingsPath,
@@ -596,24 +598,24 @@ internal static partial class RunCommand
             ListTools = options.ListTools,
         };
 
-    private static int ReportEsbuildNotFound(EsbuildNotFoundException ex)
+    private static int ReportEsbuildNotFound(TextWriter error, EsbuildNotFoundException ex)
     {
         // Bundling is mandatory (always-bundle mode) so the user must have esbuild
         // installed somewhere we can find it. Surface the diagnostic verbatim — it
         // already enumerates the resolution chain and points at the install command.
-        Console.Error.WriteLine($"orkeon run: {ex.Message}");
-        Console.Error.WriteLine("  hint: a repo-local copy may live in tools/scripting-esbuild/ — run 'npm install' there.");
+        error.WriteLine($"orkeon run: {ex.Message}");
+        error.WriteLine("  hint: a repo-local copy may live in tools/scripting-esbuild/ — run 'npm install' there.");
         return Program.ExitScriptError;
     }
 
-    private static int ReportEsbuildTranspileError(EsbuildTranspileException ex)
+    private static int ReportEsbuildTranspileError(TextWriter error, EsbuildTranspileException ex)
     {
-        Console.Error.WriteLine($"orkeon run: esbuild rejected the script:");
-        Console.Error.WriteLine(ex.Message);
+        error.WriteLine($"orkeon run: esbuild rejected the script:");
+        error.WriteLine(ex.Message);
         return Program.ExitScriptError;
     }
 
-    private static int ReportUnexpectedError(Exception ex)
+    private static int ReportUnexpectedError(TextWriter error, Exception ex)
     {
         // Scripts that throw inside agent .body() callbacks bubble out as
         // PromiseRejectedException → AggregateException → real exception.
@@ -623,17 +625,17 @@ internal static partial class RunCommand
         var outerTypeHint = ReferenceEquals(root, ex)
             ? ex.GetType().FullName
             : $"{ex.GetType().Name} → {root.GetType().FullName}";
-        Console.Error.WriteLine($"orkeon run: unexpected error [{outerTypeHint}]: {root.Message}");
+        error.WriteLine($"orkeon run: unexpected error [{outerTypeHint}]: {root.Message}");
         // Opt-in diagnostics: ORKEON_DEBUG=1 prints the full wrapper chain + stacks
         // (root.Message alone is useless for NullReferenceException-class bugs). The
         // switch is shared with the runner's own diagnostics, hence RunnerEnvironment.
         if (RunnerEnvironment.DebugDiagnostics)
-            Console.Error.WriteLine(ex.ToString());
+            error.WriteLine(ex.ToString());
         return Program.ExitRuntimeError;
     }
 
     private static async Task<int> RunWithHostAsync(
-        RunCommandOptions options, Run.ObservedRunContext? observed, CancellationToken externalCt)
+        IRunnerConsole console, RunCommandOptions options, Run.ObservedRunContext? observed, CancellationToken externalCt)
     {
         var fullPath = Path.GetFullPath(options.ScriptPath);
         var scriptDir = Path.GetDirectoryName(fullPath)!;
@@ -642,22 +644,22 @@ internal static partial class RunCommand
         // Build the host with the same bootstrap surface as the YAML runner: appsettings,
         // VFS mounts, LLM provider, tools, LLM exchange logging. Plus a /script:ro mount
         // for the script itself.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, scriptDir);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, scriptDir, console.ErrorOutput);
         if (settingsPath != null)
-            await Console.Error.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
 
         var cliMounts = options.Mounts.ToList();
         var llmLogPath = options.ResolvedLlmLogPath;
 
         var cwd = Directory.GetCurrentDirectory();
-        var selection = await MountConfigurationIsValidAsync(options, cliMounts, settingsPath, llmLogPath, cwd)
+        var selection = await MountConfigurationIsValidAsync(console, options, cliMounts, settingsPath, llmLogPath, cwd)
             .ConfigureAwait(false);
         if (selection is null)
             return Program.ExitScriptError;
 
         // Same guard as the YAML runner (STUDIO-50): an --llm-profile the settings do not
         // define is one line naming the ones they do, not an exception out of the host build.
-        if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath))
+        if (!RunnerExecution.EnsureLlmProfileIsKnown(options.LlmProfile, settingsPath, console.ErrorOutput))
             return Program.ExitScriptError;
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
@@ -686,6 +688,8 @@ internal static partial class RunCommand
                 : null,
             configureServices: (ctx, services) =>
             {
+                services.AddSingleton(console);
+
                 // RAG-03/C3: scripts get the first-class `rag.*` namespace plus the
                 // auto-exposed tools.ragSearch / tools.ragIngest — the subsystem and its
                 // tools come with every runner host (RunnerHost, GAP-02); the CLI adds
@@ -707,7 +711,7 @@ internal static partial class RunCommand
             RunnerLogging.LogMounts(cliMounts, logger);
 
         using var linkCts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
-        using var lifetime = RunnerExecution.RegisterGracefulShutdown(linkCts, logger);
+        using var lifetime = RunnerExecution.RegisterGracefulShutdown(linkCts, console.ErrorOutput);
 
         // The DI-provided IFileSystemService respects the mount list above; tools resolved
         // from the host will use it natively. JsEngineFactory wraps it for the script body.
@@ -779,7 +783,7 @@ internal static partial class RunCommand
         // On an observed run stdout belongs to the protocol: the pretty-printed result blob
         // between the last event and run.finished was a parser error handed to every client.
         // Humans (a terminal, Studio's raw pane) read it from stderr instead.
-        await (observed is null ? Console.Out : Console.Error)
+        await (observed is null ? console.Output : console.ErrorOutput)
             .WriteLineAsync(SerializeRunResult(result)).ConfigureAwait(false);
         return Program.ExitOk;
     }
@@ -792,7 +796,7 @@ internal static partial class RunCommand
     /// </summary>
     /// <returns>The resolved mount selection when every guard passes, else <see langword="null"/>.</returns>
     private static async Task<MountSelectionPlan?> MountConfigurationIsValidAsync(
-        RunCommandOptions options,
+        IRunnerConsole console, RunCommandOptions options,
         IEnumerable<string> cliMounts,
         string? settingsPath,
         string? llmLogPath,
@@ -802,7 +806,7 @@ internal static partial class RunCommand
         // input, not a user-declared mount — so we don't gate it behind
         // --allow-external-mounts. Only LLM log directories outside the cwd require
         // explicit opt-in (parity with the YAML runner's safety stance for writes).
-        if (!RunnerLlmLog.EnsureAllowed(llmLogPath, options.EffectiveAllowExternalMounts, Console.Error, cwd))
+        if (!RunnerLlmLog.EnsureAllowed(llmLogPath, options.EffectiveAllowExternalMounts, console.ErrorOutput, cwd))
             return null;
 
         // Same guards as the YAML runner's TryBuildHost: two --mount arguments on one root, or
@@ -810,11 +814,11 @@ internal static partial class RunCommand
         // duplicate-virtual-path exception thrown out of a DI factory, not as the
         // configuration mistake it is. A --mount on a root the settings declare is not a
         // duplicate: the host replaces that settings entry by name (STUDIO-15 D-01).
-        if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath))
+        if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath, console.ErrorOutput))
             return null;
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
-                cliMounts, settingsPath,
+                cliMounts, settingsPath, console.ErrorOutput,
                 RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
         {
             return null;
@@ -825,7 +829,7 @@ internal static partial class RunCommand
         // those two and not the crew's block (GAP-49, decision 3).
         if (!RunnerExecution.EnsureMountSelectionIsResolvable(
                 cliMounts, options.MountIds, CrewMountDeclarations.None, settingsPath,
-                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption, out var selection))
+                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption, console.ErrorOutput, out var selection))
         {
             return null;
         }
@@ -833,7 +837,7 @@ internal static partial class RunCommand
         // Same guard as the YAML runner: a mount whose host-side directory is missing would
         // otherwise surface as a DirectoryNotFoundException thrown out of the
         // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
-        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath, selection) ? selection : null;
+        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath, selection, console.ErrorOutput) ? selection : null;
     }
 
     /// <summary>

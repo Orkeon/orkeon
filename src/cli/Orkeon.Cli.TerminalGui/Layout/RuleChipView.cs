@@ -22,7 +22,7 @@ public sealed class RuleChipView : View
     {
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
-        _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        _glyphs = GlyphSet.Resolve(options.Glyphs, Hosting.TerminalUtf8.IsUtf8(options.Terminal));
         Height = 1;
         Width = Dim.Fill();
         CanFocus = false;
@@ -47,18 +47,6 @@ public sealed class RuleChipView : View
     {
         SegmentPainter.Paint(this, 0, SeparatorModel.Compose(_glyphs, Viewport.Width, _label));
         return true;
-    }
-
-    private static bool OutputIsUtf8()
-    {
-        try
-        {
-            return System.Console.OutputEncoding.CodePage is 65001;
-        }
-        catch (System.IO.IOException)
-        {
-            return false;
-        }
     }
 
     /// <summary>Test-only accessor for the embedded label ("" when the rule is bare).</summary>

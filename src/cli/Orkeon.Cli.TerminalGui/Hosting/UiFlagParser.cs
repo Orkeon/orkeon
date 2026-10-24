@@ -3,7 +3,7 @@ namespace Orkeon.Cli.TerminalGui.Hosting;
 /// <summary>
 /// Parses the <c>--ui [tui|plain|auto]</c> flag from a runner's <c>args</c> array.
 /// Returns <c>null</c> for "auto" (or absent) so callers feed it straight into
-/// <see cref="TtyDetector.ResolveEffectiveMode"/>.
+/// <see cref="TtyDetector.ResolveEffectiveMode(UiMode?, ITerminalProbe)"/>.
 /// </summary>
 public static class UiFlagParser
 {

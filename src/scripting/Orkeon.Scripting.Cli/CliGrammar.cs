@@ -58,20 +58,22 @@ internal static class CliGrammar
     }
 
     /// <summary>Reads a command with a single options type and runs <paramref name="run"/> on it.</summary>
-    public static Task<int> DispatchAsync<TOptions>(string command, string[] args, Func<TOptions, Task<int>> run, bool helpOnStderr = false)
+    public static Task<int> DispatchAsync<TOptions>(IRunnerConsole console, string command, string[] args, Func<IRunnerConsole, TOptions, Task<int>> run, bool helpOnStderr = false)
         where TOptions : CliOptions
     {
+        ArgumentNullException.ThrowIfNull(console);
         using var parser = NewParser();
         var reading = Read<TOptions>(parser, args);
-        return reading.Accepted ? run((TOptions)reading.Options!) : Task.FromResult(Refuse(command, reading, helpOnStderr));
+        return reading.Accepted ? run(console, (TOptions)reading.Options!) : Task.FromResult(Refuse(console, command, reading, helpOnStderr));
     }
 
     /// <summary>Reads a command with sub-commands, the verb choosing among <paramref name="verbs"/>.</summary>
-    public static Task<int> DispatchAsync(string command, string[] args, Type[] verbs, Func<CliOptions, Task<int>> run, bool helpOnStderr = false)
+    public static Task<int> DispatchAsync(IRunnerConsole console, string command, string[] args, Type[] verbs, Func<IRunnerConsole, CliOptions, Task<int>> run, bool helpOnStderr = false)
     {
+        ArgumentNullException.ThrowIfNull(console);
         using var parser = NewParser();
         var reading = Read(parser, args, verbs);
-        return reading.Accepted ? run(reading.Options!) : Task.FromResult(Refuse(command, reading, helpOnStderr));
+        return reading.Accepted ? run(console, reading.Options!) : Task.FromResult(Refuse(console, command, reading, helpOnStderr));
     }
 
     /// <summary>The parser with the settings every command shares.</summary>
@@ -88,15 +90,15 @@ internal static class CliGrammar
         options?.Unexpected.ToList() ?? [],
         () => HelpText.AutoBuild(result, HelpWidth));
 
-    private static int Refuse(string command, CliReading reading, bool helpOnStderr)
+    private static int Refuse(IRunnerConsole console, string command, CliReading reading, bool helpOnStderr)
     {
         if (reading.Options is not null)
         {
-            Console.Error.WriteLine($"orkeon {command}: unexpected argument '{reading.Unexpected[0]}'");
+            console.ErrorOutput.WriteLine($"orkeon {command}: unexpected argument '{reading.Unexpected[0]}'");
             return Program.ExitScriptError;
         }
 
-        (reading.Asked && !helpOnStderr ? Console.Out : Console.Error).WriteLine(reading.Help());
+        (reading.Asked && !helpOnStderr ? console.Output : console.ErrorOutput).WriteLine(reading.Help());
         return reading.Asked ? Program.ExitOk : Program.ExitScriptError;
     }
 }

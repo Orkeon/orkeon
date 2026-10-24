@@ -83,6 +83,10 @@ internal static class ReplStartup
                     ConfigureServicesUnderBarrier(context, services, effectiveUi, scriptedOpts, replWordWrap);
                     if (configureLogging is not null)
                         services.AddLogging(configureLogging);
+                    // Last, after any ClearProviders of the logging above: the operator warnings of
+                    // the runner host (an LLM not configured, an MCP server down) reach stderr
+                    // whatever the REPL's log level (RunnerOperatorLog).
+                    services.AddOperatorChannel();
                 })
                 .Build();
         }

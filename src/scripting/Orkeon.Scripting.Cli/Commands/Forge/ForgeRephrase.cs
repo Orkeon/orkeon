@@ -34,13 +34,14 @@ internal static class ForgeRephrase
     private const int ExitError = 1;
 
     /// <summary>Runs the verb: builds the host on the settings, asks the default LLM once, answers.</summary>
-    public static async Task<int> RunAsync(string workspace, ForgeCommandOptions options)
+    public static async Task<int> RunAsync(IRunnerConsole console, string workspace, ForgeCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
         ArgumentNullException.ThrowIfNull(options);
 
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
-        var events = options.Events ? new ForgeEventWriter(Console.Out) : null;
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, console.ErrorOutput);
+        var events = options.Events ? new ForgeEventWriter(console.Output) : null;
         using var host = RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan(),
@@ -58,6 +59,7 @@ internal static class ForgeRephrase
             },
             configureServices: (_, services) =>
             {
+                services.AddSingleton(console);
                 if (events is not null)
                     services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
@@ -69,7 +71,7 @@ internal static class ForgeRephrase
             if (events is not null)
                 events.Error(LlmUnavailableCode, Message, recoverable: false);
             else
-                await Console.Error.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;
         }
 
@@ -80,14 +82,14 @@ internal static class ForgeRephrase
             if (events is not null)
                 events.Error(EmptyCode, Message, recoverable: false);
             else
-                await Console.Error.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync($"orkeon forge: {Message}").ConfigureAwait(false);
             return ExitError;
         }
 
         if (events is not null)
             events.Emit(EventKind, new { text = rewritten, original = options.Need });
         else
-            await Console.Out.WriteLineAsync(rewritten).ConfigureAwait(false);
+            await console.Output.WriteLineAsync(rewritten).ConfigureAwait(false);
         return 0;
     }
 

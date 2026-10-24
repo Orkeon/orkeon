@@ -114,25 +114,26 @@ internal static class DoctorCommand
     };
 
     /// <summary>Dispatches an <c>orkeon doctor …</c> invocation (args already stripped of the verb).</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        return await CliGrammar.DispatchAsync<DoctorCommandOptions>("doctor", args, ExecuteAsync).ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync<DoctorCommandOptions>(console, "doctor", args, ExecuteAsync).ConfigureAwait(false);
     }
 
     /// <summary>Runs every check; returns 0 (green/warnings) or 1 (at least one failure).</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier, mirroring the run/rag verbs' exit-code contract.")]
-    public static async Task<int> ExecuteAsync(DoctorCommandOptions options)
+    public static async Task<int> ExecuteAsync(IRunnerConsole console, DoctorCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
 
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        using var interrupt = console.OnInterrupt(() =>
         {
-            e.Cancel = true;
             cts.Cancel();
-        };
+            return true;
+        });
 
         try
         {
@@ -141,9 +142,9 @@ internal static class DoctorCommand
             var results = await RunChecksAsync(cwd, installDirectory, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
-                Console.WriteLine(JsonSerializer.Serialize(results));
+                await console.Output.WriteLineAsync(JsonSerializer.Serialize(results)).ConfigureAwait(false);
             else
-                PrintTable(results);
+                PrintTable(console.Output, results);
 
             return results.Any(r => r.Status == StatusFail) ? Program.ExitScriptError : Program.ExitOk;
         }
@@ -153,7 +154,7 @@ internal static class DoctorCommand
         }
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync($"orkeon doctor: unexpected error [{ex.GetType().FullName}]: {ex.Message}")
+            await console.ErrorOutput.WriteLineAsync($"orkeon doctor: unexpected error [{ex.GetType().FullName}]: {ex.Message}")
                 .ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }
@@ -216,7 +217,7 @@ internal static class DoctorCommand
     {
         // Same chain as every runner (explicit → local → walk-up → global), quiet: doctor
         // reports the outcome itself instead of the resolver's stderr warning.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, quiet: true);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, null);
 
         var configuration = RunnerSettings.ReadConfiguration(settingsPath);
         var context = ReadLlmProfiles(new LlmContext { SettingsPath = settingsPath, Configuration = configuration });
@@ -798,7 +799,7 @@ internal static class DoctorCommand
 
     // ── rendering ───────────────────────────────────────────────────────────
 
-    private static void PrintTable(IReadOnlyList<DoctorCheckResult> results)
+    private static void PrintTable(TextWriter output, IReadOnlyList<DoctorCheckResult> results)
     {
         var width = results.Max(r => r.Check.Length);
         foreach (var result in results)
@@ -809,7 +810,7 @@ internal static class DoctorCommand
                 StatusWarn => "⚠️",
                 _ => "❌",
             };
-            Console.WriteLine(string.Create(
+            output.WriteLine(string.Create(
                 CultureInfo.InvariantCulture,
                 $"{glyph} {result.Check.PadRight(width)}  {result.Detail}"));
         }

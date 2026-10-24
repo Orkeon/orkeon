@@ -27,13 +27,13 @@ public sealed class McpServeCommandTests
         IReadOnlyList<string> manifest;
         using (var listing = new TestConsole())
         {
-            Assert.Equal(Program.ExitOk, await Program.DispatchAsync(["run", "--list-tools", "--settings", settings]));
+            Assert.Equal(Program.ExitOk, await Program.DispatchAsync(listing, ["run", "--list-tools", "--settings", settings]));
             manifest = Lines(listing.Stdout);
         }
 
         using var console = new TestConsole(stdin: Discover + "\n" + ListTools + "\n");
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
         Assert.Equal(Program.ExitOk, exit);
         var answers = Answers(console.Stdout);
@@ -56,7 +56,7 @@ public sealed class McpServeCommandTests
         var settings = scratch.WriteFile("appsettings.json", "{}");
         using var console = new TestConsole(stdin: ListTools + "\n");
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings, "--tools", "rag_search,file_read"]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings, "--tools", "rag_search,file_read"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var answer = Assert.Single(Answers(console.Stdout));
@@ -70,7 +70,7 @@ public sealed class McpServeCommandTests
         var settings = scratch.WriteFile("appsettings.json", "{}");
         using var console = new TestConsole(stdin: ListTools + "\n");
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings, "--tools", "file_read,no_such_tool"]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings, "--tools", "file_read,no_such_tool"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("no_such_tool", console.Stderr, StringComparison.Ordinal);
@@ -85,16 +85,18 @@ public sealed class McpServeCommandTests
         const string call =
             """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"file_read","arguments":{"path":"../../etc/passwd"}}}""";
         using var console = new TestConsole(stdin: call + "\n");
+        using var log = new ProcessLogCapture();
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
         Assert.Equal(Program.ExitOk, exit);
         var result = Assert.Single(Answers(console.Stdout)).GetProperty("result");
         Assert.True(result.GetProperty("isError").GetBoolean());
         Assert.Contains("Blocked by Guardian", result.GetProperty("content")[0].GetProperty("text").GetString(), StringComparison.Ordinal);
         // The audit trail's log sink, on stderr: the call is recorded, under the caller "mcp".
-        Assert.Contains("Tool execution: file_read -> Blocked", console.Stderr, StringComparison.Ordinal);
-        Assert.Contains("Agent=mcp", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("Tool execution: file_read -> Blocked", log.Stderr, StringComparison.Ordinal);
+        Assert.Contains("Agent=mcp", log.Stderr, StringComparison.Ordinal);
+        Assert.Empty(log.Stdout);
     }
 
     /// <summary>
@@ -116,7 +118,7 @@ public sealed class McpServeCommandTests
             """{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"file_read","arguments":{"path":"/docs/note.txt"}}}""";
         using var console = new TestConsole(stdin: read + "\n");
 
-        var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
+        var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(console, new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
         {
             SettingsPath = settings,
             WorkingDirectoryOverride = scratch.Root,
@@ -155,7 +157,7 @@ public sealed class McpServeCommandTests
             + "/crew/cwd-note.txt\"}}}";
         using var console = new TestConsole(stdin: ListTools + "\n" + read + "\n" + readCwd + "\n");
 
-        var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
+        var exit = await Orkeon.Scripting.Cli.Commands.McpCommand.ServeAsync(console, new Orkeon.Scripting.Cli.Commands.McpServeCommandOptions
         {
             SettingsPath = settings,
             WorkingDirectoryOverride = scratch.Root,
@@ -185,7 +187,7 @@ public sealed class McpServeCommandTests
         var settings = scratch.WriteFile("appsettings.json", """{ "MCP": { "EnableServer": true } }""");
         using var console = new TestConsole(stdin: ListTools + "\n");
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("MCP:EnableServer", console.Stderr, StringComparison.Ordinal);
@@ -199,7 +201,7 @@ public sealed class McpServeCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--help"]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--help"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("--settings", console.Stderr, StringComparison.Ordinal);
@@ -221,7 +223,7 @@ public sealed class McpServeCommandTests
         Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
         try
         {
-            var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+            var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
             Assert.Equal(Program.ExitScriptError, exit);
             Assert.Empty(console.Stdout);
@@ -251,7 +253,7 @@ public sealed class McpServeCommandTests
         }));
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await Program.DispatchAsync(["mcp", "serve", "--settings", settings]);
+        var exit = await Program.DispatchAsync(console, ["mcp", "serve", "--settings", settings]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("MCP server 'probe' could not be connected", console.Stderr, StringComparison.Ordinal);

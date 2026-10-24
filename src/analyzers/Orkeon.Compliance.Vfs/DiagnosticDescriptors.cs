@@ -76,4 +76,13 @@ internal static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "A nullable IFileSystemService re-opens the door to a 'if (_fs is null) { …System.IO… }' fallback. Inject IFileSystemService as a required, non-nullable dependency.",
         helpLinkUri: HelpLinkBase + "ork-vfs-007");
+
+    public static readonly DiagnosticDescriptor DirectConsoleUsage = new(
+        id: "ORKCON001",
+        title: "Direct System.Console usage is forbidden in framework code",
+        messageFormat: "Direct use of 'System.Console.{0}' — log through an injected ILogger, or read and write through an injected TextWriter/TextReader or console abstraction",
+        category: "Orkeon.Console",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The process console is global state: framework code receives its output and input streams from the composition root. Only console adapters and the one console sink of each executable, marked [SuppressConsoleCompliance], touch System.Console.");
 }

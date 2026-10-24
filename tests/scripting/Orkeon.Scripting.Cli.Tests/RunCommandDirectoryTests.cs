@@ -109,7 +109,7 @@ public sealed class RunCommandDirectoryTests
         var dir = WritePerEntityCrew(scratch, settingsFileName);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             // The scratch dir lives under the temp path (outside the test cwd), so the
@@ -140,7 +140,7 @@ public sealed class RunCommandDirectoryTests
         Directory.CreateDirectory(Path.Combine(scratch.Root, "agents"));
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = scratch.Root,
             AllowExternalMounts = true,
@@ -172,7 +172,7 @@ public sealed class RunCommandDirectoryTests
             TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             SettingsPath = settings,
@@ -208,7 +208,7 @@ public sealed class RunCommandDirectoryTests
 
         using (var console = new TestConsole())
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = dir,
                 SettingsPath = settings,
@@ -223,7 +223,7 @@ public sealed class RunCommandDirectoryTests
 
         using (var console = new TestConsole())
         {
-            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
             {
                 ScriptPath = dir,
                 SettingsPath = settings,
@@ -243,7 +243,7 @@ public sealed class RunCommandDirectoryTests
         var dir = WriteFlatCrew(scratch);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -260,7 +260,7 @@ public sealed class RunCommandDirectoryTests
         var dir = WritePerEntityCrew(scratch);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -284,7 +284,7 @@ public sealed class RunCommandDirectoryTests
 
         // --settings / -V / --initial-context / --mount must behave exactly as on a file target.
         var settings = scratch.WriteFile("appsettings.json", "{}");
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -307,7 +307,7 @@ public sealed class RunCommandDirectoryTests
         var script = WriteScriptInto(dir);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -327,7 +327,7 @@ public sealed class RunCommandDirectoryTests
         var dir = CreateEmptyDirectory(scratch, "not-a-crew");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -348,7 +348,7 @@ public sealed class RunCommandDirectoryTests
         var script = WriteScriptInto(dir);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = dir,
             AllowExternalMounts = true,
@@ -370,7 +370,7 @@ public sealed class RunCommandDirectoryTests
         var singleFile = WriteSingleFileCrewInto(dir);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = singleFile,
             AllowExternalMounts = true,

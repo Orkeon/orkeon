@@ -181,7 +181,7 @@ La bibliothèque ne livre **pas de hosted service** pour cela : un hôte qui emb
 `McpToolProvider` et appelle explicitement `ConnectServerAsync(serverId, config)` pour
 chaque serveur configuré — exactement ce que fait le pas de démarrage de l'hôte des runners,
 et ce qu'appelle le service de connexion d'`orkeon-host`. Un hôte qui sert ses outils appelle
-`AddOrkeonMcpServer(configuration)`, puis résout `McpServer` et lance `RunStdioAsync()` — ce
+`AddOrkeonMcpServer(configuration)`, puis résout `McpServer` et lance `RunStdioAsync(reader, writer)` sur les flux qu'il possède — ce
 que fait `orkeon mcp serve`. `orkeon-host` ne sert pas MCP.
 
 ### Outils MCP et crews

@@ -458,7 +458,7 @@ public sealed class ForgeRenameTests : IDisposable
         var (_, host) = Machine(ForgePromotePlatform.Linux);
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["rename", Team, "--name", "Veille du matin"], _workspace, host));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["rename", Team, "--name", "Veille du matin"], _workspace, host));
 
         var lines = console.Stdout.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
         Assert.Equal("  session renamed after the team: ma-veille → veille-du-matin", lines[0]);
@@ -530,7 +530,7 @@ public sealed class ForgeRenameTests : IDisposable
     private async Task<(int ExitCode, List<JsonElement> Events)> RunAsync(ForgeScheduleHost host, params string[] args)
     {
         using var console = new TestConsole();
-        var exitCode = await ForgeCommand.DispatchAsync([.. args, "--events", "jsonl"], _workspace, host);
+        var exitCode = await ForgeCommand.DispatchAsync(console, [.. args, "--events", "jsonl"], _workspace, host);
         return (exitCode, Events(console.Stdout));
     }
 

@@ -43,8 +43,10 @@ internal sealed class ObservedRunContext : IAsyncDisposable
     /// <param name="events">The outbound stream.</param>
     /// <param name="stream">Whether <c>llm.delta</c> events were asked for.</param>
     /// <param name="clientName">The peer's name on the hub (<c>client://{name}</c>).</param>
-    public ObservedRunContext(OrkeonEventWriter events, bool stream, string clientName)
+    /// <param name="input">The inbound stream: the peer's lines (the process stdin under <c>orkeon</c>).</param>
+    public ObservedRunContext(OrkeonEventWriter events, bool stream, string clientName, TextReader input)
     {
+        ArgumentNullException.ThrowIfNull(input);
         _events = events ?? throw new ArgumentNullException(nameof(events));
         _stream = stream;
         _clientName = clientName;
@@ -55,7 +57,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
         // One reader on stdin, routed by kind. Two would race, and BUS-04's channel dropped
         // every line that was not a human answer — including the hub commands.
-        Inbound = new InboundCommandPump(Console.In, HandleCommandAsync);
+        Inbound = new InboundCommandPump(input, HandleCommandAsync);
 
         // Started unconditionally, not on the first human question: the peer's post/send/
         // subscribe lines arrive whenever the peer pleases, and a pump that only wakes up for

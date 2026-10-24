@@ -33,7 +33,7 @@ public sealed class RagEvalCommandTests
         var harness = new FakeRagEvalHarness();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
         {
             Dataset = "./golden.yaml",
             WorkingDirectoryOverride = scratch.Root,
@@ -56,7 +56,7 @@ public sealed class RagEvalCommandTests
         var harness = new FakeRagEvalHarness();
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
         {
             Dataset = "golden.yaml",
             Compare = "fast, balanced,quality",
@@ -97,7 +97,7 @@ public sealed class RagEvalCommandTests
         // Threshold below the gated value → pass.
         using (var console = new TestConsole())
         {
-            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
             {
                 Dataset = "golden.yaml",
                 MinRecall = 0.45,
@@ -110,7 +110,7 @@ public sealed class RagEvalCommandTests
         // Threshold above the gated value → regression, exit 1, actionable stderr.
         using (var console = new TestConsole())
         {
-            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
             {
                 Dataset = "golden.yaml",
                 MinRecall = 0.75,
@@ -134,7 +134,7 @@ public sealed class RagEvalCommandTests
         };
         using var console = new TestConsole();
 
-        var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
         {
             Dataset = "golden.yaml",
             MinMrr = 0.9,
@@ -153,7 +153,7 @@ public sealed class RagEvalCommandTests
         using var console = new TestConsole();
 
         // No fake harness: the real one runs and the dataset file does not exist.
-        var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+        var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
         {
             Dataset = "absent.yaml",
             WorkingDirectoryOverride = scratch.Root,
@@ -169,7 +169,7 @@ public sealed class RagEvalCommandTests
         using var console = new TestConsole();
 
         // Missing required --dataset → parse error, but the verb itself is known.
-        var exit = await RagCommand.DispatchAsync(["eval"]);
+        var exit = await RagCommand.DispatchAsync(console, ["eval"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
     }
@@ -187,7 +187,7 @@ public sealed class RagEvalCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
             {
                 Dataset = "golden.yaml",
                 WorkingDirectoryOverride = scratch.Root,
@@ -201,7 +201,7 @@ public sealed class RagEvalCommandTests
 
         using (var console = new TestConsole())
         {
-            var exit = await RagCommand.ExecuteEvalAsync(new RagEvalCommandOptions
+            var exit = await RagCommand.ExecuteEvalAsync(console, new RagEvalCommandOptions
             {
                 Dataset = "golden.yaml",
                 Offline = true,

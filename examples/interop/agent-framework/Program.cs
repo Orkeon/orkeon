@@ -37,7 +37,7 @@ internal static class Program
         // Anchored at the binary, not the current directory: started with `dotnet run --project`
         // from the repository root, the walk up from bin/<config>/net10.0/ reaches
         // examples/appsettings/appsettings.json, which the repository root would never find.
-        var settings = RunnerSettings.ResolveSettingsPath(explicitSettings, AppContext.BaseDirectory);
+        var settings = RunnerSettings.ResolveSettingsPath(explicitSettings, AppContext.BaseDirectory, Console.Error);
         if (settings is not null)
             await Console.Error.WriteLineAsync($"Using settings: {settings}");
         var output = Directory.CreateTempSubdirectory("orkeon-maf-").FullName;

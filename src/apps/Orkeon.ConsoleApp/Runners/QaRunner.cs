@@ -31,8 +31,11 @@ internal sealed class QaRunner : InteractiveRunnerBase
         _fs = fs;
     }
 
-    /// <summary>Path to the loaded crew YAML config (set by <see cref="OnStartAsync"/>).</summary>
+    /// <summary>Path to the crew YAML config the user named (set by <see cref="OnStartAsync"/>); null for the built-in crew.</summary>
     public string? CrewConfigPath { get; private set; }
+
+    /// <summary>True when the user pressed Enter and questions go to <see cref="BuiltInCrewYaml"/>.</summary>
+    public bool UsesBuiltInCrew { get; private set; }
 
     protected override string Banner => """
 
@@ -51,7 +54,7 @@ internal sealed class QaRunner : InteractiveRunnerBase
 
         if (string.IsNullOrWhiteSpace(configPath))
         {
-            configPath = await CreateTemporaryConfigAsync(ct).ConfigureAwait(false);
+            UsesBuiltInCrew = true;
             Console.WriteLine("  Using built-in interactive Q&A crew.");
         }
         else if (!await _fs.ExistsAsync(configPath, ct).ConfigureAwait(false))
@@ -59,25 +62,21 @@ internal sealed class QaRunner : InteractiveRunnerBase
             Console.WriteLine($"  ERROR: File not found: {configPath}");
             throw new FileNotFoundException("Crew config not found.", configPath);
         }
-
-        CrewConfigPath = configPath;
+        else
+        {
+            CrewConfigPath = configPath;
+        }
 
         Console.WriteLine("");
         Console.WriteLine("  Ask any question. Type 'exit' or press Ctrl+D to end.");
         Console.WriteLine("");
     }
 
-    private async Task<string> CreateTemporaryConfigAsync(CancellationToken ct)
-    {
-        // Virtual VFS path (resolved by IFileSystemService against the /tmp mount), NOT a physical
-        // OS directory — Path.GetTempPath() would be incorrect here and would bypass the VFS.
-        // The per-invocation Guid segment makes the path unpredictable, removing the temp-dir race risk.
-        var vTempDir = $"/tmp/interactive-qa/{Guid.NewGuid():N}";
-        await _fs.CreateDirectoryAsync(vTempDir, ct).ConfigureAwait(false);
-
-        var vTempFile = $"{vTempDir}/config.yaml";
-
-        const string yaml = """
+    /// <summary>
+    /// The crew a question goes to when no config path is given. It is loaded from this string, not
+    /// written to a file: the REPL mounts no <c>/tmp</c> unless asked, and a file would only be read back.
+    /// </summary>
+    internal const string BuiltInCrewYaml = """
             name: "interactive-qa"
             goal: "Answer user questions accurately and helpfully"
             process: "sequential"
@@ -128,8 +127,4 @@ internal sealed class QaRunner : InteractiveRunnerBase
                 asyncExecution: false
                 humanInput: false
             """;
-
-        await _fs.WriteAllTextAsync(vTempFile, yaml, ct).ConfigureAwait(false);
-        return vTempFile;
-    }
 }

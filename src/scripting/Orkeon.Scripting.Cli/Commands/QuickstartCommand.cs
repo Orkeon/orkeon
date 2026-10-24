@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
@@ -21,39 +22,40 @@ internal static class QuickstartCommand
     private static readonly string[] Files = ["crew.yaml", "appsettings.json"];
 
     /// <summary>Dispatches <c>orkeon quickstart …</c> (arguments already stripped of the verb).</summary>
-    public static Task<int> DispatchAsync(string[] args) => DispatchAsync(args, Directory.GetCurrentDirectory());
+    public static Task<int> DispatchAsync(IRunnerConsole console, string[] args) => DispatchAsync(console, args, Directory.GetCurrentDirectory());
 
     /// <summary>Test seam: the same dispatch, anchored at <paramref name="workingDirectory"/>.</summary>
-    internal static async Task<int> DispatchAsync(string[] args, string workingDirectory)
+    internal static async Task<int> DispatchAsync(IRunnerConsole console, string[] args, string workingDirectory)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(args);
 
         var arguments = Parse(args);
         if (arguments.Help)
         {
-            await Console.Out.WriteAsync(Usage).ConfigureAwait(false);
+            await console.Output.WriteAsync(Usage).ConfigureAwait(false);
             return Program.ExitOk;
         }
 
         if (arguments.Error is { } error)
-            return await RefuseAsync(error).ConfigureAwait(false);
+            return await RefuseAsync(console.ErrorOutput, error).ConfigureAwait(false);
 
         var target = Path.GetFullPath(arguments.Directory ?? DefaultDirectory, workingDirectory);
         if (File.Exists(target))
-            return await RefuseAsync($"'{target}' is a file; choose another folder with --to.").ConfigureAwait(false);
+            return await RefuseAsync(console.ErrorOutput, $"'{target}' is a file; choose another folder with --to.").ConfigureAwait(false);
         if (Directory.Exists(target) && Directory.EnumerateFileSystemEntries(target).Any())
-            return await RefuseAsync($"'{target}' is not empty; nothing was written. Choose another folder with --to.").ConfigureAwait(false);
+            return await RefuseAsync(console.ErrorOutput, $"'{target}' is not empty; nothing was written. Choose another folder with --to.").ConfigureAwait(false);
 
         Directory.CreateDirectory(Path.Combine(target, OutputDirectory));
         foreach (var file in Files)
             await WriteAsync(file, Path.Combine(target, file)).ConfigureAwait(false);
 
         var relative = Path.GetRelativePath(workingDirectory, target);
-        await Console.Out.WriteLineAsync($"Wrote {string.Join(", ", Files)} and an empty {OutputDirectory}/ to {target}").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"From {relative}, run the crew with {OutputDirectory}/ writable:").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"  orkeon run crew.yaml --mount ./{OutputDirectory}:/output:rw").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync("then read-only, and watch the write refused:").ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"  orkeon run crew.yaml --mount ./{OutputDirectory}:/output:ro").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"Wrote {string.Join(", ", Files)} and an empty {OutputDirectory}/ to {target}").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"From {relative}, run the crew with {OutputDirectory}/ writable:").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"  orkeon run crew.yaml --mount ./{OutputDirectory}:/output:rw").ConfigureAwait(false);
+        await console.Output.WriteLineAsync("then read-only, and watch the write refused:").ConfigureAwait(false);
+        await console.Output.WriteLineAsync($"  orkeon run crew.yaml --mount ./{OutputDirectory}:/output:ro").ConfigureAwait(false);
         return Program.ExitOk;
     }
 
@@ -104,9 +106,9 @@ internal static class QuickstartCommand
 
         """;
 
-    private static async Task<int> RefuseAsync(string error)
+    private static async Task<int> RefuseAsync(TextWriter errorOutput, string error)
     {
-        await Console.Error.WriteLineAsync("orkeon quickstart: " + error).ConfigureAwait(false);
+        await errorOutput.WriteLineAsync("orkeon quickstart: " + error).ConfigureAwait(false);
         return Program.ExitScriptError;
     }
 

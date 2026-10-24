@@ -899,7 +899,7 @@ public class ReplPaneViewTests
     public void Releasing_a_drag_in_the_input_copies_the_selection()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             using var pane = CreatePane();
@@ -914,7 +914,7 @@ public class ReplPaneViewTests
         finally
         {
             TuiClipboard.Reset();
-            TuiClipboard.TerminalWriterOverride = null;
+            TuiClipboard.TerminalWriter = null;
         }
     }
 
@@ -923,7 +923,7 @@ public class ReplPaneViewTests
     public void Dragging_in_the_input_highlights_text_in_the_multiline_wrapped_input()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             using var pane = CreatePane();
@@ -946,7 +946,7 @@ public class ReplPaneViewTests
         finally
         {
             TuiClipboard.Reset();
-            TuiClipboard.TerminalWriterOverride = null;
+            TuiClipboard.TerminalWriter = null;
         }
     }
 
@@ -1025,7 +1025,7 @@ public class ReplPaneViewTests
         var (top, _) = CreateTopWithTasks();
         using var owner = top;
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("XY");
@@ -1043,7 +1043,7 @@ public class ReplPaneViewTests
             top.Repl.RaiseKeyDown(new Key(KeyCode.CursorUp));
             Assert.Equal("abXYcd", top.Repl.CurrentInput);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]

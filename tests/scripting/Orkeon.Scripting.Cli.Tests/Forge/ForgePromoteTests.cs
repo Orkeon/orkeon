@@ -460,7 +460,7 @@ public sealed class ForgePromoteTests : IDisposable
         ReadySession();
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace);
 
         Assert.Equal(0, exitCode);
@@ -483,7 +483,7 @@ public sealed class ForgePromoteTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
 
         using var again = new TestConsole();
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "ma-veille", "--to", Destination], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(again, ["promote", "ma-veille", "--to", Destination], _workspace));
         Assert.Contains("only a ready session", again.Stderr, StringComparison.Ordinal);
     }
 
@@ -495,7 +495,7 @@ public sealed class ForgePromoteTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(Destination, "keep.txt"), "mine", TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["promote", "veille", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);
@@ -516,11 +516,11 @@ public sealed class ForgePromoteTests : IDisposable
     {
         using var console = new TestConsole();
 
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote"], _workspace));
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "veille"], _workspace));
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--schedule", "weekly"], _workspace));
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["--to", Destination], _workspace));
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "ghost", "--to", Destination], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["promote"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["promote", "veille"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["promote", "veille", "--to", Destination, "--schedule", "weekly"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["--to", Destination], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["promote", "ghost", "--to", Destination], _workspace));
 
         Assert.Contains("promote needs a session slug", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("promote needs --to", console.Stderr, StringComparison.Ordinal);
@@ -863,7 +863,7 @@ public sealed class ForgePromoteTests : IDisposable
         HostileSampleSession(context);
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace);
 
         Assert.Equal(0, exitCode);
         var warning = Assert.Single(Events(console.Stdout), e => e.GetProperty("kind").GetString() == "warning");
@@ -1052,7 +1052,7 @@ public sealed class ForgePromoteTests : IDisposable
         ReadySession();
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console,
             ["promote", "veille", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"], _workspace));
 
         Assert.Equal("# Ma veille", CardTitle(Destination));
@@ -1073,7 +1073,7 @@ public sealed class ForgePromoteTests : IDisposable
         var session = ReadySession("resumer-chaque-matin-les-offres");
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console,
             ["promote", "resumer-chaque-matin-les-offres", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"],
             _workspace));
 
@@ -1117,7 +1117,7 @@ public sealed class ForgePromoteTests : IDisposable
         ReadySession();
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace));
 
         var renamed = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "session.renamed");
         Assert.Equal("veille", renamed.GetProperty("from").GetString());
@@ -1144,7 +1144,7 @@ public sealed class ForgePromoteTests : IDisposable
         ReadySession("ma-veille");
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "ma-veille", "--to", Destination, "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["promote", "ma-veille", "--to", Destination, "--events", "jsonl"], _workspace));
 
         Assert.Equal(["session.started", "promoted", "session.finished"], Kinds(Events(console.Stdout)));
         Assert.Equal(["ma-veille"], Directory.GetDirectories(ForgeSession.RootFor(_workspace)).Select(Path.GetFileName));
@@ -1172,7 +1172,7 @@ public sealed class ForgePromoteTests : IDisposable
         var team = Path.Combine(_workspace, "teams", atTheLimit);
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", team, "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["promote", "veille", "--to", team, "--events", "jsonl"], _workspace));
 
         var events = Events(console.Stdout);
         Assert.Equal(["session.started", "promoted", "warning", "session.finished"], Kinds(events));
@@ -1243,7 +1243,7 @@ public sealed class ForgePromoteTests : IDisposable
 
         // Through the verb: the event's install command names the team on whatever platform runs it.
         using var console = new TestConsole();
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console,
             ["promote", "resumer-chaque-matin-les-offres", "--to", Destination, "--schedule", "daily@07:30", "--events", "jsonl"],
             _workspace));
         var install = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "promoted").GetProperty("install").GetString();
@@ -1280,7 +1280,7 @@ public sealed class ForgePromoteTests : IDisposable
 
         ReadySession();
         using var console = new TestConsole();
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--name", "-Veille-"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["promote", "veille", "--to", Destination, "--name", "-Veille-"], _workspace));
         Assert.Equal("# -Veille-", CardTitle(Destination));
     }
 

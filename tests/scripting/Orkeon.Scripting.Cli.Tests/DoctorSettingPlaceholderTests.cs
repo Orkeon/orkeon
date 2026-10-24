@@ -30,7 +30,7 @@ public sealed class DoctorSettingPlaceholderTests : IDisposable
             """);
         using var console = new TestConsole();
 
-        var exit = await DoctorCommand.ExecuteAsync(new DoctorCommandOptions
+        var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
         {
             Json = true,
             WorkingDirectoryOverride = scratch.Root,

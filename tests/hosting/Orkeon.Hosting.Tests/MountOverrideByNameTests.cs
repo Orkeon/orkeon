@@ -598,7 +598,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         bool ok;
         try
         {
-            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath, stderr);
         }
         finally
         {
@@ -627,7 +627,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         bool ok;
         try
         {
-            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath, stderr);
         }
         finally
         {
@@ -657,7 +657,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         bool ok;
         try
         {
-            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath, stderr);
         }
         finally
         {
@@ -687,7 +687,7 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
         bool ok;
         try
         {
-            ok = RunnerExecution.EnsureVirtualRootsAreUnique([$"{a}:/x:rw", "not-a-mount"], settingsPath);
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([$"{a}:/x:rw", "not-a-mount"], settingsPath, stderr);
         }
         finally
         {

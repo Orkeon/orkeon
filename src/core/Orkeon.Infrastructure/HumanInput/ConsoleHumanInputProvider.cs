@@ -6,51 +6,43 @@ using Orkeon.Domain.HumanInput.ValueObjects;
 namespace Orkeon.Infrastructure.HumanInput;
 
 /// <summary>
-/// Console-based human input provider implementation.
+/// Text-stream human input provider: prompts go to an injected writer, answers come from an injected reader.
 /// </summary>
 public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
 {
     private readonly ILogger<ConsoleHumanInputProvider> _logger;
-    private readonly TextReader? _input;
-    private readonly TextWriter? _output;
-
-    /// <summary>Initializes a new instance of <see cref="ConsoleHumanInputProvider"/>.</summary>
-    /// <param name="logger">The logger.</param>
-    public ConsoleHumanInputProvider(ILogger<ConsoleHumanInputProvider> logger)
-    {
-        ArgumentNullException.ThrowIfNull(logger);
-        _logger = logger;
-    }
+    private readonly TextReader _input;
+    private readonly TextWriter _output;
 
     /// <summary>Initializes a new instance reading from <paramref name="input"/> and writing to <paramref name="output"/>.</summary>
+    /// <remarks>The composition root chooses the streams: the process console of an executable, or any reader and writer.</remarks>
     /// <param name="logger">The logger.</param>
     /// <param name="input">The reader answers come from.</param>
     /// <param name="output">The writer prompts go to.</param>
     public ConsoleHumanInputProvider(ILogger<ConsoleHumanInputProvider> logger, TextReader input, TextWriter output)
-        : this(logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
+        _logger = logger;
         _input = input;
         _output = output;
     }
 
     /// <summary>
-    /// Presents a human input request on the console and waits for a response.
+    /// Presents a human input request on <paramref name="writer"/> and waits for a response on <paramref name="reader"/>.
     /// </summary>
     /// <param name="request">The input request details.</param>
+    /// <param name="reader">The reader the answer comes from.</param>
+    /// <param name="writer">The writer the prompt goes to.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The user's response, or the default value if no input is provided.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literal is an interactive console prompt.")]
-    public static Task<string> RequestInputAsync(HumanInputRequest request, CancellationToken ct)
+    public static Task<string> RequestInputAsync(HumanInputRequest request, TextReader reader, TextWriter writer, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return RequestInputAsync(request, Console.In, Console.Out, ct);
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literal is an interactive console prompt.")]
-    private static Task<string> RequestInputAsync(HumanInputRequest request, TextReader reader, TextWriter writer, CancellationToken ct)
-    {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(writer);
         return RequestInputCoreAsync();
 
         async Task<string> RequestInputCoreAsync()
@@ -92,7 +84,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 context.DefaultValue
             );
 
-            return await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
+            return await RequestInputAsync(request, _input, _output, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -112,7 +104,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 "n"
             );
 
-            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
+            var response = await RequestInputAsync(request, _input, _output, cancellationToken).ConfigureAwait(false);
             return string.Equals(response.Trim(), "y", StringComparison.OrdinalIgnoreCase) || string.Equals(response.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
         }
     }
@@ -140,7 +132,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 MarkRecommended(context)
             );
 
-            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
+            var response = await RequestInputAsync(request, _input, _output, cancellationToken).ConfigureAwait(false);
 
             // If user entered a number, convert to the actual choice
             if (int.TryParse(response, out var index) && index > 0 && index <= context.Options.Count)
@@ -168,7 +160,7 @@ public sealed partial class ConsoleHumanInputProvider : IHumanInputProvider
                 MarkRecommended(context)
             );
 
-            var response = await RequestInputAsync(request, _input ?? Console.In, _output ?? Console.Out, cancellationToken).ConfigureAwait(false);
+            var response = await RequestInputAsync(request, _input, _output, cancellationToken).ConfigureAwait(false);
             var chosen = new List<string>();
             foreach (var part in response.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             {

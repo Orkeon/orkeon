@@ -71,7 +71,7 @@ public sealed class AgentsPaneView : View
     {
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
-        _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        _glyphs = GlyphSet.Resolve(options.Glyphs, Hosting.TerminalUtf8.IsUtf8(options.Terminal));
         _tracker = new TaskTranscriptTracker(_glyphs);
         Width = Dim.Fill();
         Height = 0;
@@ -437,18 +437,6 @@ public sealed class AgentsPaneView : View
         catch (InvalidOperationException)
         {
             // Application not initialised (unit tests) — Refresh() stays callable manually.
-        }
-    }
-
-    private static bool OutputIsUtf8()
-    {
-        try
-        {
-            return System.Console.OutputEncoding.CodePage is 65001;
-        }
-        catch (System.IO.IOException)
-        {
-            return false;
         }
     }
 

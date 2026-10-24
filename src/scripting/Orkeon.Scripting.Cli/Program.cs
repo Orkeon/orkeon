@@ -28,7 +28,7 @@ internal static class Program
     /// option grammars never collide. A verb is looked up before a first word is taken for a crew
     /// to run: `orkeon settings` stays the verb where a `settings/` folder exists.
     /// </summary>
-    private static readonly Dictionary<string, Func<string[], Task<int>>> Verbs =
+    private static readonly Dictionary<string, Func<IRunnerConsole, string[], Task<int>>> Verbs =
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["run"] = RunAsync,
@@ -41,7 +41,7 @@ internal static class Program
             // A lambda rather than a method group: the forge dispatch carries an optional
             // working-directory override its tests use, and an optional parameter forbids the
             // conversion.
-            ["forge"] = tail => Commands.Forge.ForgeCommand.DispatchAsync(tail),
+            ["forge"] = (console, tail) => Commands.Forge.ForgeCommand.DispatchAsync(console, tail),
             ["usecases"] = Commands.UseCases.UseCasesCommand.DispatchAsync,
             ["email"] = EmailCommand.DispatchAsync,
             ["drive"] = DriveCommand.DispatchAsync,
@@ -52,28 +52,32 @@ internal static class Program
     /// <summary>The verbs the dispatch answers to, so the usage listing can be checked against it.</summary>
     internal static IReadOnlyCollection<string> KnownVerbs => Verbs.Keys;
 
-    /// <summary>Main entry; prepares the console then dispatches.</summary>
+    /// <summary>
+    /// Main entry: the CLI's console sink. It prepares the process console, then hands it on as the
+    /// one <see cref="IRunnerConsole"/> every verb writes, reads and takes its interrupt key from.
+    /// </summary>
     public static async Task<int> Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
         UseUtf8Console();
-        return await DispatchAsync(args).ConfigureAwait(false);
+        return await DispatchAsync(SystemRunnerConsole.Instance, args).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Routes one command line to the verb that owns it. Separate from <see cref="Main"/>
     /// because the console preparation above rebinds the process streams, which a test
-    /// driving the dispatch in-process cannot afford.
+    /// driving the dispatch in-process cannot afford: a test hands its own <paramref name="console"/>.
     /// </summary>
-    internal static async Task<int> DispatchAsync(string[] args)
+    internal static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(args);
 
         // The bare tool name is a question, not a run without a target: it is answered with the
         // verb listing, and with exit 0 — asking what a tool does is not a failure.
         if (args.Length == 0 || CliUsage.IsHelpToken(args[0]))
         {
-            await Console.Out.WriteAsync(CliUsage.Render()).ConfigureAwait(false);
+            await console.Output.WriteAsync(CliUsage.Render()).ConfigureAwait(false);
             return ExitOk;
         }
 
@@ -81,15 +85,15 @@ internal static class Program
         {
             // The bare form keeps its single line: scripts read it. --verbose adds to it.
             if (args.Skip(1).Any(CliUsage.IsVerboseToken))
-                await Console.Out.WriteAsync(CliUsage.RenderVerboseVersion(InstallChannelReader.Read())).ConfigureAwait(false);
+                await console.Output.WriteAsync(CliUsage.RenderVerboseVersion(InstallChannelReader.Read())).ConfigureAwait(false);
             else
-                await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+                await console.Output.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
 
             return ExitOk;
         }
 
         if (Verbs.TryGetValue(args[0], out var verb))
-            return await verb(args[1..]).ConfigureAwait(false);
+            return await verb(console, args[1..]).ConfigureAwait(false);
 
         // The `run` verb stays optional: an option written first (`orkeon --list-tools`) and
         // anything shaped like a crew path go to the run parser exactly as before. Everything
@@ -97,12 +101,12 @@ internal static class Program
         // hides the only useful fact — that the word itself is not a command.
         if (!args[0].StartsWith('-') && !CliUsage.LooksLikeCrewTarget(args[0]))
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon: unknown command '{args[0]}'; run `orkeon --help` for the list.").ConfigureAwait(false);
             return ExitScriptError;
         }
 
-        return await RunAsync(args).ConfigureAwait(false);
+        return await RunAsync(console, args).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -110,9 +114,9 @@ internal static class Program
     /// <c>--option=value</c> — how the team launchers and Studio write one — is read with its value
     /// as written, a line break and a leading space included (<see cref="RunnerArguments"/>).
     /// </summary>
-    private static async Task<int> RunAsync(string[] args)
+    private static async Task<int> RunAsync(IRunnerConsole console, string[] args)
     {
-        return await CliGrammar.DispatchAsync<RunCommandOptions>("run", args, RunCommand.ExecuteAsync).ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync<RunCommandOptions>(console, "run", args, RunCommand.ExecuteAsync).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -123,6 +127,7 @@ internal static class Program
     /// survives the trip down. No BOM anywhere: the protocol is one JSON document per
     /// line and a BOM would corrupt the first one.
     /// </summary>
+    [SuppressConsoleCompliance("CONSOLE-SINK: the one place the orkeon CLI touches the process console; Main hands it on as SystemRunnerConsole.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "The writers/readers become the process-lifetime console streams via " +
                         "Console.SetOut/SetError/SetIn; disposing them here would close stdio.")]

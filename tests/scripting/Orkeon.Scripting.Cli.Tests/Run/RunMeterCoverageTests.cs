@@ -29,7 +29,7 @@ namespace Orkeon.Scripting.Cli.Tests.Run;
 /// one of them. The meter used to see only the agent's turns, and <c>run.finished</c> read
 /// the same short count.
 /// <para>
-/// In the CLI collection: an observed run reads the process-global console.
+/// In the CLI collection: the host it builds logs through the console logger provider, which writes to the process streams.
 /// </para>
 /// </summary>
 [Collection(CliCollection.Name)]
@@ -53,7 +53,7 @@ public sealed class RunMeterCoverageTests : IDisposable
         var vendor = new ScriptedCrewVendor();
         using var console = new TestConsole(stdin: string.Empty);
         await using var observed = new ObservedRunContext(
-            new OrkeonEventWriter(_output, new FakeOrkeonClock()), stream: false, clientName: "studio");
+            new OrkeonEventWriter(_output, new FakeOrkeonClock()), stream: false, clientName: "studio", console.Input);
 
         // The real runner host, observed the way `orkeon run --events jsonl` observes it; the
         // vendor enters it like any provider the factory does not build.

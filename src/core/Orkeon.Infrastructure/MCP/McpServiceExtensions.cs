@@ -72,7 +72,7 @@ public static class McpServiceExtensions
 
         throw new InvalidOperationException(
             $"{ConfigurationKeys.McpSection}:EnableServer is not a setting any more: no setting starts an MCP server. " +
-            "A C# host registers it with AddOrkeonMcpServer(configuration) and runs McpServer.RunStdioAsync(); " +
+            "A C# host registers it with AddOrkeonMcpServer(configuration) and runs McpServer.RunStdioAsync(Console.In, Console.Out); " +
             "the orkeon tool serves its host's tools with `orkeon mcp serve`. Remove the key.");
     }
 }

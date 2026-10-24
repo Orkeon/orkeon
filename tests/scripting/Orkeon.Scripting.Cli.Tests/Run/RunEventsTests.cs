@@ -61,8 +61,8 @@ internal sealed class RecordingHook : ICrewExecutionHook
 /// The run observer (BUS-02): what a crew run puts on the shared stream, and — the part
 /// that matters most — that observing a run never costs it the hook it already had.
 /// <para>
-/// In the CLI collection because one test runs a crew in-process, and a run writes to the
-/// process-global console.
+/// In the CLI collection because one test runs a crew in-process, and its host logs through
+/// the console logger provider, which writes to the process streams.
 /// </para>
 /// </summary>
 [Collection(CliCollection.Name)]
@@ -321,7 +321,7 @@ public sealed class RunEventsTests : IDisposable
         var settings = scratch.WriteFile("refused.json", """{ "RaggableTree": { "Exclude": ["bin"] } }""");
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             SettingsPath = settings,
@@ -373,10 +373,10 @@ public sealed class RunEventsTests : IDisposable
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
         using var console = new TestConsole(stdin: string.Empty);
-        await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio");
+        await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio", console.Input);
 
         var exit = await RunnerExecution.RunOneShotAsync(
-            RunCommand.ToRunnerOptions(new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),
+            RunCommand.ToRunnerOptions(console, new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),
             "orkeon",
             configureServices: (_, services) =>
             {

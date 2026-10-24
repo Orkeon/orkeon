@@ -78,7 +78,7 @@ public sealed class OptionGrammarTests
         var parsed = Assert.IsType<Parsed<RunCommandOptions>>(
             Parse<RunCommandOptions>("crew.yaml", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W3"));
 
-        Assert.Equal(["01J9Z3K4M5N6P7Q8R9S0T1V2W3"], RunCommand.ToRunnerOptions(parsed.Value).MountIds);
+        Assert.Equal(["01J9Z3K4M5N6P7Q8R9S0T1V2W3"], RunCommand.ToRunnerOptions(Orkeon.Hosting.SystemRunnerConsole.Instance, parsed.Value).MountIds);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public sealed class OptionGrammarTests
             Parse<RunCommandOptions>("crew.yaml", "--llm-profile", "z-ai"));
 
         Assert.Equal("z-ai", parsed.Value.LlmProfile);
-        Assert.Equal("z-ai", RunCommand.ToRunnerOptions(parsed.Value).LlmProfile);
+        Assert.Equal("z-ai", RunCommand.ToRunnerOptions(Orkeon.Hosting.SystemRunnerConsole.Instance, parsed.Value).LlmProfile);
         Assert.Equal("llm-profile", Orkeon.Constants.Cli.RunOptionNames.LlmProfile);
         Assert.Equal(
             "z-ai",

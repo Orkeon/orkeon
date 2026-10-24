@@ -20,7 +20,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "list", "--category", "03-finance-trading", "--events", "jsonl"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "list", "--category", "03-finance-trading", "--events", "jsonl"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var catalog = SingleEvent(console.Stdout, UseCaseEventKinds.Catalog);
@@ -37,7 +37,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "list", "--category", "Finance-Trading"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "list", "--category", "Finance-Trading"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("31-algo-trading", console.Stdout, StringComparison.Ordinal);
@@ -49,7 +49,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "list", "--category", "gardening"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "list", "--category", "gardening"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("gardening", console.Stderr, StringComparison.Ordinal);
@@ -61,7 +61,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteListAsync(new UseCasesListOptions
+        var exit = await UseCasesCommand.ExecuteListAsync(console, new UseCasesListOptions
         {
             Process = "parallel",
             Tag = "security",
@@ -80,7 +80,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteListAsync(new UseCasesListOptions
+        var exit = await UseCasesCommand.ExecuteListAsync(console, new UseCasesListOptions
         {
             Language = "de",
             Catalog = UseCaseFixtures.Catalog(),
@@ -98,7 +98,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "show", "01-research-assistant"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "show", "01-research-assistant"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("01-research-assistant", console.Stdout, StringComparison.Ordinal);
@@ -114,7 +114,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "show", "01-research-assistant", "--events", "jsonl"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "show", "01-research-assistant", "--events", "jsonl"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var sheet = SingleEvent(console.Stdout, UseCaseEventKinds.Sheet);
@@ -130,7 +130,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "show", "31-algo-trading", "--crew"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "show", "31-algo-trading", "--crew"]);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("main.ork.ts", console.Stdout, StringComparison.Ordinal);
@@ -143,7 +143,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "show", "99-no-such-example"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "show", "99-no-such-example"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(UseCaseErrorCodes.UnknownId, console.Stderr, StringComparison.Ordinal);
@@ -155,7 +155,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "show", "99-no-such-example", "--events", "jsonl"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "show", "99-no-such-example", "--events", "jsonl"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         var error = SingleEvent(console.Stdout, UseCaseEventKinds.Error);
@@ -170,7 +170,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search(["facture", "fournisseur"], language: "fr"));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search(["facture", "fournisseur"], language: "fr"));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("1. 02-invoice-matching", console.Stdout, StringComparison.Ordinal);
@@ -184,7 +184,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search(["email", "summary"], language: "en", events: true));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search(["email", "summary"], language: "en", events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         var results = SingleEvent(console.Stdout, UseCaseEventKinds.Results);
@@ -205,7 +205,7 @@ public sealed class UseCasesCommandTests
         var options = Search(["email", "summary"], language: "en");
         options.LoadModel = () => throw new UseCaseModelUnavailableException("model files not found");
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(options);
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("terms only", console.Stdout, StringComparison.Ordinal);
@@ -220,7 +220,7 @@ public sealed class UseCasesCommandTests
         var options = Search(["email"], language: "en", events: true);
         options.LoadModel = () => throw new UseCaseModelUnavailableException("model files not found");
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(options);
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 
         Assert.Equal(Program.ExitOk, exit);
         var results = SingleEvent(console.Stdout, UseCaseEventKinds.Results);
@@ -233,7 +233,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search(["zzzz"], language: "fr"));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search(["zzzz"], language: "fr"));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("No use case matches", console.Stdout, StringComparison.Ordinal);
@@ -244,7 +244,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "search"]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "search"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("--events jsonl", console.Stderr, StringComparison.Ordinal);
@@ -258,7 +258,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["usecases", "search", "invoice", option, value]);
+        var exit = await Program.DispatchAsync(console, ["usecases", "search", "invoice", option, value]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains(option, console.Stderr, StringComparison.Ordinal);
@@ -274,7 +274,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(new UseCasesSearchOptions
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, new UseCasesSearchOptions
         {
             Words = ["je veux un résumé de mes mails chaque matin"],
             Events = "jsonl",
@@ -305,7 +305,7 @@ public sealed class UseCasesCommandTests
             return model;
         };
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(options);
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Equal(1, loads);
@@ -327,7 +327,7 @@ public sealed class UseCasesCommandTests
         var options = Search([], language: "fr", events: true);
         options.Top = 2;
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(options);
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 
         Assert.Equal(Program.ExitOk, exit);
         var answers = Events(console.Stdout).Where(e => e.GetProperty("kind").GetString() == UseCaseEventKinds.Results).ToList();
@@ -342,7 +342,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search([], language: null, events: true));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search([], language: null, events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         var ready = SingleEvent(console.Stdout, UseCaseEventKinds.Ready);
@@ -359,7 +359,7 @@ public sealed class UseCasesCommandTests
             """{"kind":"usecases.query","correlationId":"q2","text":"invoice","lang":"klingon"}""",
             """{"kind":"usecases.query","correlationId":"q3","text":"invoice","lang":"en"}"""));
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search([], language: null, events: true));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search([], language: null, events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         var events = Events(console.Stdout);
@@ -381,7 +381,7 @@ public sealed class UseCasesCommandTests
             string.Empty,
             """{"kind":"usecases.query","correlationId":"q1","text":"invoice","lang":"en"}"""));
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search([], language: null, events: true));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search([], language: null, events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         var kinds = Events(console.Stdout).Select(e => e.GetProperty("kind").GetString());
@@ -393,7 +393,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await UseCasesCommand.ExecuteSearchAsync(Search([], language: null, events: true));
+        var exit = await UseCasesCommand.ExecuteSearchAsync(console, Search([], language: null, events: true));
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Equal(string.Empty, console.Stderr);
@@ -406,7 +406,7 @@ public sealed class UseCasesCommandTests
             """{"kind":"usecases.query","correlationId":"q1","text":"invoice","lang":"en"}""",
             """{"kind":"usecases.query","correlationId":"q2"}"""));
 
-        await UseCasesCommand.ExecuteSearchAsync(Search([], language: null, events: true));
+        await UseCasesCommand.ExecuteSearchAsync(console, Search([], language: null, events: true));
 
         Assert.All(Events(console.Stdout), e => Assert.Contains(e.GetProperty("kind").GetString(), UseCaseEventKinds.All));
     }

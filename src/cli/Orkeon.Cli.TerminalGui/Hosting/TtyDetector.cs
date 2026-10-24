@@ -9,11 +9,14 @@ namespace Orkeon.Cli.TerminalGui.Hosting;
 /// </summary>
 public static class TtyDetector
 {
-    public static bool IsInteractiveTty()
+    /// <summary>Reads the process console (<see cref="SystemTerminalProbe.Instance"/>).</summary>
+    public static bool IsInteractiveTty() => IsInteractiveTty(SystemTerminalProbe.Instance);
+
+    /// <summary>Reads the redirection probes of <paramref name="terminal"/>, then the environment.</summary>
+    public static bool IsInteractiveTty(ITerminalProbe terminal)
     {
-        // Fully qualified — the sibling `Orkeon.Cli.TerminalGui.Console` namespace
-        // shadows `System.Console` for unqualified references in this assembly.
-        if (System.Console.IsInputRedirected || System.Console.IsOutputRedirected) return false;
+        ArgumentNullException.ThrowIfNull(terminal);
+        if (terminal.IsInputRedirected || terminal.IsOutputRedirected) return false;
         if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.ContinuousIntegration), "true", StringComparison.OrdinalIgnoreCase)) return false;
         if (OperatingSystem.IsLinux() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentVariableNames.Terminal))) return false;
         return true;
@@ -24,9 +27,16 @@ public static class TtyDetector
     /// <c>null</c> = auto: TUI when interactive TTY, Plain otherwise.
     /// </summary>
     public static UiMode ResolveEffectiveMode(UiMode? requested)
+        => ResolveEffectiveMode(requested, SystemTerminalProbe.Instance);
+
+    /// <summary>
+    /// Resolve the effective <see cref="UiMode"/> given a requested mode, probing
+    /// <paramref name="terminal"/> when the mode is automatic.
+    /// </summary>
+    public static UiMode ResolveEffectiveMode(UiMode? requested, ITerminalProbe terminal)
     {
         if (requested == UiMode.Plain) return UiMode.Plain;
         if (requested == UiMode.Tui) return UiMode.Tui;
-        return IsInteractiveTty() ? UiMode.Tui : UiMode.Plain;
+        return IsInteractiveTty(terminal) ? UiMode.Tui : UiMode.Plain;
     }
 }

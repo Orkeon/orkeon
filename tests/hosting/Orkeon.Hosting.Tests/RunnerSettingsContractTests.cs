@@ -36,7 +36,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var explicitSettings = Path.Combine(_root, "custom.json");
         File.WriteAllText(explicitSettings, "{}");
 
-        var resolved = RunnerSettings.ResolveSettingsPath(explicitSettings, _root);
+        var resolved = RunnerSettings.ResolveSettingsPath(explicitSettings, _root, TextWriter.Null);
 
         Assert.Equal(Path.GetFullPath(explicitSettings), resolved);
     }
@@ -49,7 +49,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         File.WriteAllText(Path.Combine(_root, "appsettings.json"), "{}");
 
         var resolved = RunnerSettings.ResolveSettingsPath(
-            Path.Combine(_root, "does-not-exist.json"), _root);
+            Path.Combine(_root, "does-not-exist.json"), _root, TextWriter.Null);
 
         Assert.Null(resolved);
     }
@@ -60,7 +60,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var local = Path.Combine(_root, "appsettings.json");
         File.WriteAllText(local, "{}");
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, _root);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, _root, TextWriter.Null);
 
         Assert.Equal(local, resolved);
     }
@@ -76,7 +76,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var configDir = Path.Combine(_root, "examples", "deep");
         Directory.CreateDirectory(configDir);
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
 
         Assert.Equal(canonical, resolved);
     }
@@ -94,7 +94,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var configDir = Path.Combine(_root, "examples", "deep");
         Directory.CreateDirectory(configDir);
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
 
         Assert.Equal(shared, resolved);
     }
@@ -116,7 +116,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var configDir = Path.Combine(_root, "examples", "deep");
         Directory.CreateDirectory(configDir);
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
 
         Assert.Equal(canonical, resolved);
     }
@@ -132,7 +132,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var configDir = Path.Combine(_root, "anywhere", "deep");
         Directory.CreateDirectory(configDir);
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
 
         Assert.Equal(_globalSettings, resolved);
     }
@@ -146,7 +146,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var local = Path.Combine(_root, "appsettings.json");
         File.WriteAllText(local, "{}");
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, _root);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, _root, TextWriter.Null);
 
         Assert.Equal(local, resolved);
     }
@@ -154,18 +154,8 @@ public sealed class RunnerSettingsContractTests : IDisposable
     [Fact]
     public void No_settings_warning_mentions_orkeon_init()
     {
-        var original = Console.Error;
         using var stderr = new StringWriter();
-        Console.SetError(stderr);
-        string? resolved;
-        try
-        {
-            resolved = RunnerSettings.ResolveSettingsPath(null, _root);
-        }
-        finally
-        {
-            Console.SetError(original);
-        }
+        var resolved = RunnerSettings.ResolveSettingsPath(null, _root, stderr);
 
         Assert.Null(resolved);
         Assert.Contains("orkeon init", stderr.ToString(), StringComparison.Ordinal);
@@ -174,13 +164,14 @@ public sealed class RunnerSettingsContractTests : IDisposable
     [Fact]
     public void Quiet_resolution_writes_nothing_to_stderr()
     {
+        // A null writer keeps the chain quiet: nothing falls back to the process stderr.
         var original = Console.Error;
         using var stderr = new StringWriter();
         Console.SetError(stderr);
         string? resolved;
         try
         {
-            resolved = RunnerSettings.ResolveSettingsPath(null, _root, quiet: true);
+            resolved = RunnerSettings.ResolveSettingsPath(null, _root, null);
         }
         finally
         {
@@ -287,7 +278,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         {
             Environment.SetEnvironmentVariable("HOME", null);
 
-            var resolved = RunnerSettings.ResolveSettingsPath(null, _root, quiet: true);
+            var resolved = RunnerSettings.ResolveSettingsPath(null, _root, null);
 
             Assert.Null(resolved);
         }
@@ -314,7 +305,7 @@ public sealed class RunnerSettingsContractTests : IDisposable
         var configDir = Path.Combine(slnDir, "category", "demo");
         Directory.CreateDirectory(configDir);
 
-        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir);
+        var resolved = RunnerSettings.ResolveSettingsPath(null, configDir, TextWriter.Null);
 
         Assert.Null(resolved);
     }

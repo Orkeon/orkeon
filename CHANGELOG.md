@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — framework code no longer touches `System.Console` **[breaking]**
+
+A new analyzer rule, `ORKCON001` (`Orkeon.Compliance.Vfs`), reports any `System.Console` reference in `src/` as an
+error, outside the console adapters and the one sink of each executable marked `[SuppressConsoleCompliance]`
+([console compliance](docs/architecture/console-compliance.md)). Runners and the `orkeon` CLI read and write through
+`IRunnerConsole` (`Orkeon.Hosting`, `RunnerOptionsBase.RunnerConsole`), the terminal UI through `ITerminalProbe`
+(`TerminalGuiOptions.Terminal`). The runner host's operator warnings go through the `Orkeon.Operator` logger category,
+forced to `Warning` and written to stderr, instead of a second `Console.Error` line. The interactive runner loop no
+longer colours its prompt.
+
+| Before | After |
+|---|---|
+| `McpServer.RunStdioAsync(ct)` | `McpServer.RunStdioAsync(reader, writer, ct)` |
+| `ConsoleHumanInputProvider(logger)` (process console) | `ConsoleHumanInputProvider(logger, input, output)` only |
+| `RunnerSettings.ResolveSettingsPath(explicit, dir, quiet)` | `RunnerSettings.ResolveSettingsPath(explicit, dir, TextWriter? warnings)` (`null` is quiet) |
+| `RegisterGracefulShutdown(cts, logger)` | `RegisterGracefulShutdown(cts, TextWriter error)` |
+
+Migration: an embedding host passes `Console.In`/`Console.Out` (or its own streams) to `RunStdioAsync` and
+`ConsoleHumanInputProvider`, and `SystemRunnerConsole.Instance` where a runner needs the process console.
+
 ### Changed — `list_mounts` returns a typed result with renamed fields **[breaking]** (RT-27, #162)
 
 `list_mounts` answers a typed `{ mounts: [{ virtual_path, access, overrides: [{ virtual_path, access }] }] }`
@@ -54,6 +74,13 @@ Independent read-class calls of one turn now run concurrently (`MaxParallelToolC
 tool-calling loops; the text-fallback loop and the dispatcher text path do not fan out. No host sets
 `JsExecutionEnvironment.ToolLimits` for the script path, so a scripted `act` always uses the built-in defaults: see
 [limitations](docs/reference/limitations.md).
+
+### Fixed — `orkeon-repl`'s `qa` mode answers with its built-in crew without a `/tmp` mount
+
+- Pressing Enter at `qa`'s crew prompt used to write the built-in crew to `/tmp/interactive-qa/…` and read it back:
+  the REPL mounts no `/tmp` unless asked, so the mode stopped with `No mount found for virtual path` and a stack
+  trace. The built-in crew is now loaded from its YAML in memory and writes no file; a crew path you type is read as
+  before.
 
 ### Added — `orkeon-repl` writes the LLM exchange log (`--llm-log`, `--llm-log-path`)
 

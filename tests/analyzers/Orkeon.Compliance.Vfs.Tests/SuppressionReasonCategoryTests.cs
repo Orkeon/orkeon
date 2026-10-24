@@ -16,11 +16,27 @@ public sealed partial class SuppressionReasonCategoryTests
         "OUT-OF-SCOPE",
     ];
 
+    private static readonly string[] s_ratifiedConsoleCategories =
+    [
+        "CONSOLE-ADAPTER",
+        "CONSOLE-SINK",
+    ];
+
     [GeneratedRegex("""SuppressVfsCompliance\(\s*(?:reason:\s*)?[@$]*"(?<reason>[^"]*)""")]
     private static partial Regex ReasonPattern();
 
+    [GeneratedRegex("""SuppressConsoleCompliance\(\s*(?:reason:\s*)?[@$]*"(?<reason>[^"]*)""")]
+    private static partial Regex ConsoleReasonPattern();
+
     [Fact]
-    public void Every_Suppression_Reason_In_Src_Starts_With_A_Ratified_Category()
+    public void Every_Suppression_Reason_In_Src_Starts_With_A_Ratified_Category() =>
+        AssertReasonsCarryACategory("SuppressVfsCompliance(", ReasonPattern(), s_ratifiedCategories);
+
+    [Fact]
+    public void Every_Console_Suppression_Reason_In_Src_Starts_With_A_Ratified_Category() =>
+        AssertReasonsCarryACategory("SuppressConsoleCompliance(", ConsoleReasonPattern(), s_ratifiedConsoleCategories);
+
+    private static void AssertReasonsCarryACategory(string marker, Regex pattern, string[] categories)
     {
         var src = Path.Combine(FindRepositoryRoot(), "src");
         var offenders = new List<string>();
@@ -29,24 +45,24 @@ public sealed partial class SuppressionReasonCategoryTests
         foreach (var file in EnumerateSources(src))
         {
             var text = File.ReadAllText(file);
-            var index = text.IndexOf("SuppressVfsCompliance(", StringComparison.Ordinal);
+            var index = text.IndexOf(marker, StringComparison.Ordinal);
             while (index >= 0)
             {
                 count++;
-                var match = ReasonPattern().Match(text, index);
+                var match = pattern.Match(text, index);
                 var relative = Path.GetRelativePath(src, file);
                 if (!match.Success || match.Index != index)
                     offenders.Add($"{relative}: reason is not a string literal");
-                else if (!s_ratifiedCategories.Any(c => HasCategory(match.Groups["reason"].Value, c)))
+                else if (!categories.Any(c => HasCategory(match.Groups["reason"].Value, c)))
                     offenders.Add($"{relative}: \"{match.Groups["reason"].Value}\"");
 
-                index = text.IndexOf("SuppressVfsCompliance(", index + 1, StringComparison.Ordinal);
+                index = text.IndexOf(marker, index + 1, StringComparison.Ordinal);
             }
         }
 
-        Assert.True(count > 0, "No [SuppressVfsCompliance] found under src/ — the scan is looking in the wrong place.");
+        Assert.True(count > 0, $"No [{marker.TrimEnd('(')}] found under src/ — the scan is looking in the wrong place.");
         Assert.True(offenders.Count == 0,
-            "Suppression reasons without a ratified category (" + string.Join(", ", s_ratifiedCategories) + "):"
+            "Suppression reasons without a ratified category (" + string.Join(", ", categories) + "):"
             + Environment.NewLine + string.Join(Environment.NewLine, offenders));
     }
 

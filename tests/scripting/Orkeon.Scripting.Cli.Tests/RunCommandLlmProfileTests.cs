@@ -22,7 +22,7 @@ public sealed class RunCommandLlmProfileTests
             """);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             SettingsPath = settings,

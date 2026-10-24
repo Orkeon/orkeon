@@ -30,6 +30,13 @@ public abstract class RunnerOptionsBase
     public string? SettingsPath { get; set; }
 
     /// <summary>
+    /// The terminal the runner writes its result and diagnostics to, and reads an interactive
+    /// session's questions from: the process console unless the caller hands its own (a test's
+    /// buffers). Not a command-line option.
+    /// </summary>
+    public IRunnerConsole RunnerConsole { get; set; } = SystemRunnerConsole.Instance;
+
+    /// <summary>
     /// Mount strings in Docker-style format. Several go space-separated after ONE flag —
     /// the parser refuses a repeated option, so "--mount a --mount b" is a usage error.
     /// </summary>

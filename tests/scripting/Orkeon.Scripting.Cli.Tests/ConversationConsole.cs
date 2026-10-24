@@ -1,4 +1,5 @@
 using System.Text;
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests;
@@ -7,28 +8,27 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// The console of a verb a program drives: standard output read line by line while the verb
 /// still runs, and a standard input the test writes to and closes. <see cref="TestConsole"/>
 /// plays a verb that has all its input before it starts; a sign-in answers what the verb said
-/// first. <see cref="Console"/> is process-global: callers hold <see cref="CliCollection"/>.
+/// first. It is handed to the verb as its <see cref="IRunnerConsole"/>: nothing process-global is touched.
 /// </summary>
-internal sealed class ConversationConsole : IDisposable
+internal sealed class ConversationConsole : IRunnerConsole, IDisposable
 {
-    private readonly TextWriter _originalOut;
-    private readonly TextWriter _originalError;
-    private readonly TextReader _originalIn;
     private readonly LineWriter _out = new();
     private readonly LineWriter _error = new();
-
-    public ConversationConsole()
-    {
-        _originalOut = Console.Out;
-        _originalError = Console.Error;
-        _originalIn = Console.In;
-        Console.SetOut(_out);
-        Console.SetError(_error);
-        Console.SetIn(Input);
-    }
+    private readonly InterruptHandlers _interrupts = new();
 
     /// <summary>The verb's standard input.</summary>
     public ScriptedStandardInput Input { get; } = new();
+
+    TextWriter IRunnerConsole.Output => _out;
+
+    TextWriter IRunnerConsole.ErrorOutput => _error;
+
+    TextReader IRunnerConsole.Input => Input;
+
+    /// <summary>A scripted input reads as redirected.</summary>
+    public bool IsInputRedirected => true;
+
+    public IDisposable OnInterrupt(Func<bool> handler) => _interrupts.Add(handler);
 
     /// <summary>Everything written to standard output so far.</summary>
     public string Stdout => _out.Text;
@@ -41,9 +41,6 @@ internal sealed class ConversationConsole : IDisposable
 
     public void Dispose()
     {
-        Console.SetOut(_originalOut);
-        Console.SetError(_originalError);
-        Console.SetIn(_originalIn);
         // Ends a reader thread still parked on the input.
         Input.Dispose();
         _out.Dispose();

@@ -45,7 +45,7 @@ public sealed class RunCommandYamlTests
         var crew = scratch.WriteScript(fileName, MinimalCrew);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             // The scratch dir lives under the temp path (outside the test cwd), so the
@@ -76,15 +76,16 @@ public sealed class RunCommandYamlTests
             "planned.yaml",
             MinimalCrew.Replace("process: sequential", "process: sequential\nplanning: true", StringComparison.Ordinal));
         using var console = new TestConsole();
+        using var log = new ProcessLogCapture();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             AllowExternalMounts = true,
         });
 
         Assert.Equal(Program.ExitOk, exit);
-        Assert.Contains("planning skipped", console.Stdout + console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("planning skipped", log.Stdout + log.Stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("ERROR: ", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
@@ -96,7 +97,7 @@ public sealed class RunCommandYamlTests
         var crew = scratch.WriteScript("routing.yaml", MinimalCrew);
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             AllowExternalMounts = true,
@@ -118,7 +119,7 @@ public sealed class RunCommandYamlTests
             "/// <reference orkeon-script=\"1.0\" />\nvar result = 42;\n");
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
         });
@@ -146,7 +147,7 @@ public sealed class RunCommandYamlTests
         var settings = scratch.WriteFile("appsettings.json", """{ "RaggableTree": { "Enabled": false } }""");
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             SettingsPath = settings,
@@ -176,7 +177,7 @@ public sealed class RunCommandYamlTests
         var crew = scratch.WriteScript("crew.yaml", MinimalCrew);
         using var console = new TestConsole(stdin: string.Empty);
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = crew,
             AllowExternalMounts = true,
@@ -209,7 +210,7 @@ public sealed class RunCommandYamlTests
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = Path.Combine(scratch.ScriptDir, "nope.yaml"),
             AllowExternalMounts = true,

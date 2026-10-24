@@ -27,7 +27,7 @@ public sealed partial class EmailCommandTests
         using var identity = new StubOutlookHttpMessageHandler();
         using var console = new ConversationConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -63,7 +63,7 @@ public sealed partial class EmailCommandTests
         WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
         using var console = new ConversationConsole();
 
-        var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+        var exit = await EmailCommand.ExecuteCheckAsync(console, new EmailCheckCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -89,7 +89,7 @@ public sealed partial class EmailCommandTests
         using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
         using var console = new ConversationConsole();
 
-        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "perso",
@@ -135,7 +135,7 @@ public sealed partial class EmailCommandTests
         using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
         using var console = new ConversationConsole();
 
-        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "perso",
@@ -187,7 +187,7 @@ public sealed partial class EmailCommandTests
             """);
         using var console = new ConversationConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "perso",
@@ -217,7 +217,7 @@ public sealed partial class EmailCommandTests
         };
         using var console = new ConversationConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -249,7 +249,7 @@ public sealed partial class EmailCommandTests
         using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
         using var console = new ConversationConsole();
 
-        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "perso",
@@ -278,7 +278,7 @@ public sealed partial class EmailCommandTests
         using var identity = new StubOutlookHttpMessageHandler { TokenAnswer = """{ "error": "authorization_pending" }""" };
         using var console = new ConversationConsole();
 
-        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -302,7 +302,7 @@ public sealed partial class EmailCommandTests
         using var identity = new StubOutlookHttpMessageHandler();
         using var console = new ConversationConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -330,7 +330,7 @@ public sealed partial class EmailCommandTests
         using (var console = new ConversationConsole())
         {
             WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
-            await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root, Account = "hotmail", Events = "jsonl", ConfigureTestServices = Answering(identity),
             });
@@ -343,7 +343,7 @@ public sealed partial class EmailCommandTests
         using (var console = new ConversationConsole())
         {
             WriteGmailOAuthSettings(scratch, Path.Combine(scratch.Root, "credentials"));
-            var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root, Account = "perso", Events = "jsonl", ConfigureTestServices = Answering(identity),
             });
@@ -359,7 +359,7 @@ public sealed partial class EmailCommandTests
         using (var console = new ConversationConsole())
         {
             scratch.WriteFile("appsettings.json", "{}");
-            await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
             {
                 WorkingDirectoryOverride = scratch.Root, Account = "nobody", Events = "jsonl",
             });
@@ -381,7 +381,7 @@ public sealed partial class EmailCommandTests
         using var identity = new StubOutlookHttpMessageHandler();
         using var console = new TestConsole();
 
-        var exit = await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var exit = await EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "hotmail",
@@ -411,7 +411,7 @@ public sealed partial class EmailCommandTests
         using var secret = new EnvironmentVariableScope(GoogleSecretVariable, "google-secret");
         using var console = new ConversationConsole();
 
-        var login = EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+        var login = EmailCommand.ExecuteLoginAsync(console, new EmailLoginCommandOptions
         {
             WorkingDirectoryOverride = scratch.Root,
             Account = "perso",

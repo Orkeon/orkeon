@@ -33,8 +33,8 @@ internal sealed partial class AskQuestionCommand : IInteractiveCommand
         async Task<CommandResult> ExecuteCoreAsync()
         {
             var runner = context.Scope.GetRequiredService<QaRunner>();
-            var configPath = runner.CrewConfigPath
-                ?? throw new InvalidOperationException("QaRunner not started — CrewConfigPath is null.");
+            if (runner.CrewConfigPath is null && !runner.UsesBuiltInCrew)
+                throw new InvalidOperationException("QaRunner not started — no crew config is loaded.");
 
             var question = context.RawInput.Trim();
 
@@ -43,7 +43,12 @@ internal sealed partial class AskQuestionCommand : IInteractiveCommand
             try
             {
                 var factory = context.Scope.GetRequiredService<ICrewFactory>();
-                var crew = await factory.CreateFromFileAsync(configPath, cancellationToken).ConfigureAwait(false);
+                var crew = runner.CrewConfigPath is { } configPath
+                    ? await factory.CreateFromFileAsync(configPath, cancellationToken).ConfigureAwait(false)
+                    : await factory.CreateFromConfigAsync(
+                        await context.Scope.GetRequiredService<ICrewDefinitionLoader>()
+                            .LoadFromStringAsync(QaRunner.BuiltInCrewYaml, cancellationToken).ConfigureAwait(false),
+                        cancellationToken).ConfigureAwait(false);
 
                 var orchestrator = context.Scope.GetRequiredService<ICrewOrchestrationService>();
                 var crewInput = CrewInput.WithStringVariables(

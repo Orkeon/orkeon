@@ -24,7 +24,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["list"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["list"], _workspace);
 
         Assert.Equal(0, exitCode);
         Assert.Contains("No forge session", console.Stdout, StringComparison.Ordinal);
@@ -41,7 +41,7 @@ public sealed class ForgeCommandTests : IDisposable
         newer.Save(new DateTimeOffset(2026, 8, 19, 11, 0, 0, TimeSpan.Zero));
 
         using var console = new TestConsole();
-        var exitCode = await ForgeCommand.DispatchAsync(["list"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["list"], _workspace);
 
         Assert.Equal(0, exitCode);
         var lines = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -56,7 +56,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["--bogus"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["--bogus"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("Unknown option '--bogus'", console.Stderr, StringComparison.Ordinal);
@@ -67,7 +67,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["un", "besoin", "--format", "toml"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["un", "besoin", "--format", "toml"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("unknown format 'toml' — use yaml or script", console.Stderr, StringComparison.Ordinal);
@@ -79,7 +79,7 @@ public sealed class ForgeCommandTests : IDisposable
         ForgeSession.Create(_workspace, "veille", format: ForgeSession.FormatYaml);
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["resume", "veille", "--format", "script"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "veille", "--format", "script"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("cannot change on resume", console.Stderr, StringComparison.Ordinal);
@@ -90,7 +90,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["resume", "ghost"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "ghost"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("ghost", console.Stderr, StringComparison.Ordinal);
@@ -103,7 +103,7 @@ public sealed class ForgeCommandTests : IDisposable
         // the resolution chain finds nothing here: the interview must refuse honestly.
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["un", "besoin", "concret"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["un", "besoin", "concret"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
@@ -126,7 +126,7 @@ public sealed class ForgeCommandTests : IDisposable
         session.Save();
 
         using var console = new TestConsole();
-        var exitCode = await ForgeCommand.DispatchAsync(["resume", "demo", "--adopt", "--events", "jsonl"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "demo", "--adopt", "--events", "jsonl"], _workspace);
 
         Assert.Equal(0, exitCode);
         var kinds = console.Stdout
@@ -154,7 +154,7 @@ public sealed class ForgeCommandTests : IDisposable
         session.Save();
 
         using var console = new TestConsole();
-        var exitCode = await ForgeCommand.DispatchAsync(["resume", "demo", "--adopt", "--events", "jsonl"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["resume", "demo", "--adopt", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);
         var lines = console.Stdout
@@ -188,7 +188,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.True(session.HasVerdict);
 
         using var console = new TestConsole();
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["resume", "demo", "--adopt", "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["resume", "demo", "--adopt", "--events", "jsonl"], _workspace));
 
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "demo", out var reloaded, out _));
         Assert.False(reloaded!.HasVerdict);
@@ -208,7 +208,7 @@ public sealed class ForgeCommandTests : IDisposable
         session.Save();
 
         using var console = new TestConsole();
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["resume", "demo", "--adopt", "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["resume", "demo", "--adopt", "--events", "jsonl"], _workspace));
 
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "demo", out var reloaded, out _));
         Assert.Equal(ForgeSessionStatus.Ready, reloaded!.Status);
@@ -219,7 +219,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["une veille", "--adopt"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["une veille", "--adopt"], _workspace));
         Assert.Contains("--adopt only applies", console.Stderr, StringComparison.Ordinal);
     }
 
@@ -228,11 +228,11 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["une veille", "--read"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["une veille", "--read"], _workspace));
         Assert.Contains("--read needs a directory", console.Stderr, StringComparison.Ordinal);
 
         // A following option is not a directory either.
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["une veille", "--read", "--dry"], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["une veille", "--read", "--dry"], _workspace));
         Assert.Empty(ForgeSession.List(_workspace));
     }
 
@@ -245,7 +245,7 @@ public sealed class ForgeCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["promote", "demo", "--to", Path.Combine(_workspace, "out"), "--read", _workspace], _workspace);
 
         Assert.Equal(1, exitCode);
@@ -372,7 +372,7 @@ public sealed class ForgeCommandTests : IDisposable
         await File.WriteAllTextAsync(settings, """{ "RaggableTree": { "Exclude": ["bin"] } }""", TestContext.Current.CancellationToken);
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["une", "veille", "--settings", settings], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("orkeon forge: RaggableTree:Exclude", console.Stderr, StringComparison.Ordinal);
@@ -388,7 +388,7 @@ public sealed class ForgeCommandTests : IDisposable
         var missing = Path.Combine(_workspace, "nulle-part");
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--read", missing], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["une", "veille", "--read", missing], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("--read names no directory", console.Stderr, StringComparison.Ordinal);
@@ -398,7 +398,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Empty(ForgeSession.List(_workspace));
 
         // A resume refuses the same way, before the session is even looked up.
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["resume", "ghost", "--read", missing], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["resume", "ghost", "--read", missing], _workspace));
         Assert.DoesNotContain("ghost", console.Stderr, StringComparison.Ordinal);
     }
 
@@ -464,7 +464,7 @@ public sealed class ForgeCommandTests : IDisposable
             // End to end, the cycle reaches the host with that plan: it refuses for want of an
             // LLM, and the session it created sits under the workspace, not under the documents.
             using var console = new TestConsole();
-            Assert.Equal(1, await ForgeCommand.DispatchAsync(["resume", session.Document.Slug, "--read", documents], _workspace));
+            Assert.Equal(1, await ForgeCommand.DispatchAsync(console, ["resume", session.Document.Slug, "--read", documents], _workspace));
             Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
             Assert.Single(ForgeSession.List(_workspace));
             Assert.Empty(ForgeSession.List(documents));
@@ -500,14 +500,16 @@ public sealed class ForgeCommandTests : IDisposable
             $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(documents)}:/workspace:ro",
             $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(output)}:/output:rw");
         using var console = new TestConsole();
+        using var log = new ProcessLogCapture();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["une", "veille", "--settings", settings, "--dry"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.DoesNotContain("reserved by the runner", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
-        Assert.Contains("mount /workspace: --mount replaces the settings entry", console.Stderr, StringComparison.Ordinal);
-        Assert.Contains("mount /output: --mount replaces the settings entry", console.Stderr, StringComparison.Ordinal);
+        // The host's own log lines, written by its console logger provider.
+        Assert.Contains("mount /workspace: --mount replaces the settings entry", log.Stdout + log.Stderr, StringComparison.Ordinal);
+        Assert.Contains("mount /output: --mount replaces the settings entry", log.Stdout + log.Stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("Duplicate virtual paths", console.Stderr, StringComparison.Ordinal);
     }
 
@@ -523,7 +525,7 @@ public sealed class ForgeCommandTests : IDisposable
         var settings = WriteSettings($"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(folder)}:/sandbox:rw");
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["une", "veille", "--settings", settings, "--dry"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("reserved by the runner", console.Stderr, StringComparison.Ordinal);
@@ -546,7 +548,7 @@ public sealed class ForgeCommandTests : IDisposable
         var settings = WriteSettings($"{idA}|{a}:/docs:ro", $"{idB}|{b}:/docs:ro");
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["une", "veille", "--settings", settings, "--dry", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);

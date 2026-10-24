@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Cli.Tests.Run;
 /// once: the provider <c>orkeon run</c> hands a script is the host's own, limited where the host
 /// built it. The runner used to wrap it in a limiter of its own for the scripts alone; kept on top
 /// of the entrance, every <c>ctx.llm</c> call would have taken two leases.
-/// <para>In the CLI collection: the run reads the process-global console.</para>
+/// <para>In the CLI collection: the host it builds logs through the console logger provider, which writes to the process streams.</para>
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class ScriptedLlmLeaseTests
@@ -53,7 +53,7 @@ public sealed class ScriptedLlmLeaseTests
         using var console = new TestConsole();
         var limiter = new CountingRateLimiter();
 
-        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        var exit = await RunCommand.ExecuteAsync(console, new RunCommandOptions
         {
             ScriptPath = script,
             ConfigureTestServices = (_, services) => services.AddSingleton<ILlmRateLimiter>(limiter),

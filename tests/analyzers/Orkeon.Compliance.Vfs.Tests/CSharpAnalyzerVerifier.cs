@@ -52,7 +52,7 @@ internal static class AnalyzerHarness<TAnalyzer> where TAnalyzer : DiagnosticAna
         var compilationWithAnalyzers = compilation.WithAnalyzers(analyzers);
         var diagnostics = await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
 
-        var filtered = diagnostics.Where(d => d.Id.StartsWith("ORKVFS", StringComparison.Ordinal))
+        var filtered = diagnostics.Where(d => d.Id.StartsWith("ORK", StringComparison.Ordinal))
             .OrderBy(d => d.Location.SourceSpan.Start)
             .ToImmutableArray();
 

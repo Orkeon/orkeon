@@ -28,7 +28,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "ollama",
             OutputPath = target,
@@ -50,7 +50,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "docker-model-runner",
             OutputPath = target,
@@ -72,7 +72,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "openai",
             OutputPath = target,
@@ -96,7 +96,7 @@ public sealed class InitCommandTests
         const string secret = "sk-test-secret-do-not-log-1234567890";
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "openai",
             ApiKey = secret,
@@ -120,7 +120,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "custom",
             OutputPath = target,
@@ -139,7 +139,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "custom",
             BaseUrl = "https://api.deepseek.com",
@@ -162,7 +162,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "none",
             OutputPath = target,
@@ -181,7 +181,7 @@ public sealed class InitCommandTests
         using var scratch = new ScriptScratch();
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "skynet",
             OutputPath = Path.Combine(scratch.Root, "appsettings.json"),
@@ -201,7 +201,7 @@ public sealed class InitCommandTests
         var target = scratch.WriteFile("appsettings.json", """{ "keep": true }""");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "ollama",
             OutputPath = target,
@@ -220,7 +220,7 @@ public sealed class InitCommandTests
         var target = scratch.WriteFile("appsettings.json", """{ "keep": true }""");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "ollama",
             OutputPath = target,
@@ -244,7 +244,7 @@ public sealed class InitCommandTests
         try
         {
             using var console = new TestConsole();
-            var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+            var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
             {
                 Provider = "docker-model-runner",
                 NoProbe = true,
@@ -257,7 +257,7 @@ public sealed class InitCommandTests
             // The written file is found by the runner resolution chain from ANY directory.
             var elsewhere = Path.Combine(scratch.Root, "some", "other", "cwd");
             Directory.CreateDirectory(elsewhere);
-            var resolved = RunnerSettings.ResolveSettingsPath(null, elsewhere, quiet: true);
+            var resolved = RunnerSettings.ResolveSettingsPath(null, elsewhere, null);
             Assert.Equal(globalPath, resolved);
         }
         finally
@@ -279,7 +279,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = provider,
             OutputPath = target,
@@ -315,7 +315,7 @@ public sealed class InitCommandTests
         using var console = new TestConsole();
         using var input = new StringReader("5\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -340,7 +340,7 @@ public sealed class InitCommandTests
         // 1 = Ollama, then empty line = accept the default model.
         using var input = new StringReader("1\n\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -366,7 +366,7 @@ public sealed class InitCommandTests
         // 2 = Docker Model Runner, then an explicit model overriding the default.
         using var input = new StringReader("2\nai/smollm2\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -390,7 +390,7 @@ public sealed class InitCommandTests
         // 3 = OpenAI, default model, empty = "yes, reference an env var", default env name.
         using var input = new StringReader("3\n\n\n\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -417,7 +417,7 @@ public sealed class InitCommandTests
         // 4 = custom, base URL, model, "n" = inline key, then the key itself.
         using var input = new StringReader($"4\nhttps://api.deepseek.com\ndeepseek-v4-flash\nn\n{secret}\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -445,7 +445,7 @@ public sealed class InitCommandTests
         // 4 = custom, base URL, model, "y" = env var reference, custom env name.
         using var input = new StringReader("4\nhttps://api.mistral.ai/v1\nmistral-medium\ny\nMY_LLM_KEY\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -471,7 +471,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "openai",
             ApiKeyEnv = "OPENAI_API_KEY",
@@ -497,7 +497,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "openai",
             ApiKeyEnv = "ORKEON_Llm__ApiKey",
@@ -521,7 +521,7 @@ public sealed class InitCommandTests
         // Invalid "9" → retry prompt → "5" (offline) succeeds.
         using var input = new StringReader("9\n5\n");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -542,7 +542,7 @@ public sealed class InitCommandTests
         using var console = new TestConsole();
         using var input = new StringReader("");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             OutputPath = target,
             NoProbe = true,
@@ -569,7 +569,7 @@ public sealed class InitCommandTests
         try
         {
             using var console = new TestConsole();
-            var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+            var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
             {
                 Provider = "custom",
                 BaseUrl = server.BaseUrl,
@@ -682,7 +682,7 @@ public sealed class InitCommandTests
         using var console = new TestConsole();
         using var handler = new StubHttpMessageHandler("""{"models":[{"name":"llama3.2:latest"}]}""");
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "custom",
             BaseUrl = "http://gpu-box:11434",
@@ -709,7 +709,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = provider,
             BaseUrl = baseUrl,
@@ -732,7 +732,7 @@ public sealed class InitCommandTests
         var target = Path.Combine(scratch.Root, "appsettings.json");
         using var console = new TestConsole();
 
-        var exit = await InitCommand.ExecuteAsync(new InitCommandOptions
+        var exit = await InitCommand.ExecuteAsync(console, new InitCommandOptions
         {
             Provider = "custom",
             BaseUrl = "http://localhost:8080",

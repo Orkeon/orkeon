@@ -1,3 +1,4 @@
+using Orkeon.Compliance.Vfs;
 namespace Orkeon.Cli.Abstractions.Console.LineEditing;
 
 /// <summary>
@@ -5,6 +6,7 @@ namespace Orkeon.Cli.Abstractions.Console.LineEditing;
 /// raw/intercept mode and positions the cursor for inline editing. All console access is guarded so
 /// a resized or absent terminal degrades gracefully instead of throwing into the REPL loop.
 /// </summary>
+[SuppressConsoleCompliance("CONSOLE-ADAPTER: the physical console under the line editor (cursor, buffer, keys).")]
 public sealed class SystemLineEditorConsole : ILineEditorConsole
 {
     private const int FallbackWidth = 80;

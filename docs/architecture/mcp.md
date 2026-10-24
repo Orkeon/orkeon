@@ -175,8 +175,8 @@ The library ships **no hosted service** for this: an embedding host resolves
 `McpToolProvider` and calls `ConnectServerAsync(serverId, config)` for each configured
 server, explicitly — which is exactly what the runner host's startup step does, and what
 `orkeon-host`'s connection service calls. A host that serves its tools calls
-`AddOrkeonMcpServer(configuration)`, then resolves `McpServer` and runs `RunStdioAsync()` —
-what `orkeon mcp serve` does. `orkeon-host` serves no MCP.
+`AddOrkeonMcpServer(configuration)`, then resolves `McpServer` and runs
+`RunStdioAsync(reader, writer)` over the streams it owns — what `orkeon mcp serve` does. `orkeon-host` serves no MCP.
 
 ### MCP tools and crews
 

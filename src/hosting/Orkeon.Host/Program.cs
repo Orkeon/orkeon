@@ -20,7 +20,7 @@ using Orkeon.Host;
 // --help and --version answer and leave.
 if (HostStartup.InformationalText(args) is { } informational)
 {
-    await Console.Out.WriteLineAsync(informational).ConfigureAwait(false);
+    await HostConsole.Out.WriteLineAsync(informational).ConfigureAwait(false);
     return 0;
 }
 

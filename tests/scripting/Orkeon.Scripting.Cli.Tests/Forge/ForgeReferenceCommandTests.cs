@@ -89,7 +89,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(["trier mes e-mails", "--reference", "99-nowhere"], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["trier mes e-mails", "--reference", "99-nowhere"], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("unknown use case '99-nowhere' (USECASES-UNKNOWN-ID)", console.Stderr, StringComparison.Ordinal);
@@ -104,7 +104,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
     {
         using var console = new TestConsole();
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["trier mes e-mails", "--reference", "99-nowhere", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);
@@ -125,7 +125,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         using var console = new TestConsole();
 
         // No model is configured here: the cycle stops at the host's refusal, once the session exists.
-        var exitCode = await ForgeCommand.DispatchAsync(["trier mes e-mails", "--reference", EmailPipeline], _workspace);
+        var exitCode = await ForgeCommand.DispatchAsync(console, ["trier mes e-mails", "--reference", EmailPipeline], _workspace);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
@@ -148,7 +148,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         var (settings, pack) = WriteProbe();
         using var console = new TestConsole(stdin: "");
 
-        var exitCode = await ForgeCommand.DispatchAsync(
+        var exitCode = await ForgeCommand.DispatchAsync(console,
             ["trier mes e-mails", "--reference", EmailPipeline, "--settings", settings, "--pack", pack, "--events", "jsonl"],
             _workspace);
 
@@ -174,7 +174,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         session.Save(Now);
         using var console = new TestConsole();
 
-        await ForgeCommand.DispatchAsync(
+        await ForgeCommand.DispatchAsync(console,
             ["resume", "trier", "--settings", settings, "--pack", pack, "--events", "jsonl"], _workspace);
 
         var events = Events(console.Stdout);
@@ -207,7 +207,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         session.Save(Now);
         using var console = new TestConsole();
 
-        await ForgeCommand.DispatchAsync(
+        await ForgeCommand.DispatchAsync(console,
             ["resume", "trier", "--settings", settings, "--pack", pack, "--events", "jsonl"], _workspace);
 
         Assert.Contains("'99-gone'", console.Stderr, StringComparison.Ordinal);
@@ -225,7 +225,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         var session = ReadySession("trier", Recorded);
         using var console = new TestConsole();
 
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "trier", "--to", Team, "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["promote", "trier", "--to", Team, "--events", "jsonl"], _workspace));
 
         // FORGE.md: next to the provenance sentence it already had, in the brief's language.
         var lines = (await File.ReadAllTextAsync(Path.Combine(Team, ForgePromoter.CardFileName), TestContext.Current.CancellationToken))
@@ -297,12 +297,12 @@ public sealed class ForgeReferenceCommandTests : IDisposable
     public async Task A_session_rebuilt_from_its_team_keeps_the_reference_the_team_recorded()
     {
         var original = ReadySession("trier", Recorded);
-        using (new TestConsole())
-            Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "trier", "--to", Team], _workspace));
+        using (var promote = new TestConsole())
+            Assert.Equal(0, await ForgeCommand.DispatchAsync(promote, ["promote", "trier", "--to", Team], _workspace));
         Directory.Delete(ForgeSession.FindById(_workspace, original.Document.Id!.Value)!.Directory, recursive: true);
 
         using var console = new TestConsole();
-        Assert.Equal(0, await ForgeCommand.DispatchAsync(["reopen", Team, "--events", "jsonl"], _workspace));
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(console, ["reopen", Team, "--events", "jsonl"], _workspace));
 
         var events = Events(console.Stdout);
         Assert.Equal(EmailPipeline, events[0].GetProperty("reference").GetProperty("id").GetString());

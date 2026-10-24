@@ -38,18 +38,20 @@ namespace Orkeon.ConsoleApp;
 
 static class Program
 {
+    [Orkeon.Compliance.Vfs.SuppressConsoleCompliance("CONSOLE-SINK: orkeon-repl's entry point hands the process stderr to the startup steps that report before the console opens.")]
     static async Task Main(string[] args)
     {
-        if (!TryResolveUiMode(args, out var effectiveUi))
+        var stderr = Console.Error;
+        if (!TryResolveUiMode(args, stderr, out var effectiveUi))
             return;
 
-        if (!TryResolveReplWrap(args, out var replWordWrap))
+        if (!TryResolveReplWrap(args, stderr, out var replWordWrap))
             return;
 
         // GAP-40: the registrations, Logging and the start validation of the runner host — values,
         // keys, names, Orkeon:Rag:LlmProfile among them —, under one barrier: a refused setting is
         // one line and exit 1, before the console opens.
-        var launch = ReplStartup.Prepare(args, effectiveUi, replWordWrap, Console.Error.WriteLine);
+        var launch = ReplStartup.Prepare(args, effectiveUi, replWordWrap, stderr.WriteLine);
         if (launch.Host is not { } host)
         {
             Environment.ExitCode = launch.ExitCode;
@@ -71,7 +73,7 @@ static class Program
     /// Parses and resolves the requested UI mode. Returns <c>false</c> (after exiting the
     /// process) when the CLI flags are invalid.
     /// </summary>
-    static bool TryResolveUiMode(string[] args, out UiMode effectiveUi)
+    static bool TryResolveUiMode(string[] args, TextWriter stderr, out UiMode effectiveUi)
     {
         UiMode? requestedUi;
         try
@@ -80,7 +82,7 @@ static class Program
         }
         catch (ArgumentException ex)
         {
-            Console.Error.WriteLine(ex.Message);
+            stderr.WriteLine(ex.Message);
             Environment.Exit(2);
             effectiveUi = default;
             return false;
@@ -94,7 +96,7 @@ static class Program
     /// Resolves the <c>--repl-wrap [on|off]</c> flag. Defaults to <c>true</c> (wrap on, no horizontal
     /// scrollbar) when absent. Returns <c>false</c> (after exiting the process) on an invalid value.
     /// </summary>
-    static bool TryResolveReplWrap(string[] args, out bool replWordWrap)
+    static bool TryResolveReplWrap(string[] args, TextWriter stderr, out bool replWordWrap)
     {
         try
         {
@@ -103,7 +105,7 @@ static class Program
         }
         catch (ArgumentException ex)
         {
-            Console.Error.WriteLine(ex.Message);
+            stderr.WriteLine(ex.Message);
             Environment.Exit(2);
             replWordWrap = default;
             return false;

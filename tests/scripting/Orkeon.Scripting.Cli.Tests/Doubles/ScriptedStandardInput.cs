@@ -3,7 +3,7 @@ namespace Orkeon.Scripting.Cli.Tests.Doubles;
 /// <summary>
 /// A standard input a test writes to while the verb runs — the pipe of a program that drives the
 /// CLI. A read blocks its thread until a line is written or the input is closed, exactly as a
-/// read of a redirected <see cref="Console.In"/> does; closing it is the end of input.
+/// read of a redirected standard input does; closing it is the end of input.
 /// </summary>
 internal sealed class ScriptedStandardInput : TextReader
 {

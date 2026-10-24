@@ -42,7 +42,7 @@ public sealed class StatusLineView : View
         _dispatcher = dispatcher;
         _clock = clock;
         _bootVerbs = options.SpinnerVerbs;
-        _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        _glyphs = GlyphSet.Resolve(options.Glyphs, Hosting.TerminalUtf8.IsUtf8(options.Terminal));
         Height = 1;
         Width = Dim.Fill();
         SetScheme(SchemeFactory.Pane());
@@ -199,18 +199,6 @@ public sealed class StatusLineView : View
         catch (InvalidOperationException)
         {
             // Application not initialised (unit tests) — Refresh() stays callable manually.
-        }
-    }
-
-    private static bool OutputIsUtf8()
-    {
-        try
-        {
-            return System.Console.OutputEncoding.CodePage is 65001;
-        }
-        catch (System.IO.IOException)
-        {
-            return false;
         }
     }
 

@@ -51,16 +51,17 @@ internal sealed class McpServeCommandOptions : CliOptions
 internal static class McpCommand
 {
     /// <summary>Parses <paramref name="args"/> (already stripped of the leading <c>mcp</c>) and dispatches.</summary>
-    public static async Task<int> DispatchAsync(string[] args)
+    public static async Task<int> DispatchAsync(IRunnerConsole console, string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return await CliGrammar.DispatchAsync("mcp", args, [typeof(McpServeCommandOptions)], options => ServeAsync((McpServeCommandOptions)options), helpOnStderr: true).ConfigureAwait(false);
+        return await CliGrammar.DispatchAsync(console, "mcp", args, [typeof(McpServeCommandOptions)], (console, options) => ServeAsync(console, (McpServeCommandOptions)options), helpOnStderr: true).ConfigureAwait(false);
     }
 
     /// <summary>Serves until the client closes stdin.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: an unexpected failure is reported in one line on stderr, the stream a client records as its server's log, with a runtime-error exit code instead of a crash.")]
-    internal static async Task<int> ServeAsync(McpServeCommandOptions options)
+    internal static async Task<int> ServeAsync(IRunnerConsole console, McpServeCommandOptions options)
     {
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(options);
 
         // Started by another serve — its settings declare `orkeon mcp serve` under MCP:Servers
@@ -68,7 +69,7 @@ internal static class McpCommand
         // 30 s. The refusal is one line on stderr, which the parent joins to its connection error.
         if (RunnerEnvironment.StartedByMcpServe)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon mcp serve: refused to start: another `orkeon mcp serve` started this one "
                 + $"({RunnerEnvironment.McpServeVariable} is set), its settings declaring it under MCP:Servers. "
                 + "Remove that entry, or declare both servers in the client instead.").ConfigureAwait(false);
@@ -80,22 +81,22 @@ internal static class McpCommand
         Environment.SetEnvironmentVariable(RunnerEnvironment.McpServeVariable, "1");
         try
         {
-            using var host = await BuildHostAsync(options).ConfigureAwait(false);
+            using var host = await BuildHostAsync(console, options).ConfigureAwait(false);
             if (host is null)
                 return Program.ExitScriptError;
 
-            if (!await ServeOnlyAsync(host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
+            if (!await ServeOnlyAsync(console.ErrorOutput, host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
-            await host.Services.GetRequiredService<McpServer>().RunStdioAsync().ConfigureAwait(false);
+            await host.Services.GetRequiredService<McpServer>().RunStdioAsync(console.Input, console.Output).ConfigureAwait(false);
             return Program.ExitOk;
         }
         catch (Exception ex)
         {
-            await Console.Error.WriteLineAsync(
+            await console.ErrorOutput.WriteLineAsync(
                 $"orkeon mcp serve: unexpected error [{ex.GetType().FullName}]: {ex.Message}").ConfigureAwait(false);
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+                await console.ErrorOutput.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
         }
         finally
@@ -110,12 +111,12 @@ internal static class McpCommand
     /// Null when the settings are refused — the removed <c>MCP:EnableServer</c> among them —; the
     /// line that says why is already on stderr.
     /// </summary>
-    private static async Task<IHost?> BuildHostAsync(McpServeCommandOptions options)
+    private static async Task<IHost?> BuildHostAsync(IRunnerConsole console, McpServeCommandOptions options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, console.ErrorOutput);
         if (settingsPath != null)
-            await Console.Error.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
 
         return await RunnerExecution.BuildToolHostAsync(
             settingsPath,
@@ -127,10 +128,12 @@ internal static class McpCommand
             offered: OfferedMountSelectors.None,
             (context, services) =>
             {
+                services.AddSingleton(console);
                 services.AddSemanticSearchTool();
                 RunCommand.AddCliRagServices(services);
                 services.AddOrkeonMcpServer(context.Configuration);
             },
+            console.ErrorOutput,
             CancellationToken.None).ConfigureAwait(false);
     }
 
@@ -138,7 +141,7 @@ internal static class McpCommand
     /// <c>--tools</c>: every name must be a tool of the host — one that is not refuses the start,
     /// named — and every other tool leaves the registry, which this host keeps for the server alone.
     /// </summary>
-    private static async Task<bool> ServeOnlyAsync(IToolRegistry registry, IEnumerable<string> names)
+    private static async Task<bool> ServeOnlyAsync(TextWriter error, IToolRegistry registry, IEnumerable<string> names)
     {
         var requested = names.ToList();
         if (requested.Count == 0)
@@ -156,7 +159,7 @@ internal static class McpCommand
 
         if (wanted.Count == 0 || unknown.Count > 0)
         {
-            await Console.Error.WriteLineAsync(wanted.Count == 0
+            await error.WriteLineAsync(wanted.Count == 0
                     ? "orkeon mcp serve: --tools names no tool."
                     : $"orkeon mcp serve: --tools names what this host does not have: {string.Join(", ", unknown)}. "
                       + "`orkeon run --list-tools`, with the same settings, lists its tools.")

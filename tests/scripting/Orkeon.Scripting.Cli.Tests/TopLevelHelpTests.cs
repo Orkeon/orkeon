@@ -26,7 +26,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync([token]);
+        var exit = await Program.DispatchAsync(console, [token]);
 
         Assert.Equal(Program.ExitOk, exit);
         foreach (var verb in ExpectedVerbs)
@@ -39,7 +39,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync([]);
+        var exit = await Program.DispatchAsync(console, []);
 
         Assert.Equal(Program.ExitOk, exit);
         foreach (var verb in ExpectedVerbs)
@@ -51,7 +51,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["--version"]);
+        var exit = await Program.DispatchAsync(console, ["--version"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var expected = typeof(Program).Assembly
@@ -69,7 +69,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["--version", "--verbose"]);
+        var exit = await Program.DispatchAsync(console, ["--version", "--verbose"]);
 
         Assert.Equal(Program.ExitOk, exit);
         var lines = console.Stdout.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -83,7 +83,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        await Program.DispatchAsync(["--version"]);
+        await Program.DispatchAsync(console, ["--version"]);
 
         Assert.Equal(CliUsage.VersionLine + Environment.NewLine, console.Stdout);
     }
@@ -97,7 +97,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["doctr"]);
+        var exit = await Program.DispatchAsync(console, ["doctr"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unknown command", console.Stderr, StringComparison.Ordinal);
@@ -117,7 +117,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync([target]);
+        var exit = await Program.DispatchAsync(console, [target]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.DoesNotContain("unknown command", console.Stderr, StringComparison.Ordinal);
@@ -144,7 +144,7 @@ public sealed class TopLevelHelpTests
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(["--events", "not-a-format", "crew.yaml"]);
+        var exit = await Program.DispatchAsync(console, ["--events", "not-a-format", "crew.yaml"]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("unsupported --events format", console.Stderr, StringComparison.Ordinal);
