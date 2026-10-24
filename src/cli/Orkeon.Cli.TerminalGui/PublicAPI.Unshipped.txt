@@ -82,3 +82,26 @@ Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.set -> void
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.Diagnostics.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.IsInputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.IsOutputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.Output.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.OutputIsUtf8.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.TreatControlCAsInput.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.TreatControlCAsInput.set -> void
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Diagnostics.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.IsInputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.IsOutputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Output.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.OutputIsUtf8.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.TreatControlCAsInput.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.TreatControlCAsInput.set -> void
+static Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Instance.get -> Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe!
+Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8
+static Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8.IsUtf8(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.get -> Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe!
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.init -> void
+static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
+static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.ResolveEffectiveMode(Orkeon.Cli.TerminalGui.Hosting.UiMode? requested, Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> Orkeon.Cli.TerminalGui.Hosting.UiMode

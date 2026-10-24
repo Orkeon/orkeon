@@ -31,8 +31,12 @@ internal static class TuiClipboard
 
     private static string? _lastCopy;
 
-    /// <summary>Test hook: replaces the terminal writer used for OSC 52 (defaults to stdout).</summary>
-    internal static TextWriter? TerminalWriterOverride { get; set; }
+    /// <summary>
+    /// The terminal stream OSC 52 sequences are written to. <c>TerminalGuiHost.Initialize</c>
+    /// sets it from <c>TerminalGuiOptions.Terminal</c> when the TUI starts; while it is null
+    /// (no TUI running) the OSC 52 surface is skipped and the copy lands in the other two.
+    /// </summary>
+    internal static TextWriter? TerminalWriter { get; set; }
 
     /// <summary>
     /// Copies <paramref name="text"/> to every reachable clipboard surface (in-process cache,
@@ -92,8 +96,9 @@ internal static class TuiClipboard
             var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
             if (payload.Length > MaxOsc52Base64Length)
                 return;
-            // Fully qualified: `Console` alone resolves to the Orkeon.Cli.TerminalGui.Console namespace.
-            var writer = TerminalWriterOverride ?? System.Console.Out;
+            var writer = TerminalWriter;
+            if (writer is null)
+                return;
             // OSC 52 ; c(lipboard) ; <base64> BEL — atomic write + flush so the sequence never
             // interleaves with a partially-emitted TUI frame.
             writer.Write($"\x1b]52;c;{payload}\a");

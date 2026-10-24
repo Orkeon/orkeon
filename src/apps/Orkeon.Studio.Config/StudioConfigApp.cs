@@ -16,8 +16,18 @@ namespace Orkeon.Studio.Config;
 /// application lifecycle — <c>--version</c> and <c>--help</c> never reach it, which is what
 /// makes them work in a redirected shell.
 /// </summary>
-internal static class StudioConfigApp
+internal sealed class StudioConfigApp
 {
+    private readonly TextWriter _error;
+    private readonly ITerminalProbe _terminal;
+
+    /// <summary>Creates the app over the error stream and the terminal it reports and probes.</summary>
+    public StudioConfigApp(TextWriter error, ITerminalProbe terminal)
+    {
+        _error = error ?? throw new ArgumentNullException(nameof(error));
+        _terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
+    }
+
     /// <summary>Exit code when the process has no terminal to draw on.</summary>
     public const int ExitNoTerminal = 1;
 
@@ -25,15 +35,15 @@ internal static class StudioConfigApp
     public const int ExitStartupFailure = 1;
 
     /// <summary>Opens the editor and returns the process exit code.</summary>
-    public static int Run(StartupOptions options)
+    public int Run(StartupOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (!TtyDetector.IsInteractiveTty())
+        if (!TtyDetector.IsInteractiveTty(_terminal))
         {
-            Console.Error.WriteLine(
+            _error.WriteLine(
                 "orkeon-studio-config needs an interactive terminal (its input or output is redirected here).");
-            Console.Error.WriteLine("Run it from a terminal, or use --version / --help, which need none.");
+            _error.WriteLine("Run it from a terminal, or use --version / --help, which need none.");
             return ExitNoTerminal;
         }
 
@@ -44,7 +54,7 @@ internal static class StudioConfigApp
         Justification = "Top-level fault barrier of a terminal application: a driver or terminal failure " +
                         "must leave the console readable and return an exit code, not print a stack trace " +
                         "over a half-initialized screen.")]
-    private static int RunInteractive(StartupOptions options)
+    private int RunInteractive(StartupOptions options)
     {
         var initialized = false;
 
@@ -67,7 +77,7 @@ internal static class StudioConfigApp
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(string.Create(
+            _error.WriteLine(string.Create(
                 CultureInfo.InvariantCulture,
                 $"orkeon-studio-config could not start: {ex.Message}"));
             return ExitStartupFailure;

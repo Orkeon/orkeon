@@ -51,4 +51,12 @@ public sealed record TerminalGuiOptions
     /// (e.g. a scripted <c>/config set spinnerVerbs …</c>) wins over this.
     /// </summary>
     public IReadOnlyList<string>? SpinnerVerbs { get; init; }
+
+    /// <summary>
+    /// The terminal the interface runs in: redirection probes, output encoding (the
+    /// <see cref="GlyphMode.Auto"/> decision of every view), Ctrl+C mode, the stream OSC 52
+    /// clipboard sequences are written to, and the <c>TUI_DIAG</c> stream. Default
+    /// <see cref="SystemTerminalProbe.Instance"/>, the process console.
+    /// </summary>
+    public ITerminalProbe Terminal { get; init; } = SystemTerminalProbe.Instance;
 }

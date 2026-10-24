@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
+using Orkeon.Compliance.Vfs;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.Services;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -16,7 +18,26 @@ namespace Orkeon.Studio.Wpf;
 /// </summary>
 public partial class App : System.Windows.Application
 {
+    private readonly TextWriter _output;
+    private readonly TextWriter _error;
     private MainWindowViewModel? _viewModel;
+
+    /// <summary>The application WPF's generated entry point creates, over the process streams.</summary>
+    [SuppressConsoleCompliance("CONSOLE-SINK: the one place Orkeon Studio hands the real streams on.")]
+    public App()
+        : this(Console.Out, Console.Error)
+    {
+    }
+
+    /// <summary>
+    /// Creates the application over the stream the headless capture writes its summary to and
+    /// the one fault and refusal reports go to.
+    /// </summary>
+    internal App(TextWriter output, TextWriter error)
+    {
+        _output = output ?? throw new ArgumentNullException(nameof(output));
+        _error = error ?? throw new ArgumentNullException(nameof(error));
+    }
 
     /// <summary>
     /// The language the user explicitly picked, or null while nobody has — read from the
@@ -33,10 +54,10 @@ public partial class App : System.Windows.Application
     /// terminal or CI run and in front of the user, who would otherwise be left clicking a
     /// control that has silently stopped answering.
     /// </summary>
-    private static void ReportFault(Exception exception)
+    private void ReportFault(Exception exception)
     {
         var detail = exception.ToString();
-        Console.Error.WriteLine(detail);
+        _error.WriteLine(detail);
         MessageBox.Show(
             string.Create(CultureInfo.CurrentCulture, $"{exception.GetType().Name}\n\n{exception.Message}"),
             "Orkeon Studio",
@@ -69,7 +90,7 @@ public partial class App : System.Windows.Application
             // Refused before anything is built: an unknown switch is a mistake to report, not one
             // to open a window over. Reported on stderr rather than in a message box — this path
             // has to stay non-blocking for a script or a CI runner that mistyped a flag.
-            Console.Error.WriteLine(StartupArguments.DescribeUnrecognized(arguments.Unrecognized));
+            _error.WriteLine(StartupArguments.DescribeUnrecognized(arguments.Unrecognized));
             Shutdown(StartupArguments.UnrecognizedArgumentExitCode);
             return;
         }
@@ -226,23 +247,23 @@ public partial class App : System.Windows.Application
             var report = await Services.Capture.CaptureCampaign.RunAsync(
                 new Services.Capture.CaptureOptions { Directory = directory });
 
-            await Console.Out.WriteLineAsync(
+            await _output.WriteLineAsync(
                 $"capture-screens: {report.Written}/{report.Planned} image(s) written to {directory}");
 
             if (report.Failures.Count > 0)
             {
-                await Console.Error.WriteLineAsync(
+                await _error.WriteLineAsync(
                     $"capture-screens: {report.Failures.Count} stop(s) failed "
                     + $"(the seeded worlds were at {report.SandboxRoot}):");
                 foreach (var failure in report.Failures)
-                    await Console.Error.WriteLineAsync($"  {failure.Pass} / {failure.Stop}: {failure.Reason}");
+                    await _error.WriteLineAsync($"  {failure.Pass} / {failure.Stop}: {failure.Reason}");
             }
 
             Shutdown(report.Failures.Count == 0 ? 0 : 1);
         }
         catch (Exception exception)
         {
-            await Console.Error.WriteLineAsync($"capture-screens failed: {exception}");
+            await _error.WriteLineAsync($"capture-screens failed: {exception}");
             Shutdown(1);
         }
     }

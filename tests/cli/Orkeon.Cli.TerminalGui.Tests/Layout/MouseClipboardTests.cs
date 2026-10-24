@@ -17,7 +17,7 @@ public sealed class MouseClipboardTests : IDisposable
     public void Dispose()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = null;
+        TuiClipboard.TerminalWriter = null;
         GC.SuppressFinalize(this);
     }
 
@@ -25,7 +25,7 @@ public sealed class MouseClipboardTests : IDisposable
     [Trait("BR", "CH-09")]
     public void Right_click_pastes_the_clipboard_into_the_input()
     {
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         TuiClipboard.Copy("COLLÉ");
         using var input = new MouseClipboardTextView { Text = "", ReadOnly = false };
         using var subscription = MouseClipboardBehavior.AttachRightClickPaste(() => input);
@@ -41,7 +41,7 @@ public sealed class MouseClipboardTests : IDisposable
     [Trait("BR", "CH-10")]
     public void Releasing_a_drag_in_the_transcript_copies_the_selection()
     {
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         using var transcript = new MouseClipboardTextView { Text = "alpha beta", ReadOnly = true, Width = 20, Height = 3 };
         transcript.SetRelativeLayout(new System.Drawing.Size(20, 3));
         transcript.SelectAll();

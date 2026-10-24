@@ -76,7 +76,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         ArgumentNullException.ThrowIfNull(options);
         _dispatcher = dispatcher;
-        _glyphs = GlyphSet.Resolve(options.Glyphs, OutputIsUtf8());
+        _glyphs = GlyphSet.Resolve(options.Glyphs, Hosting.TerminalUtf8.IsUtf8(options.Terminal));
         // A bare View defaults to CanFocus=false; the FrameView this pane used to be
         // set it to true. Without it the focus chain cannot ENTER the pane, the
         // startup _input.SetFocus() silently no-ops, and nothing typed ever lands —
@@ -309,18 +309,6 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     /// <summary>The glyph set this pane resolved (the transcript lines written about it use the same).</summary>
     internal GlyphSet Glyphs => _glyphs;
-
-    private static bool OutputIsUtf8()
-    {
-        try
-        {
-            return System.Console.OutputEncoding.CodePage is 65001;
-        }
-        catch (System.IO.IOException)
-        {
-            return false;
-        }
-    }
 
     public void Clear()
     {

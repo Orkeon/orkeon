@@ -72,7 +72,7 @@ public class TerminalGuiHostTests
     public void CtrlV_pastes_the_clipboard_into_the_input()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("COLLÉ");
@@ -83,7 +83,7 @@ public class TerminalGuiHostTests
             Assert.True(key.Handled);
             Assert.Equal("COLLÉ", pane.CurrentInput);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class TerminalGuiHostTests
     public void CtrlV_is_handled_before_the_focused_view()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("alpha");
@@ -105,7 +105,7 @@ public class TerminalGuiHostTests
             Assert.Equal("alpha", pane.CurrentInput);
             Assert.Equal("other", other.Text);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class TerminalGuiHostTests
     public void CtrlV_never_submits_the_input()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("line");
@@ -124,7 +124,7 @@ public class TerminalGuiHostTests
             Assert.Equal("line", pane.CurrentInput);
             Assert.False(read.IsCompleted);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class TerminalGuiHostTests
     public void CtrlV_stands_down_when_a_modal_dialog_has_focus()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("nope");
@@ -149,7 +149,7 @@ public class TerminalGuiHostTests
             Assert.False(key.Handled);
             Assert.Equal("keep", pane.CurrentInput);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class TerminalGuiHostTests
     public void CtrlV_ignores_other_keys()
     {
         TuiClipboard.Reset();
-        TuiClipboard.TerminalWriterOverride = new StringWriter();
+        TuiClipboard.TerminalWriter = new StringWriter();
         try
         {
             TuiClipboard.Copy("nope");
@@ -170,7 +170,7 @@ public class TerminalGuiHostTests
             Assert.False(key.Handled);
             Assert.Equal("keep", pane.CurrentInput);
         }
-        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriterOverride = null; }
+        finally { TuiClipboard.Reset(); TuiClipboard.TerminalWriter = null; }
     }
 
     [Fact]
