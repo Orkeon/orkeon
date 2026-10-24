@@ -605,13 +605,14 @@ place d'une entrée écrite à la main sont refusés.
 
 ### `LlmLogging`
 
-Règle la capture des échanges LLM. Lue uniquement quand le run passe `--llm-log`, qui dit où va
-le journal (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`). Un interrupteur qui
+Règle la capture des échanges LLM. Lue uniquement quand le run passe `--llm-log` ou
+`--llm-log-path`, qui disent où va le journal (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`) :
+aucune clé de cette section n'active le journal ni ne choisit son dossier. Un interrupteur qui
 ne vaut ni `true` ni `false`, une longueur qui n'est pas un nombre entier, ou une autre clé
-refuse le démarrage d'un run qui passe `--llm-log`.
+refuse le démarrage d'un run qui passe `--llm-log`. Recette : [suivre le run et garder les échanges LLM](../getting-started/run-your-first-example.md#suivre-le-run-et-garder-les-échanges-llm).
 
 <!-- settings:LlmLogging -->
-**Lue par** : `orkeon`, `orkeon-host`.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|

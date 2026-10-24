@@ -26,7 +26,8 @@ public sealed class SettingsCatalogFileTests
             RunnerHost.CompositionContext(configuration),
             services,
             UiMode.Plain,
-            ScriptedCommandsCliOptions.Parse([]),
+            // --llm-log: the LlmLogging section is read only with the flag, as for orkeon run.
+            ScriptedCommandsCliOptions.Parse(["--llm-log"]),
             replWordWrap: false);
 
         var described = SettingsCatalogBuilder.Describe(services, SettingsDocumentation.From(ProducedFile.Documentation()));

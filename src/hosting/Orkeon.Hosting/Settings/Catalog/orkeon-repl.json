@@ -2,6 +2,7 @@
   "host": "orkeon-repl",
   "reads": [
     "Llm",
+    "LlmLogging",
     "Logging",
     "MCP",
     "MCP:Server",

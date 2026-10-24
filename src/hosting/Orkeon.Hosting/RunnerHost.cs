@@ -1349,7 +1349,7 @@ public static partial class RunnerHost
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging)
     {
         ConfigureRunnerLogging(context, services, configureLogging);
-        ConfigureLlmExchangeLogging(context, services, llmLogVirtualPath);
+        RegisterLlmExchangeLogging(context, services, llmLogVirtualPath);
 
         // --- LLM provider from appsettings.json "Llm" section ---
         RegisterLlmProvider(context, services);
@@ -1608,7 +1608,12 @@ public static partial class RunnerHost
         });
     }
 
-    private static void ConfigureLlmExchangeLogging(
+    /// <summary>
+    /// Registers the LLM exchange log written under <paramref name="llmLogVirtualPath"/>, with the
+    /// <c>LlmLogging</c> section's options; nothing when the path is null or empty. Called by every
+    /// runner and by <c>orkeon-repl</c>, which mount the folder at <c>RunnerVirtualRoots.LlmLogs</c>.
+    /// </summary>
+    internal static void RegisterLlmExchangeLogging(
         HostBuilderContext context,
         IServiceCollection services,
         string? llmLogVirtualPath)

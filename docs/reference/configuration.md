@@ -569,13 +569,14 @@ to, and a name that would take over an entry written by hand are refused.
 
 ### `LlmLogging`
 
-Tunes the capture of LLM exchanges. Read only when the run passes `--llm-log`, which says where
-the log goes (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`). A switch that is not
+Tunes the capture of LLM exchanges. Read only when the run passes `--llm-log` or
+`--llm-log-path`, which say where the log goes (`RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`):
+no key of this section turns the log on or chooses its folder. A switch that is not
 `true` or `false`, a length that is no whole number, or another key refuses the start of a run
-passing `--llm-log`.
+passing `--llm-log`. Recipe: [follow the run and keep the LLM exchanges](../getting-started/run-your-first-example.md#follow-the-run-and-keep-the-llm-exchanges).
 
 <!-- settings:LlmLogging -->
-**Read by**: `orkeon`, `orkeon-host`.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|

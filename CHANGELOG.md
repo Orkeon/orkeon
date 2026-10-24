@@ -55,6 +55,17 @@ tool-calling loops; the text-fallback loop and the dispatcher text path do not f
 `JsExecutionEnvironment.ToolLimits` for the script path, so a scripted `act` always uses the built-in defaults: see
 [limitations](docs/reference/limitations.md).
 
+### Added — `orkeon-repl` writes the LLM exchange log (`--llm-log`, `--llm-log-path`)
+
+- The interactive console takes `orkeon run`'s two flags: every request and response sent to the model as JSONL under
+  `./llm-logs`, or the folder `--llm-log-path` names, which implies `--llm-log`; the `LlmLogging` section tunes it, as
+  for `orkeon run`. A folder outside the working directory needs `--allow-external-mounts`; without it the REPL refuses
+  to start (exit code 1) with the runner's line. The REPL used to accept neither flag and wrote no exchange log.
+- `orkeon run` and `orkeon-repl` resolve, mount and guard the folder with one rule (`RunnerLlmLog`).
+- Docs: the first-run guide gives the command that follows a run in the terminal and keeps the exchanges in a chosen
+  folder; the CLI reference says `-v 1` prints one summary line per exchange, never the bodies, and that
+  `--allow-external-mounts` covers an `--llm-log-path` outside the working directory.
+
 ### Added — an agent confined to a working root, detached shell jobs (RT-06, RT-11, #137, #138)
 
 - **`working_root`** (YAML key; alias `workingRoot`, C# `AgentBuilder.WorkingRoot`): a virtual path under a mount that
