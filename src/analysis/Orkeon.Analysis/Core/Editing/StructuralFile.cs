@@ -300,17 +300,30 @@ internal sealed class StructuralFile
                 Walk(child, prefix);
                 continue;
             }
-            var declared = child.Type == "export_statement" ? child.Ts.ChildByField("declaration") : child.Ts;
-            if (declared is null || !(Containers.Contains(declared.Type) || Members.Contains(declared.Type))) continue;
-            var name = declared.ChildByField("name")?.Text;
-            if (name is null) continue;
+            var declared = DeclaredNode(child);
+            var name = declared?.ChildByField("name")?.Text;
+            if (declared is null || name is null) continue;
 
             var fullName = prefix.Length == 0 ? name : $"{prefix}.{name}";
-            var parameters = SignatureExtractor.ParameterTypes(declared);
-            var selector = parameters is null ? fullName : $"{fullName}({string.Join(',', parameters)})";
-            _declarations.Add(new Declaration(fullName, selector, declared.Type, parameters, child, named, i));
+            _declarations.Add(DeclarationOf(fullName, declared, child, named, i));
             if (Containers.Contains(declared.Type)) Walk(child.Type == "export_statement" ? PathNode.Of(declared) : child, fullName);
         }
+    }
+
+    // The container or member a child declares, looking through an export statement; null for anything else.
+    private static TsNode? DeclaredNode(PathNode child)
+    {
+        var declared = child.Type == "export_statement" ? child.Ts.ChildByField("declaration") : child.Ts;
+        if (declared is null) return null;
+        return Containers.Contains(declared.Type) || Members.Contains(declared.Type) ? declared : null;
+    }
+
+    private static Declaration DeclarationOf(string fullName, TsNode declared, PathNode child, IReadOnlyList<PathNode> siblings, int index)
+    {
+        if (!SignatureExtractor.TryGetParameterTypes(declared, out var parameters))
+            return new Declaration(fullName, fullName, declared.Type, null, child, siblings, index);
+        var selector = $"{fullName}({string.Join(',', parameters)})";
+        return new Declaration(fullName, selector, declared.Type, parameters, child, siblings, index);
     }
 
     private NodeRange DeclarationRange(PathNode span, IReadOnlyList<PathNode> siblings, int index)
@@ -373,20 +386,35 @@ internal sealed class StructuralFile
     }
 }
 
-internal sealed class AmbiguousSelectorException(IReadOnlyList<string> candidates)
-    : Exception($"Ambiguous selector; candidates: {string.Join(", ", candidates)}")
+public sealed class AmbiguousSelectorException : Exception
 {
-    public IReadOnlyList<string> Candidates { get; } = candidates;
+    public AmbiguousSelectorException(IReadOnlyList<string> candidates)
+        : base($"Ambiguous selector; candidates: {string.Join(", ", candidates)}")
+    {
+        Candidates = candidates;
+    }
+
+    public IReadOnlyList<string> Candidates { get; }
 }
 
-internal sealed class SelectorNotFoundException(IReadOnlyList<string> suggestions)
-    : Exception($"Selector not found; suggestions: {string.Join(", ", suggestions)}")
+public sealed class SelectorNotFoundException : Exception
 {
-    public IReadOnlyList<string> Suggestions { get; } = suggestions;
+    public SelectorNotFoundException(IReadOnlyList<string> suggestions)
+        : base($"Selector not found; suggestions: {string.Join(", ", suggestions)}")
+    {
+        Suggestions = suggestions;
+    }
+
+    public IReadOnlyList<string> Suggestions { get; }
 }
 
-internal sealed class UnsupportedExtensionException(string extension)
-    : Exception($"No tree-sitter grammar for extension '{extension}'")
+public sealed class UnsupportedExtensionException : Exception
 {
-    public string Extension { get; } = extension;
+    public UnsupportedExtensionException(string extension)
+        : base($"No tree-sitter grammar for extension '{extension}'")
+    {
+        Extension = extension;
+    }
+
+    public string Extension { get; }
 }

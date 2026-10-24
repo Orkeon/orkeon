@@ -27,10 +27,10 @@ internal static class DocumentsEdgeLinker
                 .Where(k => k.StartsWith(CodeTag, StringComparison.Ordinal) || k.StartsWith(LinkTag, StringComparison.Ordinal))
                 .Select(k => k[(k.IndexOf(':', StringComparison.Ordinal) + 1)..])
                 .Append(section.Name);
-            foreach (var target in names.Distinct(StringComparer.Ordinal).SelectMany(name => byLocalName[name]))
+            foreach (var targetId in names.Distinct(StringComparer.Ordinal).SelectMany(name => byLocalName[name]).Select(target => target.Id))
             {
-                var id = $"documents::{section.Id}->{target.Id}";
-                if (seen.Add(id)) linked.Add(new RaggableEdge(id, section.Id, target.Id, EdgeKind.Documents));
+                var id = $"documents::{section.Id}->{targetId}";
+                if (seen.Add(id)) linked.Add(new RaggableEdge(id, section.Id, targetId, EdgeKind.Documents));
             }
         }
 

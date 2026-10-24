@@ -135,15 +135,10 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
                 continue;
             }
 
-            if (!source.StartsWith('/'))
-            {
-                if (crewDirectory is null)
-                {
-                    LogRelativeSourceWithoutCrewDirectory(collection, source);
-                    continue;
-                }
-                source = Anchor(source, crewDirectory);
-            }
+            var anchored = AnchoredSource(collection, source, crewDirectory);
+            if (anchored is null)
+                continue;
+            source = anchored;
 
             var pattern = await PatternOfAsync(source, cancellationToken).ConfigureAwait(false);
             if (pattern is null)
@@ -158,6 +153,21 @@ public sealed partial class RagCollectionsBootstrapper : IRagCollectionsBootstra
         }
 
         return descriptors.ToImmutable();
+    }
+
+    /// <summary>
+    /// <paramref name="source"/> as an absolute path: a relative one is anchored at the crew's
+    /// folder; null, and logged, when there is no crew folder to anchor it at.
+    /// </summary>
+    private string? AnchoredSource(string collection, string source, string? crewDirectory)
+    {
+        if (source.StartsWith('/'))
+            return source;
+        if (crewDirectory is not null)
+            return Anchor(source, crewDirectory);
+
+        LogRelativeSourceWithoutCrewDirectory(collection, source);
+        return null;
     }
 
     /// <summary>

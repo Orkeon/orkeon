@@ -97,7 +97,11 @@ internal sealed class EditTransaction
         {
             // The file whose write failed may be truncated: it is restored too.
             var failures = await RestoreAsync(paths, originals, Math.Min(attempted + 1, paths.Count)).ConfigureAwait(false);
-            if (failures.Count > 0) throw new AggregateException([failure, .. failures]);
+            if (failures.Count > 0)
+            {
+                failures.Insert(0, failure);
+                throw new AggregateException(failures);
+            }
             await _fs.DeleteAsync(journalPath, recursive: false, CancellationToken.None).ConfigureAwait(false);
             throw;
         }

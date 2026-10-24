@@ -3,14 +3,25 @@ using System.Text.RegularExpressions;
 
 namespace Orkeon.Analysis.Core.Structural;
 
-internal sealed class UnboundMetavariableException(string name) : Exception($"The fix uses the metavariable '{name}', which the rule does not bind.")
+public sealed class UnboundMetavariableException : Exception
 {
-    public string Name { get; } = name;
+    public UnboundMetavariableException(string name)
+        : base($"The fix uses the metavariable '{name}', which the rule does not bind.")
+    {
+        Name = name;
+    }
+
+    public string Name { get; }
 }
 
-internal sealed class FixTemplate(string template)
+internal sealed class FixTemplate
 {
-    public string Template { get; } = template;
+    public FixTemplate(string template)
+    {
+        Template = template;
+    }
+
+    public string Template { get; }
 
     public void Validate(IReadOnlyCollection<string> boundNames)
     {

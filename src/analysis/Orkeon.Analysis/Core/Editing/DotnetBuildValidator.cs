@@ -6,10 +6,15 @@ using Orkeon.Compliance.Vfs;
 namespace Orkeon.Analysis.Core.Editing;
 
 /// <summary>Runs <c>dotnet build --no-restore</c> on the nearest project or solution above the edited files.</summary>
-internal sealed class DotnetBuildValidator(TimeSpan? timeout = null) : IBuildValidator
+internal sealed class DotnetBuildValidator : IBuildValidator
 {
     private const int DetailErrors = 20;
-    private readonly TimeSpan _timeout = timeout ?? TimeSpan.FromMinutes(5);
+    private readonly TimeSpan _timeout;
+
+    public DotnetBuildValidator(TimeSpan? timeout = null)
+    {
+        _timeout = timeout ?? TimeSpan.FromMinutes(5);
+    }
 
     public async Task<BuildValidation> ValidateAsync(IReadOnlyList<string> editedPhysicalPaths, CancellationToken cancellationToken)
     {

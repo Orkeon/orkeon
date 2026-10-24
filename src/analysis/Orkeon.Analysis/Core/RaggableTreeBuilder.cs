@@ -89,6 +89,36 @@ public sealed class RaggableTreeBuilder
         return BuildCoreAsync(virtualRoot, opts, ct);
     }
 
+    // A Markdown file is mapped on its own; a file of a supported language is mapped and registered for its graph.
+    private async Task ParseFileAsync(
+        DiscoveredFile file,
+        List<RaggableNode> allNodes,
+        List<RaggableNode> packageNodes,
+        RaggableNode monorepo,
+        Dictionary<string, DependencyGraphBuilder> graphBuildersByLanguage,
+        CancellationToken ct)
+    {
+        if (file.Language == MarkdownLanguage)
+        {
+            var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+            if (markdown is not null) allNodes.AddRange(MarkdownMapper.Map(file.VirtualPath, markdown));
+            return;
+        }
+
+        if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) return;
+
+        var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
+        if (source is null) return;
+
+        var mapper = new UniversalSemanticMapper(adapter, _pool);
+        var fileNodes = mapper.ExtractNodes(file.VirtualPath, source);
+        TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
+        allNodes.AddRange(fileNodes);
+
+        GetOrCreateBuilder(graphBuildersByLanguage, adapter)
+            .RegisterFile(file.VirtualPath, source, fileNodes);
+    }
+
     private async Task<BuildResult> BuildCoreAsync(
         string virtualRoot,
         IndexCodebaseRequest opts,
@@ -118,26 +148,7 @@ public sealed class RaggableTreeBuilder
         {
             ct.ThrowIfCancellationRequested();
             _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
-            if (file.Language == MarkdownLanguage)
-            {
-                var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-                if (markdown is null) continue;
-                allNodes.AddRange(MarkdownMapper.Map(file.VirtualPath, markdown));
-                continue;
-            }
-
-            if (!_adaptersByLanguage.TryGetValue(file.Language, out var adapter)) continue;
-
-            var source = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);
-            if (source is null) continue;
-
-            var mapper = new UniversalSemanticMapper(adapter, _pool);
-            var fileNodes = mapper.ExtractNodes(file.VirtualPath, source);
-            TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
-            allNodes.AddRange(fileNodes);
-
-            GetOrCreateBuilder(graphBuildersByLanguage, adapter)
-                .RegisterFile(file.VirtualPath, source, fileNodes);
+            await ParseFileAsync(file, allNodes, packageNodes, monorepo, graphBuildersByLanguage, ct).ConfigureAwait(false);
         }
 
         ResolveMarkdownLinks(allNodes, new MarkdownLinkIndex(allNodes));

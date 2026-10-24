@@ -92,53 +92,72 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
     {
         var from = module ?? throw new InvalidOperationException("A module path is required for an import.");
         var first = lines.FindIndex(l => SingleLineImport().IsMatch(l.TrimEnd('\r')));
-        var quote = "'";
-        var semicolon = ";";
-        if (first >= 0)
-        {
-            var sample = lines[first].TrimEnd('\r');
-            if (sample.Contains('"', StringComparison.Ordinal) && !sample.Contains('\'', StringComparison.Ordinal)) quote = "\"";
-            if (!sample.TrimEnd().EndsWith(';')) semicolon = string.Empty;
-        }
+        var (quote, semicolon) = ImportStyle(lines, first);
 
         for (var i = 0; i < lines.Count; i++)
         {
-            var span = 1;
-            var m = NamedImport().Match(lines[i].TrimEnd('\r'));
-            if (!m.Success && OpenNamedImport().IsMatch(lines[i].TrimEnd('\r')))
-            {
-                var close = lines.FindIndex(i + 1, l => l.Contains('}', StringComparison.Ordinal));
-                if (close > 0)
-                {
-                    span = close - i + 1;
-                    m = NamedImport().Match(string.Join('\n', lines.GetRange(i, span).Select(l => l.TrimEnd('\r'))));
-                }
-            }
-
-            if (!m.Success || m.Groups[3].Value != from) continue;
-            var bindings = Comment().Replace(m.Groups[1].Value, string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            if (bindings.Contains(name) || (m.Groups["default"].Success && m.Groups["default"].Value == name)) return (i, span, false);
-            if (span > 1)
-            {
-                if (!AppendBinding(lines, i, span)) continue;
-                return (i, span + 1, true);
-            }
-
-            bindings.Add(name);
-            bindings.Sort(string.CompareOrdinal);
-            var typeKeyword = lines[i].TrimStart().StartsWith("import type", StringComparison.Ordinal) ? "type " : string.Empty;
-            var ending = lines[i].EndsWith('\r') ? "\r" : string.Empty;
-            var defaultBinding = m.Groups["default"].Success ? m.Groups["default"].Value + ", " : string.Empty;
-            lines[i] = $"import {typeKeyword}{defaultBinding}{{ {string.Join(", ", bindings)} }} from {m.Groups[2].Value}{from}{m.Groups[2].Value}{semicolon}{ending}";
-            return (i, 1, true);
+            var merged = TryMergeIntoImport(lines, i, from, semicolon);
+            if (merged is not null) return merged.Value;
         }
 
         var line = $"import {{ {name} }} from {quote}{from}{quote}{semicolon}";
         if (first < 0) return CreateBlock(lines, line, cr);
 
-        var at = first;
+        var at = SortedImportPosition(lines, first, from);
+        InsertLine(lines, at, line, cr);
+        return (at, 1, true);
+    }
+
+    // Follows the quote and the semicolon of the file's first single-line import.
+    private static (string Quote, string Semicolon) ImportStyle(List<string> lines, int first)
+    {
+        var quote = "'";
+        var semicolon = ";";
+        if (first < 0) return (quote, semicolon);
+
+        var sample = lines[first].TrimEnd('\r');
+        if (sample.Contains('"', StringComparison.Ordinal) && !sample.Contains('\'', StringComparison.Ordinal)) quote = "\"";
+        if (!sample.TrimEnd().EndsWith(';')) semicolon = string.Empty;
+        return (quote, semicolon);
+    }
+
+    // The named import of the module at line i gains the binding: null when line i is no such import or cannot take it.
+    private (int Index, int Count, bool Changed)? TryMergeIntoImport(List<string> lines, int i, string from, string semicolon)
+    {
+        var (m, span) = MatchNamedImport(lines, i);
+        if (!m.Success || m.Groups[3].Value != from) return null;
+
+        var bindings = Comment().Replace(m.Groups[1].Value, string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (bindings.Contains(name) || (m.Groups["default"].Success && m.Groups["default"].Value == name)) return (i, span, false);
+        if (span > 1)
+            return AppendBinding(lines, i, span) ? (i, span + 1, true) : null;
+
+        bindings.Add(name);
+        bindings.Sort(string.CompareOrdinal);
+        var typeKeyword = lines[i].TrimStart().StartsWith("import type", StringComparison.Ordinal) ? "type " : string.Empty;
+        var ending = lines[i].EndsWith('\r') ? "\r" : string.Empty;
+        var defaultBinding = m.Groups["default"].Success ? m.Groups["default"].Value + ", " : string.Empty;
+        lines[i] = $"import {typeKeyword}{defaultBinding}{{ {string.Join(", ", bindings)} }} from {m.Groups[2].Value}{from}{m.Groups[2].Value}{semicolon}{ending}";
+        return (i, 1, true);
+    }
+
+    // A named import on line i, spread over several lines up to its closing brace when it opens one.
+    private static (Match Match, int Span) MatchNamedImport(List<string> lines, int i)
+    {
+        var m = NamedImport().Match(lines[i].TrimEnd('\r'));
+        if (m.Success || !OpenNamedImport().IsMatch(lines[i].TrimEnd('\r'))) return (m, 1);
+
+        var close = lines.FindIndex(i + 1, l => l.Contains('}', StringComparison.Ordinal));
+        if (close <= 0) return (m, 1);
+
+        var span = close - i + 1;
+        return (NamedImport().Match(string.Join('\n', lines.GetRange(i, span).Select(l => l.TrimEnd('\r')))), span);
+    }
+
+    // Before the first single-line import whose module sorts after the new one, else after the last of the block.
+    private static int SortedImportPosition(List<string> lines, int first, string from)
+    {
         var lastMatched = first;
-        var placed = false;
         for (var i = first; i < lines.Count && lines[i].StartsWith("import", StringComparison.Ordinal); i++)
         {
             var t = lines[i].TrimEnd('\r');
@@ -146,16 +165,10 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
             lastMatched = i;
             var mod = ModuleOf().Match(t);
             var other = mod.Groups[1].Success ? mod.Groups[1].Value : mod.Groups[2].Value;
-            if (!placed && string.CompareOrdinal(other, from) > 0)
-            {
-                at = i;
-                placed = true;
-            }
+            if (string.CompareOrdinal(other, from) > 0) return i;
         }
 
-        if (!placed) at = lastMatched + 1;
-        InsertLine(lines, at, line, cr);
-        return (at, 1, true);
+        return lastMatched + 1;
     }
 
     private bool AppendBinding(List<string> lines, int import, int span)

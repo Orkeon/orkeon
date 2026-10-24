@@ -30,14 +30,19 @@ internal static partial class PatternCompiler
     [GeneratedRegex(@"^__ork_(mv|va)_(.+)__$")]
     private static partial Regex Sentinel();
 
+    // A variadic or single metavariable becomes a parsable sentinel identifier; an escaped dollar stays a dollar.
+    private static string Placeholder(Match token)
+    {
+        if (token.Groups[1].Success) return $"__ork_va_{token.Groups[1].Value}__";
+        if (token.Groups[2].Success) return $"__ork_mv_{token.Groups[2].Value}__";
+        return MetavariableGrammar.LiteralDollar;
+    }
+
     public static CompiledPattern Compile(string pattern, string language, TreeSitterParserPool pool)
     {
         ArgumentNullException.ThrowIfNull(pattern);
         ArgumentNullException.ThrowIfNull(pool);
-        var source = MetavariableGrammar.Token().Replace(pattern, token =>
-            token.Groups[1].Success ? $"__ork_va_{token.Groups[1].Value}__"
-            : token.Groups[2].Success ? $"__ork_mv_{token.Groups[2].Value}__"
-            : MetavariableGrammar.LiteralDollar);
+        var source = MetavariableGrammar.Token().Replace(pattern, Placeholder);
         using var parsed = pool.Parse(source, language);
         if (!parsed.Root.HasError) return Snapshot(parsed.Root);
 

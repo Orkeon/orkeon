@@ -111,47 +111,20 @@ public sealed class IncrementalReindexEngine
         PurgeLinks(unchangedNodes, removedIds);
         var reusedFileCount = unchangedNodes.Select(n => n.VirtualFilePath).Distinct(StringComparer.Ordinal).Count();
 
-        var graphBuildersByLanguage = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
-        var changedByLanguage = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        var newNodes = new List<RaggableNode>();
-        var filesParsed = 0;
-
+        var parsed = new ChangedFiles();
         foreach (var path in changedVirtual)
         {
             ct.ThrowIfCancellationRequested();
-            var language = FileSystemDiscoverer.IndexableLanguage(root, path, opts.Exclude, opts.Languages);
-            if (language is null) continue;
-            var isMarkdown = language == RaggableTreeBuilder.MarkdownLanguage;
-            if (!isMarkdown && !_adaptersByLanguage.ContainsKey(language)) continue;
-
-            var source = await _fileSystem.TryReadAllTextAsync(path, ct).ConfigureAwait(false);
-            if (source is null) continue;
-
-            filesParsed++;
-            if (isMarkdown)
-            {
-                newNodes.AddRange(RaggableTreeBuilder.MarkdownMapper.Map(path, source));
-                continue;
-            }
-
-            var adapter = _adaptersByLanguage[language];
-            var fileNodes = new UniversalSemanticMapper(adapter, _pool).ExtractNodes(path, source).ToList();
-            newNodes.AddRange(fileNodes);
-            TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
-            GetOrCreateBuilder(graphBuildersByLanguage, adapter).RegisterFile(path, source, fileNodes);
-            if (!changedByLanguage.TryGetValue(adapter.LanguageName, out var paths))
-            {
-                paths = [];
-                changedByLanguage[adapter.LanguageName] = paths;
-            }
-            paths.Add(path);
+            await ParseChangedFileAsync(path, root, opts, packageNodes, monorepo, parsed, ct).ConfigureAwait(false);
         }
 
+        var newNodes = parsed.NewNodes;
+        var filesParsed = parsed.FilesParsed;
         var newEdges = new List<RaggableEdge>();
-        foreach (var (language, gb) in graphBuildersByLanguage)
+        foreach (var (language, gb) in parsed.GraphBuildersByLanguage)
         {
             var languageNodes = unchangedNodes.Where(n => string.Equals(n.Language, language, StringComparison.OrdinalIgnoreCase));
-            newEdges.AddRange(await gb.BuildForFilesAsync(changedByLanguage[language], languageNodes, _resolver, ct).ConfigureAwait(false));
+            newEdges.AddRange(await gb.BuildForFilesAsync(parsed.ChangedByLanguage[language], languageNodes, _resolver, ct).ConfigureAwait(false));
         }
 
         foreach (var fp in _fingerprinters)
@@ -230,6 +203,44 @@ public sealed class IncrementalReindexEngine
         };
     }
 
+    // A changed file of an indexed language is read and mapped; one that is excluded, unsupported or gone is skipped.
+    private async Task ParseChangedFileAsync(
+        string path,
+        string root,
+        IndexCodebaseRequest opts,
+        List<RaggableNode> packageNodes,
+        RaggableNode monorepo,
+        ChangedFiles parsed,
+        CancellationToken ct)
+    {
+        var language = FileSystemDiscoverer.IndexableLanguage(root, path, opts.Exclude, opts.Languages);
+        if (language is null) return;
+        var isMarkdown = language == RaggableTreeBuilder.MarkdownLanguage;
+        if (!isMarkdown && !_adaptersByLanguage.ContainsKey(language)) return;
+
+        var source = await _fileSystem.TryReadAllTextAsync(path, ct).ConfigureAwait(false);
+        if (source is null) return;
+
+        parsed.FilesParsed++;
+        if (isMarkdown)
+        {
+            parsed.NewNodes.AddRange(RaggableTreeBuilder.MarkdownMapper.Map(path, source));
+            return;
+        }
+
+        var adapter = _adaptersByLanguage[language];
+        var fileNodes = new UniversalSemanticMapper(adapter, _pool).ExtractNodes(path, source).ToList();
+        parsed.NewNodes.AddRange(fileNodes);
+        TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
+        GetOrCreateBuilder(parsed.GraphBuildersByLanguage, adapter).RegisterFile(path, source, fileNodes);
+        if (!parsed.ChangedByLanguage.TryGetValue(adapter.LanguageName, out var paths))
+        {
+            paths = [];
+            parsed.ChangedByLanguage[adapter.LanguageName] = paths;
+        }
+        paths.Add(path);
+    }
+
     // Unchanged files are not read: their calls come from the `calls:<name>` tags of their module nodes,
     // resolved through the injected resolver against the caller's own language, in the file order of the tree.
     private async Task<List<RaggableEdge>> RelinkInboundCallsAsync(
@@ -248,27 +259,10 @@ public sealed class IncrementalReindexEngine
         var knownIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var language in unchangedNodes.Where(n => n.Level == NodeLevel.L2_Module).GroupBy(n => n.Language, StringComparer.OrdinalIgnoreCase))
         {
-            var refs = new List<UnresolvedRef>();
-            foreach (var module in language)
-            {
-                foreach (var name in changedNames)
-                {
-                    if (!module.Tags.TryGetValue(DependencyGraphBuilder.CallsTagPrefix + name, out var owners)) continue;
-                    foreach (var ownerId in owners.Split('\n'))
-                    {
-                        if (nodesById.TryGetValue(ownerId, out var owner) && !string.IsNullOrEmpty(owner.Fqn))
-                            refs.Add(new UnresolvedRef(owner.Fqn, name, ReferenceKind.Call, new SourceLocation(owner.VirtualFilePath, 0, 0, string.Empty)));
-                    }
-                }
-            }
+            var refs = InboundCallRefs(language, changedNames, nodesById);
             if (refs.Count == 0) continue;
 
-            var symbols = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
-            foreach (var node in allNodes
-                .Where(n => string.Equals(n.Language, language.Key, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(n.Fqn))
-                .OrderBy(n => fileRank.GetValueOrDefault(n.VirtualFilePath, int.MaxValue)))
-                symbols[node.Fqn] = node;
-
+            var symbols = SymbolsInFileOrder(allNodes, language.Key, fileRank);
             foreach (var edge in await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false))
             {
                 if (!knownIds.Add(edge.Id)) continue;
@@ -280,6 +274,37 @@ public sealed class IncrementalReindexEngine
         }
 
         return relinked;
+    }
+
+    // The calls the modules of one language make to a changed name, read from their `calls:<name>` tags.
+    private static List<UnresolvedRef> InboundCallRefs(
+        IEnumerable<RaggableNode> modules, HashSet<string> changedNames, Dictionary<string, RaggableNode> nodesById)
+    {
+        var refs = new List<UnresolvedRef>();
+        foreach (var module in modules)
+        {
+            foreach (var name in changedNames)
+            {
+                if (!module.Tags.TryGetValue(DependencyGraphBuilder.CallsTagPrefix + name, out var owners)) continue;
+                refs.AddRange(owners.Split('\n')
+                    .Select(ownerId => nodesById.GetValueOrDefault(ownerId))
+                    .Where(owner => owner is not null && !string.IsNullOrEmpty(owner.Fqn))
+                    .Select(owner => new UnresolvedRef(owner!.Fqn, name, ReferenceKind.Call, new SourceLocation(owner.VirtualFilePath, 0, 0, string.Empty))));
+            }
+        }
+        return refs;
+    }
+
+    // The named nodes of a language by Fqn: on a clash, the file listed last by the file system wins.
+    private static Dictionary<string, RaggableNode> SymbolsInFileOrder(
+        List<RaggableNode> allNodes, string language, Dictionary<string, int> fileRank)
+    {
+        var symbols = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
+        foreach (var node in allNodes
+            .Where(n => string.Equals(n.Language, language, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(n.Fqn))
+            .OrderBy(n => fileRank.GetValueOrDefault(n.VirtualFilePath, int.MaxValue)))
+            symbols[node.Fqn] = node;
+        return symbols;
     }
 
     // A caller holds one Calls edge per name: the resolver's new pick replaces the kept one.
@@ -446,6 +471,15 @@ public sealed class IncrementalReindexEngine
             node.ExtendsIdsMutable.RemoveAll(removedIds.Contains);
             node.ImplementsIdsMutable.RemoveAll(removedIds.Contains);
         }
+    }
+
+    // What the parse of the changed files collects for the graph rebuild.
+    private sealed class ChangedFiles
+    {
+        public Dictionary<string, DependencyGraphBuilder> GraphBuildersByLanguage { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, List<string>> ChangedByLanguage { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<RaggableNode> NewNodes { get; } = [];
+        public int FilesParsed { get; set; }
     }
 }
 

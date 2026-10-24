@@ -94,9 +94,7 @@ public class RagIngestTool : IBaseTool
 
         async Task<ToolCallResponse> CallCoreAsync()
         {
-            var collection = request.Parameters.TryGetValue("collection", out var c)
-                ? c?.ToString()
-                : null;
+            var collection = StringParameter(request, "collection");
             if (string.IsNullOrWhiteSpace(collection))
                 return new ToolCallResponse(false, null, "collection parameter is required");
 
@@ -105,13 +103,11 @@ public class RagIngestTool : IBaseTool
             if (locations.Count == 0)
                 return new ToolCallResponse(false, null, "sources parameter is required (list of paths or globs)");
 
-            var chunkingStrategy = request.Parameters.TryGetValue("chunking_strategy", out var cs)
-                ? cs?.ToString()
-                : null;
+            var chunkingStrategy = StringParameter(request, "chunking_strategy");
 
-            var reindex = request.Parameters.TryGetValue("reindex", out var r) && ToBool(r);
+            var reindex = FlagParameter(request, "reindex");
 
-            var prune = request.Parameters.TryGetValue("prune", out var pr) && ToBool(pr);
+            var prune = FlagParameter(request, "prune");
 
             var sources = await ResolveSourcesAsync(locations, cancellationToken).ConfigureAwait(false);
             if (sources.Count == 0)
@@ -131,6 +127,12 @@ public class RagIngestTool : IBaseTool
             return new ToolCallResponse(true, FormatReport(report), null);
         }
     }
+
+    private static string? StringParameter(ToolCallRequest request, string name) =>
+        request.Parameters.TryGetValue(name, out var value) ? value?.ToString() : null;
+
+    private static bool FlagParameter(ToolCallRequest request, string name) =>
+        request.Parameters.TryGetValue(name, out var value) && ToBool(value);
 
     /// <inheritdoc />
     public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)

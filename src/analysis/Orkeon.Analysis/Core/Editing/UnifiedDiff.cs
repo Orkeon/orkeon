@@ -67,14 +67,33 @@ internal static class UnifiedDiff
 
         var n = a.Length - prefix - suffix;
         var m = b.Length - prefix - suffix;
-        var lcs = new int[n + 1][];
-        for (var i = 0; i <= n; i++) lcs[i] = new int[m + 1];
-        for (var i = n - 1; i >= 0; i--)
-        for (var j = m - 1; j >= 0; j--)
-            lcs[i][j] = a[prefix + i] == b[prefix + j] ? lcs[i + 1][j + 1] + 1 : Math.Max(lcs[i + 1][j], lcs[i][j + 1]);
+        var lcs = LongestCommonSuffixes(a, b, prefix, n, m);
 
         var script = new List<Line>(a.Length + m);
         for (var i = 0; i < prefix; i++) script.Add(new Line(' ', a[i]));
+        AppendMiddle(script, a, b, prefix, lcs);
+        for (var i = a.Length - suffix; i < a.Length; i++) script.Add(new Line(' ', a[i]));
+        return script;
+    }
+
+    // lcs[i][j]: length of the longest common subsequence of a[prefix + i..] and b[prefix + j..] over the middle windows.
+    private static int[][] LongestCommonSuffixes(string[] a, string[] b, int prefix, int n, int m)
+    {
+        var lcs = new int[n + 1][];
+        for (var i = 0; i <= n; i++) lcs[i] = new int[m + 1];
+        for (var i = n - 1; i >= 0; i--)
+        {
+            for (var j = m - 1; j >= 0; j--)
+                lcs[i][j] = a[prefix + i] == b[prefix + j] ? lcs[i + 1][j + 1] + 1 : Math.Max(lcs[i + 1][j], lcs[i][j + 1]);
+        }
+
+        return lcs;
+    }
+
+    private static void AppendMiddle(List<Line> script, string[] a, string[] b, int prefix, int[][] lcs)
+    {
+        var n = lcs.Length - 1;
+        var m = lcs[0].Length - 1;
         int x = 0, y = 0;
         while (x < n || y < m)
         {
@@ -93,8 +112,5 @@ internal static class UnifiedDiff
                 script.Add(new Line('+', b[prefix + y++]));
             }
         }
-
-        for (var i = a.Length - suffix; i < a.Length; i++) script.Add(new Line(' ', a[i]));
-        return script;
     }
 }

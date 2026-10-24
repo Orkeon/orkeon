@@ -1,8 +1,6 @@
 namespace Orkeon.Analysis.Core.Structural;
 
-#pragma warning disable CA1064 // internal by design: callers see it through the tool's refusal
-internal sealed class UnsupportedRuleKeyException : Exception
-#pragma warning restore CA1064
+public sealed class UnsupportedRuleKeyException : Exception
 {
     public UnsupportedRuleKeyException()
     {

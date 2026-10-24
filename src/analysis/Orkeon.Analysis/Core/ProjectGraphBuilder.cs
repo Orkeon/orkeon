@@ -60,18 +60,23 @@ internal static class ProjectGraphBuilder
             if (onlyCsprojPaths is not null && !onlyCsprojPaths.Contains(csproj)) continue;
             var xml = await fileSystem.TryReadAllTextAsync(csproj, ct).ConfigureAwait(false);
             if (xml is null) continue;
-            foreach (var include in ReadProjectReferences(xml))
+            foreach (var dependency in ReferencedProjects(project, xml, byPath))
             {
-                var target = ResolveDirectory(project.VirtualFilePath, include);
-                if (target is null || !byPath.TryGetValue(target, out var dependency) || dependency.Id == project.Id) continue;
                 var id = $"project-depends::{project.Id}->{dependency.Id}";
-                if (!edgeIds.Add(id)) continue;
-                edges.Add(new RaggableEdge(id, project.Id, dependency.Id, EdgeKind.ProjectDepends));
+                if (edgeIds.Add(id)) edges.Add(new RaggableEdge(id, project.Id, dependency.Id, EdgeKind.ProjectDepends));
             }
         }
 
         return edges;
     }
+
+    // The known projects a csproj references, other than itself.
+    private static IEnumerable<RaggableNode> ReferencedProjects(RaggableNode project, string xml, Dictionary<string, RaggableNode> byPath) =>
+        ReadProjectReferences(xml)
+            .Select(include => ResolveDirectory(project.VirtualFilePath, include))
+            .Select(target => target is not null && byPath.TryGetValue(target, out var dependency) ? dependency : null)
+            .OfType<RaggableNode>()
+            .Where(dependency => dependency.Id != project.Id);
 
     private static List<string> ReadProjectReferences(string xml)
     {
