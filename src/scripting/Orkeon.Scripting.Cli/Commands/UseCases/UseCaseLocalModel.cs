@@ -30,7 +30,7 @@ internal static class UseCaseLocalModel
     private static readonly string[] ModelFiles = ["model.onnx", "vocab.txt"];
 
     /// <summary>
-    /// Loads the model; throws <see cref="UseCaseModelUnavailableException"/> when its files are
+    /// Loads the model; throws <see cref="FileNotFoundException"/> when its files are
     /// not installed. The provider returned is disposable and owns its container.
     /// </summary>
     public static IEmbeddingProvider Load()
@@ -39,10 +39,11 @@ internal static class UseCaseLocalModel
         {
             // OUT-OF-SCOPE: probing the tool's own install directory for the files the
             // SmartComponents package copies next to the binary, as `orkeon doctor` does.
-            if (!File.Exists(Path.Combine(AppContext.BaseDirectory, "LocalEmbeddingsModel", "default", file)))
+            var path = Path.Combine(AppContext.BaseDirectory, "LocalEmbeddingsModel", "default", file);
+            if (!File.Exists(path))
             {
-                throw new UseCaseModelUnavailableException(
-                    $"the local embedding model is not installed ({ModelDirectory}/{file} is missing next to the orkeon binary)");
+                throw new FileNotFoundException(
+                    $"the local embedding model is not installed ({ModelDirectory}/{file} is missing next to the orkeon binary)", path);
             }
         }
 

@@ -770,22 +770,20 @@ internal static class ForgeCommand
         return result.ExitCode;
     }
 
-    /// <summary>The use case <c>--reference</c> names, loaded; null without the option, or with <paramref name="unknown"/> set when it names none.</summary>
-    private static ForgeReference? LoadReference(string? referenceId, out UseCases.UnknownUseCaseException? unknown)
+    /// <summary>The use case <c>--reference</c> names, loaded; null without the option, or with <paramref name="unknown"/> set to the error message when it names none.</summary>
+    private static ForgeReference? LoadReference(string? referenceId, out string? unknown)
     {
         unknown = null;
         if (referenceId is null)
             return null;
 
-        try
+        if (!UseCases.UseCaseCatalog.Embedded.TryGet(referenceId, out _))
         {
-            return ForgeReference.Load(referenceId);
-        }
-        catch (UseCases.UnknownUseCaseException ex)
-        {
-            unknown = ex;
+            unknown = UseCases.UnknownUseCase.Message(referenceId);
             return null;
         }
+
+        return ForgeReference.Load(referenceId);
     }
 
     /// <summary>
@@ -987,16 +985,16 @@ internal static class ForgeCommand
     /// <c>USECASES-UNKNOWN-ID</c>. No session exists, so the stream carries the error and closes on
     /// «failed», like a reopen that could produce none; the terminal gets the one line.
     /// </summary>
-    private static async Task<int> RefuseReferenceAsync(IRunnerConsole console, ForgeCommandOptions options, UseCases.UnknownUseCaseException error)
+    private static async Task<int> RefuseReferenceAsync(IRunnerConsole console, ForgeCommandOptions options, string error)
     {
         if (!options.Events)
         {
-            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {error.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {error}").ConfigureAwait(false);
             return ExitError;
         }
 
         var events = new ForgeEventWriter(console.Output);
-        events.Error(UseCases.UnknownUseCaseException.Code, error.Message, recoverable: false);
+        events.Error(UseCases.UnknownUseCase.Code, error, recoverable: false);
         events.SessionFinished("failed", ExitError);
         return ExitError;
     }

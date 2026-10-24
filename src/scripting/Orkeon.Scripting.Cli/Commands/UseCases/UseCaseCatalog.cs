@@ -86,37 +86,18 @@ internal static class UseCaseErrorCodes
 }
 
 /// <summary>
-/// Thrown when an id names no use case of the catalogue — the typed error a caller maps to
-/// <see cref="UseCaseErrorCodes.UnknownId"/> before doing anything else with the id.
+/// The error an id that names no use case of the catalogue is reported with, under
+/// <see cref="UseCaseErrorCodes.UnknownId"/>: a caller checks the id with
+/// <see cref="UseCaseCatalog.TryGet"/> and reports it before doing anything else with it.
 /// </summary>
-internal sealed class UnknownUseCaseException : Exception
+internal static class UnknownUseCase
 {
     /// <summary>The code this error is reported under.</summary>
     public const string Code = UseCaseErrorCodes.UnknownId;
 
-    /// <inheritdoc />
-    public UnknownUseCaseException()
-    {
-    }
-
-    /// <inheritdoc />
-    public UnknownUseCaseException(string message)
-        : base(message)
-    {
-    }
-
-    /// <inheritdoc />
-    public UnknownUseCaseException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
-
-    /// <summary>The id that matched nothing.</summary>
-    public string? UseCaseId { get; init; }
-
-    /// <summary>The error for <paramref name="id"/>, with the message the CLI prints.</summary>
-    public static UnknownUseCaseException For(string id) =>
-        new($"unknown use case '{id}' ({Code}) — `orkeon usecases list` shows every id.") { UseCaseId = id };
+    /// <summary>The message the CLI prints for <paramref name="id"/>.</summary>
+    public static string Message(string id) =>
+        $"unknown use case '{id}' ({Code}) — `orkeon usecases list` shows every id.";
 }
 
 /// <summary>
@@ -174,9 +155,9 @@ internal sealed class UseCaseCatalog
         return new UseCaseCatalog(languages, useCases, files);
     }
 
-    /// <summary>The sheet of <paramref name="id"/>; an unknown id throws <see cref="UnknownUseCaseException"/>.</summary>
+    /// <summary>The sheet of <paramref name="id"/>; an unknown id throws <see cref="KeyNotFoundException"/> with <see cref="UnknownUseCase.Message"/>.</summary>
     public UseCase Get(string id) =>
-        TryGet(id, out var useCase) ? useCase : throw UnknownUseCaseException.For(id);
+        TryGet(id, out var useCase) ? useCase : throw new KeyNotFoundException(UnknownUseCase.Message(id));
 
     /// <summary>The sheet of <paramref name="id"/>, if the catalogue has one.</summary>
     public bool TryGet(string id, [NotNullWhen(true)] out UseCase? useCase) => _byId.TryGetValue(id, out useCase);

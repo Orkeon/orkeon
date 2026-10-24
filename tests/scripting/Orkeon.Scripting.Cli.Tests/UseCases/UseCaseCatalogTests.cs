@@ -101,10 +101,10 @@ public sealed class UseCaseCatalogTests
     [Fact]
     public void An_unknown_id_is_a_typed_error()
     {
-        var error = Assert.Throws<UnknownUseCaseException>(() => Embedded.Get("99-no-such-example"));
+        var error = Assert.Throws<KeyNotFoundException>(() => Embedded.Get("99-no-such-example"));
 
-        Assert.Equal("99-no-such-example", error.UseCaseId);
-        Assert.Equal(UseCaseErrorCodes.UnknownId, UnknownUseCaseException.Code);
+        Assert.Equal(UnknownUseCase.Message("99-no-such-example"), error.Message);
+        Assert.Equal(UseCaseErrorCodes.UnknownId, UnknownUseCase.Code);
         Assert.False(Embedded.TryGet("99-no-such-example", out _));
     }
 

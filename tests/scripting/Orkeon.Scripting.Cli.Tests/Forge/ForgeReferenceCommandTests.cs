@@ -110,7 +110,7 @@ public sealed class ForgeReferenceCommandTests : IDisposable
         Assert.Equal(1, exitCode);
         var events = Events(console.Stdout);
         Assert.Equal(["error", "session.finished"], events.Select(Kind));
-        Assert.Equal(UnknownUseCaseException.Code, events[0].GetProperty("code").GetString());
+        Assert.Equal(UnknownUseCase.Code, events[0].GetProperty("code").GetString());
         Assert.Contains("'99-nowhere'", events[0].GetProperty("message").GetString(), StringComparison.Ordinal);
         Assert.False(events[0].GetProperty("recoverable").GetBoolean());
         Assert.Equal("failed", events[1].GetProperty("status").GetString());

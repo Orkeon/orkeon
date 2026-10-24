@@ -139,30 +139,6 @@ internal sealed record UseCaseAnswer
 }
 
 /// <summary>
-/// The local model is not installed where the CLI looks for it. Its message is the reason the
-/// search reports when it falls back to terms.
-/// </summary>
-internal sealed class UseCaseModelUnavailableException : Exception
-{
-    /// <inheritdoc />
-    public UseCaseModelUnavailableException()
-    {
-    }
-
-    /// <inheritdoc />
-    public UseCaseModelUnavailableException(string message)
-        : base(message)
-    {
-    }
-
-    /// <inheritdoc />
-    public UseCaseModelUnavailableException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
-}
-
-/// <summary>
 /// The use-case search (STUDIO-38): no LLM, no network, no file. BM25 carries the five
 /// languages over one normalized document per sheet (D-01); the local model's English vectors
 /// are fused in by RRF for the languages whose policy says so (D-02) — loaded, and the sheets
@@ -416,7 +392,7 @@ internal sealed class UseCaseSearchEngine : IDisposable
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _modelUnavailable = ex is UseCaseModelUnavailableException
+                _modelUnavailable = ex is FileNotFoundException
                     ? ex.Message
                     : $"the local embedding model failed to load: {ex.Message}";
                 (_model as IDisposable)?.Dispose();

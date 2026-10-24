@@ -195,7 +195,7 @@ public sealed class UseCaseSearchEngineTests
     public async Task Without_the_model_the_search_falls_back_to_terms_and_says_why()
     {
         using var engine = UseCaseFixtures.Engine(UseCaseSearchMode.Hybrid, () =>
-            throw new UseCaseModelUnavailableException("the model files are missing"));
+            throw new FileNotFoundException("the model files are missing"));
 
         var answer = await engine.SearchAsync(new UseCaseQuery { Text = "email digest", Language = "en" }, Ct);
 
@@ -212,7 +212,7 @@ public sealed class UseCaseSearchEngineTests
         using var engine = UseCaseFixtures.Engine(UseCaseSearchMode.Hybrid, () =>
         {
             loads++;
-            throw new UseCaseModelUnavailableException("no model");
+            throw new FileNotFoundException("no model");
         });
 
         var first = await engine.SearchAsync(new UseCaseQuery { Text = "email", Language = "en" }, Ct);

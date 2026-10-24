@@ -240,8 +240,7 @@ internal static class UseCasesCommand
             var id = options.Id.Trim();
             if (!catalog.TryGet(id, out var useCase))
             {
-                var unknown = UnknownUseCaseException.For(id);
-                return await output.FailAsync(UnknownUseCaseException.Code, unknown.Message, alreadyCoded: true).ConfigureAwait(false);
+                return await output.FailAsync(UnknownUseCase.Code, UnknownUseCase.Message(id), alreadyCoded: true).ConfigureAwait(false);
             }
 
             var files = catalog.FilesOf(useCase.Id);
@@ -274,8 +273,7 @@ internal static class UseCasesCommand
             var id = options.Id.Trim();
             if (!catalog.TryGet(id, out var useCase))
             {
-                var unknown = UnknownUseCaseException.For(id);
-                return await output.FailAsync(UnknownUseCaseException.Code, unknown.Message, alreadyCoded: true).ConfigureAwait(false);
+                return await output.FailAsync(UnknownUseCase.Code, UnknownUseCase.Message(id), alreadyCoded: true).ConfigureAwait(false);
             }
 
             if (!useCase.Importable)
