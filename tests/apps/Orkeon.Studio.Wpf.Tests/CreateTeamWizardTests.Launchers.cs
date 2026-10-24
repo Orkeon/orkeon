@@ -46,6 +46,7 @@ public partial class CreateTeamWizardTests
             await Compose(vm);
 
             vm.TeamName = "Veille ZAI";
+            vm.AdoptUsesDefaultLlm = false;
             vm.AdoptProfileName = "Z.AI";
             vm.AddTeamMount(docs);
 
@@ -75,6 +76,58 @@ public partial class CreateTeamWizardTests
             Assert.Contains("--llm-profile=\"z-ai\"", windows, StringComparison.Ordinal);
             Assert.Contains($"--mount-id \"{docs.Id}\"", windows, StringComparison.Ordinal);
             Assert.DoesNotContain("ZAI_API_KEY", posix + windows, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-73, D2: left checked, « Use the default model » writes the flag and no setting name —
+    /// the launchers carry no --llm-profile, and the run takes the default elected when it starts.
+    /// </summary>
+    [Fact]
+    public async Task Adopting_with_the_default_checked_writes_the_flag_and_no_llm_profile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-launchers-{Guid.NewGuid():N}");
+        var promoted = Path.Combine(root, "veille-defaut");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: root);
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            FillStepOne(vm);
+            await Compose(vm);
+
+            Assert.True(vm.AdoptUsesDefaultLlm);
+            Assert.Equal("Use the default model (Local)", vm.AdoptUseDefaultLlmLabel);
+            vm.TeamName = "Veille defaut";
+
+            processes.WhileRunning = () =>
+            {
+                Directory.CreateDirectory(Path.Combine(promoted, "crew"));
+                File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: veille\n");
+                File.WriteAllText(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), "#!/usr/bin/env sh\n# " + TeamLauncherScript.Header(Path.GetFileName(promoted)) + "\nexec orkeon run \"$DIR/crew\"\n");
+            };
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            var summary = TeamCatalog.Describe(promoted);
+            Assert.Equal(TeamLlmChoice.Default, summary.LlmChoice);
+            Assert.True(summary.Metadata!.UseDefaultLlm);
+            Assert.Null(summary.Metadata.Profile);
+            var posix = await File.ReadAllTextAsync(Path.Combine(promoted, TeamLaunchers.PosixLauncherName), TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("--llm-profile", posix, StringComparison.Ordinal);
         }
         finally
         {

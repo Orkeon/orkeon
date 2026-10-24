@@ -188,6 +188,9 @@ calling your code. The `ToolBase<TRequest, TResponse>` pipeline itself is sealed
 
 An exception thrown by `ExecuteTypedAsync` is not fatal either: `CallAsync` turns it into a
 failed response (`Tool execution failed: …`), and a cancellation into `Operation cancelled`.
+An exception the tool throws on purpose, whose message alone says what to fix (an account to
+choose, a grant refused), implements the marker `IExpectedToolError`: `CallAsync` logs its type
+and message and leaves out its stack trace, which stays for every other exception, a fault.
 
 ### Complete example — Simple tool (no external dependency)
 

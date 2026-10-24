@@ -1,3 +1,5 @@
+using Orkeon.Tools.Abstractions.Base;
+
 namespace Orkeon.Tools.Drive;
 
 /// <summary>Why a drive operation was refused or failed.</summary>
@@ -51,7 +53,7 @@ public enum DriveErrorCode
 /// the only text the agent loop forwards (<c>Error: …</c>), so it says what to do.
 /// </summary>
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
-public sealed class DriveToolException : Exception
+public sealed class DriveToolException : Exception, IExpectedToolError
 #pragma warning restore S3925
 {
     /// <summary>Creates the exception with its code and actionable message.</summary>

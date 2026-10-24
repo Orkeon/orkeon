@@ -19,7 +19,10 @@ internal sealed class RecordingCategoryLogger(string category, ConcurrentQueue<C
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
-    public bool IsEnabled(LogLevel logLevel) => true;
+    /// <summary>The lowest level this logger is enabled for; every level by default.</summary>
+    public LogLevel MinimumLevel { get; init; } = LogLevel.Trace;
+
+    public bool IsEnabled(LogLevel logLevel) => logLevel >= MinimumLevel;
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
         Lines.Enqueue(new CategoryLogLine(category, logLevel, formatter(state, exception)));

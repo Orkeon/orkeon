@@ -1363,6 +1363,13 @@
               <TextBlock Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0"
                          Text="{Binding [Studio.Create.AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
+            <!-- STUDIO-73: checked (D2), the team follows the default elected when a run starts;
+                 unchecked, the card below pins one setting. -->
+            <CheckBox Margin="0,0,0,8" IsChecked="{Binding AdoptUsesDefaultLlm}"
+                      IsEnabled="{Binding Profiles.IsEmpty, Converter={StaticResource Negate}}"
+                      Content="{Binding AdoptUseDefaultLlmLabel}"
+                      ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+            <StackPanel Visibility="{Binding AdoptUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
             <!-- W-07: the selected model profile as a card — «Changer» unfolds the radio
                  rows; no select at all, exactly the mock's shape. The container carries the
                  surface pair of the mock rather than the sunk one (T-22). -->
@@ -1398,6 +1405,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+            </StackPanel>
             </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,7"

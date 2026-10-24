@@ -302,9 +302,53 @@
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   </InlineUIContainer>
                 </TextBlock>
-                <!-- méta : n agents · programmation · dernière exécution · réglage —
+                <!-- méta : n agents · programmation · dernière exécution —
                      ONE « · »-joined line, the launcher's recipe (v3 F-02) -->
                 <TextBlock Style="{StaticResource MetaLine}" Margin="0,4,0,0" Text="{Binding MetaLine}"/>
+                <!-- STUDIO-73 (D6): the model the team runs on, and « Change the model » on the card — the
+                     editor opens in place, like the rename one: the box « Use the default model (X) »,
+                     the list of settings, Save and Cancel. An archived team keeps its model. -->
+                <WrapPanel Margin="0,4,0,0" Visibility="{Binding HasProfileDisplay, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource MetaLine}" VerticalAlignment="Center" Text="{Binding ProfileDisplay}"/>
+                  <Button Style="{StaticResource LinkBtn}" Command="{Binding ChangeLlmCommand}" Margin="8,0,0,0"
+                          Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                          AutomationProperties.Name="{Binding [Studio.Teams.ChangeLlm], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding IsArchived, Converter={StaticResource InverseBooleanToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="pencil" Size="11" Margin="0,0,5,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AccentBrush}"/>
+                      <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Teams.ChangeLlm], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
+                <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="1" CornerRadius="11" Padding="12,8" Margin="0,6,0,0" HorizontalAlignment="Left"
+                        Visibility="{Binding IsChangingLlm, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel>
+                    <CheckBox IsChecked="{Binding EditUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
+                              Foreground="{DynamicResource InkBrush}" Content="{Binding UseDefaultLlmLabel}"
+                              ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
+                                Visibility="{Binding EditUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
+                      <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
+                      <ComboBox Width="220" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding EditLlmProfile}"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding ConfigureModelCommand}"
+                            Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
+                            Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                      <Button Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmLlmCommand}"
+                              Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                              Command="{Binding CancelLlmCommand}"
+                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+                <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+                           TextWrapping="Wrap" Text="{Binding CrewLlmWarning}"
+                           Visibility="{Binding HasCrewLlmWarning, Converter={StaticResource BooleanToVisibility}}"/>
                 <!-- The need (STUDIO-16, D-02/D-03), folded to two lines (#117), the whole text
                      unfolded or in the tooltip. -->
                 <TextBlock Margin="0,6,0,0" Text="{Binding DescriptionDisplay}" ToolTip="{Binding DescriptionDisplay}"

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Constants.Orchestration;
 
 namespace Orkeon.Application.Crew.Execution;
 
@@ -69,8 +70,33 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "LLM USER prompt for [{AgentRole}]:\n{UserPrompt}")]
     internal static partial void LogLlmUserPrompt(ILogger logger, object agentRole, string userPrompt);
 
+    /// <summary>
+    /// The answer of one model call. A preview on one line, as a tool result is: the final answer of
+    /// the run is printed whole under « === Crew Output === », and the journal showed it twice. The
+    /// whole text when the logger is at Debug (<c>-v 2</c>), where the answers are what is read.
+    /// </summary>
+    internal static void LogLlmResponse(ILogger logger, object agentRole, long elapsedMs, string response)
+    {
+        if (!logger.IsEnabled(LogLevel.Information))
+            return;
+
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            LogLlmResponseText(logger, agentRole, elapsedMs, response.Length, response);
+            return;
+        }
+
+        var preview = ToolCallFormatting.Truncate(OneLine(response), LoggingDefaults.MaxLlmResponseLogLength);
+        LogLlmResponsePreview(logger, agentRole, elapsedMs, response.Length, preview);
+    }
+
+    private static string OneLine(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
     [LoggerMessage(Level = LogLevel.Information, Message = "LLM response for [{AgentRole}] in {ElapsedMs}ms ({ResponseLength} chars):\n{Response}")]
-    internal static partial void LogLlmResponse(ILogger logger, object agentRole, long elapsedMs, int responseLength, string response);
+    private static partial void LogLlmResponseText(ILogger logger, object agentRole, long elapsedMs, int responseLength, string response);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "LLM response for [{AgentRole}] in {ElapsedMs}ms ({ResponseLength} chars): {Preview}")]
+    private static partial void LogLlmResponsePreview(ILogger logger, object agentRole, long elapsedMs, int responseLength, string preview);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "ChatClient iteration {Iteration}/{MaxIter} for [{AgentRole}] — {MessageCount} messages in context")]
     internal static partial void LogChatClientIteration(ILogger logger, object agentRole, int iteration, int maxIter, int messageCount);

@@ -61,7 +61,6 @@
   <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} délégation(s)</value></data>
   <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve"><value>Délégations en cours</value></data>
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve"><value>{0} jetons restants</value></data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Réglage de modèle par défaut : {0}</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — facturé par le fournisseur</value></data>
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Ouvrir l'écran de cette activité</value></data>
   <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
@@ -881,7 +880,6 @@
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Changer les dossiers</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Exporter</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Tester</value></data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve"><value>Réglage : {0}</value></data>
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>lit {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>écrit dans {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Validation à blanc d'abord</value></data>
@@ -1916,4 +1914,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-LIMITS" xml:space="preserve"><value>Une limite d'un compte de stockage cloud est hors des bornes (la taille de dépôt, le délai) : le moteur met le compte de côté tant qu'elle n'est pas corrigée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-DEFAULT" xml:space="preserve"><value>Le compte de stockage cloud par défaut ne nomme aucun compte déclaré : un appel qui ne nomme pas de compte échoue.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve"><value>L'interrupteur de filtrage de la section de stockage cloud n'est ni true ni false : le moteur met tous les comptes de côté tant qu'il ne l'est pas.</value></data>
+  <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>Modèle : {0}</value></data>
+  <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>Défaut ({0})</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>Aucun défaut élu : le run prend la section Llm du fichier de réglages</value></data>
+  <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>Défaut du fichier de l'équipe</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>Le run planifié répondra en écho : le fichier de réglages enregistré n'a pas de modèle par défaut. Enregistrez les réglages.</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} agent(s) ou tâche(s) de cette équipe nomment leur propre modèle : le choix ne s'applique qu'aux autres.</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Utiliser le LLM par défaut ({0})</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Utiliser le LLM par défaut</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Cochée, l'équipe tourne sur le réglage élu par défaut au moment du run, et le suit quand il change. Décochée, elle reste sur le réglage choisi ci-dessous.</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>Ou tourner sur ce réglage :</value></data>
+  <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>Changer le modèle</value></data>
+  <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} tourne désormais sur : {1}.</value></data>
+  <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configurer un modèle</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Ce run : {0}</value></data>
+  <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Mémoriser pour cette équipe</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} équipe(s), dont {1} par défaut</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Réglage de modèle par défaut : {0}. Les équipes qui suivent le défaut tournent dessus.</value></data>
 </root>

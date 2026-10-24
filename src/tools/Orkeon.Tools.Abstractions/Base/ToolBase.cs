@@ -157,6 +157,17 @@ public abstract partial class ToolBase : IBaseTool
                     Metadata: new Dictionary<string, object?> { ["cancelled"] = true }
                 );
             }
+            catch (Exception ex) when (ex is IExpectedToolError)
+            {
+                // Its message says what to fix; the stack trace would only bury it in the log.
+                LogToolCallRefused(Name, ex.GetType().Name, ex.Message);
+                return new ProtocolToolCallResponse(
+                    Success: false,
+                    Result: null,
+                    Error: $"Tool execution failed: {ex.Message}",
+                    Metadata: new Dictionary<string, object?> { ["exception_type"] = ex.GetType().Name }
+                );
+            }
             catch (Exception ex)
             {
                 LogToolCallError(ex, Name);
@@ -348,6 +359,9 @@ public abstract partial class ToolBase : IBaseTool
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Error calling tool {ToolName}")]
     private partial void LogToolCallError(Exception ex, string toolName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Error calling tool {ToolName}: {ExceptionType}: {Reason}")]
+    private partial void LogToolCallRefused(string toolName, string exceptionType, string reason);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Executing tool {ToolName} with legacy input: {Input}")]
     private partial void LogToolLegacyExecuting(string toolName, string input);

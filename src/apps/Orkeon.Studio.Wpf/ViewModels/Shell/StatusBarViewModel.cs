@@ -204,9 +204,12 @@ public sealed class StatusBarViewModel : ObservableObject
         ? StatusBarText.Join([LlmPresets.TitleFor(LlmPresets.CardOf(profile), _strings), profile.Model], StatusBarText.Separator)
         : null;
 
-    /// <summary>Names the default profile the provider and the model come from.</summary>
+    /// <summary>
+    /// Names the default profile the provider and the model come from, and says the teams that
+    /// follow the default run on it (STUDIO-73).
+    /// </summary>
     public string? ProfileTip => _profiles?.Set.Default is { } profile
-        ? _strings.Format(StudioStringKeys.StatusBarProfileTip, profile.Name)
+        ? _strings.Format(StudioStringKeys.StatusBarProfileTipTeams, profile.Name)
         : null;
 
     /// <summary>The profile shows at rest, to the expert, when there is one to show.</summary>

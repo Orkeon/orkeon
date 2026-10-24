@@ -51,6 +51,7 @@
   <SolidColorBrush x:Key="ConsoleCmdBrush"   Color="#7FBCDF"/>
   <SolidColorBrush x:Key="ConsoleOkBrush"    Color="#7FC9AE"/>
   <SolidColorBrush x:Key="ConsoleErrBrush"   Color="#E0837A"/>
+  <SolidColorBrush x:Key="ConsoleWarnBrush"  Color="#E3B964"/>
 
   <!-- The mark as a raw Color: a gradient stop cannot take a Brush, and the busy
        hairline is a gradient sweep so it stays right at every panel width. -->

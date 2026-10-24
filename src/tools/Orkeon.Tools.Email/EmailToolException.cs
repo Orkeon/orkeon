@@ -1,3 +1,5 @@
+using Orkeon.Tools.Abstractions.Base;
+
 namespace Orkeon.Tools.Email;
 
 /// <summary>Why an e-mail operation was refused or failed.</summary>
@@ -54,7 +56,7 @@ public enum EmailErrorCode
 /// is the only text the agent loop forwards (<c>Error: …</c>), so it says what to do.
 /// </summary>
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
-public sealed class EmailToolException : Exception
+public sealed class EmailToolException : Exception, IExpectedToolError
 #pragma warning restore S3925
 {
     /// <summary>Creates the exception with its code and actionable message.</summary>

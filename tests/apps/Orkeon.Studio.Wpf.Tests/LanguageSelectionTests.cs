@@ -1,3 +1,4 @@
+using System.Globalization;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -39,7 +40,6 @@ public sealed class LanguageSelectionTests
     [InlineData("it")]
     [InlineData("pt")]
     [InlineData("")]
-    [InlineData(null)]
     public void An_unsupported_system_language_falls_back_to_english(string? system)
     {
         var (vm, _, persisted) = Build(system: system);
@@ -47,6 +47,31 @@ public sealed class LanguageSelectionTests
         Assert.Equal("en", vm.Current);
         Assert.False(vm.IsExplicitChoice);
         Assert.Empty(persisted);
+    }
+
+    // No system language given: the view model reads the UI culture of the running thread.
+    // Each case sets that culture itself, so the result does not depend on the machine
+    // running the tests (a French one made a "null means unsupported" case answer "fr").
+    [Theory]
+    [InlineData("de-DE", "de")]
+    [InlineData("fr-FR", "fr")]
+    [InlineData("it-IT", "en")]
+    public void Without_a_given_language_the_ui_culture_decides(string uiCulture, string expected)
+    {
+        var previous = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(uiCulture);
+        try
+        {
+            var (vm, _, persisted) = Build(system: null);
+
+            Assert.Equal(expected, vm.Current);
+            Assert.False(vm.IsExplicitChoice);
+            Assert.Empty(persisted);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]

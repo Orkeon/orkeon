@@ -24,6 +24,35 @@ logged as `LLM exchange custom/unknown`, a Google `308 Resume Incomplete` as `FA
 address in clear, and file and message bodies in the JSONL. A tool family now registers
 `LlmExchangeLogExclusion(clientName)` (`Orkeon.Domain.Tools`) for its client; the drive and e-mail families do.
 
+### Added — a team follows the default model, or pins one, from adoption to the Run screen (STUDIO-73)
+
+A team's companion file carries `useDefaultLlm`: a team that follows the default runs on the
+setting elected when the run starts, without `--llm-profile`, and is skipped when a setting is
+renamed. Adoption follows the default unless the operator unticks it; each card of My teams says
+« Model: Default (X) » or « Model: X » and changes it in place; the Run and Test screens choose
+the model of one run and can remember it for the team, and the launch history keeps the choice
+for « Replay ». « Used by » and the status bar count the teams that follow the default; a crew
+whose agents or tasks name their own model is said so on the card and the Run screen. A
+companion file written before keeps its pinned setting.
+
+### Fixed — Studio's run consoles colour by log level and show one time per line
+
+Under `--events` the CLI writes every log line to stderr, and the Run screen's journal painted
+them all red. Both the journal and the Test screen's console now read the console logger's level
+token (`CliLogLine`): `fail`/`crit` red, `warn` amber, the rest neutral; a stderr line without a
+level takes the colour of the entry it follows. The logger's own timestamp is dropped: the
+journal shows the time Studio read the line, on screen and in the copied text. « Show / Hide »
+works in expert mode, which opens the journal by default.
+
+### Changed — an expected tool error is logged without its stack trace; a model answer is a preview at `-v 1`
+
+An exception marked `IExpectedToolError` (`Orkeon.Tools.Abstractions`; `EmailToolException`,
+`DriveToolException`) is logged by `ToolBase` as `Error calling tool <name>: <type>: <message>`,
+without its stack trace, which every other exception keeps; the agent sees the same error as
+before. The `LLM response` line is a one-line preview of 300 characters at Information
+(`LoggingDefaults.MaxLlmResponseLogLength`) and the whole answer at Debug (`-v 2`): the run's
+final answer was printed twice, once in that line and once under `=== Crew Output ===`.
+
 ### Changed — framework code no longer touches `System.Console` **[breaking]**
 
 A new analyzer rule, `ORKCON001` (`Orkeon.Compliance.Vfs`), reports any `System.Console` reference in `src/` as an

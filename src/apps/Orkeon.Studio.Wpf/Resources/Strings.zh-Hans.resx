@@ -144,9 +144,6 @@
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
     <value>剩余 {0} 个 token</value>
   </data>
-  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
-    <value>默认模型设置：{0}</value>
-  </data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
     <value>{0} — 由提供方计费</value>
   </data>
@@ -2507,9 +2504,6 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>试运行</value>
   </data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
-    <value>设置：{0}</value>
-  </data>
   <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>读取 {0}</value>
   </data>
@@ -3688,4 +3682,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve">
     <value>云盘部分的筛查开关既不是 true 也不是 false：在更正之前，引擎会搁置所有账户。</value>
   </data>
+  <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>模型：{0}</value></data>
+  <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>默认（{0}）</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>未选择默认：运行采用设置文件的 Llm 部分</value></data>
+  <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>团队设置文件的默认</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>计划运行将以回显方式应答：已保存的设置文件没有默认模型。请保存设置。</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>此团队有 {0} 个智能体或任务指定了自己的模型：该选择仅适用于其余部分。</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>使用默认模型（{0}）</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>使用默认模型</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>勾选后，团队在运行开始时使用选定的默认设置，并在其变化时跟随。取消勾选后，团队保持在下方选择的设置上。</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>或使用此设置运行：</value></data>
+  <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>更改模型</value></data>
+  <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} 现在运行于：{1}。</value></data>
+  <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>配置模型</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>本次运行：{0}</value></data>
+  <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>为此团队记住</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} 个团队，其中 {1} 个使用默认</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>默认模型设置：{0}。跟随默认的团队在其上运行。</value></data>
 </root>

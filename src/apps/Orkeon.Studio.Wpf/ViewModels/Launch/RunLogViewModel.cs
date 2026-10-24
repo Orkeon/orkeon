@@ -21,18 +21,32 @@ public enum LogLineKind
 
     /// <summary>The closing verdict of a run that ended well.</summary>
     Outcome,
+
+    /// <summary>An error Studio itself reports.</summary>
+    Error,
 }
 
 /// <summary>One streamed output line, with the channel it came from.</summary>
 public sealed class LogLineViewModel
 {
+    private readonly CliLogLine _log;
+
     /// <summary>Wraps a line read from the child process.</summary>
-    public LogLineViewModel(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output)
+    /// <param name="line">The line.</param>
+    /// <param name="kind">What the producer says it is.</param>
+    /// <param name="continues">
+    /// The level of the stderr log entry this line follows, when it carries none itself: the rest of a
+    /// multi-line message (a model answer at <c>-v 2</c>) or the block the CLI prints after its logs
+    /// (« === Crew Output === »), which under <c>--events</c> go to stderr too.
+    /// </param>
+    public LogLineViewModel(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output, CliLogLevel? continues = null)
     {
         ArgumentNullException.ThrowIfNull(line);
 
         Line = line;
         Kind = kind;
+        _log = CliLogLine.Parse(line.Text);
+        Level = _log.Level ?? (kind == LogLineKind.Output && line.Channel == ProcessOutputChannel.StandardError ? continues : null);
     }
 
     /// <summary>What this line is — the console colours on it.</summary>
@@ -47,14 +61,33 @@ public sealed class LogLineViewModel
     /// <summary>The underlying Core record.</summary>
     public ProcessOutputLine Line { get; }
 
-    /// <summary>The text as the CLI printed it.</summary>
-    public string Text => Line.Text;
+    /// <summary>
+    /// The text as the CLI printed it, without the console logger's own timestamp: the journal
+    /// already shows <see cref="Time"/>, and two clocks a few milliseconds apart said nothing more.
+    /// </summary>
+    public string Text => _log.Text;
+
+    /// <summary>The level of a CLI log line, or of the log entry a stderr line continues; null otherwise.</summary>
+    public CliLogLevel? Level { get; }
 
     /// <summary>Which stream it came from.</summary>
     public ProcessOutputChannel Channel => Line.Channel;
 
-    /// <summary>Whether it came from stderr, which the view colours differently.</summary>
-    public bool IsError => Channel == ProcessOutputChannel.StandardError;
+    /// <summary>
+    /// Whether the view colours it as an error: an error Studio reports, a <c>fail</c> or <c>crit</c>
+    /// log entry, or a stderr line that follows no log entry (a fault message before any log). Never
+    /// the stream alone: under <c>--events</c> every log goes to stderr, and an <c>info</c> line is
+    /// not an error.
+    /// </summary>
+    public bool IsError => Kind == LogLineKind.Error || Level switch
+    {
+        CliLogLevel.Error or CliLogLevel.Critical => true,
+        null => Kind == LogLineKind.Output && Channel == ProcessOutputChannel.StandardError,
+        _ => false,
+    };
+
+    /// <summary>Whether it belongs to a <c>warn</c> log entry, which the view colours as a warning.</summary>
+    public bool IsWarning => Level == CliLogLevel.Warning;
 
     /// <summary>When it was read.</summary>
     public DateTimeOffset TimestampUtc => Line.TimestampUtc;
@@ -83,6 +116,7 @@ public sealed class RunLogViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private bool _autoScroll = true;
     private int _droppedLines;
+    private CliLogLevel? _stderrLevel;
 
     /// <summary>Builds the panel over the localization port (STUDIO-11).</summary>
     public RunLogViewModel(IStudioStrings? strings = null)
@@ -141,7 +175,14 @@ public sealed class RunLogViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(line);
 
-        Lines.Add(new LogLineViewModel(line, kind));
+        var added = new LogLineViewModel(line, kind, _stderrLevel);
+        Lines.Add(added);
+
+        // A stderr line without a level continues the last log entry; a new command starts afresh.
+        if (kind == LogLineKind.Command)
+            _stderrLevel = null;
+        else if (kind == LogLineKind.Output && line.Channel == ProcessOutputChannel.StandardError)
+            _stderrLevel = added.Level;
 
         if (Lines.Count > MaxLines)
         {
@@ -166,13 +207,14 @@ public sealed class RunLogViewModel : ObservableObject
 
     /// <summary>Appends a Studio-produced error line.</summary>
     public void AppendError(string text) =>
-        Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, text));
+        Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, text), LogLineKind.Error);
 
     /// <summary>Empties the panel.</summary>
     public void Clear()
     {
         Lines.Clear();
         DroppedLines = 0;
+        _stderrLevel = null;
         OnPropertyChanged(nameof(Summary));
     }
 }

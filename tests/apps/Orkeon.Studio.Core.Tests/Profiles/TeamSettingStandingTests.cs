@@ -106,4 +106,23 @@ public sealed class TeamSettingStandingTests
             $"{setting} — absent from this machine: the default setting runs in its place",
             standing.Label(EnglishStudioStrings.Instance));
     }
+
+    /// <summary>
+    /// STUDIO-73: a team that names no setting follows the default, and the card and the Run screen
+    /// say which — or that none is elected, or that the team's own settings file decides; a team
+    /// pinned on a setting keeps the label it had.
+    /// </summary>
+    [Fact]
+    public void The_model_label_names_the_default_a_follower_runs_on()
+    {
+        var strings = EnglishStudioStrings.Instance;
+        var elected = Settings.WithDefault("DeepSeek");
+
+        Assert.Equal("Default (DeepSeek)", TeamSettingStanding.None.LlmLabel(strings, elected));
+        Assert.Equal("Default of the team's settings file", TeamSettingStanding.None.LlmLabel(strings, elected, ownSettingsFile: true));
+        Assert.Equal(
+            "No default elected: the run takes the Llm section of the settings file",
+            TeamSettingStanding.None.LlmLabel(strings, Settings with { DefaultProfile = null }));
+        Assert.Equal("Aucun", TeamSettingStanding.Of("Aucun", elected).LlmLabel(strings, elected));
+    }
 }

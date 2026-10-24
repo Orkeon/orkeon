@@ -90,7 +90,7 @@ internal sealed class NativeToolCallingAgentLoop
 
             sw.Stop();
             var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
-            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response.Content.Length, response.Content);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response.Content);
 
             // A failed call — the provider's refusal, an elapsed timeout — is not an answer to
             // judge: the task fails with the provider's own reason, and nothing is retried (LLM-11).

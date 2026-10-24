@@ -2473,3 +2473,4 @@ override Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.ToString() -> 
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator !=(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? right) -> bool
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.operator ==(Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? left, Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey? right) -> bool
 static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Parse(string! key) -> Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey!
+const Orkeon.Application.Constants.Orchestration.LoggingDefaults.MaxLlmResponseLogLength = 300 -> int

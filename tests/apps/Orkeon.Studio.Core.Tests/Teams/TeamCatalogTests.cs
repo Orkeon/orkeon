@@ -939,6 +939,74 @@ public sealed class TeamCatalogTests : IDisposable
     }
 
     /// <summary>
+    /// STUDIO-73: a team that follows the default says so with its flag and names no setting; pinned
+    /// again, the flag goes and the name comes back — every other field kept both ways.
+    /// </summary>
+    [Fact]
+    public void Following_the_default_writes_the_flag_without_a_name_and_pinning_writes_the_name_back()
+    {
+        var team = Path.Combine(_root, "teams", "veille");
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", Profile = "DeepSeek", Schedule = "hourly" });
+
+        TeamCatalog.SaveLlmChoice(team, TeamLlmChoice.Default);
+
+        var sidecar = Sidecar(team)!;
+        Assert.True(sidecar["useDefaultLlm"]!.GetValue<bool>());
+        Assert.Null(sidecar["profile"]);
+        Assert.Equal("hourly", sidecar["schedule"]!.GetValue<string>());
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(team));
+        Assert.Null(TeamCatalog.Describe(team).Profile);
+
+        TeamCatalog.SaveLlmChoice(team, TeamLlmChoice.Pinned("Z.AI"));
+
+        sidecar = Sidecar(team)!;
+        Assert.Null(sidecar["useDefaultLlm"]);
+        Assert.Equal("Z.AI", sidecar["profile"]!.GetValue<string>());
+        Assert.Equal(TeamLlmChoice.Pinned("Z.AI"), TeamCatalog.LlmChoiceFor(Path.Combine(team, "crew.yaml")));
+        Assert.Equal("Veille", sidecar["name"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// STUDIO-73, D3: a team adopted before the flag existed names the default of its day and stays
+    /// on it; a sidecar naming nothing reads as the default; a target that is no team has no choice.
+    /// </summary>
+    [Fact]
+    public void A_sidecar_without_the_flag_stays_pinned_on_its_name()
+    {
+        var pinned = Path.Combine(_root, "teams", "ancienne");
+        Directory.CreateDirectory(pinned);
+        File.WriteAllText(Path.Combine(pinned, StudioTeamMetadata.FileName), """{ "name": "Ancienne", "profile": "DeepSeek" }""");
+        var bare = Path.Combine(_root, "teams", "nue");
+        TeamCatalog.SaveMetadata(bare, new StudioTeamMetadata { Name = "Nue" });
+        var plain = Path.Combine(_root, "dossier");
+        Directory.CreateDirectory(plain);
+
+        Assert.Equal(TeamLlmChoice.Pinned("DeepSeek"), TeamCatalog.LlmChoiceFor(pinned));
+        Assert.Equal("DeepSeek", TeamCatalog.Describe(pinned).Profile);
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(bare));
+        Assert.Null(TeamCatalog.LlmChoiceFor(plain));
+    }
+
+    /// <summary>
+    /// STUDIO-73: the flag wins over a name left beside it by hand — the team runs on the default and
+    /// a rename of that setting leaves its file as it is, byte for byte.
+    /// </summary>
+    [Fact]
+    public void Renaming_a_setting_leaves_a_team_that_follows_the_default_alone()
+    {
+        var teams = Path.Combine(_root, "teams");
+        var follower = Path.Combine(teams, "suiveuse");
+        Directory.CreateDirectory(follower);
+        var file = Path.Combine(follower, StudioTeamMetadata.FileName);
+        File.WriteAllText(file, """{ "name": "Suiveuse", "useDefaultLlm": true, "profile": "DeepSeek" }""");
+        var bytes = File.ReadAllBytes(file);
+
+        Assert.Equal(TeamLlmChoice.Default, TeamCatalog.LlmChoiceFor(follower));
+        Assert.Empty(TeamCatalog.RenameSetting(teams, "DeepSeek", "DeepSeek V4"));
+        Assert.Equal(bytes, File.ReadAllBytes(file));
+    }
+
+    /// <summary>
     /// Decision 3: what a team sends to someone carries nothing of the machine that sends it. The
     /// copy's launchers name no settings file, no model setting, no folder of this disk, and
     /// schedule/ — what this machine's scheduler knows of the team — stays behind; the team's own

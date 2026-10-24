@@ -600,7 +600,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output.Length, profileResult.Output);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, profileResult.Output);
             return profileResult;
         }
 
@@ -610,7 +610,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 agent, task, systemPrompt, userPrompt, toolsUsed, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
-            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output);
             return loopResult;
         }
 

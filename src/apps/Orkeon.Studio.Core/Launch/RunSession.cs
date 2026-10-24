@@ -31,6 +31,9 @@ public sealed record RunLaunchRequest
     /// </summary>
     public IReadOnlyDictionary<string, string> EnvironmentOverrides { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>The model the launch runs on, as the history records it for « Relancer » (STUDIO-73); null when no choice applies.</summary>
+    public TeamLlmChoice? LlmChoice { get; init; }
 }
 
 /// <summary>
@@ -121,7 +124,7 @@ public sealed class RunSession
             request.TargetPath,
             request.Arguments,
             request.SettingsPath,
-            request.WorkingDirectory);
+            request.WorkingDirectory) with { LlmChoice = request.LlmChoice };
 
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _cancellation = cancellation;

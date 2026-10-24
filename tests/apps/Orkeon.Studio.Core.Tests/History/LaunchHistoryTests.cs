@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Tests.History;
 
@@ -77,6 +78,26 @@ public sealed class LaunchHistoryTests
         AssertSameEntry(original.Entries[1], reloaded.Entries[1]);
         Assert.Equal(RunOutcome.Cancelled, reloaded.Entries[0].Outcome);
         Assert.Equal(OrkeonExitCodes.Cancelled, reloaded.Entries[0].ExitCode);
+    }
+
+    /// <summary>
+    /// STUDIO-73: an entry keeps the model its run was launched on — the default, or a setting by
+    /// its name — for « Relancer »; an entry written before the field existed reads without one.
+    /// </summary>
+    [Fact]
+    public void An_entry_keeps_the_model_its_run_took_through_a_round_trip()
+    {
+        var original = LaunchHistory.Empty
+            .Add(Entry("pinned.yaml", minutesAgo: 5) with { LlmChoice = TeamLlmChoice.Pinned("DeepSeek") })
+            .Add(Entry("default.yaml") with { LlmChoice = TeamLlmChoice.Default });
+
+        Assert.True(LaunchHistory.TryParse(original.ToJson(), out var reloaded, out var error), error);
+
+        Assert.Equal(TeamLlmChoice.Default, reloaded.Entries[0].LlmChoice);
+        Assert.Equal(TeamLlmChoice.Pinned("DeepSeek"), reloaded.Entries[1].LlmChoice);
+        Assert.True(LaunchHistory.TryParse(
+            """{ "entries": [ { "target": "old.yaml", "started_at": "2026-01-01T00:00:00Z" } ] }""", out var old, out error), error);
+        Assert.Null(Assert.Single(old.Entries).LlmChoice);
     }
 
     /// <summary>
