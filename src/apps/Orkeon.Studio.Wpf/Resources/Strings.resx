@@ -881,7 +881,6 @@
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Change the folders</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Export</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Try out</value></data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve"><value>Setting: {0}</value></data>
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>reads {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>

@@ -391,6 +391,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     private string _scheduleTime = "07:30";
     private string? _adoptProfileName;
     private bool _isAdoptProfilePickerOpen;
+    private bool _adoptUsesDefaultLlm = true;
     private string? _reopenedTeamPath;
     private string? _lastStderr;
     /// <summary>What occupies the name the adoption would take (STUDIO-26, D-07); empty while nothing does.</summary>
@@ -763,7 +764,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // reads the setting it names among them — renamed, edited or newly elected (STUDIO-52).
         OnPropertiesChanged(
             nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
-            nameof(AdoptProfileName), nameof(AdoptProfileSummary));
+            nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel));
         ComposeCommand.RaiseCanExecuteChanged();
     }
 
@@ -2070,6 +2071,26 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         Profiles.Profiles.FirstOrDefault(p => string.Equals(p.Name, AdoptProfileName, StringComparison.Ordinal))
             ?.Summary ?? "";
 
+    /// <summary>
+    /// Whether the team follows the machine's default model (STUDIO-73, D2: checked at adoption) —
+    /// the setting elected when a run starts — rather than the one the card pins.
+    /// </summary>
+    public bool AdoptUsesDefaultLlm
+    {
+        get => _adoptUsesDefaultLlm;
+        set
+        {
+            if (SetProperty(ref _adoptUsesDefaultLlm, value) && value)
+                IsAdoptProfilePickerOpen = false;
+        }
+    }
+
+    /// <summary>« Use the default model (X) », X the setting elected now.</summary>
+    public string AdoptUseDefaultLlmLabel =>
+        Profiles.DefaultProfileName is { Length: > 0 } elected
+            ? _strings.Format(StudioStringKeys.TeamsUseDefaultLlm, elected)
+            : _strings[StudioStringKeys.TeamsUseDefaultLlmNone];
+
     /// <summary>Whether the «Changer» rows of the step-4 profile card are unfolded.</summary>
     public bool IsAdoptProfilePickerOpen
     {
@@ -2280,7 +2301,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ReferenceUseCaseId = _model.ReferenceUseCaseId;
 
         TeamName = team.Name;
-        if (team.Profile is { Length: > 0 } profile)
+        var llm = team.LlmChoice;
+        AdoptUsesDefaultLlm = llm.UseDefault;
+        if (llm.Profile is { Length: > 0 } profile)
             AdoptProfileName = profile;
         SeedSchedule(team.Schedule);
         // The sidecar's own spelling, not the catalog's resolved one: a team-relative entry
@@ -2668,7 +2691,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             Name = adopted,
             Description = description,
-            Profile = AdoptProfileName,
+            // STUDIO-73: a team that follows the default names no setting; one that pins drops the flag.
+            Profile = AdoptUsesDefaultLlm ? null : AdoptProfileName,
+            UseDefaultLlm = AdoptUsesDefaultLlm ? true : null,
             Schedule = schedule,
             Mounts = mounts.Count > 0 ? mounts : null,
         });
@@ -2810,6 +2835,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // schedule — without this reset they would leak into the NEXT session's sidecar.
         _adoptProfileName = null;
         OnPropertiesChanged(nameof(AdoptProfileName), nameof(AdoptProfileSummary));
+        AdoptUsesDefaultLlm = true;
         ScheduleChoice = 0;
         ScheduleTime = "07:30";
         IsAdoptProfilePickerOpen = false;

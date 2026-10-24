@@ -2507,9 +2507,6 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>试运行</value>
   </data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
-    <value>设置：{0}</value>
-  </data>
   <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>读取 {0}</value>
   </data>

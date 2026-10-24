@@ -262,6 +262,9 @@ public sealed class MainWindowViewModel : ObservableObject
             ModelSettings = ModelSettings,
             ScheduledRun = team => ScheduledRunCheck.First(team, Settings.Profiles.Set, _savedSettings, ForeignLaunchersOf(team.Path)),
             PrepareSchedule = PrepareScheduleAsync,
+            // STUDIO-73: a card's « Save » of its model goes the way « Remember for this team » goes.
+            SaveLlmChoice = RememberLlmChoice,
+            HasOwnSettingsFile = team => TeamSettingsFile.Find(teamsHome, team, directories ?? PhysicalDirectoryProbe.Instance, _settingsStore.Exists) is not null,
         });
 
 
@@ -415,6 +418,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // STUDIO-73: « Configure a model » on a machine without one lands on the model tab.
         Launch.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
         Test.Launcher.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
+        Teams.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
 
         // An adopted team is an ordinary folder: the Launch action hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
@@ -1032,6 +1036,8 @@ public sealed class MainWindowViewModel : ObservableObject
         TeamLaunchers.Regenerate(teamPath, _launcherContext());
         Teams.Refresh();
         Test.RefreshTeams();
+        Launch.RefreshTeamDescription();
+        Test.Launcher.RefreshTeamDescription();
         return null;
     }
 }

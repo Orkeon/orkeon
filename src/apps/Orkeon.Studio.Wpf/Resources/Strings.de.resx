@@ -2507,9 +2507,6 @@
   <data name="Studio.Teams.Test" xml:space="preserve">
     <value>Erproben</value>
   </data>
-  <data name="Studio.Teams.SettingLabel" xml:space="preserve">
-    <value>Einstellung: {0}</value>
-  </data>
   <data name="Studio.Run.MetaReads" xml:space="preserve">
     <value>liest {0}</value>
   </data>

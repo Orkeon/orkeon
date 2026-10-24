@@ -560,9 +560,6 @@ public static class StudioStringKeys
     /// <summary>"Never ran" — no history entry names this team.</summary>
     public const string TeamsNeverRan = "Studio.Teams.NeverRan";
 
-    /// <summary>"Setting: {0}" — the meta line's model-profile part.</summary>
-    public const string TeamsSettingLabel = "Studio.Teams.SettingLabel";
-
     /// <summary>"Team exported to {0}"</summary>
     public const string TeamsExportedTo = "Studio.Teams.ExportedTo";
 
@@ -1740,7 +1737,7 @@ public static class StudioStringKeys
 
     /// <summary>
     /// "{0} — absent from this machine: the default setting runs in its place" — {0} is a setting a
-    /// team names and no setting of this machine bears; said in <see cref="TeamsSettingLabel"/> on the
+    /// team names and no setting of this machine bears; said in <see cref="TeamsLlmLine"/> on the
     /// card and in <see cref="RunMetaProfile"/> on the Run and Test screens, the same words (STUDIO-52).
     /// </summary>
     public const string TeamsSettingMissing = "Studio.Teams.SettingMissing";
@@ -2404,7 +2401,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsRunOk] = "succeeded",
         [StudioStringKeys.TeamsRunFail] = "failed",
         [StudioStringKeys.TeamsNeverRan] = "Never ran",
-        [StudioStringKeys.TeamsSettingLabel] = "Setting: {0}",
         [StudioStringKeys.ConfigNotSavedWriteFailed] = "Not saved — the file could not be written: {0}",
         [StudioStringKeys.TeamsExportedTo] = "Team exported to {0}",
         [StudioStringKeys.TeamsExportFailed] = "Export refused — the destination already exists, or the disk said no.",
