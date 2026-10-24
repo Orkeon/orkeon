@@ -92,7 +92,9 @@ internal static partial class McpStartup
         if (provider is null)
             return;
 
-        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.McpStartup");
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger("Orkeon.Hosting.McpStartup");
+        var operatorLogger = RunnerOperatorLog.Create(loggerFactory);
         var servers = services.GetRequiredService<IOptions<McpOptions>>().Value.Servers;
 
         foreach (var (serverId, config) in servers)
@@ -103,15 +105,15 @@ internal static partial class McpStartup
             try
             {
                 await provider.ConnectServerAsync(serverId, config, guard.Token).ConfigureAwait(false);
-                ReportCollisions(provider, serverId);
+                ReportCollisions(provider, operatorLogger, serverId);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                Report(logger, serverId, $"no answer within {ConnectTimeout.TotalSeconds:0} s");
+                Report(logger, operatorLogger, serverId, $"no answer within {ConnectTimeout.TotalSeconds:0} s");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Report(logger, serverId, ex.Message);
+                Report(logger, operatorLogger, serverId, ex.Message);
             }
         }
     }
@@ -121,21 +123,23 @@ internal static partial class McpStartup
     /// refused by the registry and named on the log by <see cref="McpToolProvider"/>; stderr
     /// carries the same line, for the same reason as <see cref="Report"/>.
     /// </summary>
-    private static void ReportCollisions(McpToolProvider provider, string serverId)
+    private static void ReportCollisions(McpToolProvider provider, ILogger operatorLogger, string serverId)
     {
         var status = provider.GetServerStatuses().FirstOrDefault(s => s.ServerId == serverId);
         foreach (var name in status?.RejectedToolNames ?? [])
         {
-            Console.Error.WriteLine(
+            RunnerOperatorLog.Warn(
+                operatorLogger,
                 $"The tool '{name}' of MCP server '{serverId}' collides with an already-registered tool and was not registered.");
         }
     }
 
-    private static void Report(ILogger logger, string serverId, string reason)
+    private static void Report(ILogger logger, ILogger operatorLogger, string serverId, string reason)
     {
         LogMcpServerUnavailable(logger, serverId, reason);
-        // stderr is the guarantee channel: the host may keep its logger below Error.
-        Console.Error.WriteLine($"MCP server '{serverId}' could not be connected: {reason}");
+        // The operator channel is the guarantee: the host may keep its logger below Error, the
+        // operator category still reaches stderr (RunnerOperatorLog).
+        RunnerOperatorLog.Warn(operatorLogger, $"MCP server '{serverId}' could not be connected: {reason}");
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "MCP server '{ServerId}' could not be connected: {Reason}. Its tools are absent from this run.")]

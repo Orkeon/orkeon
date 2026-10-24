@@ -30,19 +30,10 @@ public sealed class MountSourceExistenceGuardTests : IDisposable
         catch (UnauthorizedAccessException) { /* best-effort temp cleanup */ }
     }
 
-    private static (bool ok, string stderr) CaptureGuard(Func<bool> run)
+    private static (bool ok, string stderr) CaptureGuard(Func<TextWriter, bool> run)
     {
-        var origErr = Console.Error;
         using var stderr = new StringWriter(new StringBuilder());
-        Console.SetError(stderr);
-        try
-        {
-            return (run(), stderr.ToString());
-        }
-        finally
-        {
-            Console.SetError(origErr);
-        }
+        return (run(stderr), stderr.ToString());
     }
 
     [Fact]
@@ -51,8 +42,8 @@ public sealed class MountSourceExistenceGuardTests : IDisposable
         var existing = Path.Combine(_tempDir, "out");
         Directory.CreateDirectory(existing);
 
-        var (ok, stderr) = CaptureGuard(() => RunnerExecution.EnsureMountSourcesExist(
-            [$"{existing}:/output:rw"], settingsPath: null));
+        var (ok, stderr) = CaptureGuard(error => RunnerExecution.EnsureMountSourcesExist(
+            [$"{existing}:/output:rw"], settingsPath: null, error));
 
         Assert.True(ok);
         Assert.Empty(stderr);
@@ -63,8 +54,8 @@ public sealed class MountSourceExistenceGuardTests : IDisposable
     {
         var missing = Path.Combine(_tempDir, "does-not-exist");
 
-        var (ok, stderr) = CaptureGuard(() => RunnerExecution.EnsureMountSourcesExist(
-            [$"{missing}:/output:rw"], settingsPath: null));
+        var (ok, stderr) = CaptureGuard(error => RunnerExecution.EnsureMountSourcesExist(
+            [$"{missing}:/output:rw"], settingsPath: null, error));
 
         Assert.False(ok);
         Assert.Contains("ERROR: mount source directory does not exist", stderr, StringComparison.Ordinal);
@@ -77,8 +68,8 @@ public sealed class MountSourceExistenceGuardTests : IDisposable
     {
         // The parser reports malformed strings with its own precise message at host build
         // time; the guard must not preempt it (same stance as EnsureReservedRootsAreFree).
-        var (ok, stderr) = CaptureGuard(() => RunnerExecution.EnsureMountSourcesExist(
-            ["not-a-mount"], settingsPath: null));
+        var (ok, stderr) = CaptureGuard(error => RunnerExecution.EnsureMountSourcesExist(
+            ["not-a-mount"], settingsPath: null, error));
 
         Assert.True(ok);
         Assert.Empty(stderr);
@@ -93,8 +84,8 @@ public sealed class MountSourceExistenceGuardTests : IDisposable
             settingsPath,
             "{\"Orkeon\":{\"FileSystem\":{\"Mounts\":[\"" + missing + ":/data:ro\"]}}}");
 
-        var (ok, stderr) = CaptureGuard(() => RunnerExecution.EnsureMountSourcesExist(
-            [], settingsPath));
+        var (ok, stderr) = CaptureGuard(error => RunnerExecution.EnsureMountSourcesExist(
+            [], settingsPath, error));
 
         Assert.False(ok);
         Assert.Contains("ERROR: mount source directory does not exist", stderr, StringComparison.Ordinal);

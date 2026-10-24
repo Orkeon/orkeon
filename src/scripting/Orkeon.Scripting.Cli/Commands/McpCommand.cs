@@ -87,7 +87,7 @@ internal static class McpCommand
             if (!await ServeOnlyAsync(host.Services.GetRequiredService<IToolRegistry>(), options.Tools).ConfigureAwait(false))
                 return Program.ExitScriptError;
 
-            await host.Services.GetRequiredService<McpServer>().RunStdioAsync().ConfigureAwait(false);
+            await host.Services.GetRequiredService<McpServer>().RunStdioAsync(Console.In, Console.Out).ConfigureAwait(false);
             return Program.ExitOk;
         }
         catch (Exception ex)
@@ -113,7 +113,7 @@ internal static class McpCommand
     private static async Task<IHost?> BuildHostAsync(McpServeCommandOptions options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
         if (settingsPath != null)
             await Console.Error.WriteLineAsync($"Using settings: {settingsPath}").ConfigureAwait(false);
 
@@ -131,6 +131,7 @@ internal static class McpCommand
                 RunCommand.AddCliRagServices(services);
                 services.AddOrkeonMcpServer(context.Configuration);
             },
+            Console.Error,
             CancellationToken.None).ConfigureAwait(false);
     }
 

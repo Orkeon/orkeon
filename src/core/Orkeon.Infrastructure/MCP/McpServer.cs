@@ -134,17 +134,20 @@ public partial class McpServer
     }
 
     /// <summary>
-    /// Runs the MCP server on stdin/stdout, reading JSON-RPC messages
-    /// line by line and writing responses (notifications get none), until
-    /// stdin closes. The streams are the process's: read and written, never
-    /// disposed.
+    /// Runs the MCP server over a stdio-style channel, reading JSON-RPC messages
+    /// line by line from <paramref name="reader"/> and writing responses to
+    /// <paramref name="writer"/> (notifications get none), until the reader ends.
+    /// The streams are the caller's: read and written, never disposed. The writer
+    /// is the protocol channel: nothing else may write to it.
     /// </summary>
-    public async Task RunStdioAsync(CancellationToken ct = default)
+    /// <param name="reader">The channel requests are read from (the process's stdin for <c>orkeon mcp serve</c>).</param>
+    /// <param name="writer">The channel responses are written to (the process's stdout for <c>orkeon mcp serve</c>).</param>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task RunStdioAsync(TextReader reader, TextWriter writer, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(writer);
         LogMcpServerStarting();
-
-        var reader = Console.In;
-        var writer = Console.Out;
 
         while (!ct.IsCancellationRequested)
         {

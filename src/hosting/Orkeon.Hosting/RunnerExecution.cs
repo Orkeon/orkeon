@@ -100,17 +100,17 @@ public static partial class RunnerExecution
         var offered = target.IsScript
             ? OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption
             : OfferedMountSelectors.All;
-        var error = Console.Error;
+        var error = opts.RunnerConsole.ErrorOutput;
 
         if (!EnsureVirtualRootsAreUnique(cliMounts, layers, target.SettingsPath, error)
-            || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath)
+            || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath, error)
             || !EnsureReservedRootsAreFree(
                 cliMounts, layers, error,
                 target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
             || !EnsureMountSelectionIsResolvable(
                 cliMounts, opts.MountIds, crewMounts, layers, target.SettingsPath, offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
-            || !EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath))
+            || !EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath, error))
         {
             errorCode = 1;
             return false;
@@ -120,7 +120,7 @@ public static partial class RunnerExecution
         // ahead with that file, and a refusal that arrived after it read as a run that had
         // started and crashed — the one-line diagnostics above are the whole answer.
         if (target.SettingsPath != null)
-            Console.Error.WriteLine($"Using settings: {target.SettingsPath}");
+            error.WriteLine($"Using settings: {target.SettingsPath}");
 
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
@@ -161,6 +161,9 @@ public static partial class RunnerExecution
                     // the provider (e.g. TerminalGuiHumanInputProvider) via
                     // configureServices below.
                     services.AddOrkeonHumanInput();
+                    // The runner's console, before the caller's services: the operator channel
+                    // writes on it (RunnerOperatorLog), a caller may still replace it.
+                    services.AddSingleton(opts.RunnerConsole);
                     configureServices?.Invoke(ctx, services);
                     // After the caller's own provider is in, so the deadline decorator wraps it.
                     services.DecorateHumanInputWithDeadline();
@@ -173,7 +176,7 @@ public static partial class RunnerExecution
             // file, an address that is none — is the operator's to fix: the sentence as the last
             // stderr line, exit 1 (GAP-35). It used to escape as an unhandled exception: a stack,
             // a core dump, and on an --events run a stream that never closed.
-            ReportRefusedSettings(ex);
+            ReportRefusedSettings(ex, error);
             errorCode = 1;
             return false;
         }
@@ -193,13 +196,16 @@ public static partial class RunnerExecution
     /// stderr, the one the exit code points at. <c>ORKEON_DEBUG=1</c> puts the exception, the
     /// failure it explains and its stack, before it.
     /// </summary>
+    /// <param name="ex">The refusal.</param>
+    /// <param name="error">The runner's standard error.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    internal static void ReportRefusedSettings(RunnerSettingsException ex)
+    internal static void ReportRefusedSettings(RunnerSettingsException ex, TextWriter error)
     {
         ArgumentNullException.ThrowIfNull(ex);
+        ArgumentNullException.ThrowIfNull(error);
         if (RunnerEnvironment.DebugDiagnostics)
-            Console.Error.WriteLine(ex.ToString());
-        Console.Error.WriteLine($"ERROR: {ex.Message}");
+            error.WriteLine(ex.ToString());
+        error.WriteLine($"ERROR: {ex.Message}");
     }
 
     /// <summary>
@@ -234,12 +240,13 @@ public static partial class RunnerExecution
         [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out CrewTarget? target)
     {
         target = null;
+        var error = opts.RunnerConsole.ErrorOutput;
 
         if (string.IsNullOrWhiteSpace(opts.ConfigPath))
         {
             // --config is optional at the parser level so --list-tools can run without it,
             // but every crew-loading mode still needs it — enforce presence here.
-            Console.Error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
+            error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
             return false;
         }
 
@@ -253,13 +260,13 @@ public static partial class RunnerExecution
         var inspection = CrewDirectoryLayout.Inspect(configPath);
         if (inspection.Error is not null)
         {
-            Console.Error.WriteLine($"ERROR: {inspection.Error}");
+            error.WriteLine($"ERROR: {inspection.Error}");
             return false;
         }
 
         if (!inspection.IsCrewDirectory && !File.Exists(configPath))
         {
-            Console.Error.WriteLine($"ERROR: config file not found: {configPath}");
+            error.WriteLine($"ERROR: config file not found: {configPath}");
             return false;
         }
 
@@ -274,7 +281,7 @@ public static partial class RunnerExecution
             configPath = Path.TrimEndingDirectorySeparator(inspection.CrewRoot!);
         var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
         // Resolved here, announced by TryBuildHost once the mount guards have passed.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir, error);
 
         // The crew-config loader (YamlCrewDefinitionLoader) reads the YAML through
         // IFileSystemService, so configDir must be visible to the VFS registry — under a
@@ -318,7 +325,7 @@ public static partial class RunnerExecution
     /// </para>
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string? configDir, string? llmLogPath)
+    private static bool EnsureExternalMountsAllowed(RunnerOptionsBase opts, string? configDir, string? llmLogPath, TextWriter error)
     {
         var cwd = Directory.GetCurrentDirectory();
         var configOutsideCwd = configDir is not null && !PhysicalPathContainment.IsUnder(configDir, cwd);
@@ -326,15 +333,15 @@ public static partial class RunnerExecution
         if (!(configOutsideCwd || llmLogOutsideCwd) || opts.EffectiveAllowExternalMounts)
             return true;
 
-        Console.Error.WriteLine(
+        error.WriteLine(
             "ERROR: --allow-external-mounts is required when reading the crew config "
             + "or writing LLM logs outside the current working directory. Add "
             + "--allow-external-mounts (or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1) to proceed.");
         if (configOutsideCwd)
-            Console.Error.WriteLine($"       configDir   : {configDir}");
+            error.WriteLine($"       configDir   : {configDir}");
         if (llmLogOutsideCwd)
-            Console.Error.WriteLine($"       llmLogPath  : {llmLogPath}");
-        Console.Error.WriteLine($"       cwd         : {cwd}");
+            error.WriteLine($"       llmLogPath  : {llmLogPath}");
+        error.WriteLine($"       cwd         : {cwd}");
         return false;
     }
 
@@ -357,16 +364,18 @@ public static partial class RunnerExecution
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
     /// <see langword="null"/> when the command resolves none.</param>
+    /// <param name="error">Where the refusal is written: the runner's standard error, or the caller's buffer.</param>
     /// <param name="reserved">The virtual roots this runner keeps for itself; <c>/credentials</c>,
     /// which the host keeps for every command, is always added.</param>
     public static bool EnsureReservedRootsAreFree(
         IEnumerable<string> userMounts,
         string? settingsPath,
+        TextWriter error,
         params string[] reserved) =>
-        EnsureReservedRootsAreFree(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), Console.Error, reserved);
+        EnsureReservedRootsAreFree(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), error, reserved);
 
     /// <summary>
-    /// <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, string[])"/> over the
+    /// <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, TextWriter, string[])"/> over the
     /// layers a caller composed — the REPL's, its command line included —, the refusal written to
     /// <paramref name="error"/>.
     /// </summary>
@@ -438,26 +447,28 @@ public static partial class RunnerExecution
     /// command-line mount by root and it replaces that settings entry for the run
     /// (<c>RunnerHost</c>, D-01). Nor are two settings entries of one root that both carry an
     /// id (VFS-90, D-03): a <c>--mount-id</c> or the crew's <c>mounts:</c> picks one per run —
-    /// <see cref="EnsureMountSelectionIsResolvable(IEnumerable{string}, IEnumerable{string}, CrewMountDeclarations, string?, out MountSelectionPlan?)"/> checks that something does. What has no
+    /// <see cref="EnsureMountSelectionIsResolvable(IEnumerable{string}, IEnumerable{string}, CrewMountDeclarations, string?, TextWriter, out MountSelectionPlan?)"/> checks that something does. What has no
     /// answer but "keep one" is a root claimed twice on the command line, an id declared twice,
     /// a root declared twice with an entry that has no id, or an Internal mount on a root the
     /// agent-facing array already holds (the registry's duplicate check spans both sections).
     /// </para>
     /// <para>
-    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, string[])"/>:
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, TextWriter, string[])"/>:
     /// the settings are read HERE from <paramref name="settingsPath"/>, so no caller can forget them.
     /// </para>
     /// </summary>
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="settingsPath">Resolved settings file whose declared mounts are checked
     /// against each other, or <see langword="null"/> when the command resolves none.</param>
+    /// <param name="error">Where the refusal is written: the runner's standard error, or the caller's buffer.</param>
     public static bool EnsureVirtualRootsAreUnique(
         IEnumerable<string> userMounts,
-        string? settingsPath) =>
-        EnsureVirtualRootsAreUnique(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath, Console.Error);
+        string? settingsPath,
+        TextWriter error) =>
+        EnsureVirtualRootsAreUnique(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath, error);
 
     /// <summary>
-    /// <see cref="EnsureVirtualRootsAreUnique(IEnumerable{string}, string?)"/> over the layers a
+    /// <see cref="EnsureVirtualRootsAreUnique(IEnumerable{string}, string?, TextWriter)"/> over the layers a
     /// caller composed, the refusal written to <paramref name="error"/>.
     /// </summary>
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
@@ -510,7 +521,7 @@ public static partial class RunnerExecution
     /// several times with nothing selecting one. The plan it returns is what the host applies,
     /// so the guard and the host cannot disagree.
     /// <para>
-    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, string[])"/>:
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, TextWriter, string[])"/>:
     /// the settings are read HERE from <paramref name="settingsPath"/>. Warnings are printed and
     /// never refuse.
     /// </para>
@@ -520,17 +531,19 @@ public static partial class RunnerExecution
     /// <param name="crewMounts">The crew's <c>mounts:</c> block, pre-read; <see cref="CrewMountDeclarations.None"/>
     /// for a script or when the command has no crew.</param>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    /// <param name="error">Where the refusal and the warnings are written: the runner's standard error, or the caller's buffer.</param>
     /// <param name="plan">The resolved plan when the guard passes.</param>
     public static bool EnsureMountSelectionIsResolvable(
         IEnumerable<string> userMounts,
         IEnumerable<string> mountIds,
         CrewMountDeclarations crewMounts,
         string? settingsPath,
+        TextWriter error,
         [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? plan) =>
-        EnsureMountSelectionIsResolvable(userMounts, mountIds, crewMounts, settingsPath, OfferedMountSelectors.All, out plan);
+        EnsureMountSelectionIsResolvable(userMounts, mountIds, crewMounts, settingsPath, OfferedMountSelectors.All, error, out plan);
 
     /// <summary>
-    /// <see cref="EnsureMountSelectionIsResolvable(IEnumerable{string}, IEnumerable{string}, CrewMountDeclarations, string?, out MountSelectionPlan?)"/>
+    /// <see cref="EnsureMountSelectionIsResolvable(IEnumerable{string}, IEnumerable{string}, CrewMountDeclarations, string?, TextWriter, out MountSelectionPlan?)"/>
     /// for a command that offers <paramref name="offered"/> to choose between the entries of a root:
     /// the line of a root declared several times names those ways only (GAP-49, decision 3).
     /// </summary>
@@ -539,6 +552,7 @@ public static partial class RunnerExecution
     /// <param name="crewMounts">The crew's <c>mounts:</c> block, pre-read, or <see cref="CrewMountDeclarations.None"/>.</param>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
     /// <param name="offered">What the command offers to choose with.</param>
+    /// <param name="error">Where the refusal and the warnings are written.</param>
     /// <param name="plan">The resolved plan when the guard passes.</param>
     internal static bool EnsureMountSelectionIsResolvable(
         IEnumerable<string> userMounts,
@@ -546,9 +560,10 @@ public static partial class RunnerExecution
         CrewMountDeclarations crewMounts,
         string? settingsPath,
         OfferedMountSelectors offered,
+        TextWriter error,
         [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? plan) =>
         EnsureMountSelectionIsResolvable(
-            userMounts, mountIds, crewMounts, RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath, offered, Console.Error, out plan);
+            userMounts, mountIds, crewMounts, RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath, offered, error, out plan);
 
     /// <summary>
     /// The selection guard over the layers a caller composed — the REPL's, its command line
@@ -646,10 +661,12 @@ public static partial class RunnerExecution
     /// </summary>
     /// <param name="llmProfile">The <c>--llm-profile</c> value, or null.</param>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    /// <param name="error">Where the refusal is written: the runner's standard error, or the caller's buffer.</param>
     /// <returns>True when the run may go on.</returns>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    public static bool EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath)
+    public static bool EnsureLlmProfileIsKnown(string? llmProfile, string? settingsPath, TextWriter error)
     {
+        ArgumentNullException.ThrowIfNull(error);
         if (llmProfile is null || Application.Interfaces.Ports.LlmProfiles.IsDefault(llmProfile))
             return true;
 
@@ -667,7 +684,7 @@ public static partial class RunnerExecution
         if (known.Contains(name, StringComparer.OrdinalIgnoreCase))
             return true;
 
-        Console.Error.WriteLine("ERROR: " + RunnerHost.UnknownElectedProfileMessage(name, known));
+        error.WriteLine("ERROR: " + RunnerHost.UnknownElectedProfileMessage(name, known));
         return false;
     }
 
@@ -720,7 +737,7 @@ public static partial class RunnerExecution
     /// <c>FileSystemRegistry</c> DI factory — a stack trace, where the operator made a simple
     /// configuration mistake that one actionable line (and a <c>mkdir</c>) fixes.
     /// <para>
-    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, string[])"/>:
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree(IEnumerable{string}, string?, TextWriter, string[])"/>:
     /// the settings are read HERE from <paramref name="settingsPath"/>, so no caller can forget
     /// them. Probing the physical path is bootstrap work by definition — the check exists precisely
     /// because the VFS registry (and thus <c>IFileSystemService</c>) cannot be built over it yet.
@@ -729,13 +746,15 @@ public static partial class RunnerExecution
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
     /// <see langword="null"/> when the command resolves none.</param>
+    /// <param name="error">Where the refusal is written: the runner's standard error, or the caller's buffer.</param>
     public static bool EnsureMountSourcesExist(
         IEnumerable<string> userMounts,
-        string? settingsPath) =>
-        EnsureMountSourcesExist(userMounts, settingsPath, selection: null);
+        string? settingsPath,
+        TextWriter error) =>
+        EnsureMountSourcesExist(userMounts, settingsPath, selection: null, error);
 
     /// <summary>
-    /// <see cref="EnsureMountSourcesExist(IEnumerable{string}, string?)"/>, minus the settings
+    /// <see cref="EnsureMountSourcesExist(IEnumerable{string}, string?, TextWriter)"/>, minus the settings
     /// entries the selection withdrew for this run (VFS-90, D-10): an entry the run does not
     /// mount is not probed, so a machine whose second <c>/output</c> points at a folder that no
     /// longer exists still runs the crew that selects the first.
@@ -744,14 +763,16 @@ public static partial class RunnerExecution
     /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
     /// <see langword="null"/> when the command resolves none.</param>
     /// <param name="selection">The resolved plan, or <see langword="null"/> to probe every entry.</param>
+    /// <param name="error">Where the refusal is written: the runner's standard error, or the caller's buffer.</param>
     public static bool EnsureMountSourcesExist(
         IEnumerable<string> userMounts,
         string? settingsPath,
-        MountSelectionPlan? selection) =>
-        EnsureMountSourcesExist(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), selection, Console.Error);
+        MountSelectionPlan? selection,
+        TextWriter error) =>
+        EnsureMountSourcesExist(userMounts, RunnerSettings.ReadMountConfiguration(settingsPath), selection, error);
 
     /// <summary>
-    /// <see cref="EnsureMountSourcesExist(IEnumerable{string}, string?, MountSelectionPlan?)"/> over
+    /// <see cref="EnsureMountSourcesExist(IEnumerable{string}, string?, MountSelectionPlan?, TextWriter)"/> over
     /// the layers a caller composed, the refusal written to <paramref name="error"/>.
     /// </summary>
     /// <param name="userMounts">The user-supplied mount strings — <c>--mount</c>, and the folders a command mounts itself.</param>
@@ -846,7 +867,7 @@ public static partial class RunnerExecution
         // line the logger's own output then buries (STUDIO-15 D-03).
         var (exitCode, failure) = await RunWithHostAsync(bootstrap!, opts, externalCt).ConfigureAwait(false);
         if (failure is not null)
-            await Console.Error.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
         return exitCode;
         }
     }
@@ -871,7 +892,8 @@ public static partial class RunnerExecution
         // Internal CTS linked to the external one (if any). Cancelling either path stops
         // the crew: SIGINT/SIGTERM via RegisterGracefulShutdown, OR caller's externalCt.
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
-        using var shutdown = RegisterGracefulShutdown(cts, logger);
+        var error = opts.RunnerConsole.ErrorOutput;
+        using var shutdown = RegisterGracefulShutdown(cts, error);
 
         try
         {
@@ -889,7 +911,7 @@ public static partial class RunnerExecution
             // SocketException buried under HTTP retries — surface the actionable one-liner
             // instead of the cryptic stack trace.
             var endpoint = ResolveConfiguredLlmEndpoint(host);
-            await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(endpoint)).ConfigureAwait(false);
+            await error.WriteLineAsync(BuildUnreachableLlmMessage(endpoint)).ConfigureAwait(false);
             LogLlmEndpointUnreachable(logger, endpoint ?? "(default)");
             return (2, null);
         }
@@ -903,7 +925,7 @@ public static partial class RunnerExecution
             LogCrewExecutionFailed(logger, ex.Message);
             LogCrewExecutionFailureDetail(logger, ex);
             if (RunnerEnvironment.DebugDiagnostics)
-                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+                await error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return (2, ex.Message);
         }
     }
@@ -927,6 +949,7 @@ public static partial class RunnerExecution
         CancellationToken ct)
     {
         var logger = bootstrap.Logger;
+        var console = opts.RunnerConsole;
         RunnerLogging.LogMounts(bootstrap.CliMounts, logger);
 
         LogLoadingCrew(logger, bootstrap.ConfigPath);
@@ -957,8 +980,8 @@ public static partial class RunnerExecution
             // rather than letting the generic fault barrier above dump the raw exception.
             // A scripted crew can reach the LLM while loading, though: that failure is not
             // a configuration mistake, so it is left to the unreachable-endpoint handler.
-            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
-            await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose, console.ErrorOutput).ConfigureAwait(false);
             return (2, null);
         }
 
@@ -968,13 +991,13 @@ public static partial class RunnerExecution
         if (input is null)
             return (1, null);
 
-        if (!await EnsureLlmEndpointReachableAsync(host, logger, ct).ConfigureAwait(false))
+        if (!await EnsureLlmEndpointReachableAsync(host, logger, console.ErrorOutput, ct).ConfigureAwait(false))
             return (2, null);
 
         LogKickingOffCrew(logger, crew.Goal);
         var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
 
-        PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
+        PrintCrewOutput(output, opts.MachineReadableStdout ? console.ErrorOutput : console.Output);
         if (!output.Succeeded)
         {
             // The crew ran and failed: exit 2, the reason handed back so the caller writes it
@@ -1003,7 +1026,7 @@ public static partial class RunnerExecution
         }
         catch (FormatException ex)
         {
-            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            await opts.RunnerConsole.ErrorOutput.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
             return null;
         }
     }
@@ -1017,7 +1040,7 @@ public static partial class RunnerExecution
     /// slow-link timeout) pass so a legitimate run is never blocked by the probe itself.
     /// </summary>
     private static async Task<bool> EnsureLlmEndpointReachableAsync(
-        IHost host, ILogger logger, CancellationToken ct)
+        IHost host, ILogger logger, TextWriter error, CancellationToken ct)
     {
         var probeEndpoint = ResolveConfiguredLlmEndpoint(host);
         if (probeEndpoint is null
@@ -1027,7 +1050,7 @@ public static partial class RunnerExecution
             return true;
         }
 
-        await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(probeEndpoint)).ConfigureAwait(false);
+        await error.WriteLineAsync(BuildUnreachableLlmMessage(probeEndpoint)).ConfigureAwait(false);
         LogLlmEndpointUnreachable(logger, probeEndpoint);
         return false;
     }
@@ -1166,8 +1189,9 @@ public static partial class RunnerExecution
             using var host = bootstrap!.Host;
             var (logger, cliMounts) = (bootstrap.Logger, bootstrap.CliMounts);
 
+            var console = opts.RunnerConsole;
             using var sessionCts = new CancellationTokenSource();
-            using var shutdown = RegisterGracefulShutdown(sessionCts, logger);
+            using var shutdown = RegisterGracefulShutdown(sessionCts, console.ErrorOutput);
 
             RunnerLogging.LogMounts(cliMounts, logger);
 
@@ -1175,19 +1199,11 @@ public static partial class RunnerExecution
             // written by the per-question runner. A StrongBox lets both the handler closure
             // and the extracted runner method target the same volatile slot.
             var currentKickoff = new StrongBox<CancellationTokenSource?>(null);
-            var perQuestionHandler = CreatePerQuestionCancelHandler(currentKickoff);
-            Console.CancelKeyPress += perQuestionHandler;
+            using var perQuestion = console.OnInterrupt(CreatePerQuestionCancelHandler(currentKickoff, console.ErrorOutput));
 
-            try
-            {
-                onSessionStart(0);
-                return await RunQuestionLoopAsync(
-                    host, sessionCts, currentKickoff, stopWords, kickoffPerInputAsync, logger).ConfigureAwait(false);
-            }
-            finally
-            {
-                Console.CancelKeyPress -= perQuestionHandler;
-            }
+            onSessionStart(0);
+            return await RunQuestionLoopAsync(
+                host, console, sessionCts, currentKickoff, stopWords, kickoffPerInputAsync, logger).ConfigureAwait(false);
         }
     }
 
@@ -1197,17 +1213,17 @@ public static partial class RunnerExecution
     /// SIGINT outside a kickoff is handled by <see cref="RegisterGracefulShutdown"/> instead.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static ConsoleCancelEventHandler CreatePerQuestionCancelHandler(
-        StrongBox<CancellationTokenSource?> currentKickoff)
+    private static Func<bool> CreatePerQuestionCancelHandler(
+        StrongBox<CancellationTokenSource?> currentKickoff, TextWriter error)
     {
-        return (_, e) =>
+        return () =>
         {
             var cts = Volatile.Read(ref currentKickoff.Value);
-            if (cts is null || cts.IsCancellationRequested) return;
-            e.Cancel = true;
+            if (cts is null || cts.IsCancellationRequested) return false;
             cts.Cancel();
-            Console.Error.WriteLine(
+            error.WriteLine(
                 "\n[runner] Canceling current question — type a new question or a stop word to exit.");
+            return true;
         };
     }
 
@@ -1219,6 +1235,7 @@ public static partial class RunnerExecution
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     private static async Task<int> RunQuestionLoopAsync(
         IHost host,
+        IRunnerConsole console,
         CancellationTokenSource sessionCts,
         StrongBox<CancellationTokenSource?> currentKickoff,
         IReadOnlySet<string> stopWords,
@@ -1228,19 +1245,17 @@ public static partial class RunnerExecution
         var questionNumber = 0;
         while (!sessionCts.IsCancellationRequested)
         {
-            var input = ReadQuestion();
+            var input = ReadQuestion(console);
             if (input is null) break;
             if (string.IsNullOrWhiteSpace(input))
             {
-                Console.WriteLine("  (empty input — type a question or a stop word to exit)");
+                await console.Output.WriteLineAsync("  (empty input — type a question or a stop word to exit)").ConfigureAwait(false);
                 continue;
             }
             if (IsStopWord(stopWords, input))
             {
-                Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Session ended. {questionNumber} question(s) answered.");
-                Console.ResetColor();
+                await console.Output.WriteLineAsync().ConfigureAwait(false);
+                await console.Output.WriteLineAsync($"Session ended. {questionNumber} question(s) answered.").ConfigureAwait(false);
                 return 0;
             }
 
@@ -1248,7 +1263,7 @@ public static partial class RunnerExecution
             LogQuestion(logger, questionNumber, input);
 
             var earlyExit = await RunScopedQuestionAsync(
-                host, input, questionNumber, sessionCts, currentKickoff, kickoffPerInputAsync, logger)
+                host, console.Output, input, questionNumber, sessionCts, currentKickoff, kickoffPerInputAsync, logger)
                 .ConfigureAwait(false);
             if (earlyExit is { } code)
                 return code;
@@ -1265,6 +1280,7 @@ public static partial class RunnerExecution
     /// </summary>
     private static async Task<int?> RunScopedQuestionAsync(
         IHost host,
+        TextWriter output,
         string input,
         int questionNumber,
         CancellationTokenSource sessionCts,
@@ -1279,7 +1295,7 @@ public static partial class RunnerExecution
         try
         {
             return await RunSingleQuestionAsync(
-                scope.ServiceProvider, input, questionNumber,
+                scope.ServiceProvider, output, input, questionNumber,
                 sessionCts, kickoffPerInputAsync, logger, kickoffCts.Token).ConfigureAwait(false);
         }
         finally
@@ -1293,12 +1309,11 @@ public static partial class RunnerExecution
     /// or <c>null</c> when end-of-input is reached (Ctrl+D / closed stdin).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static string? ReadQuestion()
+    private static string? ReadQuestion(IRunnerConsole console)
     {
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.Write("\n[Question] > ");
-        Console.ResetColor();
-        return Console.ReadLine()?.Trim();
+        console.Output.Write("\n[Question] > ");
+        console.Output.Flush();
+        return console.Input.ReadLine()?.Trim();
     }
 
     private static bool IsStopWord(IReadOnlySet<string> stopWords, string input)
@@ -1317,6 +1332,7 @@ public static partial class RunnerExecution
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     private static async Task<int?> RunSingleQuestionAsync(
         IServiceProvider services,
+        TextWriter console,
         string input,
         int questionNumber,
         CancellationTokenSource sessionCts,
@@ -1326,22 +1342,16 @@ public static partial class RunnerExecution
     {
         try
         {
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("  Processing...");
-            Console.ResetColor();
+            await console.WriteLineAsync("  Processing...").ConfigureAwait(false);
 
             var output = await kickoffPerInputAsync(services, input, kickoffToken).ConfigureAwait(false);
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("\n[Answer]");
-            Console.ResetColor();
-            Console.WriteLine(output.FinalOutput);
+            await console.WriteLineAsync("\n[Answer]").ConfigureAwait(false);
+            await console.WriteLineAsync(output.FinalOutput).ConfigureAwait(false);
 
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine(output.TokensUsed is { } usage
+            await console.WriteLineAsync(output.TokensUsed is { } usage
                 ? $"  ({output.Duration.TotalSeconds:F1}s — {usage.TotalTokens} tokens)"
-                : $"  ({output.Duration.TotalSeconds:F1}s — tokens not measured)");
-            Console.ResetColor();
+                : $"  ({output.Duration.TotalSeconds:F1}s — tokens not measured)").ConfigureAwait(false);
             return null;
         }
         catch (OperationCanceledException) when (sessionCts.IsCancellationRequested)
@@ -1351,17 +1361,13 @@ public static partial class RunnerExecution
         }
         catch (OperationCanceledException)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("  Question canceled.");
-            Console.ResetColor();
+            await console.WriteLineAsync("  Question canceled.").ConfigureAwait(false);
             LogQuestionCanceled(logger, questionNumber);
             return null;
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"\n  Error: {ex.Message}");
-            Console.ResetColor();
+            await console.WriteLineAsync($"\n  Error: {ex.Message}").ConfigureAwait(false);
             LogQuestionFailed(logger, ex, questionNumber);
             return null;
         }
@@ -1371,17 +1377,21 @@ public static partial class RunnerExecution
     /// Registers SIGTERM + SIGINT handlers that cancel the provided token source. Returns
     /// a disposable that unregisters both handlers when disposed.
     /// </summary>
-    public static IDisposable RegisterGracefulShutdown(CancellationTokenSource cts, ILogger logger)
+    /// <param name="cts">The source a signal cancels.</param>
+    /// <param name="error">Where the signal is announced: the runner's standard error.</param>
+    public static IDisposable RegisterGracefulShutdown(CancellationTokenSource cts, TextWriter error)
     {
+        ArgumentNullException.ThrowIfNull(cts);
+        ArgumentNullException.ThrowIfNull(error);
         var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ctx =>
         {
-            Console.Error.WriteLine("[runner] SIGTERM received — canceling crew for graceful shutdown...");
+            error.WriteLine("[runner] SIGTERM received — canceling crew for graceful shutdown...");
             ctx.Cancel = true;
             cts.Cancel();
         });
         var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, ctx =>
         {
-            Console.Error.WriteLine("[runner] SIGINT received — canceling crew for graceful shutdown...");
+            error.WriteLine("[runner] SIGINT received — canceling crew for graceful shutdown...");
             ctx.Cancel = true;
             cts.Cancel();
         });

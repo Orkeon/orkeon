@@ -216,14 +216,14 @@ public sealed class RunnerHostLlmProfileElectionTests : IDisposable
         Console.SetError(stderr);
         try
         {
-            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown(null, settingsPath));
-            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown("default", settingsPath));
-            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown("c", settingsPath));
+            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown(null, settingsPath, stderr));
+            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown("default", settingsPath, stderr));
+            Assert.True(RunnerExecution.EnsureLlmProfileIsKnown("c", settingsPath, stderr));
             Assert.Equal("", stderr.ToString());
 
-            Assert.False(RunnerExecution.EnsureLlmProfileIsKnown("claud", settingsPath));
+            Assert.False(RunnerExecution.EnsureLlmProfileIsKnown("claud", settingsPath, stderr));
             // No settings file at all: no profile to elect, and the line says so the same way.
-            Assert.False(RunnerExecution.EnsureLlmProfileIsKnown("b", settingsPath: null));
+            Assert.False(RunnerExecution.EnsureLlmProfileIsKnown("b", settingsPath: null, stderr));
         }
         finally
         {

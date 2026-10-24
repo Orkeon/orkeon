@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting.WindowsServices;
+using Orkeon.Compliance.Vfs;
 
 namespace Orkeon.Host;
 
@@ -13,10 +14,25 @@ internal interface IStartupFailureSink
     void Report(string message);
 }
 
+/// <summary>
+/// The daemon's terminal: the one place <c>orkeon-host</c> reaches the process console — the
+/// answer of <c>--help</c> and <c>--version</c>, the refusals, the guard's warnings. The
+/// runner host it builds reaches it through <c>Orkeon.Hosting.SystemRunnerConsole</c>.
+/// </summary>
+[SuppressConsoleCompliance("CONSOLE-SINK: orkeon-host's one terminal sink; the daemon writes its answers and refusals on the process console through it.")]
+internal static class HostConsole
+{
+    /// <summary>The standard output.</summary>
+    internal static TextWriter Out => Console.Out;
+
+    /// <summary>The standard error.</summary>
+    internal static TextWriter Error => Console.Error;
+}
+
 /// <summary>Stderr — always present, whatever the supervisor.</summary>
 internal sealed class ConsoleFailureSink : IStartupFailureSink
 {
-    public void Report(string message) => Console.Error.WriteLine(message);
+    public void Report(string message) => HostConsole.Error.WriteLine(message);
 }
 
 /// <summary>

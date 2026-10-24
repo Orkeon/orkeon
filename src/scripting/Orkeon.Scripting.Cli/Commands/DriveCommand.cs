@@ -337,7 +337,7 @@ internal static class DriveCommand
     private static IHost BuildHost(DriveCommandOptionsBase options)
     {
         var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
-        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, cwd, Console.Error);
         if (settingsPath != null)
             Console.Error.WriteLine($"Using settings: {settingsPath}");
 

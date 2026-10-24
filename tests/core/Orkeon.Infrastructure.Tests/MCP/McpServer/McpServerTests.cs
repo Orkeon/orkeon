@@ -103,6 +103,28 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task ShouldAnswerOnGivenWriter_WhenRunStdioAsyncReadsGivenReader()
+    {
+        // Arrange: a request, a blank line, a parse error, then the end of the channel
+        var server = CreateServer();
+        using var reader = new StringReader(
+            "{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"id\":7}\n\nnot json\n");
+        using var writer = new StringWriter();
+
+        // Act
+        await server.RunStdioAsync(reader, writer, TestContext.Current.CancellationToken);
+
+        // Assert: one response line per answered message, nothing else on the channel
+        var lines = writer.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(2, lines.Length);
+        using var first = JsonDocument.Parse(lines[0]);
+        Assert.Equal(7, first.RootElement.GetProperty("id").GetInt32());
+        Assert.True(first.RootElement.TryGetProperty("result", out _));
+        using var second = JsonDocument.Parse(lines[1]);
+        Assert.Equal(JsonRpcErrorCodes.ParseError, second.RootElement.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
     public async Task ShouldReturnRegistryTools_WhenHandlingToolsList()
     {
         // Arrange

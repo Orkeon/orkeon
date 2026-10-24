@@ -216,7 +216,7 @@ internal static class DoctorCommand
     {
         // Same chain as every runner (explicit → local → walk-up → global), quiet: doctor
         // reports the outcome itself instead of the resolver's stderr warning.
-        var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, quiet: true);
+        var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, null);
 
         var configuration = RunnerSettings.ReadConfiguration(settingsPath);
         var context = ReadLlmProfiles(new LlmContext { SettingsPath = settingsPath, Configuration = configuration });
