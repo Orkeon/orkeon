@@ -78,7 +78,7 @@ internal sealed class LegacyTextAgentLoop
 
             sw.Stop();
             var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
-            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response.Length, response);
+            ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response);
 
             // Check for structured [TOOL_CALL] blocks
             var parsedCalls = ToolCallTextParser.ParseToolCallBlocks(response);
