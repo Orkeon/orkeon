@@ -160,3 +160,10 @@ Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.Key.get -> string!
 Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.UnsupportedRuleKeyException() -> void
 Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.UnsupportedRuleKeyException(string! key) -> void
 Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.UnsupportedRuleKeyException(string! message, System.Exception! innerException) -> void
+override Orkeon.Analysis.Core.Editing.ParseBrokenException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Editing.StaleHashException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Editing.AmbiguousSelectorException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Editing.SelectorNotFoundException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Editing.UnsupportedExtensionException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Structural.UnboundMetavariableException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+override Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void

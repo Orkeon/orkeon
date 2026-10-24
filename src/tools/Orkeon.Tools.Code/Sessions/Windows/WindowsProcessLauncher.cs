@@ -96,6 +96,7 @@ internal sealed class WindowsLaunchedProcess : IDisposable
 
         public ProcessWaitHandle(SafeProcessHandle process)
         {
+            _process = new SafeHandleMarshaller<SafeProcessHandle>.ManagedToUnmanagedIn();
             _process.FromManaged(process);
             SafeWaitHandle = new SafeWaitHandle(_process.ToUnmanaged(), ownsHandle: false);
         }

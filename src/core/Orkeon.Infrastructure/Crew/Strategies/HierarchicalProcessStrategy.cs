@@ -311,7 +311,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private sealed record HierarchicalRun(
         List<DomainAgent> WorkerAgents,
         ManagerLlm Manager,
-        string ManagerRole,
+        string ManagerRoleName,
         List<ApplicationTaskOutput> ApplicationTaskOutputs,
         TokenUsageTally TokenTally,
         CrewRunOutcome Outcome,

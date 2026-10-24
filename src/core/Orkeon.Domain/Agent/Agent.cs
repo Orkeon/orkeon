@@ -231,26 +231,6 @@ public sealed class Agent : AggregateRoot<AgentId>
         return agent;
     }
 
-    // The agent's time limit, when set, is greater than zero and at most the ceiling.
-    private static TimeSpan? CheckedMaxExecutionTime(AgentCreateOptions options)
-    {
-        if (options.MaxExecutionTime is not { } limit || (limit > TimeSpan.Zero && limit <= AgentDefaults.MaxExecutionTimeCeiling))
-            return options.MaxExecutionTime;
-
-        throw new ArgumentException($"Agent '{options.Role.Value}': MaxExecutionTime must be greater than zero and at most {AgentDefaults.MaxExecutionTimeCeiling}.", nameof(options));
-    }
-
-    // A prompt template, when set, carries the mark the task's prompt replaces; an empty one is none.
-    private static string? CheckedPromptTemplate(AgentCreateOptions options)
-    {
-        if (string.IsNullOrEmpty(options.PromptTemplate))
-            return null;
-        if (options.PromptTemplate.Contains(AgentDefaults.PromptTemplateMark, StringComparison.Ordinal))
-            return options.PromptTemplate;
-
-        throw new ArgumentException($"Agent '{options.Role.Value}': PromptTemplate must contain {AgentDefaults.PromptTemplateMark}.", nameof(options));
-    }
-
     /// <summary>
     /// Creates a new agent with the specified parameters.
     /// Convenience overload that delegates to <see cref="Create(AgentCreateOptions)"/>.
@@ -291,6 +271,26 @@ public sealed class Agent : AggregateRoot<AgentId>
         });
     }
 #pragma warning restore S107
+
+    // The agent's time limit, when set, is greater than zero and at most the ceiling.
+    private static TimeSpan? CheckedMaxExecutionTime(AgentCreateOptions options)
+    {
+        if (options.MaxExecutionTime is not { } limit || (limit > TimeSpan.Zero && limit <= AgentDefaults.MaxExecutionTimeCeiling))
+            return options.MaxExecutionTime;
+
+        throw new ArgumentException($"Agent '{options.Role.Value}': MaxExecutionTime must be greater than zero and at most {AgentDefaults.MaxExecutionTimeCeiling}.", nameof(options));
+    }
+
+    // A prompt template, when set, carries the mark the task's prompt replaces; an empty one is none.
+    private static string? CheckedPromptTemplate(AgentCreateOptions options)
+    {
+        if (string.IsNullOrEmpty(options.PromptTemplate))
+            return null;
+        if (options.PromptTemplate.Contains(AgentDefaults.PromptTemplateMark, StringComparison.Ordinal))
+            return options.PromptTemplate;
+
+        throw new ArgumentException($"Agent '{options.Role.Value}': PromptTemplate must contain {AgentDefaults.PromptTemplateMark}.", nameof(options));
+    }
 
     /// <summary>
     /// Why the agent's own provider cannot come with the rest of <paramref name="options"/>, or null

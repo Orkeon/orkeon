@@ -322,8 +322,9 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
             var fkCmd = connection.CreateCommand();
             await using var __fkCmd = fkCmd.ConfigureAwait(false);
-            // pragma_foreign_key_list returns: id, seq, table, from, to, on_update, on_delete, match;
-            // its argument is bound as a parameter.
+            // Each row of pragma_foreign_key_list holds the id, the sequence, the referenced table, the
+            // from and to columns, the update and delete actions and the match clause. The table name
+            // is bound as a parameter.
             fkCmd.CommandText = "SELECT * FROM pragma_foreign_key_list(@table)";
             AddParameter(fkCmd, "@table", tableName);
             var fkReader = await fkCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);

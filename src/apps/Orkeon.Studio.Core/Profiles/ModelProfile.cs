@@ -234,29 +234,32 @@ public sealed record ModelProfile
         ArgumentNullException.ThrowIfNull(environment);
 
         var overrides = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (Model is { Length: > 0 })
-            overrides[prefix + "Model"] = Model;
-        if (BaseUrl is { Length: > 0 })
-            overrides[prefix + "BaseUrl"] = BaseUrl;
-        if (Temperature is { } temperature)
-            overrides[prefix + "Temperature"] = temperature.ToString(CultureInfo.InvariantCulture);
-        if (TimeoutSeconds is { } timeout and > 0)
-            overrides[prefix + "TimeoutSeconds"] = timeout.ToString(CultureInfo.InvariantCulture);
-        if (StreamIdleSeconds is { } idle and > 0)
-            overrides[prefix + "StreamIdleSeconds"] = idle.ToString(CultureInfo.InvariantCulture);
-        if (CallMode is { } callMode && IsKnownCallMode(callMode))
-            overrides[prefix + "CallMode"] = callMode;
-        if (MaxTokens is { } maxTokens and > 0)
-            overrides[prefix + "MaxTokens"] = maxTokens.ToString(CultureInfo.InvariantCulture);
-        if (ThinkingEnabled is { } thinking)
-            overrides[prefix + "Thinking__Enabled"] = thinking ? "true" : "false";
-        if (ThinkingEffort is { } effort && !string.IsNullOrWhiteSpace(effort))
-            overrides[prefix + "Thinking__Effort"] = effort.Trim();
-        if (ApiKeyOf(environment) is { } apiKey)
-            overrides[prefix + "ApiKey"] = apiKey;
+        foreach (var (field, value) in OverrideValues(environment))
+        {
+            if (value is not null)
+                overrides[prefix + field] = value;
+        }
 
         return overrides;
     }
+
+    /// <summary>Each overridable field with the value the profile sets for it, null when it sets none.</summary>
+    private IEnumerable<(string Field, string? Value)> OverrideValues(Func<string, string?> environment)
+    {
+        yield return ("Model", Model is { Length: > 0 } ? Model : null);
+        yield return ("BaseUrl", BaseUrl is { Length: > 0 } ? BaseUrl : null);
+        yield return ("Temperature", Temperature?.ToString(CultureInfo.InvariantCulture));
+        yield return ("TimeoutSeconds", Positive(TimeoutSeconds));
+        yield return ("StreamIdleSeconds", Positive(StreamIdleSeconds));
+        yield return ("CallMode", CallMode is { } callMode && IsKnownCallMode(callMode) ? callMode : null);
+        yield return ("MaxTokens", Positive(MaxTokens));
+        yield return ("Thinking__Enabled", ThinkingEnabled switch { true => "true", false => "false", null => null });
+        yield return ("Thinking__Effort", string.IsNullOrWhiteSpace(ThinkingEffort) ? null : ThinkingEffort.Trim());
+        yield return ("ApiKey", ApiKeyOf(environment));
+    }
+
+    private static string? Positive(int? value)
+        => value is { } number and > 0 ? number.ToString(CultureInfo.InvariantCulture) : null;
 
     private static bool IsKnownCallMode(string callMode)
         => string.Equals(callMode, "Buffer", StringComparison.OrdinalIgnoreCase)

@@ -28,6 +28,9 @@ internal static class SeatbeltProbe
     /// <summary>The availability probed at the first call of the process, then remembered.</summary>
     public static ShellSandboxAvailability Current() => s_current.Value;
 
+    /// <summary><paramref name="path"/> canonicalized against the host's file system.</summary>
+    public static string Canonicalize(string path) => Canonicalize(path, ReadLink);
+
     /// <summary>
     /// <paramref name="path"/> with every link along it resolved, <c>.</c> and <c>..</c> removed: the
     /// path Seatbelt matches (<c>/var/folders/...</c> is <c>/private/var/folders/...</c>). The part
@@ -87,8 +90,6 @@ internal static class SeatbeltProbe
         return true;
     }
 
-    /// <summary><paramref name="path"/> canonicalized against the host's file system.</summary>
-    public static string Canonicalize(string path) => Canonicalize(path, ReadLink);
 
     [SuppressVfsCompliance("OUT-OF-SCOPE: reads the target of a link along a physical path the VFS already resolved, so the Seatbelt profile names the path the kernel matches; the confined process, not the framework, uses the path.")]
     private static string? ReadLink(string path)

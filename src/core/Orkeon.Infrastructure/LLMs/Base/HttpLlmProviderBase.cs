@@ -832,13 +832,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                             return response;
                         }
 
-                        var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        var window = RateLimitWindowOf(response);
-                        var delay = window ?? StreamingBackoff(attempt);
-                        if (window is not null) reason = RateLimitResetHeaders.Reason;
-                        LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
-                        NotifyRetryScheduled(attempt, delay, reason, endpoint?.Host);
-                        if (!await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false))
+                        if (!await WaitToRetryStreamingAsync(response, attempt, endpoint?.Host, cancellationToken).ConfigureAwait(false))
                         {
                             // The call's budget ran out while waiting to retry (LLM-12): the
                             // vendor's last answer is the failure, not the wait — the caller
@@ -866,6 +860,21 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                 NotifyCallSettled(ResolveModel(null), succeeded, cancellationToken);
             }
         }
+    }
+
+    /// <summary>
+    /// Logs, announces and waits out the retry a retriable streaming answer asks for: the window it
+    /// names, else the backoff. False when the call's budget ran out while waiting.
+    /// </summary>
+    private async Task<bool> WaitToRetryStreamingAsync(HttpResponseMessage response, int attempt, string? host, CancellationToken cancellationToken)
+    {
+        var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var window = RateLimitWindowOf(response);
+        var delay = window ?? StreamingBackoff(attempt);
+        if (window is not null) reason = RateLimitResetHeaders.Reason;
+        LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
+        NotifyRetryScheduled(attempt, delay, reason, host);
+        return await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The rate-limit window a retriable streaming answer names; the answer is disposed when the window is too long.</summary>

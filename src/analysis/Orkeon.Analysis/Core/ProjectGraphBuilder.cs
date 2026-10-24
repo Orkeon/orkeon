@@ -60,10 +60,10 @@ internal static class ProjectGraphBuilder
             if (onlyCsprojPaths is not null && !onlyCsprojPaths.Contains(csproj)) continue;
             var xml = await fileSystem.TryReadAllTextAsync(csproj, ct).ConfigureAwait(false);
             if (xml is null) continue;
-            foreach (var dependency in ReferencedProjects(project, xml, byPath))
+            foreach (var dependencyId in ReferencedProjects(project, xml, byPath).Select(dependency => dependency.Id))
             {
-                var id = $"project-depends::{project.Id}->{dependency.Id}";
-                if (edgeIds.Add(id)) edges.Add(new RaggableEdge(id, project.Id, dependency.Id, EdgeKind.ProjectDepends));
+                var id = $"project-depends::{project.Id}->{dependencyId}";
+                if (edgeIds.Add(id)) edges.Add(new RaggableEdge(id, project.Id, dependencyId, EdgeKind.ProjectDepends));
             }
         }
 

@@ -265,15 +265,21 @@ public sealed class IncrementalReindexEngine
             var symbols = SymbolsInFileOrder(allNodes, language.Key, fileRank);
             foreach (var edge in await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false))
             {
-                if (!knownIds.Add(edge.Id)) continue;
-                if (edge.Kind == EdgeKind.Calls) DropSupersededCalls(edge, keptEdges, nodesById);
-                relinked.Add(new RaggableEdge(edge.Id, edge.FromId, edge.ToId, edge.Kind));
-                if (nodesById.TryGetValue(edge.FromId, out var from) && nodesById.TryGetValue(edge.ToId, out var to))
-                    DependencyGraphBuilder.LinkNodes(edge.Kind, from, to);
+                if (knownIds.Add(edge.Id))
+                    relinked.Add(Relink(edge, keptEdges, nodesById));
             }
         }
 
         return relinked;
+    }
+
+    // One resolved inbound edge, not seen before: the calls it supersedes are dropped and its two nodes linked.
+    private static RaggableEdge Relink(RaggableEdge edge, List<RaggableEdge> keptEdges, Dictionary<string, RaggableNode> nodesById)
+    {
+        if (edge.Kind == EdgeKind.Calls) DropSupersededCalls(edge, keptEdges, nodesById);
+        if (nodesById.TryGetValue(edge.FromId, out var from) && nodesById.TryGetValue(edge.ToId, out var to))
+            DependencyGraphBuilder.LinkNodes(edge.Kind, from, to);
+        return new RaggableEdge(edge.Id, edge.FromId, edge.ToId, edge.Kind);
     }
 
     // The calls the modules of one language make to a changed name, read from their `calls:<name>` tags.

@@ -354,9 +354,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
                 catch (Exception ex)
                 {
                     failed = true;
-                    // A final response already measured the call: a later throw adds nothing.
-                    if (!reported)
-                        MeasureFailure(call, config, ex);
+                    MeasureStreamFailure(reported, call, config, ex);
                     throw;
                 }
 
@@ -383,12 +381,23 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         finally
         {
             // No final response to read: the stream is counted on what it delivered.
-            if (!failed && !reported && (ended || characters > 0))
+            if (NeedsStreamEstimate(failed, reported, ended, characters))
                 ReportStreamEstimate(attribution, LlmUsageEstimator.Prompt(messages), characters, config, call);
 
             await DisposeKeepingFailureAsync(events, failed).ConfigureAwait(false);
         }
     }
+
+    /// <summary>Measures a stream that threw; a final response already measured the call, so a later throw adds nothing.</summary>
+    private void MeasureStreamFailure(bool reported, MeteredCall call, LlmConfig? config, Exception failure)
+    {
+        if (!reported)
+            MeasureFailure(call, config, failure);
+    }
+
+    /// <summary>Whether a stream that read no final response is counted on what it delivered: it ended, or it streamed something, and did not fail.</summary>
+    private static bool NeedsStreamEstimate(bool failed, bool reported, bool ended, long characters)
+        => !failed && !reported && (ended || characters > 0);
 
     /// <summary>Chat streaming over a provider that does not stream: one buffered call, told as events.</summary>
     private async IAsyncEnumerable<LlmStreamEvent> BufferedChatEventsAsync(

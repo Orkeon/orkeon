@@ -400,10 +400,7 @@ internal static class HostStartup
             var (name, value) = SplitAttached(argument);
             if (SwitchFlags.Contains(name, StringComparer.Ordinal))
             {
-                if (value is not null)
-                    error = $"orkeon-host: {name} takes no value.";
-                else if (name == "--allow-external-mounts")
-                    allowExternalMounts = true;
+                error = ReadSwitch(name, value, ref allowExternalMounts);
                 continue;
             }
 
@@ -414,28 +411,45 @@ internal static class HostStartup
             }
 
             error = ReadValue(args, ref index, name, ref value);
-            if (error is not null)
-                continue;
-
-            switch (name)
-            {
-                case "--settings" or "-s":
-                    if (settings is not null)
-                        error = "orkeon-host: --settings given twice.";
-                    settings = value;
-                    break;
-                case "--working-dir":
-                    if (workingDirectory is not null)
-                        error = "orkeon-host: --working-dir given twice.";
-                    workingDirectory = value;
-                    break;
-                default:
-                    mounts.Add(value!);
-                    break;
-            }
+            if (error is null)
+                error = AssignValue(name, value!, ref settings, ref workingDirectory, mounts);
         }
 
         return (new HostCommandLine(settings, mounts, workingDirectory, allowExternalMounts), error);
+    }
+
+    /// <summary>Reads the switch <paramref name="name"/>; the refusal when a value is attached to it.</summary>
+    private static string? ReadSwitch(string name, string? value, ref bool allowExternalMounts)
+    {
+        if (value is not null)
+            return $"orkeon-host: {name} takes no value.";
+        if (name == "--allow-external-mounts")
+            allowExternalMounts = true;
+        return null;
+    }
+
+    /// <summary>Records the value of the value flag <paramref name="name"/>; the refusal when --settings or --working-dir is repeated.</summary>
+    private static string? AssignValue(string name, string value, ref string? settings, ref string? workingDirectory, List<string> mounts)
+    {
+        string? error = null;
+        switch (name)
+        {
+            case "--settings" or "-s":
+                if (settings is not null)
+                    error = "orkeon-host: --settings given twice.";
+                settings = value;
+                break;
+            case "--working-dir":
+                if (workingDirectory is not null)
+                    error = "orkeon-host: --working-dir given twice.";
+                workingDirectory = value;
+                break;
+            default:
+                mounts.Add(value);
+                break;
+        }
+
+        return error;
     }
 
     /// <summary>The name of <paramref name="argument"/> and the value attached to it (<c>--name=value</c>), null when none is.</summary>
