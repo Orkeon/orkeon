@@ -294,6 +294,12 @@ declare global {
         spawnBackground(agent: string, input: string): { readonly id: number; readonly agent: string };
         /** The id (`a1`…) of the agent instance this body runs as (`crew.instances()`); `undefined` outside one. */
         readonly instanceId: string | undefined;
+        /**
+         * The global `tools`, called as this agent: held to its `.workingRoot(...)` however many agents
+         * run beside it. The global `tools` follows the open agents' root while they share one, and
+         * refuses a call when they do not: call `ctx.tools` from a body that runs beside others.
+         */
+        readonly tools: OrkeonTools;
     }
 
     /** `ctx.log`: extra arguments are joined to the message by a space, objects as JSON. */

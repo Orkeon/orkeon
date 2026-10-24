@@ -40,3 +40,7 @@ override Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.GetHashCode()
 override Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.ToString() -> string!
 static Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.operator !=(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? left, Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? right) -> bool
 static Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.operator ==(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? left, Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? right) -> bool
+Orkeon.Scripting.Builders.JsAgentBuilder.workingRoot(string! path) -> Orkeon.Scripting.Builders.JsAgentBuilder!
+Orkeon.Scripting.ScriptingHostPorts.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService?
+Orkeon.Scripting.ScriptingHostPorts.FileSystem.init -> void
+Orkeon.Scripting.Runtime.JsAgentContext.tools.get -> System.Collections.Generic.IDictionary<string!, object?>!

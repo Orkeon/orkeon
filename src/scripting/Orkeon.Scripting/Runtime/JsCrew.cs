@@ -48,6 +48,7 @@ public sealed partial class JsCrew
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
+    private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
@@ -92,6 +93,7 @@ public sealed partial class JsCrew
         _toolInvocation = definition.ToolInvocation;
         _agentMemoryStore = definition.AgentMemoryStore;
         _toolLimits = definition.ToolLimits;
+        _mounts = definition.Mounts;
         _agents = new List<JsAgent>();
         _tasks = new List<JsTask>(definition.Tasks);
 
@@ -107,7 +109,7 @@ public sealed partial class JsCrew
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
     /// <c>runAgent</c> contexts are intentionally unbudgeted and pass <c>null</c>.
     /// </summary>
-    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -128,7 +130,18 @@ public sealed partial class JsCrew
         ToolInvocation = _toolInvocation,
         AgentMemoryStore = _agentMemoryStore,
         ToolLimits = _toolLimits ?? new(),
+        WorkingRoot = workingRoot,
     };
+
+    /// <summary>
+    /// RT-06: the working root an agent's run is held to — its own <c>.workingRoot(...)</c>, else the one
+    /// its parent run handed down — checked against the mounts and normalised. Throws the runtime's own
+    /// refusal (<see cref="Orkeon.Application.Agent.AgentWorkingRoot"/>) for a root under no mount, relative
+    /// or holding <c>..</c>; <c>null</c> when neither declares one.
+    /// </summary>
+    internal string? ResolveWorkingRoot(JsAgent agent, string? inherited)
+        => Orkeon.Application.Agent.AgentWorkingRoot.NormalizeMounted(agent.Builder.WorkingRootValue ?? inherited,
+            _mounts is null ? [] : _mounts());
 
     private JsEventBroker? _eventBroker;
     internal JsEventBroker EventBroker

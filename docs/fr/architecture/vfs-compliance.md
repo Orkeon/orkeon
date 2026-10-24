@@ -145,7 +145,8 @@ défaut, listé par `GetAvailableMounts` et dans le prompt des agents) ou `Inter
 
 ## Racine de travail d'un agent et mount
 
-Un agent peut déclarer une `working_root` (YAML ; `AgentBuilder.WorkingRoot(string)`) : un chemin
+Un agent peut déclarer une `working_root` (YAML ; `AgentBuilder.WorkingRoot(string)` ; `.workingRoot(path)`
+sur un agent script de `.ork.ts`) : un chemin
 virtuel tel que `/workspace/.orkeon/worktrees/x` qui doit se trouver sous un mount, faute de quoi
 le run est refusé au démarrage par une erreur qui nomme la racine. C'est une intersection avec
 les mounts, jamais une extension :
@@ -157,6 +158,13 @@ les mounts, jamais une extension :
   prend la racine pour répertoire de travail par défaut et y restreint les chemins confinés de
   son bac à sable ;
 - un refus reprend la forme du refus VFS : les chemins physiques sont masqués.
+
+La racine d'un agent script tient chaque outil que son corps exécute. `ctx.llm.act` et `ctx.tools`
+s'exécutent en tant que l'agent. L'espace global `tools` ne sait pas quel agent l'appelle : il suit la
+racine des agents ouverts tant qu'ils en partagent une, et refuse l'appel quand des agents de racines
+différentes s'exécutent en même temps ; un corps qui s'exécute à côté d'autres appelle `ctx.tools`. Un
+enfant lancé par `spawn_agent` ou `ctx.spawnBackground` sans racine propre s'exécute sous celle de son
+parent, comme chaque `crew.send` ultérieur à cette instance.
 
 Absente, rien ne change : les mounts seuls confinent l'agent.
 

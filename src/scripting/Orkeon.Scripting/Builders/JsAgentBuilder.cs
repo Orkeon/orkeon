@@ -56,6 +56,8 @@ public sealed class JsAgentBuilder
     /// <summary>The validated limit, once <see cref="build"/> accepted it.</summary>
     internal TimeSpan? MaxExecutionTimeValue { get; private set; }
     internal bool VerboseFlag { get; private set; }
+    /// <summary>The <c>.workingRoot(path)</c> received — YAML parity <c>working_root:</c> (RT-06); null leaves the run unrooted.</summary>
+    internal string? WorkingRootValue { get; private set; }
     internal int ConcurrencyValue { get; private set; } = 1;
     internal JsValue? StateFactory { get; private set; }
     internal JsValue? BodyFunction { get; private set; }
@@ -217,6 +219,19 @@ public sealed class JsAgentBuilder
     /// </summary>
     public JsAgentBuilder maxExecutionTime(double seconds) { MaxExecutionTimeSeconds = seconds; return this; }
     public JsAgentBuilder verbose() { VerboseFlag = true; return this; }
+
+    /// <summary>
+    /// YAML parity <c>working_root:</c> (RT-06): the virtual directory the agent's file and shell tools
+    /// stay inside. An absolute VFS path under a mount, with no <c>..</c>; one that is not is refused
+    /// when the agent's run starts, never at build. Left out, the run is unrooted.
+    /// </summary>
+    public JsAgentBuilder workingRoot(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new InvalidScriptException(".workingRoot(path) requires a non-empty virtual path.");
+        WorkingRootValue = path;
+        return this;
+    }
     public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
     public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
     public JsAgentBuilder concurrency(int value) { ConcurrencyValue = value; return this; }

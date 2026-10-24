@@ -105,29 +105,6 @@ namespace Orkeon.Application.Agent
                 Error: result.Error);
         }
 
-        /// <summary>
-        /// RT-06: a working root is an intersection with the mounts, so one under no mount, relative or holding
-        /// a <c>..</c> segment never starts a run. Returns the root normalised once (no <c>//</c>, <c>.</c> or trailing <c>/</c>).
-        /// </summary>
-        private string? NormalizeMountedRoot(string? root)
-        {
-            if (root is null)
-                return null;
-
-            var segments = root.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries)
-                .Where(segment => segment != ".").ToList();
-            var normalized = "/" + string.Join('/', segments);
-            var mounted = root.TrimStart().StartsWith('/') && !segments.Contains("..") && _fileSystem is not null
-                && _fileSystem.GetAvailableMounts().Any(m =>
-                {
-                    var mount = m.VirtualPath.Replace('\\', '/').TrimEnd('/');
-                    return normalized.Equals(mount, StringComparison.Ordinal) || normalized.StartsWith(mount + "/", StringComparison.Ordinal);
-                });
-            if (!mounted)
-                throw new InvalidOperationException($"The agent working root '{root}' is not under any mount of the file system.");
-            return normalized;
-        }
-
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Service-boundary fault barrier: any failure inside task execution is converted to a failed TaskResult and surfaced via NotifyTaskCompletedAsync so one task cannot crash the agent execution loop.")]
         private async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreAsync(
             DomainAgent agent,
@@ -154,7 +131,7 @@ namespace Orkeon.Application.Agent
             // released when this method leaves, on success, failure and cancellation alike. A
             // coworker delegated from inside this run reaches here again and gets its own scope,
             // nested in this one.
-            var root = NormalizeMountedRoot(agent.WorkingRoot);
+            var root = AgentWorkingRoot.NormalizeMounted(agent.WorkingRoot, _fileSystem is null ? [] : _fileSystem.GetAvailableMounts());
             var runScope = AgentRunScope.Begin(agent.Id.ToString(), agent.Role.Value, root);
             await using var runScopeEnd = runScope.ConfigureAwait(false);
 

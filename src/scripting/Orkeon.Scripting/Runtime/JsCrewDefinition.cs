@@ -42,6 +42,9 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional cut of each tool result and fan-out bound of <c>ctx.llm.act</c>.</summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
 
+    /// <summary>The mounts an agent's working root is checked against (RT-06); null refuses every root.</summary>
+    public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
+
     /// <summary>Optional transcript caps of the agent instances.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 
