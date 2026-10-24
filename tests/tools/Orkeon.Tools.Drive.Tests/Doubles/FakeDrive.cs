@@ -46,6 +46,9 @@ internal sealed class FakeDrive : IDrive
     /// <summary>The page size each listing was asked with.</summary>
     public List<int> ListLimits { get; } = [];
 
+    /// <summary>The page size and cursor each search was asked with.</summary>
+    public List<(int Limit, string? Cursor)> Searches { get; } = [];
+
     /// <summary>Adds a folder under <paramref name="parentId"/>.</summary>
     public DriveItem AddFolder(string id, string name, string parentId = RootId) =>
         Add(new DriveItem { Id = id, Name = name, IsFolder = true, ParentId = parentId });
@@ -114,15 +117,19 @@ internal sealed class FakeDrive : IDrive
     /// <inheritdoc />
     public Task<DrivePage> SearchAsync(DriveSearchQuery query, int limit, string? cursor, CancellationToken cancellationToken)
     {
+        // The whole drive, as Google searches it: the tool sifts out what lies outside the root.
         Calls.Add($"Search {query.NameContains ?? query.Text}");
+        Searches.Add((limit, cursor));
         var found = _items.Values
             .Where(item => item.Id is not RootId and not OutsideId)
             .Where(item => query.NameContains is null || item.Name.Contains(query.NameContains, StringComparison.OrdinalIgnoreCase))
             .Where(item => query.Folders is null || item.IsFolder == query.Folders)
             .OrderBy(item => item.Name, StringComparer.Ordinal)
-            .Take(limit)
             .ToList();
-        return Task.FromResult(new DrivePage(found, null));
+        var start = cursor is null ? 0 : int.Parse(cursor, System.Globalization.CultureInfo.InvariantCulture);
+        var page = found.Skip(start).Take(limit).ToList();
+        var next = start + page.Count < found.Count ? (start + page.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) : null;
+        return Task.FromResult(new DrivePage(page, next));
     }
 
     /// <inheritdoc />

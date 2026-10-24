@@ -207,6 +207,12 @@ like the e-mail secrets: the process environment, then — on Windows — the us
 - **Results fit the agent loop.** A page is asked again with fewer items until it fits a tool
   result, so `next_cursor` resumes exactly after the last item shown; `drive_read` returns slices
   with `next_offset`.
+- **A search keeps to the root.** Neither provider searches a subtree alone (Google searches the
+  whole drive, OneDrive personal may), so `drive_search` drops what lies outside the account's root
+  and reads further provider pages, up to five, to fill the page asked for. A page can still come
+  back short, even empty, with a `next_cursor` that goes on from there.
+- **Drive traffic stays out of the LLM exchange log.** `--llm-log` captures LLM calls only: the
+  drive client's requests, file contents and upload session addresses are never written there.
 
 ## Using the tools
 

@@ -32,7 +32,7 @@ internal sealed partial class OneDrive : IDrive
     {
         ArgumentNullException.ThrowIfNull(api);
         _api = api;
-        _parents = new ParentChain(FetchParentAsync);
+        _parents = new ParentChain(FetchParentAsync, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <inheritdoc />
@@ -89,18 +89,32 @@ internal sealed partial class OneDrive : IDrive
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(root);
-        if (item.Id == root.Id)
+        if (_parents.Ids.Equals(item.Id, root.Id))
             return true;
 
-        // The path, when Graph gives it, answers at once; a search result may come without one.
-        // It is a path within one drive: an item shared from another drive is never inside.
-        if (item.ParentPath is { } parentPath && FullPath(root) is { } rootPath)
-        {
-            if (item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase))
-                return false;
+        // An item shared from another drive is never inside, whatever its path.
+        if (item.DriveId is { } drive && root.DriveId is { } rootDrive && !string.Equals(drive, rootDrive, StringComparison.OrdinalIgnoreCase))
+            return false;
 
-            return string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase)
-                || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase);
+        // The path, when Graph gives it, says yes at once. A search result may come without one,
+        // or without the parent's id (a parentReference holding the drive alone, on OneDrive
+        // personal): the item is read again, then the climb by ids decides.
+        if (IsUnderPath(item, root))
+            return true;
+
+        if (item.ParentId is null)
+        {
+            try
+            {
+                item = await GetItemAsync(item.Id, cancellationToken).ConfigureAwait(false);
+            }
+            catch (DriveToolException ex) when (ex.Code == DriveErrorCode.ItemNotFound)
+            {
+                return false;
+            }
+
+            if (IsUnderPath(item, root))
+                return true;
         }
 
         return await _parents.ReachesAsync(item, root.Id, cancellationToken).ConfigureAwait(false);
@@ -304,6 +318,11 @@ internal sealed partial class OneDrive : IDrive
         return rest.Length == 0 ? "/" : rest;
     }
 
+    private static bool IsUnderPath(DriveItem item, DriveItem root) =>
+        item.ParentPath is { } parentPath && FullPath(root) is { } rootPath
+        && (string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase)
+            || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase));
+
     private static string? FullPath(DriveItem folder) =>
         folder.ParentPath is null ? null : folder.ParentPath == "/" ? "/" + folder.Name : $"{folder.ParentPath}/{folder.Name}";
 
@@ -384,10 +403,11 @@ internal sealed partial class OneDrive : IDrive
         }
     }
 
-    private async Task<string?> FetchParentAsync(string id, CancellationToken cancellationToken)
+    private async Task<(string Id, string? ParentId)> FetchParentAsync(string id, CancellationToken cancellationToken)
     {
         using var document = await _api.GetJsonAsync(Item(id, "?$select=id,parentReference"), cancellationToken).ConfigureAwait(false);
-        return document.RootElement.TryGetProperty("parentReference", out var reference) ? Text(reference, "id") : null;
+        var parent = document.RootElement.TryGetProperty("parentReference", out var reference) ? Text(reference, "id") : null;
+        return (Text(document.RootElement, "id") ?? id, parent);
     }
 
     private Uri Cursor(string cursor, int limit)

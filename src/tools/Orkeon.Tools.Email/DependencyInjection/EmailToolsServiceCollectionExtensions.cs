@@ -48,6 +48,8 @@ public static class EmailToolsServiceCollectionExtensions
         var section = configuration.GetSection(EmailDefaults.SectionName);
         services.AddOptions<EmailToolsOptions>().Configure(options => EmailOptionsBinder.Bind(section, options));
         services.AddHttpClient(EmailDefaults.HttpClientName);
+        // A non-LLM client: the LLM exchange log does not capture its calls nor what they carry.
+        services.AddSingleton(new LlmExchangeLogExclusion(EmailDefaults.HttpClientName));
         services.TryAddSingleton(TimeProvider.System);
 
         services.TryAddSingleton<IEmailTokenStore>(_ => new UnavailableEmailTokenStore());

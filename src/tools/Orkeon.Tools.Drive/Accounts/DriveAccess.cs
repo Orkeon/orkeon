@@ -74,7 +74,8 @@ internal sealed class DriveAccess
 
     /// <summary>
     /// The items of <paramref name="items"/> that lie inside the account's root folder, in order:
-    /// a search on Google Drive cannot be bounded to a subtree, so its results are sifted here.
+    /// a search cannot be bounded to a subtree (Google Drive) or may not be (OneDrive personal), so
+    /// its results are sifted here. The root itself is left out.
     /// </summary>
     public static async Task<IReadOnlyList<DriveItem>> WithinRootAsync(IDrive drive, IReadOnlyList<DriveItem> items, CancellationToken cancellationToken)
     {
@@ -87,7 +88,7 @@ internal sealed class DriveAccess
         var kept = new List<DriveItem>(items.Count);
         foreach (var item in items)
         {
-            if (item.Id != root.Id && await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
+            if (!string.Equals(item.Id, root.Id, StringComparison.OrdinalIgnoreCase) && await drive.IsWithinAsync(item, root, cancellationToken).ConfigureAwait(false))
                 kept.Add(item);
         }
 

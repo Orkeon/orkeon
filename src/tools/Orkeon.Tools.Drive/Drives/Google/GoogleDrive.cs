@@ -27,7 +27,7 @@ internal sealed class GoogleDrive : IDrive
     {
         ArgumentNullException.ThrowIfNull(api);
         _api = api;
-        _parents = new ParentChain(FetchParentAsync);
+        _parents = new ParentChain(FetchParentAsync, StringComparer.Ordinal);
     }
 
     /// <inheritdoc />
@@ -287,12 +287,13 @@ internal sealed class GoogleDrive : IDrive
         return new DrivePage(items, Text(document.RootElement, "nextPageToken"));
     }
 
-    private async Task<string?> FetchParentAsync(string id, CancellationToken cancellationToken)
+    private async Task<(string Id, string? ParentId)> FetchParentAsync(string id, CancellationToken cancellationToken)
     {
         using var document = await _api.GetJsonAsync(FileAddress(id, "fields=id,parents"), cancellationToken).ConfigureAwait(false);
-        return document.RootElement.TryGetProperty("parents", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
+        var parent = document.RootElement.TryGetProperty("parents", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0
             ? list[0].GetString()
             : null;
+        return (Text(document.RootElement, "id") ?? id, parent);
     }
 
     private async Task RefuseTakenNameAsync(string parentId, string name, CancellationToken cancellationToken, string? except = null)

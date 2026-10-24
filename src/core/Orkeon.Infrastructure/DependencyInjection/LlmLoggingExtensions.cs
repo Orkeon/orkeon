@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Logging;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Infrastructure.Logging;
 
@@ -83,6 +85,24 @@ public static class LlmLoggingExtensions
         {
             builder.AddHttpMessageHandler<LlmLoggingDelegatingHandler>();
         });
+
+        // A client a tool family excluded (LlmExchangeLogExclusion: a drive, a mailbox) is not an
+        // LLM: its traffic and the content it carries stay out of the exchange log. The defaults
+        // above cannot tell clients apart (their builder has no name), the handler builder can; a
+        // post-configuration runs after every action that added the handler.
+        services.PostConfigureAll<HttpClientFactoryOptions>(factory => factory.HttpMessageHandlerBuilderActions.Add(handlers =>
+        {
+            if (!handlers.Services.GetServices<LlmExchangeLogExclusion>().Any(exclusion => string.Equals(exclusion.ClientName, handlers.Name, StringComparison.Ordinal)))
+                return;
+            for (var i = handlers.AdditionalHandlers.Count - 1; i >= 0; i--)
+            {
+                if (handlers.AdditionalHandlers[i] is LlmLoggingDelegatingHandler handler)
+                {
+                    handlers.AdditionalHandlers.RemoveAt(i);
+                    handler.Dispose();
+                }
+            }
+        }));
 
         return services;
     }

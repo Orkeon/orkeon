@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Tools.Drive.Constants;
 using Orkeon.Tools.Drive.Tests.Doubles;
 using Orkeon.Tools.Drive.Tests.Fixtures;
 
@@ -81,6 +82,38 @@ public sealed class DriveReadingToolsTests
         var result = ToolResults.Success(await fixture.CallAsync("drive_search", ("name_contains", "report")));
 
         Assert.Equal(["in"], ToolResults.Objects(result, "items").Select(item => (string)item["id"]!));
+    }
+
+    [Fact]
+    public async Task Should_read_on_past_provider_pages_holding_only_items_outside_the_root()
+    {
+        // DRIVE-07 G4.5d: the first hits of a whole-drive search all lay outside the root.
+        using var fixture = new DriveToolFixture();
+        fixture.Drive().AddFile("o1", "report-a.txt", "x", parentId: FakeDrive.OutsideId);
+        fixture.Drive().AddFile("o2", "report-b.txt", "x", parentId: FakeDrive.OutsideId);
+        fixture.Drive().AddFile("in", "report-c.txt", "x");
+        fixture.Drive().AddFile("o3", "report-d.txt", "x", parentId: FakeDrive.OutsideId);
+        fixture.Drive().AddFile("in2", "report-e.txt", "x");
+
+        var result = ToolResults.Success(await fixture.CallAsync("drive_search", ("name_contains", "report"), ("limit", 2)));
+
+        Assert.Equal(["in", "in2"], ToolResults.Objects(result, "items").Select(item => (string)item["id"]!));
+        // Each provider page asks for what is still missing, so nothing kept is cut.
+        Assert.Equal([(2, null), (2, "2"), (1, "4")], fixture.Drive().Searches);
+    }
+
+    [Fact]
+    public async Task Should_stop_after_the_provider_page_budget_with_a_cursor_to_resume()
+    {
+        using var fixture = new DriveToolFixture();
+        for (var i = 0; i < DriveDefaults.MaxSearchPages + 2; i++)
+            fixture.Drive().AddFile($"o{i}", $"report-{i}.txt", "x", parentId: FakeDrive.OutsideId);
+
+        var result = ToolResults.Success(await fixture.CallAsync("drive_search", ("name_contains", "report"), ("limit", 1)));
+
+        Assert.Empty(ToolResults.Objects(result, "items"));
+        Assert.Equal(DriveDefaults.MaxSearchPages, fixture.Drive().Searches.Count);
+        Assert.Equal(DriveDefaults.MaxSearchPages.ToString(System.Globalization.CultureInfo.InvariantCulture), result["next_cursor"]?.ToString());
     }
 
     [Fact]

@@ -28,6 +28,7 @@ public sealed class DriveToolsServiceCollectionExtensionsTests
 
         Assert.Equal(ToolNames, provider.GetServices<IBaseTool>().Select(tool => tool.Name).Order(StringComparer.Ordinal));
         Assert.NotNull(provider.GetRequiredService<DriveRightsCheck>());
+        Assert.Contains(provider.GetServices<LlmExchangeLogExclusion>(), exclusion => exclusion.ClientName == "orkeon.drive");
     }
 
     [Fact]

@@ -47,6 +47,8 @@ public static class DriveToolsServiceCollectionExtensions
         var section = configuration.GetSection(DriveDefaults.SectionName);
         services.AddOptions<DriveToolsOptions>().Configure(options => DriveOptionsBinder.Bind(section, options));
         services.AddHttpClient(DriveDefaults.HttpClientName);
+        // A non-LLM client: the LLM exchange log does not capture its calls nor what they carry.
+        services.AddSingleton(new LlmExchangeLogExclusion(DriveDefaults.HttpClientName));
         services.TryAddSingleton(TimeProvider.System);
 
         services.TryAddSingleton<IDriveTokenStore>(_ => new UnavailableDriveTokenStore());

@@ -1382,3 +1382,6 @@ Orkeon.Domain.Tools.Protocol.ToolCallResponse.AlreadyBounded.init -> void
 Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute
 Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.Reason.get -> string!
 Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.SuppressConsoleComplianceAttribute(string! reason) -> void
+Orkeon.Domain.Tools.LlmExchangeLogExclusion
+Orkeon.Domain.Tools.LlmExchangeLogExclusion.ClientName.get -> string!
+Orkeon.Domain.Tools.LlmExchangeLogExclusion.LlmExchangeLogExclusion(string! clientName) -> void

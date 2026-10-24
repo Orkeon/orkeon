@@ -214,6 +214,14 @@ Windows — les variables propres à l'utilisateur.
 - **Les résultats tiennent dans la boucle d'agent.** Une page est redemandée avec moins
   d'éléments jusqu'à tenir dans un résultat d'outil, si bien que `next_cursor` reprend exactement
   après le dernier élément montré ; `drive_read` rend des tranches avec `next_offset`.
+- **Une recherche s'en tient à la racine.** Aucun des deux fournisseurs ne cherche dans un
+  sous-arbre seul (Google cherche dans tout le drive, OneDrive personnel peut le faire), si bien que
+  `drive_search` écarte ce qui est hors de la racine du compte et lit d'autres pages du fournisseur,
+  jusqu'à cinq, pour remplir la page demandée. Une page peut encore revenir courte, voire vide, avec
+  un `next_cursor` qui reprend de là.
+- **Le trafic drive reste hors du journal des échanges LLM.** `--llm-log` ne capture que les appels
+  aux LLM : les requêtes du client drive, le contenu des fichiers et les adresses des sessions de
+  chargement n'y sont jamais écrits.
 
 ## Utiliser les outils
 

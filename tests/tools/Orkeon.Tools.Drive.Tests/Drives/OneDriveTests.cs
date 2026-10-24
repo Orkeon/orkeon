@@ -65,6 +65,48 @@ public sealed class OneDriveTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_read_again_a_search_hit_whose_parent_reference_holds_the_drive_alone()
+    {
+        // DRIVE-07 O12.a: OneDrive personal hands search hits whose parentReference has no id nor path.
+        MapRoot();
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/hit-id?$select=id,name", FakeHttpResponse.Json(FileJson("hit-id", "notes.txt", "/Orkeon/agents")));
+        var root = await _fixture.Drive.GetRootAsync(Token);
+
+        Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "hit-id", Name = "notes.txt", IsFolder = false, DriveId = null }, root, Token));
+    }
+
+    [Fact]
+    public async Task Should_compare_OneDrive_ids_without_regard_to_case()
+    {
+        MapRoot();
+        var root = await _fixture.Drive.GetRootAsync(Token);
+
+        Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "AGENTS-ID" }, root, Token));
+        Assert.Single(_fixture.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task Should_match_the_root_under_the_id_Graph_gives_back_for_a_parent_alias()
+    {
+        MapRoot();
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/alias-id?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"agents-id","parentReference":{"id":"orkeon-id"}}"""));
+        var root = await _fixture.Drive.GetRootAsync(Token);
+
+        Assert.True(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "alias-id" }, root, Token));
+    }
+
+    [Fact]
+    public async Task Should_keep_out_a_search_hit_whose_parents_climb_to_the_drive_root()
+    {
+        MapRoot();
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/elsewhere-id?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"elsewhere-id","parentReference":{"id":"drive-root"}}"""));
+        _fixture.Handler.Map(HttpMethod.Get, Graph + "items/drive-root?$select=id,parentReference", FakeHttpResponse.Json("""{"id":"drive-root"}"""));
+        var root = await _fixture.Drive.GetRootAsync(Token);
+
+        Assert.False(await _fixture.Drive.IsWithinAsync(new DriveItem { Id = "i", Name = "n", IsFolder = false, ParentId = "elsewhere-id", ParentPath = "/Elsewhere" }, root, Token));
+    }
+
+    [Fact]
     public void Should_normalize_Graph_paths_of_personal_and_business_drives()
     {
         Assert.Equal("/", OneDrive.NormalizePath("/drive/root:"));
