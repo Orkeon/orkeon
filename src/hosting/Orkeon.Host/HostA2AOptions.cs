@@ -108,7 +108,7 @@ internal sealed record HostA2AOptions
     public bool ListensOnLoopbackOnly =>
         ListenerHostName(Host) is { } name
         && name is not ("+" or "*")
-        && Uri.TryCreate($"http://{name}/", UriKind.Absolute, out var uri)
+        && Uri.TryCreate($"https://{name}/", UriKind.Absolute, out var uri)
         && uri.IsLoopback;
 
     /// <summary>

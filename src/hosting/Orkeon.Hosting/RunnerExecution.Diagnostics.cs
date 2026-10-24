@@ -139,10 +139,11 @@ public static partial class RunnerExecution
             using var host = await BuildToolHostAsync(
                 settingsPath,
                 cwd,
-                opts.Mounts.ToList(),
-                opts.MountIds,
-                opts.EffectiveAllowExternalMounts,
-                OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption,
+                new ToolHostMounts(
+                    opts.Mounts.ToList(),
+                    opts.MountIds,
+                    opts.EffectiveAllowExternalMounts,
+                    OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption),
                 (ctx, services) =>
                 {
                     // Mirror the crew-execution path (TryBuildHost registers the human_input
@@ -174,13 +175,13 @@ public static partial class RunnerExecution
 
     /// <summary>
     /// The host <c>--list-tools</c> prints and <c>orkeon mcp serve</c> serves (GAP-24): the runner
-    /// host over the settings' mounts and <paramref name="cliMounts"/>, no crew, every log line on
+    /// host over the settings' mounts and the <c>--mount</c> values of <paramref name="mounts"/>, no crew, every log line on
     /// stderr — stdout carries the manifest, or the protocol — and the MCP servers of the settings
     /// connected, so both see the tools a kickoff sees (STUDIO-21).
     /// <para>
     /// The host needs a file system even to list the tools: without one <c>IFileSystemService</c>
     /// is not registered, and the filesystem-backed tools cannot be constructed when the registry
-    /// enumerates the DI-provided <c>IBaseTool</c> set. A mount of <paramref name="cliMounts"/> or
+    /// enumerates the DI-provided <c>IBaseTool</c> set. A <c>--mount</c> of <paramref name="mounts"/> or
     /// of the settings gives it one. Without any, <paramref name="workingDirectory"/> is mounted
     /// internally, read-only — and only then: an internal mount is a boundary in physical space
     /// (<c>FileSystemRegistry</c>), so beside the settings' mounts it would wall off every one
@@ -197,22 +198,21 @@ public static partial class RunnerExecution
     internal static async Task<IHost?> BuildToolHostAsync(
         string? settingsPath,
         string workingDirectory,
-        IReadOnlyList<string> cliMounts,
-        IEnumerable<string> mountIds,
-        bool allowExternalMounts,
-        OfferedMountSelectors offered,
+        ToolHostMounts mounts,
         Action<HostBuilderContext, IServiceCollection>? configureServices,
         TextWriter error,
         CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(mounts);
         ArgumentNullException.ThrowIfNull(error);
+        var (cliMounts, mountIds, allowExternalMounts, offered) = mounts;
         // One reading of the layers the host composes for every guard (GAP-49, decision 2); the
         // selection line names what the command offers: --mount-id and --mount for --list-tools,
         // nothing for mcp serve (decision 3).
         var layers = RunnerSettings.ReadMountConfiguration(settingsPath);
         if (!EnsureReservedRootsAreFree(cliMounts, layers, error, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
             || !EnsureMountSelectionIsResolvable(
-                cliMounts, mountIds, CrewMountDeclarations.None, layers, settingsPath, offered, error, out var selection)
+                cliMounts, mountIds, CrewMountDeclarations.None, new MountLayers(layers, settingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error))
         {
             return null;

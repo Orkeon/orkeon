@@ -12,12 +12,15 @@ namespace Orkeon.Tools.Code.Sessions.Windows;
 /// an agent sees, and it must be readable by the next host process before any VFS exists (the sweep of
 /// a crashed session's leftovers). No agent path ever reaches it.
 /// </remarks>
-/// <param name="directory">The folder; created at the first write.</param>
 [SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: host bookkeeping of the shell confinement (the ACEs and AppContainer profiles a session leaves on the host), read back by the next host process before any VFS exists; never an agent path.")]
-internal sealed class ShellSessionLedgerStore(string directory)
+internal sealed class ShellSessionLedgerStore
 {
+    /// <summary>A store over <paramref name="directory"/>.</summary>
+    /// <param name="directory">The folder; created at the first write.</param>
+    public ShellSessionLedgerStore(string directory) => Directory = directory;
+
     /// <summary>The folder of the ledgers.</summary>
-    public string Directory { get; } = directory;
+    public string Directory { get; }
 
     /// <summary>The store of the current user (<c>%LOCALAPPDATA%\Orkeon\shell-sessions</c>).</summary>
     public static ShellSessionLedgerStore ForCurrentUser() => new(Path.Combine(

@@ -70,9 +70,7 @@ internal static class AclIsolation
     {
         try
         {
-            FileSystemSecurity? security = Directory.Exists(path) ? new DirectorySecurity()
-                : File.Exists(path) ? (FileSystemSecurity)new FileSecurity()
-                : null;
+            var security = EmptySecurityOf(path);
             if (security is null)
                 return true;
             security.SetSecurityDescriptorSddlForm(originalSddl, AccessControlSections.Access);
@@ -85,10 +83,23 @@ internal static class AclIsolation
         }
     }
 
+    private static FileSystemSecurity? EmptySecurityOf(string path)
+    {
+        if (Directory.Exists(path))
+            return new DirectorySecurity();
+        if (File.Exists(path))
+            return new FileSecurity();
+        return null;
+    }
+
     private static FileSystemSecurity? SecurityOf(string path)
-        => Directory.Exists(path) ? new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access)
-            : File.Exists(path) ? new FileInfo(path).GetAccessControl(AccessControlSections.Access)
-            : null;
+    {
+        if (Directory.Exists(path))
+            return new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access);
+        if (File.Exists(path))
+            return new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+        return null;
+    }
 
     private static void Write(string path, FileSystemSecurity security)
     {

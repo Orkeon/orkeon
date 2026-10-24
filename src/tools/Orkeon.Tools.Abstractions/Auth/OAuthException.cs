@@ -1,9 +1,7 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Orkeon.Tools.Abstractions.Auth;
 
 /// <summary>Why an OAuth exchange failed, in the terms a tool family translates into its own codes.</summary>
-internal enum OAuthFailure
+public enum OAuthFailure
 {
     /// <summary>The account's settings lack what the flow needs (an endpoint, for instance).</summary>
     InvalidConfiguration,
@@ -22,10 +20,8 @@ internal enum OAuthFailure
 /// An OAuth failure, its message written for the operator. The tool families catch it and throw
 /// their own exception with the same message, so an agent sees one error vocabulary per family.
 /// </summary>
-[SuppressMessage("Design", "CA1064",
-    Justification = "Internal on purpose: each family catches it and throws its own public exception, so it never reaches a caller outside the families.")]
 #pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10 (SYSLIB0051); ISerializable pattern not required
-internal sealed class OAuthException : Exception
+public sealed class OAuthException : Exception
 #pragma warning restore S3925
 {
     /// <summary>Creates the exception with its failure kind and actionable message.</summary>

@@ -181,8 +181,8 @@ public static class RunnerSettings
         if (json is null)
             return ex.InnerException is { } cause ? $"{ex.Message.TrimEnd('.')}: {cause.Message}" : ex.Message;
 
-        // The parser appends its own 0-based place, a line number and a byte position in the line;
-        // it is said again below, counted from 1.
+        // The parser appends its own 0-based place, a line number and a byte position in the line.
+        // It is said again below, counted from 1.
         var reason = json.Message;
         var place = reason.IndexOf(" LineNumber:", StringComparison.Ordinal);
         if (place >= 0)

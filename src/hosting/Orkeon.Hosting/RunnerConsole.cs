@@ -74,9 +74,11 @@ public sealed class SystemRunnerConsole : IRunnerConsole
         return new Registration(onCancel);
     }
 
-    private sealed class Registration(ConsoleCancelEventHandler onCancel) : IDisposable
+    private sealed class Registration : IDisposable
     {
-        private ConsoleCancelEventHandler? _onCancel = onCancel;
+        private ConsoleCancelEventHandler? _onCancel;
+
+        public Registration(ConsoleCancelEventHandler onCancel) => _onCancel = onCancel;
 
         public void Dispose()
         {

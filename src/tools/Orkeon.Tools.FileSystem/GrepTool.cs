@@ -134,7 +134,7 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             return "Pattern cannot be empty";
         if (request.Glob is not null && (request.Glob.StartsWith('/') || request.Glob.StartsWith('\\')))
             return "Glob must be relative to path, not absolute";
-        if (request.Glob is not null && request.Glob.Split('/', '\\').Contains(".."))
+        if (request.Glob is not null && request.Glob.Split(['/', '\\']).Contains(".."))
             return "Glob cannot contain a '..' segment";
         if (request.MaxResults <= 0)
             return "max_results must be greater than 0";
@@ -173,90 +173,127 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
             .EnumerateFilesAsync(request.Path, new VirtualEnumerationOptions(Recursive: true), cancellationToken).ConfigureAwait(false))
             sizes[entry.VirtualPath] = entry.SizeBytes;
 
-        var hits = ImmutableList.CreateBuilder<GrepHit>();
-        var clock = Stopwatch.StartNew();
-        var chars = 0;
-        var scanned = 0;
-        var skipped = 0;
-        var truncated = false;
-        var bounded = false;
-        var timedOut = false;
-
-        foreach (var candidate in candidates)
+        var scan = new GrepScan();
+        foreach (var path in candidates.Select(candidate => candidate.Location))
         {
-            if (scanned + skipped >= request.MaxFiles)
+            if (scan.Scanned + scan.Skipped >= request.MaxFiles)
             {
-                truncated = true;
+                scan.Truncated = true;
                 break;
             }
 
-            var size = sizes.TryGetValue(candidate.Location, out var known)
-                ? known
-                : (await _fileSystemService.TryGetEntryAsync(candidate.Location, cancellationToken).ConfigureAwait(false))?.SizeBytes;
-            string? text = size is null or > MaxFileBytes
-                ? null
-                : await ReadTextAsync(candidate.Location, cancellationToken).ConfigureAwait(false);
+            var text = await ReadCandidateAsync(path, sizes, cancellationToken).ConfigureAwait(false);
             if (text is null)
             {
-                skipped++;
+                scan.Skipped++;
                 continue;
             }
-            scanned++;
+            scan.Scanned++;
 
-            var start = 0;
-            var lineNo = 0;
-            while (start < text.Length && !truncated && !timedOut)
-            {
-                var end = text.IndexOf('\n', start);
-                var next = end < 0 ? text.Length : end + 1;
-                var line = text.AsSpan(start, (end < 0 ? text.Length : end) - start).TrimEnd('\r').ToString();
-                start = next;
-                lineNo++;
-
-                if (clock.Elapsed > _totalBudget)
-                {
-                    timedOut = true;
-                    break;
-                }
-                try
-                {
-                    if (!regex.IsMatch(line)) continue;
-                }
-                catch (RegexMatchTimeoutException)
-                {
-                    timedOut = true;
-                    break;
-                }
-
-                if (line.Length > MaxLineChars)
-                    line = line[..MaxLineChars] + LineCutMarker;
-                if (hits.Count >= request.MaxResults)
-                {
-                    truncated = true;
-                    break;
-                }
-                var cost = candidate.Location.Length + line.Length;
-                if (chars + cost > MaxTotalChars)
-                {
-                    truncated = bounded = true;
-                    break;
-                }
-                chars += cost;
-                hits.Add(new GrepHit { Path = candidate.Location, Line = lineNo, Text = line });
-            }
-
-            if (truncated || timedOut) break;
+            ScanText(path, text, regex, request.MaxResults, scan);
+            if (scan.Stopped) break;
         }
 
         return new GrepResponse
         {
-            Hits = hits.ToImmutable(),
-            Truncated = truncated,
-            TimedOut = timedOut,
-            FilesScanned = scanned,
-            FilesSkipped = skipped,
-            AlreadyBounded = bounded,
+            Hits = scan.Hits.ToImmutable(),
+            Truncated = scan.Truncated,
+            TimedOut = scan.TimedOut,
+            FilesScanned = scan.Scanned,
+            FilesSkipped = scan.Skipped,
+            AlreadyBounded = scan.Bounded,
         };
+    }
+
+    /// <summary>The text of <paramref name="path"/>, or null when it is too large, unreadable or binary.</summary>
+    private async Task<string?> ReadCandidateAsync(string path, Dictionary<string, long> sizes, CancellationToken cancellationToken)
+    {
+        var size = sizes.TryGetValue(path, out var known)
+            ? known
+            : (await _fileSystemService.TryGetEntryAsync(path, cancellationToken).ConfigureAwait(false))?.SizeBytes;
+        return size is null or > MaxFileBytes
+            ? null
+            : await ReadTextAsync(path, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Scans the lines of one file, adding its hits to <paramref name="scan"/> until a bound stops it.</summary>
+    private void ScanText(string path, string text, Regex regex, int maxResults, GrepScan scan)
+    {
+        var start = 0;
+        var lineNo = 0;
+        while (start < text.Length && !scan.Stopped)
+        {
+            var end = text.IndexOf('\n', start);
+            var next = end < 0 ? text.Length : end + 1;
+            var line = text.AsSpan(start, (end < 0 ? text.Length : end) - start).TrimEnd('\r').ToString();
+            start = next;
+            lineNo++;
+
+            if (scan.Clock.Elapsed > _totalBudget)
+            {
+                scan.TimedOut = true;
+                return;
+            }
+
+            if (IsMatch(regex, line, scan))
+                AddHit(path, lineNo, line, maxResults, scan);
+        }
+    }
+
+    /// <summary>Whether <paramref name="line"/> matches; a match timeout marks the scan timed out.</summary>
+    private static bool IsMatch(Regex regex, string line, GrepScan scan)
+    {
+        try
+        {
+            return regex.IsMatch(line);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            scan.TimedOut = true;
+            return false;
+        }
+    }
+
+    /// <summary>Adds one hit, cut to <see cref="MaxLineChars"/>, unless a result or size bound is reached.</summary>
+    private static void AddHit(string path, int lineNo, string line, int maxResults, GrepScan scan)
+    {
+        if (line.Length > MaxLineChars)
+            line = line[..MaxLineChars] + LineCutMarker;
+        if (scan.Hits.Count >= maxResults)
+        {
+            scan.Truncated = true;
+            return;
+        }
+        var cost = path.Length + line.Length;
+        if (scan.Chars + cost > MaxTotalChars)
+        {
+            scan.Truncated = scan.Bounded = true;
+            return;
+        }
+        scan.Chars += cost;
+        scan.Hits.Add(new GrepHit { Path = path, Line = lineNo, Text = line });
+    }
+
+    /// <summary>The running state of one grep: its hits, counters and why it stopped.</summary>
+    private sealed class GrepScan
+    {
+        public ImmutableList<GrepHit>.Builder Hits { get; } = ImmutableList.CreateBuilder<GrepHit>();
+
+        public Stopwatch Clock { get; } = Stopwatch.StartNew();
+
+        public int Chars { get; set; }
+
+        public int Scanned { get; set; }
+
+        public int Skipped { get; set; }
+
+        public bool Truncated { get; set; }
+
+        public bool Bounded { get; set; }
+
+        public bool TimedOut { get; set; }
+
+        public bool Stopped => Truncated || TimedOut;
     }
 
     private async Task<string?> ReadTextAsync(string virtualPath, CancellationToken cancellationToken)

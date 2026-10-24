@@ -295,7 +295,7 @@ internal sealed partial class OneDrive : IDrive
             Name = Text(item, "name") ?? string.Empty,
             IsFolder = isFolder,
             MimeType = mimeType,
-            Size = isFolder ? null : item.TryGetProperty("size", out var size) && size.TryGetInt64(out var bytes) ? bytes : null,
+            Size = isFolder ? null : SizeOf(item),
             Modified = Text(item, "lastModifiedDateTime") is { } modified
                 && DateTimeOffset.TryParse(modified, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var when) ? when : null,
             ParentId = parentId,
@@ -330,8 +330,16 @@ internal sealed partial class OneDrive : IDrive
             ? string.Equals(parentPath, rootPath, StringComparison.OrdinalIgnoreCase) || parentPath.StartsWith(rootPath + "/", StringComparison.OrdinalIgnoreCase)
             : null;
 
-    private static string? FullPath(DriveItem folder) =>
-        folder.ParentPath is null ? null : folder.ParentPath == "/" ? "/" + folder.Name : $"{folder.ParentPath}/{folder.Name}";
+    /// <summary>The size of a file item, null when Graph gives none.</summary>
+    private static long? SizeOf(JsonElement item) =>
+        item.TryGetProperty("size", out var size) && size.TryGetInt64(out var bytes) ? bytes : null;
+
+    private static string? FullPath(DriveItem folder)
+    {
+        if (folder.ParentPath is null)
+            return null;
+        return folder.ParentPath == "/" ? "/" + folder.Name : $"{folder.ParentPath}/{folder.Name}";
+    }
 
     private static bool Matches(DriveItem item, DriveSearchQuery query, string words)
     {

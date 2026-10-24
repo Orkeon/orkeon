@@ -9,3 +9,15 @@ static Orkeon.Tools.Abstractions.Security.AgentRootGuard.Check(Orkeon.Domain.Fil
 *REMOVED*override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
 override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteTypedAsync(Orkeon.Tools.Abstractions.Tools.ListMountsRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Abstractions.Tools.ListMountsResponse!>!
 Orkeon.Tools.Abstractions.Base.IExpectedToolError
+Orkeon.Tools.Abstractions.Auth.OAuthException
+Orkeon.Tools.Abstractions.Auth.OAuthException.Failure.get -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException() -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(Orkeon.Tools.Abstractions.Auth.OAuthFailure failure, string! message) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(Orkeon.Tools.Abstractions.Auth.OAuthFailure failure, string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(string! message) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.AuthenticationFailed = 1 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.InvalidConfiguration = 0 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.LoginRequired = 2 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.ServerError = 3 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure

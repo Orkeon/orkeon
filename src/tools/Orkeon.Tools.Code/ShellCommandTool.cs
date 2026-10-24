@@ -215,9 +215,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     private IShellSandbox? _defaultSandbox;
 
-    private IShellSandbox ActiveSandbox => Sandbox ?? (_defaultSandbox ??=
-        new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, _logger)
-            .Select(Confinement.Mode));
+    private IShellSandbox ActiveSandbox => Sandbox ?? DefaultSandbox();
+
+    /// <summary>The sandbox chosen from <see cref="Confinement"/>, built at the first call.</summary>
+    private IShellSandbox DefaultSandbox()
+    {
+        _defaultSandbox ??= new ShellSandboxSelector(UnconfinedShellSandbox.Shared, new BubblewrapShellSandbox(Bubblewrap), new SeatbeltShellSandbox(Seatbelt), ContainerDetector, Platform, _logger)
+            .Select(Confinement.Mode);
+        return _defaultSandbox;
+    }
 
     /// <summary>Maximum number of characters captured from stdout/stderr.</summary>
     public const int MaxOutputLength = 10_000;
@@ -471,6 +477,22 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (string.IsNullOrWhiteSpace(executable))
             return "Command cannot be empty";
 
+        var error = ValidateExecutable(request.Command, executable) ?? ValidatePlacement(request, executable);
+        if (error is not null)
+            return error;
+
+        if (request.TimeoutSeconds <= 0)
+            return "Timeout must be greater than 0";
+
+        return action == StartJobAction ? ValidateStartJob() : null;
+    }
+
+    /// <summary>
+    /// Null when <paramref name="executable"/> may run <paramref name="command"/>: a bare allowlisted
+    /// name, no cmd.exe expansion, a read-only git subcommand, no blocked pattern.
+    /// </summary>
+    private string? ValidateExecutable(string command, string executable)
+    {
         // Reject executables that contain path separators after normalization
         // (ExtractExecutable already strips paths, so if we still see separators
         //  something is wrong)
@@ -486,7 +508,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // tool must not depend on which host happens to run it, and the model that writes the
         // command never knows which one that is.
         if (s_windowsBuiltins.Contains(executable)
-            && request.Command.Contains('%', StringComparison.Ordinal))
+            && command.Contains('%', StringComparison.Ordinal))
         {
             return $"Command contains '%': '{executable}' runs through the Windows shell, "
                 + "which would expand it into the host environment";
@@ -498,16 +520,22 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (!_interpretersAllowed
             && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
         {
-            var subcommandError = ValidateGitSubcommand(request.Command);
+            var subcommandError = ValidateGitSubcommand(command);
             if (subcommandError is not null)
                 return subcommandError;
         }
 
         var blockedPattern = _blockedPatterns
-            .FirstOrDefault(pattern => ContainsBlockedPattern(request.Command, pattern));
-        if (blockedPattern is not null)
-            return $"Command contains blocked pattern: '{blockedPattern}'";
+            .FirstOrDefault(pattern => ContainsBlockedPattern(command, pattern));
+        return blockedPattern is null ? null : $"Command contains blocked pattern: '{blockedPattern}'";
+    }
 
+    /// <summary>
+    /// Null when the command may run where it would: the confinement can be built, its path
+    /// arguments, working directory and agent root are granted.
+    /// </summary>
+    private string? ValidatePlacement(ShellCommandRequest request, string executable)
+    {
         // A confinement that cannot be built fails the call: the command never runs unconfined.
         var confinementError = ValidateConfinement();
         if (confinementError is not null)
@@ -530,10 +558,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             && RightsAt(agentRoot) == FileAccessRights.None)
             return $"WorkingDirectory denied: the agent working root '{agentRoot}' grants no access.";
 
-        if (request.TimeoutSeconds <= 0)
-            return "Timeout must be greater than 0";
-
-        return action == StartJobAction ? ValidateStartJob() : null;
+        return null;
     }
 
     /// <summary>Null when a job may start: a run holds the registry, it has room, and a mount takes the log.</summary>
@@ -824,47 +849,65 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var paths = new List<ConfinedPath>();
         var agentRoot = AgentRunScope.Current?.Root?.TrimEnd('/');
         foreach (var mount in _fileSystem.GetAvailableMounts())
-        {
-            var virtualRoot = mount.VirtualPath.TrimEnd('/');
-            if (virtualRoot.Length == 0)
-                continue;
-
-            // Asking for no right resolves the root whatever it grants: the rights are applied below.
-            var root = _fileSystem.ResolveAndValidate(virtualRoot, FileAccessRights.None);
-            if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
-                continue;
-
-            // A declared agent root narrows the mount that holds it to the root, at its physical path,
-            // never the whole mount (RT-06); the other mounts stay bound as they are.
-            var holdsRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot);
-            if (holdsRoot)
-            {
-                // The rights in force at the root, as the file system resolves them (an override above
-                // the root counts), not the mount's default.
-                var narrowed = _fileSystem.ResolveAndValidate(agentRoot!, FileAccessRights.None);
-                if (narrowed.IsAllowed && !string.IsNullOrEmpty(narrowed.ResolvedPath) && Granted(RightsAt(agentRoot!)) is { } rootAccess)
-                    paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot!, rootAccess));
-            }
-            else if (Granted(mount.DefaultRights) is { } access)
-                paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
-
-            foreach (var subPath in mount.Overrides)
-            {
-                var relative = subPath.RelativePath.Trim('/');
-                if (relative.Length == 0)
-                    continue;
-
-                if (holdsRoot && !MatchesMountPrefix($"{virtualRoot}/{relative}", agentRoot!))
-                    continue;
-
-                var source = Path.Combine(root.ResolvedPath, relative);
-                var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
-                if (granted is { } subAccess)
-                    paths.Add(new ConfinedPath(source, $"{virtualRoot}/{relative}", subAccess));
-            }
-        }
+            AddMountPaths(paths, mount, agentRoot);
 
         return paths;
+    }
+
+    /// <summary>Adds the paths <paramref name="mount"/> binds: its root (or the agent root it holds), then its sub-path overrides.</summary>
+    private void AddMountPaths(List<ConfinedPath> paths, MountInfo mount, string? agentRoot)
+    {
+        var virtualRoot = mount.VirtualPath.TrimEnd('/');
+        if (virtualRoot.Length == 0)
+            return;
+
+        // Asking for no right resolves the root whatever it grants: the rights are applied below.
+        var root = _fileSystem.ResolveAndValidate(virtualRoot, FileAccessRights.None);
+        if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
+            return;
+
+        // A declared agent root narrows the mount that holds it to the root, at its physical path,
+        // never the whole mount (RT-06); the other mounts stay bound as they are.
+        var heldRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot) ? agentRoot : null;
+        if (heldRoot is not null)
+            AddAgentRootPath(paths, heldRoot);
+        else if (Granted(mount.DefaultRights) is { } access)
+            paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
+
+        AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, heldRoot);
+    }
+
+    /// <summary>Adds the agent root a mount holds, with the rights in force there.</summary>
+    private void AddAgentRootPath(List<ConfinedPath> paths, string agentRoot)
+    {
+        // The rights in force at the root, as the file system resolves them (an override above
+        // the root counts), not the mount's default.
+        var narrowed = _fileSystem.ResolveAndValidate(agentRoot, FileAccessRights.None);
+        if (narrowed.IsAllowed && !string.IsNullOrEmpty(narrowed.ResolvedPath) && Granted(RightsAt(agentRoot)) is { } rootAccess)
+            paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot, rootAccess));
+    }
+
+    /// <summary>
+    /// Adds the sub-path overrides of a mount; when the mount holds <paramref name="heldRoot"/>, only
+    /// those under it.
+    /// </summary>
+    private static void AddOverridePaths(
+        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot, string? heldRoot)
+    {
+        foreach (var subPath in overrides)
+        {
+            var relative = subPath.RelativePath.Trim('/');
+            if (relative.Length == 0)
+                continue;
+
+            if (heldRoot is not null && !MatchesMountPrefix($"{virtualRoot}/{relative}", heldRoot))
+                continue;
+
+            var source = Path.Combine(physicalRoot, relative);
+            var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
+            if (granted is { } subAccess)
+                paths.Add(new ConfinedPath(source, $"{virtualRoot}/{relative}", subAccess));
+        }
     }
 
     /// <summary>The Read and Write rights in force at <paramref name="virtualPath"/>, as the file system resolves them.</summary>

@@ -122,11 +122,8 @@ internal sealed class ShellJobRegistry : IAsyncDisposable
             jobs = [.. _jobs.Values];
         }
 
-        foreach (var job in jobs)
-        {
-            if (!job.Handle.Exit.IsCompleted)
-                job.Handle.Kill();
-        }
+        foreach (var handle in jobs.Select(job => job.Handle).Where(handle => !handle.Exit.IsCompleted))
+            handle.Kill();
 
         return ValueTask.CompletedTask;
     }

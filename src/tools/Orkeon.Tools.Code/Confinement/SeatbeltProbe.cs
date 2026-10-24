@@ -48,14 +48,8 @@ internal static class SeatbeltProbe
         var links = 0;
         while (pending.TryPop(out var part))
         {
-            if (part == ".")
+            if (StepsInPlace(part, resolved))
                 continue;
-            if (part == "..")
-            {
-                if (resolved.Count > 0)
-                    resolved.RemoveAt(resolved.Count - 1);
-                continue;
-            }
 
             var candidate = "/" + string.Join('/', resolved.Append(part));
             var target = linkTarget(candidate);
@@ -76,6 +70,21 @@ internal static class SeatbeltProbe
         }
 
         return "/" + string.Join('/', resolved);
+    }
+
+    /// <summary>
+    /// Applies <c>.</c> (nothing) and <c>..</c> (one level up) to <paramref name="resolved"/>; false
+    /// for any other part, which the caller resolves.
+    /// </summary>
+    private static bool StepsInPlace(string part, List<string> resolved)
+    {
+        if (part == ".")
+            return true;
+        if (part != "..")
+            return false;
+        if (resolved.Count > 0)
+            resolved.RemoveAt(resolved.Count - 1);
+        return true;
     }
 
     /// <summary><paramref name="path"/> canonicalized against the host's file system.</summary>

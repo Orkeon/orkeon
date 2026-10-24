@@ -77,19 +77,7 @@ public static class RunnerArguments
     private static (List<string> Parsed, Dictionary<PropertyInfo, string> SetAside, bool Missing) SetAside(
         Type optionsType, IEnumerable<string> arguments, bool enableDashDash)
     {
-        var oneValueOptions = optionsType.GetProperties()
-            .Where(property => property.CanWrite && IsOneValue(property.PropertyType))
-            .Select(property => (Property: property, Option: property.GetCustomAttribute<OptionAttribute>(inherit: true)))
-            .Where(option => option.Option is not null)
-            .ToList();
-        var oneValueWords = oneValueOptions
-            .SelectMany(option => new[] { "--" + option.Option!.LongName, "-" + option.Option.ShortName })
-            .Where(word => word.Length > 2 || (word.Length == 2 && word[1] != '-'))
-            .ToHashSet(StringComparer.Ordinal);
-        var singleValueOptions = oneValueOptions
-            .Where(option => option.Property.PropertyType == typeof(string) && option.Option!.LongName is { Length: > 0 })
-            .ToDictionary(option => option.Option!.LongName, option => option.Property, StringComparer.Ordinal);
-
+        var (oneValueWords, singleValueOptions) = OneValueOptions(optionsType);
         var setAside = new Dictionary<PropertyInfo, string>();
         var parsed = new List<string>();
         var afterDashDash = false;
@@ -110,22 +98,51 @@ public static class RunnerArguments
             }
 
             previous = oneValueWords.Contains(argument) ? argument : null;
-
-            var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
-            if (equals > 2
-                && argument[(equals + 1)..] is { Length: > 0 } value
-                && (value[0] == ' ' || value.Contains('\n', StringComparison.Ordinal))
-                && singleValueOptions.TryGetValue(argument[2..equals], out var property))
-            {
-                setAside[property] = value;
-                parsed.Add(argument[..(equals + 1)] + StandIn);
-                continue;
-            }
-
-            parsed.Add(argument);
+            parsed.Add(SetAsideValue(argument, singleValueOptions, setAside) ?? argument);
         }
 
         return (parsed, setAside, false);
+    }
+
+    /// <summary>
+    /// The words of the options of <paramref name="optionsType"/> that take one value, and those of
+    /// them that take one string, by long name.
+    /// </summary>
+    private static (HashSet<string> Words, Dictionary<string, PropertyInfo> SingleValues) OneValueOptions(Type optionsType)
+    {
+        var oneValueOptions = optionsType.GetProperties()
+            .Where(property => property.CanWrite && IsOneValue(property.PropertyType))
+            .Select(property => (Property: property, Option: property.GetCustomAttribute<OptionAttribute>(inherit: true)))
+            .Where(option => option.Option is not null)
+            .ToList();
+        var oneValueWords = oneValueOptions
+            .SelectMany(option => new[] { "--" + option.Option!.LongName, "-" + option.Option.ShortName })
+            .Where(word => word.Length > 2 || (word.Length == 2 && word[1] != '-'))
+            .ToHashSet(StringComparer.Ordinal);
+        var singleValueOptions = oneValueOptions
+            .Where(option => option.Property.PropertyType == typeof(string) && option.Option!.LongName is { Length: > 0 })
+            .ToDictionary(option => option.Option!.LongName, option => option.Property, StringComparer.Ordinal);
+        return (oneValueWords, singleValueOptions);
+    }
+
+    /// <summary>
+    /// The stand-in of <paramref name="argument"/> when it attaches to a string option a value the
+    /// parser would misread (a leading space, a line break), the value set aside; null otherwise.
+    /// </summary>
+    private static string? SetAsideValue(
+        string argument, Dictionary<string, PropertyInfo> singleValueOptions, Dictionary<PropertyInfo, string> setAside)
+    {
+        var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
+        if (equals > 2
+            && argument[(equals + 1)..] is { Length: > 0 } value
+            && (value[0] == ' ' || value.Contains('\n', StringComparison.Ordinal))
+            && singleValueOptions.TryGetValue(argument[2..equals], out var property))
+        {
+            setAside[property] = value;
+            return argument[..(equals + 1)] + StandIn;
+        }
+
+        return null;
     }
 
     private static bool IsOneValue(Type type)

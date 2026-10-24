@@ -34,8 +34,8 @@ internal static class HostServiceRegistration
 
         // The daemon's sections — Orkeon:Host with its A2A, and Discord below — are read once,
         // here, and their instances are what the services get (GAP-35). Bound lazily, a value the
-        // binder could not convert escaped the start as a crash when the host built its services;
-        // read now, it refuses the start, naming its key (exit 78).
+        // binder could not convert escaped the start as a crash when the host built its services.
+        // Read now, it refuses the start, naming its key (exit 78).
         var hostSection = HostStartup.ReadSection<OrkeonHostOptions>(configuration, OrkeonHostOptions.SectionName);
         services.AddSingleton(Options.Create(hostSection));
 

@@ -67,6 +67,7 @@ internal sealed class OperatorLoggerProvider(IRunnerConsole console) : ILoggerPr
 
     public void Dispose()
     {
+        // Nothing to release: the provider holds no resource, and the console belongs to the runner.
     }
 
     private sealed class OperatorLogger(IRunnerConsole console) : ILogger

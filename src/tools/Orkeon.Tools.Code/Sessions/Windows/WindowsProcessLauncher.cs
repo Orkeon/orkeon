@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
@@ -85,11 +86,25 @@ internal sealed class WindowsLaunchedProcess : IDisposable
         Handle.Dispose();
     }
 
-    /// <summary>A wait handle over the process handle, which it does not own.</summary>
+    /// <summary>
+    /// A wait handle over the process handle, which it does not own: the process handle is
+    /// referenced (the P/Invoke marshaller's add-ref) for as long as the wait handle lives.
+    /// </summary>
     private sealed class ProcessWaitHandle : WaitHandle
     {
+        private SafeHandleMarshaller<SafeProcessHandle>.ManagedToUnmanagedIn _process;
+
         public ProcessWaitHandle(SafeProcessHandle process)
-            => SafeWaitHandle = new SafeWaitHandle(process.DangerousGetHandle(), ownsHandle: false);
+        {
+            _process.FromManaged(process);
+            SafeWaitHandle = new SafeWaitHandle(_process.ToUnmanaged(), ownsHandle: false);
+        }
+
+        protected override void Dispose(bool explicitDisposing)
+        {
+            base.Dispose(explicitDisposing);
+            _process.Free();
+        }
     }
 }
 
@@ -175,7 +190,7 @@ internal static unsafe class WindowsProcessLauncher
         var containerSid = launch.ContainerSid;
         var attributeCount = containerSid is null ? 2 : 3;
         var natives = new List<nint>();
-        var addRefs = new List<SafeHandle>();
+        var addRefs = new List<SafeHandleMarshaller<SafeHandle>.ManagedToUnmanagedIn>();
         void* attributes = null;
         var attributesInitialized = false;
         try
@@ -272,7 +287,7 @@ internal static unsafe class WindowsProcessLauncher
             foreach (var native in natives)
                 NativeMemory.Free((void*)native);
             foreach (var handle in addRefs)
-                handle.DangerousRelease();
+                handle.Free();
         }
     }
 
@@ -298,12 +313,16 @@ internal static unsafe class WindowsProcessLauncher
         return (nint)memory;
     }
 
-    private static nint AddRef(List<SafeHandle> addRefs, SafeHandle handle)
+    /// <summary>
+    /// The raw value of <paramref name="handle"/>, referenced the way the P/Invoke marshaller
+    /// references a <see cref="SafeHandle"/> argument, until the caller frees every entry of
+    /// <paramref name="addRefs"/>.
+    /// </summary>
+    private static nint AddRef(List<SafeHandleMarshaller<SafeHandle>.ManagedToUnmanagedIn> addRefs, SafeHandle handle)
     {
-        var added = false;
-        handle.DangerousAddRef(ref added);
-        if (added)
-            addRefs.Add(handle);
-        return handle.DangerousGetHandle();
+        var marshaller = new SafeHandleMarshaller<SafeHandle>.ManagedToUnmanagedIn();
+        marshaller.FromManaged(handle);
+        addRefs.Add(marshaller);
+        return marshaller.ToUnmanaged();
     }
 }

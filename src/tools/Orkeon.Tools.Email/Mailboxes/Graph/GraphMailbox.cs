@@ -296,32 +296,44 @@ internal sealed class GraphMailbox : IMailbox
         var pending = new Queue<(string? ParentId, string Prefix, int Depth)>();
         pending.Enqueue((null, string.Empty, 0));
         while (pending.Count > 0 && folders.Count < MaxFolders)
-        {
-            var (parentId, prefix, depth) = pending.Dequeue();
-            var relative = parentId is null
-                ? $"me/mailFolders?$top=250&$select={FolderSelect}"
-                : $"me/mailFolders/{Escape(parentId)}/childFolders?$top=250&$select={FolderSelect}";
-            Uri? address = GraphClient.Resolve(relative);
-            while (address is not null && folders.Count < MaxFolders)
-            {
-                using var document = await _graph.GetJsonAsync(address, cancellationToken).ConfigureAwait(false);
-                address = NextLink(document.RootElement);
-                if (!document.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
-                    break;
-
-                foreach (var item in value.EnumerateArray())
-                {
-                    var folder = ReadChild(item, prefix, roles);
-                    folders.Add(folder);
-                    if (ReadInt(item, "childFolderCount") > 0 && depth + 1 < MaxDepth)
-                        pending.Enqueue((folder.Id, folder.Info.Path, depth + 1));
-                }
-            }
-        }
+            await LoadChildrenAsync(pending.Dequeue(), roles, folders, pending, cancellationToken).ConfigureAwait(false);
 
         _folders = folders;
         _foldersLoadedAt = _time.GetUtcNow();
         return folders;
+    }
+
+    /// <summary>
+    /// Reads the child folders of <paramref name="parent"/> (the top-level folders when its id is
+    /// null), page by page, into <paramref name="folders"/>; queues those that have children of their own.
+    /// </summary>
+    private async Task LoadChildrenAsync(
+        (string? ParentId, string Prefix, int Depth) parent,
+        Dictionary<string, string> roles,
+        List<GraphFolder> folders,
+        Queue<(string? ParentId, string Prefix, int Depth)> pending,
+        CancellationToken cancellationToken)
+    {
+        var (parentId, prefix, depth) = parent;
+        var relative = parentId is null
+            ? $"me/mailFolders?$top=250&$select={FolderSelect}"
+            : $"me/mailFolders/{Escape(parentId)}/childFolders?$top=250&$select={FolderSelect}";
+        Uri? address = GraphClient.Resolve(relative);
+        while (address is not null && folders.Count < MaxFolders)
+        {
+            using var document = await _graph.GetJsonAsync(address, cancellationToken).ConfigureAwait(false);
+            address = NextLink(document.RootElement);
+            if (!document.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var item in value.EnumerateArray())
+            {
+                var folder = ReadChild(item, prefix, roles);
+                folders.Add(folder);
+                if (ReadInt(item, "childFolderCount") > 0 && depth + 1 < MaxDepth)
+                    pending.Enqueue((folder.Id, folder.Info.Path, depth + 1));
+            }
+        }
     }
 
     /// <summary>The folder <paramref name="item"/> describes, under <paramref name="prefix"/>, with the role its id has in <paramref name="roles"/>.</summary>

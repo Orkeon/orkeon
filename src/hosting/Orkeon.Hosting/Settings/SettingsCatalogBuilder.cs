@@ -254,15 +254,21 @@ internal static class SettingsCatalogBuilder
     {
         var target = Nullable.GetUnderlyingType(type) ?? type;
         if (target.IsAbstract || target.IsInterface || target.IsValueType || target == typeof(string)
-            || target.IsArray || target.ContainsGenericParameters
-            || target.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.EmptyTypes) is null)
+            || target.IsArray || target.ContainsGenericParameters)
         {
             return null;
         }
 
+        // The parameterless constructor the type declares, whatever its accessibility (an options
+        // type is often internal): the binder creates it the same way.
+        var constructor = target.GetTypeInfo().DeclaredConstructors
+            .FirstOrDefault(candidate => !candidate.IsStatic && candidate.GetParameters().Length == 0);
+        if (constructor is null)
+            return null;
+
         try
         {
-            return Activator.CreateInstance(target, nonPublic: true);
+            return constructor.Invoke(null);
         }
         catch (Exception ex) when (ex is TargetInvocationException or MemberAccessException or NotSupportedException)
         {

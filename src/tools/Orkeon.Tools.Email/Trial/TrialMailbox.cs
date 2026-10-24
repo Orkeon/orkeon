@@ -29,7 +29,7 @@ internal sealed class TrialMailbox : IMailbox, IMailSender
         foreach (var message in seed.Messages)
         {
             var folder = EnsureFolder(message.Folder);
-            Add(folder, message, Seen(folder));
+            Add(folder, message, StartsSeen(folder));
         }
     }
 
@@ -221,12 +221,14 @@ internal sealed class TrialMailbox : IMailbox, IMailSender
 
     private static string? RoleOf(string folder) => folder.Contains('/', StringComparison.Ordinal) ? null : FolderRoles.Parse(folder);
 
-    private static bool Seen(string folder) => RoleOf(folder) is FolderRoles.Sent or FolderRoles.Drafts;
+    private static bool StartsSeen(string folder) => RoleOf(folder) is FolderRoles.Sent or FolderRoles.Drafts;
 
-    private static string Rebase(string path, string from, string to) =>
-        path == from ? to
-        : path.StartsWith(from + "/", StringComparison.Ordinal) ? to + path[from.Length..]
-        : path;
+    private static string Rebase(string path, string from, string to)
+    {
+        if (path == from)
+            return to;
+        return path.StartsWith(from + "/", StringComparison.Ordinal) ? to + path[from.Length..] : path;
+    }
 
     private static bool Contains(string? haystack, string needle) =>
         haystack is not null && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
@@ -314,7 +316,15 @@ internal sealed class TrialMailbox : IMailbox, IMailSender
     }
 
     private static string Marks(bool? seen, bool? flagged) =>
-        string.Join(',', new[] { seen is { } s ? (s ? "seen" : "unseen") : null, flagged is { } f ? (f ? "flagged" : "unflagged") : null }.OfType<string>());
+        string.Join(',', new[] { Mark(seen, "seen", "unseen"), Mark(flagged, "flagged", "unflagged") }.OfType<string>());
+
+    /// <summary><paramref name="set"/> or <paramref name="cleared"/> for a flag given, null for one left alone.</summary>
+    private static string? Mark(bool? value, string set, string cleared)
+    {
+        if (value is not { } on)
+            return null;
+        return on ? set : cleared;
+    }
 
     private static SimulatedMailAction Written(SimulatedMailActionKind kind, Entry entry, ImmutableList<string> recipients) => new()
     {
@@ -371,15 +381,23 @@ internal sealed class TrialMailbox : IMailbox, IMailSender
         public int Last { get; set; }
     }
 
-    private sealed class Entry(string id, string folder, TrialMailMessage data, bool seen)
+    private sealed class Entry
     {
-        public string Id { get; } = id;
+        public Entry(string id, string folder, TrialMailMessage data, bool seen)
+        {
+            Id = id;
+            Folder = folder;
+            Data = data;
+            Seen = seen;
+        }
 
-        public string Folder { get; set; } = folder;
+        public string Id { get; }
 
-        public TrialMailMessage Data { get; } = data;
+        public string Folder { get; set; }
 
-        public bool Seen { get; set; } = seen;
+        public TrialMailMessage Data { get; }
+
+        public bool Seen { get; set; }
 
         public bool Flagged { get; set; }
     }

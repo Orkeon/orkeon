@@ -176,8 +176,6 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         return tables;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "SQLite PRAGMA does not support parameter binding; tableName is a table identifier validated by IsSafeIdentifier (^[a-zA-Z0-9_]+$) at the top of this method and double-quoted via QuoteSqliteIdentifier before interpolation. Identifiers cannot be parameterized.")]
     private static async Task<List<ColumnInfo>> GetColumnsSqliteAsync(
         DbConnection connection, string tableName, CancellationToken ct)
     {
@@ -188,10 +186,10 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
         var cmd = connection.CreateCommand();
         await using var __cmd = cmd.ConfigureAwait(false);
-        // PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
-        // Rationale: PRAGMA does not support parameter binding; identifier is allowlist-validated
-        // (^[a-zA-Z0-9_]+$) and double-quoted before interpolation — injection is not possible.
-        cmd.CommandText = $"PRAGMA table_info({QuoteSqliteIdentifier(tableName)})";
+        // pragma_table_info returns: cid, name, type, notnull, dflt_value, pk. The table-valued
+        // form of the PRAGMA takes its argument as a bound parameter.
+        cmd.CommandText = "SELECT * FROM pragma_table_info(@table)";
+        AddParameter(cmd, "@table", tableName);
         var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         await using var __reader = reader.ConfigureAwait(false);
 
@@ -254,8 +252,6 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         return indexes;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "SQLite PRAGMA does not support parameter binding; indexName is an index identifier validated by IsSafeIdentifier (^[a-zA-Z0-9_]+$) at the top of this method and double-quoted via QuoteSqliteIdentifier before interpolation. Identifiers cannot be parameterized.")]
     private static async Task<(List<string> Columns, bool IsUnique)> GetIndexDetailSqliteAsync(
         DbConnection connection, string indexName, CancellationToken ct)
     {
@@ -267,10 +263,10 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
         var cmd = connection.CreateCommand();
         await using var __cmd = cmd.ConfigureAwait(false);
-        // PRAGMA index_list gives us the unique flag; PRAGMA index_info gives columns
-        // Rationale: PRAGMA does not support parameter binding; identifier is allowlist-validated
-        // (^[a-zA-Z0-9_]+$) and double-quoted before interpolation — injection is not possible.
-        cmd.CommandText = $"PRAGMA index_info({QuoteSqliteIdentifier(indexName)})";
+        // PRAGMA index_list gives us the unique flag; pragma_index_info (seqno, cid, name) gives
+        // columns, its argument bound as a parameter.
+        cmd.CommandText = "SELECT * FROM pragma_index_info(@index)";
+        AddParameter(cmd, "@index", indexName);
         var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         await using var __reader = reader.ConfigureAwait(false);
 
@@ -298,8 +294,6 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         return (columns, isUnique);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100",
-        Justification = "SQLite PRAGMA does not support parameter binding; tableName is a table identifier validated by IsSafeIdentifier (^[a-zA-Z0-9_]+$) before the PRAGMA and double-quoted via QuoteSqliteIdentifier before interpolation. Identifiers cannot be parameterized.")]
     private static async Task<List<ForeignKeyInfo>> GetForeignKeysSqliteAsync(
         DbConnection connection, Regex? filter, CancellationToken ct)
     {
@@ -328,10 +322,10 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
             var fkCmd = connection.CreateCommand();
             await using var __fkCmd = fkCmd.ConfigureAwait(false);
-            // PRAGMA foreign_key_list returns: id, seq, table, from, to, on_update, on_delete, match
-            // Rationale: PRAGMA does not support parameter binding; identifier is allowlist-validated
-            // (^[a-zA-Z0-9_]+$) and double-quoted before interpolation — injection is not possible.
-            fkCmd.CommandText = $"PRAGMA foreign_key_list({QuoteSqliteIdentifier(tableName)})";
+            // pragma_foreign_key_list returns: id, seq, table, from, to, on_update, on_delete, match;
+            // its argument is bound as a parameter.
+            fkCmd.CommandText = "SELECT * FROM pragma_foreign_key_list(@table)";
+            AddParameter(fkCmd, "@table", tableName);
             var fkReader = await fkCmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             await using var __fkReader = fkReader.ConfigureAwait(false);
 
@@ -373,6 +367,14 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
 
     // internal (not private) so the SQL-injection invariant can be proven by unit tests
     // (Orkeon.Tools.Data.Tests via InternalsVisibleTo) rather than only asserted in a justification.
+    private static void AddParameter(DbCommand command, string name, object value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value;
+        command.Parameters.Add(parameter);
+    }
+
     internal static string QuoteSqliteIdentifier(string identifier)
         => $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 

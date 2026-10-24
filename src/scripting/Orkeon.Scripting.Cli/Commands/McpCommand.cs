@@ -121,11 +121,8 @@ internal static class McpCommand
         return await RunnerExecution.BuildToolHostAsync(
             settingsPath,
             cwd,
-            cliMounts: [],
-            mountIds: [],
-            allowExternalMounts: false,
             // No --mount, no --mount-id, no crew: a root declared twice has one remedy, in the settings.
-            offered: OfferedMountSelectors.None,
+            new ToolHostMounts(CliMounts: [], MountIds: [], AllowExternalMounts: false, Offered: OfferedMountSelectors.None),
             (context, services) =>
             {
                 services.AddSingleton(console);

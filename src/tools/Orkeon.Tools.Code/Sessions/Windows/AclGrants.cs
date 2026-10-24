@@ -78,13 +78,20 @@ internal static class AclGrants
     public static bool HasExplicitAce(string path, SecurityIdentifier sid)
     {
         ArgumentNullException.ThrowIfNull(sid);
-        FileSystemSecurity? security = Directory.Exists(path) ? new DirectoryInfo(path).GetAccessControl()
-            : File.Exists(path) ? new FileInfo(path).GetAccessControl()
-            : null;
+        var security = AccessControlOf(path);
         return security is not null && security
             .GetAccessRules(includeExplicit: true, includeInherited: false, typeof(SecurityIdentifier))
             .OfType<FileSystemAccessRule>()
             .Any(r => sid.Equals(r.IdentityReference));
+    }
+
+    private static FileSystemSecurity? AccessControlOf(string path)
+    {
+        if (Directory.Exists(path))
+            return new DirectoryInfo(path).GetAccessControl();
+        if (File.Exists(path))
+            return new FileInfo(path).GetAccessControl();
+        return null;
     }
 
     private static void ApplyOne(AclEntry entry, SecurityIdentifier sid)

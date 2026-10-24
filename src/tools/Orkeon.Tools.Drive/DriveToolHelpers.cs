@@ -34,6 +34,14 @@ internal static class DriveToolHelpers
     /// <summary>The length of <paramref name="result"/> as the agent loop renders it.</summary>
     public static int RenderedLength<T>(T result) => JsonSerializer.Serialize(result, Rendering).Length;
 
+    /// <summary>The kind of <paramref name="item"/> as the tool view names it.</summary>
+    private static string TypeOf(DriveItem item)
+    {
+        if (item.IsFolder)
+            return "folder";
+        return item.IsGoogleDocument ? "google-doc" : "file";
+    }
+
     /// <summary>The tool view of <paramref name="item"/>; listings leave its browser address out.</summary>
     public static DriveItemDto ToDto(DriveItem item, bool withUrl = false)
     {
@@ -42,7 +50,7 @@ internal static class DriveToolHelpers
         {
             Id = item.Id,
             Name = item.Name,
-            Type = item.IsFolder ? "folder" : item.IsGoogleDocument ? "google-doc" : "file",
+            Type = TypeOf(item),
             MimeType = item.IsFolder ? null : item.MimeType,
             Size = item.Size,
             Modified = item.Modified?.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),

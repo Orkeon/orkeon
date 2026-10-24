@@ -397,15 +397,7 @@ internal static class HostStartup
         for (var index = 0; index < args.Length && error is null; index++)
         {
             var argument = args[index];
-            var name = argument;
-            string? value = null;
-            var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
-            if (equals >= 0)
-            {
-                name = argument[..equals];
-                value = argument[(equals + 1)..];
-            }
-
+            var (name, value) = SplitAttached(argument);
             if (SwitchFlags.Contains(name, StringComparer.Ordinal))
             {
                 if (value is not null)
@@ -421,23 +413,9 @@ internal static class HostStartup
                 continue;
             }
 
-            if (value is null)
-            {
-                if (index + 1 >= args.Length)
-                {
-                    error = name is "--mount" or "-m"
-                        ? $"orkeon-host: {name} requires a value."
-                        : $"orkeon-host: {(name == "-s" ? "--settings" : name)} requires a path.";
-                    continue;
-                }
-
-                value = args[++index];
-            }
-            else if (value.Length == 0)
-            {
-                error = $"orkeon-host: {name}= has an empty value.";
+            error = ReadValue(args, ref index, name, ref value);
+            if (error is not null)
                 continue;
-            }
 
             switch (name)
             {
@@ -452,12 +430,42 @@ internal static class HostStartup
                     workingDirectory = value;
                     break;
                 default:
-                    mounts.Add(value);
+                    mounts.Add(value!);
                     break;
             }
         }
 
         return (new HostCommandLine(settings, mounts, workingDirectory, allowExternalMounts), error);
+    }
+
+    /// <summary>The name of <paramref name="argument"/> and the value attached to it (<c>--name=value</c>), null when none is.</summary>
+    private static (string Name, string? Value) SplitAttached(string argument)
+    {
+        var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
+        return equals >= 0 ? (argument[..equals], argument[(equals + 1)..]) : (argument, null);
+    }
+
+    /// <summary>
+    /// Completes <paramref name="value"/> of the value flag <paramref name="name"/>: the next argument
+    /// when none is attached. The refusal when there is none, or when the attached one is empty.
+    /// </summary>
+    private static string? ReadValue(string[] args, ref int index, string name, ref string? value)
+    {
+        if (value is not null)
+            return value.Length == 0 ? $"orkeon-host: {name}= has an empty value." : null;
+        if (index + 1 >= args.Length)
+            return MissingValue(name);
+        value = args[++index];
+        return null;
+    }
+
+    /// <summary>The refusal of a value flag given last, without its value.</summary>
+    private static string MissingValue(string name)
+    {
+        if (name is "--mount" or "-m")
+            return $"orkeon-host: {name} requires a value.";
+        var shown = name == "-s" ? "--settings" : name;
+        return $"orkeon-host: {shown} requires a path.";
     }
 }
 
