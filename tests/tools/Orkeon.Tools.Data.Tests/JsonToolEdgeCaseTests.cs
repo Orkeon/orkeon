@@ -234,6 +234,70 @@ public sealed class JsonToolEdgeCaseTests : IDisposable
         Assert.Contains("empty", result.Error, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task ShouldSkipEmptySegments_WhenQueryHasDoubleDots()
+    {
+        var result = await CallAsync(new Dictionary<string, object?>
+        {
+            ["input"] = """{"a":{"b":7}}""",
+            ["operation"] = "query",
+            ["query"] = ".a..b.",
+        });
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("Number", Dict(result)["type"]);
+    }
+
+    [Fact]
+    public async Task ShouldIgnoreEmptyBrackets_WhenQueryHasNoIndex()
+    {
+        var result = await CallAsync(new Dictionary<string, object?>
+        {
+            ["input"] = """{"items":[1,2]}""",
+            ["operation"] = "query",
+            ["query"] = "items[]",
+        });
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("Array", Dict(result)["type"]);
+    }
+
+    [Fact]
+    public async Task ShouldReadInputFromFile_WhenInputIsAPath()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"json_tool_{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(path, """{"k":"v"}""", TestContext.Current.CancellationToken);
+        try
+        {
+            var result = await CallAsync(new Dictionary<string, object?>
+            {
+                ["input"] = "  " + path,
+                ["operation"] = "query",
+                ["query"] = "k",
+            });
+
+            Assert.True(result.Success, result.Error);
+            Assert.Equal("v", Dict(result)["value"]?.ToString());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldFail_WhenInputPathDoesNotExist()
+    {
+        var result = await CallAsync(new Dictionary<string, object?>
+        {
+            ["input"] = "/nonexistent/json_tool_missing.json",
+            ["operation"] = "parse",
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains("File not found", result.Error, StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         _tool.Dispose();

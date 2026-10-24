@@ -288,6 +288,49 @@ public sealed class XlsxReadToolTests : IDisposable
         Assert.False(_tool.Schema.Parameters["has_header_row"].Required);
     }
 
+    [Fact]
+    public async Task ShouldReportDocumentPropertiesAndEmptySheet_WhenWorkbookCarriesThem()
+    {
+        var path = Path.Combine(_testDir, $"{Guid.NewGuid():N}.xlsx");
+        using (var workbook = new XLWorkbook())
+        {
+            workbook.Worksheets.Add("Blank");
+            workbook.Worksheets.Add("Data").Cell(1, 1).Value = "Header";
+            workbook.Properties.Title = "Quarterly";
+            workbook.Properties.Author = "Alice";
+            workbook.Properties.Subject = "Sales";
+            workbook.Properties.Company = "Orkeon";
+            workbook.Properties.Manager = "Bob";
+            workbook.Properties.Category = "Reports";
+            workbook.SaveAs(path);
+        }
+
+        var result = await _tool.CallAsync(
+            new ToolCallRequest("xlsx_reader", new Dictionary<string, object?>
+            {
+                ["file_path"] = path,
+                ["include_metadata"] = true,
+            }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
+        var metadata = Assert.IsType<Dictionary<string, object?>>(dict["metadata"]);
+        Assert.Equal("Quarterly", metadata["title"]);
+        Assert.Equal("Alice", metadata["author"]);
+        Assert.Equal("Sales", metadata["subject"]);
+        Assert.Equal("Orkeon", metadata["company"]);
+        Assert.Equal("Bob", metadata["manager"]);
+        Assert.Equal("Reports", metadata["category"]);
+
+        var sheets = Assert.IsType<List<object>>(dict["sheets"]);
+        var blank = Assert.IsType<Dictionary<string, object?>>(sheets[0]);
+        Assert.Equal("Blank", blank["name"]);
+        Assert.Equal(0, (int)blank["row_count"]!);
+        Assert.Equal(0, (int)blank["column_count"]!);
+        Assert.Empty(Assert.IsType<List<object>>(blank["headers"]));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private string CreateXlsxFile(string sheetName, List<string> headers, List<List<string>> rows)
