@@ -26,6 +26,8 @@ public enum LogLineKind
 /// <summary>One streamed output line, with the channel it came from.</summary>
 public sealed class LogLineViewModel
 {
+    private readonly CliLogLine _log;
+
     /// <summary>Wraps a line read from the child process.</summary>
     public LogLineViewModel(ProcessOutputLine line, LogLineKind kind = LogLineKind.Output)
     {
@@ -33,6 +35,7 @@ public sealed class LogLineViewModel
 
         Line = line;
         Kind = kind;
+        _log = CliLogLine.Parse(line.Text);
     }
 
     /// <summary>What this line is — the console colours on it.</summary>
@@ -47,14 +50,32 @@ public sealed class LogLineViewModel
     /// <summary>The underlying Core record.</summary>
     public ProcessOutputLine Line { get; }
 
-    /// <summary>The text as the CLI printed it.</summary>
-    public string Text => Line.Text;
+    /// <summary>
+    /// The text as the CLI printed it, without the console logger's own timestamp: the journal
+    /// already shows <see cref="Time"/>, and two clocks a few milliseconds apart said nothing more.
+    /// </summary>
+    public string Text => _log.Text;
+
+    /// <summary>The level of a CLI log line; null when the line is not one.</summary>
+    public CliLogLevel? Level => _log.Level;
 
     /// <summary>Which stream it came from.</summary>
     public ProcessOutputChannel Channel => Line.Channel;
 
-    /// <summary>Whether it came from stderr, which the view colours differently.</summary>
-    public bool IsError => Channel == ProcessOutputChannel.StandardError;
+    /// <summary>
+    /// Whether the view colours it as an error: a <c>fail</c> or <c>crit</c> log line, or a stderr
+    /// line that is no log line (a crash, a fault message). Never the stream alone: under
+    /// <c>--events</c> every log goes to stderr, and an <c>info</c> line is not an error.
+    /// </summary>
+    public bool IsError => _log.Level switch
+    {
+        CliLogLevel.Error or CliLogLevel.Critical => true,
+        null => Channel == ProcessOutputChannel.StandardError,
+        _ => false,
+    };
+
+    /// <summary>Whether it is a <c>warn</c> log line, which the view colours as a warning.</summary>
+    public bool IsWarning => _log.Level == CliLogLevel.Warning;
 
     /// <summary>When it was read.</summary>
     public DateTimeOffset TimestampUtc => Line.TimestampUtc;

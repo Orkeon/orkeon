@@ -192,6 +192,10 @@ est scellé (`sealed override ExecuteCoreAsync`) et effectue automatiquement :
 Une exception levée par `ExecuteTypedAsync` n'est pas fatale non plus : `CallAsync` la
 transforme en réponse en échec (`Tool execution failed: …`), et une annulation en
 `Operation cancelled`.
+Une exception que l'outil lève exprès, dont le message suffit à dire quoi corriger (un compte à
+choisir, une autorisation refusée), implémente le marqueur `IExpectedToolError` : `CallAsync`
+journalise son type et son message sans sa pile d'appels, qui reste pour toute autre exception,
+une panne.
 
 ### Exemple complet — Outil simple (sans dépendance externe)
 

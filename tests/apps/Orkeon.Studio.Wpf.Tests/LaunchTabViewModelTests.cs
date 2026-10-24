@@ -374,6 +374,46 @@ public sealed class RunLogViewModelTests
     }
 
     [Fact]
+    public void Should_NotColourAnInfoLine_AsAnError_When_ItCameFromStderr()
+    {
+        // Under --events every log of the CLI goes to stderr: the level decides, not the stream.
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:05.057 info: Orkeon.Verbose[0] Agent loop started"));
+
+        var line = Assert.Single(log.Lines);
+        Assert.False(line.IsError);
+        Assert.False(line.IsWarning);
+    }
+
+    [Fact]
+    public void Should_ColourByLevel_When_TheLineIsACliLogLine()
+    {
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:05.057 warn: Orkeon.Hosting[3] No default"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:05.058 fail: Orkeon.Tools[1] Error calling tool x"));
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:05.059 crit: Orkeon.Host[2] Down"));
+
+        Assert.True(log.Lines[0].IsWarning);
+        Assert.False(log.Lines[0].IsError);
+        Assert.True(log.Lines[1].IsError);
+        Assert.True(log.Lines[2].IsError);
+    }
+
+    [Fact]
+    public void Should_ShowOneTimestamp_When_TheCliLoggerStampedTheLine()
+    {
+        var log = new RunLogViewModel();
+
+        log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "13:55:05.057 info: Orkeon.Verbose[0] Agent loop started"));
+
+        var line = Assert.Single(log.Lines);
+        Assert.Equal("info: Orkeon.Verbose[0] Agent loop started", line.Text);
+        Assert.Equal($"{line.Time}  info: Orkeon.Verbose[0] Agent loop started", log.BuildText());
+    }
+
+    [Fact]
     public void Should_DropTheOldest_When_TheCapIsExceeded()
     {
         // The view virtualizes the rendering; the cap is what bounds the memory.

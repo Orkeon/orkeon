@@ -451,6 +451,25 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void The_technical_journal_opens_in_expert_mode_and_its_toggle_still_closes_it()
+    {
+        var window = Build();
+        window.Mode.SetNoviceCommand.Execute(null);
+
+        Assert.False(window.Launch.IsJournalOpen);
+
+        window.Mode.SetExpertCommand.Execute(null);
+        Assert.True(window.Launch.IsJournalOpen);
+
+        // The toggle of the view writes the property: in expert mode it closes the journal.
+        window.Launch.IsJournalOpen = false;
+        Assert.False(window.Launch.IsJournalOpen);
+
+        window.Mode.SetNoviceCommand.Execute(null);
+        Assert.False(window.Launch.IsJournalOpen);
+    }
+
+    [Fact]
     public async Task Should_RefreshTheCardsAndTheLauncher_When_AFolderIsDeclaredInTheSettings()
     {
         // The verdicts are read live from the settings editor, but a card computes its chips

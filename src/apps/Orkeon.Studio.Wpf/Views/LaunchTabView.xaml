@@ -952,7 +952,7 @@
       <StackPanel>
         <DockPanel>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5"
-                  Margin="0,0,8,0" Click="OnCopyJournal"
+                  Margin="8,0,0,0" Click="OnCopyJournal"
                   Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
@@ -987,7 +987,8 @@
           </StackPanel>
         </DockPanel>
 
-        <!-- open when toggled, and always in expert -->
+        <!-- open when toggled; expert mode opens it by default (MainWindowViewModel), the
+             toggle still closes it -->
         <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="6" Margin="0,12,0,0"
                 MaxHeight="240">
           <Border.Style>
@@ -995,9 +996,6 @@
               <Setter Property="Visibility" Value="Collapsed"/>
               <Style.Triggers>
                 <DataTrigger Binding="{Binding IsJournalOpen}" Value="True">
-                  <Setter Property="Visibility" Value="Visible"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
                   <Setter Property="Visibility" Value="Visible"/>
                 </DataTrigger>
               </Style.Triggers>
@@ -1021,8 +1019,8 @@
               <DataTemplate>
                 <StackPanel Orientation="Horizontal">
                   <!-- When Studio read the line (STUDIO-17): a long run has to say when it last
-                       spoke. Local time, to the second. The CLI's own log lines keep their
-                       millisecond prefix — same clock, a few milliseconds apart. -->
+                       spoke. Local time, to the second. The CLI logger's own timestamp is dropped
+                       from the text (CliLogLine): one clock per line. -->
                   <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
                              Foreground="{DynamicResource ConsoleFgBrush}"/>
                 <TextBlock Text="{Binding Text}">
@@ -1040,6 +1038,9 @@
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsOutcome}" Value="True">
                           <Setter Property="Foreground" Value="{DynamicResource ConsoleOkBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                          <Setter Property="Foreground" Value="{DynamicResource ConsoleWarnBrush}"/>
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsError}" Value="True">
                           <Setter Property="Foreground" Value="{DynamicResource ConsoleErrBrush}"/>
