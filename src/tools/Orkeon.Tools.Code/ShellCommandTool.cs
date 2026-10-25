@@ -743,7 +743,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
         var outboundReplacements = BuildOutboundReplacements();
-        var view = new ShellSessionView(BuildConfinedPaths(), [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork);
+        var confinedPaths = await BuildConfinedPathsAsync(cancellationToken).ConfigureAwait(false);
+        var view = new ShellSessionView(confinedPaths, [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork);
 
         if (detached)
             return await StartJobAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
@@ -844,18 +845,21 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// Write is left out; a sub path that grants neither is covered when it exists. Built per call, like
     /// the outbound table: mounts can be swapped per async flow (IFileSystemScope).
     /// </summary>
-    private List<ConfinedPath> BuildConfinedPaths()
+    private async Task<List<ConfinedPath>> BuildConfinedPathsAsync(CancellationToken cancellationToken)
     {
         var paths = new List<ConfinedPath>();
         var agentRoot = AgentRunScope.Current?.Root?.TrimEnd('/');
         foreach (var mount in _fileSystem.GetAvailableMounts())
-            AddMountPaths(paths, mount, agentRoot);
+            await AddMountPathsAsync(paths, mount, agentRoot, cancellationToken).ConfigureAwait(false);
 
         return paths;
     }
 
-    /// <summary>Adds the paths <paramref name="mount"/> binds: its root (or the agent root it holds), then its sub-path overrides.</summary>
-    private void AddMountPaths(List<ConfinedPath> paths, MountInfo mount, string? agentRoot)
+    /// <summary>
+    /// Adds the paths <paramref name="mount"/> binds: its root (or the agent root it holds, with the git
+    /// dirs of a linked worktree there), then its sub-path overrides.
+    /// </summary>
+    private async Task AddMountPathsAsync(List<ConfinedPath> paths, MountInfo mount, string? agentRoot, CancellationToken cancellationToken)
     {
         var virtualRoot = mount.VirtualPath.TrimEnd('/');
         if (virtualRoot.Length == 0)
@@ -867,32 +871,55 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return;
 
         // A declared agent root narrows the mount that holds it to the root, at its physical path,
-        // never the whole mount (RT-06); the other mounts stay bound as they are.
+        // never the whole mount (RT-06); the other mounts stay bound as they are. Each bound area
+        // (virtual path, path the process sees it at) takes the overrides below it.
         var heldRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot) ? agentRoot : null;
+        var areas = new List<(string VirtualPath, string Destination)>();
         if (heldRoot is not null)
-            AddAgentRootPath(paths, heldRoot);
-        else if (Granted(mount.DefaultRights) is { } access)
-            paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
+        {
+            areas.Add((heldRoot, heldRoot));
+            if (AddAgentRootPath(paths, heldRoot) is { } rootAccess)
+            {
+                // A linked worktree commits through git dirs outside the root (#188).
+                var gitBinds = await GitWorktreeBinds.FindAsync(_fileSystem, heldRoot, virtualRoot, root.ResolvedPath, rootAccess,
+                    virtualPath => Granted(RightsAt(virtualPath)), _logger, cancellationToken).ConfigureAwait(false);
+                foreach (var bind in gitBinds)
+                {
+                    paths.Add(bind.Path);
+                    areas.Add((bind.VirtualPath, bind.Path.Destination));
+                }
+            }
+        }
+        else
+        {
+            areas.Add((virtualRoot, virtualRoot));
+            if (Granted(mount.DefaultRights) is { } access)
+                paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
+        }
 
-        AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, heldRoot);
+        AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, areas);
     }
 
-    /// <summary>Adds the agent root a mount holds, with the rights in force there.</summary>
-    private void AddAgentRootPath(List<ConfinedPath> paths, string agentRoot)
+    /// <summary>Adds the agent root a mount holds, with the rights in force there; how it is bound, or null when it is not.</summary>
+    private ConfinedAccess? AddAgentRootPath(List<ConfinedPath> paths, string agentRoot)
     {
         // The rights in force at the root, as the file system resolves them (an override above
         // the root counts), not the mount's default.
         var narrowed = _fileSystem.ResolveAndValidate(agentRoot, FileAccessRights.None);
-        if (narrowed.IsAllowed && !string.IsNullOrEmpty(narrowed.ResolvedPath) && Granted(RightsAt(agentRoot)) is { } rootAccess)
-            paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot, rootAccess));
+        if (!narrowed.IsAllowed || string.IsNullOrEmpty(narrowed.ResolvedPath) || Granted(RightsAt(agentRoot)) is not { } rootAccess)
+            return null;
+
+        paths.Add(new ConfinedPath(narrowed.ResolvedPath, agentRoot, rootAccess));
+        return rootAccess;
     }
 
     /// <summary>
-    /// Adds the sub-path overrides of a mount; when the mount holds <paramref name="heldRoot"/>, only
-    /// those under it.
+    /// Adds the sub-path overrides of a mount that lie in one of the bound <paramref name="areas"/>, at the
+    /// path that area is seen at (the first area that holds an override places it).
     /// </summary>
     private static void AddOverridePaths(
-        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot, string? heldRoot)
+        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot,
+        List<(string VirtualPath, string Destination)> areas)
     {
         foreach (var subPath in overrides)
         {
@@ -900,13 +927,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             if (relative.Length == 0)
                 continue;
 
-            if (heldRoot is not null && !MatchesMountPrefix($"{virtualRoot}/{relative}", heldRoot))
+            var virtualPath = $"{virtualRoot}/{relative}";
+            var area = areas.FindIndex(a => MatchesMountPrefix(virtualPath, a.VirtualPath));
+            if (area < 0)
                 continue;
 
             var source = Path.Combine(physicalRoot, relative);
             var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
             if (granted is { } subAccess)
-                paths.Add(new ConfinedPath(source, $"{virtualRoot}/{relative}", subAccess));
+                paths.Add(new ConfinedPath(source, areas[area].Destination + virtualPath[areas[area].VirtualPath.Length..], subAccess));
         }
     }
 

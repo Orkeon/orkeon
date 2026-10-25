@@ -75,6 +75,23 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.
+- **Racine de travail de l'agent.** Un agent qui déclare une
+  [racine de travail](vfs-compliance.md#racine-de-travail-dun-agent-et-mount) ne voit, du mount qui
+  la tient, que la racine. Quand la racine est un worktree git lié (son `.git` est un fichier,
+  `gitdir: <chemin>`, écrit par `git worktree add`), le répertoire git du worktree
+  (`<principal>/.git/worktrees/<nom>`) et le répertoire commun que nomme son `commondir`
+  (`<principal>/.git`) sont liés aussi, avec les droits de la racine, pour que `git status`,
+  `git add` et `git commit` y fonctionnent et commitent sur la branche du worktree ; le `config`
+  et les `hooks` du répertoire commun sont liés en lecture seule (ils nomment des programmes que
+  git lance sur l'hôte). Rien d'autre du checkout principal n'est lié : son arbre de travail reste
+  hors d'atteinte. Un gitdir relatif (`git worktree add --relative-paths`, git 2.48 et suivants)
+  est résolu contre le chemin virtuel de la racine et lié aux chemins virtuels ; un gitdir absolu
+  qui nomme le chemin de l'hôte (`git worktree add` simple) est lié à ce chemin de l'hôte, et
+  seulement s'il se trouve sous la racine physique du mount. Un gitdir ou un commondir qui sort du
+  mount, contient la racine, ne peut être lu ou n'a pas la forme d'un worktree ne lie rien (journal
+  au niveau Debug). Les trois backends prennent ces chemins dans la même liste : Seatbelt et
+  AppContainer les accordent à leurs chemins physiques, où git les trouve par un gitdir relatif ou
+  un chemin de l'hôte.
 - **Tâches.** `action = start_job` lance une commande de l'allowlist en tâche détachée, avec le
   même confinement qu'un appel bloquant, et renvoie un `job_id` et le chemin virtuel de son fichier
   de sortie, `/output/jobs/<id>.log` (le premier montage avec droit d'écriture quand `/output`

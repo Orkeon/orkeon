@@ -156,7 +156,8 @@ les mounts, jamais une extension :
   `/tmp`) gardent leurs propres droits ;
 - `shell_command` refuse un répertoire de travail ou un argument de chemin hors de la racine,
   prend la racine pour répertoire de travail par défaut et y restreint les chemins confinés de
-  son bac à sable ;
+  son bac à sable (plus, quand la racine est un worktree git lié, les répertoires git par lesquels
+  il commite : [Confinement du shell](security.md#confinement-du-shell)) ;
 - un refus reprend la forme du refus VFS : les chemins physiques sont masqués.
 
 La racine d'un agent script tient chaque outil que son corps exécute. `ctx.llm.act` et `ctx.tools`
