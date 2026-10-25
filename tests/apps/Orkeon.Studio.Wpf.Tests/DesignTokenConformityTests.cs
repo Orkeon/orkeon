@@ -82,6 +82,29 @@ public sealed partial class DesignTokenConformityTests
         Assert.True(offenders.Count == 0, "Bound Run without Mode=OneWay: " + string.Join(", ", offenders));
     }
 
+    /// <summary>
+    /// A key declared twice in one resource dictionary compiles on every platform, and WPF only
+    /// throws when it loads the dictionary: Studio did not start (a second « Lucide.gauge » in
+    /// Icons.xaml). Siblings under one element - a dictionary's entries - each hold their key once.
+    /// </summary>
+    [Fact]
+    public void Should_Declare_Each_Key_Once_When_Reading_A_Resource_Dictionary()
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var offenders = XamlFiles()
+            .SelectMany(file => XDocument.Load(file).Descendants()
+                .Select(parent => parent.Elements()
+                    .Select(e => (string?)e.Attribute(x + "Key"))
+                    .Where(k => k is not null)
+                    .GroupBy(k => k!)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => $"{Path.GetFileName(file)}: {g.Key}"))
+                .SelectMany(keys => keys))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Key declared twice in one dictionary: " + string.Join(", ", offenders));
+    }
+
     private static string Theme(string fileName) =>
         Path.Combine(WpfSourceRoot(), "Themes", fileName);
 
