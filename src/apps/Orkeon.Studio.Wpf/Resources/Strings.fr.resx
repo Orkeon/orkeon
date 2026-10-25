@@ -366,7 +366,6 @@
   <data name="Studio.Create.StatusJudging" xml:space="preserve"><value>Je vérifie le résultat par rapport à votre demande…</value></data>
   <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Votre équipe est prête.</value></data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Quelque chose s'est mal passé — le détail est dans la carte ci-dessous.</value></data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Arrêté — reprenez quand vous voulez depuis « Mes équipes ».</value></data>
   <data name="Studio.Create.Attempt" xml:space="preserve"><value>Essai {0}</value></data>
   <data name="Studio.Create.CheckUnverified" xml:space="preserve"><value>Je n&#x27;ai pas pu vérifier ce point automatiquement — jugez sur pièce.</value></data>
   <data name="Studio.Create.ResultScore" xml:space="preserve"><value>L&#x27;essai est terminé (score {0}).</value></data>
@@ -439,18 +438,15 @@
 <data name="Studio.Settings.CopySuffix" xml:space="preserve"><value>copie</value></data>
 <data name="Studio.Shell.Create" xml:space="preserve"><value>Créer une équipe</value></data>
 <data name="Studio.Shell.NavTeams" xml:space="preserve"><value>Mes équipes</value></data>
-<data name="Studio.Create.Title" xml:space="preserve"><value>Créer une équipe d'agents</value></data>
-<data name="Studio.Create.SubNovice" xml:space="preserve"><value>Quatre étapes : décrire le besoin, valider la composition, essayer, adopter. Rien n'est écrit avant la dernière.</value></data>
-<data name="Studio.Create.SubExpert" xml:space="preserve"><value>Assistant de composition. La définition YAML est éditable dès l'étape 2 ; l'essai commence par une vérification sans exécution.</value></data>
+<data name="Studio.Create.Title" xml:space="preserve"><value>Créer une équipe</value></data>
 <data name="Studio.Teams.ScreenTitle" xml:space="preserve"><value>Mes équipes d'agents</value></data>
 <data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Chaque équipe est un dossier autonome sur cette machine : copiable, partageable, supprimable.</value></data>
 <data name="Studio.Create.Restart" xml:space="preserve"><value>Recommencer</value></data>
 <data name="Studio.Create.Stop" xml:space="preserve"><value>Arrêter</value></data>
 <data name="Studio.Create.AssistantBy" xml:space="preserve"><value>Assistant opéré par</value></data>
-<data name="Studio.Create.AssistantMissing" xml:space="preserve"><value>Assistant non configuré — choisissez son modèle ci-dessous.</value></data>
-<data name="Studio.Create.GateTitle" xml:space="preserve"><value>L'assistant a besoin d'un modèle d'IA</value></data>
-<data name="Studio.Create.GateBody" xml:space="preserve"><value>C'est lui qui composera votre équipe et rédigera les verdicts d'essai. Choisissez un modèle — la création s'ouvrira juste après, et vous pourrez en changer à tout moment dans Réglages.</value></data>
-<data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Gérer les modèles</value></data>
+<data name="Studio.Create.GateTitle" xml:space="preserve"><value>L'assistant a besoin d'un modèle. C'est lui qui composera votre équipe et rédigera les verdicts d'essai.</value></data>
+<data name="Studio.Create.GateBody" xml:space="preserve"><value>Choisissez un modèle : la création s'ouvrira juste après, et vous pourrez en changer à tout moment dans Réglages.</value></data>
+<data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Gérer les réglages</value></data>
 <data name="Studio.Create.Step1" xml:space="preserve"><value>Décrire</value></data>
 <data name="Studio.Create.Step2" xml:space="preserve"><value>Composer</value></data>
 <data name="Studio.Create.Step3" xml:space="preserve"><value>Essayer</value></data>
@@ -480,7 +476,7 @@
 <data name="Studio.Create.SchedHourlyHint" xml:space="preserve"><value>automatiquement, en continu</value></data>
 <data name="Studio.Create.SchedAt" xml:space="preserve"><value>à</value></data>
 <data name="Studio.Create.SchedLocalTime" xml:space="preserve"><value>heure locale de cette machine</value></data>
-<data name="Studio.Create.Save" xml:space="preserve"><value>Enregistrer dans mes équipes</value></data>
+<data name="Studio.Create.Save" xml:space="preserve"><value>Adopter l'équipe</value></data>
 <data name="Studio.Create.AdoptedLine" xml:space="preserve"><value>L'équipe « {0} » est enregistrée dans Mes équipes.</value></data>
 <data name="Studio.Create.SessionNotRenamed" xml:space="preserve"><value>Sa session d'atelier garde son ancien nom de dossier — {0}</value></data>
 <data name="Studio.Create.LauncherTooLong" xml:space="preserve"><value>Son run.cmd ne lance rien sous Windows : sa commande compte {0} caractères, au-delà des {1} qu'accepte Windows (option la plus longue : {2}).</value></data>
@@ -857,8 +853,7 @@
   <data name="Studio.Create.TeamFolders" xml:space="preserve"><value>Dossiers de cette équipe</value></data>
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Autoriser un dossier</value></data>
   <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choisir le dossier…</value></data>
-  <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>Ces dossiers seront enregistrés avec l'équipe au moment de l'adoption — l'essai, lui, tourne dans son bac à sable.</value></data>
-  <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>Ils viennent des agents : c'est en modifiant un agent que vous changez ce qu'il voit.</value></data>
+  <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>Déduits des agents : modifier un agent change ce qu'il voit. Enregistrés avec l'équipe à l'adoption ; l'essai tourne dans son bac à sable.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe</value></data>
   <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe — aucune session d'atelier ne pointe ici, elle sera reconstruite depuis les fichiers de l'équipe</value></data>
@@ -966,9 +961,6 @@
   <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>Poser une question</value>
   </data>
-  <data name="Studio.Chat.AskShort" xml:space="preserve">
-    <value>Question</value>
-  </data>
   <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>Poser une question à l'assistant</value>
   </data>
@@ -1064,9 +1056,6 @@
   </data>
   <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
     <value>L'équipe est générée et vérifiée. L'essai produit un rapport sur son comportement ; adopter maintenant se passe de ce rapport, rien d'autre.</value>
-  </data>
-  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
-    <value>Cette équipe lit. Choisissez le dossier qu'elle doit lire, sinon elle recevra à l'adoption son propre dossier « input » vide — et rien n'y copiera vos documents.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} fichier(s) écrit(s)</value>
@@ -1600,7 +1589,7 @@
   </data>
   <!-- STUDIO-13: the wizard's failure card -->
   <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
-    <value>Le moteur orkeon est introuvable sur cette machine.</value>
+    <value>Le moteur Orkeon est introuvable sur cette machine.</value>
   </data>
   <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
     <value>Le moteur a refusé de continuer.</value>
@@ -1945,4 +1934,19 @@
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuelle</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0}.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autoriser</value></data>
+  <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>En cours</value></data>
+  <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>En attente de vous</value></data>
+  <data name="Studio.Create.SessionPaused" xml:space="preserve"><value>En pause</value></data>
+  <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Brouillon enregistré à {0}</value></data>
+  <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Cette session ne peut plus être reprise ici : recommencez, ou retrouvez-la sous « Créations en cours » dans Mes équipes.</value></data>
+  <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:dossier|dossiers} à choisir avant l'essai.</value></data>
+  <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} {0:plural:critère atteint|critères atteints} sur {1}</value></data>
+  <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Rien n'est écrit sur votre machine avant l'adoption.</value></data>
+  <data name="Studio.Create.Back" xml:space="preserve"><value>Retour</value></data>
+  <data name="Studio.Create.Resume" xml:space="preserve"><value>Reprendre</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lecture</value></data>
+  <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Lecture et écriture</value></data>
+  <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>À choisir</value></data>
+  <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>À choisir : sans dossier source, l'équipe partira d'un dossier « input » vide.</value></data>
+  <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Besoin</value></data>
 </root>

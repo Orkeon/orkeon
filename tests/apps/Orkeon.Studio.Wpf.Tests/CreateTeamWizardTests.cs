@@ -3215,8 +3215,10 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.HasFailure);
         Assert.Null(vm.Failure);
         Assert.Equal("", vm.BuildFailureReport());
-        // A success status is never hidden behind a stale card (D-05).
-        Assert.Equal("Stopped — you can pick it up again from My solutions.", vm.StatusMessage);
+        // A success state is never hidden behind a stale card (D-05): the paused session now
+        // reads at the end of the stepper line as a saved draft, not as a status sentence.
+        Assert.True(vm.IsDraftSaved);
+        Assert.True(vm.HasSessionState);
     }
 
     [Fact]

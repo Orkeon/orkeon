@@ -133,8 +133,12 @@ public sealed record ForgeVerdictView(
 /// One line of the ✔/✘ checklist: a criterion's statement, whether it held — null when the
 /// judge was unavailable and honesty demands "judge for yourself" — and the finding's
 /// wording when it did not.
+/// <para>
+/// <see cref="IsRemark"/> sets a finding the engine does not block on (major, minor) apart from
+/// a failure: the criterion carries a remark, drawn amber, never the red of a blocking finding.
+/// </para>
 /// </summary>
-public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? Detail);
+public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? Detail, bool IsRemark = false);
 
 /// <summary>What a promotion produced.</summary>
 public sealed record ForgePromotion(string Path, string Launcher, string? Install);
@@ -663,7 +667,7 @@ public sealed class ForgeSessionModel
             var orphaned = string.IsNullOrWhiteSpace(finding.Acceptance)
                 || !_criteria.Any(c => string.Equals(c.Id, finding.Acceptance, StringComparison.OrdinalIgnoreCase));
             if (orphaned)
-                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence));
+                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence, IsRemark: !finding.IsBlocking));
         }
 
         foreach (var criterion in _criteria)
@@ -696,7 +700,9 @@ public sealed class ForgeSessionModel
         var detail = finding.Evidence is { Length: > 0 } evidence
             ? $"{finding.Statement} — {evidence}"
             : finding.Statement;
-        return new ForgeChecklistItem(criterion.Statement, false, detail);
+        // Only a blocking finding fails the criterion, the engine's own rule for « passing »;
+        // a major or minor one is a remark on it.
+        return new ForgeChecklistItem(criterion.Statement, false, detail, IsRemark: !finding.IsBlocking);
     }
 
     /// <summary>The <c>id</c> of the event's <c>reference</c> object; null when there is none.</summary>

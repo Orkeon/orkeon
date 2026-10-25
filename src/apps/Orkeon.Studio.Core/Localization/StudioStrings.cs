@@ -230,8 +230,6 @@ public static class StudioStringKeys
     public const string ChatPlaceholderAnswer = "Studio.Chat.PlaceholderAnswer";
     /// <summary>"Ask a question"</summary>
     public const string ChatAsk = "Studio.Chat.Ask";
-    /// <summary>"Question"</summary>
-    public const string ChatAskShort = "Studio.Chat.AskShort";
     /// <summary>"Ask the assistant a question"</summary>
     public const string ChatAskTip = "Studio.Chat.AskTip";
     /// <summary>"See the conversation"</summary>
@@ -1690,9 +1688,6 @@ public static class StudioStringKeys
     /// <summary>What adopting without a trial gives up, said before the click.</summary>
     public const string ComposeAdoptWithoutTrialTip = "Studio.Create.AdoptWithoutTrialTip";
 
-    /// <summary>That a reading team gets an empty folder unless one is chosen or filled.</summary>
-    public const string ComposeFillInputFolder = "Studio.Create.FillInputFolder";
-
     /// <summary>"{0} file(s) written"</summary>
     public const string ComposeFilesWritten = "Studio.Create.FilesWritten";
 
@@ -2119,8 +2114,29 @@ public static class StudioStringKeys
     /// <summary>"Something went wrong — the detail is in the card below."</summary>
     public const string ForgeStatusFailed = "Studio.Create.StatusFailed";
 
-    /// <summary>"Stopped — you can pick it up again from My solutions."</summary>
-    public const string ForgeStatusStopped = "Studio.Create.StatusStopped";
+    /// <summary>"Running" — the stepper's session indicator while the engine works.</summary>
+    public const string WizardSessionRunning = "Studio.Create.SessionRunning";
+
+    /// <summary>"Waiting for you" — the engine lives and waits for an answer.</summary>
+    public const string WizardSessionWaiting = "Studio.Create.SessionWaiting";
+
+    /// <summary>"Paused" — the user stopped the session; « Resume » follows.</summary>
+    public const string WizardSessionPaused = "Studio.Create.SessionPaused";
+
+    /// <summary>"Draft saved at {0}" — {0} the local time, HH:mm.</summary>
+    public const string WizardDraftSavedAt = "Studio.Create.DraftSavedAt";
+
+    /// <summary>"This session can no longer be resumed here: ..." — « Resume » found no resumable session.</summary>
+    public const string WizardResumeUnavailable = "Studio.Create.ResumeUnavailable";
+
+    /// <summary>"{0} folder(s) to choose before the trial." — the step-2 action bar.</summary>
+    public const string WizardFoldersToChoose = "Studio.Create.FoldersToChoose";
+
+    /// <summary>"Composed and validated — nothing has run yet." — the step-2 action bar at the pause.</summary>
+    public const string WizardPausedHint = "Studio.Create.PausedHint";
+
+    /// <summary>"{0} of {1} criteria met" — the verdict's summary sentence.</summary>
+    public const string WizardVerdictSummary = "Studio.Create.VerdictSummary";
 
     /// <summary>"Attempt {0}"</summary>
     public const string ForgeAttempt = "Studio.Create.Attempt";
@@ -2509,7 +2525,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatKeyHint] = "Enter to send · Shift+Enter for a new line",
         [StudioStringKeys.ChatPlaceholder] = "Ask the assistant a question…",
         [StudioStringKeys.ChatAsk] = "Ask a question",
-        [StudioStringKeys.ChatAskShort] = "Question",
         [StudioStringKeys.ChatAskTip] = "Ask the assistant a question",
         [StudioStringKeys.ChatSeeConversation] = "See the conversation",
         [StudioStringKeys.ChatClose] = "Close the conversation",
@@ -3031,7 +3046,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeEngineVersion] = "engine {0}",
         [StudioStringKeys.ComposeAdoptWithoutTrial] = "Adopt without trying",
         [StudioStringKeys.ComposeAdoptWithoutTrialTip] = "The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.",
-        [StudioStringKeys.ComposeFillInputFolder] = "This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.",
         [StudioStringKeys.ComposeFilesWritten] = "{0} file(s) written",
         [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
         [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",
@@ -3185,7 +3199,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ForgeStatusJudging] = "Checking the result against what you asked…",
         [StudioStringKeys.ForgeStatusReady] = "Your solution is ready.",
         [StudioStringKeys.ForgeStatusFailed] = "Something went wrong — the detail is in the card below.",
-        [StudioStringKeys.ForgeStatusStopped] = "Stopped — you can pick it up again from My solutions.",
+        [StudioStringKeys.WizardSessionRunning] = "Running",
+        [StudioStringKeys.WizardSessionWaiting] = "Waiting for you",
+        [StudioStringKeys.WizardSessionPaused] = "Paused",
+        [StudioStringKeys.WizardDraftSavedAt] = "Draft saved at {0}",
+        [StudioStringKeys.WizardResumeUnavailable] = "This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.",
+        [StudioStringKeys.WizardFoldersToChoose] = "{0} {0:plural:folder|folders} to choose before the trial.",
+        [StudioStringKeys.WizardPausedHint] = "Composed and validated — nothing has run yet.",
+        [StudioStringKeys.WizardVerdictSummary] = "{0} of {1} {1:plural:criterion|criteria} met",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
         [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",

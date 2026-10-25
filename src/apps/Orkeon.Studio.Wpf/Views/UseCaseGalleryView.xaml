@@ -19,7 +19,7 @@
       <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Top"
               Command="{Binding CloseCommand}"
               ToolTip="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}">
-        <controls:LucideIcon Kind="x" Size="14"/>
+        <controls:LucideIcon Kind="x" Size="16"/>
       </Button>
       <StackPanel Margin="0,0,12,0">
         <StackPanel Orientation="Horizontal">
@@ -75,7 +75,7 @@
       </WrapPanel>
 
       <DockPanel Margin="0,6,0,0">
-        <Button DockPanel.Dock="Right" Style="{StaticResource LinkBtn}" Command="{Binding ClearFiltersCommand}"
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Command="{Binding ClearFiltersCommand}"
                 Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Text="{Binding CountLabel}"/>
       </DockPanel>
@@ -93,7 +93,7 @@
         <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Top" Margin="8,0,0,0"
                 Command="{Binding DismissCommand}"
                 ToolTip="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}">
-          <controls:LucideIcon Kind="x" Size="12"/>
+          <controls:LucideIcon Kind="x" Size="16"/>
         </Button>
         <StackPanel>
           <StackPanel Visibility="{Binding HasConflict, Converter={StaticResource BooleanToVisibility}}">
@@ -108,14 +108,14 @@
             </WrapPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibility}}">
-            <controls:LucideIcon Kind="loader-circle" Size="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
+            <controls:LucideIcon Kind="loader-circle" Size="16" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportingLabel}"/>
           </StackPanel>
           <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Text="{Binding Failure}"
                      Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}"/>
           <StackPanel Visibility="{Binding HasImported, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="circle-check" Size="14" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+              <controls:LucideIcon Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                          Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportedLine}"/>
             </StackPanel>
@@ -136,48 +136,35 @@
                Text="{Binding [Studio.Create.GalleryLoading], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibility}}"/>
 
-    <!-- D-05: no catalogue, no fallback — the wizard's « engine not found » card (STUDIO-13's
-         three zones: the novice sentence, the CLI's own words in mono, the ways out). -->
-    <Border DockPanel.Dock="Top" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource DangerBrush}"
-            BorderThickness="1" CornerRadius="14" Padding="18,16" Margin="24,16,24,0"
-            Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="circle-x" Size="16" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
-          <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                     TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Failure.Headline}"/>
-        </StackPanel>
-        <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="10,8" Margin="0,10,0,0" MaxHeight="180"
-                Visibility="{Binding Failure.HasDetail, Converter={StaticResource BooleanToVisibility}}">
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap"
-                       Foreground="{DynamicResource ConsoleFgBrush}" Text="{Binding Failure.Detail}"/>
-          </ScrollViewer>
-        </Border>
-        <WrapPanel Margin="0,12,0,0">
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding RetryCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="rotate-cw" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
-                  Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="stethoscope" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-        </WrapPanel>
-      </StackPanel>
-    </Border>
+    <!-- D-05: no catalogue, no fallback — a danger alert (R7, lot 3): the novice sentence
+         (« The Orkeon engine cannot be found on this machine »), the CLI's own words folded
+         under « Technical details », the ways out. -->
+    <controls:Alert DockPanel.Dock="Top" Tone="Danger" Margin="24,16,24,0"
+                    Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
+                    Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <WrapPanel>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RetryCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="rotate-cw" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+                Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="stethoscope" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </controls:Alert>
 
     <!-- nothing kept: say so, and the way back -->
     <StackPanel DockPanel.Dock="Top" Margin="24,18,24,0"
                 Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
       <TextBlock Style="{StaticResource Hint}" FontSize="13"
                  Text="{Binding [Studio.Create.GalleryEmpty], Source={x:Static services:I18n.Instance}}"/>
-      <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,8,0,0"
+      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" HorizontalAlignment="Left" Margin="0,8,0,0"
               Command="{Binding ClearFiltersCommand}"
               Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
     </StackPanel>
@@ -191,17 +178,17 @@
             <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,10">
               <DockPanel>
                 <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0">
-                  <Button Style="{StaticResource ChipAction}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
                           Command="{Binding ChooseCommand}"
                           Content="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
                   <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
                        teams, ready to run and to modify; never on a reference-only case. -->
-                  <Button Style="{StaticResource ChipAction}" Margin="0,6,0,0"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,6,0,0"
                           Command="{Binding ImportAsIsCommand}"
                           ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
                           Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="arrow-down" Size="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                      <controls:LucideIcon Kind="arrow-down" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
                       <TextBlock Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>

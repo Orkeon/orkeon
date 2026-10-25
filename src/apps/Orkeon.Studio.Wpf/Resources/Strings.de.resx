@@ -1002,9 +1002,6 @@
   <data name="Studio.Create.StatusFailed" xml:space="preserve">
     <value>Etwas ist schiefgegangen — die Einzelheiten stehen in der Karte darunter.</value>
   </data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve">
-    <value>Angehalten — Sie können jederzeit unter «Meine Lösungen» weitermachen.</value>
-  </data>
   <data name="Studio.Create.Attempt" xml:space="preserve">
     <value>Versuch {0}</value>
   </data>
@@ -1224,12 +1221,6 @@
   <data name="Studio.Create.Title" xml:space="preserve">
     <value>Agenten-Team erstellen</value>
   </data>
-  <data name="Studio.Create.SubNovice" xml:space="preserve">
-    <value>Vier Schritte: Bedarf beschreiben, Zusammensetzung bestätigen, ausprobieren, übernehmen. Vor dem letzten wird nichts geschrieben.</value>
-  </data>
-  <data name="Studio.Create.SubExpert" xml:space="preserve">
-    <value>Kompositionsassistent. Die YAML-Definition ist ab Schritt 2 editierbar; der Probelauf läuft als Dry-Run.</value>
-  </data>
   <data name="Studio.Teams.ScreenTitle" xml:space="preserve">
     <value>Meine Agenten-Teams</value>
   </data>
@@ -1244,9 +1235,6 @@
   </data>
   <data name="Studio.Create.AssistantBy" xml:space="preserve">
     <value>Assistent betrieben mit</value>
-  </data>
-  <data name="Studio.Create.AssistantMissing" xml:space="preserve">
-    <value>Assistent nicht konfiguriert — wählen Sie unten sein Modell.</value>
   </data>
   <data name="Studio.Create.GateTitle" xml:space="preserve">
     <value>Der Assistent braucht ein KI-Modell</value>
@@ -2438,9 +2426,6 @@
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>Diese Ordner werden bei der Übernahme mit dem Team gespeichert — der Versuch selbst läuft in seiner eigenen Sandbox.</value>
   </data>
-  <data name="Studio.Create.DerivedHint" xml:space="preserve">
-    <value>Sie kommen von den Agenten: Was ein Agent sieht, ändern Sie, indem Sie den Agenten bearbeiten.</value>
-  </data>
   <data name="Studio.Teams.Modify" xml:space="preserve">
     <value>Bearbeiten</value>
   </data>
@@ -2630,9 +2615,6 @@
   <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>Frage stellen</value>
   </data>
-  <data name="Studio.Chat.AskShort" xml:space="preserve">
-    <value>Frage</value>
-  </data>
   <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>Dem Assistenten eine Frage stellen</value>
   </data>
@@ -2728,9 +2710,6 @@
   </data>
   <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
     <value>Das Team ist erzeugt und geprüft. Der Test liefert einen Bericht über sein Verhalten; wer jetzt übernimmt, verzichtet auf diesen Bericht, sonst nichts.</value>
-  </data>
-  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
-    <value>Dieses Team liest. Wählen Sie den Ordner, den es lesen soll — sonst erhält es bei der Übernahme seinen eigenen leeren Ordner «input», und nichts kopiert Ihre Dokumente hinein.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} Datei(en) geschrieben</value>
@@ -3709,4 +3688,19 @@
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuell</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Geben Sie zuerst den Ordner {0} frei.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Freigeben</value></data>
+  <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Läuft</value></data>
+  <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Wartet auf Sie</value></data>
+  <data name="Studio.Create.SessionPaused" xml:space="preserve"><value>Pausiert</value></data>
+  <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Entwurf um {0} gespeichert</value></data>
+  <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>Diese Sitzung kann hier nicht mehr fortgesetzt werden: Beginnen Sie neu oder suchen Sie sie unter „Laufende Sitzungen“ in „Meine Teams“.</value></data>
+  <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>Vor dem Test {0:plural:ist|sind} noch {0} Ordner auszuwählen.</value></data>
+  <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} von {1} {1:plural:Kriterium|Kriterien} erfüllt</value></data>
+  <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Vor der Übernahme wird nichts auf Ihren Rechner geschrieben.</value></data>
+  <data name="Studio.Create.Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Studio.Create.Resume" xml:space="preserve"><value>Fortsetzen</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lesen</value></data>
+  <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Lesen und Schreiben</value></data>
+  <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>Auszuwählen</value></data>
+  <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>Auszuwählen: Ohne Quellordner startet das Team mit einem leeren Ordner „input“.</value></data>
+  <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Bedarf</value></data>
 </root>

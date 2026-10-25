@@ -8,15 +8,38 @@
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
   <UserControl.Resources>
-    <!-- One line of the team's folders (F-01, lot 3; STUDIO-14): the name the agents address,
+    <!-- The check of a validated step: green on the pill at rest, the accent's own ink on the
+         pill of the step on screen (filled with the accent). -->
+    <Style x:Key="StepCheck" TargetType="controls:LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource AccentFgBrush}"/>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <!-- The action bar at the end of a step (lot 3): a line above it, the state on the
+         left, « Back » and the step's gesture on the right. -->
+    <Style x:Key="WizardActionBar" TargetType="Border">
+      <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+      <Setter Property="BorderThickness" Value="0,1,0,0"/>
+      <Setter Property="Padding" Value="0,14,0,0"/>
+      <Setter Property="Margin" Value="0,16,0,16"/>
+    </Style>
+    <!-- One row of the team's folders (F-01, lot 3; STUDIO-14): the name the agents address,
          who addresses it, and the folder behind it — a disk path, an «inside the team» label,
          or the two buttons that answer it. Shared by the step-1 rows and the Composer's. -->
     <DataTemplate x:Key="MountRowTemplate">
-      <Border Margin="0,0,0,6" Padding="10,7" CornerRadius="8"
-              Background="{DynamicResource PaperSunkBrush}">
+      <Border Margin="0,0,0,6" Padding="12,8" CornerRadius="8">
         <Border.Style>
           <Style TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
             <Style.Triggers>
+              <!-- Lot 3: a folder still to choose stands out in the warning's weak tint. -->
+              <DataTrigger Binding="{Binding CanChooseFolder}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+              </DataTrigger>
               <!-- Red is for a physical folder genuinely outside the settings'
                    authorized list — never for a root with no folder behind it. -->
               <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
@@ -26,183 +49,177 @@
             </Style.Triggers>
           </Style>
         </Border.Style>
-        <!-- #117: one line — rights icon, name, who uses it, then the folder behind it taking the
-             rest of the line, cut in the middle; the gestures that answer it next to it; the cross. -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto" MaxWidth="380"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-          </Grid.ColumnDefinitions>
-          <!-- Foreground is a Setter, not a local value: a local value beats
-               every style trigger, so setting it inline would have made the
-               red below unreachable — the trigger would sit there looking
-               correct and never fire once. -->
-          <controls:LucideIcon Size="12" VerticalAlignment="Center" Margin="0,0,8,0">
-            <controls:LucideIcon.Style>
-              <Style TargetType="controls:LucideIcon">
-                <Setter Property="Kind" Value="folder-open"/>
-                <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                <Setter Property="IsTabStop" Value="False"/>
-                <Setter Property="Focusable" Value="False"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
-                    <Setter Property="Kind" Value="pencil"/>
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </controls:LucideIcon.Style>
-          </controls:LucideIcon>
-          <!-- The step-1 rows carry a plain-words title («Your documents») before the name the
-               agents use; the Composer's rows have no title. Who addresses it is provenance, not
-               permission: the runtime mounts one flat list, so no agent is confined to its own
-               folder. -->
-          <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                     ToolTip="{Binding Agents}">
-            <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"/>
-            <Run Text="{Binding VirtualPath, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                 Foreground="{DynamicResource InkBrush}"/>
-            <Run Text="{Binding Agents, Mode=OneWay}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"/>
-          </TextBlock>
-          <!-- The folder behind the mount point: a disk path on one line, or «inside the team: output»
-               in the accent colour, never a disk path. -->
-          <controls:MiddleEllipsisText Grid.Column="2" Style="{StaticResource PathText}" Margin="12,0,0,0"
-                                       HorizontalAlignment="Right" Text="{Binding Folder}"
-                                       Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}"/>
-          <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"
-                      Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
-            <controls:LucideIcon Kind="folder" Size="11" Margin="0,0,5,0" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource AccentBrush}"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
-                       Foreground="{DynamicResource AccentBrush}" Text="{Binding Folder}"/>
-          </StackPanel>
-          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+        <!-- Lot 3: two lines. The first: the name the agents address (mono), its rights, who
+             addresses it, and on the right its state — the folder behind it, cut in the middle,
+             an «inside the team» label, or «to choose». The second: the gestures that answer
+             it, on the right. -->
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto" MaxWidth="380"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <!-- Foreground is a Setter, not a local value: a local value beats every style
+                 trigger, so the red below would be unreachable. -->
+            <controls:LucideIcon Size="16" VerticalAlignment="Center" Margin="0,0,8,0">
+              <controls:LucideIcon.Style>
+                <Style TargetType="controls:LucideIcon">
+                  <Setter Property="Kind" Value="folder-open"/>
+                  <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                  <Setter Property="IsTabStop" Value="False"/>
+                  <Setter Property="Focusable" Value="False"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                      <Setter Property="Kind" Value="pencil"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:LucideIcon.Style>
+            </controls:LucideIcon>
+            <!-- The step-1 rows carry a plain-words title («Your documents») before the name the
+                 agents use; the Composer's rows have no title. Who addresses it is provenance,
+                 not permission: the runtime mounts one flat list. -->
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding Agents}">
+              <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"/>
+              <Run Text="{Binding VirtualPath, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                   Foreground="{DynamicResource InkBrush}"/>
+            </TextBlock>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+              <controls:Badge>
+                <controls:Badge.Style>
+                  <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                    <Setter Property="Content" Value="{Binding [Studio.Create.RightsRead], Source={x:Static services:I18n.Instance}}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                        <Setter Property="Content" Value="{Binding [Studio.Create.RightsReadWrite], Source={x:Static services:I18n.Instance}}"/>
+                        <Setter Property="Tone" Value="Info"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </controls:Badge.Style>
+              </controls:Badge>
+              <TextBlock FontSize="13" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
+                         TextTrimming="CharacterEllipsis" Text="{Binding Agents}"
+                         Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
+            </StackPanel>
+            <!-- The state, on the right: the folder behind the mount point (a disk path, mono),
+                 «inside the team: output» in the accent colour, or «to choose». -->
+            <controls:MiddleEllipsisText Grid.Column="3" Style="{StaticResource PathText}" Margin="12,0,0,0"
+                                         HorizontalAlignment="Right" Text="{Binding Folder}"
+                                         Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}"/>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"
+                        Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
+              <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource AccentBrush}" Text="{Binding Folder}"/>
+            </StackPanel>
+            <controls:Badge Grid.Column="3" Tone="Warning" HorizontalAlignment="Right" Margin="12,0,0,0"
+                            Content="{Binding [Studio.Create.MountToChoose], Source={x:Static services:I18n.Instance}}"
+                            Visibility="{Binding IsWriteToChoose, Converter={StaticResource BooleanToVisibility}}"/>
+            <!-- A read root with no source folder: what the team will start from instead, said
+                 on its own block (it replaces the step's orange paragraph). -->
+            <TextBlock Grid.Column="3" FontSize="13" Margin="12,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                       TextWrapping="Wrap" TextAlignment="Right" Foreground="{DynamicResource WarningBrush}"
+                       Text="{Binding [Studio.Create.MountToChooseRead], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding IsReadToChoose, Converter={StaticResource BooleanToVisibility}}"/>
+          </Grid>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
             <!-- The gesture that names the folder behind the mount point. -->
-            <Button Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="6,0,0,0"
                     Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding VirtualPath}"
-                    Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
-                    Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}"/>
+                    Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
             <!-- STUDIO-14 (D-08): the other answer to an unanswered row — its own folder inside
                  the team, created at adoption, recorded team-relative. -->
-            <Button Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="6,0,0,0"
                     Command="{Binding DataContext.CreateInsideTeamCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding VirtualPath}"
-                    Content="{Binding [Studio.Create.CreateInsideTeam], Source={x:Static services:I18n.Instance}}"
-                    Visibility="{Binding CanCreateInsideTeam, Converter={StaticResource BooleanToVisibility}}"/>
-          </StackPanel>
-          <!-- Removing a bound folder gives the mount point back to the blueprint; removing a bare
-               implied root drops it, which the banner then explains. A step-1 row is a question,
-               not an implied root: it is answered or left, never dropped (IsDroppable). -->
-          <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Style="{StaticResource IconBtn}" Width="24" Height="24" Margin="8,0,0,0"
+                    Visibility="{Binding CanCreateInsideTeam, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Create.CreateInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+            <!-- Removing a bound folder gives the mount point back to the blueprint; removing a
+                 bare implied root drops it, which the banner then explains. A step-1 row is a
+                 question, not an implied root: it is answered or left, never dropped. -->
+            <Button Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="6,0,0,0"
                     Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding MountString}"
                     ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                     AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                     Visibility="{Binding IsBound, Converter={StaticResource BooleanToVisibility}}">
-              <controls:LucideIcon Kind="x" Size="11"/>
+              <controls:LucideIcon Kind="x" Size="16"/>
             </Button>
-            <Button Style="{StaticResource IconBtn}" Width="24" Height="24" Margin="8,0,0,0"
+            <Button Style="{StaticResource IconBtn}" Width="28" Height="28" Margin="6,0,0,0"
                     Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding VirtualPath}"
                     ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                     AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                     Visibility="{Binding IsDroppable, Converter={StaticResource BooleanToVisibility}}">
-              <controls:LucideIcon Kind="x" Size="11"/>
+              <controls:LucideIcon Kind="x" Size="16"/>
             </Button>
           </StackPanel>
-        </Grid>
+        </StackPanel>
       </Border>
     </DataTemplate>
   </UserControl.Resources>
   <StackPanel>
 
-    <!-- header -->
-    <DockPanel Margin="0,0,0,4">
-      <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
-              Command="{Binding RestartCommand}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Create.Restart], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
-      <!-- T-08: a way into the conversation from anywhere on the screen, with the accent
-           dot when the assistant spoke while it was closed. -->
-      <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Height="32" Padding="13,0"
-              Margin="0,0,8,0" VerticalAlignment="Top" Command="{Binding Chat.ToggleCommand}"
-              ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Chat.Ask], Source={x:Static services:I18n.Instance}}"/>
-          <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
-                   Fill="{DynamicResource MarkBrush}"
-                   Visibility="{Binding Chat.HasUnread, Converter={StaticResource BooleanToVisibility}}"/>
-        </StackPanel>
-      </Button>
-      <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Create.Title], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Studio.Create.SubNovice], Source={x:Static services:I18n.Instance}}"
-                   Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Studio.Create.SubExpert], Source={x:Static services:I18n.Instance}}"
-                   Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-        <!-- the assistant line: which profile drives the composing -->
-        <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-          <controls:LucideIcon Kind="wand-2" Size="12" VerticalAlignment="Center">
-            <controls:LucideIcon.Style>
-              <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
-                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding NeedsAssistant}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </controls:LucideIcon.Style>
-          </controls:LucideIcon>
-          <TextBlock Style="{StaticResource Hint}" Margin="7,0,0,0" VerticalAlignment="Center"
-                     Text="{Binding [Studio.Create.AssistantBy], Source={x:Static services:I18n.Instance}}"
-                     Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}"/>
-          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Margin="4,0,0,0"
-                     VerticalAlignment="Center" Text="{Binding Profiles.StudioProfileName}"
-                     Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}"/>
-          <TextBlock Style="{StaticResource Hint}" Margin="7,0,0,0" VerticalAlignment="Center"
-                     Foreground="{DynamicResource WarningBrush}"
-                     Text="{Binding [Studio.Create.AssistantMissing], Source={x:Static services:I18n.Instance}}"
-                     Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}"/>
-          <!-- Which engine build answered. Studio does not embed the CLI — it launches
-               whichever one its locator finds first — so without this a session driven by a
-               stale binary looks exactly like a working one with nothing to report. -->
-          <TextBlock Style="{StaticResource Hint}" Margin="9,0,0,0" VerticalAlignment="Center"
-                     Text="{Binding EngineLabel}"
-                     Visibility="{Binding HasEngineVersion, Converter={StaticResource BooleanToVisibility}}"/>
-          <!-- STUDIO-14 (D-15): « Open the folder » — the working session while the team is
-               being made, the adopted team afterwards; the tooltip says which. In both modes
-               at every step, present whenever an opener is wired (the team cards' rule), live
-               as soon as the engine answered. -->
-          <Button Style="{StaticResource ChipAction}" Margin="12,0,0,0" VerticalAlignment="Center"
+    <!-- R3 (lot 3): one header, title and subtitle on the left, the page's two doors on the
+         right. The question to the assistant lives in the title bar, the creation's tokens in
+         the status bar, the engine build in the technical journal. -->
+    <controls:PageHeader Title="{Binding [Studio.Create.Title], Source={x:Static services:I18n.Instance}}"
+                         Subtitle="{Binding [Studio.Create.ScreenSub], Source={x:Static services:I18n.Instance}}"
+                         Margin="0,0,0,8">
+      <StackPanel Style="{StaticResource ActionRow}">
+        <!-- STUDIO-14 (D-15): « Open the folder », an Expert door — the working session while
+             the team is being made, the adopted team afterwards; the tooltip says which. -->
+        <ContentControl Focusable="False" Margin="0,0,8,0"
+                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
                   Command="{Binding OpenFolderCommand}"
                   ToolTip="{Binding OpenFolderTooltip}" ToolTipService.ShowOnDisabled="True"
                   Visibility="{Binding HasShellOpener, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="folder-open" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
-              <TextBlock VerticalAlignment="Center"
-                         Text="{Binding [Studio.Create.OpenFolder], Source={x:Static services:I18n.Instance}}"/>
+              <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Create.OpenFolder], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-        </StackPanel>
+        </ContentControl>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding RestartCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="rotate-ccw" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.Restart], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
       </StackPanel>
-    </DockPanel>
-    <!-- §F.5: «Votre solution est prête.» and friends as a faint 12px line, not raw mono -->
-    <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" Text="{Binding StatusMessage}"/>
+    </controls:PageHeader>
+    <!-- The assistant line: which profile drives the composing (the status bar names the
+         default profile, not this one). A missing assistant is the gate's to say. -->
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}">
+      <controls:LucideIcon Kind="wand-2" Size="16" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+      <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="7,0,0,0" VerticalAlignment="Center"
+                 Text="{Binding [Studio.Create.AssistantBy], Source={x:Static services:I18n.Instance}}"/>
+      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Margin="4,0,0,0"
+                 VerticalAlignment="Center" Text="{Binding Profiles.StudioProfileName}"/>
+    </StackPanel>
+    <!-- §F.5: «Votre solution est prête.» and friends as a faint line, not raw mono -->
+    <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" Text="{Binding StatusMessage}"
+               TextWrapping="Wrap"/>
 
     <!-- STUDIO-27 (D-05): an adopted team that is scheduled runs only once the user agrees —
          « Install » asks the engine, which installs it with the system's own scheduler; « Later »
@@ -213,7 +230,7 @@
             Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <StackPanel>
         <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="circle-help" Size="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
           <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
                      TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Question}"/>
         </StackPanel>
@@ -227,7 +244,7 @@
         <WrapPanel Margin="0,10,0,0">
           <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,0" Command="{Binding InstallCommand}">
             <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+              <controls:LucideIcon Kind="check" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
               <TextBlock Text="{Binding [Studio.Create.ScheduleInstallNow], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
@@ -249,83 +266,69 @@
       </StackPanel>
     </StackPanel>
 
-    <!-- STUDIO-13: the failure card, in BOTH modes (D-01). What « Composer l'équipe » or the
-         save could not do used to sit on the grey line above, truncated, or nowhere at all.
-         Three zones (D-02): the novice sentence of the family, the engine's own words in mono
-         — never translated, wrapped, bounded and scrollable — and the ways out. Modelled on
-         the assistant gate card below, bordered in the danger colour. -->
-    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"
-            CornerRadius="14" Padding="20,18" MaxWidth="720" HorizontalAlignment="Left" Margin="0,14,0,0"
-            Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="circle-x" Size="16" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
-          <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                     TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding Failure.Headline}"/>
-        </StackPanel>
-        <!-- the raw technical detail: the CLI's text, in the CLI's language (STUDIO-11) -->
-        <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="10,8" Margin="0,10,0,0" MaxHeight="180"
-                Visibility="{Binding Failure.HasDetail, Converter={StaticResource BooleanToVisibility}}">
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap"
-                       Foreground="{DynamicResource ConsoleFgBrush}" Text="{Binding Failure.Detail}"/>
-          </ScrollViewer>
-        </Border>
-        <WrapPanel Margin="0,12,0,0">
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Click="OnCopyFailureReport"
-                  Visibility="{Binding CanCopyFailureReport, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,7,0"/>
-              <TextBlock>
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <Setter Property="Text" Value="{Binding [Studio.Create.FailureCopyReport], Source={x:Static services:I18n.Instance}}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding FailureReportCopied}" Value="True">
-                        <Setter Property="Text" Value="{Binding [Studio.Create.FailureCopied], Source={x:Static services:I18n.Instance}}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding FailureRetryCommand}"
-                  Visibility="{Binding FailureOffersRetry, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="rotate-cw" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
-                  Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="stethoscope" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}"
-                  Visibility="{Binding FailureOffersSettings, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.FailureOpenSettings], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-        </WrapPanel>
-      </StackPanel>
-    </Border>
+    <!-- STUDIO-13: the failure, in BOTH modes (D-01), as a danger alert (R7): the novice
+         sentence of the family, the engine's own words folded under « Technical details » —
+         never translated (STUDIO-11) — and the ways out under the message. -->
+    <controls:Alert Tone="Danger" MaxWidth="720" HorizontalAlignment="Left" Margin="0,14,0,0"
+                    Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
+                    Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <WrapPanel>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Click="OnCopyFailureReport"
+                Visibility="{Binding CanCopyFailureReport, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,7,0"/>
+            <TextBlock>
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Text" Value="{Binding [Studio.Create.FailureCopyReport], Source={x:Static services:I18n.Instance}}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding FailureReportCopied}" Value="True">
+                      <Setter Property="Text" Value="{Binding [Studio.Create.FailureCopied], Source={x:Static services:I18n.Instance}}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding FailureRetryCommand}"
+                Visibility="{Binding FailureOffersRetry, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="rotate-cw" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+                Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="stethoscope" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenSettingsCommand}"
+                Visibility="{Binding FailureOffersSettings, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="sliders-horizontal" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.FailureOpenSettings], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+      </WrapPanel>
+    </controls:Alert>
 
-    <!-- before anything: the assistant must have a model — the wizard is gated until then -->
-    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
-            CornerRadius="14" Padding="20,18" MaxWidth="620" HorizontalAlignment="Left" Margin="0,20,0,0"
-            Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}">
+    <!-- Before anything: the assistant must have a model — the wizard is gated until then (R7). -->
+    <controls:Alert Tone="Warning" MaxWidth="720" HorizontalAlignment="Left" Margin="0,16,0,0"
+                    Message="{Binding [Studio.Create.GateTitle], Source={x:Static services:I18n.Instance}}"
+                    Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}">
+      <controls:Alert.Actions>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenSettingsCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="sliders-horizontal" Size="16" Margin="0,0,7,0"/>
+            <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+      </controls:Alert.Actions>
       <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="triangle-alert" Size="16" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-          <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                     Text="{Binding [Studio.Create.GateTitle], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-        <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,7,0,12"
+        <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,10"
                    Text="{Binding [Studio.Create.GateBody], Source={x:Static services:I18n.Instance}}"/>
         <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
           <ItemsControl.ItemTemplate>
@@ -342,91 +345,124 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
-                Command="{Binding OpenSettingsCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
       </StackPanel>
-    </Border>
+    </controls:Alert>
 
     <StackPanel Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}">
 
-      <!-- stepper -->
-      <StackPanel Orientation="Horizontal" Margin="0,16,0,20">
+      <!-- The stepper (lot 3): a validated step carries a green check, the step on screen is
+           filled with the accent, a step already reached opens again; at the end of the line,
+           the session's one state — running, waiting for you, paused with « Resume », or the
+           draft saved at a time. -->
+      <DockPanel Margin="0,16,0,20" LastChildFill="False">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <controls:LucideIcon Kind="loader-circle" Size="16" Foreground="{DynamicResource AccentBrush}" Margin="0,0,7,0"
+                               VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                               Visibility="{Binding IsSessionWorking, Converter={StaticResource BooleanToVisibility}}">
+            <controls:LucideIcon.RenderTransform>
+              <RotateTransform x:Name="EngineSpin"/>
+            </controls:LucideIcon.RenderTransform>
+            <controls:LucideIcon.Triggers>
+              <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard>
+                  <Storyboard RepeatBehavior="Forever">
+                    <DoubleAnimation Storyboard.TargetName="EngineSpin" Storyboard.TargetProperty="Angle"
+                                     From="0" To="360" Duration="0:0:1"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </EventTrigger>
+            </controls:LucideIcon.Triggers>
+          </controls:LucideIcon>
+          <controls:LucideIcon Kind="save" Size="16" Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,7,0"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IsDraftSaved, Converter={StaticResource BooleanToVisibility}}"/>
+          <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Text="{Binding SessionStateLabel}"
+                     Visibility="{Binding HasSessionState, Converter={StaticResource BooleanToVisibility}}"/>
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="10,0,0,0"
+                  Command="{Binding ResumeHereCommand}"
+                  Visibility="{Binding IsSessionPaused, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="play" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Create.Resume], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="10,0,0,0" Command="{Binding StopCommand}"
+                  Visibility="{Binding IsEngineRunning, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="square" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Create.Stop], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep1Command}" Tag="{Binding IsStep1}">
           <StackPanel Orientation="Horizontal">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Opacity="0.75" Text="1" Margin="0,0,7,0" VerticalAlignment="Center"/>
+            <Grid Width="16" Height="16" Margin="0,0,7,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding IsStep1Done, Converter={StaticResource InverseBooleanToVisibility}}"/>
+              <controls:LucideIcon Kind="check" Size="16" Style="{StaticResource StepCheck}"
+                                   Visibility="{Binding IsStep1Done, Converter={StaticResource BooleanToVisibility}}"/>
+            </Grid>
             <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step1], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
-        <TextBlock Text="▸" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
+        <controls:LucideIcon Kind="chevron-right" Size="16" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep2Command}" Tag="{Binding IsStep2}">
           <StackPanel Orientation="Horizontal">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Opacity="0.75" Text="2" Margin="0,0,7,0" VerticalAlignment="Center"/>
+            <Grid Width="16" Height="16" Margin="0,0,7,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding IsStep2Done, Converter={StaticResource InverseBooleanToVisibility}}"/>
+              <controls:LucideIcon Kind="check" Size="16" Style="{StaticResource StepCheck}"
+                                   Visibility="{Binding IsStep2Done, Converter={StaticResource BooleanToVisibility}}"/>
+            </Grid>
             <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step2], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
-        <TextBlock Text="▸" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
+        <controls:LucideIcon Kind="chevron-right" Size="16" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep3Command}" Tag="{Binding IsStep3}">
           <StackPanel Orientation="Horizontal">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Opacity="0.75" Text="3" Margin="0,0,7,0" VerticalAlignment="Center"/>
+            <Grid Width="16" Height="16" Margin="0,0,7,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="3" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Visibility="{Binding IsStep3Done, Converter={StaticResource InverseBooleanToVisibility}}"/>
+              <controls:LucideIcon Kind="check" Size="16" Style="{StaticResource StepCheck}"
+                                   Visibility="{Binding IsStep3Done, Converter={StaticResource BooleanToVisibility}}"/>
+            </Grid>
             <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step3], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
-        <TextBlock Text="▸" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
+        <controls:LucideIcon Kind="chevron-right" Size="16" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="4,0"/>
         <Button Style="{StaticResource StepPill}" Command="{Binding GoStep4Command}" Tag="{Binding IsStep4}">
           <StackPanel Orientation="Horizontal">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Opacity="0.75" Text="4" Margin="0,0,7,0" VerticalAlignment="Center"/>
+            <Grid Width="16" Height="16" Margin="0,0,7,0" VerticalAlignment="Center">
+              <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         />
+            </Grid>
             <TextBlock VerticalAlignment="Center" Text="{Binding [Studio.Create.Step4], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
         </Button>
-        <!-- The session meter, up and down. It lives here rather than in a step's card
-             because it counts the whole session, and this row is the only one on screen at
-             every step — including step 1, where the interview spends most of it. -->
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0"
-                    ToolTip="{Binding Progress.TokensUpLabel}"
-                    Visibility="{Binding Progress.HasTokens, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center" Margin="0,0,2,0"
-                     Foreground="{DynamicResource InkFaintBrush}" Text="≈"
-                     Visibility="{Binding Progress.TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
-          <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
-                               Foreground="{DynamicResource InkMutedBrush}"/>
-          <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="3,0,0,0" VerticalAlignment="Center"
-                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Progress.TokensUp}"/>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0"
-                    ToolTip="{Binding Progress.TokensDownLabel}"
-                    Visibility="{Binding Progress.HasTokens, Converter={StaticResource BooleanToVisibility}}">
-          <controls:LucideIcon Kind="arrow-down" Size="11" VerticalAlignment="Center"
-                               Foreground="{DynamicResource InkMutedBrush}"/>
-          <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="3,0,0,0" VerticalAlignment="Center"
-                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Progress.TokensDown}"/>
-        </StackPanel>
+      </DockPanel>
 
-        <controls:LucideIcon Kind="loader-circle" Size="14" Foreground="{DynamicResource AccentBrush}" Margin="14,0,0,0"
-                             VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"
-                             Visibility="{Binding IsEngineWorking, Converter={StaticResource BooleanToVisibility}}">
-          <controls:LucideIcon.RenderTransform>
-            <RotateTransform x:Name="EngineSpin"/>
-          </controls:LucideIcon.RenderTransform>
-          <controls:LucideIcon.Triggers>
-            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-              <BeginStoryboard>
-                <Storyboard RepeatBehavior="Forever">
-                  <DoubleAnimation Storyboard.TargetName="EngineSpin" Storyboard.TargetProperty="Angle"
-                                   From="0" To="360" Duration="0:0:1"/>
-                </Storyboard>
-              </BeginStoryboard>
-            </EventTrigger>
-          </controls:LucideIcon.Triggers>
-        </controls:LucideIcon>
-        <Button Style="{StaticResource BtnSecondary}" FontSize="13" Margin="10,0,0,0" Command="{Binding StopCommand}"
-                Visibility="{Binding IsEngineRunning, Converter={StaticResource BooleanToVisibility}}"
-                Content="{Binding [Studio.Create.Stop], Source={x:Static services:I18n.Instance}}"/>
-      </StackPanel>
+      <!-- Lot 3: past step 1, the need sums up in one grey line under the stepper, with the
+           way back to it. -->
+      <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="8" Padding="12,6" Margin="0,-8,0,16"
+              Visibility="{Binding IsStep1, Converter={StaticResource InverseBooleanToVisibility}}">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="12,0,0,0"
+                  Command="{Binding GoStep1Command}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
+                     DockPanel.Dock="Left" Text="{Binding [Studio.Create.NeedSummaryLabel], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="6,0"
+                     DockPanel.Dock="Left" Text="·"/>
+          <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" Text="{Binding NeedSummary}" ToolTip="{Binding Need}"/>
+        </DockPanel>
+      </Border>
 
       <!-- T-04: with the conversation closed, its state stays in the flow rather than
            disappearing with it — otherwise the assistant works, or waits, and the screen
@@ -446,10 +482,10 @@
         <DockPanel>
           <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="15" Margin="0,0,13,0"
                   VerticalAlignment="Center" Background="{DynamicResource AccentWeakBrush}">
-            <controls:LucideIcon Kind="wand-2" Size="15" Foreground="{DynamicResource MarkBrush}"
+            <controls:LucideIcon Kind="wand-2" Size="16" Foreground="{DynamicResource MarkBrush}"
                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
-          <Button DockPanel.Dock="Right" Height="34" Padding="14,0" VerticalAlignment="Center"
+          <Button DockPanel.Dock="Right" controls:ButtonSize.Height="32" VerticalAlignment="Center"
                   Command="{Binding Chat.OpenCommand}" Content="{Binding Chat.StripAction}">
             <Button.Style>
               <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
@@ -534,7 +570,7 @@
                               Command="{Binding RemoveCommand}"
                               ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                               AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
-                        <controls:LucideIcon Kind="x" Size="12" Foreground="{DynamicResource InkMutedBrush}"/>
+                        <controls:LucideIcon Kind="x" Size="16" Foreground="{DynamicResource InkMutedBrush}"/>
                       </Button>
                     </Grid>
                     <!-- STUDIO-57: the note the assistant follows — what the folder holds and how the
@@ -570,7 +606,7 @@
                       <Border Grid.Column="2" Style="{StaticResource Well}" Padding="10,5" Margin="10,0,0,0" VerticalAlignment="Center">
                         <!-- A DockPanel, not a StackPanel: the path needs a finite width to be cut. -->
                         <DockPanel>
-                          <controls:LucideIcon DockPanel.Dock="Left" Kind="folder" Size="12" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                          <controls:LucideIcon DockPanel.Dock="Left" Kind="folder" Size="16" Margin="0,0,7,0" VerticalAlignment="Center"/>
                           <controls:MiddleEllipsisText Style="{StaticResource PathText}" Text="{Binding FolderLabel}"/>
                         </DockPanel>
                       </Border>
@@ -579,7 +615,7 @@
                               ToolTip="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
                               Visibility="{Binding IsInsideTeam, Converter={StaticResource InverseBooleanToVisibility}}">
                         <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
+                          <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,7,0"/>
                           <TextBlock Text="{Binding [Studio.Create.ChooseShort], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
@@ -589,10 +625,10 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <!-- STUDIO-57: one more folder, named and annotated by the user. -->
-            <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,10,0,0"
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" HorizontalAlignment="Left" Margin="0,10,0,0"
                     Command="{Binding AddFolderRowCommand}">
               <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                <controls:LucideIcon Kind="plus" Size="16" Foreground="{DynamicResource AccentBrush}"
                                      VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBlock VerticalAlignment="Center"
                            Text="{Binding [Studio.Create.AddFolder], Source={x:Static services:I18n.Instance}}"/>
@@ -605,7 +641,7 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmFoldersCommand}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="{Binding [Studio.Create.FoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
-                  <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
                 </StackPanel>
               </Button>
             </DockPanel>
@@ -637,11 +673,11 @@
                   <DataTemplate>
                     <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
                       <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="10,0,0,0"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" VerticalAlignment="Center" Margin="10,0,0,0"
                                 Command="{Binding OpenCommand}"
                                 ToolTip="{Binding [Studio.Create.FillFoldersOpenTip], Source={x:Static services:I18n.Instance}}">
                           <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Kind="folder-open" Size="11" Foreground="{DynamicResource AccentBrush}"
+                            <controls:LucideIcon Kind="folder-open" Size="16" Foreground="{DynamicResource AccentBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <TextBlock VerticalAlignment="Center"
                                        Text="{Binding [Studio.Create.FillFoldersOpen], Source={x:Static services:I18n.Instance}}"/>
@@ -666,7 +702,7 @@
                 <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding FillFoldersContinueCommand}">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding [Studio.Create.FillFoldersContinue], Source={x:Static services:I18n.Instance}}"/>
-                    <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
                   </StackPanel>
                 </Button>
               </DockPanel>
@@ -686,103 +722,109 @@
             <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,12"
                        Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
             <!-- STUDIO-47: files and folders dropped from the explorer land at the caret, quoted;
-                 the Preview events take the drop before the TextBox, which refuses files. -->
-            <TextBox x:Name="NeedBox" Style="{StaticResource InputMultiline}" AllowDrop="True"
+                 the Preview events take the drop before the TextBox, which refuses files. The
+                 screen's main entry: 48 px at the least (R2). -->
+            <TextBox x:Name="NeedBox" Style="{StaticResource InputMultiline}" AllowDrop="True" MinHeight="48"
                      PreviewDragEnter="OnNeedDragOver" PreviewDragOver="OnNeedDragOver"
                      PreviewDragLeave="OnNeedDragLeave" PreviewDrop="OnNeedDrop"
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Create.NeedDropHint], Source={x:Static services:I18n.Instance}}"/>
-            <!-- STUDIO-57: « Rephrase » asks the assistant for a clearer need; « Back to my words »
-                 brings the typed one back. -->
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-              <Button Style="{StaticResource ChipAction}" Command="{Binding RephraseNeedCommand}"
+            <!-- Lot 3: one line under the need — « Rephrase » (STUDIO-57) and « Back to my words »,
+                 the use cases close to the need (STUDIO-39 D-03, their titles in the tooltip), then
+                 the whole catalogue (D-01, D-02, its size read from the CLI). -->
+            <WrapPanel Margin="0,8,0,0">
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
+                      Command="{Binding RephraseNeedCommand}"
                       ToolTip="{Binding [Studio.Create.RephraseTip], Source={x:Static services:I18n.Instance}}">
                 <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="sparkles" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
-                  <TextBlock VerticalAlignment="Center"
-                             Text="{Binding [Studio.Create.Rephrase], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon Kind="sparkles" Size="16" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Studio.Create.Rephrase], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
-              <Button Style="{StaticResource ChipAction}" Margin="6,0,0,0" Command="{Binding UndoRephraseCommand}"
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
+                      Command="{Binding UndoRephraseCommand}"
                       Content="{Binding [Studio.Create.RephraseUndo], Source={x:Static services:I18n.Instance}}"
                       Visibility="{Binding CanUndoRephrase, Converter={StaticResource BooleanToVisibility}}"/>
-              <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="10,0,0,0" VerticalAlignment="Center"
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,0,8,4" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.Rephrasing], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding IsRephrasing, Converter={StaticResource BooleanToVisibility}}"/>
-            </StackPanel>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
+                      Command="{Binding ShowCloseUseCasesCommand}" ToolTip="{Binding CloseUseCasesTitles}"
+                      Visibility="{Binding HasCloseUseCases, Converter={StaticResource BooleanToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="compass" Size="16" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding CloseUseCasesLabel}"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
+                      Command="{Binding BrowseUseCasesCommand}"
+                      Visibility="{Binding CanBrowseUseCases, Converter={StaticResource BooleanToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="scan-search" Size="16" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding BrowseUseCasesLabel}"/>
+                </StackPanel>
+              </Button>
+            </WrapPanel>
             <!-- STUDIO-39 (D-04): the use case this creation starts from — the chip a chosen card
-                 leaves under the need it wrote. Its ✕ takes the reference away, never the words. -->
+                 leaves under the need it wrote. Its cross takes the reference away, never the words. -->
             <Border Style="{StaticResource BriefChip}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,0,4,0"
                     Visibility="{Binding HasReferenceUseCase, Converter={StaticResource BooleanToVisibility}}">
               <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="compass" Size="11" Foreground="{DynamicResource AccentBrush}"
+                <controls:LucideIcon Kind="compass" Size="16" Foreground="{DynamicResource AccentBrush}"
                                      VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"
                            VerticalAlignment="Center" Text="{Binding ReferenceUseCaseLabel}"/>
-                <Button Width="18" Height="18" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                <Button Style="{StaticResource IconBtn}" Width="20" Height="20" Margin="6,0,0,0"
                         VerticalAlignment="Center" Command="{Binding RemoveReferenceUseCaseCommand}"
-                        ToolTip="{Binding [Studio.Create.GalleryRemoveReference], Source={x:Static services:I18n.Instance}}">
-                  <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource InkFaintBrush}"/>
+                        ToolTip="{Binding [Studio.Create.GalleryRemoveReference], Source={x:Static services:I18n.Instance}}"
+                        AutomationProperties.Name="{Binding [Studio.Create.GalleryRemoveReference], Source={x:Static services:I18n.Instance}}">
+                  <controls:LucideIcon Kind="x" Size="16" Foreground="{DynamicResource InkFaintBrush}"/>
                 </Button>
               </StackPanel>
             </Border>
-            <!-- STUDIO-39 (D-03): once the typing pauses, the use cases close to the need — a
-                 link that opens the gallery on them, their titles in the tooltip. -->
-            <Button Style="{StaticResource LinkBtn}" HorizontalAlignment="Left" Margin="0,8,0,0"
-                    Command="{Binding ShowCloseUseCasesCommand}" ToolTip="{Binding CloseUseCasesTitles}"
-                    Visibility="{Binding HasCloseUseCases, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="sparkles" Size="12" Foreground="{DynamicResource MarkBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBlock Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Text="{Binding CloseUseCasesLabel}"/>
-              </StackPanel>
-            </Button>
+            <!-- The quick examples as compact chips (lot 3), the whole sentence in the tooltip. -->
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,8"
                        Text="{Binding [Studio.Create.Examples], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Examples}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource BtnSecondary}" FontSize="13" HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Left" Margin="0,0,0,6" Content="{Binding}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" MaxWidth="300"
+                          Margin="0,0,8,6" ToolTip="{Binding}"
                           Command="{Binding DataContext.UseExampleCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                          CommandParameter="{Binding}"/>
+                          CommandParameter="{Binding}">
+                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"/>
+                  </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <!-- STUDIO-39 (D-01, D-02): the four quick examples stay first; the whole catalogue is
-                 one click further — the gallery, its size read from the CLI. -->
-            <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,4,0,0"
-                    Command="{Binding BrowseUseCasesCommand}"
-                    Visibility="{Binding CanBrowseUseCases, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="scan-search" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <TextBlock VerticalAlignment="Center" Text="{Binding BrowseUseCasesLabel}"/>
-              </StackPanel>
-            </Button>
-          </StackPanel>
-        </Border>
-
-        <!-- STUDIO-45: step 1 asks the need and nothing else. STUDIO-46: where the folders live
-             left too — the forge reads them from the need, and the Folders step answers them. -->
-        <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-          <StackPanel>
-            <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ComposeCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}"/>
-                  <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                </StackPanel>
-              </Button>
-              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Text="{Binding Step1Hint}"/>
-            </DockPanel>
           </StackPanel>
         </Border>
 
         <views:StepNotesView DataContext="{Binding ComposeNotes}"
                              Title="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
+
+        <!-- STUDIO-45: step 1 asks the need and nothing else. The action bar (lot 3): the
+             step's state on the left, the step's gesture on the right. Step 1 has no step before
+             it, so no « Back ». -->
+        <Border Style="{StaticResource WizardActionBar}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
+                    Command="{Binding ComposeCommand}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}"/>
+                <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+              </StackPanel>
+            </Button>
+            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Margin="0,0,12,0" Text="{Binding Step1Hint}"/>
+          </DockPanel>
+        </Border>
       </StackPanel>
 
       <!-- ── STEP 2 : COMPOSER ── -->
@@ -792,33 +834,21 @@
         <views:ComposeProgressView DataContext="{Binding Progress}"/>
 
         <!-- Only once there IS a proposal: the stepper reaches step 2 when the engine enters
-             the blueprint stage, which is well before blueprint.ready. This card used to
-             render regardless, so «Voici l'équipe que je propose» sat over an empty card. -->
+             the blueprint stage, which is well before blueprint.ready. Lot 3: one card holds
+             the proposal — title and rationale, the agents one line each, « Add an agent »,
+             then the team's folders. A question about it goes through the title bar's
+             « Ask a question », into the side panel. -->
         <Border Style="{StaticResource Card}" Margin="0,0,0,16"
                 Visibility="{Binding HasProposal, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
-            <!-- T-08: the short «Question» sits on the TITLE's line only. The explanation
-                 below keeps the card's full width — sharing the line with a button leaves
-                 the Novice column about 375 px and the paragraph runs to six lines. -->
-            <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Height="30" Padding="11,0"
-                      FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"
-                      Foreground="{DynamicResource MarkBrush}" Command="{Binding Chat.ToggleCommand}"
-                      ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="wand-2" Size="13" Margin="0,0,6,0"/>
-                  <TextBlock Text="{Binding [Studio.Chat.AskShort], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-              <TextBlock FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"
-                         Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding [Studio.Create.ProposalTitle], Source={x:Static services:I18n.Instance}}"/>
-            </DockPanel>
+            <TextBlock FontSize="14.5" FontWeight="Bold" TextWrapping="Wrap"
+                       Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Studio.Create.ProposalTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding Rationale}"/>
             <StackPanel Orientation="Horizontal" Margin="0,11,0,0"
                         Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,7,0"
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,0,7,0"
                          Text="{Binding [Studio.Create.ToolsLabel], Source={x:Static services:I18n.Instance}}"/>
               <ItemsControl ItemsSource="{Binding Tools}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -826,7 +856,7 @@
                   <DataTemplate>
                     <Border Style="{StaticResource ToolChip}" Margin="0,0,6,4">
                       <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="{Binding Icon}" Size="11" Margin="0,0,6,0"
+                        <controls:LucideIcon Kind="{Binding Icon}" Size="16" Margin="0,0,6,0"
                                              Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
                         <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
                       </StackPanel>
@@ -835,185 +865,142 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
-            <!-- Dossiers de cette équipe (F-01): the future sidecar mounts, editable here. -->
-            <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,1,0,0" Margin="0,13,0,0" Padding="0,12,0,0">
+
+            <!-- The agents, one line each (lot 3): avatar, name, key (Expert), what it does and
+                 what it can do on one line — the whole of both in the tooltip — and « Modify »,
+                 which opens the agent editor (it keeps « Remove from the team »). -->
+            <ItemsControl ItemsSource="{Binding Agents}" Margin="0,14,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,1,0,0" Padding="0,8">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Left" Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
+                              Background="{DynamicResource AccentWeakBrush}" Margin="0,0,12,0">
+                        <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Text="{Binding Initial}"/>
+                      </Border>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
+                              VerticalAlignment="Center" Margin="12,0,0,0"
+                              Command="{Binding EditCommand}"
+                              ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
+                              ToolTipService.ShowOnDisabled="True">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,7,0"/>
+                          <TextBlock Text="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                      <TextBlock DockPanel.Dock="Left" Style="{StaticResource ObjectTitle}" FontSize="13.5" VerticalAlignment="Center">
+                        <Run Text="{Binding Name, Mode=OneWay}"/>
+                        <InlineUIContainer BaselineAlignment="Center">
+                          <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="6,0,0,0"
+                                     Text="{Binding Key}"
+                                     Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+                        </InlineUIContainer>
+                      </TextBlock>
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <StackPanel.ToolTip>
+                          <ToolTip>
+                            <StackPanel MaxWidth="420">
+                              <TextBlock TextWrapping="Wrap" Text="{Binding Role}"/>
+                            </StackPanel>
+                          </ToolTip>
+                        </StackPanel.ToolTip>
+                        <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextTrimming="CharacterEllipsis"
+                                   MaxWidth="420" VerticalAlignment="Center" Text="{Binding Role}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
+                          <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="6,0"
+                                     Text="·"/>
+                          <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
+                                     Text="{Binding [Studio.Create.AgentCan], Source={x:Static services:I18n.Instance}}"/>
+                          <ItemsControl ItemsSource="{Binding Tools}" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <controls:LucideIcon Kind="{Binding Icon}" Size="16" Margin="0,0,6,0" ToolTip="{Binding Label}"
+                                                     Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- Add an agent (F-01) — actionable while the engine waits at its arbitration. -->
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Left" Margin="0,6,0,0"
+                    Command="{Binding AddAgentCommand}"
+                    ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
+                    ToolTipService.ShowOnDisabled="True">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="plus" Size="16" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Create.AddAgent], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+
+            <!-- The team's folders (F-01), in the same card: the future sidecar mounts, editable
+                 here. One two-line block per mount point; a folder still to choose says so on
+                 its own block, and the action bar counts them. -->
+            <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,1,0,0" Margin="0,16,0,0" Padding="0,12,0,0">
               <StackPanel>
-                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,8"
+                <TextBlock Style="{StaticResource FieldLabel}"
                            Text="{Binding [Studio.Create.TeamFolders], Source={x:Static services:I18n.Instance}}"/>
-                <!-- One line per mount point (F-01, lot 3): the name the agents address, who
-                     addresses it, and the folder behind it — or the button that says there is
-                     none yet. Two rows of chips could show WHAT the team would mount and never
-                     WHERE, so an implied root could only be answered at adoption, by a folder
-                     created inside the team and left empty. -->
+                <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,4,0,10"
+                           Text="{Binding [Studio.Create.FoldersHint], Source={x:Static services:I18n.Instance}}"/>
                 <ItemsControl ItemsSource="{Binding MountRows}" ItemTemplate="{StaticResource MountRowTemplate}"/>
-                <WrapPanel Margin="0,2,0,0">
-                  <Button Style="{StaticResource ChipAction}" Margin="0,0,8,4"
+                <WrapPanel Margin="0,4,0,0">
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
                           Command="{Binding AllowFolderCommand}">
                     <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
+                      <controls:LucideIcon Kind="plus" Size="16" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
                   <!-- STUDIO-14 (D-08): every unanswered row at once — the step-1 choice, offered
-                       again here for the roots step 1 could not foresee. Shown while a row is
-                       left to answer; greyed the moment none is. -->
-                  <Button Style="{StaticResource ChipAction}" Margin="0,0,8,4"
+                       again here for the roots step 1 could not foresee. Hidden once every row
+                       is answered (lot 3). -->
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
                           Command="{Binding CreateAllInsideTeamCommand}"
-                          Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}">
+                          Visibility="{Binding HasFoldersToChoose, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="folder" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
-                      <TextBlock VerticalAlignment="Center"
-                                 Text="{Binding [Studio.Create.CreateAllInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+                      <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Studio.Create.CreateAllInsideTeam], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
                 </WrapPanel>
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
-                           Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
-                <!-- What the promoted FORGE.md already says, said in time: a read root the
-                     user did not bind is backed at adoption by the team's own empty input/,
-                     and nothing ever copies documents into it. -->
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Foreground="{DynamicResource WarningBrush}"
-                           Text="{Binding [Studio.Create.FillInputFolder], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding NeedsInputFolder, Converter={StaticResource BooleanToVisibility}}"/>
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Foreground="{DynamicResource DangerBrush}"
-                           Visibility="{Binding HasUndeclaredTeamMounts, Converter={StaticResource BooleanToVisibility}}"
-                           Text="{Binding [Studio.Create.UndeclaredLegend], Source={x:Static services:I18n.Instance}}"/>
+                <controls:Alert Tone="Danger" Margin="0,8,0,0"
+                                Message="{Binding [Studio.Create.UndeclaredLegend], Source={x:Static services:I18n.Instance}}"
+                                Visibility="{Binding HasUndeclaredTeamMounts, Converter={StaticResource BooleanToVisibility}}"/>
                 <!-- A dropped agent-addressed root: nothing will back it, and the run would
                      otherwise report success and produce nothing. -->
-                <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="12,10" Margin="0,8,0,0"
-                        Visibility="{Binding HasDroppedDerivedRoots, Converter={StaticResource BooleanToVisibility}}">
-                  <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="10,0,0,0"
+                <controls:Alert Tone="Danger" Margin="0,8,0,0" Message="{Binding DroppedDerivedWarning}"
+                                Visibility="{Binding HasDroppedDerivedRoots, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                             Command="{Binding RestoreDerivedMountsCommand}"
                             Content="{Binding [Studio.Create.RestoreFolders], Source={x:Static services:I18n.Instance}}"/>
-                    <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
-                               Foreground="{DynamicResource DangerBrush}" Text="{Binding DroppedDerivedWarning}"/>
-                  </DockPanel>
-                </Border>
-                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Text="{Binding [Studio.Create.FoldersHint], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:Alert.Actions>
+                </controls:Alert>
               </StackPanel>
             </Border>
           </StackPanel>
         </Border>
 
-        <ItemsControl ItemsSource="{Binding Agents}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-                <StackPanel>
-                  <!-- #117: the header line — avatar, name, key, and Edit, the card's one light
-                       action, on the right of that line; the rest below at full width. -->
-                  <DockPanel>
-                    <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="17" VerticalAlignment="Center"
-                            Background="{DynamicResource AccentWeakBrush}" Margin="0,0,14,0">
-                      <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold"
-                                 Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                 Text="{Binding Initial}"/>
-                    </Border>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"
-                            Command="{Binding EditCommand}"
-                            ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
-                            ToolTipService.ShowOnDisabled="True">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <TextBlock Style="{StaticResource ObjectTitle}" FontSize="13.5">
-                      <Run Text="{Binding Name, Mode=OneWay}"/>
-                      <InlineUIContainer BaselineAlignment="Center">
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="6,0,0,0"
-                                   Text="{Binding Key}"
-                                   Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-                      </InlineUIContainer>
-                    </TextBlock>
-                  </DockPanel>
-                  <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"
-                             Text="{Binding Role}"/>
-                    <WrapPanel Margin="0,9,0,0"
-                               Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
-                                 Text="{Binding [Studio.Create.AgentCan], Source={x:Static services:I18n.Instance}}"/>
-                      <ItemsControl ItemsSource="{Binding Tools}">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <Border Style="{StaticResource ToolChip}" Margin="0,0,6,4">
-                              <StackPanel Orientation="Horizontal">
-                                <controls:LucideIcon Kind="{Binding Icon}" Size="11" Margin="0,0,6,0"
-                                                     Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
-                                <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Label}"/>
-                              </StackPanel>
-                            </Border>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
-                    </WrapPanel>
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <!-- Ajouter un agent (F-01) — actionable while the engine waits at its arbitration. -->
-        <DockPanel Margin="0,0,0,16" LastChildFill="False">
-          <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}"
-                  Command="{Binding AddAgentCommand}"
-                  ToolTip="{Binding [Studio.Create.Wait], Source={x:Static services:I18n.Instance}}"
-                  ToolTipService.ShowOnDisabled="True">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Create.AddAgent], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <!-- The Composer pause: composing stops the engine before the trial (dry mode);
-               the trial is THIS click, never a side effect. -->
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}"
-                  Command="{Binding TryTeamCommand}"
-                  Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="{Binding [Studio.Create.TryTeam], Source={x:Static services:I18n.Instance}}"/>
-              <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            </StackPanel>
-          </Button>
-          <!-- The other answer to the same pause. Ready used to have exactly one way in —
-               an accepted verdict — so keeping the team as generated meant sitting through
-               an execution first. The label says what it skips: a report, not a check. -->
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0"
-                  Command="{Binding AdoptWithoutTrialCommand}"
-                  ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
-                  Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
-                  Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
-          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,12,0"
-                     Text="{Binding [Studio.Create.PausedHint], Source={x:Static services:I18n.Instance}}"
-                     Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"/>
-        </DockPanel>
-
         <!-- validation of the rendered crew -->
-        <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-                Visibility="{Binding ValidationErrors.Count, Converter={StaticResource CountToVisibility}}">
-          <StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-              <controls:LucideIcon Kind="triangle-alert" Size="14" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-              <TextBlock Style="{StaticResource CardTitle}" Margin="8,0,0,0"
-                         Text="{Binding [Studio.Create.ValidationTitle], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-            <ItemsControl ItemsSource="{Binding ValidationErrors}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2" Text="{Binding}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </Border>
+        <controls:Alert Tone="Warning" Margin="0,0,0,16"
+                        Message="{Binding [Studio.Create.ValidationTitle], Source={x:Static services:I18n.Instance}}"
+                        Visibility="{Binding ValidationErrors.Count, Converter={StaticResource CountToVisibility}}">
+          <ItemsControl ItemsSource="{Binding ValidationErrors}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2" Text="{Binding}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </controls:Alert>
 
         <!-- expert: what the render wrote, where the session lives. Two conditions, so a
              MultiDataTrigger rather than a converter: an empty «Définition générée» card
@@ -1037,16 +1024,16 @@
             <!-- header recipe (W-05): title + short mono slug on the same centre line,
                  the full session path demoted to a tooltip, action pushed right (W-06). -->
             <DockPanel Margin="0,0,0,10">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Padding="10,5"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
                       Click="OnCopyDefinition"
                       Visibility="{Binding HasCrewDefinition, Converter={StaticResource BooleanToVisibility}}">
                 <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="copy" Size="11" Margin="0,0,6,0"/>
+                  <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,6,0"/>
                   <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
               <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <controls:LucideIcon Kind="braces" Size="15" Foreground="{DynamicResource AccentBrush}"
+                <controls:LucideIcon Kind="braces" Size="16" Foreground="{DynamicResource AccentBrush}"
                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Style="{StaticResource CardHeaderTitle}"
                            Text="{Binding [Studio.Create.FilesTitle], Source={x:Static services:I18n.Instance}}"/>
@@ -1073,6 +1060,39 @@
 
         <views:StepNotesView DataContext="{Binding ComposeNotes}"
                              Title="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
+
+        <!-- The action bar (lot 3): the folders left to choose, else what the pause means, on
+             the left; « Back », « Adopt without trial » and « Try the team » on the right. The
+             Composer pause stops the engine before the trial (dry mode): the trial is THIS
+             click, never a side effect. « Adopt without trial » is the other answer to the same
+             pause; its label says what it skips — a report, not a check. -->
+        <Border Style="{StaticResource WizardActionBar}">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Style="{StaticResource ActionRow}">
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding GoBackCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                      Command="{Binding AdoptWithoutTrialCommand}"
+                      ToolTip="{Binding [Studio.Create.AdoptWithoutTrialTip], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}"
+                      Content="{Binding [Studio.Create.AdoptWithoutTrial], Source={x:Static services:I18n.Instance}}"/>
+              <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                      Command="{Binding TryTeamCommand}"
+                      Visibility="{Binding CanTryTeam, Converter={StaticResource BooleanToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding [Studio.Create.TryTeam], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Margin="0,0,12,0" Text="{Binding Step2Hint}"/>
+          </DockPanel>
+        </Border>
       </StackPanel>
 
       <!-- ── STEP 3 : ESSAYER ── -->
@@ -1087,7 +1107,7 @@
               <!-- Animated, like the one on the stepper. A motionless three-quarter arc says
                    nothing — it reads as decoration, which is exactly how it read when the
                    trial had crashed and it was still on screen. -->
-              <controls:LucideIcon Kind="loader-circle" Size="13" Foreground="{DynamicResource AccentBrush}" Margin="9,0,0,0"
+              <controls:LucideIcon Kind="loader-circle" Size="16" Foreground="{DynamicResource AccentBrush}" Margin="9,0,0,0"
                                    VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"
                                    Visibility="{Binding TrialInProgress, Converter={StaticResource BooleanToVisibility}}">
                 <controls:LucideIcon.RenderTransform>
@@ -1111,17 +1131,16 @@
                  does not exist before the adoption, so the trial reads the engine's default —
                  said here, with where the documents go afterwards, rather than discovered from
                  a verdict about an empty folder. -->
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,5,0,0"
-                       Foreground="{DynamicResource WarningBrush}"
-                       Text="{Binding [Studio.Create.TrialInsideTeam], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding TrialReadsInsideTeam, Converter={StaticResource BooleanToVisibility}}"/>
+            <controls:Alert Tone="Warning" Margin="0,10,0,0"
+                            Message="{Binding [Studio.Create.TrialInsideTeam], Source={x:Static services:I18n.Instance}}"
+                            Visibility="{Binding TrialReadsInsideTeam, Converter={StaticResource BooleanToVisibility}}"/>
             <ItemsControl ItemsSource="{Binding Activity}" Margin="0,12,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <DockPanel Margin="0,3">
                     <!-- The icon follows the outcome. It used to be a hard-coded green check,
                          so a task whose sentence read «failed» still carried a tick. -->
-                    <controls:LucideIcon DockPanel.Dock="Left" Size="13"
+                    <controls:LucideIcon DockPanel.Dock="Left" Size="16"
                                          VerticalAlignment="Top" Margin="0,2,9,0">
                       <controls:LucideIcon.Style>
                         <Style TargetType="controls:LucideIcon">
@@ -1154,6 +1173,10 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,16"
                 Visibility="{Binding HasVerdict, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
+            <!-- Lot 3: the summary sentence first — « 3 of 3 criteria met ». -->
+            <TextBlock FontSize="16" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8"
+                       TextWrapping="Wrap" Text="{Binding VerdictSummary}"
+                       Visibility="{Binding HasVerdictSummary, Converter={StaticResource BooleanToVisibility}}"/>
             <StackPanel Orientation="Horizontal">
               <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                          Text="{Binding [Studio.Create.VerdictTitle], Source={x:Static services:I18n.Instance}}"/>
@@ -1216,19 +1239,26 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <DockPanel Margin="0,4">
-                    <controls:LucideIcon DockPanel.Dock="Left" Size="14" VerticalAlignment="Top" Margin="0,2,9,0">
+                    <controls:LucideIcon DockPanel.Dock="Left" Size="16" VerticalAlignment="Top" Margin="0,1,9,0">
                       <controls:LucideIcon.Style>
                         <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
                           <Setter Property="Kind" Value="circle-help"/>
                           <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
                           <Style.Triggers>
+                            <!-- Lot 3: green check for a criterion met, amber for a remark (a
+                                 finding that blocks nothing), red for a failure — never a red
+                                 triangle on a criterion the engine let pass. -->
                             <DataTrigger Binding="{Binding Passed}" Value="True">
                               <Setter Property="Kind" Value="circle-check"/>
                               <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding Passed}" Value="False">
-                              <Setter Property="Kind" Value="triangle-alert"/>
+                            <DataTrigger Binding="{Binding IsFailure}" Value="True">
+                              <Setter Property="Kind" Value="circle-x"/>
                               <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsRemark}" Value="True">
+                              <Setter Property="Kind" Value="triangle-alert"/>
+                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
@@ -1253,7 +1283,7 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <DockPanel Margin="0,3">
-                      <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="13"
+                      <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="16"
                                            Foreground="{DynamicResource MarkBrush}"
                                            VerticalAlignment="Top" Margin="0,2,9,0"/>
                       <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}"
@@ -1309,10 +1339,25 @@
 
         <views:StepNotesView DataContext="{Binding TryNotes}"
                              Title="{Binding [Studio.Create.NotesTry], Source={x:Static services:I18n.Instance}}"/>
+
+        <!-- The action bar (lot 3): « Back » to the composition. The verdict's decisions stay
+             in the verdict card, next to what they decide. -->
+        <Border Style="{StaticResource WizardActionBar}">
+          <DockPanel LastChildFill="False">
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                    Command="{Binding GoBackCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+          </DockPanel>
+        </Border>
       </StackPanel>
 
       <!-- ── STEP 4 : ADOPTER ── -->
       <StackPanel Visibility="{Binding IsStep4, Converter={StaticResource BooleanToVisibility}}">
+        <!-- Lot 3: the adoption form leads the step, in one card. -->
         <Border Style="{StaticResource Card}">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
@@ -1330,30 +1375,26 @@
             <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
                  field, with a free name and the way to the team that holds this one; the
                  engine's own refusal never reaches the screen. -->
-            <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="12,10" Margin="0,8,0,0"
-                    Visibility="{Binding HasAdoptConflict, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel>
-                <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
-                           Text="{Binding AdoptConflict}"/>
-                <WrapPanel Margin="0,8,0,0">
-                  <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
-                          Command="{Binding UseFreeTeamNameCommand}" Content="{Binding UseFreeTeamNameLabel}"/>
-                  <Button Style="{StaticResource BtnSecondary}"
-                          Command="{Binding OpenConflictingTeamCommand}"
-                          Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
-                          Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
-                </WrapPanel>
-              </StackPanel>
-            </Border>
+            <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding AdoptConflict}"
+                            Visibility="{Binding HasAdoptConflict, Converter={StaticResource BooleanToVisibility}}">
+              <WrapPanel>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
+                        Command="{Binding UseFreeTeamNameCommand}" Content="{Binding UseFreeTeamNameLabel}"/>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                        Command="{Binding OpenConflictingTeamCommand}"
+                        Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
+                        Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
+              </WrapPanel>
+            </controls:Alert>
 
             <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
                  it read as a fourth choice among the profiles rather than as the way out
                  to the screen that manages them. -->
             <DockPanel Margin="0,16,0,7">
-              <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
                       VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}">
                 <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
+                  <controls:LucideIcon Kind="sliders-horizontal" Size="16" Margin="0,0,7,0"/>
                   <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
@@ -1373,9 +1414,9 @@
             <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="13,11" MaxWidth="480" HorizontalAlignment="Left">
               <DockPanel>
-                <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="15"
+                <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="16"
                                      Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,11,0"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Padding="10,5"
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
                         VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
                         Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
@@ -1444,18 +1485,27 @@
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="8,0,0,0"
                          Text="{Binding [Studio.Create.SchedLocalTime], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
+          </StackPanel>
+        </Border>
 
-            <views:StepNotesView DataContext="{Binding AdoptNotes}" Margin="0,18,0,0"
-                                 Title="{Binding [Studio.Create.NotesAdopt], Source={x:Static services:I18n.Instance}}"/>
+        <views:StepNotesView DataContext="{Binding AdoptNotes}" Margin="0,16,0,0"
+                             Title="{Binding [Studio.Create.NotesAdopt], Source={x:Static services:I18n.Instance}}"/>
 
-            <DockPanel Margin="0,18,0,0" LastChildFill="False">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveTeamCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-            </DockPanel>
+        <!-- The action bar (lot 3): « Back » and « Adopt the team ». -->
+        <Border Style="{StaticResource WizardActionBar}">
+          <StackPanel Style="{StaticResource ActionRow}" HorizontalAlignment="Right">
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding GoBackCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
+                <TextBlock Text="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+            <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0" Command="{Binding SaveTeamCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="save" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                <TextBlock Text="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
           </StackPanel>
         </Border>
       </StackPanel>
@@ -1482,7 +1532,7 @@
           </Border.Style>
           <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-              <controls:LucideIcon Kind="circle-help" Size="14" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
+              <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
               <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="8,0,0,0"
                          Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
@@ -1515,7 +1565,7 @@
           <DockPanel>
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Click="OnToggleTech">
               <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="eye" Size="12" Margin="0,0,6,0"/>
+                <controls:LucideIcon Kind="eye" Size="16" Margin="0,0,6,0"/>
                 <TextBlock Text="{Binding [Studio.Create.TechToggle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>
@@ -1523,7 +1573,7 @@
                     Margin="0,0,8,0" Click="OnCopyTechJournal"
                     Visibility="{Binding RawLog.Lines.Count, Converter={StaticResource CountToVisibility}}">
               <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,6,0"/>
                 <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Button>

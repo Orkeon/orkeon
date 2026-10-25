@@ -97,7 +97,11 @@ public sealed class WizardAgentCard
 }
 
 /// <summary>One line of the trial checklist.</summary>
-public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail);
+public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false)
+{
+    /// <summary>Whether the line is a failure — a blocking finding: the red icon.</summary>
+    public bool IsFailure => Passed == false && !IsRemark;
+}
 
 /// <summary>
 /// One line of the trial's activity list.
@@ -235,6 +239,15 @@ public sealed record MountRow(
     /// folder to choose — unanswered, and readable.
     /// </summary>
     public bool CanCreateInsideTeam => !HasFolder && !IsUnreadable;
+
+    /// <summary>
+    /// Whether the row is a read root still to choose: its state says what happens without a
+    /// source folder — the team starts from an empty «input» folder (lot 3).
+    /// </summary>
+    public bool IsReadToChoose => CanChooseFolder && !IsReadWrite;
+
+    /// <summary>Whether the row is a written root still to choose: its state reads « To choose ».</summary>
+    public bool IsWriteToChoose => CanChooseFolder && IsReadWrite;
 
     /// <summary>
     /// Whether the row's ✕ drops an agent-implied root: a bare row of the Composer step. A
@@ -510,9 +523,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             () => MaxStep > 1 || IsEngineRunning || !Chat.IsEmpty);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
         GoStep1Command = new RelayCommand(() => GoStep(1));
-        GoStep2Command = new RelayCommand(() => GoStep(2));
-        GoStep3Command = new RelayCommand(() => GoStep(3));
-        GoStep4Command = new RelayCommand(() => GoStep(4));
+        GoStep2Command = new RelayCommand(() => GoStep(2), () => MaxStep >= 2);
+        GoStep3Command = new RelayCommand(() => GoStep(3), () => MaxStep >= 3);
+        GoStep4Command = new RelayCommand(() => GoStep(4), () => MaxStep >= 4);
+        InitializeStepper(wired.Clock);
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
         OpenConflictingTeamCommand = new RelayCommand(OpenConflictingTeam, () => CanOpenConflictingTeam);
@@ -752,7 +766,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The brief interview is an engine blocked on stdin: while a question stands,
         // the top-of-screen spinner must stop claiming the engine is working.
         if (propertyName is nameof(ChatThreadViewModel.IsAsking))
+        {
             OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
+            RaiseSessionStateChanged();
+        }
     }
 
     private void OnProfilesPropertyChanged(string? propertyName)
@@ -856,6 +873,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
             OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4));
             RaiseDraftChanged();
+            GoBackCommand?.RaiseCanExecuteChanged();
         }
     }
 
@@ -865,8 +883,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         get => _maxStep;
         private set
         {
-            if (SetProperty(ref _maxStep, value))
-                RestartCommand?.RaiseCanExecuteChanged();
+            if (!SetProperty(ref _maxStep, value))
+                return;
+
+            RestartCommand?.RaiseCanExecuteChanged();
+            RaiseStepperChanged();
         }
     }
 
@@ -974,7 +995,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             if (SetProperty(ref _need, value))
             {
-                OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
+                OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint), nameof(NeedSummary));
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
                 RefreshRephrase();
@@ -1259,6 +1280,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             if (!SetProperty(ref _isEngineRunning, value))
                 return;
+
+            // A new run: whatever the previous one ended on no longer speaks for the session.
+            if (value)
+                ForgetRunOutcome();
+            else
+                RaiseSessionStateChanged();
 
             // CanTryTeam gates BOTH answers to the dry pause, and it reads IsEngineRunning:
             // the engine dying is the moment those two buttons become offerable, and it is
@@ -1736,6 +1763,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(MountRows),
             nameof(HasMountRows),
             nameof(NeedsInputFolder),
+            nameof(FoldersToChooseCount), nameof(HasFoldersToChoose),
+            nameof(Step2Hint),
             nameof(TrialReadsInsideTeam),
             nameof(HasUndeclaredTeamMounts),
             nameof(HasDerivedMounts),
@@ -2822,6 +2851,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model = new ForgeSessionModel { Meter = _client.Meter?.Begin(Orkeon.Studio.Core.Run.ExecutionKind.Forge) };
         _saveError = null;
         Failure = null;
+        ForgetSessionState();
         RawLog.Clear();
         Activity.Clear();
         Checklist.Clear();
@@ -2998,8 +3028,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         if (result.ExitCode != 0 && _lastStderr is { } stderr)
             StatusMessage = stderr;
 
-        // "Stop" is the user's own gesture, not a failure: the stopped sentence keeps it.
-        if (result.WasCancelled || result.Outcome == RunOutcome.Cancelled)
+        // "Stop" is the user's own gesture, not a failure: the stepper says « Paused · Resume ».
+        var cancelled = result.WasCancelled || result.Outcome == RunOutcome.Cancelled;
+        NoteRunEnded(cancelled);
+        if (cancelled)
             return;
 
         // STUDIO-13: a non-zero exit — with or without stderr — and a session that reported
@@ -3089,7 +3121,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             "ready" => _strings[StudioStringKeys.ForgeStatusReady],
             "failed" when _model.LastError is null && _lastStderr is null
                 => _strings[StudioStringKeys.ForgeStatusFailed],
-            "abandoned" or "paused" => _strings[StudioStringKeys.ForgeStatusStopped],
             _ => StatusMessage,
         };
 
@@ -3117,7 +3148,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
-            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam));
+            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam),
+            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
+        RaiseSessionStateChanged();
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();
@@ -3211,7 +3244,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         Checklist.Clear();
         foreach (var item in _model.BuildChecklist())
-            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail));
+            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark));
     }
 
     private void SyncDecisions()

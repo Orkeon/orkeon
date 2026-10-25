@@ -1002,9 +1002,6 @@
   <data name="Studio.Create.StatusFailed" xml:space="preserve">
     <value>出了点问题——详情见下方卡片。</value>
   </data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve">
-    <value>已停止——随时可以从「我的方案」继续。</value>
-  </data>
   <data name="Studio.Create.Attempt" xml:space="preserve">
     <value>第 {0} 次尝试</value>
   </data>
@@ -1224,12 +1221,6 @@
   <data name="Studio.Create.Title" xml:space="preserve">
     <value>创建智能体团队</value>
   </data>
-  <data name="Studio.Create.SubNovice" xml:space="preserve">
-    <value>四步：描述需求、确认组成、试运行、采用。最后一步之前不写入任何内容。</value>
-  </data>
-  <data name="Studio.Create.SubExpert" xml:space="preserve">
-    <value>组建助手。YAML 定义从第 2 步起可编辑；试运行以 dry-run 方式执行。</value>
-  </data>
   <data name="Studio.Teams.ScreenTitle" xml:space="preserve">
     <value>我的智能体团队</value>
   </data>
@@ -1244,9 +1235,6 @@
   </data>
   <data name="Studio.Create.AssistantBy" xml:space="preserve">
     <value>助手由以下模型驱动</value>
-  </data>
-  <data name="Studio.Create.AssistantMissing" xml:space="preserve">
-    <value>助手未配置——请在下方选择其模型。</value>
   </data>
   <data name="Studio.Create.GateTitle" xml:space="preserve">
     <value>助手需要一个 AI 模型</value>
@@ -2438,9 +2426,6 @@
   <data name="Studio.Create.FoldersHint" xml:space="preserve">
     <value>这些文件夹会在采纳时随团队一起记录——而试运行本身在自己的沙箱中进行。</value>
   </data>
-  <data name="Studio.Create.DerivedHint" xml:space="preserve">
-    <value>它们来自各个智能体：修改某个智能体即可改变它能看到的内容。</value>
-  </data>
   <data name="Studio.Teams.Modify" xml:space="preserve">
     <value>编辑</value>
   </data>
@@ -2630,9 +2615,6 @@
   <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>提问</value>
   </data>
-  <data name="Studio.Chat.AskShort" xml:space="preserve">
-    <value>提问</value>
-  </data>
   <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>向助手提问</value>
   </data>
@@ -2728,9 +2710,6 @@
   </data>
   <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
     <value>团队已生成并通过校验。试运行只会给出一份行为报告；现在采用就是放弃这份报告，仅此而已。</value>
-  </data>
-  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
-    <value>这个团队要读取文件。请选择它应当读取的文件夹，否则采用时它只会得到自己那个空的「input」文件夹，而且不会有任何东西把您的文档复制进去。</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>已写入 {0} 个文件</value>
@@ -3709,4 +3688,19 @@
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>手动</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>允许</value></data>
+  <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>运行中</value></data>
+  <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>等待您操作</value></data>
+  <data name="Studio.Create.SessionPaused" xml:space="preserve"><value>已暂停</value></data>
+  <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>草稿已于 {0} 保存</value></data>
+  <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>此会话无法在此继续：请重新开始，或在「我的团队」的「进行中的会话」中找到它。</value></data>
+  <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>试运行前还需选择 {0} 个文件夹。</value></data>
+  <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{1} 项标准中已满足 {0} 项</value></data>
+  <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>采用之前，不会向您的计算机写入任何内容。</value></data>
+  <data name="Studio.Create.Back" xml:space="preserve"><value>返回</value></data>
+  <data name="Studio.Create.Resume" xml:space="preserve"><value>继续</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>只读</value></data>
+  <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>读写</value></data>
+  <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>待选择</value></data>
+  <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>待选择：没有源文件夹时，团队将从一个空的「input」文件夹开始。</value></data>
+  <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>需求</value></data>
 </root>

@@ -366,7 +366,6 @@
   <data name="Studio.Create.StatusJudging" xml:space="preserve"><value>Checking the result against what you asked…</value></data>
   <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Your solution is ready.</value></data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Something went wrong — the detail is in the card below.</value></data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Stopped — you can pick it up again from My solutions.</value></data>
   <data name="Studio.Create.Attempt" xml:space="preserve"><value>Attempt {0}</value></data>
   <data name="Studio.Create.CheckUnverified" xml:space="preserve"><value>I could not check this automatically — judge for yourself.</value></data>
   <data name="Studio.Create.ResultScore" xml:space="preserve"><value>The try is done (score {0}).</value></data>
@@ -440,14 +439,11 @@
 <data name="Studio.Shell.Create" xml:space="preserve"><value>Create a team</value></data>
 <data name="Studio.Shell.NavTeams" xml:space="preserve"><value>My teams</value></data>
 <data name="Studio.Create.Title" xml:space="preserve"><value>Create an agent team</value></data>
-<data name="Studio.Create.SubNovice" xml:space="preserve"><value>Four steps: describe the need, review the composition, try it, adopt it. Nothing is written before the last one.</value></data>
-<data name="Studio.Create.SubExpert" xml:space="preserve"><value>Composition assistant. The YAML definition is editable from step 2; the trial runs as a dry-run.</value></data>
 <data name="Studio.Teams.ScreenTitle" xml:space="preserve"><value>My agent teams</value></data>
 <data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Each team is an autonomous folder on this machine — copiable, shareable, deletable.</value></data>
 <data name="Studio.Create.Restart" xml:space="preserve"><value>Start over</value></data>
 <data name="Studio.Create.Stop" xml:space="preserve"><value>Stop</value></data>
 <data name="Studio.Create.AssistantBy" xml:space="preserve"><value>Assistant powered by</value></data>
-<data name="Studio.Create.AssistantMissing" xml:space="preserve"><value>Assistant not configured — pick its model below.</value></data>
 <data name="Studio.Create.GateTitle" xml:space="preserve"><value>The assistant needs an AI model</value></data>
 <data name="Studio.Create.GateBody" xml:space="preserve"><value>It is the one that will compose your team and write the trial verdicts. Pick a setting — creation opens right after, and you can change it any time in Settings.</value></data>
 <data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Manage settings</value></data>
@@ -858,7 +854,6 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
   <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choose the folder…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
-  <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
   <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files</value></data>
@@ -966,9 +961,6 @@
   <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>Ask a question</value>
   </data>
-  <data name="Studio.Chat.AskShort" xml:space="preserve">
-    <value>Question</value>
-  </data>
   <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>Ask the assistant a question</value>
   </data>
@@ -1064,9 +1056,6 @@
   </data>
   <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
     <value>The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.</value>
-  </data>
-  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
-    <value>This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} file(s) written</value>
@@ -1945,4 +1934,19 @@
   <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manual</value></data>
   <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first.</value></data>
   <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Allow</value></data>
+  <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Running</value></data>
+  <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Waiting for you</value></data>
+  <data name="Studio.Create.SessionPaused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Draft saved at {0}</value></data>
+  <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.</value></data>
+  <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:folder|folders} to choose before the trial.</value></data>
+  <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} of {1} {1:plural:criterion|criteria} met</value></data>
+  <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Nothing is written on your machine before adoption.</value></data>
+  <data name="Studio.Create.Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Studio.Create.Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Read</value></data>
+  <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Read and write</value></data>
+  <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>To choose</value></data>
+  <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>To choose: without a source folder, the team will start from an empty «input» folder.</value></data>
+  <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Need</value></data>
 </root>

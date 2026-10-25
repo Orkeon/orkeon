@@ -773,9 +773,15 @@
       </Setter.Value>
     </Setter>
     <Style.Triggers>
+      <!-- Lot 3: a step not reached yet is shown, never opened. -->
+      <Trigger Property="IsEnabled" Value="False">
+        <Setter Property="Foreground" Value="{DynamicResource InkDisabledBrush}"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+      </Trigger>
+      <!-- The step on screen: filled with the accent. -->
       <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentFgBrush}"/>
       </DataTrigger>
     </Style.Triggers>
   </Style>
