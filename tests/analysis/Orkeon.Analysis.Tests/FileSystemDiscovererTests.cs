@@ -55,6 +55,35 @@ public class FileSystemDiscovererTests
         }
     }
 
+    [Theory]
+    [InlineData("pom.xml", "maven")]
+    [InlineData("build.gradle", "gradle")]
+    [InlineData("build.gradle.kts", "gradle")]
+    [InlineData("composer.json", "composer")]
+    [InlineData("Gemfile", "bundler")]
+    [InlineData("CMakeLists.txt", "cmake")]
+    public async Task Detects_package_marker_of_the_languages_it_indexes(string markerFile, string marker)
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ($"lib/{markerFile}", ""),
+            ("lib/src/a.c", "int a(void) { return 1; }"),
+        ]);
+        try
+        {
+            var sut = new FileSystemDiscoverer(TestFixtures.CreateFs(dir));
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            var package = Assert.Single(result.Packages);
+            Assert.Equal(marker, package.MarkerFile);
+            Assert.Equal("lib", package.RelativePath);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task Detects_npm_package_marker()
     {

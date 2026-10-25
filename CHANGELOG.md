@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
+
+Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by
+`AddRaggableTree`): `JavaScriptAdapter` (`.js`, `.jsx`, `.mjs`, `.cjs`), `JavaAdapter` (`.java`), `CAdapter` (`.c`),
+`CppAdapter` (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), `PhpAdapter` (`.php`), `RubyAdapter` (`.rb`) and
+`BashAdapter` (`.sh`, `.bash`). Each extracts declarations with their kind, parent, modifiers, decorators, doc comment,
+signature and statements, and feeds the graph its import, call and inheritance edges; a file import edge comes from a
+relative path only (`require_relative`, a quoted `#include`, `require`/`include` including `__DIR__ . '/x.php'`, a
+`source` or `.` whose path is a word or a quoted string without a variable). C and C++ resolve in one graph, so a `.c`
+file reaches the `.h` header it includes, parsed as C++; JavaScript and TypeScript share one too, and an extensionless
+import also finds a `.jsx` file (`DependencyGraphBuilder.GraphGroupOf`, `RegisterFile(..., adapter)`). Discovery detects
+the packages of these ecosystems (`pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`,
+`CMakeLists.txt`), and `orkeon doctor` checks the new grammar libraries. `LanguageRegistry` also loads
+agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog, parsed on request only,
+and the publish step no longer prunes these 19 grammars; OCaml (no macOS build) and the Windows-only swift, toml and
+tsq are still pruned.
+
+A C# `new Foo()` call is now named after its type, `Foo`, instead of the `new` keyword, so it resolves to the class it
+creates as a TypeScript `new` does.
+
+### Added — the structural tools serve every grammar
+
+`node_outline`, `node_read`, `node_replace`, `node_insert`, `node_ensure`, `edit_batch`, `structural_search` and
+`structural_rewrite` served C#, TypeScript and Markdown (and `structural_rewrite` accepted, undocumented, the other
+indexed grammars). They now take a file of any grammar the registry loads: the twelve indexed languages, `tsx`, and
+the parse-only agda (`.agda`), css, embedded-template (`.erb`, `.ejs`), haskell (`.hs`), html (`.html`, `.htm`), json,
+julia (`.jl`), ql (`.ql`, `.qll`), razor (`.cshtml`, `.razor`), scala (`.scala`, `.sc`) and verilog (`.v`, `.sv`,
+`.vh`, `.svh`), whose extensions `LanguageRegistry.Parseable` lists; discovery and the index still claim the indexed
+extensions only. The outline names declarations in Python, Go (a method as `Type.Method`), Rust (an `impl` block's
+functions under its type), Java, JavaScript, C and C++ (by declarator, a template under its function), PHP, Ruby, Bash,
+Scala, Julia and JSON (a key path, `a.b`); a grammar with no declaration kind (CSS, HTML, Haskell...) is outlined by
+the tree-sitter paths of its top-level nodes. `inside` appends after the last member of an indented or `end`-closed
+body (Python, Ruby), and gives a Rust or C enum variant and a JSON pair their separating comma. A pattern is parsed in
+any grammar (a PHP pattern without its `<?php` tag, a JSON pattern whose metavariables stand for values). A
+`.tsx` file is read with the `tsx` grammar by the node tools; a `typescript` rule still scans `.ts` and `.tsx`, a `tsx`
+rule scans `.tsx`. `ensure_import` also serves `tsx` and JavaScript; `ensure_using` stays C#. A method's receiver
+(Rust `self`, Python `self` or `cls`) is no longer a parameter of its selector.
+
+### Fixed — a tool the act does not offer is refused, not put to the operator (#193)
+
+A model's call to a tool `ctx.llm.act` does not offer (`read` when `tools: ["file_read"]`) reached the permission gate
+as an unclassified tool, which asks for it as a command: the operator was asked to approve `tool 'read' executes
+commands`, and an approval ran into `ERROR: tool 'read' is not available to this agent.` The call is now answered with
+that error at once, before the gate and `onToolCall`; no approval is asked and no tool call is counted.
+
+### Fixed — an approval asked by a background task is seen from the main view (#194)
+
+The question did not name the task that asked it, and in the TUI only its lines in the transcript showed it: once
+other output scrolled them away, the status line read `Working…` and a line typed got only `answer y, s or n`. A
+question now names its task (`? [t1] dev-batches: tool 'read' requires approval…`, `approve read for [t1]?`), a line
+that answers nothing writes the whole question again, the TUI status line shows the waiting question over every other
+state with the call (`? [t1] dev-batches asks to run read… ({"path":"…"} · answer y once · s session · n no · +1 more)`),
+the task's row in the tasks list reads `? waits for approval of read`, and its detail (Enter on the row) gives the
+whole call. The REPL's approval channel is read through the new
+`IToolApprovalWatch` (`Orkeon.Cli.Abstractions`) and `TuiIntegration.PendingApprovals`.
+
+### Fixed — a parser could return to another grammar's pool
+
+`TreeSitterParserPool.Return` found a parser's pool by its grammar name, and most grammars carry none (TypeScript,
+Java, C++, Ruby, JSON, Scala...): a parser of one went back to the first nameless grammar's pool, and the next parse in
+that language ran with the wrong grammar. The pool now records each parser's language when it makes it; a parser it
+did not make is disposed.
+
+### Fixed — the `tsx` grammar never loaded
+
+`LanguageRegistry` mapped `tsx` onto the `tree-sitter-typescript` library, which has no `tree_sitter_tsx` entry point:
+every `tsx` parse threw. It loads `tree-sitter-tsx`, the library the publish whitelist already kept.
+
+### Fixed — two adapter queries that never compiled
+
+The C# `StatementQuery` named an `else_clause` node the grammar does not have, and the Python `DocCommentQuery` had a
+structure error; `UniversalSemanticMapper` dropped both silently. The C# query no longer names it, and Python docstrings
+stay read by `ResolveDocComment`. A test now compiles every query of every built-in adapter against its grammar.
+
 ### Added — a delegated run's budget (#189)
 
 `ctx.delegate(agent, input, opts)` and `crew.runAgent(agent, input, opts)` take `budget` (the keys of

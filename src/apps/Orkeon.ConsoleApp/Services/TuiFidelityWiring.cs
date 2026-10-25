@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Cli.Abstractions;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.TerminalGui.Hosting;
@@ -142,6 +143,9 @@ internal static class TuiFidelityWiring
         var buffer = services.GetService<ISessionBufferService>();
         var cost = services.GetService<ICostBudgetManager>();
         var dispatch = services.GetService<CommandDispatchService>();
+        var approvals = services.GetService<IToolApprovalWatch>();
+        if (approvals is not null)
+            integration.PendingApprovals = () => approvals.Pending;
 
         if (buffer is not null)
         {
@@ -164,7 +168,7 @@ internal static class TuiFidelityWiring
 
         if (dispatch is not null)
         {
-            integration.AgentRows = () => BuildAgentRows(dispatch);
+            integration.AgentRows = () => BuildAgentRows(dispatch, approvals?.Pending);
             integration.FinishedAgentRows = () => BuildFinishedAgentRows(dispatch);
             integration.InterruptCurrent = () =>
             {
@@ -173,7 +177,7 @@ internal static class TuiFidelityWiring
                     dispatch.cancel(ticket);
             };
             integration.PromptTurnRunning = () => dispatch.PromptTurnTickets().Count > 0;
-            integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket));
+            integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket), approvals?.Pending);
         }
 
         if (services.GetService<ProgressBroker>() is { } broker)
@@ -291,8 +295,11 @@ internal static class TuiFidelityWiring
         }
     }
 
-    /// <summary>Transcript detail for one instance (the agents pane's Enter action).</summary>
-    private static string? DescribeInstance(CommandInstanceView? view)
+    /// <summary>
+    /// Transcript detail for one instance (the agents pane's Enter action), with the question the
+    /// instance waits on, call and prompt, when one waits (#194).
+    /// </summary>
+    internal static string? DescribeInstance(CommandInstanceView? view, IReadOnlyList<PendingToolApproval>? approvals = null)
     {
         if (view is null) return null;
         var lines = new List<string>(6)
@@ -304,6 +311,8 @@ internal static class TuiFidelityWiring
         };
         if (view.progress?.message is { Length: > 0 } pm) lines.Add($"  progress: {pm}");
         if (view.tokens > 0) lines.Add($"  tokens  : {view.tokens:N0}");
+        if (approvals?.FirstOrDefault(a => a.Ticket == view.ticket) is { } asked)
+            lines.Add($"  waits   : approval of {asked.ToolName} {asked.Arguments} (answer y once, s session, n no)");
         if (!string.IsNullOrEmpty(view.error)) lines.Add($"  error   : {Truncate(view.error!, 300)}");
         else if (view.result?.payload is { Length: > 0 } payload) lines.Add($"  result  : {Truncate(payload, 300)}");
         return string.Join("\n", lines);
@@ -322,7 +331,7 @@ internal static class TuiFidelityWiring
     /// *waiting*, not *finished* (user ruling 2026-08-06) — and stay auditable via
     /// <c>ps</c>/<c>inspect</c>.
     /// </summary>
-    internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch)
+    internal static List<AgentRowInfo> BuildAgentRows(CommandDispatchService dispatch, IReadOnlyList<PendingToolApproval>? approvals = null)
     {
         var instances = dispatch.list().Where(IsRunning).ToList();
         if (instances.Count == 0) return [];
@@ -344,9 +353,12 @@ internal static class TuiFidelityWiring
             {
                 // A live progress snapshot replaces the static intent while it runs —
                 // "pass 2/3 · compacting" says more than the launch wording.
-                var description = v.progress is { } p
-                    ? ComposeProgressDescription(p)
-                    : v.intent ?? "";
+                // A question the task waits on says more than either: the task stopped until it is answered (#194).
+                var description = approvals?.FirstOrDefault(a => a.Ticket == v.ticket) is { } asked
+                    ? $"? waits for approval of {asked.ToolName}"
+                    : v.progress is { } p
+                        ? ComposeProgressDescription(p)
+                        : v.intent ?? "";
                 return new AgentRowInfo
                 {
                     Name = RowName(v),

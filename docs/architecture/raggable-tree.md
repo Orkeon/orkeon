@@ -47,7 +47,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 services.AddRaggableTreeTools();   // the 15 agent tools (Orkeon.Tools.Analysis)
 ```
 
-`AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) registers the five
+`AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) registers the twelve
 language adapters, the five framework fingerprinters, the summarizer, the
 embedding provider, the singleton `InMemoryRaggableStore` (also exposed as
 `IRaggableStore` and `IIndexInvalidation`), the `IndexFreshnessService`, the git
@@ -103,7 +103,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 
 ## Six-phase pipeline
 
-1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`), exclusion via patterns and `.gitignore`.
+1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns and `.gitignore`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`), extracted on every build.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
@@ -143,7 +143,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `complexity_report` | Top-N by metric (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `access_cost` | Port-access cost (reads, writes, calls in loops, in-memory filters) of members by `fqns` or `changed_files`, restricted to `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | L4 structural queries (if, try, return...) — every index carries the statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
-| `node_outline` | Members of a C# or TypeScript file with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
+| `node_outline` | Members of a source file (any loaded grammar) or Markdown sections, with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | One member by selector: text, range and SHA-256, read uncut | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 | `node_replace` | Replace one node by selector and expected SHA-256 (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 | `node_insert` | Add a node `inside`, `before` or `after` an anchor selector (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
@@ -222,7 +222,9 @@ hosts that want push-based invalidation on top of the lazy pass.
 
 A selector resolves to exactly one node or fails listing candidates. A node's span includes its leading comments and its attributes or decorators.
 
-Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Declarations are addressable today in C# and TypeScript, sections in Markdown; the other shipped grammars are refused by name; a file whose extension no grammar claims is refused by name.
+Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). A `.h` header is read as C++, a superset that parses C headers too. The registry also loads tsx, agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog: no adapter indexes them and discovery does not claim their files. OCaml (no macOS build in the package) and the Windows-only swift, toml and tsq grammars are pruned at publish.
+
+The node tools and the structural tools read a file in any grammar of `LanguageRegistry.Parseable`: the indexed ones above, with `.tsx` read by the `tsx` grammar, then tsx (`.tsx`), agda (`.agda`), css (`.css`), embedded-template (`.erb`, `.ejs`), haskell (`.hs`), html (`.html`, `.htm`), json (`.json`), julia (`.jl`), ql (`.ql`, `.qll`), razor (`.cshtml`, `.razor`), scala (`.scala`, `.sc`) and verilog (`.v`, `.sv`, `.vh`, `.svh`); jsdoc claims no extension. A file whose extension no grammar claims is refused by name. The readable form names declarations in C#, TypeScript, JavaScript, Python, Go (a method is `Type.Method`), Rust (the functions of an `impl` block sit under its type), Java, C and C++ (by declarator: `n::A::g` for an out-of-line definition), PHP, Ruby, Bash, Scala, Julia and JSON (the key path, `a.b`); sections in Markdown. A file in which no declaration kind is known (CSS, HTML, Haskell, Verilog...) is outlined by the `@ts:` paths of its top-level nodes, through a lone wrapping node (`@ts:document/0/element/2/element`). A method's receiver (Rust `self`, Python `self` or `cls`) is not one of its parameter types.
 
 `node_outline` lists the members with selector, kind, byte range and line range. `node_read` returns the text of one member, its range and the SHA-256 of its bytes, uncut: the tool carries its own result bound (`node_read` = 256 000 characters in `AgentDefaults`), so the default tool-result cut does not apply.
 
@@ -327,6 +329,8 @@ Input: `action`, then `fqns` / `files` for `closure`, or `a` / `b` (each `{fqns,
 
 `structural_search` (read-class) finds syntax nodes by pattern or by rule. The engine is native (no ast-grep binary): each candidate file is parsed again by the matcher, so a result never comes from a stale index. Give exactly one of `pattern`, `rule` (an object) or `rule_file`.
 
+The `language` is any grammar of `LanguageRegistry.Parseable` or an alias (`cs`, `ts`, `js`, `c++`, `rb`, `sh`, `md`); it chooses the files scanned by extension, and a `typescript` rule scans `.ts` and `.tsx`. A pattern is parsed with that grammar: a PHP pattern needs no `<?php` tag, a JSON pattern is a value whose metavariables stand for values (`{"name": $N}`).
+
 Rule subset:
 
 | Key | Meaning |
@@ -353,7 +357,7 @@ Results are capped by `max_results` (default 100) and `max_files` (default 500);
 
 `node_insert` adds a node at a position against an anchor selector:
 
-- **`inside`** appends the text as the last member of a class, struct, interface or namespace body (C#, TypeScript), or at the end of a Markdown heading's section; enum members get the separating comma. Indentation is the first sibling's, else the parent's plus the file's detected unit (spaces or tabs); an empty body uses the second rule.
+- **`inside`** appends the text as the last member of a braced body (a class, struct, interface, namespace, impl or JSON object), after the last member of an indented or `end`-closed body (Python, Ruby), or at the end of a Markdown heading's section; a C#, Rust or C enum member and a JSON pair get the separating comma. Indentation is the first sibling's, else the parent's plus the file's detected unit (spaces or tabs); an empty body uses the second rule.
 - **`before`** inserts above the anchor's leading comments and attributes, **`after`** below the anchor; multi-line text is re-indented line by line to the anchor's indentation. No anchor hash is needed for `before`/`after`.
 - The result is re-parsed as for `node_replace` and refused when it introduces a diagnostic.
 
@@ -371,13 +375,13 @@ Results are capped by `max_results` (default 100) and `max_files` (default 500);
 
 - `dry_run` defaults to `true`: nothing is written, the result carries a per-file unified diff, match count and applied count.
 - Each rewritten file is re-parsed in memory; a file whose rewrite does not parse is refused alone (`refused_reason`), the others are still applied.
-- C# and TypeScript only: Markdown files are refused.
+- Every grammar `structural_search` serves except Markdown, which is refused.
 
 ## Extensibility
 
 ### Adding a language
 
-Implement `ILanguageAdapter` (`Orkeon.Analysis.Abstractions.Interfaces`): provide `LanguageName`, `FileExtensions`, the seven Tree-sitter queries (`DeclarationQuery`, `ImportQuery`, `CallQuery`, `InheritanceQuery`, `DocCommentQuery`, `DecoratorQuery`, `StatementQuery`), the `MapNodeKind` and `MapStatementKind` mappings, and the `ExtractSignature` / `ResolveImportPath` extractors (`RefineKind`, `ResolveDocComment`, `ExtractName` and `GetExtraModifiers` have default implementations). Register the adapter via DI (`services.AddSingleton<ILanguageAdapter, MyAdapter>()`): the builder and the incremental engine take every registered `ILanguageAdapter`, next to the five built-ins (`LanguageAdapterFactory`). A runnable Java adapter lives in [`examples/raggable-tree/custom-adapter/`](https://github.com/Orkeon/orkeon/blob/main/examples/raggable-tree/custom-adapter/README.md).
+Implement `ILanguageAdapter` (`Orkeon.Analysis.Abstractions.Interfaces`): provide `LanguageName`, `FileExtensions`, the seven Tree-sitter queries (`DeclarationQuery`, `ImportQuery`, `CallQuery`, `InheritanceQuery`, `DocCommentQuery`, `DecoratorQuery`, `StatementQuery`), the `MapNodeKind` and `MapStatementKind` mappings, and the `ExtractSignature` / `ResolveImportPath` extractors (`RefineKind`, `ResolveDocComment`, `ExtractName` and `GetExtraModifiers` have default implementations). Register the adapter via DI (`services.AddSingleton<ILanguageAdapter, MyAdapter>()`): the builder and the incremental engine take every registered `ILanguageAdapter`, next to the twelve built-ins (`LanguageAdapterFactory`: TypeScript, Python, C#, Go, Rust, JavaScript, Java, C, C++, PHP, Ruby, Bash); an adapter registered after `AddRaggableTree` with a built-in's `LanguageName` replaces it. A runnable Java adapter, written before Java was built in and kept as a minimal example of the contract, lives in [`examples/raggable-tree/custom-adapter/`](https://github.com/Orkeon/orkeon/blob/main/examples/raggable-tree/custom-adapter/README.md).
 
 ### Adding a fingerprinter
 
@@ -479,7 +483,9 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 ## V1 limitations
 
 - No support for C++ macros / fully resolved templates, nor for Ruby/Elixir metaprogramming.
-- The import resolver is heuristic for dynamic languages (Python, TypeScript): re-exports and monkey patches can produce `UnresolvedRef`.
+- The import resolver is heuristic for dynamic languages (Python, TypeScript, JavaScript, Ruby, PHP): re-exports and monkey patches can produce `UnresolvedRef`.
+- File import edges come from relative paths only: Java `import`, PHP `use`, Ruby `require` (as opposed to `require_relative`) and a C `#include <...>` name a package, a namespace or a system header, not a file, and draw no edge to a file of the tree; a Bash `source` whose path holds a variable is not resolved. A PHP path starting with `/` (`__DIR__ . '/lib/a.php'`) is read from the file's directory.
+- Edges resolve within a graph group (`DependencyGraphBuilder.GraphGroupOf`): C and C++ share one, so a `.c` file reaches the `.h` header it includes (parsed as C++) and the functions declared there; JavaScript and TypeScript share another. The other languages resolve each in their own.
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).

@@ -61,7 +61,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
         "Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is "
         + "{kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: "
         + "'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, "
-        + "module for TypeScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when "
+        + "module for TypeScript or JavaScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when "
         + "absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one "
         + "produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' "
         + "also runs dotnet build on the project above the edited files and restores every file when it is red. "

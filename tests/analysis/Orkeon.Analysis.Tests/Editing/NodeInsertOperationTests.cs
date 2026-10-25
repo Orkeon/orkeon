@@ -50,6 +50,26 @@ public sealed class NodeInsertOperationTests : IDisposable
         Assert.EndsWith("    public int D()\n    {\n        return 3;\n    }\n}\n", result, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("a.py", "class A:\n    def f(self):\n        pass\n\nx = 1\n", "A", "def g(self):\n    pass",
+        "class A:\n    def f(self):\n        pass\n    def g(self):\n        pass\n\nx = 1\n")]
+    [InlineData("a.rb", "class A\n  def f\n  end\nend\n", "A", "def g\nend",
+        "class A\n  def f\n  end\n  def g\n  end\nend\n")]
+    [InlineData("a.json", "{\n  \"a\": {\n    \"b\": 1\n  }\n}\n", "a", "\"c\": 2",
+        "{\n  \"a\": {\n    \"b\": 1,\n    \"c\": 2\n  }\n}\n")]
+    [InlineData("a.rs", "enum E {\n    A\n}\n", "E", "B",
+        "enum E {\n    A,\n    B\n}\n")]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldAppendAfterTheLastMember_WhenBodyIsIndentedClosedByKeywordOrCommaSeparated(
+        string name, string source, string selector, string text, string expected)
+    {
+        await SeedAsync(name, source);
+
+        await InsertAsync(name, selector, InsertPosition.Inside, text);
+
+        Assert.Equal(expected, await ReadAsync(name));
+    }
+
     [Fact]
     [Trait("BR", "RT-40")]
     public async Task ShouldDetectTabs_WhenFileUsesTabs()

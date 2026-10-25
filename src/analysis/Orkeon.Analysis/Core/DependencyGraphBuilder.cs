@@ -27,12 +27,31 @@ public sealed class DependencyGraphBuilder
     }
 
     public void RegisterFile(string filePath, string source, IReadOnlyList<RaggableNode> nodes)
+        => RegisterFile(filePath, source, nodes, _adapter);
+
+    /// <summary>
+    /// Registers a file parsed by <paramref name="adapter"/>, another language of the builder's graph group
+    /// (<see cref="GraphGroupOf"/>): a C file and the C++-parsed header it includes resolve against one index.
+    /// </summary>
+    public void RegisterFile(string filePath, string source, IReadOnlyList<RaggableNode> nodes, ILanguageAdapter adapter)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(nodes);
-        _files[filePath] = new FileContext(source, nodes);
+        ArgumentNullException.ThrowIfNull(adapter);
+        _files[filePath] = new FileContext(source, nodes, adapter);
     }
+
+    /// <summary>
+    /// The graph a language's edges are resolved in. Languages whose files import one another share one:
+    /// C and C++ (a <c>.h</c> header is parsed as C++), JavaScript and TypeScript.
+    /// </summary>
+    public static string GraphGroupOf(string languageName) => languageName switch
+    {
+        "c" or "cpp" => "c-family",
+        "javascript" or "typescript" => "ecmascript",
+        _ => languageName,
+    };
 
     public Task<IReadOnlyList<RaggableEdge>> BuildDependenciesAsync(
         IReferenceResolver resolver, CancellationToken ct)
@@ -94,29 +113,30 @@ public sealed class DependencyGraphBuilder
         RaggableNode moduleNode,
         FileContext ctx)
     {
-        using var parsed = _pool.Parse(ctx.Source, _adapter.LanguageName);
+        using var parsed = _pool.Parse(ctx.Source, ctx.Adapter.LanguageName);
         var language = parsed.Tree.Language;
 
-        CollectImports(edges, index, filePath, moduleNode, parsed.Root, language);
+        CollectImports(edges, index, filePath, moduleNode, ctx.Adapter, parsed.Root, language);
         CollectInheritance(edges, index, ctx, parsed.Root, language);
         CollectCalls(unresolvedCalls, ctx, moduleNode, parsed.Root, language);
     }
 
-    private void CollectImports(
+    private static void CollectImports(
         List<RaggableEdge> edges,
         Dictionary<string, RaggableNode> index,
         string filePath,
         RaggableNode moduleNode,
+        ILanguageAdapter adapter,
         TsNode root,
         TsLanguage language)
     {
-        var importNodes = RunQuery(language, _adapter.ImportQuery, root, "import");
+        var importNodes = RunQuery(language, adapter.ImportQuery, root, "import");
         foreach (var importNode in importNodes)
         {
             var spec = ExtractImportSpecifier(importNode);
             if (spec is null) continue;
 
-            var resolved = _adapter.ResolveImportPath(spec, filePath);
+            var resolved = adapter.ResolveImportPath(spec, filePath);
             if (resolved is null) continue;
 
             var target = ResolveImportTarget(resolved, index);
@@ -150,7 +170,7 @@ public sealed class DependencyGraphBuilder
         return ResolveInIndex(resolved, index);
     }
 
-    private void CollectInheritance(
+    private static void CollectInheritance(
         List<RaggableEdge> edges,
         Dictionary<string, RaggableNode> index,
         FileContext ctx,
@@ -161,7 +181,7 @@ public sealed class DependencyGraphBuilder
 
         foreach (var (captureName, kind) in new[] { ("extends", EdgeKind.Extends), ("implements", EdgeKind.Implements) })
         {
-            var clauses = RunQuery(language, _adapter.InheritanceQuery, root, captureName);
+            var clauses = RunQuery(language, ctx.Adapter.InheritanceQuery, root, captureName);
             foreach (var clause in clauses)
             {
                 var ownerSymbol = FindEnclosingSymbol(clause, ctx.Nodes);
@@ -179,19 +199,19 @@ public sealed class DependencyGraphBuilder
         }
     }
 
-    private void CollectCalls(
+    private static void CollectCalls(
         List<UnresolvedRef> unresolved,
         FileContext ctx,
         RaggableNode moduleNode,
         TsNode root,
         TsLanguage language)
     {
-        var calls = RunQuery(language, _adapter.CallQuery, root, "call");
+        var calls = RunQuery(language, ctx.Adapter.CallQuery, root, "call");
         foreach (var call in calls)
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
             var name = ExtractCallName(call);
-            if (_adapter.LanguageName == "typescript")
+            if (ctx.Adapter.LanguageName is "typescript" or "javascript")
             {
                 ownerSymbol ??= moduleNode;
                 if (ownerSymbol is not null && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
@@ -208,7 +228,7 @@ public sealed class DependencyGraphBuilder
 
             TagCall(moduleNode, name, ownerSymbol.Id);
 
-            var kind = call.Type == "new_expression" ? ReferenceKind.Instantiate : ReferenceKind.Call;
+            var kind = call.Type is "new_expression" or "object_creation_expression" ? ReferenceKind.Instantiate : ReferenceKind.Call;
             unresolved.Add(new UnresolvedRef(ownerSymbol.Fqn, name, kind, location));
         }
     }
@@ -333,7 +353,10 @@ public sealed class DependencyGraphBuilder
     {
         foreach (var descendant in Descend(importNode))
         {
-            if (descendant.Type == "string" || descendant.Type == "string_fragment")
+            // C names its include `string_literal` or `system_lib_string`, PHP its double-quoted string
+            // `encapsed_string`; a Bash `source` path is a `word` or a `raw_string`.
+            if (descendant.Type is "string" or "string_fragment" or "string_literal" or "system_lib_string"
+                or "encapsed_string" or "word" or "raw_string")
             {
                 var text = descendant.Text ?? string.Empty;
                 if (!string.IsNullOrEmpty(text)) return text;
@@ -346,7 +369,8 @@ public sealed class DependencyGraphBuilder
     {
         foreach (var descendant in Descend(clause))
         {
-            if (descendant.Type == "identifier" || descendant.Type == "type_identifier")
+            // `name` is PHP's identifier, `constant` Ruby's class name.
+            if (descendant.Type is "identifier" or "type_identifier" or "name" or "constant")
             {
                 var text = descendant.Text ?? string.Empty;
                 if (!string.IsNullOrEmpty(text)) yield return text;
@@ -359,14 +383,19 @@ public sealed class DependencyGraphBuilder
 
     private static string ExtractCallName(TsNode call)
     {
+        // Java and PHP name the method `name`, Ruby `method`; a constructor call names its `type`.
         var funcChild = call.GetChildForField("function")
             ?? call.GetChildForField("constructor")
-            ?? call.GetChildForField("callee");
+            ?? call.GetChildForField("callee")
+            ?? call.GetChildForField("name")
+            ?? call.GetChildForField("method")
+            ?? call.GetChildForField("type");
         if (funcChild is not null)
         {
             return ShortNameOf(funcChild);
         }
-        if (call.Children.Count > 0) return ShortNameOf(call.Children[0]);
+        var first = call.FirstNamedChild ?? call.FirstChild;
+        if (first is not null) return ShortNameOf(first);
         return string.Empty;
     }
 
@@ -431,7 +460,7 @@ public sealed class DependencyGraphBuilder
     ///   1. Exact path as returned by the adapter (e.g. already has .ts)
     ///   2. Stripped of its extension (bare path)
     ///   3. .ts / .tsx / .js variants
-    ///   4. index.ts / index.tsx / index.js barrel files
+    ///   4. index.ts / index.tsx / index.js / index.jsx barrel files
     /// </summary>
     private static RaggableNode? ResolveInIndex(
         string resolved,
@@ -447,13 +476,13 @@ public sealed class DependencyGraphBuilder
         if (lastDot > lastSlash) bare = resolved[..lastDot];
 
         // 3. Standard TypeScript extension variants
-        foreach (var ext in new[] { ".ts", ".tsx", ".js" })
+        foreach (var ext in new[] { ".ts", ".tsx", ".js", ".jsx" })
         {
             if (index.TryGetValue(bare + ext, out var byExt)) return byExt;
         }
 
         // 4. Barrel (directory/index.*) variants — resolves "import from './components'"
-        foreach (var indexFile in new[] { "/index.ts", "/index.tsx", "/index.js" })
+        foreach (var indexFile in new[] { "/index.ts", "/index.tsx", "/index.js", "/index.jsx" })
         {
             if (index.TryGetValue(bare + indexFile, out var barrel)) return barrel;
         }
@@ -485,5 +514,5 @@ public sealed class DependencyGraphBuilder
         return Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
 
-    private sealed record FileContext(string Source, IReadOnlyList<RaggableNode> Nodes);
+    private sealed record FileContext(string Source, IReadOnlyList<RaggableNode> Nodes, ILanguageAdapter Adapter);
 }

@@ -167,3 +167,128 @@ override Orkeon.Analysis.Core.Editing.SelectorNotFoundException.GetObjectData(Sy
 override Orkeon.Analysis.Core.Editing.UnsupportedExtensionException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.Core.Structural.UnboundMetavariableException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Analysis.Core.Structural.UnsupportedRuleKeyException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+Orkeon.Analysis.Adapters.BashAdapter
+Orkeon.Analysis.Adapters.BashAdapter.BashAdapter() -> void
+Orkeon.Analysis.Adapters.BashAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.BashAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.BashAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.BashAdapter.GetExtraModifiers(TreeSitter.Node! declarationNode, string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.BashAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.BashAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.BashAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.BashAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.BashAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.BashAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter
+Orkeon.Analysis.Adapters.CAdapter.CAdapter() -> void
+Orkeon.Analysis.Adapters.CAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.CAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.CAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.CAdapter.GetExtraModifiers(TreeSitter.Node! declarationNode, string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.CAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.CAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.CAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.CAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.CAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.CAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter
+Orkeon.Analysis.Adapters.CppAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.CppAdapter() -> void
+Orkeon.Analysis.Adapters.CppAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.CppAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.CppAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.CppAdapter.GetExtraModifiers(TreeSitter.Node! declarationNode, string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.CppAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.CppAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.CppAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.CppAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.CppAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.CppAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter
+Orkeon.Analysis.Adapters.JavaAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.JavaAdapter.GetExtraModifiers(TreeSitter.Node! declarationNode, string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.JavaAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.JavaAdapter() -> void
+Orkeon.Analysis.Adapters.JavaAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.JavaAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.JavaAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.JavaAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.JavaAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.JavaAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter
+Orkeon.Analysis.Adapters.JavaScriptAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.JavaScriptAdapter() -> void
+Orkeon.Analysis.Adapters.JavaScriptAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.JavaScriptAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.JavaScriptAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.JavaScriptAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.JavaScriptAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.JavaScriptAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter
+Orkeon.Analysis.Adapters.PhpAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.PhpAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.PhpAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.PhpAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.PhpAdapter.PhpAdapter() -> void
+Orkeon.Analysis.Adapters.PhpAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.PhpAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.PhpAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter
+Orkeon.Analysis.Adapters.RubyAdapter.CallQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.DeclarationQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.DecoratorQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.DocCommentQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.ExtractName(TreeSitter.Node! declarationNode) -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.ExtractSignature(TreeSitter.Node! declarationNode, string! fullSource) -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.FileExtensions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.RubyAdapter.GetExtraModifiers(TreeSitter.Node! declarationNode, string! name) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Analysis.Adapters.RubyAdapter.ImportQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.InheritanceQuery.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.LanguageName.get -> string!
+Orkeon.Analysis.Adapters.RubyAdapter.MapNodeKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.RubyAdapter.MapStatementKind(string! treeSitterNodeType) -> Orkeon.Analysis.Abstractions.StatementKind
+Orkeon.Analysis.Adapters.RubyAdapter.RefineKind(Orkeon.Analysis.Abstractions.UniversalNodeKind initialKind, TreeSitter.Node! declarationNode) -> Orkeon.Analysis.Abstractions.UniversalNodeKind
+Orkeon.Analysis.Adapters.RubyAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
+Orkeon.Analysis.Adapters.RubyAdapter.RubyAdapter() -> void
+Orkeon.Analysis.Adapters.RubyAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Core.DependencyGraphBuilder.RegisterFile(string! filePath, string! source, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter) -> void
+static Orkeon.Analysis.Core.DependencyGraphBuilder.GraphGroupOf(string! languageName) -> string!

@@ -52,25 +52,71 @@ public sealed class StructuralFileTests : IDisposable
         return await StructuralFile.LoadAsync(fs, pool, "/workspace/" + name);
     }
 
-    [Theory]
-    [InlineData(".py")]
-    [InlineData(".rs")]
-    [Trait("BR", "RT-44")]
-    public async Task ShouldRefuseByName_WhenGrammarHasNoNodeKinds(string extension)
+    public static TheoryData<string, string, string[]> Outlines { get; } = new()
     {
-        var fs = new DiskBackedFileSystemService(_dir, "/workspace");
-        await fs.WriteAllTextAsync("/workspace/x" + extension, "x", CancellationToken.None);
-        using var pool = new TreeSitterParserPool();
+        { "a.py", "import os\n\n@dec\nclass A(B):\n    def f(self, x: int):\n        pass\n\ndef g():\n    pass\n", ["A", "A.f(int)", "g()"] },
+        { "a.go", "package p\n\ntype T struct{ a int }\n\nfunc (t *T) M(x int) int { return x }\n\nfunc F() {}\n", ["T", "T.M(int)", "F()"] },
+        { "a.rs", "mod m {\n    pub fn f(x: i32) {}\n}\nstruct S;\nimpl S {\n    fn g(&self) {}\n}\ntrait T { fn h(&self); }\n", ["m", "m.f(i32)", "S", "S.g()", "T", "T.h()"] },
+        { "A.java", "package p;\nclass A {\n  void f(int x) {}\n  A() {}\n}\ninterface I { void g(); }\n", ["A", "A.f(int)", "A.A()", "I", "I.g()"] },
+        { "a.js", "class A {\n  f(x) {}\n}\nexport function g() {}\n", ["A", "A.f(any)", "g()"] },
+        { "a.c", "struct S { int a; };\nstatic int f(int a) { return a; }\nint *g(void) { return 0; }\n", ["S", "f", "g"] },
+        { "a.cpp", "namespace n {\nclass A {\npublic:\n  int f(int x) { return x; }\n};\ntemplate <typename T> T id(T x) { return x; }\n}\nint n::A::g() { return 1; }\n", ["n", "n.A", "n.A.f", "n.id", "n::A::g"] },
+        { "a.php", "<?php\nclass A {\n  public function f($x) {}\n}\nfunction g() {}\n", ["A", "A.f(any)", "g()"] },
+        { "a.rb", "module M\n  class A < B\n    def f(x)\n    end\n    def self.g; end\n  end\nend\n", ["M", "M.A", "M.A.f(any)", "M.A.g"] },
+        { "a.sh", "f() { echo 1; }\nfunction g { echo 2; }\n", ["f", "g"] },
+        { "A.scala", "object O {\n  def f(x: Int): Int = x\n}\nclass C { def g = 1 }\ntrait T\n", ["O", "O.f(Int)", "C", "C.g", "T"] },
+        { "a.json", "{\"a\": {\"b\": 1}, \"c\": [1]}\n", ["a", "a.b", "c"] },
+        { "a.jl", "module M\nfunction f(x)\n  x\nend\nend\n", ["M", "M.f"] },
+        { "a.tsx", "export function A() { return <div>hi</div>; }\n", ["A()"] },
+    };
 
-        var ex = await Assert.ThrowsAsync<UnsupportedExtensionException>(
-            () => StructuralFile.LoadAsync(fs, pool, "/workspace/x" + extension));
+    [Theory]
+    [MemberData(nameof(Outlines))]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldOutlineDeclarations_WhenFileIsInAnyIndexedOrNamedGrammar(string name, string source, string[] selectors)
+    {
+        var file = await LoadBytesAsync(name, Encoding.UTF8.GetBytes(source));
 
-        Assert.Equal(extension, ex.Extension);
+        Assert.Equal(selectors, file.Outline().Select(n => n.Selector).ToArray());
+        Assert.All(selectors, s => Assert.False(string.IsNullOrEmpty(file.Resolve(NodeSelector.Parse(s)).Text)));
+    }
 
-        await fs.WriteAllTextAsync("/workspace/ok.cs", "class A { }", CancellationToken.None);
-        await fs.WriteAllTextAsync("/workspace/ok.ts", "class A { }", CancellationToken.None);
-        Assert.NotNull(await StructuralFile.LoadAsync(fs, pool, "/workspace/ok.cs"));
-        Assert.NotNull(await StructuralFile.LoadAsync(fs, pool, "/workspace/ok.ts"));
+    [Theory]
+    [InlineData("a.css", "a { color: red; }\n@media screen { .b { x: y; } }\n", "@ts:stylesheet/0/rule_set", "a { color: red; }")]
+    [InlineData("a.html", "<html><head></head><body><p>hi</p></body></html>\n", "@ts:document/0/element/2/element", "<body><p>hi</p></body>")]
+    [InlineData("A.hs", "module M where\nf :: Int -> Int\nf x = x\n", "@ts:haskell/0/header", "module M where")]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldOutlineTopLevelNodesByPath_WhenGrammarHasNoDeclarationKinds(string name, string source, string selector, string text)
+    {
+        var file = await LoadBytesAsync(name, Encoding.UTF8.GetBytes(source));
+
+        Assert.Contains(selector, file.Outline().Select(n => n.Selector));
+        Assert.Equal(text, file.Resolve(NodeSelector.Parse(selector)).Text);
+    }
+
+    [Theory]
+    [InlineData(".agda")]
+    [InlineData(".erb")]
+    [InlineData(".ql")]
+    [InlineData(".razor")]
+    [InlineData(".v")]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldLoad_WhenExtensionBelongsToAParseOnlyGrammar(string extension)
+    {
+        var file = await LoadBytesAsync("x" + extension, Encoding.UTF8.GetBytes("x\n"));
+
+        Assert.NotNull(file.Outline());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public void ShouldClaimEachExtensionOnce_WhenGrammarsAreParseable()
+    {
+        var extensions = LanguageRegistry.Parseable.SelectMany(g => g.Extensions).ToList();
+
+        Assert.Equal(extensions.Count, extensions.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.All(LanguageRegistry.Parseable, g => Assert.True(g.Language == "markdown" || LanguageRegistry.IsSupported(g.Language), g.Language));
+        Assert.Contains(LanguageRegistry.Parseable, g => g.Language == "tsx" && g.Extensions.SequenceEqual([".tsx"]));
     }
 
     [Fact]

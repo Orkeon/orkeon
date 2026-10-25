@@ -142,4 +142,11 @@ public sealed class TuiIntegration
     /// leaves no line.
     /// </summary>
     public Func<IReadOnlyList<AgentRowInfo>>? FinishedAgentRows { get; set; }
+
+    /// <summary>
+    /// The tool approvals waiting for the operator, the one the next answer settles first. The status line shows
+    /// the first whatever task raised it, so a question asked by a background crew is seen from the main view
+    /// (#194). Null or empty ⇒ nothing waits.
+    /// </summary>
+    public Func<IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>>? PendingApprovals { get; set; }
 }

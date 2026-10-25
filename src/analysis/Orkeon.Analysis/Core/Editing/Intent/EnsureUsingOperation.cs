@@ -25,8 +25,8 @@ internal sealed partial class EnsureUsingOperation(string name, string? module =
 
     public EditResult Apply(ReadOnlyMemory<byte> current, StructuralFile parsed)
     {
-        if (parsed.Language is not ("csharp" or "typescript"))
-            throw new ArgumentException($"ensure_using and ensure_import support csharp and typescript, not {parsed.Language}.");
+        if (parsed.Language is not ("csharp" or "typescript" or "tsx" or "javascript"))
+            throw new ArgumentException($"ensure_using and ensure_import support csharp, typescript, tsx and javascript, not {parsed.Language}.");
         var text = Encoding.UTF8.GetString(current.Span);
         var cr = IndentationDetector.LineEnding(current.Span) == "\r\n" ? "\r" : string.Empty;
         var lines = text.Split('\n').ToList();

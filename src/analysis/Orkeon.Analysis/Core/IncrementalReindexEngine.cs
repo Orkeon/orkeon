@@ -121,10 +121,10 @@ public sealed class IncrementalReindexEngine
         var newNodes = parsed.NewNodes;
         var filesParsed = parsed.FilesParsed;
         var newEdges = new List<RaggableEdge>();
-        foreach (var (language, gb) in parsed.GraphBuildersByLanguage)
+        foreach (var (group, gb) in parsed.GraphBuildersByGroup)
         {
-            var languageNodes = unchangedNodes.Where(n => string.Equals(n.Language, language, StringComparison.OrdinalIgnoreCase));
-            newEdges.AddRange(await gb.BuildForFilesAsync(parsed.ChangedByLanguage[language], languageNodes, _resolver, ct).ConfigureAwait(false));
+            var groupNodes = unchangedNodes.Where(n => string.Equals(DependencyGraphBuilder.GraphGroupOf(n.Language), group, StringComparison.OrdinalIgnoreCase));
+            newEdges.AddRange(await gb.BuildForFilesAsync(parsed.ChangedByGroup[group], groupNodes, _resolver, ct).ConfigureAwait(false));
         }
 
         foreach (var fp in _fingerprinters)
@@ -232,11 +232,12 @@ public sealed class IncrementalReindexEngine
         var fileNodes = new UniversalSemanticMapper(adapter, _pool).ExtractNodes(path, source).ToList();
         parsed.NewNodes.AddRange(fileNodes);
         TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
-        GetOrCreateBuilder(parsed.GraphBuildersByLanguage, adapter).RegisterFile(path, source, fileNodes);
-        if (!parsed.ChangedByLanguage.TryGetValue(adapter.LanguageName, out var paths))
+        GetOrCreateBuilder(parsed.GraphBuildersByGroup, adapter).RegisterFile(path, source, fileNodes, adapter);
+        var group = DependencyGraphBuilder.GraphGroupOf(adapter.LanguageName);
+        if (!parsed.ChangedByGroup.TryGetValue(group, out var paths))
         {
             paths = [];
-            parsed.ChangedByLanguage[adapter.LanguageName] = paths;
+            parsed.ChangedByGroup[group] = paths;
         }
         paths.Add(path);
     }
@@ -257,12 +258,12 @@ public sealed class IncrementalReindexEngine
 
         var fileRank = await FileRanksAsync(root, ct).ConfigureAwait(false);
         var knownIds = keptEdges.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var language in unchangedNodes.Where(n => n.Level == NodeLevel.L2_Module).GroupBy(n => n.Language, StringComparer.OrdinalIgnoreCase))
+        foreach (var group in unchangedNodes.Where(n => n.Level == NodeLevel.L2_Module).GroupBy(n => DependencyGraphBuilder.GraphGroupOf(n.Language), StringComparer.OrdinalIgnoreCase))
         {
-            var refs = InboundCallRefs(language, changedNames, nodesById);
+            var refs = InboundCallRefs(group, changedNames, nodesById);
             if (refs.Count == 0) continue;
 
-            var symbols = SymbolsInFileOrder(allNodes, language.Key, fileRank);
+            var symbols = SymbolsInFileOrder(allNodes, group.Key, fileRank);
             var resolved = await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false);
             foreach (var edge in resolved.Where(e => knownIds.Add(e.Id)))
                 relinked.Add(Relink(edge, keptEdges, nodesById));
@@ -280,7 +281,7 @@ public sealed class IncrementalReindexEngine
         return new RaggableEdge(edge.Id, edge.FromId, edge.ToId, edge.Kind);
     }
 
-    // The calls the modules of one language make to a changed name, read from their `calls:<name>` tags.
+    // The calls the modules of one graph group make to a changed name, read from their `calls:<name>` tags.
     private static List<UnresolvedRef> InboundCallRefs(
         IEnumerable<RaggableNode> modules, HashSet<string> changedNames, Dictionary<string, RaggableNode> nodesById)
     {
@@ -299,13 +300,13 @@ public sealed class IncrementalReindexEngine
         return refs;
     }
 
-    // The named nodes of a language by Fqn: on a clash, the file listed last by the file system wins.
+    // The named nodes of a graph group by Fqn: on a clash, the file listed last by the file system wins.
     private static Dictionary<string, RaggableNode> SymbolsInFileOrder(
-        List<RaggableNode> allNodes, string language, Dictionary<string, int> fileRank)
+        List<RaggableNode> allNodes, string group, Dictionary<string, int> fileRank)
     {
         var symbols = new Dictionary<string, RaggableNode>(StringComparer.Ordinal);
         foreach (var node in allNodes
-            .Where(n => string.Equals(n.Language, language, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(n.Fqn))
+            .Where(n => string.Equals(DependencyGraphBuilder.GraphGroupOf(n.Language), group, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(n.Fqn))
             .OrderBy(n => fileRank.GetValueOrDefault(n.VirtualFilePath, int.MaxValue)))
             symbols[node.Fqn] = node;
         return symbols;
@@ -400,10 +401,11 @@ public sealed class IncrementalReindexEngine
     private DependencyGraphBuilder GetOrCreateBuilder(
         Dictionary<string, DependencyGraphBuilder> builders, ILanguageAdapter adapter)
     {
-        if (!builders.TryGetValue(adapter.LanguageName, out var gb))
+        var group = DependencyGraphBuilder.GraphGroupOf(adapter.LanguageName);
+        if (!builders.TryGetValue(group, out var gb))
         {
             gb = new DependencyGraphBuilder(adapter, _pool);
-            builders[adapter.LanguageName] = gb;
+            builders[group] = gb;
         }
         return gb;
     }
@@ -480,8 +482,8 @@ public sealed class IncrementalReindexEngine
     // What the parse of the changed files collects for the graph rebuild.
     private sealed class ChangedFiles
     {
-        public Dictionary<string, DependencyGraphBuilder> GraphBuildersByLanguage { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string, List<string>> ChangedByLanguage { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, DependencyGraphBuilder> GraphBuildersByGroup { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, List<string>> ChangedByGroup { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<RaggableNode> NewNodes { get; } = [];
         public int FilesParsed { get; set; }
     }

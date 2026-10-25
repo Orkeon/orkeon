@@ -2,7 +2,7 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Analysis** implements RaggableTree: a Tree-sitter parsing pipeline (discovery → parse/extract → resolve edges → fingerprint → embed → persist) with 5 language adapters (TypeScript, C#, Python, Go, Rust), incremental reindexing, and a live codebase watcher.
+**Orkeon.Analysis** implements RaggableTree: a Tree-sitter parsing pipeline (discovery → parse/extract → resolve edges → fingerprint → embed → persist) with 12 language adapters (TypeScript, C#, Python, Go, Rust, JavaScript, Java, C, C++, PHP, Ruby, Bash), incremental reindexing, and a live codebase watcher.
 
 ## Install
 

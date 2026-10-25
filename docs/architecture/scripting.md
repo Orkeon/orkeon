@@ -134,7 +134,9 @@ nothing else (pinned by `ReplAutonomousToolActTests`):
 the call starts (one `ActSession` per call):
 
 - **`tools: ["file_read"]`** offers the model only that subset of the agent's tools. A name the agent
-  does not hold throws `UnknownToolError` before the model is asked.
+  does not hold throws `UnknownToolError` before the model is asked. A tool call the model makes to a tool
+  the call does not offer is answered `ERROR: tool '<name>' is not available to this agent.` at once:
+  neither the permission gate nor `onToolCall` sees it, and no approval is asked.
 - **`effort: "low" | "medium" | "high"`** sets the provider's thinking setting for the call
   (`LlmConfig.Thinking`, enabled with that effort). The same `effort` is accepted by the other `ctx.llm`
   calls, by `ctx.llm.with({...})` and by `agent().effort(level)`; any other value is refused with

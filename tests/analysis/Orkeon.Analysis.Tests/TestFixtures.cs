@@ -376,4 +376,228 @@ internal static class TestFixtures
         }
         return sb.ToString();
     }
+
+    public const string JsLib = """
+        import { readFile } from './io.js';
+        const path = require('path');
+
+        /** Greets a person. */
+        export function greet(name) {
+            return `hi ${name}`;
+        }
+
+        export const shout = (text) => text.toUpperCase();
+
+        class Animal {
+            constructor(name) { this.name = name; }
+            speak() { return greet(this.name); }
+        }
+
+        export default class Dog extends Animal {
+            static create() { return new Dog('rex'); }
+            async fetch() {
+                for (const item of [1, 2]) {
+                    if (item > 1) { await readFile(path.join('a', 'b')); }
+                }
+                try { this.speak(); } catch (e) { throw e; }
+            }
+        }
+        """;
+
+    public const string JavaLib = """
+        package com.example.shapes;
+
+        import java.util.List;
+
+        /** A shape with an area. */
+        public interface Shape {
+            double area();
+        }
+
+        public enum Color { RED, GREEN }
+
+        @Deprecated
+        public class Circle extends Base implements Shape {
+            private static final double PI = 3.14;
+            private final double radius;
+
+            public Circle(double radius) { this.radius = radius; }
+
+            @Override
+            public double area() {
+                double total = 0;
+                for (int i = 0; i < 2; i++) {
+                    if (radius > 0) { total += PI * radius * radius; }
+                }
+                try { List.of(1).size(); } catch (RuntimeException e) { throw e; }
+                return total;
+            }
+        }
+
+        public record Point(int x, int y) {}
+        """;
+
+    public const string CLib = """
+        #include <stdio.h>
+        #include "util.h"
+
+        #define MAX 10
+
+        /* A point in 2D space. */
+        struct point {
+            int x;
+            int y;
+        };
+
+        typedef struct point point_t;
+
+        enum color { RED, GREEN };
+
+        static int helper(int a);
+
+        /** Adds two numbers. */
+        int add(int a, int b) {
+            int total = a + b;
+            for (int i = 0; i < MAX; i++) {
+                if (total > MAX) { return MAX; }
+            }
+            printf("%d", total);
+            return total;
+        }
+        """;
+
+    public const string CppLib = """
+        #include <vector>
+        #include "shape.hpp"
+
+        namespace geo {
+
+        /// A drawable shape.
+        class Shape {
+        public:
+            virtual ~Shape() = default;
+            virtual double area() const = 0;
+        };
+
+        struct Circle : public Shape {
+            explicit Circle(double r) : r_(r) {}
+            double area() const override { return 3.14 * r_ * r_; }
+        private:
+            double r_;
+        };
+
+        template <typename T>
+        T twice(T value) {
+            return value * 2;
+        }
+
+        double Circle::perimeter() const {
+            for (auto v : std::vector<int>{1, 2}) {
+                if (v > 1) { return twice(r_); }
+            }
+            try { throw 1; } catch (int e) { return 0; }
+        }
+
+        }
+        """;
+
+    public const string PhpLib = """
+        <?php
+        namespace App\Models;
+
+        use App\Contracts\Shape;
+
+        /** A circle. */
+        #[Entity]
+        class Circle extends Base implements Shape
+        {
+            const PI = 3.14;
+            private float $radius;
+
+            public function __construct(float $radius) { $this->radius = $radius; }
+
+            public function area(): float
+            {
+                $total = 0;
+                foreach ([1, 2] as $i) {
+                    if ($i > 1) { $total += self::PI * $this->radius; }
+                }
+                try { strlen('x'); } catch (\Exception $e) { throw $e; }
+                return $total;
+            }
+        }
+
+        interface Named { public function name(): string; }
+
+        trait Greets { public function greet() { return 'hi'; } }
+
+        enum Suit { case Hearts; }
+
+        function helper(int $a): int { return $a; }
+        """;
+
+    public const string RubyLib = """
+        require 'json'
+        require_relative 'util/io'
+
+        # A shape module.
+        module Shapes
+          # A circle.
+          class Circle < Base
+            include Comparable
+            PI = 3.14
+
+            def initialize(radius)
+              @radius = radius
+            end
+
+            def area
+              total = 0
+              [1, 2].each do |i|
+                total += PI * @radius if i > 1
+              end
+              begin
+                JSON.parse('{}')
+              rescue StandardError => e
+                raise e
+              end
+              total
+            end
+
+            def self.unit
+              new(1)
+            end
+          end
+        end
+
+        def helper(a)
+          a
+        end
+        """;
+
+    public const string BashLib = """
+        #!/usr/bin/env bash
+        set -euo pipefail
+        source ./lib/common.sh
+        . "$HOME/env.sh"
+
+        readonly MAX=10
+
+        # Greets a person.
+        greet() {
+          local name="$1"
+          if [ -z "$name" ]; then
+            return 1
+          fi
+          for i in 1 2; do
+            echo "hi $name $i"
+          done
+        }
+
+        function cleanup {
+          rm -f /tmp/x
+        }
+
+        greet world
+        """;
 }

@@ -58,7 +58,6 @@ public sealed class CSharpAdapter : ILanguageAdapter
         (expression_statement) @stmt
         (assignment_expression) @stmt
         (if_statement) @stmt
-        (else_clause) @stmt
         (switch_statement) @stmt
         (switch_section) @stmt
         (for_statement) @stmt

@@ -2,7 +2,9 @@
 
 > Shows how to teach RaggableTree a new language by implementing
 > `ILanguageAdapter`. Here a `JavaAdapter` adds Java support on top of the
-> built-in TypeScript adapter.
+> built-in TypeScript adapter. Java has since become a built-in adapter
+> (`Orkeon.Analysis.Adapters.JavaAdapter`); this one stays as a minimal example
+> of the contract.
 
 ## What it does
 

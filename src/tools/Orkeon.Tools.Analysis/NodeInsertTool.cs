@@ -36,8 +36,8 @@ public sealed class NodeInsertTool : FileToolBase<NodeInsertRequest, NodeInsertR
 
     public override string Name => "node_insert";
     public override string Description =>
-        "Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (an enum member gets "
-        + "its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and "
+        "Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (after the last member "
+        + "of an indented or end-closed body; an enum member or a JSON pair gets its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and "
         + "attributes, 'after' below the anchor. There is no expected_hash: no anchor hash is required for before/after, the "
         + "anchor is only a location. The text is re-indented line by line to the siblings' indentation (tabs or spaces as the file "
         + "does); the insert is refused when it introduces a parse error that was not there before, the file is then untouched.";

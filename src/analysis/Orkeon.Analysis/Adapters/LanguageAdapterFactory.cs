@@ -19,6 +19,13 @@ public static class LanguageAdapterFactory
         Register(new CSharpAdapter());
         Register(new GoAdapter());
         Register(new RustAdapter());
+        Register(new JavaScriptAdapter());
+        Register(new JavaAdapter());
+        Register(new CAdapter());
+        Register(new CppAdapter());
+        Register(new PhpAdapter());
+        Register(new RubyAdapter());
+        Register(new BashAdapter());
     }
 
     public static void Register(ILanguageAdapter adapter)

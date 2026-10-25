@@ -29,6 +29,22 @@ public class DependencyGraphBuilderTests
     }
 
     [Fact]
+    public async Task CSharp_object_creation_calls_the_type_it_creates()
+    {
+        const string source = """
+            namespace Demo;
+            public class Engine { }
+            public class Car
+            {
+                public Engine Build() { return new Engine(); }
+            }
+            """;
+        var (nodes, edges) = await AdapterHarness.GraphAsync(new CSharpAdapter(), ("/r/Car.cs", source));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Calls, "Build", "Engine"));
+    }
+
+    [Fact]
     public async Task Adds_extends_edge()
     {
         var (_, edges) = await BuildAsync(("/r/a.ts", TestFixtures.Inheritance));

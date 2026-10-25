@@ -19,16 +19,23 @@ internal sealed record BodyMember(string Kind, string Text, NodeRange Range);
 internal sealed record StructuralNode(string Selector, string Kind, NodeRange Range, string Text, string Sha256);
 
 /// <summary>
-/// A parsed C#/TypeScript file whose declarations are addressable by selector. The tree is
-/// snapshotted once at load and discarded; byte offsets are canonical (BOM and line endings kept).
+/// A parsed source file whose declarations are addressable by selector, in any grammar of
+/// <see cref="LanguageRegistry.Parseable"/>. The tree is snapshotted once at load and discarded;
+/// byte offsets are canonical (BOM and line endings kept). A grammar whose declarations the
+/// tables below do not name outlines its top-level nodes by tree-sitter path instead.
 /// </summary>
 internal sealed class StructuralFile
 {
+    // Node kinds are per grammar; one set serves them all, as no two grammars give a kind two meanings here.
     private static readonly HashSet<string> Containers = new(StringComparer.Ordinal)
     {
+        // C#, TypeScript, JavaScript, Java
         "namespace_declaration", "file_scoped_namespace_declaration", "class_declaration", "struct_declaration",
         "interface_declaration", "record_declaration", "record_struct_declaration", "enum_declaration",
         "abstract_class_declaration", "internal_module", "module",
+        // Python, Scala, Ruby (module above), Rust, C, C++, PHP, Julia, JSON
+        "class_definition", "object_definition", "trait_definition", "class", "mod_item", "trait_item", "impl_item",
+        "namespace_definition", "class_specifier", "struct_specifier", "trait_declaration", "module_definition", "pair",
     };
 
     private static readonly HashSet<string> Members = new(StringComparer.Ordinal)
@@ -36,16 +43,24 @@ internal sealed class StructuralFile
         "method_declaration", "constructor_declaration", "property_declaration", "method_definition",
         "method_signature", "function_declaration", "public_field_definition", "property_signature",
         "type_alias_declaration",
+        // Python, C, C++, PHP, Bash, Scala, Julia, Ruby, Rust, Go
+        "function_definition", "method", "singleton_method", "function_item", "function_signature_item", "struct_item",
+        "enum_item", "type_item", "const_item", "static_item", "type_spec", "enum_specifier",
+    };
+
+    // A declaration wrapped in another node: the wrapper is the span, the inner node the declaration.
+    private static readonly HashSet<string> Wrappers = new(StringComparer.Ordinal)
+    {
+        "export_statement", "decorated_definition", "template_declaration", "type_declaration",
     };
 
     internal const string MarkdownLanguage = "markdown";
-
-    private static readonly HashSet<string> Walkable = new(StringComparer.Ordinal) { "csharp", "typescript" };
 
     private static readonly HashSet<string> Bodies = new(StringComparer.Ordinal)
     {
         "declaration_list", "class_body", "interface_body", "object_type", "enum_body", "statement_block",
         "enum_member_declaration_list",
+        "block", "body_statement", "field_declaration_list", "template_body", "compound_statement", "object",
     };
 
     private readonly byte[] _bytes;
@@ -85,9 +100,7 @@ internal sealed class StructuralFile
     private static GrammarInfo GrammarOf(string virtualPath)
     {
         var extension = Path.GetExtension(virtualPath);
-        return LanguageRegistry.Shipped.FirstOrDefault(g =>
-            (g.Language == MarkdownLanguage || Walkable.Contains(g.Language))
-            && g.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        return LanguageRegistry.Parseable.FirstOrDefault(g => g.Extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
             ?? throw new UnsupportedExtensionException(extension);
     }
 
@@ -107,6 +120,7 @@ internal sealed class StructuralFile
         var root = PathNode.Of(parsed.Root);
         var file = new StructuralFile(bytes, source, bom, root, []) { Language = language };
         file.Walk(root, string.Empty);
+        if (file._declarations.Count == 0) file.OutlineByPath(root);
         return file;
     }
 
@@ -146,7 +160,7 @@ internal sealed class StructuralFile
         var members = new List<BodyMember>(named.Count);
         for (var i = 0; i < named.Count; i++)
         {
-            if (named[i].Type == "comment") continue;
+            if (IsComment(named[i].Type)) continue;
             // tree-sitter-typescript leaves the terminating semicolon of a field outside its node.
             var semicolon = named[i].Type == "public_field_definition" && named[i].EndIndex < _source.Length && _source[named[i].EndIndex] == ';';
             var range = DeclarationRange(named[i], named, i);
@@ -302,22 +316,97 @@ internal sealed class StructuralFile
                 continue;
             }
             var declared = DeclaredNode(child);
-            var name = declared?.ChildByField("name")?.Text;
-            if (declared is null || name is null) continue;
+            var name = declared is null ? null : NameOf(declared);
+            if (declared is null || string.IsNullOrEmpty(name)) continue;
 
             var fullName = prefix.Length == 0 ? name : $"{prefix}.{name}";
+            var inner = declared.Type == child.Type ? child : PathNode.Of(declared);
+            // A Rust impl block adds members to its type: they are listed under the type's name, the block itself is not.
+            if (declared.Type == "impl_item")
+            {
+                Walk(inner, fullName);
+                continue;
+            }
+
             _declarations.Add(DeclarationOf(fullName, declared, child, named, i));
-            if (Containers.Contains(declared.Type)) Walk(child.Type == "export_statement" ? PathNode.Of(declared) : child, fullName);
+            if (Containers.Contains(declared.Type)) Walk(inner, fullName);
         }
     }
 
-    // The container or member a child declares, looking through an export statement; null for anything else.
+    // The container or member a child declares, looking through a wrapper; null for anything else.
     private static TsNode? DeclaredNode(PathNode child)
     {
-        var declared = child.Type == "export_statement" ? child.Ts.ChildByField("declaration") : child.Ts;
+        var declared = child.Ts;
+        if (Wrappers.Contains(child.Type))
+        {
+            declared = child.Ts.ChildByField("declaration") ?? child.Ts.ChildByField("definition")
+                ?? child.Ts.NamedChildren.FirstOrDefault(c => Containers.Contains(c.Type) || Members.Contains(c.Type));
+        }
         if (declared is null) return null;
         return Containers.Contains(declared.Type) || Members.Contains(declared.Type) ? declared : null;
     }
+
+    // The declared name: the name field in most grammars, the declarator in C and C++, the receiver-qualified
+    // name of a Go method, the implemented type of a Rust impl, the key of a JSON pair, the callee of a Julia signature.
+    private static string? NameOf(TsNode declared)
+    {
+        if (declared.Type == "pair")
+        {
+            var key = declared.ChildByField("key")?.Text;
+            return key is null ? null : key.Trim('"');
+        }
+        if (declared.Type == "impl_item") return declared.ChildByField("type")?.Text;
+
+        var name = declared.ChildByField("name")?.Text;
+        if (name is not null)
+        {
+            var receiver = declared.Type == "method_declaration" ? declared.ChildByField("receiver") : null;
+            var parameter = receiver is { NamedChildren.Count: > 0 } ? receiver.NamedChildren[0] : null;
+            var receiverType = parameter?.ChildByField("type")?.Text.TrimStart('*');
+            return receiverType is null ? name : $"{receiverType}.{name}";
+        }
+        if (declared.ChildByField("declarator") is not null) return CDeclarators.Innermost(declared)?.Text;
+
+        var signature = declared.NamedChildren.FirstOrDefault(c => c.Type == "signature");
+        var call = signature is { NamedChildren.Count: > 0 } ? signature.NamedChildren[0] : null;
+        return call is { Type: "call_expression", NamedChildren.Count: > 0 } ? call.NamedChildren[0].Text : null;
+    }
+
+    // A grammar with no declaration the tables know: its top-level nodes, through a lone wrapping node, by path.
+    private void OutlineByPath(PathNode root)
+    {
+        var node = root;
+        var path = $"@ts:{root.Type}";
+        var named = Uncommented(root);
+        while (named.Count == 1 && named[0].NamedChildren.Count > 0)
+        {
+            path += $"/{IndexIn(node, named[0])}/{named[0].Type}";
+            node = named[0];
+            named = Uncommented(node);
+        }
+
+        foreach (var child in named)
+        {
+            var index = IndexIn(node, child);
+            var selector = $"{path}/{index}/{child.Type}";
+            _declarations.Add(new Declaration(selector, selector, child.Type, null, child, node.NamedChildren, index));
+        }
+    }
+
+    private static List<PathNode> Uncommented(PathNode node) => node.NamedChildren.Where(c => !IsComment(c.Type)).ToList();
+
+    private static int IndexIn(PathNode parent, PathNode child)
+    {
+        var siblings = parent.NamedChildren;
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            if (ReferenceEquals(siblings[i], child)) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>A comment node in any grammar: <c>comment</c>, or <c>line_comment</c>/<c>block_comment</c> (Rust, Java).</summary>
+    internal static bool IsComment(string kind) => kind == "comment" || kind.EndsWith("_comment", StringComparison.Ordinal);
 
     private static Declaration DeclarationOf(string fullName, TsNode declared, PathNode child, IReadOnlyList<PathNode> siblings, int index)
     {
@@ -331,7 +420,7 @@ internal sealed class StructuralFile
     {
         var first = index;
         while (first > 0
-            && siblings[first - 1].Type == "comment"
+            && IsComment(siblings[first - 1].Type)
             && siblings[first].StartRow - siblings[first - 1].EndRow <= 1)
         {
             first--;
@@ -381,7 +470,7 @@ internal sealed class StructuralFile
 
         public int EndRow { get; }
 
-        public IReadOnlyList<PathNode> NamedChildren { get; }
+        public List<PathNode> NamedChildren { get; }
 
         public static PathNode Of(TsNode node) => new(node);
     }

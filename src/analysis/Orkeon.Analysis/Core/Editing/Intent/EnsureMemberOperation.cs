@@ -16,6 +16,10 @@ internal sealed partial class EnsureMemberOperation(NodeSelector type, string te
     [GeneratedRegex(@"^(\s*(\[[^\]]*\]|@[\w.]+(\([^)]*\))?))*\s*")]
     private static partial Regex LeadingDecorations();
 
+    // A Go method's receiver comes before its name: func (t *T) Name(...).
+    [GeneratedRegex(@"^\s*func\s*\([^)]*\)\s*")]
+    private static partial Regex GoReceiver();
+
     [GeneratedRegex(@"<[^<>()]*>\s*$")]
     private static partial Regex TrailingGenerics();
 
@@ -28,7 +32,7 @@ internal sealed partial class EnsureMemberOperation(NodeSelector type, string te
         var members = parsed.BodyMembers(declaration);
         if (members.Count == 0) return new NodeInsertOperation(type, InsertPosition.Inside, text).Apply(current, parsed);
 
-        var typescript = parsed.Language == "typescript";
+        var typescript = parsed.Language is "typescript" or "tsx";
         var category = kind == EnsureMemberKind.Field ? Category.Field : Classify(text);
         var name = NameOf(text, category, typescript)
             ?? throw new ArgumentException("The member text has no recognisable name.");
@@ -98,7 +102,7 @@ internal sealed partial class EnsureMemberOperation(NodeSelector type, string te
 
     private static string? NameOf(string member, Category category, bool typescript)
     {
-        var head = LeadingDecorations().Replace(member, string.Empty);
+        var head = GoReceiver().Replace(LeadingDecorations().Replace(member, string.Empty), string.Empty);
         var cut = category == Category.Method ? head.IndexOf('(', StringComparison.Ordinal) : head.IndexOfAny(['{', '=', ';']);
         if (cut >= 0) head = head[..cut];
         if (category == Category.Method) head = TrailingGenerics().Replace(head, string.Empty);

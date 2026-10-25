@@ -152,6 +152,28 @@ public static class StatusLineFormatter
         return $"{lead} ({string.Join($" {glyphs.Dot} ", parts)})";
     }
 
+    /// <summary>The longest call the approval line shows before it is cut: the line has one row.</summary>
+    internal const int MaxApprovalArgumentsLength = 60;
+
+    /// <summary>
+    /// The approval form of the line, which wins over every other while a question waits:
+    /// <c>? [t1] dev-batches asks to run read… ({"path":"a.md"} · answer y once · s session · n no)</c>,
+    /// the call cut at <see cref="MaxApprovalArgumentsLength"/> characters, with <c>+2 more</c> when
+    /// other questions wait behind it.
+    /// </summary>
+    public static string ComposeApproval(GlyphSet glyphs, Orkeon.Cli.Abstractions.Runners.PendingToolApproval first, int waiting)
+    {
+        ArgumentNullException.ThrowIfNull(glyphs);
+        ArgumentNullException.ThrowIfNull(first);
+        var who = first.Ticket is { } ticket ? $"[{ticket}] {first.TaskName} asks" : "A tool call asks";
+        var call = first.Arguments.Length <= MaxApprovalArgumentsLength
+            ? first.Arguments
+            : string.Concat(first.Arguments.AsSpan(0, MaxApprovalArgumentsLength), "…");
+        var parts = new List<string>(3) { call, $"answer y once {glyphs.Dot} s session {glyphs.Dot} n no" };
+        if (waiting > 1) parts.Add($"+{waiting - 1} more");
+        return $"? {who} to run {first.ToolName}… ({string.Join($" {glyphs.Dot} ", parts)})";
+    }
+
     /// <summary>
     /// Splits a composed line into its head — the glyph and the verb up to the ellipsis,
     /// painted in the accent — and its tail — the parenthesised metrics or the progress bar,

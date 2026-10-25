@@ -107,3 +107,6 @@ static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty(Orkeon.Cli.Te
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.ResolveEffectiveMode(Orkeon.Cli.TerminalGui.Hosting.UiMode? requested, Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> Orkeon.Cli.TerminalGui.Hosting.UiMode
 Orkeon.Cli.TerminalGui.Layout.AcceptHandlers
 static Orkeon.Cli.TerminalGui.Layout.AcceptHandlers.OnAccept(this Terminal.Gui.ViewBase.View! view, System.Action! action) -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval!>!>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.set -> void
+static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.ComposeApproval(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.Abstractions.Runners.PendingToolApproval! first, int waiting) -> string!

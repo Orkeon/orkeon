@@ -83,7 +83,7 @@ internal sealed class Matcher
         }
 
         if (pattern.Type != node.Type) return false;
-        var targets = node.Children.Where(c => c.Type != "comment").ToList();
+        var targets = node.Children.Where(c => !StructuralFile.IsComment(c.Type)).ToList();
         if (pattern.Children.Count == 0) return targets.Count == 0 && pattern.Text == node.Text;
 
         return TryMatchSequence(pattern.Children, 0, targets, 0, source, captures, out result);

@@ -44,9 +44,8 @@ public sealed class PythonAdapter : ILanguageAdapter
           superclasses: (argument_list) @extends)
         """;
 
-    public string DocCommentQuery => """
-        (expression_statement (string) @doc)
-        """;
+    // Docstrings are read from the body by ResolveDocComment: no comment node is a doc.
+    public string DocCommentQuery => string.Empty;
 
     public string DecoratorQuery => """
         (decorator) @decorator
