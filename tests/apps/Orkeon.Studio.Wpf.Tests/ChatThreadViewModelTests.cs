@@ -513,6 +513,25 @@ public sealed class ChatThreadEdgeTests
         Assert.False(chat.IsOpen);
     }
 
+    /// <summary>
+    /// The fill question comes with <c>brief.ready</c>: the closing pause used to close the
+    /// panel under it, and the user had to reopen the assistant to answer.
+    /// </summary>
+    [Fact]
+    public void The_closing_pause_leaves_the_panel_open_on_a_question_asked_with_the_brief()
+    {
+        var delay = new ManualDelay();
+        var chat = Thread(delay);
+
+        chat.StartSession();
+        chat.AddAssistantTurn("Which folder?");
+        chat.BriefAccepted();
+        chat.SetQuestion(new ChatQuestion(null, "Put files in the folders?", []));
+        delay.Elapse();
+
+        Assert.True(chat.IsOpen);
+    }
+
     [Fact]
     public void Stopping_mid_thought_leaves_no_question_on_the_table()
     {

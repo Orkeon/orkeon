@@ -449,7 +449,20 @@ public sealed class ChatThreadViewModel : ObservableObject
         IsDone = true;
         Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
         RaiseDerived();
-        _delay.After(ClosingPause, Close);
+        _delay.After(ClosingPause, CloseAfterBrief);
+    }
+
+    /// <summary>
+    /// The end of the closing pause: the panel closes unless something now waits in it. The
+    /// fill question (STUDIO-57) arrives with the same <c>brief.ready</c> and opens the panel;
+    /// closing it under that question hid the answers the engine waits on.
+    /// </summary>
+    private void CloseAfterBrief()
+    {
+        if (_ownerQuestion is not null || _pendingAction is not null)
+            return;
+
+        Close();
     }
 
     /// <summary>
