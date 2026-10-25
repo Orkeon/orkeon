@@ -1253,10 +1253,16 @@ public sealed partial class JsLlmFacade
         var toolArgs = call.Arguments;
         var permissionMode = session.PermissionMode;
         // Resolved before the gate so the tool's self-declared access class
-        // (IBaseTool.Access) informs the verdict; unresolved tools stay
-        // Unspecified and the gate classifies them fail-closed.
+        // (IBaseTool.Access) informs the verdict.
         var tool = FindTool(session, toolName);
-        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
+        // A tool this call does not offer could never run: refused at once, before the gate
+        // and onToolCall, so no operator is asked to approve it (#193).
+        if (tool is null)
+        {
+            activity?.SetTag("orkeon.llm.act.permission", "unavailable");
+            return new(call, null, toolArgs, NotAvailable(toolName));
+        }
+        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.Access).ConfigureAwait(false);
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
             // Deny (an operator's refusal included, when an approval channel answered) and an
@@ -1382,11 +1388,13 @@ public sealed partial class JsLlmFacade
             ? null
             : verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{mode}'.";
 
+    private static string NotAvailable(string name) => $"ERROR: tool '{name}' is not available to this agent.";
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-boundary fault barrier: any tool failure is converted to an 'ERROR: ...' string fed back to the model as the tool result, so one faulty tool cannot crash the scripted LLM tool-call loop.")]
     private async Task<string> ExecuteToolAsync(IBaseTool? tool, string name, Dictionary<string, object?> arguments)
     {
         if (tool is null)
-            return $"ERROR: tool '{name}' is not available to this agent.";
+            return NotAvailable(name);
         try
         {
             if (_toolInvocation is not null)

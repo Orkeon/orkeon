@@ -103,6 +103,11 @@ public sealed class StatusLineView : View
         }
         _wasRunning = running;
 
+        // A question waiting for the operator wins over everything: whichever task asked it,
+        // the main view says so, and the next y, s or n typed at the prompt answers it (#194).
+        if (ReadPendingApprovals() is [var first, ..] pending)
+            return StatusLineFormatter.ComposeApproval(_glyphs, first, pending.Count);
+
         // A live progress snapshot wins over the generic turn readout — and also covers
         // background crews (compaction, indexing), whose work runs detached from the
         // runner's IsCommandRunning. Staleness guard: a snapshot the host could not tie
@@ -139,6 +144,19 @@ public sealed class StatusLineView : View
         if (_activity?.HasOpenToolCall == true)
             return TurnState.Tool;
         return _deltasFlowing ? TurnState.Streaming : TurnState.Working;
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing approvals provider degrades to no approval line, never crashes the UI timer.")]
+    private IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval>? ReadPendingApprovals()
+    {
+        try
+        {
+            return _integration?.PendingApprovals?.Invoke();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing progress provider degrades to no bar, never crashes the UI timer.")]

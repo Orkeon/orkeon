@@ -7,3 +7,21 @@ Orkeon.Cli.Abstractions.ModelAvailability.Available = 0 -> Orkeon.Cli.Abstractio
 Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting = 1 -> Orkeon.Cli.Abstractions.ModelAvailability
 Orkeon.Cli.Abstractions.ModelAvailability.Unavailable = 2 -> Orkeon.Cli.Abstractions.ModelAvailability
 virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnAfterCommandAsync(string! commandName, Orkeon.Cli.Abstractions.Commands.CommandResult! result, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.Pending.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval!>!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.PendingToolApproval(string! ToolName, string? Ticket, string? TaskName) -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Ticket.get -> string?
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Ticket.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.TaskName.get -> string?
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.TaskName.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToolName.get -> string!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToolName.init -> void
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToString() -> string!
+static Orkeon.Cli.Abstractions.Runners.PendingToolApproval.operator !=(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? left, Orkeon.Cli.Abstractions.Runners.PendingToolApproval? right) -> bool
+static Orkeon.Cli.Abstractions.Runners.PendingToolApproval.operator ==(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? left, Orkeon.Cli.Abstractions.Runners.PendingToolApproval? right) -> bool
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(object? obj) -> bool
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? other) -> bool
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.<Clone>$() -> Orkeon.Cli.Abstractions.Runners.PendingToolApproval!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Deconstruct(out string! ToolName, out string? Ticket, out string? TaskName) -> void

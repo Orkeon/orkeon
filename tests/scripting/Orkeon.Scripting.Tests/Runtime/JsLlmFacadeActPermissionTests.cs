@@ -62,6 +62,31 @@ public sealed class JsLlmFacadeActPermissionTests
     }
 
     [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task A_tool_the_act_does_not_offer_is_refused_without_asking_the_gate()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var read = new RecordingTool("file_read");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("read", "{\"path\":\"/x\"}") },
+            new LlmResponse { Content = "gave up", RawResponseBody = null },
+        });
+        var gate = new ScriptedGate((_, _) => PermissionVerdict.Ask("approve?"));
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { read }, new JsLlmActGuards { PermissionGate = gate });
+
+        var result = await facade.ActAsync(engine, "read it", EvalOptions(engine, "({ permissionMode: 'acceptEdits' })"));
+
+        Assert.Equal("gave up", result.Get("output").AsString());
+        Assert.Null(gate.LastMode);
+        Assert.Equal(0, read.CallCount);
+        var tool = Assert.Single(provider.MessagesPerCall[1], m => m.Role == "tool");
+        Assert.Equal("ERROR: tool 'read' is not available to this agent.", tool.Content);
+    }
+
+    [Fact]
     public async Task The_engine_clock_stops_while_the_gate_decides_and_runs_again_after()
     {
         var clock = new PausableTimeConstraint(TimeSpan.FromMinutes(5));
@@ -292,7 +317,8 @@ public sealed class JsLlmFacadeActPermissionTests
     }
 
     [Fact]
-    public async Task Unresolved_tool_reaches_the_gate_as_Unspecified()
+    [Trait("BR", "CH-01")]
+    public async Task Unresolved_tool_never_reaches_the_gate()
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var provider = new MessageCapturingProvider(new[]
@@ -308,8 +334,8 @@ public sealed class JsLlmFacadeActPermissionTests
         var result = await facade.ActAsync(engine, "probe", null);
 
         Assert.Equal("done", result.Get("output").AsString());
-        Assert.Equal(ToolAccess.Unspecified, gate.LastDeclaredAccess);
-        // The gate allowed it, but the tool does not exist: the loop feeds an ERROR back.
+        Assert.Null(gate.LastDeclaredAccess);
+        // The tool does not exist: the loop feeds an ERROR back without consulting the gate (#193).
         var turn2 = provider.MessagesPerCall[1];
         Assert.Contains(turn2, m => m.Role == "tool" && m.Content.Contains("ERROR:", StringComparison.Ordinal));
     }

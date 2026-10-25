@@ -40,6 +40,63 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.Equal("approve shell_command? [y] once / [s] session / [n] no > ", _channel.PromptOverride);
     }
 
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldNameTheTaskThatAsks_WhenABackgroundTaskRaisesTheQuestion()
+    {
+        using var channel = new ConsoleToolApprovalChannel(() => _console, () => ("t1", "dev-batches"));
+
+        _ = channel.RequestAsync(Request(), Ct);
+
+        Assert.Contains("? [t1] dev-batches: tool 'shell_command' requires approval", _console.Output, StringComparison.Ordinal);
+        Assert.Equal("approve shell_command for [t1]? [y] once / [s] session / [n] no > ", channel.PromptOverride);
+        var pending = Assert.Single(channel.Pending);
+        Assert.Equal(new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "t1", "dev-batches"), pending);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public async Task ShouldNameTheAmbientTask_WhenTheQuestionComesFromDetachedWork()
+    {
+        var instance = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry().Register(
+            "dev-batches", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:dev-batches", "runs", Guid.NewGuid());
+
+        await Task.Run(() =>
+        {
+            Orkeon.Cli.Commands.Scripting.Progress.ProgressAmbient.CurrentInstance = instance;
+            _ = new Orkeon.Application.Services.Security.SerialisingToolApprovalChannel(_channel).RequestAsync(Request(), Ct);
+        }, Ct);
+
+        Assert.Equal(instance.Ticket, Assert.Single(_channel.Pending).Ticket);
+        Assert.Contains($"? [{instance.Ticket}] dev-batches: ", _console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldAskTheWholeQuestionAgain_WhenTheLineIsNoAnswer()
+    {
+        using var channel = new ConsoleToolApprovalChannel(() => _console, () => ("t1", "dev-batches"));
+        _ = channel.RequestAsync(Request(), Ct);
+        var asked = _console.Output.Length;
+
+        Assert.True(channel.TryConsume("what is this?"));
+
+        var again = _console.Output[asked..];
+        Assert.Contains("? [t1] dev-batches: tool 'shell_command' requires approval", again, StringComparison.Ordinal);
+        Assert.Contains("shell_command {\"command\":\"npm test\"}", again, StringComparison.Ordinal);
+        Assert.Single(channel.Pending);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldListNothingPending_WhenTheQuestionIsAnswered()
+    {
+        _ = _channel.RequestAsync(Request(), Ct);
+        _channel.TryConsume("n");
+
+        Assert.Empty(_channel.Pending);
+    }
+
     [Theory]
     [InlineData("y", ToolApprovalDecision.AllowOnce, "shell_command allowed once")]
     [InlineData(" Yes ", ToolApprovalDecision.AllowOnce, "shell_command allowed once")]

@@ -32,6 +32,41 @@ public class StatusLineViewTests
     }
 
     [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldShowTheWaitingApprovalOverTheTurn_WhenABackgroundTaskAsks()
+    {
+        var integration = new TuiIntegration
+        {
+            PromptTurnRunning = () => true,
+            PendingApprovals = () =>
+            [
+                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "t1", "dev-batches"),
+                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "t2", "dev-batches"),
+            ],
+        };
+        using var view = CreateView();
+        view.Bind(_runner, integration, null);
+
+        view.Refresh();
+
+        Assert.StartsWith("? [t1] dev-batches asks to run read…", view.CurrentText, StringComparison.Ordinal);
+        Assert.Contains("answer y once", view.CurrentText, StringComparison.Ordinal);
+        Assert.Contains("+1 more", view.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldFallBackToTheTurn_WhenNoApprovalWaits()
+    {
+        using var view = CreateView(["Pondering"]);
+        view.Bind(_runner, new TuiIntegration { PromptTurnRunning = () => true, PendingApprovals = () => [] }, null);
+
+        view.Refresh();
+
+        Assert.Contains("Pondering", view.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShouldShowTurnDeltaOfTokensAndElapsedTime_WhenCommandRuns()
     {
         long tokens = 1_000;

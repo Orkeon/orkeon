@@ -136,7 +136,9 @@ script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`)
 au début de l'appel (une `ActSession` par appel) :
 
 - **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
-  l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé.
+  l'agent ne possède pas lève `UnknownToolError` avant que le modèle soit interrogé. Un appel que le
+  modèle fait à un outil que l'appel n'offre pas reçoit aussitôt `ERROR: tool '<name>' is not available to
+  this agent.` : ni la porte de permission ni `onToolCall` ne le voient, et aucune approbation n'est demandée.
 - **`effort: "low" | "medium" | "high"`** règle la réflexion du fournisseur pour l'appel
   (`LlmConfig.Thinking`, activée avec cet effort). Le même `effort` est accepté par les autres appels
   `ctx.llm`, par `ctx.llm.with({...})` et par `agent().effort(level)` ; toute autre valeur est refusée

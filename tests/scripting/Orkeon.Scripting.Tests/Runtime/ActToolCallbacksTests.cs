@@ -22,14 +22,14 @@ public sealed class ActToolCallbacksTests
         => "(call) => { globalThis.seen = (globalThis.seen ?? 0) + 1; return '" + answer + "'; }";
 
     private static async Task<Run> RunAsync(string onToolCallJs, Func<IReadOnlyDictionary<string, object?>, bool>? gateDenies = null,
-        ToolApprovalDecision channelAnswer = ToolApprovalDecision.AllowOnce, string? onToolResultJs = null, bool registerGate = true)
+        ToolApprovalDecision channelAnswer = ToolApprovalDecision.AllowOnce, string? onToolResultJs = null, bool registerGate = true, string calledTool = "file_read")
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var log = new List<string>();
         var tool = new FakeRecordingTool("file_read", log);
         var channel = new StubToolApprovalChannel { Decision = channelAnswer };
         var gate = new StubSequencePermissionGate(new ModePermissionGate(channel), log, gateDenies);
-        var provider = new FakeToolCallingLlmProvider("file_read", "{\"path\":\"/x\"}");
+        var provider = new FakeToolCallingLlmProvider(calledTool, "{\"path\":\"/x\"}");
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, registerGate ? new JsLlmActGuards { PermissionGate = gate } : new JsLlmActGuards());
 
@@ -51,6 +51,18 @@ public sealed class ActToolCallbacksTests
         Assert.Equal(["/x"], run.Tool.Inputs);
         Assert.Equal("final: " + run.ToolResultOfTurn2, run.Output);
         Assert.Equal("{\"ok\":true}", run.ToolResultOfTurn2);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldRefuseWithoutGateNorCallback_WhenToolIsNotOffered()
+    {
+        var run = await RunAsync(Counting("allow"), calledTool: "read");
+
+        Assert.Equal(0, run.Seen);
+        Assert.Empty(run.Gate.Paths);
+        Assert.Empty(run.Tool.Inputs);
+        Assert.Equal("ERROR: tool 'read' is not available to this agent.", run.ToolResultOfTurn2);
     }
 
     [Fact]

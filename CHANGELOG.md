@@ -45,6 +45,23 @@ any grammar (a PHP pattern without its `<?php` tag, a JSON pattern whose metavar
 rule scans `.tsx`. `ensure_import` also serves `tsx` and JavaScript; `ensure_using` stays C#. A method's receiver
 (Rust `self`, Python `self` or `cls`) is no longer a parameter of its selector.
 
+### Fixed — a tool the act does not offer is refused, not put to the operator (#193)
+
+A model's call to a tool `ctx.llm.act` does not offer (`read` when `tools: ["file_read"]`) reached the permission gate
+as an unclassified tool, which asks for it as a command: the operator was asked to approve `tool 'read' executes
+commands`, and an approval ran into `ERROR: tool 'read' is not available to this agent.` The call is now answered with
+that error at once, before the gate and `onToolCall`; no approval is asked and no tool call is counted.
+
+### Fixed — an approval asked by a background task is seen from the main view (#194)
+
+The question did not name the task that asked it, and in the TUI only its lines in the transcript showed it: once
+other output scrolled them away, the status line read `Working…` and a line typed got only `answer y, s or n`. A
+question now names its task (`? [t1] dev-batches: tool 'read' requires approval…`, `approve read for [t1]?`), a line
+that answers nothing writes the whole question again, the TUI status line shows the waiting question over every other
+state (`? [t1] dev-batches asks to run read… (answer y once · s session · n no · +1 more)`), and the task's row in the
+tasks list reads `? waits for approval of read`. The REPL's approval channel is read through the new
+`IToolApprovalWatch` (`Orkeon.Cli.Abstractions`) and `TuiIntegration.PendingApprovals`.
+
 ### Fixed — a parser could return to another grammar's pool
 
 `TreeSitterParserPool.Return` found a parser's pool by its grammar name, and most grammars carry none (TypeScript,
