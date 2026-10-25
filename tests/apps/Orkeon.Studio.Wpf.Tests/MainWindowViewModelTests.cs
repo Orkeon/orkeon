@@ -81,7 +81,7 @@ public sealed class MainWindowViewModelTests
         Assert.Equal(TeamsRootSource.Environment, window.TeamsRoot.Source);
         Assert.Equal(WorkshopTeams, window.CreateTeam.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Import.TeamsRoot);
-        Assert.Equal(WorkshopTeams, window.Test.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Run.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Teams.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Launch.TeamsRoot);
         // The card says what is in force, and the preference cannot change it while the variable holds.
@@ -146,13 +146,13 @@ public sealed class MainWindowViewModelTests
             teamsRoot: teams);
 
         window.Launch.Target.Select(crew);
-        window.Test.Launcher.Target.Select(crew);
+        window.Run.Trial.Target.Select(crew);
 
         Assert.Equal(settingsFile, window.Launch.TeamSettingsPath);
-        Assert.Equal(settingsFile, window.Test.Launcher.TeamSettingsPath);
-        Assert.Contains("--settings=" + settingsFile, window.Test.Launcher.BuildArguments());
+        Assert.Equal(settingsFile, window.Run.Trial.TeamSettingsPath);
+        Assert.Contains("--settings=" + settingsFile, window.Run.Trial.BuildArguments());
         // Still no teams root for the stamp: a trial is a rehearsal.
-        Assert.Null(window.Test.Launcher.TeamsRoot);
+        Assert.Null(window.Run.Trial.TeamsRoot);
     }
 
     [Fact]
@@ -391,7 +391,7 @@ public sealed class MainWindowViewModelTests
             },
             globalPathOverride: GlobalPath);
         window.Launch.Target.Select("/crews/veille.yaml");
-        window.Test.Launcher.Target.Select("/crews/veille.yaml");
+        window.Run.Trial.Target.Select("/crews/veille.yaml");
 
         // One process double serves both launchers, which share the window's runner: the first
         // spawn is the Run screen's, the second — started while the first is alive — the trial's.
@@ -401,7 +401,7 @@ public sealed class MainWindowViewModelTests
         processes.WhileRunning = () =>
         {
             if (++spawns == 1)
-                trial = window.Test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+                trial = window.Run.Trial.RunAsync(TestContext.Current.CancellationToken);
             else
                 both = (window.StatusBar.Launch.IsActive, window.StatusBar.Test.IsActive, window.StatusBar.IsAtRest);
         };

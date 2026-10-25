@@ -519,7 +519,7 @@
                       <TextBlock Text="{Binding [Studio.Teams.Launch], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding TestCommand}" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding TestCommand}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="flask-conical" Size="16" Margin="0,0,7,0"/>
                       <TextBlock Text="{Binding [Studio.Teams.Test], Source={x:Static services:I18n.Instance}}"/>

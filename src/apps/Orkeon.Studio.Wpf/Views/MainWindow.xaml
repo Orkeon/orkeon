@@ -371,13 +371,6 @@
             <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Studio.Shell.Work], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavTest" GroupName="Nav" Style="{StaticResource NavItem}"
-                         Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="badge-check" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="play" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
@@ -466,11 +459,6 @@
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
           <views:ImportTeamView x:Name="ImportPanel" MaxWidth="880" DataContext="{Binding Import}"/>
         </ScrollViewer>
-        <!-- Tester is a two-column layout with a full-height console (audit 13): its host is
-             a Grid, not a ScrollViewer — an infinite vertical measure would collapse the console. -->
-        <Grid Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
-          <views:TestTeamView x:Name="TestPanel" MaxWidth="1080" Margin="30,24,30,32" DataContext="{Binding Test}"/>
-        </Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
           <views:SettingsView x:Name="SettingsPanel" MaxWidth="1000" DataContext="{Binding Settings}"/>
@@ -481,7 +469,7 @@
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}"/>
+          <views:RunScreenView x:Name="RunPanel" DataContext="{Binding Run}"/>
         </ScrollViewer>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
@@ -693,7 +681,7 @@
                   Visibility="{Binding Test.IsActive, Converter={StaticResource BooleanToVisibility}}">
             <DockPanel>
               <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
-                         Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.ModeTrial], Source={x:Static services:I18n.Instance}}"/>
               <ContentPresenter Content="{Binding Test}" ContentTemplate="{StaticResource RunGroupBody}"/>
             </DockPanel>
           </Button>

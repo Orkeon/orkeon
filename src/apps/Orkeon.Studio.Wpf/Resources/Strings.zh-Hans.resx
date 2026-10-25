@@ -352,15 +352,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve">
     <value>检查</value>
   </data>
-  <data name="Studio.Run.Title" xml:space="preserve">
-    <value>执行</value>
-  </data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve">
-    <value>一个团队，一个按钮。需要时技术细节仍然可查。</value>
-  </data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve">
-    <value>目标、选项、精确命令与实时日志。dry-run 校验无副作用。</value>
-  </data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve">
     <value>要启动的团队</value>
   </data>
@@ -1449,9 +1440,6 @@
   <data name="Studio.Shell.Import" xml:space="preserve">
     <value>导入</value>
   </data>
-  <data name="Studio.Shell.Test" xml:space="preserve">
-    <value>试运行</value>
-  </data>
   <data name="Studio.Import.Title" xml:space="preserve">
     <value>导入团队</value>
   </data>
@@ -1469,24 +1457,6 @@
   </data>
   <data name="Studio.Import.Add" xml:space="preserve">
     <value>添加到我的团队</value>
-  </data>
-  <data name="Studio.Trial.Title" xml:space="preserve">
-    <value>试运行团队</value>
-  </data>
-  <data name="Studio.Trial.Sub" xml:space="preserve">
-    <value>先 dry-run 校验，再用示例数据真实试运行。试运行文件夹之外无副作用。</value>
-  </data>
-  <data name="Studio.Trial.TeamLabel" xml:space="preserve">
-    <value>团队</value>
-  </data>
-  <data name="Studio.Trial.Validate" xml:space="preserve">
-    <value>dry-run 校验</value>
-  </data>
-  <data name="Studio.Trial.Run" xml:space="preserve">
-    <value>启动试运行</value>
-  </data>
-  <data name="Studio.Trial.Findings" xml:space="preserve">
-    <value>校验发现</value>
   </data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve">
     <value>没有 Llm 部分：引擎将使用内置默认值启动（Ollama，本地）。</value>
@@ -1728,12 +1698,6 @@
   <data name="Studio.Settings.ToggleRights" xml:space="preserve">
     <value>点击在只读与读写之间切换</value>
   </data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve">
-    <value>示例输入（JSON）</value>
-  </data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve">
-    <value>通过 --inputs 传给试运行；真实启动仍使用各自的输入。</value>
-  </data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve">
     <value>{0} — {1} 个智能体</value>
   </data>
@@ -1778,9 +1742,6 @@
   </data>
   <data name="Studio.History.Empty" xml:space="preserve">
     <value>暂无任何执行记录。团队的首次启动将出现在这里。</value>
-  </data>
-  <data name="Studio.Trial.Empty" xml:space="preserve">
-    <value>选择一个团队来准备试运行。</value>
   </data>
   <data name="Studio.Teams.Open" xml:space="preserve">
     <value>打开文件夹</value>
@@ -2491,9 +2452,6 @@
   </data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve">
     <value>先做 dry-run 校验</value>
-  </data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve">
-    <value>等待试运行…</value>
   </data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve">
     <value>已声明的文件夹</value>
@@ -3703,4 +3661,13 @@
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>待选择</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>待选择：没有源文件夹时，团队将从一个空的「input」文件夹开始。</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>需求</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>启动团队</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>试运行与真实运行方式相同，但不会进入历史记录；真实运行会记录在历史中。</value></data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>试运行</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>真实</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>试运行或真实运行</value></data>
+  <data name="Studio.Trial.Sub" xml:space="preserve"><value>试运行：不会写入历史记录，团队的上次运行保持不变。</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>团队</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>开始试运行</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>打开诊断</value></data>
 </root>

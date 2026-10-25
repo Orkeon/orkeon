@@ -352,15 +352,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve">
     <value>Prüfungen</value>
   </data>
-  <data name="Studio.Run.Title" xml:space="preserve">
-    <value>Ausführen</value>
-  </data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve">
-    <value>Ein Team, ein Knopf. Das technische Detail bleibt verfügbar, wenn Sie es brauchen.</value>
-  </data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve">
-    <value>Ziel, Optionen, exakter Befehl und gestreamtes Protokoll. Der Dry-Run validiert ohne Nebenwirkungen.</value>
-  </data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve">
     <value>Zu startendes Team</value>
   </data>
@@ -1449,9 +1440,6 @@
   <data name="Studio.Shell.Import" xml:space="preserve">
     <value>Importieren</value>
   </data>
-  <data name="Studio.Shell.Test" xml:space="preserve">
-    <value>Erproben</value>
-  </data>
   <data name="Studio.Import.Title" xml:space="preserve">
     <value>Team importieren</value>
   </data>
@@ -1469,24 +1457,6 @@
   </data>
   <data name="Studio.Import.Add" xml:space="preserve">
     <value>Zu meinen Teams hinzufügen</value>
-  </data>
-  <data name="Studio.Trial.Title" xml:space="preserve">
-    <value>Team erproben</value>
-  </data>
-  <data name="Studio.Trial.Sub" xml:space="preserve">
-    <value>Dry-Run-Validierung, dann echter Probelauf mit Beispieldaten. Keine Nebenwirkungen außerhalb des Probeordners.</value>
-  </data>
-  <data name="Studio.Trial.TeamLabel" xml:space="preserve">
-    <value>Team</value>
-  </data>
-  <data name="Studio.Trial.Validate" xml:space="preserve">
-    <value>Trocken validieren</value>
-  </data>
-  <data name="Studio.Trial.Run" xml:space="preserve">
-    <value>Probelauf starten</value>
-  </data>
-  <data name="Studio.Trial.Findings" xml:space="preserve">
-    <value>VALIDIERUNGSBEFUNDE</value>
   </data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve">
     <value>Kein Llm-Abschnitt: Die Engine startet mit ihren eingebauten Standardwerten (Ollama, lokal).</value>
@@ -1728,12 +1698,6 @@
   <data name="Studio.Settings.ToggleRights" xml:space="preserve">
     <value>Klicken, um zwischen Nur-Lesen und Lesen und Schreiben zu wechseln</value>
   </data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve">
-    <value>Beispielsatz (JSON)</value>
-  </data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve">
-    <value>Über --inputs an den Versuch übergeben; die echten Starts behalten ihre eigenen Eingaben.</value>
-  </data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve">
     <value>{0} — {1} Agent(en)</value>
   </data>
@@ -1778,9 +1742,6 @@
   </data>
   <data name="Studio.History.Empty" xml:space="preserve">
     <value>Noch kein Lauf. Der erste Start eines Teams erscheint hier.</value>
-  </data>
-  <data name="Studio.Trial.Empty" xml:space="preserve">
-    <value>Wählen Sie ein Team, um einen Versuch vorzubereiten.</value>
   </data>
   <data name="Studio.Teams.Open" xml:space="preserve">
     <value>Ordner öffnen</value>
@@ -2491,9 +2452,6 @@
   </data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve">
     <value>Erst Dry-Run-Validierung</value>
-  </data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve">
-    <value>Warten auf einen Versuch…</value>
   </data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve">
     <value>Deklarierte Ordner</value>
@@ -3703,4 +3661,13 @@
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>Auszuwählen</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>Auszuwählen: Ohne Quellordner startet das Team mit einem leeren Ordner „input“.</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Bedarf</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Ein Team starten</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>Ein Probelauf läuft wie ein echter Lauf, bleibt aber außerhalb des Verlaufs; ein echter Lauf wird dort eingetragen.</value></data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Probelauf</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Echt</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Probelauf oder echter Lauf</value></data>
+  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Probelauf: Nichts wird in den Verlauf eingetragen, und der letzte Lauf des Teams bleibt unverändert.</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>Probelauf starten</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Diagnose öffnen</value></data>
 </root>

@@ -643,22 +643,25 @@ public sealed class TeamsScreenTests : IDisposable
         Assert.False(launcher.RunCommand.CanExecute(null));
     }
 
-    /// <summary>The Test screen launches through its own launcher, and reads the archive again the same way.</summary>
+    /// <summary>The Launch screen's trial launches through its own launcher, and reads the archive again the same way.</summary>
     [Fact]
     public async Task The_test_screen_reads_the_archive_again_before_its_trial()
     {
         var veille = Team("veille");
         var processes = new FakeProcessLauncher();
-        var test = new TestTeamViewModel(Launcher(veille, processes), TeamsRoot);
+        var test = new RunScreenViewModel(Launcher(veille, new FakeProcessLauncher()), Launcher(veille, processes), TeamsRoot)
+        {
+            IsTrial = true,
+        };
         test.SelectedTeam = Assert.Single(test.TeamChoices);
-        // Picked from the list, the team is resolved and ready, as from the card's Test icon.
-        Assert.True(test.Launcher.RunCommand.CanExecute(null));
+        // Picked from the list, the team is resolved and ready, as from the card's Try.
+        Assert.True(test.Trial.RunCommand.CanExecute(null));
 
         TeamCatalog.Archive(veille, Now);
-        await test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+        await test.Trial.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(processes.Requests);
-        Assert.True(test.Launcher.IsTargetArchived);
+        Assert.True(test.Trial.IsTargetArchived);
     }
 
     /// <summary>

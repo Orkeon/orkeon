@@ -352,15 +352,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve">
     <value>Comprobaciones</value>
   </data>
-  <data name="Studio.Run.Title" xml:space="preserve">
-    <value>Ejecutar</value>
-  </data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve">
-    <value>Un equipo, un botón. El detalle técnico sigue disponible si lo necesita.</value>
-  </data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve">
-    <value>Objetivo, opciones, comando exacto y registro en directo. El dry-run valida sin efectos secundarios.</value>
-  </data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve">
     <value>Equipo a lanzar</value>
   </data>
@@ -1449,9 +1440,6 @@
   <data name="Studio.Shell.Import" xml:space="preserve">
     <value>Importar</value>
   </data>
-  <data name="Studio.Shell.Test" xml:space="preserve">
-    <value>Probar</value>
-  </data>
   <data name="Studio.Import.Title" xml:space="preserve">
     <value>Importar un equipo</value>
   </data>
@@ -1469,24 +1457,6 @@
   </data>
   <data name="Studio.Import.Add" xml:space="preserve">
     <value>Añadir a mis equipos</value>
-  </data>
-  <data name="Studio.Trial.Title" xml:space="preserve">
-    <value>Probar un equipo</value>
-  </data>
-  <data name="Studio.Trial.Sub" xml:space="preserve">
-    <value>Validación en seco y luego prueba real con un juego de ejemplo. Ningún efecto secundario fuera de la carpeta de prueba.</value>
-  </data>
-  <data name="Studio.Trial.TeamLabel" xml:space="preserve">
-    <value>Equipo</value>
-  </data>
-  <data name="Studio.Trial.Validate" xml:space="preserve">
-    <value>Validar en seco</value>
-  </data>
-  <data name="Studio.Trial.Run" xml:space="preserve">
-    <value>Lanzar la prueba</value>
-  </data>
-  <data name="Studio.Trial.Findings" xml:space="preserve">
-    <value>HALLAZGOS DE VALIDACIÓN</value>
   </data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve">
     <value>Sin sección Llm: el motor arrancará con sus valores por defecto (Ollama, local).</value>
@@ -1728,12 +1698,6 @@
   <data name="Studio.Settings.ToggleRights" xml:space="preserve">
     <value>Haga clic para alternar entre solo lectura y lectura y escritura</value>
   </data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve">
-    <value>Juego de ejemplo (JSON)</value>
-  </data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve">
-    <value>Transmitido al ensayo mediante --inputs; los lanzamientos reales conservan sus propias entradas.</value>
-  </data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve">
     <value>{0} — {1} agente(s)</value>
   </data>
@@ -1778,9 +1742,6 @@
   </data>
   <data name="Studio.History.Empty" xml:space="preserve">
     <value>Ninguna ejecución por ahora. El primer lanzamiento de un equipo aparecerá aquí.</value>
-  </data>
-  <data name="Studio.Trial.Empty" xml:space="preserve">
-    <value>Elija un equipo para preparar un ensayo.</value>
   </data>
   <data name="Studio.Teams.Open" xml:space="preserve">
     <value>Abrir la carpeta</value>
@@ -2491,9 +2452,6 @@
   </data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve">
     <value>Validación en seco primero</value>
-  </data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve">
-    <value>A la espera de un ensayo…</value>
   </data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve">
     <value>Carpetas declaradas</value>
@@ -3703,4 +3661,13 @@
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>Por elegir</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>Por elegir: sin carpeta de origen, el equipo partirá de una carpeta «input» vacía.</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Necesidad</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Ejecutar un equipo</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>Una prueba se ejecuta como una ejecución real pero no entra en el historial; una ejecución real queda registrada en él.</value></data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Prueba</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Ejecución real</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Prueba o ejecución real</value></data>
+  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Prueba: nada se registra en el historial y la última ejecución del equipo no cambia.</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Equipo</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>Lanzar la prueba</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Abrir el diagnóstico</value></data>
 </root>

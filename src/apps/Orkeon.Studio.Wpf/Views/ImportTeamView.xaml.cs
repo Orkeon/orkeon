@@ -32,8 +32,8 @@ public partial class ImportTeamView : System.Windows.Controls.UserControl
             && DataContext is ImportTeamViewModel vm
             && vm.Target.SelectedPath is { Length: > 0 } path)
         {
-            shell.Test.Launcher.Target.Select(path);
-            window.NavTest.IsChecked = true;
+            shell.Run.ShowTrial(path);
+            window.NavRun.IsChecked = true;
         }
     }
 }

@@ -370,7 +370,7 @@ public sealed class TeamSettingFollowsTests : IDisposable
         window.Settings.Profiles.CommitEdit(DeepSeek, previousName: null);
         window.Settings.Profiles.CommitEdit(Zai, previousName: null);
         window.Launch.Target.Select(team);
-        window.Test.Launcher.Target.Select(team);
+        window.Run.Trial.Target.Select(team);
         Assert.DoesNotContain("absent", Card(window, team).ProfileDisplay!, StringComparison.Ordinal);
 
         window.Settings.Profiles.Delete("DeepSeek");
@@ -378,7 +378,7 @@ public sealed class TeamSettingFollowsTests : IDisposable
         const string Said = "DeepSeek — absent from this machine: the default setting runs in its place";
         Assert.Contains(Said, Card(window, team).ProfileDisplay!, StringComparison.Ordinal);
         Assert.Contains(Said, window.Launch.TeamMetaLine!, StringComparison.Ordinal);
-        Assert.Contains(Said, window.Test.Launcher.TeamMetaLine!, StringComparison.Ordinal);
+        Assert.Contains(Said, window.Run.Trial.TeamMetaLine!, StringComparison.Ordinal);
     }
 
     // ── decision 3: a team that changes machine ──

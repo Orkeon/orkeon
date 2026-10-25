@@ -322,7 +322,7 @@ public class ChatThreadViewModelTests
         // The Run and Test screens run over SEPARATE launchers — the trial is a rehearsal with no
         // history of its own — and neither owns a conversation: they reach the window's one
         // through the ancestor, so there is nothing here for a second copy to hide in.
-        Assert.NotSame(shell.Launch, shell.Test.Launcher);
+        Assert.NotSame(shell.Launch, shell.Run.Trial);
         Assert.Null(typeof(Orkeon.Studio.Wpf.ViewModels.Launch.LaunchTabViewModel).GetProperty("Chat"));
 
         // And it is genuinely shared state: what one screen says, the other screen holds.

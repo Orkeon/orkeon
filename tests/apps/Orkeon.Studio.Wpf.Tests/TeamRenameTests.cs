@@ -185,8 +185,8 @@ public sealed class TeamRenameTests : IDisposable
         await window.Launch.RunAsync(TestContext.Current.CancellationToken);
         Assert.Equal(Text(StudioStringKeys.TeamsRenameBusyRunning), card.RenameRefusal);
 
-        window.Test.Launcher.Target.Select(Team);
-        await window.Test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+        window.Run.Trial.Target.Select(Team);
+        await window.Run.Trial.RunAsync(TestContext.Current.CancellationToken);
         Assert.Equal(Text(StudioStringKeys.TeamsRenameBusyTesting), card.RenameRefusal);
 
         processes.WhileRunning = null;

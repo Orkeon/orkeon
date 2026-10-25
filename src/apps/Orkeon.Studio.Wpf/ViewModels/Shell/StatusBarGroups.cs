@@ -288,10 +288,10 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
         nameof(ReportedModel), nameof(Details), nameof(DetailsTip), nameof(ShowsDetails));
 
     /// <summary>
-    /// The Test screen is the expert's: a novice has no screen to land on, so the group stays on
-    /// the bar — nothing is hidden — and does not answer the click rather than go nowhere.
+    /// Every group opens its screen: since the merge (refonte, lot 4) a trial is the Launch screen
+    /// in trial mode, which a novice reaches too.
     /// </summary>
-    private bool CanOpen() => Activity != StatusBarActivity.Test || _isExpert();
+    private static bool CanOpen() => true;
 
     /// <summary>«pdf_reader · since 10:31:02», local time, from the run's own clock; the bare name when the call carried none.</summary>
     private string DescribeTool(RunToolInFlight tool)

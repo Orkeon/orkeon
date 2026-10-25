@@ -89,10 +89,11 @@ public sealed class LaunchTabViewModel : ObservableObject
         _runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
         // launcher runs over the very same class, which is what keeps the two in step. The teams
-        // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the Test screen's
+        // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the trial
         // launcher is built without one.
         _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
         TeamsRoot = seams.TeamsRoot;
+        IsTrial = seams.IsTrial;
         _teamSettingsRoot = seams.TeamSettingsRoot ?? seams.TeamsRoot;
         _restoreTeam = seams.RestoreTeam;
         _modelSettings = seams.ModelSettings;
@@ -1398,12 +1399,18 @@ public sealed class LaunchTabViewModel : ObservableObject
         _ => "fail",
     };
 
+    /// <summary>
+    /// True for the trial launcher of the Launch screen (refonte, lot 4): built without a history
+    /// store, it only changes what its primary button says.
+    /// </summary>
+    public bool IsTrial { get; }
+
     /// <summary>Launch now / Running… / Relaunch — the mock's single primary button.</summary>
     public string RunButtonLabel =>
         _strings[CardState switch
         {
             RunCardState.Running => StudioStringKeys.RunButtonRunning,
-            RunCardState.Idle => StudioStringKeys.RunButtonLaunch,
+            RunCardState.Idle => IsTrial ? StudioStringKeys.RunButtonTrial : StudioStringKeys.RunButtonLaunch,
             _ => StudioStringKeys.RunButtonRelaunch,
         }];
 
@@ -1659,6 +1666,9 @@ public sealed record LaunchTabDependencies
 
     /// <summary>Persists the replayable run history; null keeps the run out of any history.</summary>
     public ILaunchHistoryStore? HistoryStore { get; init; }
+
+    /// <summary>True for the trial launcher of the Launch screen: its primary button says « Launch the trial ».</summary>
+    public bool IsTrial { get; init; }
 
     /// <summary>Reads the appsettings the launch points at; defaults to the physical store.</summary>
     public IAppSettingsStore? SettingsStore { get; init; }

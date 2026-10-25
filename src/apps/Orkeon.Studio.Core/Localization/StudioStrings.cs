@@ -1018,6 +1018,9 @@ public static class StudioStringKeys
     /// <summary>"Relaunch"</summary>
     public const string RunButtonRelaunch = "Studio.Run.BtnRelaunch";
 
+    /// <summary>"Launch the trial" - the primary button of the Launch screen in trial mode.</summary>
+    public const string RunButtonTrial = "Studio.Trial.Run";
+
     /// <summary>"The Orkeon engine was not found — run the Diagnostic."</summary>
     public const string RunCliMissing = "Studio.Run.CliMissing";
 
@@ -2674,6 +2677,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunButtonLaunch] = "Launch now",
         [StudioStringKeys.RunButtonRunning] = "Running…",
         [StudioStringKeys.RunButtonRelaunch] = "Relaunch",
+        [StudioStringKeys.RunButtonTrial] = "Launch the trial",
         [StudioStringKeys.RunCliMissing] = "The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.",
         [StudioStringKeys.RunMetaAgents] = "{0} agents",
         [StudioStringKeys.RunMetaProfile] = "setting {0}",

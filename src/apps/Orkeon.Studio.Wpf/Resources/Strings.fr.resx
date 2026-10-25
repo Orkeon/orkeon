@@ -137,9 +137,7 @@
   <data name="Studio.Diagnostics.CopyReport" xml:space="preserve"><value>Copier le rapport</value></data>
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Vérifications</value></data>
 
-  <data name="Studio.Run.Title" xml:space="preserve"><value>Lancer</value></data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve"><value>Une équipe, un bouton. Le détail technique reste disponible si vous en avez besoin.</value></data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Cible, options, commande exacte et journal en direct. « Vérifier » contrôle l'équipe sans rien exécuter.</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Lancer une équipe</value></data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Équipe à lancer</value></data>
   <data name="Studio.Run.Detect" xml:space="preserve"><value>Détecter</value></data>
   <data name="Studio.Run.File" xml:space="preserve"><value>Fichier…</value></data>
@@ -515,19 +513,15 @@
 <data name="Studio.Teams.Daily" xml:space="preserve"><value>Chaque jour à {0}</value></data>
 <data name="Studio.Teams.Hourly" xml:space="preserve"><value>Chaque heure</value></data>
 <data name="Studio.Shell.Import" xml:space="preserve"><value>Importer</value></data>
-<data name="Studio.Shell.Test" xml:space="preserve"><value>Essayer</value></data>
 <data name="Studio.Import.Title" xml:space="preserve"><value>Importer une équipe</value></data>
 <data name="Studio.Import.SubNovice" xml:space="preserve"><value>Quelqu'un vous a partagé une équipe ? Indiquez son dossier : Studio vérifie qu'elle est complète et sans danger avant de l'ajouter.</value></data>
 <data name="Studio.Import.SubExpert" xml:space="preserve"><value>Une définition YAML, un script .ork.ts, ou un dossier d'équipe complet. Rien n'est copié avant votre validation.</value></data>
 <data name="Studio.Import.SecretsTitle" xml:space="preserve"><value>Une clé d'API voyage dans cette définition</value></data>
 <data name="Studio.Import.SecretsBody" xml:space="preserve"><value>Ces fichiers semblent porter un secret collé en clair. Les clés vivent dans l'environnement, jamais dans un dossier partagé — nettoyez-les avant d'importer.</value></data>
 <data name="Studio.Import.Add" xml:space="preserve"><value>Ajouter à mes équipes</value></data>
-<data name="Studio.Trial.Title" xml:space="preserve"><value>Essayer une équipe</value></data>
-<data name="Studio.Trial.Sub" xml:space="preserve"><value>Vérification puis essai réel sur un jeu d'exemple. Aucun effet de bord hors du dossier d'essai.</value></data>
-<data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Équipe</value></data>
-<data name="Studio.Trial.Validate" xml:space="preserve"><value>Vérifier</value></data>
-<data name="Studio.Trial.Run" xml:space="preserve"><value>Lancer l'essai</value></data>
-<data name="Studio.Trial.Findings" xml:space="preserve"><value>CONSTATS DE LA VÉRIFICATION</value></data>
+  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Essai : rien n'est inscrit dans l'historique, et la dernière exécution de l'équipe reste inchangée.</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Équipe</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>Lancer l'essai</value></data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve"><value>Pas de section Llm : le moteur démarrera sur ses valeurs par défaut (Ollama, en local).</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-JSON" xml:space="preserve"><value>Le fichier de réglages n'est pas un JSON valide.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>Un champ des réglages n'a pas le bon type.</value></data>
@@ -608,8 +602,6 @@
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>vu comme</value></data>
   <data name="Studio.Settings.Allow" xml:space="preserve"><value>Autoriser un dossier…</value></data>
   <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Cliquer pour passer de lecture seule à lecture et écriture, et inversement</value></data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Jeu d'exemple (JSON)</value></data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Transmis à l'essai via --inputs ; les lancements réels gardent leurs propres entrées.</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} {1:plural:agent|agents}</value></data>
   <data name="Studio.Import.SecretsClean" xml:space="preserve"><value>Aucun secret dans les fichiers</value></data>
   <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve"><value>Les clés API voyagent par l'environnement, et ces fichiers n'en contiennent pas.</value></data>
@@ -625,7 +617,6 @@
   <data name="Studio.Settings.ModelPlaceholder" xml:space="preserve"><value>— à configurer —</value></data>
   <data name="Studio.Settings.DefaultsApply" xml:space="preserve"><value>Section absente du fichier : le moteur applique ses valeurs par défaut.</value></data>
   <data name="Studio.History.Empty" xml:space="preserve"><value>Aucune exécution pour l'instant. Le premier lancement d'une équipe apparaîtra ici.</value></data>
-  <data name="Studio.Trial.Empty" xml:space="preserve"><value>Choisissez une équipe pour préparer un essai.</value></data>
   <data name="Studio.Teams.Open" xml:space="preserve"><value>Ouvrir le dossier</value></data>
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>Ceci est la base commune (fichier de réglages + environnement de ce shell). Une équipe qui a choisi son propre modèle le reçoit par-dessus, au lancement seulement — il n'apparaît pas ici.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>Clés API</value></data>
@@ -876,7 +867,6 @@
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>lit {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>écrit dans {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Vérifier d'abord</value></data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve"><value>En attente d'un essai…</value></data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve"><value>Dossiers déclarés</value></data>
   <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} {0:plural:dossier|dossiers} : {1}</value></data>
   <data name="Studio.Import.MountsNone" xml:space="preserve"><value>Aucun dossier déclaré</value></data>
@@ -1949,4 +1939,9 @@
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>À choisir</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>À choisir : sans dossier source, l'équipe partira d'un dossier « input » vide.</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Besoin</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>Un essai tourne comme une exécution réelle mais n'entre pas dans l'historique ; une exécution réelle y est inscrite.</value></data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Essai</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Réel</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Essai ou exécution réelle</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Ouvrir le diagnostic</value></data>
 </root>

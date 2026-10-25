@@ -137,9 +137,7 @@
   <data name="Studio.Diagnostics.CopyReport" xml:space="preserve"><value>Copy the report</value></data>
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Checks</value></data>
 
-  <data name="Studio.Run.Title" xml:space="preserve"><value>Run</value></data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve"><value>One team, one button. The technical detail stays available when you need it.</value></data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Target, options, the exact command and the streamed journal. The dry run validates with no side effects.</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Launch a team</value></data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Crew to run</value></data>
   <data name="Studio.Run.Detect" xml:space="preserve"><value>Detect</value></data>
   <data name="Studio.Run.File" xml:space="preserve"><value>File…</value></data>
@@ -515,19 +513,15 @@
 <data name="Studio.Teams.Daily" xml:space="preserve"><value>Every day at {0}</value></data>
 <data name="Studio.Teams.Hourly" xml:space="preserve"><value>Every hour</value></data>
 <data name="Studio.Shell.Import" xml:space="preserve"><value>Import</value></data>
-<data name="Studio.Shell.Test" xml:space="preserve"><value>Test</value></data>
 <data name="Studio.Import.Title" xml:space="preserve"><value>Import a team</value></data>
 <data name="Studio.Import.SubNovice" xml:space="preserve"><value>Someone shared a team with you? Point at its folder: Studio checks it is complete and safe before adding it.</value></data>
 <data name="Studio.Import.SubExpert" xml:space="preserve"><value>A YAML definition, an .ork.ts script, or a whole team folder. Nothing is copied before you confirm.</value></data>
 <data name="Studio.Import.SecretsTitle" xml:space="preserve"><value>An API key travels inside this definition</value></data>
 <data name="Studio.Import.SecretsBody" xml:space="preserve"><value>These files look like they carry a pasted secret. Keys belong in the environment, never inside a shared folder — clean them up before importing.</value></data>
 <data name="Studio.Import.Add" xml:space="preserve"><value>Add to my teams</value></data>
-<data name="Studio.Trial.Title" xml:space="preserve"><value>Test a team</value></data>
-<data name="Studio.Trial.Sub" xml:space="preserve"><value>Blank-run validation, then a real trial on a sample set. No side effects outside the trial folder.</value></data>
-<data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
-<data name="Studio.Trial.Validate" xml:space="preserve"><value>Validate (blank run)</value></data>
-<data name="Studio.Trial.Run" xml:space="preserve"><value>Run the trial</value></data>
-<data name="Studio.Trial.Findings" xml:space="preserve"><value>VALIDATION FINDINGS</value></data>
+  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Trial: nothing goes to the history, and the team's last run stays as it was.</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>Launch the trial</value></data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve"><value>No Llm section: the engine will start on its built-in defaults (Ollama, local).</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-JSON" xml:space="preserve"><value>The settings file is not valid JSON.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>A settings field has the wrong type.</value></data>
@@ -608,8 +602,6 @@
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>seen as</value></data>
   <data name="Studio.Settings.Allow" xml:space="preserve"><value>Allow a folder…</value></data>
   <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Click to switch between read-only and read-and-write</value></data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Sample inputs (JSON)</value></data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Passed to the trial as --inputs; the real launches keep their own inputs.</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
   <data name="Studio.Import.SecretsClean" xml:space="preserve"><value>No secret in the files</value></data>
   <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve"><value>API keys travel through the environment, and these files carry none.</value></data>
@@ -625,7 +617,6 @@
   <data name="Studio.Settings.ModelPlaceholder" xml:space="preserve"><value>— to configure —</value></data>
   <data name="Studio.Settings.DefaultsApply" xml:space="preserve"><value>Section absent from the file: the engine applies its built-in defaults.</value></data>
   <data name="Studio.History.Empty" xml:space="preserve"><value>No run yet. The first launch of a team will appear here.</value></data>
-  <data name="Studio.Trial.Empty" xml:space="preserve"><value>Pick a team to prepare a trial.</value></data>
   <data name="Studio.Teams.Open" xml:space="preserve"><value>Open the folder</value></data>
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>API keys</value></data>
@@ -876,7 +867,6 @@
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>reads {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve"><value>Waiting for a trial…</value></data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve"><value>Declared folders</value></data>
   <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} folder(s): {1}</value></data>
   <data name="Studio.Import.MountsNone" xml:space="preserve"><value>No declared folder</value></data>
@@ -1949,4 +1939,9 @@
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>To choose</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>To choose: without a source folder, the team will start from an empty «input» folder.</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Need</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>A trial runs like a real run but stays out of the history; a real run is recorded there.</value></data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Trial</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Real</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Trial or real run</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Open the diagnostic</value></data>
 </root>

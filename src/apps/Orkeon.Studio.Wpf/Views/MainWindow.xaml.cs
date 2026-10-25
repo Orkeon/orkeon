@@ -44,7 +44,9 @@ public partial class MainWindow : Window
         shell.Teams.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Launch.ChooseTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.Launch.CreateTeamRequested += (_, _) => NavCreate.IsChecked = true;
-        shell.Test.Launcher.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Run.Trial.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Run.Trial.ChooseTeamRequested += (_, _) => NavTeams.IsChecked = true;
+        shell.Run.Trial.CreateTeamRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.ImportRequested += (_, _) => NavImport.IsChecked = true;
         // The refusals banner's « Save the settings »: saved in place when the file can be; else the
@@ -57,15 +59,23 @@ public partial class MainWindow : Window
             else
                 NavSettings.IsChecked = true;
         };
-        shell.TestRequested += (_, _) => NavTest.IsChecked = true;
+        shell.TestRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
         // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.
-        shell.StatusBar.OpenRequested += (_, e) => NavFor(e.Activity).IsChecked = true;
+        shell.StatusBar.OpenRequested += (_, e) =>
+        {
+            // The trial's group opens the Launch screen in trial mode, the run.s in real mode.
+            if (e.Activity == ViewModels.Shell.StatusBarActivity.Test)
+                shell.Run.IsTrial = true;
+            else if (e.Activity == ViewModels.Shell.StatusBarActivity.Launch)
+                shell.Run.IsTrial = false;
+            NavFor(e.Activity).IsChecked = true;
+        };
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
-        NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
+        NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Run.RefreshTeams(); };
 
         // Escape closes the language menu; StaysOpen=False already answers the click
         // elsewhere. Handled on the window because the popup is not in its visual tree.
@@ -111,24 +121,12 @@ public partial class MainWindow : Window
             if (e.PropertyName == nameof(ViewModels.Teams.CreateTeamViewModel.Step) && NavCreate.IsChecked == true)
                 shell.Chat.SetContext(WizardContext(shell));
         };
-
-        shell.Mode.PropertyChanged += (_, e) =>
-        {
-            // The Tester entry is expert-only: a switch back to novice while it shows would
-            // leave a blank content area behind the hidden radio.
-            if (e.PropertyName == nameof(ViewModels.Shell.UiModeViewModel.IsNovice)
-                && shell.Mode.IsNovice && NavTest.IsChecked == true)
-            {
-                NavRun.IsChecked = true;
-            }
-        };
     }
 
     /// <summary>The sidebar entry of the screen an activity of the status bar runs on.</summary>
     private System.Windows.Controls.RadioButton NavFor(ViewModels.Shell.StatusBarActivity activity) =>
         activity switch
         {
-            ViewModels.Shell.StatusBarActivity.Test => NavTest,
             ViewModels.Shell.StatusBarActivity.Atelier => NavCreate,
             _ => NavRun,
         };
