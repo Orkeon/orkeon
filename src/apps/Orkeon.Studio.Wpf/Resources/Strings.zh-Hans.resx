@@ -3722,6 +3722,8 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>等待您：{0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>确认文件夹</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>回答助手</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>填充文件夹</value></data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>将文件放入文件夹，然后在面板中继续。</value></data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>选择模型</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>做出选择</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>选择文件夹</value></data>

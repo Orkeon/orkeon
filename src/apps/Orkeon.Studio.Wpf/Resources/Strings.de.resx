@@ -3722,6 +3722,8 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Wartet auf Sie: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>Ordner bestätigen</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>dem Assistenten antworten</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>die Ordner füllen</value></data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>Legen Sie Ihre Dateien in die Ordner und fahren Sie dann im Bereich fort.</value></data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>ein Modell wählen</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>eine Wahl treffen</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>einen Ordner wählen</value></data>

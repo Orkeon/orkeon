@@ -55,6 +55,10 @@ public partial class CreateTeamView : UserControl
                 // R15: the recommended answer when the question offers choices, else the composer.
                 _wizard.Chat.RequestAnswerFocus();
                 break;
+            case WizardWaitPoint.FillFolders:
+                // R15: « Continue » in the panel; the card's « Open » stays one link away.
+                _wizard.Chat.RequestAnswerFocus();
+                break;
             case WizardWaitPoint.ChooseModel:
                 RevealFirst(AssistantGate);
                 break;

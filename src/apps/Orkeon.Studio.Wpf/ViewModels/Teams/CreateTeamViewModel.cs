@@ -1056,12 +1056,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             // A greyed button under «Everything is there — I can compose the team» is a lie:
             // the engine is already composing. While it waits on the user, the sentence names
             // the wait point (R13); otherwise it says the composition is under way.
-            if (IsEngineRunning)
+            if (IsEngineRunning || IsFillFoldersStep)
             {
                 return _strings[_waitPoint switch
                 {
                     WizardWaitPoint.ConfirmFolders => StudioStringKeys.WizardHintConfirmFolders,
                     WizardWaitPoint.AnswerAssistant => StudioStringKeys.WizardHintAnswer,
+                    WizardWaitPoint.FillFolders => StudioStringKeys.WizardHintFillFolders,
                     WizardWaitPoint.Decide => StudioStringKeys.WizardHintDecide,
                     _ => StudioStringKeys.WizardHintComposing,
                 }];
@@ -2561,10 +2562,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// The trial can start when the session sits at the --dry pause: composed, rendered,
-    /// validated, nothing run yet.
+    /// validated, nothing run yet — and the fill question answered, the files in place.
     /// </summary>
     public bool CanTryTeam =>
         !IsEngineRunning
+        && !IsFillFoldersStep
         && _model.Slug is not null
         && string.Equals(_model.FinishedStatus, "paused", StringComparison.OrdinalIgnoreCase);
 
@@ -3126,7 +3128,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 FailWith(WizardFailureKind.ConfigRefused, ConfigRefusedDetail(), EngineCommandLine, exitCode: null);
         }
 
-        // The milestone drives the stepper; the user may look back, never skip ahead.
+        // The milestone drives the stepper; the user may look back, never skip ahead. The fill
+        // question holds it: the step moves on once the user answered (STUDIO-57, R15).
         var reached = _model.Milestone switch
         {
             ForgeMilestone.Describe => 1,
@@ -3134,7 +3137,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             ForgeMilestone.Try => 3,
             _ => 4,
         };
-        if (reached > MaxStep)
+        if (reached > MaxStep && !IsFillFoldersStep)
         {
             MaxStep = reached;
             Step = reached;

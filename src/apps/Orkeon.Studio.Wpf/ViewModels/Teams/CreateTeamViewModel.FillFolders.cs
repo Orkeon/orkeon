@@ -48,7 +48,8 @@ public sealed class WizardHeldFolderRow
 /// inside the team, the wizard asks whether the user wants to put files or sub-folders in them.
 /// « No » lets the composition go on; « Yes » shows « Open » behind each such folder and
 /// « Continue » below. The engine composes meanwhile — the plan does not depend on the files;
-/// the trial, launched later by the user, reads them.
+/// the trial, launched later by the user, reads them — but the wizard waits on the answer: the
+/// step stays, and the trial cannot start, until « No » or « Continue ».
 /// </summary>
 public sealed partial class CreateTeamViewModel
 {
@@ -114,6 +115,8 @@ public sealed partial class CreateTeamViewModel
         _fillFoldersAnswered = true;
         _isFillingFolders = false;
         RefreshFillStep();
+        // The composition went on meanwhile: the step it reached comes now.
+        SyncFromModel();
     }
 
     /// <summary>Forgets the card — another creation starts, or a session is resumed.</summary>
@@ -132,6 +135,9 @@ public sealed partial class CreateTeamViewModel
         FillFoldersNoCommand.RaiseCanExecuteChanged();
         FillFoldersYesCommand.RaiseCanExecuteChanged();
         FillFoldersContinueCommand.RaiseCanExecuteChanged();
+        OnPropertiesChanged(nameof(CanTryTeam), nameof(Step1Hint));
+        TryTeamCommand?.RaiseCanExecuteChanged();
         SyncQuestion();
+        SyncWaitPoint();
     }
 }

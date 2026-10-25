@@ -1709,6 +1709,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.False(vm.IsFoldersStep);
         Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
@@ -1815,7 +1817,8 @@ public partial class CreateTeamWizardTests
     /// STUDIO-57. Once the folders are confirmed, the engine names the ones it holds for the
     /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » shows
     /// « Open » behind each — the file explorer on the session directory the engine created —
-    /// and « Continue » below; « No » lets the construction go on. The engine composes meanwhile.
+    /// and « Continue » below; « No » lets the construction go on. The engine composes meanwhile,
+    /// but the wizard waits on the answer: the step and the trial are held until it comes.
     /// </summary>
     [Fact]
     public async Task The_fill_step_asks_once_the_folders_are_confirmed_and_opens_each_held_folder()
@@ -1831,8 +1834,12 @@ public partial class CreateTeamWizardTests
 
         await Compose(vm);
 
-        // The plan came and the wizard moved on; the question waits above it.
-        Assert.Equal(2, vm.Step);
+        // The plan came, yet the wizard waits on the answer: the step stays, the trial is held.
+        Assert.Equal(1, vm.Step);
+        Assert.False(vm.CanTryTeam);
+        Assert.False(vm.TryTeamCommand.CanExecute(null));
+        Assert.Equal(WizardWaitPoint.AnswerAssistant, vm.WaitPoint);
+        Assert.Equal("Answer the assistant to continue.", vm.Step1Hint);
         Assert.True(vm.IsFillFoldersStep);
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.False(vm.IsFillingFolders);
@@ -1861,6 +1868,10 @@ public partial class CreateTeamWizardTests
         vm.Chat.QuestionRevealCommand.Execute(null);
         Assert.Equal(1, revealed);
         Assert.False(vm.IsFillFoldersQuestion);
+        Assert.Equal(WizardWaitPoint.FillFolders, vm.WaitPoint);
+        Assert.Equal("Waiting for you: fill the folders", vm.WaitPointLabel);
+        Assert.Equal(1, vm.Step);
+        Assert.False(vm.CanTryTeam);
         Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
         vm.HeldFolderRows[0].OpenCommand.Execute(null);
         vm.HeldFolderRows[1].OpenCommand.Execute(null);
@@ -1870,6 +1881,9 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.IsFillingFolders);
         Assert.Null(vm.Chat.Question);
+        // The answer releases the composition: the step it reached comes, the trial can start.
+        Assert.Equal(2, vm.Step);
+        Assert.True(vm.CanTryTeam);
     }
 
     /// <summary>
@@ -2037,9 +2051,12 @@ public partial class CreateTeamWizardTests
 
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.All(vm.HeldFolderRows, row => Assert.False(row.CanOpen));
+        Assert.Equal(1, vm.Step);
         vm.FillFoldersNoCommand.Execute(null);
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.FillFoldersNoCommand.CanExecute(null));
+        Assert.Equal(2, vm.Step);
+        Assert.True(vm.TryTeamCommand.CanExecute(null));
 
         vm.RestartCommand.Execute(null);
         Assert.Empty(vm.HeldFolderRows);
@@ -2101,6 +2118,8 @@ public partial class CreateTeamWizardTests
         ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal(["./outmd:/outmd:rw"], vm.TeamMounts);
         var input = vm.MountRows.Single(r => r.VirtualPath == "/inpdf");
@@ -2284,6 +2303,8 @@ public partial class CreateTeamWizardTests
                 wizard.ConfirmFoldersCommand.Execute(null);
             }, PdfBlueprint(), Paused);
             await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
             Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
             Assert.True(vm.TrialReadsInsideTeam);
@@ -2410,6 +2431,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal("/data/notes", Confirmed(processes)[0].Dir);
         var compose = processes.Requests[0].Arguments.ToList();
@@ -2493,6 +2516,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint("/rapports"), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal(2, vm.Step);
         Assert.Equal(["/data/factures:/factures:ro", "./archives:/archives:ro", "./rapports:/rapports:rw"], vm.TeamMounts);

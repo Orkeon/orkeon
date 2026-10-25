@@ -2006,6 +2006,8 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Waiting for you: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirm the folders</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>answer the assistant</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>fill the folders</value></data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>Drop your files in the folders, then continue in the panel.</value></data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>choose a model</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>settle a choice</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>choose a folder</value></data>

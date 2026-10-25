@@ -1775,6 +1775,8 @@ public static class StudioStringKeys
 
     /// <summary>"choose a folder".</summary>
     public const string WizardWaitActionChooseFolder = "Studio.Create.WaitActionChooseFolder";
+    public const string WizardWaitActionFillFolders = "Studio.Create.WaitActionFillFolders";
+    public const string WizardHintFillFolders = "Studio.Create.HintFillFolders";
 
     /// <summary>"adopt the team".</summary>
     public const string WizardWaitActionAdopt = "Studio.Create.WaitActionAdopt";
@@ -3308,6 +3310,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardWaitActionModel] = "choose a model",
         [StudioStringKeys.WizardWaitActionDecide] = "settle a choice",
         [StudioStringKeys.WizardWaitActionChooseFolder] = "choose a folder",
+        [StudioStringKeys.WizardWaitActionFillFolders] = "fill the folders",
+        [StudioStringKeys.WizardHintFillFolders] = "Drop your files in the folders, then continue in the panel.",
         [StudioStringKeys.WizardWaitActionAdopt] = "adopt the team",
         [StudioStringKeys.WizardWaitBubbleFolders] = "I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.",
         [StudioStringKeys.WizardWaitBubbleChooseFolder] = "A folder of the team is still to choose before the trial.",

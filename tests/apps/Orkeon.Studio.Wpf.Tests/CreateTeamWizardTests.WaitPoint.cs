@@ -111,6 +111,8 @@ public partial class CreateTeamWizardTests
         }), PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Null(failure);
         Assert.Equal(WizardWaitPoint.ConfirmFolders, reached[0]);

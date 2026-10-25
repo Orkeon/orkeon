@@ -21,6 +21,12 @@ public enum WizardWaitPoint
     /// <summary>The engine waits on an arbitration of the user's.</summary>
     Decide,
 
+    /// <summary>
+    /// Step 1: « Yes » to the fill question — the folders kept inside the team wait for the
+    /// files and « Continue ». The engine composes meanwhile; Studio holds the step and the trial.
+    /// </summary>
+    FillFolders,
+
     /// <summary>Step 2: a folder of the team is still to choose before the trial.</summary>
     ChooseFolder,
 
@@ -99,6 +105,13 @@ public sealed partial class CreateTeamViewModel
         // the wait point moves the keyboard focus, and it must not take it from under the
         // user's keys. A point a step reached stays named from the other steps, so that
         // « Waiting for you: … » brings it back.
+        // The fill question waits on the user although the engine reads nothing (STUDIO-57):
+        // the engine composes meanwhile, and Studio holds the step and the trial until the
+        // answer, so that the composition does not move on under the question.
+        if (IsFillFoldersQuestion)
+            return WizardWaitPoint.AnswerAssistant;
+        if (IsFillingFolders)
+            return WizardWaitPoint.FillFolders;
         if (_step == 1 && NeedsAssistant)
             return WizardWaitPoint.ChooseModel;
         if (_maxStep >= 2 && CanTryTeam && FoldersToChooseCount > 0)
@@ -146,6 +159,10 @@ public sealed partial class CreateTeamViewModel
                 break;
             case WizardWaitPoint.ChooseModel:
                 GoStep(1);
+                break;
+            case WizardWaitPoint.FillFolders:
+                Chat.OpenCommand.Execute(null);
+                FillFoldersRevealRequested?.Invoke(this, EventArgs.Empty);
                 break;
             case WizardWaitPoint.AnswerAssistant:
                 Chat.OpenCommand.Execute(null);
@@ -195,6 +212,7 @@ public sealed partial class CreateTeamViewModel
         WizardWaitPoint.ConfirmFolders => StudioStringKeys.WizardWaitActionFolders,
         WizardWaitPoint.AnswerAssistant => StudioStringKeys.WizardWaitActionAnswer,
         WizardWaitPoint.ChooseModel => StudioStringKeys.WizardWaitActionModel,
+        WizardWaitPoint.FillFolders => StudioStringKeys.WizardWaitActionFillFolders,
         WizardWaitPoint.Decide => StudioStringKeys.WizardWaitActionDecide,
         WizardWaitPoint.ChooseFolder => StudioStringKeys.WizardWaitActionChooseFolder,
         _ => StudioStringKeys.WizardWaitActionAdopt,

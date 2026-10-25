@@ -166,6 +166,8 @@ public partial class CreateTeamWizardTests
         ScriptFoldersStep(vm, processes, [("/output", "output")], wizard => wizard.ConfirmFoldersCommand.Execute(null),
             PdfBlueprint("/output"), Paused);
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
         Assert.Equal(2, vm.Step);
 
         vm.RestartCommand.Execute(null);
