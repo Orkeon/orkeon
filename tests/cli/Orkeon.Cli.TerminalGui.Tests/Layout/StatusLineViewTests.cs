@@ -40,8 +40,8 @@ public class StatusLineViewTests
             PromptTurnRunning = () => true,
             PendingApprovals = () =>
             [
-                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "t1", "dev-batches"),
-                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "t2", "dev-batches"),
+                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "{\"path\":\"PLAN.md\"}", "t1", "dev-batches"),
+                new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("shell_command", "{\"command\":\"ls\"}", "t2", "dev-batches"),
             ],
         };
         using var view = CreateView();
@@ -50,8 +50,23 @@ public class StatusLineViewTests
         view.Refresh();
 
         Assert.StartsWith("? [t1] dev-batches asks to run read…", view.CurrentText, StringComparison.Ordinal);
+        Assert.Contains("{\"path\":\"PLAN.md\"}", view.CurrentText, StringComparison.Ordinal);
         Assert.Contains("answer y once", view.CurrentText, StringComparison.Ordinal);
         Assert.Contains("+1 more", view.CurrentText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void ShouldCutALongCall_WhenTheApprovalLineShowsIt()
+    {
+        var call = "{\"path\":\"" + new string('a', 100) + "\"}";
+
+        var line = StatusLineFormatter.ComposeApproval(
+            GlyphSet.Unicode, new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", call, null, null), 1);
+
+        Assert.StartsWith("? A tool call asks to run read… (", line, StringComparison.Ordinal);
+        Assert.Contains(string.Concat(call.AsSpan(0, StatusLineFormatter.MaxApprovalArgumentsLength), "…"), line, StringComparison.Ordinal);
+        Assert.DoesNotContain(call, line, StringComparison.Ordinal);
     }
 
     [Fact]

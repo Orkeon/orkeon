@@ -58,8 +58,9 @@ The question did not name the task that asked it, and in the TUI only its lines 
 other output scrolled them away, the status line read `Working…` and a line typed got only `answer y, s or n`. A
 question now names its task (`? [t1] dev-batches: tool 'read' requires approval…`, `approve read for [t1]?`), a line
 that answers nothing writes the whole question again, the TUI status line shows the waiting question over every other
-state (`? [t1] dev-batches asks to run read… (answer y once · s session · n no · +1 more)`), and the task's row in the
-tasks list reads `? waits for approval of read`. The REPL's approval channel is read through the new
+state with the call (`? [t1] dev-batches asks to run read… ({"path":"…"} · answer y once · s session · n no · +1 more)`),
+the task's row in the tasks list reads `? waits for approval of read`, and its detail (Enter on the row) gives the
+whole call. The REPL's approval channel is read through the new
 `IToolApprovalWatch` (`Orkeon.Cli.Abstractions`) and `TuiIntegration.PendingApprovals`.
 
 ### Fixed — a parser could return to another grammar's pool

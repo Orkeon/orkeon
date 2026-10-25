@@ -54,10 +54,25 @@ public sealed class TuiFidelityWiringAgentRowsTests
             "assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
 
         var rows = TuiFidelityWiring.BuildAgentRows(
-            dispatch, [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", waiting.Ticket, "dev-batches")]);
+            dispatch, [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "{}", waiting.Ticket, "dev-batches")]);
 
         Assert.Equal("? waits for approval of read", Assert.Single(rows, r => r.Ticket == waiting.Ticket).Description);
         Assert.Equal("main-loop", Assert.Single(rows, r => r.Ticket == other.Ticket).Description);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-02")]
+    public void A_task_waiting_on_an_approval_shows_the_call_in_its_detail()
+    {
+        var dispatch = NewDispatch();
+        var waiting = dispatch.Registry.Register(
+            "dev-batches", CommandInstanceKind.Async, "crew:dev-batches", "runs the batches", Guid.NewGuid());
+
+        var detail = TuiFidelityWiring.DescribeInstance(
+            dispatch.get(waiting.Ticket), [new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", "{\"path\":\"PLAN.md\"}", waiting.Ticket, "dev-batches")]);
+
+        Assert.Contains("  waits   : approval of read {\"path\":\"PLAN.md\"} (answer y once, s session, n no)", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("waits", TuiFidelityWiring.DescribeInstance(dispatch.get(waiting.Ticket)), StringComparison.Ordinal);
     }
 
     [Fact]

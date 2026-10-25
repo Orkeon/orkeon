@@ -177,7 +177,7 @@ internal static class TuiFidelityWiring
                     dispatch.cancel(ticket);
             };
             integration.PromptTurnRunning = () => dispatch.PromptTurnTickets().Count > 0;
-            integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket));
+            integration.DescribeAgent = ticket => DescribeInstance(dispatch.get(ticket), approvals?.Pending);
         }
 
         if (services.GetService<ProgressBroker>() is { } broker)
@@ -295,8 +295,11 @@ internal static class TuiFidelityWiring
         }
     }
 
-    /// <summary>Transcript detail for one instance (the agents pane's Enter action).</summary>
-    private static string? DescribeInstance(CommandInstanceView? view)
+    /// <summary>
+    /// Transcript detail for one instance (the agents pane's Enter action), with the question the
+    /// instance waits on, call and prompt, when one waits (#194).
+    /// </summary>
+    internal static string? DescribeInstance(CommandInstanceView? view, IReadOnlyList<PendingToolApproval>? approvals = null)
     {
         if (view is null) return null;
         var lines = new List<string>(6)
@@ -308,6 +311,8 @@ internal static class TuiFidelityWiring
         };
         if (view.progress?.message is { Length: > 0 } pm) lines.Add($"  progress: {pm}");
         if (view.tokens > 0) lines.Add($"  tokens  : {view.tokens:N0}");
+        if (approvals?.FirstOrDefault(a => a.Ticket == view.ticket) is { } asked)
+            lines.Add($"  waits   : approval of {asked.ToolName} {asked.Arguments} (answer y once, s session, n no)");
         if (!string.IsNullOrEmpty(view.error)) lines.Add($"  error   : {Truncate(view.error!, 300)}");
         else if (view.result?.payload is { Length: > 0 } payload) lines.Add($"  result  : {Truncate(payload, 300)}");
         return string.Join("\n", lines);

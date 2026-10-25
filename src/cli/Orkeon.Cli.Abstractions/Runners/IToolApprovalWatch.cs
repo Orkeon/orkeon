@@ -12,6 +12,7 @@ public interface IToolApprovalWatch
 
 /// <summary>One tool approval waiting for the operator.</summary>
 /// <param name="ToolName">The tool the call names.</param>
+/// <param name="Arguments">The call's arguments as the question shows them, JSON cut at 300 characters.</param>
 /// <param name="Ticket">The ticket of the background task that asks (<c>t1</c>); null outside a task.</param>
 /// <param name="TaskName">The name of that task (<c>dev-batches</c>); null outside a task.</param>
-public sealed record PendingToolApproval(string ToolName, string? Ticket, string? TaskName);
+public sealed record PendingToolApproval(string ToolName, string Arguments, string? Ticket, string? TaskName);
