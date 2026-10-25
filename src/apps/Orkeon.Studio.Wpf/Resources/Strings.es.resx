@@ -3466,6 +3466,9 @@
   <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
     <value>El perfil con el que el RAG responde, evalúa y reformula las consultas — Orkeon:Rag:LlmProfile en el archivo de ajustes; el perfil por defecto, salvo que elija otro.</value>
   </data>
+  <data name="Studio.Settings.RagTab" xml:space="preserve">
+    <value>Búsqueda documental (RAG)</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>La búsqueda documental nombra un perfil de modelo que este archivo no define.</value>
   </data>
@@ -3627,13 +3630,19 @@
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Recordar para este equipo</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} equipo(s), {1} por defecto</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
-    <value>{0} {0:plural:modelo|modelos} · asistente: {1}</value>
+    <value>{0} {0:plural:modelo|modelos} · {1} por defecto</value>
   </data>
   <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
     <value>Elija el modelo del asistente</value>
   </data>
   <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
     <value>Ningún modelo</value>
+  </data>
+  <data name="Studio.Settings.TabKeysCount" xml:space="preserve">
+    <value>{0} {0:plural:clave guardada|claves guardadas}</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
+    <value>Ninguna clave que proporcionar</value>
   </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>{0} {0:plural:carpeta autorizada|carpetas autorizadas}</value>
@@ -3749,6 +3758,9 @@
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONEXIONES</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>AVANZADO</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Abrir Modelos</value></data>
+  <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
+    <value>Abrir Claves API</value>
+  </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Abrir Carpetas autorizadas</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Abrir el archivo de configuración</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Probar la conexión</value></data>

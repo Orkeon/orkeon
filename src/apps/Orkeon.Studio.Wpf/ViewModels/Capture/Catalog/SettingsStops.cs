@@ -4,7 +4,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Settings and its eight tabs.</summary>
+/// <summary>Settings and its eleven tabs, in four groups (refonte lot 11).</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>
@@ -27,11 +27,33 @@ internal static class SettingsStops
             Name = "reglages-modele",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsModel,
-            Because = "Four profiles, one elected as the assistant's, and an API-keys card with a "
-                    + "cloud profile whose key was never stored.",
-            Covers = ["Settings.Profiles.HasStudioProfile", "Settings.Profiles.HasSecrets"],
+            Because = "Four profiles, one elected as the assistant's, under the bar of the four "
+                    + "groups — Models active, its three sections in the column (lot 11).",
+            Covers = ["Settings.Profiles.HasStudioProfile"],
             CoversFalse = ["Settings.Profiles.IsEmpty"],
             SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-rag",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsRag,
+            Modes = CaptureModes.Expert,
+            Because = "The RAG's own section of the Models group (lot 11): the picker of the model "
+                    + "the document search calls, the default one unless another is chosen.",
+            Covers = ["Settings.Profiles.HasStudioProfile"],
+        },
+
+        new()
+        {
+            Name = "reglages-cles",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsKeys,
+            Because = "The API-keys section of the Models group (lot 11): one row per variable the "
+                    + "profiles name, a cloud profile whose key was never stored among them — the "
+                    + "amber dot on the tab and on the Models group.",
+            Covers = ["Settings.Profiles.HasSecrets"],
         },
 
         new()

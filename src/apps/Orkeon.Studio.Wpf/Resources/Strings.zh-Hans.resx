@@ -3466,6 +3466,9 @@
   <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
     <value>RAG 用于回答、评判和改写查询的配置——即设置文件中的 Orkeon:Rag:LlmProfile；除非另选，否则使用默认配置。</value>
   </data>
+  <data name="Studio.Settings.RagTab" xml:space="preserve">
+    <value>文档检索 (RAG)</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>文档检索指定了此文件未定义的模型配置。</value>
   </data>
@@ -3627,13 +3630,19 @@
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>为此团队记住</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} 个团队，其中 {1} 个使用默认</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
-    <value>{0} 个模型 · 助手：{1}</value>
+    <value>{0} 个模型 · 默认 {1}</value>
   </data>
   <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
     <value>选择助手的模型</value>
   </data>
   <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
     <value>尚无模型</value>
+  </data>
+  <data name="Studio.Settings.TabKeysCount" xml:space="preserve">
+    <value>已保存 {0} 个密钥</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
+    <value>无需提供密钥</value>
   </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>已授权 {0} 个文件夹</value>
@@ -3749,6 +3758,9 @@
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>连接</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>高级</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>打开模型</value></data>
+  <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
+    <value>打开 API 密钥</value>
+  </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>打开授权文件夹</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>打开设置文件</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>测试连接</value></data>

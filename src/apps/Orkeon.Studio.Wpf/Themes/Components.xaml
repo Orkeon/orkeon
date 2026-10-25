@@ -209,12 +209,70 @@
   <!-- ══ StepTabs (R14): the vertical classeur of a step with sections. 232 px of tabs on the
        left, the pane on the right; the active tab takes the pane's background, its border runs
        into the pane's (it covers the pane's left border by 1 px) and only its left corners are
-       rounded, so the pane loses its top-left radius. No ring, no shadow on the pane. ══ -->
+       rounded, so the pane loses its top-left radius. No ring, no shadow on the pane.
+       Grouped (lot 11): the groups as a horizontal bar above — capitals, the count of sections in
+       mono, the amber dot of a group waiting; the active group in the accent over a 2 px rule.
+       The column then lists the active group's tabs only (StepTab.IsOutsideActiveGroup). ══ -->
   <Style TargetType="{x:Type controls:StepTabs}">
     <Setter Property="Focusable" Value="False"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type controls:StepTabs}">
+          <DockPanel>
+          <Border x:Name="GroupBar" DockPanel.Dock="Top" Margin="0,0,0,16" BorderThickness="0,0,0,1"
+                  BorderBrush="{DynamicResource LineBrush}" Visibility="Collapsed">
+            <ItemsControl x:Name="PART_GroupBar" Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                          KeyboardNavigation.DirectionalNavigation="None"
+                          ItemsSource="{Binding Groups, RelativeSource={RelativeSource TemplatedParent}}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type controls:StepTabGroup}">
+                  <Button x:Name="GroupButton" Margin="0,0,24,-1" Height="40" Cursor="Hand"
+                          FocusVisualStyle="{StaticResource FocusRing}"
+                          Command="{Binding SelectGroupCommand, RelativeSource={RelativeSource AncestorType=controls:StepTabs}}"
+                          CommandParameter="{Binding}">
+                    <Button.Template>
+                      <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                          <ContentPresenter VerticalAlignment="Center"/>
+                          <Rectangle x:Name="Underline" Height="2" VerticalAlignment="Bottom" Fill="{DynamicResource AccentBrush}"
+                                     Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                          <DataTrigger Binding="{Binding IsActive}" Value="True">
+                            <Setter TargetName="Underline" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Button.Template>
+                    <StackPanel x:Name="GroupLine" Orientation="Horizontal" TextElement.Foreground="{DynamicResource InkMutedBrush}">
+                      <TextBlock FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="7,0,0,0" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Count}"/>
+                      <Ellipse x:Name="GroupDot" Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center"
+                               Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+                    </StackPanel>
+                  </Button>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                      <Setter TargetName="GroupLine" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding HasDot}" Value="True">
+                      <Setter TargetName="GroupDot" Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                    <!-- A group whose sections all hide (the expert-only ones in Novice) leaves the bar. -->
+                    <DataTrigger Binding="{Binding Count}" Value="0">
+                      <Setter TargetName="GroupButton" Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
           <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="232"/>
@@ -231,6 +289,12 @@
               <ContentPresenter ContentSource="SelectedContent"/>
             </Border>
           </Grid>
+          </DockPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="HasGroups" Value="True">
+              <Setter TargetName="GroupBar" Property="Visibility" Value="Visible"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -246,13 +310,8 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type controls:StepTab}">
-          <StackPanel>
-          <!-- The grouped variant: the group's title in capitals over a rule, on the tab that opens it. -->
-          <StackPanel Margin="2,10,12,8" IsHitTestVisible="False" Visibility="{Binding Group, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource AlertDetailsVisibility}}">
-            <TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding Group, RelativeSource={RelativeSource TemplatedParent}}"/>
-            <Rectangle Height="1" Margin="0,5,0,0" Fill="{DynamicResource LineFaintBrush}"/>
-          </StackPanel>
+          <!-- The grouped variant (lot 11): the group's title is in the classeur's bar, not over the tab. -->
+          <StackPanel x:Name="TabRoot">
           <Border x:Name="Chrome" MinHeight="44" Margin="0,0,12,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
                   Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="1" SnapsToDevicePixels="True">
@@ -293,6 +352,9 @@
           </Border>
           </StackPanel>
           <ControlTemplate.Triggers>
+            <Trigger Property="IsOutsideActiveGroup" Value="True">
+              <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
             <Trigger Property="State" Value="Warning">
               <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>

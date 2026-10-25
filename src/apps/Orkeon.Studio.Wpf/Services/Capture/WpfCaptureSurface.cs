@@ -38,6 +38,8 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
             case CaptureScreen.Diagnostic: Window.NavDiag.IsChecked = true; break;
 
             case CaptureScreen.SettingsModel: ShowSettings(shell.Settings.ShowModelCommand); break;
+            case CaptureScreen.SettingsRag: ShowSettings(shell.Settings.ShowRagCommand); break;
+            case CaptureScreen.SettingsKeys: ShowSettings(shell.Settings.ShowKeysCommand); break;
             case CaptureScreen.SettingsFolders: ShowSettings(shell.Settings.ShowFoldersCommand); break;
             case CaptureScreen.SettingsLimits: ShowSettings(shell.Settings.ShowLimitsCommand); break;
             case CaptureScreen.SettingsJson: ShowSettings(shell.Settings.ShowJsonCommand); break;

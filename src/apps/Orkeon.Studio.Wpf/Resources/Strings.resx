@@ -1840,6 +1840,9 @@
   <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
     <value>The profile the RAG answers, judges and rewrites queries with — Orkeon:Rag:LlmProfile in the settings file; the default setting unless you pick another.</value>
   </data>
+  <data name="Studio.Settings.RagTab" xml:space="preserve">
+    <value>Document search (RAG)</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>The document search names a model profile this file does not define.</value>
   </data>
@@ -1919,13 +1922,19 @@
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Remember for this team</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} team(s), {1} by default</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
-    <value>{0} {0:plural:model|models} · assistant: {1}</value>
+    <value>{0} {0:plural:model|models} · {1} by default</value>
   </data>
   <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
     <value>Choose the assistant's model</value>
   </data>
   <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
     <value>No model yet</value>
+  </data>
+  <data name="Studio.Settings.TabKeysCount" xml:space="preserve">
+    <value>{0} {0:plural:key|keys} remembered</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
+    <value>No key to provide</value>
   </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>{0} {0:plural:folder|folders} allowed</value>
@@ -2037,6 +2046,9 @@
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNECTIONS</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ADVANCED</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
+  <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
+    <value>Open API keys</value>
+  </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Open Allowed folders</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Open the settings file</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Test the connection</value></data>

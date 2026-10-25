@@ -103,8 +103,10 @@ public sealed class CapturePlannerTests
         // both themes, language sweep) = +8 shots.
         // Refonte lot 10: +1 stop (etape2-composition, the read-only « Composition » tab of step 2,
         // both modes, both themes) = +4 shots.
-        Assert.Equal(71, CaptureCatalog.All.Count);
-        Assert.Equal(394, plan.Count);
+        // Refonte lot 11: +2 stops (reglages-rag, the RAG's section, expert only, both themes = +2;
+        // reglages-cles, the API-keys section, both modes, both themes = +4) = +6 shots.
+        Assert.Equal(73, CaptureCatalog.All.Count);
+        Assert.Equal(400, plan.Count);
     }
 
     [Fact]

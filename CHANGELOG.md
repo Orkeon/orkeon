@@ -26,7 +26,9 @@ Composition), and « Try the team » waits until no folder is left to choose. Th
 A guard test refuses a resource dictionary that declares the same key twice: a duplicated icon key stopped Studio at startup.
 
 History becomes a table grouped by day with team and status filters, the team's own name and « < 1 s » under a second. Settings become
-a tab binder in four groups, each tab saying its state (an amber dot for something to fix, a green one for a checked file),
+a tab binder in four groups, drawn as a horizontal bar over the active group's sections, each tab saying its state (an amber
+dot for something to fix, a green one for a checked file); Models splits into AI model, Document search (RAG, Expert) and
+API keys, where the Diagnostic's missing-key problem now leads,
 one card per model with its provider, endpoint, file name, teams and an action bar, and an unsaved-changes bar that guards leaving the screen; the sidebar's settings-file card becomes
 a dot on the Settings entry and a line of the Diagnostic. The Diagnostic counts the points to fix exactly and gives each problem its
 own action. An allowed folder's error shows on its own row.

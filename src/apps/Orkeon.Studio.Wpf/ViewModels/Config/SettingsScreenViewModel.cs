@@ -6,17 +6,24 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// The unified Settings screen (design v3): one nav entry, eight inner tabs. Novice sees the
-/// five that matter — the AI model, the authorized folders, the tools (their keys and what
-/// each one needs, STUDIO-21), the e-mail accounts (STUDIO-67) and Studio itself (STUDIO-35);
-/// the limits-and-logs tab, the MCP servers and the raw-JSON tab are expert-only, and a switch
-/// back to novice while one of them is showing falls back to the model tab rather than leaving
-/// a blank screen.
+/// The unified Settings screen (design v3): one nav entry, eleven inner tabs in four groups
+/// (refonte lot 11). Novice sees the ones that matter — the AI model, the API keys, the
+/// authorized folders, the tools (their keys and what each one needs, STUDIO-21), the e-mail
+/// and Drive accounts (STUDIO-67) and Studio itself (STUDIO-35); the RAG's model, the
+/// limits-and-logs tab, the MCP servers and the raw-JSON tab are expert-only, and a switch back
+/// to novice while one of them is showing falls back to the model tab rather than leaving a
+/// blank screen.
 /// </summary>
 public sealed partial class SettingsScreenViewModel : ObservableObject
 {
     /// <summary>Tab names, as stored in <see cref="ActiveTab"/>.</summary>
     public const string ModelTab = "model";
+
+    /// <summary>The model the document search calls, Orkeon:Rag:LlmProfile (expert, refonte lot 11).</summary>
+    public const string RagTab = "rag";
+
+    /// <summary>The API keys the model settings resolve, kept in the user environment (refonte lot 11).</summary>
+    public const string KeysTab = "keys";
 
     /// <summary>The mounts tab.</summary>
     public const string FoldersTab = "folders";
@@ -103,6 +110,8 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
+        ShowRagCommand = new RelayCommand(() => ActiveTab = RagTab);
+        ShowKeysCommand = new RelayCommand(() => ActiveTab = KeysTab);
         // The folders tab re-reads the teams' own folders on arrival (ActiveTab): the section is
         // a view over the sidecars, and a team adopted or deleted since the last visit must show.
         // Asked again while it shows, it reads them again.
@@ -219,8 +228,8 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
         get => _activeTab;
         set
         {
-            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab or DriveTab ? value : ModelTab;
-            if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
+            var requested = value is RagTab or KeysTab or FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab or DriveTab ? value : ModelTab;
+            if (_mode.IsNovice && requested is RagTab or LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
             var wasMails = IsMailsTab;
@@ -228,7 +237,7 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
             if (SetProperty(ref _activeTab, requested))
             {
                 OnPropertiesChanged(
-                    nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
+                    nameof(IsModelTab), nameof(IsRagTab), nameof(IsKeysTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
                     nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab), nameof(IsDriveTab));
                 // The classeur selects a tab through ActiveTab itself, not through its command.
                 if (IsFoldersTab)
@@ -252,6 +261,12 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
 
     /// <summary>True while the AI-model tab shows.</summary>
     public bool IsModelTab => _activeTab == ModelTab;
+
+    /// <summary>True while the expert RAG-model tab shows.</summary>
+    public bool IsRagTab => _activeTab == RagTab;
+
+    /// <summary>True while the API-keys tab shows.</summary>
+    public bool IsKeysTab => _activeTab == KeysTab;
 
     /// <summary>True while the allowed-folders tab shows.</summary>
     public bool IsFoldersTab => _activeTab == FoldersTab;
@@ -279,6 +294,12 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
 
     /// <summary>Shows the model tab.</summary>
     public RelayCommand ShowModelCommand { get; }
+
+    /// <summary>Shows the RAG-model tab.</summary>
+    public RelayCommand ShowRagCommand { get; }
+
+    /// <summary>Shows the API-keys tab.</summary>
+    public RelayCommand ShowKeysCommand { get; }
 
     /// <summary>Shows the folders tab.</summary>
     public RelayCommand ShowFoldersCommand { get; }
@@ -333,7 +354,7 @@ public sealed partial class SettingsScreenViewModel : ObservableObject
 
         Config.Email.IsExpert = _mode.IsExpert;
         Config.Drive.IsExpert = _mode.IsExpert;
-        if (_mode.IsNovice && (IsLimitsTab || IsJsonTab || IsMcpTab))
+        if (_mode.IsNovice && (IsRagTab || IsLimitsTab || IsJsonTab || IsMcpTab))
             ActiveTab = ModelTab;
     }
 }

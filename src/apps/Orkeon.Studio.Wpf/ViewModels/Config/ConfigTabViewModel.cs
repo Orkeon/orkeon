@@ -31,6 +31,7 @@ public sealed class ConfigTabViewModel : ObservableObject
     private string _rawJson = "";
     private bool _isDirty;
     private string? _statusMessage;
+    private bool _statusNamesFile;
     private string? _loadedPath;
     private string _savedJson = "";
     private int _pendingChangeCount;
@@ -267,7 +268,27 @@ public sealed class ConfigTabViewModel : ObservableObject
     public string? StatusMessage
     {
         get => _statusMessage;
-        private set => SetProperty(ref _statusMessage, value);
+        private set
+        {
+            _statusNamesFile = false;
+            if (SetProperty(ref _statusMessage, value))
+                OnPropertyChanged(nameof(HeaderStatusMessage));
+        }
+    }
+
+    /// <summary>
+    /// The status line under the screen's header (refonte lot 11): every outcome but the plain
+    /// « Loaded: path » / « Saved: path », which only name the file — the File section says it,
+    /// once, with the file's location.
+    /// </summary>
+    public string? HeaderStatusMessage => _statusNamesFile ? null : _statusMessage;
+
+    /// <summary>A load or a save that went through: the outcome names the file and nothing else.</summary>
+    private void ShowFileOutcome(string message)
+    {
+        StatusMessage = message;
+        _statusNamesFile = true;
+        OnPropertyChanged(nameof(HeaderStatusMessage));
     }
 
     /// <summary>The file the document was loaded from, when it came from one.</summary>
@@ -380,7 +401,7 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         SetDocument(document, path);
         Location.UseCustomPath(path);
-        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
+        ShowFileOutcome(_strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path));
         Saved?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -415,7 +436,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         }
 
         SetDocument(document, path);
-        StatusMessage = _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path);
+        ShowFileOutcome(_strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigLoaded, path));
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
@@ -465,13 +486,18 @@ public sealed class ConfigTabViewModel : ObservableObject
         IsDirty = false;
         _savedJson = RawJson;
         PendingChangeCount = 0;
-        StatusMessage = HasLlmWarning
-            ? _strings.Format(
+        if (HasLlmWarning)
+        {
+            StatusMessage = _strings.Format(
                 CultureInfo.InvariantCulture,
                 StudioStringKeys.ConfigSavedLlmWarning,
                 path,
-                ValidationCodes.LlmSectionMissing)
-            : _strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigSaved, path);
+                ValidationCodes.LlmSectionMissing);
+        }
+        else
+        {
+            ShowFileOutcome(_strings.Format(CultureInfo.InvariantCulture, StudioStringKeys.ConfigSaved, path));
+        }
 
         Saved?.Invoke(this, EventArgs.Empty);
         return true;

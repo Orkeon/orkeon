@@ -3466,6 +3466,9 @@
   <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
     <value>Das Profil, mit dem das RAG antwortet, bewertet und Anfragen umformuliert – Orkeon:Rag:LlmProfile in der Einstellungsdatei; das Standardprofil, sofern Sie kein anderes wählen.</value>
   </data>
+  <data name="Studio.Settings.RagTab" xml:space="preserve">
+    <value>Dokumentsuche (RAG)</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>Die Dokumentsuche nennt ein Modellprofil, das diese Datei nicht definiert.</value>
   </data>
@@ -3627,13 +3630,19 @@
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Für dieses Team merken</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} Team(s), davon {1} per Standard</value></data>
   <data name="Studio.Settings.TabModelCount" xml:space="preserve">
-    <value>{0} {0:plural:Modell|Modelle} · Assistent: {1}</value>
+    <value>{0} {0:plural:Modell|Modelle} · {1} als Standard</value>
   </data>
   <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
     <value>Modell des Assistenten wählen</value>
   </data>
   <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
     <value>Noch kein Modell</value>
+  </data>
+  <data name="Studio.Settings.TabKeysCount" xml:space="preserve">
+    <value>{0} {0:plural:Schlüssel gespeichert|Schlüssel gespeichert}</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
+    <value>Kein Schlüssel nötig</value>
   </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>{0} {0:plural:Ordner|Ordner} freigegeben</value>
@@ -3749,6 +3758,9 @@
   <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>VERBINDUNGEN</value></data>
   <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ERWEITERT</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Modelle öffnen</value></data>
+  <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
+    <value>API-Schlüssel öffnen</value>
+  </data>
   <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Zugelassene Ordner öffnen</value></data>
   <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Einstellungsdatei öffnen</value></data>
   <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Verbindung testen</value></data>

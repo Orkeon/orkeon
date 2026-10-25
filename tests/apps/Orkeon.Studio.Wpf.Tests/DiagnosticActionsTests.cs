@@ -17,7 +17,7 @@ public sealed class DiagnosticActionsTests
     [Theory]
     [InlineData("llm-config", DoctorCheckViewModel.FixModels)]
     [InlineData("llm-profiles", DoctorCheckViewModel.FixModels)]
-    [InlineData("llm-profile-key", DoctorCheckViewModel.FixModels)]
+    [InlineData("llm-profile-key", DoctorCheckViewModel.FixKeys)]
     [InlineData("llm-reachability", DoctorCheckViewModel.FixTest)]
     [InlineData("workspace-write", DoctorCheckViewModel.FixFolders)]
     [InlineData("appsettings", DoctorCheckViewModel.FixFile)]

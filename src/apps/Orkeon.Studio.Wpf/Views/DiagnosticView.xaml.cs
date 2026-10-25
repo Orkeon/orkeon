@@ -10,7 +10,7 @@ public partial class DiagnosticView : UserControl
     /// <summary>Loads the XAML.</summary>
     public DiagnosticView() => InitializeComponent();
 
-    // Lot 5: each problem opens the section that fixes it - Models, Allowed folders, the File -, or
+    // Lot 5: each problem opens the section that fixes it - Models, API keys, Allowed folders, the File -, or
     // tests the model's connection there, or runs the checks again when the fix is not Studio's.
     private void OnFixCheck(object sender, RoutedEventArgs e)
     {
@@ -21,6 +21,9 @@ public partial class DiagnosticView : UserControl
         {
             case DoctorCheckViewModel.FixModels:
                 OpenSettings(SettingsScreenViewModel.ModelTab);
+                break;
+            case DoctorCheckViewModel.FixKeys:
+                OpenSettings(SettingsScreenViewModel.KeysTab);
                 break;
             case DoctorCheckViewModel.FixFolders:
                 OpenSettings(SettingsScreenViewModel.FoldersTab);

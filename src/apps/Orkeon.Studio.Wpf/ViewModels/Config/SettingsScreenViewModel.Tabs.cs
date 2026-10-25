@@ -7,7 +7,8 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// The Settings classeur (refonte lot 9, R14 grouped variant): each tab says its state under its
 /// title — what it holds, in the warning tone when something there needs fixing, the green dot
 /// when the settings file was checked and holds. The marks are the StepTab states' names
-/// (Empty, Done, Warning, Verified), read from what the sections already hold.
+/// (Empty, Done, Expected, Warning, Verified), read from what the sections already hold. Since
+/// lot 11 the Models group holds three tabs: the AI model, the RAG's model and the API keys.
 /// </summary>
 public sealed partial class SettingsScreenViewModel
 {
@@ -15,19 +16,40 @@ public sealed partial class SettingsScreenViewModel
     private const string DoneState = "Done";
     private const string WarningState = "Warning";
     private const string VerifiedState = "Verified";
+    private const string ExpectedState = "Expected";
 
     private readonly IStudioStrings _strings;
 
-    /// <summary>« 2 models · assistant: Local », or what is still to choose.</summary>
+    /// <summary>« 2 models · Local by default », or what is still to choose.</summary>
     public string ModelTabSubtitle =>
         Profiles.IsEmpty
             ? _strings[StudioStringKeys.SettingsTabModelEmpty]
             : Profiles.HasStudioProfile
-                ? _strings.Format(StudioStringKeys.SettingsTabModelCount, Profiles.Profiles.Count, Profiles.StudioProfileName ?? string.Empty)
+                ? _strings.Format(StudioStringKeys.SettingsTabModelCount, Profiles.Profiles.Count,
+                    Profiles.DefaultProfileName ?? Profiles.StudioProfileName ?? string.Empty)
                 : _strings[StudioStringKeys.SettingsTabModelNoAssistant];
 
     /// <summary>Warning while the assistant has no model; done once it has one.</summary>
     public string ModelTabState => Profiles.HasStudioProfile ? DoneState : WarningState;
+
+    /// <summary>The model the document search calls, as its picker names it.</summary>
+    public string RagTabSubtitle => Profiles.SelectedRagProfile?.Label ?? string.Empty;
+
+    /// <summary>Done once the picker names the RAG's model (the default one unless another is chosen), empty before.</summary>
+    public string RagTabState => Profiles.SelectedRagProfile is null ? EmptyState : DoneState;
+
+    /// <summary>The key variables whose value is in place.</summary>
+    private int StoredKeyCount => Profiles.Secrets.Count(secret => secret.HasKey);
+
+    /// <summary>« 2 keys remembered », or nothing to provide.</summary>
+    public string KeysTabSubtitle =>
+        Profiles.HasSecrets
+            ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, StoredKeyCount)
+            : _strings[StudioStringKeys.SettingsTabKeysNone];
+
+    /// <summary>The green dot when every key is in place, the amber dot while one is missing, empty without keys.</summary>
+    public string KeysTabState =>
+        !Profiles.HasSecrets ? EmptyState : StoredKeyCount == Profiles.Secrets.Count ? VerifiedState : ExpectedState;
 
     /// <summary>The fiches whose row carries a finding of the validation.</summary>
     private int FolderProblemCount => Config.Mounts.Mounts.Count(mount => mount.HasRowProblem);
@@ -95,6 +117,17 @@ public sealed partial class SettingsScreenViewModel
     {
         NotifyCollectionChangedEventHandler collectionChanged = (_, _) => RefreshTabStates();
         Profiles.Profiles.CollectionChanged += collectionChanged;
+        // A key remembered changes the keys tab: the rows are rebuilt with the profiles, so each
+        // new row is followed as it comes.
+        EventHandler keyStored = (_, _) => RefreshTabStates();
+        Profiles.Secrets.CollectionChanged += (_, e) =>
+        {
+            foreach (var row in e.NewItems?.OfType<SecretRowViewModel>() ?? [])
+                row.Stored += keyStored;
+            RefreshTabStates();
+        };
+        foreach (var row in Profiles.Secrets)
+            row.Stored += keyStored;
         Config.Mounts.Mounts.CollectionChanged += collectionChanged;
         Config.ValidationMessages.CollectionChanged += collectionChanged;
         Config.Mounts.ValidationMessages.CollectionChanged += collectionChanged;
@@ -104,7 +137,8 @@ public sealed partial class SettingsScreenViewModel
         Profiles.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(ModelProfilesViewModel.HasStudioProfile) or nameof(ModelProfilesViewModel.StudioProfileName)
-                or nameof(ModelProfilesViewModel.IsEmpty))
+                or nameof(ModelProfilesViewModel.IsEmpty) or nameof(ModelProfilesViewModel.DefaultProfileName)
+                or nameof(ModelProfilesViewModel.SelectedRagProfile) or nameof(ModelProfilesViewModel.HasSecrets))
             {
                 RefreshTabStates();
             }
@@ -116,6 +150,8 @@ public sealed partial class SettingsScreenViewModel
     private void RefreshTabStates() =>
         OnPropertiesChanged(
             nameof(ModelTabSubtitle), nameof(ModelTabState),
+            nameof(RagTabSubtitle), nameof(RagTabState),
+            nameof(KeysTabSubtitle), nameof(KeysTabState),
             nameof(FoldersTabSubtitle), nameof(FoldersTabState),
             nameof(ToolsTabSubtitle),
             nameof(MailsTabSubtitle), nameof(MailsTabState),

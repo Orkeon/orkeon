@@ -431,6 +431,7 @@ public static class StudioStringKeys
 
     /// <summary>A check's action (lot 5): "Open Models".</summary>
     public const string DiagOpenModels = "Studio.Diagnostics.OpenModels";
+    public const string DiagOpenKeys = "Studio.Diagnostics.OpenKeys";
 
     /// <summary>A check's action: "Open Allowed folders".</summary>
     public const string DiagOpenFolders = "Studio.Diagnostics.OpenFolders";
@@ -2068,6 +2069,8 @@ public static class StudioStringKeys
     public const string SettingsTabModelCount = "Studio.Settings.TabModelCount";
     public const string SettingsTabModelNoAssistant = "Studio.Settings.TabModelNoAssistant";
     public const string SettingsTabModelEmpty = "Studio.Settings.TabModelEmpty";
+    public const string SettingsTabKeysCount = "Studio.Settings.TabKeysCount";
+    public const string SettingsTabKeysNone = "Studio.Settings.TabKeysNone";
     public const string SettingsTabFoldersCount = "Studio.Settings.TabFoldersCount";
     public const string SettingsTabFoldersEmpty = "Studio.Settings.TabFoldersEmpty";
     public const string SettingsTabFoldersProblems = "Studio.Settings.TabFoldersProblems";
@@ -2738,6 +2741,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagFixNeeded] = "{0} {0:plural:point|points} to fix before launching a team.",
         [StudioStringKeys.DiagCounts] = "{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.",
         [StudioStringKeys.DiagOpenModels] = "Open Models",
+        [StudioStringKeys.DiagOpenKeys] = "Open API keys",
         [StudioStringKeys.DiagOpenFolders] = "Open Allowed folders",
         [StudioStringKeys.DiagOpenFile] = "Open the settings file",
         [StudioStringKeys.DiagTestConnection] = "Test the connection",
@@ -3456,9 +3460,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
         [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
         [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
-        [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · assistant: {1}",
+        [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · {1} by default",
         [StudioStringKeys.SettingsTabModelNoAssistant] = "Choose the assistant's model",
         [StudioStringKeys.SettingsTabModelEmpty] = "No model yet",
+        [StudioStringKeys.SettingsTabKeysCount] = "{0} {0:plural:key|keys} remembered",
+        [StudioStringKeys.SettingsTabKeysNone] = "No key to provide",
         [StudioStringKeys.SettingsTabFoldersCount] = "{0} {0:plural:folder|folders} allowed",
         [StudioStringKeys.SettingsTabFoldersEmpty] = "No folder allowed",
         [StudioStringKeys.SettingsTabFoldersProblems] = "{0} {0:plural:folder|folders} to fix",

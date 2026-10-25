@@ -1,5 +1,6 @@
-<!-- The unified "Réglages" screen (refonte lots 5 and 9): a classeur of tabs in four groups - Models
-     (the AI model), Access (allowed folders, tools), Connections (e-mail, cloud storage, MCP),
+<!-- The unified "Réglages" screen (refonte lots 5, 9 and 11): a classeur of tabs in four groups, drawn
+     as a horizontal bar over the active group's tabs - Models (the AI model, the RAG's model, the
+     API keys), Access (allowed folders, tools), Connections (e-mail, cloud storage, MCP),
      Advanced (Studio, limits & index, the file) - each tab with its state under its title. The bar « N unsaved
      changes · Cancel · Save » appears with the first edit, and leaving the screen with edits pending
      asks first. DataContext: SettingsScreenViewModel (Settings). -->
@@ -40,7 +41,9 @@
         </Button>
       </StackPanel>
     </controls:PageHeader>
-    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Config.StatusMessage}"/>
+    <!-- Lot 11: the outcomes only; « Loaded: path » is said once, in the File section. -->
+    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Config.HeaderStatusMessage}"
+               Visibility="{Binding Config.HeaderStatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
 
     <!-- lot 5: leaving with edits pending asks; the three answers sit under the question -->
     <controls:Alert x:Name="LeaveQuestion" Tone="Warning" Margin="0,14,0,0"
@@ -79,7 +82,7 @@
     </Border>
 
     <!-- lot 9: the classeur in groups (R14, grouped variant) — Models · Access · Connections ·
-         Advanced. Each tab says its state under its title (SettingsScreenViewModel.Tabs); the
+         Advanced, the bar of groups above the column since lot 11. Each tab says its state under its title (SettingsScreenViewModel.Tabs); the
          selected tab is ActiveTab itself, so the Diagnostic's actions still land on a section. -->
     <controls:StepTabs Margin="0,20,0,0" SelectedValuePath="Tag" SelectedValue="{Binding ActiveTab}">
       <controls:StepTab Tag="model" Header="{Binding [Studio.Shell.Model], Source={x:Static services:I18n.Instance}}"
@@ -339,10 +342,16 @@
             </StackPanel>
           </Border>
 
+        </StackPanel>
+      </controls:StepTab>
+      <controls:StepTab Tag="rag" Header="{Binding [Studio.Settings.RagTab], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding RagTabSubtitle}" State="{Binding RagTabState}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+        <!-- ══ RECHERCHE DOCUMENTAIRE (lot 11, expert) ══ -->
+        <StackPanel>
           <!-- STUDIO-48 (GAP-19): the profile the document search calls, Orkeon:Rag:LlmProfile,
-               chosen among the host profiles above. Expert, like the RAG settings of the limits tab. -->
-          <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+               chosen among the host profiles of the model tab. Expert, like the RAG settings of the limits tab. -->
+          <Border Style="{StaticResource Card}" Margin="0,0,0,16">
             <DockPanel>
               <ComboBox DockPanel.Dock="Right" Width="260" VerticalAlignment="Center"
                         ItemsSource="{Binding Profiles.RagProfileChoices}"
@@ -360,6 +369,15 @@
             </DockPanel>
           </Border>
 
+        </StackPanel>
+      </controls:StepTab>
+      <controls:StepTab Tag="keys" Header="{Binding [Studio.Settings.SecretsTitle], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding KeysTabSubtitle}" State="{Binding KeysTabState}">
+        <!-- ══ CLÉS API (lot 11) ══ -->
+        <StackPanel>
+          <!-- Without a cloud model there is no key to provide: the tab says so. -->
+          <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Text="{Binding KeysTabSubtitle}"
+                     Visibility="{Binding Profiles.HasSecrets, Converter={StaticResource InverseBooleanToVisibility}}"/>
           <!-- API keys: one row per environment variable the profiles resolve. The value goes
                straight to the user environment (IApiKeyStore) — it never enters any file. -->
           <Border Style="{StaticResource Card}" Margin="0,0,0,16"

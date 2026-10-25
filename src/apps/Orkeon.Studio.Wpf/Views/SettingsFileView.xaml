@@ -9,6 +9,10 @@
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
   <StackPanel>
 
+    <!-- Lot 11: the last outcome, « Loaded: path » included — the screen's header leaves it here. -->
+    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,0,0,12" TextWrapping="Wrap" Text="{Binding StatusMessage}"
+               Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+
     <!-- file actions -->
     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
       <Button Style="{StaticResource BtnSecondary}" Command="{Binding NewCommand}" Margin="0,0,8,0">

@@ -89,12 +89,13 @@ public sealed class DoctorCheckViewModel
 
     /// <summary>
     /// What fixes this check (lot 5, one action per problem): <see cref="FixModels"/>,
-    /// <see cref="FixFolders"/>, <see cref="FixFile"/>, <see cref="FixTest"/>, or
+    /// <see cref="FixKeys"/> (lot 11), <see cref="FixFolders"/>, <see cref="FixFile"/>, <see cref="FixTest"/>, or
     /// <see cref="FixAgain"/> when the fix is outside Studio (a runtime, a tool to install).
     /// </summary>
     public string FixKind => Name switch
     {
-        "llm-config" or "llm-profiles" or "llm-profile-key" => FixModels,
+        "llm-config" or "llm-profiles" => FixModels,
+        "llm-profile-key" => FixKeys,
         "llm-reachability" => FixTest,
         "workspace-write" => FixFolders,
         "appsettings" => FixFile,
@@ -105,6 +106,7 @@ public sealed class DoctorCheckViewModel
     public string FixLabel => _strings[FixKind switch
     {
         FixModels => StudioStringKeys.DiagOpenModels,
+        FixKeys => StudioStringKeys.DiagOpenKeys,
         FixTest => StudioStringKeys.DiagTestConnection,
         FixFolders => StudioStringKeys.DiagOpenFolders,
         FixFile => StudioStringKeys.DiagOpenFile,
@@ -116,6 +118,9 @@ public sealed class DoctorCheckViewModel
 
     /// <summary>Opens the Models section of the settings.</summary>
     public const string FixModels = "models";
+
+    /// <summary>Opens the API keys section (lot 11): a key a model names is not set.</summary>
+    public const string FixKeys = "keys";
 
     /// <summary>Opens the Allowed folders section.</summary>
     public const string FixFolders = "folders";
