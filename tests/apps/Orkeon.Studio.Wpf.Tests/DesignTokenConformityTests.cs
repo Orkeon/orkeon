@@ -119,6 +119,26 @@ public sealed partial class DesignTokenConformityTests
         Assert.True(literal.Count == 0, "Literal GroupName in LaunchTabView: " + string.Join(", ", literal));
     }
 
+    [Fact]
+    public void Should_Base_A_Local_Style_On_The_Theme_When_It_Targets_A_Studio_Component()
+    {
+        // Alert, Badge, PropertyRow and PageHeader get their template from an implicit style of
+        // Themes/Components.xaml: a local Style without BasedOn replaces it, and the control
+        // renders with no template at all - invisible to every Linux test, plain on Windows.
+        var components = new[] { "Alert", "Badge", "PropertyRow", "PageHeader" };
+        var offenders = XamlFiles()
+            .Where(file => !file.Contains(Path.DirectorySeparatorChar + "Themes" + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            .SelectMany(file => XDocument.Load(file).Descendants()
+                .Where(e => e.Name.LocalName == "Style"
+                    && components.Any(c => ((string?)e.Attribute("TargetType"))?.EndsWith(":" + c, StringComparison.Ordinal) == true
+                        || ((string?)e.Attribute("TargetType"))?.EndsWith(":" + c + "}", StringComparison.Ordinal) == true)
+                    && e.Attribute("BasedOn") is null)
+                .Select(e => $"{Path.GetFileName(file)}: {(string?)e.Attribute("TargetType")}"))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Style without BasedOn on a Studio component: " + string.Join(", ", offenders));
+    }
+
     private static string Theme(string fileName) =>
         Path.Combine(WpfSourceRoot(), "Themes", fileName);
 

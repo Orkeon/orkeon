@@ -270,29 +270,8 @@
                       Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Border>
-          <Border x:Name="SettingsCard" DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}"
-                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11,10"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Settings.SettingsFileTitle], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,6,0,0"
-                         Text="{Binding [Studio.Settings.SettingsFileGlobal], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,4,0,7"
-                         Text="{Binding Config.Location.GlobalPath}"/>
-              <StackPanel Orientation="Horizontal">
-                <Border Style="{StaticResource BadgeOk}" HorizontalAlignment="Left"
-                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource InverseBooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="13"
-                             Text="{Binding [Studio.Common.Valid], Source={x:Static services:I18n.Instance}}"/>
-                </Border>
-                <Border Style="{StaticResource BadgeFail}" HorizontalAlignment="Left"
-                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="13"
-                             Text="{Binding [Studio.Common.Invalid], Source={x:Static services:I18n.Instance}}"/>
-                </Border>
-              </StackPanel>
-            </StackPanel>
-          </Border>
+          <!-- Lot 5: the former « Settings file » card is the dot on the Settings entry and a line
+               of the Diagnostic; the file's path shows once, in Settings > File. -->
 
           <StackPanel>
             <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
@@ -392,6 +371,26 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Settings], Source={x:Static services:I18n.Instance}}"/>
+                <!-- the settings file's state: red when it has errors, amber while edits are unsaved -->
+                <Ellipse x:Name="SettingsDot" Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
+                  <Ellipse.Style>
+                    <Style TargetType="Ellipse">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                      <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="ToolTip" Value="{Binding Config.PendingChangesText}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
+                          <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Config.HasBlockingErrors}" Value="True">
+                          <Setter Property="Visibility" Value="Visible"/>
+                          <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                          <Setter Property="ToolTip" Value="{Binding [Studio.Diagnostics.SettingsFileInvalid], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Ellipse.Style>
+                </Ellipse>
               </StackPanel>
             </RadioButton>
             <RadioButton x:Name="NavDiag" GroupName="Nav" Style="{StaticResource NavItem}">
@@ -446,34 +445,36 @@
                        Foreground="{DynamicResource InkBrush}" Text="{Binding UndoNotice}"/>
           </DockPanel>
         </Border>
+        <!-- R3: two column widths only - standard 1040 (Create, Teams, Import, History, Diagnostic),
+             wide 1200 (Launch, Settings) - 48 px side margins, the scroll bar gutter always kept. -->
         <Grid Grid.Column="0">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
-          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1000" DataContext="{Binding CreateTeam}"/>
+          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1040" DataContext="{Binding CreateTeam}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
-          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1000" DataContext="{Binding Teams}"/>
+          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1040" DataContext="{Binding Teams}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
-          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="880" DataContext="{Binding Import}"/>
+          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="1040" DataContext="{Binding Import}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
-          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1000" DataContext="{Binding Settings}"/>
+          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1200" DataContext="{Binding Settings}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
-          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="880" DataContext="{Binding Config.Diagnostic}"/>
+          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="1040" DataContext="{Binding Config.Diagnostic}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:RunScreenView x:Name="RunPanel" DataContext="{Binding Run}"/>
+          <views:RunScreenView x:Name="RunPanel" MaxWidth="1200" DataContext="{Binding Run}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
-          <views:HistoryView x:Name="HistoryPanel" MaxWidth="880" DataContext="{Binding Launch.History}"/>
+          <views:HistoryView x:Name="HistoryPanel" MaxWidth="1040" DataContext="{Binding Launch.History}"/>
         </ScrollViewer>
         </Grid>
       </Grid>

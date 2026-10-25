@@ -423,11 +423,35 @@ public static class StudioStringKeys
     /// <summary>"Everything is in place."</summary>
     public const string DiagAllGood = "Studio.Diagnostics.AllGood";
 
-    /// <summary>"One point to fix before launching a team."</summary>
+    /// <summary>"{0} point(s) to fix before launching a team." - the points counted (lot 5).</summary>
     public const string DiagFixNeeded = "Studio.Diagnostics.FixNeeded";
 
-    /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)."</summary>
+    /// <summary>"{0} checks passed, {1} warnings, {2} failures."</summary>
     public const string DiagCounts = "Studio.Diagnostics.Counts";
+
+    /// <summary>A check's action (lot 5): "Open Models".</summary>
+    public const string DiagOpenModels = "Studio.Diagnostics.OpenModels";
+
+    /// <summary>A check's action: "Open Allowed folders".</summary>
+    public const string DiagOpenFolders = "Studio.Diagnostics.OpenFolders";
+
+    /// <summary>A check's action: "Open the settings file".</summary>
+    public const string DiagOpenFile = "Studio.Diagnostics.OpenFile";
+
+    /// <summary>A check's action: "Test the connection".</summary>
+    public const string DiagTestConnection = "Studio.Diagnostics.TestConnection";
+
+    /// <summary>A check's action when Studio has no fix of its own: "Check again".</summary>
+    public const string DiagCheckAgain = "Studio.Diagnostics.CheckAgain";
+
+    /// <summary>The settings-file line of the checks (lot 5, the former sidebar card): "Settings file".</summary>
+    public const string DiagSettingsFile = "Studio.Diagnostics.SettingsFile";
+
+    /// <summary>"The settings file is valid."</summary>
+    public const string DiagSettingsFileOk = "Studio.Diagnostics.SettingsFileOk";
+
+    /// <summary>"The settings file has errors: Studio cannot save it."</summary>
+    public const string DiagSettingsFileInvalid = "Studio.Diagnostics.SettingsFileInvalid";
 
     // ---- History cards (Launch/LaunchHistoryViewModel, audit 06/15) ------
 
@@ -442,6 +466,33 @@ public static class StudioStringKeys
 
     /// <summary>"Never started."</summary>
     public const string HistOutcomeNotStarted = "Studio.History.OutcomeNotStarted";
+
+    /// <summary>"Today" - the day group of the history table.</summary>
+    public const string HistToday = "Studio.History.Today";
+
+    /// <summary>"Yesterday".</summary>
+    public const string HistYesterday = "Studio.History.Yesterday";
+
+    /// <summary>"All teams" - the team filter's first option.</summary>
+    public const string HistAllTeams = "Studio.History.AllTeams";
+
+    /// <summary>"All statuses" - the status filter's first option.</summary>
+    public const string HistAllStatuses = "Studio.History.AllStatuses";
+
+    /// <summary>"No run matches these filters."</summary>
+    public const string HistNoMatch = "Studio.History.NoMatch";
+
+    /// <summary>"Succeeded" - the status badge and filter option.</summary>
+    public const string HistStatusSucceeded = "Studio.Run.OutcomeSucceeded";
+
+    /// <summary>"Failed".</summary>
+    public const string HistStatusFailed = "Studio.Run.OutcomeFailed";
+
+    /// <summary>"Cancelled".</summary>
+    public const string HistStatusCancelled = "Studio.Run.OutcomeCancelled";
+
+    /// <summary>"Not started".</summary>
+    public const string HistStatusNotStarted = "Studio.History.OutcomeBadgeNotStarted";
 
     // ---- RAG web-fallback status (Config/RagSectionViewModel, T-08) ------
 
@@ -890,6 +941,9 @@ public static class StudioStringKeys
 
     /// <summary>"Saved to {0}."</summary>
     public const string ConfigSaved = "Studio.Settings.Saved";
+
+    /// <summary>The unsaved bar (lot 5): "{0} unsaved change(s)".</summary>
+    public const string ConfigPendingChanges = "Studio.Settings.PendingChanges";
 
     /// <summary>"Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider."</summary>
     public const string ConfigSavedLlmWarning = "Studio.Settings.SavedLlmWarning";
@@ -2484,12 +2538,29 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunMetaReads] = "reads {0}",
         [StudioStringKeys.RunMetaWrites] = "writes to {0}",
         [StudioStringKeys.HistOutcomeSuccess] = "Finished without errors.",
+        [StudioStringKeys.HistToday] = "Today",
+        [StudioStringKeys.HistYesterday] = "Yesterday",
+        [StudioStringKeys.HistAllTeams] = "All teams",
+        [StudioStringKeys.HistAllStatuses] = "All statuses",
+        [StudioStringKeys.HistNoMatch] = "No run matches these filters.",
+        [StudioStringKeys.HistStatusSucceeded] = "Succeeded",
+        [StudioStringKeys.HistStatusFailed] = "Failed",
+        [StudioStringKeys.HistStatusCancelled] = "Cancelled",
+        [StudioStringKeys.HistStatusNotStarted] = "Not started",
         [StudioStringKeys.HistOutcomeFailed] = "Failed (code {0}).",
         [StudioStringKeys.HistOutcomeCancelled] = "Interrupted before the end.",
         [StudioStringKeys.HistOutcomeNotStarted] = "Never started.",
         [StudioStringKeys.DiagAllGood] = "Everything is in place.",
-        [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
-        [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
+        [StudioStringKeys.DiagFixNeeded] = "{0} {0:plural:point|points} to fix before launching a team.",
+        [StudioStringKeys.DiagCounts] = "{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.",
+        [StudioStringKeys.DiagOpenModels] = "Open Models",
+        [StudioStringKeys.DiagOpenFolders] = "Open Allowed folders",
+        [StudioStringKeys.DiagOpenFile] = "Open the settings file",
+        [StudioStringKeys.DiagTestConnection] = "Test the connection",
+        [StudioStringKeys.DiagCheckAgain] = "Check again",
+        [StudioStringKeys.DiagSettingsFile] = "Settings file",
+        [StudioStringKeys.DiagSettingsFileOk] = "The settings file is valid.",
+        [StudioStringKeys.DiagSettingsFileInvalid] = "The settings file has errors: Studio cannot save it.",
         [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
         [StudioStringKeys.WizardRephrasing] = "Rewriting your request…",
         [StudioStringKeys.WizardRephrased] = "Request rewritten — « Back to my words » restores what you typed.",
@@ -2592,6 +2663,17 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.onnx-reranker"] = "The ONNX reranker",
         ["Studio.Diagnostics.Check.tree-sitter"] = "The code parser (tree-sitter)",
         ["Studio.Diagnostics.Check.workspace-write"] = "Write access to the workspace",
+        ["Studio.Diagnostics.Problem.appsettings"] = "Studio cannot read the settings file.",
+        ["Studio.Diagnostics.Problem.dotnet-runtime"] = "The .NET runtime the engine needs is not found.",
+        ["Studio.Diagnostics.Problem.esbuild"] = "The script compiler is missing on this machine.",
+        ["Studio.Diagnostics.Problem.llm-config"] = "No model is set up for the teams.",
+        ["Studio.Diagnostics.Problem.llm-profile-key"] = "A model has no key, or its key is not found.",
+        ["Studio.Diagnostics.Problem.llm-profiles"] = "A model is incomplete in the settings.",
+        ["Studio.Diagnostics.Problem.llm-reachability"] = "The model does not answer: check its address and its key.",
+        ["Studio.Diagnostics.Problem.local-embeddings"] = "Local embeddings are not available on this machine.",
+        ["Studio.Diagnostics.Problem.onnx-reranker"] = "The ONNX reranker is not available on this machine.",
+        ["Studio.Diagnostics.Problem.tree-sitter"] = "The code parser is not available on this machine.",
+        ["Studio.Diagnostics.Problem.workspace-write"] = "The engine cannot write to its working folder.",
         [StudioStringKeys.ImportRecognizedAgents] = "{0} — {1} agent(s)",
         [StudioStringKeys.ImportSecretsClean] = "No secret in the files",
         [StudioStringKeys.ImportSecretsCleanDetail] = "API keys travel through the environment, and these files carry none.",
@@ -2803,6 +2885,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ConfigNotSavedErrors] = "Not saved: {0} error(s) must be fixed first.",
         [StudioStringKeys.ConfigNotSavedNoDestination] = "Not saved: no destination selected.",
         [StudioStringKeys.ConfigSaved] = "Saved to {0}.",
+        [StudioStringKeys.ConfigPendingChanges] = "{0} {0:plural:unsaved change|unsaved changes}",
         [StudioStringKeys.ConfigSavedLlmWarning] =
             "Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.",
         [StudioStringKeys.ConfigNoProblem] = "No problem found.",

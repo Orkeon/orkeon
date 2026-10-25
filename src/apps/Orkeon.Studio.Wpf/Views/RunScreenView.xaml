@@ -7,7 +7,7 @@
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views"
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
-  <StackPanel MaxWidth="1080" HorizontalAlignment="Left">
+  <StackPanel>
 
     <!-- R3: one header; the mode switch on the right. -->
     <controls:PageHeader Title="{Binding [Studio.Run.Title], Source={x:Static services:I18n.Instance}}"

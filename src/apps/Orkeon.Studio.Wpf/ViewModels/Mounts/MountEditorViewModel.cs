@@ -5,6 +5,7 @@ using System.Globalization;
 using Orkeon.Domain.Common;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Wpf.ViewModels.Common;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 
@@ -116,6 +117,25 @@ public sealed class MountEditorViewModel : ObservableObject
 
     /// <summary>Raised whenever any field changes, so the owning editor can re-validate.</summary>
     public event EventHandler? Edited;
+
+    /// <summary>
+    /// The finding the last validation attached to this row (lot 5: the error sits on the faulty
+    /// line, not under the list), or null when the row is clean.
+    /// </summary>
+    public ValidationMessageViewModel? RowProblem { get; private set; }
+
+    /// <summary>Whether <see cref="RowProblem"/> is set.</summary>
+    public bool HasRowProblem => RowProblem is not null;
+
+    /// <summary>Set by the owning editor after each validation.</summary>
+    internal void SetRowProblem(ValidationMessageViewModel? problem)
+    {
+        if (ReferenceEquals(RowProblem, problem))
+            return;
+
+        RowProblem = problem;
+        OnPropertiesChanged(nameof(RowProblem), nameof(HasRowProblem));
+    }
 
     /// <summary>
     /// Whether this row was produced from a well-formed mount string. A row that is not parsed is

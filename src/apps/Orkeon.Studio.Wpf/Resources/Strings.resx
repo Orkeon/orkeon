@@ -9,10 +9,6 @@
   <data name="Studio.Shell.Run" xml:space="preserve"><value>Run</value></data>
   <data name="Studio.Shell.History" xml:space="preserve"><value>History</value></data>
 
-  <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve"><value>SETTINGS FILE</value></data>
-  <data name="Studio.Settings.SettingsFileGlobal" xml:space="preserve"><value>Global per-user file</value></data>
-  <data name="Studio.Common.Valid" xml:space="preserve"><value>valid</value></data>
-<data name="Studio.Common.Invalid" xml:space="preserve"><value>invalid</value></data>
 
     
   <data name="Studio.Common.New" xml:space="preserve"><value>New</value></data>
@@ -390,7 +386,7 @@
 <data name="Studio.Shell.Model" xml:space="preserve"><value>AI model</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limits &amp; index</value></data>
-<data name="Studio.Shell.Json" xml:space="preserve"><value>Raw JSON</value></data>
+<data name="Studio.Shell.Json" xml:space="preserve"><value>File</value></data>
 <data name="Studio.Shell.Tools" xml:space="preserve"><value>Tools</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>E-mail</value></data>
@@ -594,9 +590,8 @@
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>The code parser (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>Write access to the workspace</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Everything is in place.</value></data>
-  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>One point to fix before launching a team.</value></data>
-  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} checks passed, {1} warning(s), {2} failure(s).</value></data>
-  <data name="Studio.Diagnostics.Fix" xml:space="preserve"><value>Fix in Settings</value></data>
+  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>{0} {0:plural:point|points} to fix before launching a team.</value></data>
+  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.</value></data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve"><value>Folders the agents can see</value></data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Everything else on your machine is invisible to them. A read-only folder can never be modified.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>seen as</value></data>
@@ -1948,4 +1943,37 @@
   <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>Changes nothing without your consent</value></data>
   <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Your question</value></data>
   <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>Token-by-token text is only shown with the progress: tick « Show progress instead of raw output ».</value></data>
+  <data name="Studio.History.Today" xml:space="preserve"><value>Today</value></data>
+  <data name="Studio.History.Yesterday" xml:space="preserve"><value>Yesterday</value></data>
+  <data name="Studio.History.AllTeams" xml:space="preserve"><value>All teams</value></data>
+  <data name="Studio.History.AllStatuses" xml:space="preserve"><value>All statuses</value></data>
+  <data name="Studio.History.NoMatch" xml:space="preserve"><value>No run matches these filters.</value></data>
+  <data name="Studio.Settings.PendingChanges" xml:space="preserve"><value>{0} {0:plural:unsaved change|unsaved changes}</value></data>
+  <data name="Studio.Settings.LeaveQuestion" xml:space="preserve"><value>Your changes are not saved. Save them before leaving?</value></data>
+  <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Save and leave</value></data>
+  <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Leave without saving</value></data>
+  <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Stay</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODELS</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCESS</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNECTIONS</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ADVANCED</value></data>
+  <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
+  <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Open Allowed folders</value></data>
+  <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Open the settings file</value></data>
+  <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Test the connection</value></data>
+  <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Check again</value></data>
+  <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Settings file</value></data>
+  <data name="Studio.Diagnostics.SettingsFileOk" xml:space="preserve"><value>The settings file is valid.</value></data>
+  <data name="Studio.Diagnostics.SettingsFileInvalid" xml:space="preserve"><value>The settings file has errors: Studio cannot save it.</value></data>
+  <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio cannot read the settings file.</value></data>
+  <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>The .NET runtime the engine needs is not found.</value></data>
+  <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>The script compiler is missing on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>No model is set up for the teams.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>A model has no key, or its key is not found.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>A model is incomplete in the settings.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>The model does not answer: check its address and its key.</value></data>
+  <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Local embeddings are not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>The ONNX reranker is not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>The code parser is not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>The engine cannot write to its working folder.</value></data>
 </root>

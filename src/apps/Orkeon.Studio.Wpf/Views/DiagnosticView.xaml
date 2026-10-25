@@ -7,9 +7,19 @@
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
   <StackPanel>
 
-    <!-- Header (mock §D-3): « Copier le rapport » sits left of « Relancer », both in the header. -->
-    <DockPanel Margin="0,0,0,22">
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+    <!-- Header (R3; mock §D-3): « Copier le rapport » sits left of « Relancer », both in the header. -->
+    <controls:PageHeader Margin="0,0,0,22" Title="{Binding [Studio.Diagnostics.ScreenTitle], Source={x:Static services:I18n.Instance}}">
+      <controls:PageHeader.Style>
+        <Style TargetType="controls:PageHeader" BasedOn="{StaticResource {x:Type controls:PageHeader}}">
+          <Setter Property="Subtitle" Value="{Binding [Studio.Diagnostics.SubNovice], Source={x:Static services:I18n.Instance}}"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+              <Setter Property="Subtitle" Value="{Binding [Studio.Diagnostics.SubExpert], Source={x:Static services:I18n.Instance}}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </controls:PageHeader.Style>
+      <StackPanel Orientation="Horizontal">
         <Button Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Click="OnCopyReport"
                 Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
@@ -35,33 +45,17 @@
           </StackPanel>
         </Button>
       </StackPanel>
-      <StackPanel>
-        <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Diagnostics.ScreenTitle], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Studio.Diagnostics.SubNovice], Source={x:Static services:I18n.Instance}}"
-                   Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-        <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,0"
-                   Text="{Binding [Studio.Diagnostics.SubExpert], Source={x:Static services:I18n.Instance}}"
-                   Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-      </StackPanel>
-    </DockPanel>
+    </controls:PageHeader>
 
     <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,12"
                Text="{Binding ErrorMessage}"
                Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}"/>
 
-    <!-- verdict card (audit 09/20): headline, counts, one action -->
+    <!-- verdict card (audit 09/20): headline with the exact count, then the counts; each problem
+         carries its own action in the list below (lot 5). -->
     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
             Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center"
-                Margin="12,0,0,0" Click="OnFixInSettings"
-                Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="sliders-horizontal" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Diagnostics.Fix], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
         <StackPanel>
           <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding VerdictHeadline}">
             <TextBlock.Style>
@@ -81,8 +75,7 @@
     </Border>
 
     <!-- checks card -->
-    <Border Style="{StaticResource Card}"
-            Visibility="{Binding Checks.Count, Converter={StaticResource CountToVisibility}}">
+    <Border Style="{StaticResource Card}">
       <StackPanel>
         <TextBlock Margin="0,0,0,12">
           <TextBlock.Style>
@@ -97,10 +90,42 @@
             </Style>
           </TextBlock.Style>
         </TextBlock>
+        <!-- lot 5: the settings file, the former sidebar card - Studio's own line, first -->
+        <DockPanel x:Name="SettingsFileLine" Margin="0,4">
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                  VerticalAlignment="Top" Margin="12,0,0,0" Click="OnOpenSettingsFile"
+                  Visibility="{Binding IsSettingsFileInvalid, Converter={StaticResource BooleanToVisibility}}"
+                  Content="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
+          <controls:LucideIcon Size="14" VerticalAlignment="Top" Margin="0,2,10,0">
+            <controls:LucideIcon.Style>
+              <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                <Setter Property="Kind" Value="circle-check"/>
+                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsSettingsFileInvalid}" Value="True">
+                    <Setter Property="Kind" Value="triangle-alert"/>
+                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </controls:LucideIcon.Style>
+          </controls:LucideIcon>
+          <StackPanel>
+            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Studio.Diagnostics.SettingsFile], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding SettingsFileSentence}"/>
+          </StackPanel>
+        </DockPanel>
+
         <ItemsControl ItemsSource="{Binding Checks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <DockPanel Margin="0,4">
+                <!-- lot 5: one action per problem, the one that fixes it -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                        VerticalAlignment="Top" Margin="12,0,0,0" Click="OnFixCheck"
+                        Visibility="{Binding HasFix, Converter={StaticResource BooleanToVisibility}}"
+                        Content="{Binding FixLabel, Mode=OneWay}"/>
                 <controls:LucideIcon Size="14" VerticalAlignment="Top" Margin="0,2,10,0">
                   <controls:LucideIcon.Style>
                     <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
@@ -131,12 +156,11 @@
                                Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Name, Mode=OneWay}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
-                  <!-- T-30: the CLI's detail is English whatever the UI speaks, so Novice
-                       reads the localized sentence and Expert keeps the raw line. -->
+                  <!-- T-30, lot 5: the check's own sentence in the user's language in both modes;
+                       the CLI's detail is English whatever the UI speaks, so it is Expert's, in mono. -->
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap"
-                             Text="{Binding StatusSentence, Mode=OneWay}"
-                             Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap"
+                             Text="{Binding Sentence, Mode=OneWay}"/>
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
                              Text="{Binding Detail, Mode=OneWay}"
                              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- llm-config reads the base (file + shell env); a team's named profile

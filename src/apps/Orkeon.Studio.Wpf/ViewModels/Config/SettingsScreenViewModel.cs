@@ -43,6 +43,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
+    private Action? _pendingLeave;
 
     /// <summary>
     /// Builds the screen over the settings editor and the profile tab. <paramref name="teamFolders"/>
@@ -112,6 +113,75 @@ public sealed class SettingsScreenViewModel : ObservableObject
         ShowStudioCommand = new RelayCommand(() => ActiveTab = StudioTab);
         ShowMailsCommand = new RelayCommand(() => ActiveTab = MailsTab);
         ShowDriveCommand = new RelayCommand(() => ActiveTab = DriveTab);
+
+        // Lot 5: leaving with unsaved edits asks first; the three answers end the question.
+        SaveAndLeaveCommand = new AsyncRelayCommand(async () =>
+        {
+            if (await Config.SaveAsync())
+                ProceedLeave();
+        });
+        DiscardAndLeaveCommand = new RelayCommand(() =>
+        {
+            Config.Discard();
+            ProceedLeave();
+        });
+        StayCommand = new RelayCommand(() => SetPendingLeave(null));
+        // Saved or cancelled from the bar while the question is open: nothing is left to ask.
+        Config.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConfigTabViewModel.HasPendingChanges) && !Config.HasPendingChanges && _pendingLeave is not null)
+                ProceedLeave();
+        };
+    }
+
+    /// <summary>True while the screen asks what to do with the unsaved edits before leaving.</summary>
+    public bool IsAskingToLeave => _pendingLeave is not null;
+
+    /// <summary>« Save and leave »: saves, then goes where the user was heading; a refused save stays.</summary>
+    public AsyncRelayCommand SaveAndLeaveCommand { get; }
+
+    /// <summary>« Leave without saving »: drops the edits, then goes on.</summary>
+    public RelayCommand DiscardAndLeaveCommand { get; }
+
+    /// <summary>« Stay »: closes the question and keeps the edits on screen.</summary>
+    public RelayCommand StayCommand { get; }
+
+    /// <summary>
+    /// Asks to leave the screen (lot 5): true when nothing is pending, so the caller goes on; false
+    /// when the edits are not saved - the screen asks, and <paramref name="proceed"/> runs once the
+    /// user saved or dropped them.
+    /// </summary>
+    public bool TryLeave(Action proceed)
+    {
+        ArgumentNullException.ThrowIfNull(proceed);
+
+        if (!Config.HasPendingChanges)
+            return true;
+
+        SetPendingLeave(proceed);
+        return false;
+    }
+
+    /// <summary>Shows one section, the way its entry in the side navigation does (the Diagnostic's actions).</summary>
+    public void ShowSection(string tab)
+    {
+        if (tab == FoldersTab)
+            ShowFoldersCommand.Execute(null);
+        else
+            ActiveTab = tab;
+    }
+
+    private void ProceedLeave()
+    {
+        var proceed = _pendingLeave;
+        SetPendingLeave(null);
+        proceed?.Invoke();
+    }
+
+    private void SetPendingLeave(Action? proceed)
+    {
+        _pendingLeave = proceed;
+        OnPropertyChanged(nameof(IsAskingToLeave));
     }
 
     /// <summary>The settings-document editor the tabs render.</summary>

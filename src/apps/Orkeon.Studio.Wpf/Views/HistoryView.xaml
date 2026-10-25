@@ -1,156 +1,161 @@
-<!-- The "History" screen (§5.3, audit 06/15): the mock's card list — team name with its one
-     status badge (#117), date · duration, and the two per-card actions on the header line. The exact
-     command line and exit code are expert detail. DataContext: LaunchHistoryViewModel. -->
+<!-- The "History" screen (lot 5): a compact table grouped by day (Today, Yesterday, the date), one
+     line per run - time, team name, status badge, duration, usage, then the two fixed actions. The
+     team and status filters sit in the header. The exact command line and exit code are an Expert
+     detail folded under the line. DataContext: LaunchHistoryViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.HistoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
-             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
-             xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
-  <StackPanel>
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <UserControl.Resources>
+    <!-- the Expert fold of a line (an Expander without the Aero chrome) -->
+    <Style x:Key="HistoryFold" TargetType="ToggleButton">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border Background="Transparent" Padding="0,4">
+              <StackPanel Orientation="Horizontal">
+                <Path x:Name="chev" Data="M0,0 L4,4 0,8" Stroke="{DynamicResource InkFaintBrush}"
+                      StrokeThickness="1.6" StrokeLineJoin="Round" StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round" VerticalAlignment="Center" Margin="1,1,8,0"/>
+                <ContentPresenter VerticalAlignment="Center"/>
+              </StackPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="chev" Property="Data" Value="M0,0 L4,4 8,0"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
 
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.History.Title], Source={x:Static services:I18n.Instance}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Studio.History.Sub], Source={x:Static services:I18n.Instance}}"/>
+  <StackPanel Grid.IsSharedSizeScope="True">
 
+    <controls:PageHeader Title="{Binding [Studio.History.Title], Source={x:Static services:I18n.Instance}}"
+                         Subtitle="{Binding [Studio.History.Sub], Source={x:Static services:I18n.Instance}}">
+      <StackPanel Orientation="Horizontal"
+                  Visibility="{Binding IsEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
+        <ComboBox x:Name="TeamFilter" Width="200" Margin="0,0,8,0"
+                  ItemsSource="{Binding TeamFilters}" SelectedItem="{Binding TeamFilter}" DisplayMemberPath="Label"
+                  AutomationProperties.Name="{Binding [Studio.History.AllTeams], Source={x:Static services:I18n.Instance}}"/>
+        <ComboBox x:Name="StatusFilter" Width="170"
+                  ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding StatusFilter}" DisplayMemberPath="Label"
+                  AutomationProperties.Name="{Binding [Studio.History.AllStatuses], Source={x:Static services:I18n.Instance}}"/>
+      </StackPanel>
+    </controls:PageHeader>
 
-
-    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+    <TextBlock Style="{StaticResource Hint}" Margin="0,16,0,0"
                Text="{Binding [Studio.History.Empty], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
+    <TextBlock Style="{StaticResource Hint}" Margin="0,16,0,0"
+               Text="{Binding [Studio.History.NoMatch], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}"/>
 
-    <ItemsControl ItemsSource="{Binding Entries}"
-                  VirtualizingPanel.IsVirtualizing="True"
-                  VirtualizingPanel.VirtualizationMode="Recycling">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <VirtualizingStackPanel/>
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.Template>
-        <ControlTemplate TargetType="ItemsControl">
-          <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-            <ItemsPresenter/>
-          </ScrollViewer>
-        </ControlTemplate>
-      </ItemsControl.Template>
+    <ItemsControl ItemsSource="{Binding Groups}" Margin="0,16,0,0">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Border CornerRadius="12" Padding="16,13" Margin="0,0,0,9"
-                  BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}"
-                  Background="{DynamicResource SurfaceBrush}">
-            <!-- #117: the content takes the card's width; the two light actions sit on the
-                 header line, right-aligned, and the body runs below it. -->
-            <DockPanel LastChildFill="True">
-              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" VerticalAlignment="Top"
-                      Margin="0,0,13,0" Background="{DynamicResource AccentWeakBrush}">
-                <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              </Border>
+          <StackPanel Margin="0,0,0,18">
+            <!-- the day -->
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="2,0,0,6" Text="{Binding Header}"/>
+            <Border CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource LineFaintBrush}"
+                    Background="{DynamicResource SurfaceBrush}">
+              <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border x:Name="Row" Padding="14,8" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource LineFaintBrush}">
+                      <StackPanel>
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="HistTime"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="HistStatus"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="HistDuration"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="HistUsage"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="HistActions"/>
+                          </Grid.ColumnDefinitions>
 
-              <StackPanel>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
-                    <Button Style="{StaticResource BtnSecondary}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
-                            Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
+                          <TextBlock Grid.Column="0" Style="{StaticResource MetaLine}" Margin="0,0,14,0"
+                                     VerticalAlignment="Center" Text="{Binding TimeText, Mode=OneWay}"/>
+                          <!-- the team's own name; the full path is its tooltip -->
+                          <TextBlock Grid.Column="1" Style="{StaticResource ObjectTitle}" FontSize="13"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding TeamName, Mode=OneWay}" ToolTip="{Binding Target}"/>
+                          <controls:Badge Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                          Tone="{Binding BadgeTone, Mode=OneWay}" Content="{Binding StatusText, Mode=OneWay}"
+                                          ToolTip="{Binding OutcomeSentence, Mode=OneWay}"/>
+                          <TextBlock Grid.Column="3" Style="{StaticResource MetaLine}" Margin="14,0,0,0" MinWidth="64"
+                                     VerticalAlignment="Center" TextAlignment="Right" Text="{Binding DurationText, Mode=OneWay}"/>
+                          <TextBlock Grid.Column="4" Style="{StaticResource MetaLine}" Margin="14,0,0,0" MaxWidth="220"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                     Foreground="{DynamicResource InkFaintBrush}"
+                                     Text="{Binding UsageText, Mode=OneWay}" ToolTip="{Binding UsageText, Mode=OneWay}"/>
+                          <!-- the two fixed actions, right-aligned: « Replay » keeps its place when there is no result -->
+                          <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,6,0"
+                                    Command="{Binding OpenResultCommand}"
+                                    Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
+                              <StackPanel Orientation="Horizontal">
+                                <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
+                              </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ReplayCommand}">
+                              <StackPanel Orientation="Horizontal">
+                                <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
+                              </StackPanel>
+                            </Button>
+                          </StackPanel>
+                        </Grid>
+
+                        <!-- Expert: the exit code and the exact command line, folded under the line. -->
+                        <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                          <ToggleButton x:Name="DetailFold" Style="{StaticResource HistoryFold}" Margin="0,2,0,0"
+                                        Content="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}"/>
+                          <StackPanel Margin="16,2,0,4"
+                                      Visibility="{Binding IsChecked, ElementName=DetailFold, Converter={StaticResource BooleanToVisibility}}">
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkFaintBrush}">
+                              <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
+                              <Run Text="{Binding ExitCode, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBox FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" IsReadOnly="True"
+                                     BorderThickness="0" Background="Transparent" TextWrapping="Wrap"
+                                     Text="{Binding CommandLine, Mode=OneWay}"/>
+                          </StackPanel>
+                        </StackPanel>
+
+                        <!-- STUDIO-31 (D-07): « Replay » found the team archived and ran nothing. The line
+                             asks in place; « Restore » only restores - the next « Replay » runs it. -->
+                        <controls:Alert Tone="Warning" Margin="0,8,0,4" Message="{Binding RestoreOffer, Mode=OneWay}"
+                                        Visibility="{Binding IsOfferingRestore, Converter={StaticResource BooleanToVisibility}}">
+                          <controls:Alert.Actions>
+                            <StackPanel Orientation="Horizontal">
+                              <Button Style="{StaticResource BtnSecondary}" Margin="0,0,7,0" Command="{Binding RestoreCommand}"
+                                      Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+                              <Button Style="{StaticResource BtnSecondary}" Command="{Binding DismissRestoreCommand}"
+                                      Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                            </StackPanel>
+                          </controls:Alert.Actions>
+                        </controls:Alert>
                       </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReplayCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                  <!-- The team's name wraps, never trimmed; the one status is the badge on its
-                       last line — the plain-language sentence is its tooltip, not a second line. -->
-                  <TextBlock Style="{StaticResource ObjectTitle}" FontSize="13" ToolTip="{Binding Target}">
-                    <Run Text="{Binding TeamName, Mode=OneWay}"/>
-                    <InlineUIContainer BaselineAlignment="Center">
-                      <Border Margin="8,0,0,0" ToolTip="{Binding OutcomeSentence, Mode=OneWay}">
-                        <Border.Style>
-                          <Style TargetType="Border" BasedOn="{StaticResource BadgeFail}">
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
-                                <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                                <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                              </DataTrigger>
-                              <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
-                                <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                                <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
-                              </DataTrigger>
-                              <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
-                                <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-                                <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </Border.Style>
-                        <TextBlock>
-                          <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                              <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeFailed], Source={x:Static services:I18n.Instance}}"/>
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding OutcomeTone}" Value="ok">
-                                  <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeSucceeded], Source={x:Static services:I18n.Instance}}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding OutcomeTone}" Value="warn">
-                                  <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeCancelled], Source={x:Static services:I18n.Instance}}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding OutcomeTone}" Value="idle">
-                                  <Setter Property="Text" Value="{Binding [Studio.History.OutcomeBadgeNotStarted], Source={x:Static services:I18n.Instance}}"/>
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </TextBlock.Style>
-                        </TextBlock>
-                      </Border>
-                    </InlineUIContainer>
-                  </TextBlock>
-                </DockPanel>
-
-                <!-- date · duration · usage, the metadata line -->
-                <TextBlock Style="{StaticResource MetaLine}" Margin="0,4,0,0" Text="{Binding DateLine, Mode=OneWay}"/>
-
-                <!-- Expert: the exit code, then the exact command line at full width, on one line. -->
-                <DockPanel Margin="0,4,0,0" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" Margin="0,0,10,0"
-                             Foreground="{DynamicResource InkFaintBrush}">
-                    <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
-                    <Run Text="{Binding ExitCode, Mode=OneWay}"/>
-                  </TextBlock>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="NoWrap"
-                             TextTrimming="CharacterEllipsis" Text="{Binding CommandLine, Mode=OneWay}"
-                             ToolTip="{Binding CommandLine, Mode=OneWay}"/>
-                </DockPanel>
-
-                <!-- STUDIO-31 (D-07): « Replay » found the team archived and ran nothing. The card
-                     asks in place, the way a delete banner does; « Restore » only restores — the
-                     next « Replay » runs it. The answers sit under the question, not beside it. -->
-                <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="11,8" Margin="0,8,0,0"
-                        Visibility="{Binding IsOfferingRestore, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel>
-                    <DockPanel>
-                      <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="14" Margin="0,0,9,0"
-                                           VerticalAlignment="Top" Foreground="{DynamicResource WarningBrush}"/>
-                      <TextBlock FontSize="13" TextWrapping="Wrap"
-                                 Foreground="{DynamicResource WarningBrush}" Text="{Binding RestoreOffer, Mode=OneWay}"/>
-                    </DockPanel>
-                    <WrapPanel Margin="23,8,0,0">
-                      <Button Style="{StaticResource BtnSecondary}" Margin="0,0,7,0" Command="{Binding RestoreCommand}"
-                              Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Command="{Binding DismissRestoreCommand}"
-                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-                    </WrapPanel>
-                  </StackPanel>
-                </Border>
-              </StackPanel>
-
-            </DockPanel>
-          </Border>
+                    </Border>
+                    <DataTemplate.Triggers>
+                      <!-- no rule above the first line of a day -->
+                      <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+                        <Setter TargetName="Row" Property="BorderThickness" Value="0"/>
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </StackPanel>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>

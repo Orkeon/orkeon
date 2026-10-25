@@ -116,7 +116,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         Mounts = new LaunchMountsViewModel(seams.Directories, seams.Picker, _strings);
         Log = new RunLogViewModel(_strings);
         Progress = new RunProgressViewModel(_strings, seams.Clock);
-        History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts);
+        History = new LaunchHistoryViewModel(
+            seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts,
+            teamNameOf: target => TeamCatalog.DescribeTarget(target).Name);
 
         Target.TargetChanged += OnTargetChanged;
         Options.Changed += OnInputsChanged;

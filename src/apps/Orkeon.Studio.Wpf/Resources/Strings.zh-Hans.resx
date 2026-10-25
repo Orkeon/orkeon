@@ -14,18 +14,6 @@
   <data name="Studio.Shell.History" xml:space="preserve">
     <value>历史记录</value>
   </data>
-  <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve">
-    <value>设置文件</value>
-  </data>
-  <data name="Studio.Settings.SettingsFileGlobal" xml:space="preserve">
-    <value>每用户全局文件</value>
-  </data>
-  <data name="Studio.Common.Valid" xml:space="preserve">
-    <value>有效</value>
-  </data>
-  <data name="Studio.Common.Invalid" xml:space="preserve">
-    <value>无效</value>
-  </data>
   <data name="Studio.Common.New" xml:space="preserve">
     <value>新建</value>
   </data>
@@ -1072,7 +1060,7 @@
     <value>限制与索引</value>
   </data>
   <data name="Studio.Shell.Json" xml:space="preserve">
-    <value>原始 JSON</value>
+    <value>文件</value>
   </data>
   <data name="Studio.Shell.Tools" xml:space="preserve">
     <value>工具</value>
@@ -1675,13 +1663,10 @@
     <value>一切就绪。</value>
   </data>
   <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve">
-    <value>启动团队前需修正一处。</value>
+    <value>启动团队前需修复 {0} 个问题。</value>
   </data>
   <data name="Studio.Diagnostics.Counts" xml:space="preserve">
     <value>{0} 项检查通过、{1} 个警告、{2} 个失败。</value>
-  </data>
-  <data name="Studio.Diagnostics.Fix" xml:space="preserve">
-    <value>到设置中修正</value>
   </data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve">
     <value>智能体可见的文件夹</value>
@@ -3674,4 +3659,37 @@
   <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>未经您同意不做任何更改</value></data>
   <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>您的问题</value></data>
   <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>逐个令牌的文本仅在显示进度时出现：请勾选「显示进度，而不是原始输出」。</value></data>
+  <data name="Studio.History.Today" xml:space="preserve"><value>今天</value></data>
+  <data name="Studio.History.Yesterday" xml:space="preserve"><value>昨天</value></data>
+  <data name="Studio.History.AllTeams" xml:space="preserve"><value>所有团队</value></data>
+  <data name="Studio.History.AllStatuses" xml:space="preserve"><value>所有状态</value></data>
+  <data name="Studio.History.NoMatch" xml:space="preserve"><value>没有符合这些筛选条件的执行记录。</value></data>
+  <data name="Studio.Settings.PendingChanges" xml:space="preserve"><value>{0} 项未保存的更改</value></data>
+  <data name="Studio.Settings.LeaveQuestion" xml:space="preserve"><value>您的更改尚未保存。离开前保存吗？</value></data>
+  <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>保存并离开</value></data>
+  <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>不保存并离开</value></data>
+  <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>留下</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>模型</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>访问</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>连接</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>高级</value></data>
+  <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>打开模型</value></data>
+  <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>打开授权文件夹</value></data>
+  <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>打开设置文件</value></data>
+  <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>测试连接</value></data>
+  <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>重新检查</value></data>
+  <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>设置文件</value></data>
+  <data name="Studio.Diagnostics.SettingsFileOk" xml:space="preserve"><value>设置文件有效。</value></data>
+  <data name="Studio.Diagnostics.SettingsFileInvalid" xml:space="preserve"><value>设置文件有错误：Studio 无法保存它。</value></data>
+  <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio 无法读取设置文件。</value></data>
+  <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>找不到引擎所需的 .NET 运行时。</value></data>
+  <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>此计算机上缺少脚本编译器。</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>尚未为团队配置模型。</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>某个模型没有密钥，或找不到其密钥。</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>设置中有模型不完整。</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>模型无响应：请检查其地址和密钥。</value></data>
+  <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>此计算机上没有可用的本地嵌入。</value></data>
+  <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>此计算机上没有可用的 ONNX 重排序器。</value></data>
+  <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>此计算机上没有可用的代码解析器。</value></data>
+  <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>引擎无法写入其工作文件夹。</value></data>
 </root>

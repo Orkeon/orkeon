@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private const double SplashProgressWidth = 220;
 
     private bool _splashDismissed;
+    private bool _returningToSettings;
 
     public MainWindow()
     {
@@ -106,8 +107,34 @@ public partial class MainWindow : Window
         // on this thread, which closes its standard input before returning - the verb reads that
         // as Studio leaving and stops by itself, whether or not the launcher, which kills it on a
         // pool thread, gets to run before the process ends.
-        NavSettings.Checked += (_, _) => shell.Settings.Enter();
-        NavSettings.Unchecked += (_, _) => shell.Settings.Leave();
+        // Lot 5: unsaved settings keep the screen until the user saves or drops them. The entry
+        // chosen is already checked when this one unchecks; the screen comes back, asking, and
+        // that entry is checked again once the question is answered.
+        NavSettings.Checked += (_, _) =>
+        {
+            if (!_returningToSettings)
+                shell.Settings.Enter();
+        };
+        NavSettings.Unchecked += (_, _) =>
+        {
+            if (_returningToSettings)
+                return;
+
+            var target = new[] { NavCreate, NavTeams, NavImport, NavRun, NavHistory, NavDiag }
+                .FirstOrDefault(nav => nav.IsChecked == true);
+            if (target is not null && !shell.Settings.TryLeave(() => target.IsChecked = true))
+            {
+                _returningToSettings = true;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    NavSettings.IsChecked = true;
+                    _returningToSettings = false;
+                });
+                return;
+            }
+
+            shell.Settings.Leave();
+        };
         Closed += (_, _) => shell.Settings.Leave();
 
         // The conversation follows the screen it is mounted on: what a free question with

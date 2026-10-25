@@ -13,8 +13,8 @@
       <!-- live verdict: the ViewModel revalidates on every edit -->
       <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" Margin="0,0,0,10" Text="{Binding Summary}"/>
       <ScrollViewer DockPanel.Dock="Bottom" MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0"
-                    Visibility="{Binding ValidationMessages.Count, Converter={StaticResource CountToVisibility}}">
-        <ItemsControl ItemsSource="{Binding ValidationMessages}">
+                    Visibility="{Binding GeneralMessages.Count, Converter={StaticResource CountToVisibility}}">
+        <ItemsControl ItemsSource="{Binding GeneralMessages}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,1" Text="{Binding FriendlyText}" ToolTip="{Binding Display}">
@@ -95,6 +95,7 @@
                    name was then measured at width 0 and — TextWrapping=Wrap inherited from
                    MonoText — broke «/output» into seven one-character lines, one row seven
                    lines tall with the badge floating in its middle and no name at all. -->
+              <StackPanel>
               <DockPanel LastChildFill="True">
                 <!-- an unparseable entry keeps its raw text visible instead of a blank, healthy-looking row -->
                 <TextBlock DockPanel.Dock="Left" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
@@ -120,6 +121,27 @@
                              Text="{Binding RightsBadge, Mode=OneWay}"/>
                 </Border>
               </DockPanel>
+              <!-- Lot 5: the row's own finding, on the faulty line (icon + text). -->
+              <DockPanel Margin="0,4,0,0" DataContext="{Binding RowProblem}"
+                         Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                <controls:LucideIcon DockPanel.Dock="Left" Size="12" Margin="0,2,6,0" VerticalAlignment="Top">
+                  <controls:LucideIcon.Style>
+                    <Style TargetType="controls:LucideIcon">
+                      <Setter Property="Kind" Value="triangle-alert"/>
+                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                          <Setter Property="Kind" Value="circle-x"/>
+                          <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:LucideIcon.Style>
+                </controls:LucideIcon>
+                <TextBlock FontSize="13" TextWrapping="Wrap" Text="{Binding FriendlyText}" ToolTip="{Binding Display}"
+                           Foreground="{DynamicResource InkMutedBrush}"/>
+              </DockPanel>
+              </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

@@ -9,16 +9,22 @@
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
   <StackPanel>
 
-    <TextBlock Style="{StaticResource H1}" Text="{Binding [Studio.Import.Title], Source={x:Static services:I18n.Instance}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Studio.Import.SubNovice], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-    <TextBlock Style="{StaticResource SubTitle}" Margin="0,5,0,22"
-               Text="{Binding [Studio.Import.SubExpert], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
+    <!-- R3: one header; the subtitle explains in novice, names the machinery in expert. -->
+    <controls:PageHeader Title="{Binding [Studio.Import.Title], Source={x:Static services:I18n.Instance}}">
+      <controls:PageHeader.Style>
+        <Style TargetType="controls:PageHeader" BasedOn="{StaticResource {x:Type controls:PageHeader}}">
+          <Setter Property="Subtitle" Value="{Binding [Studio.Import.SubNovice], Source={x:Static services:I18n.Instance}}"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+              <Setter Property="Subtitle" Value="{Binding [Studio.Import.SubExpert], Source={x:Static services:I18n.Instance}}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </controls:PageHeader.Style>
+    </controls:PageHeader>
 
     <!-- the candidate: the launcher's own picker + detector -->
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+    <Border Style="{StaticResource Card}" Margin="0,16,0,16">
       <StackPanel>
         <DockPanel>
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"

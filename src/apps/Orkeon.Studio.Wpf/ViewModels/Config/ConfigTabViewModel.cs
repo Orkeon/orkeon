@@ -32,6 +32,8 @@ public sealed class ConfigTabViewModel : ObservableObject
     private bool _isDirty;
     private string? _statusMessage;
     private string? _loadedPath;
+    private string _savedJson = "";
+    private int _pendingChangeCount;
 
     /// <summary>
     /// Builds the tab over the given seams; every one of them has an in-memory double in the
@@ -136,9 +138,47 @@ public sealed class ConfigTabViewModel : ObservableObject
         // The explicit Validate lands its verdict in the status line (audit 07/16): the
         // novice screen has no validation card any more, the summary is the feedback.
         ValidateCommand = new RelayCommand(() => { Validate(); StatusMessage = ValidationSummary; });
+        DiscardCommand = new RelayCommand(Discard, () => HasPendingChanges);
+        Diagnostic.WatchSettingsFile(() => HasBlockingErrors);
 
         RefreshRawJson();
+        _savedJson = RawJson;
         Validate();
+    }
+
+    /// <summary>
+    /// How many values differ from the file as last loaded or saved (lot 5): what the bar
+    /// « N unsaved changes » counts; 0 when nothing is pending.
+    /// </summary>
+    public int PendingChangeCount
+    {
+        get => _pendingChangeCount;
+        private set
+        {
+            if (SetProperty(ref _pendingChangeCount, value))
+            {
+                OnPropertiesChanged(nameof(HasPendingChanges), nameof(PendingChangesText));
+                DiscardCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>True while an edit is not saved: the bar shows and leaving the screen asks first.</summary>
+    public bool HasPendingChanges => _pendingChangeCount > 0;
+
+    /// <summary>« 2 unsaved changes ».</summary>
+    public string PendingChangesText => _strings.Format(StudioStringKeys.ConfigPendingChanges, _pendingChangeCount);
+
+    /// <summary>« Cancel » of the bar: goes back to the file as last loaded or saved.</summary>
+    public RelayCommand DiscardCommand { get; }
+
+    /// <summary>Drops every unsaved edit: the document becomes the one last loaded or saved again.</summary>
+    public void Discard()
+    {
+        if (!HasPendingChanges)
+            return;
+
+        SetDocument(AppSettingsDocument.Parse(_savedJson), LoadedPath);
     }
 
     /// <summary>The browse dialogs, shared with the mount editor.</summary>
@@ -297,6 +337,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         Mounts.Load(_document.Mounts.RawEntries);
 
         IsDirty = false;
+        _savedJson = _document.ToJson();
         RefreshRawJson();
         Validate();
     }
@@ -422,6 +463,8 @@ public sealed class ConfigTabViewModel : ObservableObject
 
         LoadedPath = path;
         IsDirty = false;
+        _savedJson = RawJson;
+        PendingChangeCount = 0;
         StatusMessage = HasLlmWarning
             ? _strings.Format(
                 CultureInfo.InvariantCulture,
@@ -450,6 +493,7 @@ public sealed class ConfigTabViewModel : ObservableObject
             ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));
 
         OnPropertiesChanged(nameof(HasBlockingErrors), nameof(HasLlmWarning), nameof(ValidationSummary));
+        Diagnostic?.RefreshSettingsFile();
         SaveCommand.RaiseCanExecuteChanged();
         return messages;
     }
@@ -504,5 +548,10 @@ public sealed class ConfigTabViewModel : ObservableObject
         DocumentEdited?.Invoke(this, EventArgs.Empty);
     }
 
-    private void RefreshRawJson() => RawJson = _document.ToJson();
+    private void RefreshRawJson()
+    {
+        RawJson = _document.ToJson();
+        // The saved state is null until the constructor took it; nothing is pending before then.
+        PendingChangeCount = _isDirty && DiscardCommand is not null ? SettingsJsonDiff.Count(_savedJson, RawJson) : 0;
+    }
 }

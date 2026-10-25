@@ -14,18 +14,6 @@
   <data name="Studio.Shell.History" xml:space="preserve">
     <value>Verlauf</value>
   </data>
-  <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve">
-    <value>EINSTELLUNGSDATEI</value>
-  </data>
-  <data name="Studio.Settings.SettingsFileGlobal" xml:space="preserve">
-    <value>Globale Datei pro Benutzer</value>
-  </data>
-  <data name="Studio.Common.Valid" xml:space="preserve">
-    <value>gültig</value>
-  </data>
-  <data name="Studio.Common.Invalid" xml:space="preserve">
-    <value>ungültig</value>
-  </data>
   <data name="Studio.Common.New" xml:space="preserve">
     <value>Neu</value>
   </data>
@@ -1072,7 +1060,7 @@
     <value>Limits &amp; Index</value>
   </data>
   <data name="Studio.Shell.Json" xml:space="preserve">
-    <value>Rohes JSON</value>
+    <value>Datei</value>
   </data>
   <data name="Studio.Shell.Tools" xml:space="preserve">
     <value>Werkzeuge</value>
@@ -1675,13 +1663,10 @@
     <value>Alles ist an seinem Platz.</value>
   </data>
   <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve">
-    <value>Ein Punkt zu beheben, bevor ein Team startet.</value>
+    <value>{0} {0:plural:Punkt|Punkte} vor dem Start eines Teams zu beheben.</value>
   </data>
   <data name="Studio.Diagnostics.Counts" xml:space="preserve">
-    <value>{0} Prüfungen bestanden, {1} Warnung(en), {2} Fehlschlag/Fehlschläge.</value>
-  </data>
-  <data name="Studio.Diagnostics.Fix" xml:space="preserve">
-    <value>In den Einstellungen korrigieren</value>
+    <value>{0} {0:plural:Prüfung bestanden|Prüfungen bestanden}, {1} {1:plural:Warnung|Warnungen}, {2} {2:plural:Fehlschlag|Fehlschläge}.</value>
   </data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve">
     <value>Ordner, die Agenten sehen dürfen</value>
@@ -3674,4 +3659,37 @@
   <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>Ändert nichts ohne Ihre Zustimmung</value></data>
   <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Ihre Frage</value></data>
   <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>Der Text Token für Token erscheint nur mit dem Fortschritt: Aktivieren Sie „Fortschritt statt Rohausgabe anzeigen“.</value></data>
+  <data name="Studio.History.Today" xml:space="preserve"><value>Heute</value></data>
+  <data name="Studio.History.Yesterday" xml:space="preserve"><value>Gestern</value></data>
+  <data name="Studio.History.AllTeams" xml:space="preserve"><value>Alle Teams</value></data>
+  <data name="Studio.History.AllStatuses" xml:space="preserve"><value>Alle Status</value></data>
+  <data name="Studio.History.NoMatch" xml:space="preserve"><value>Keine Ausführung entspricht diesen Filtern.</value></data>
+  <data name="Studio.Settings.PendingChanges" xml:space="preserve"><value>{0} {0:plural:ungespeicherte Änderung|ungespeicherte Änderungen}</value></data>
+  <data name="Studio.Settings.LeaveQuestion" xml:space="preserve"><value>Ihre Änderungen sind nicht gespeichert. Vor dem Verlassen speichern?</value></data>
+  <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Speichern und verlassen</value></data>
+  <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Ohne Speichern verlassen</value></data>
+  <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Bleiben</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODELLE</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ZUGRIFF</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>VERBINDUNGEN</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ERWEITERT</value></data>
+  <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Modelle öffnen</value></data>
+  <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Zugelassene Ordner öffnen</value></data>
+  <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Einstellungsdatei öffnen</value></data>
+  <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Verbindung testen</value></data>
+  <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Erneut prüfen</value></data>
+  <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Einstellungsdatei</value></data>
+  <data name="Studio.Diagnostics.SettingsFileOk" xml:space="preserve"><value>Die Einstellungsdatei ist gültig.</value></data>
+  <data name="Studio.Diagnostics.SettingsFileInvalid" xml:space="preserve"><value>Die Einstellungsdatei enthält Fehler: Studio kann sie nicht speichern.</value></data>
+  <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio kann die Einstellungsdatei nicht lesen.</value></data>
+  <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>Die .NET-Laufzeit, die die Engine braucht, wurde nicht gefunden.</value></data>
+  <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Der Skript-Compiler fehlt auf diesem Rechner.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>Für die Teams ist kein Modell eingerichtet.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Einem Modell fehlt der Schlüssel, oder er wird nicht gefunden.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Ein Modell ist in den Einstellungen unvollständig.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>Das Modell antwortet nicht: prüfen Sie Adresse und Schlüssel.</value></data>
+  <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Lokale Embeddings sind auf diesem Rechner nicht verfügbar.</value></data>
+  <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>Der ONNX-Reranker ist auf diesem Rechner nicht verfügbar.</value></data>
+  <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>Der Code-Parser ist auf diesem Rechner nicht verfügbar.</value></data>
+  <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>Die Engine kann nicht in ihren Arbeitsordner schreiben.</value></data>
 </root>

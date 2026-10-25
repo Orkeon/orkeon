@@ -9,10 +9,6 @@
   <data name="Studio.Shell.Run" xml:space="preserve"><value>Lancer</value></data>
   <data name="Studio.Shell.History" xml:space="preserve"><value>Historique</value></data>
 
-  <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve"><value>FICHIER DE RÉGLAGES</value></data>
-  <data name="Studio.Settings.SettingsFileGlobal" xml:space="preserve"><value>Fichier global par utilisateur</value></data>
-  <data name="Studio.Common.Valid" xml:space="preserve"><value>valide</value></data>
-<data name="Studio.Common.Invalid" xml:space="preserve"><value>invalide</value></data>
 
     
   <data name="Studio.Common.New" xml:space="preserve"><value>Nouveau</value></data>
@@ -390,7 +386,7 @@
 <data name="Studio.Shell.Model" xml:space="preserve"><value>Modèle d'IA</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limites &amp; index</value></data>
-<data name="Studio.Shell.Json" xml:space="preserve"><value>JSON brut</value></data>
+<data name="Studio.Shell.Json" xml:space="preserve"><value>Fichier</value></data>
 <data name="Studio.Shell.Tools" xml:space="preserve"><value>Outils</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>Mails</value></data>
@@ -594,9 +590,8 @@
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>L'analyseur de code (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>L'écriture dans le dossier de travail</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Tout est en place.</value></data>
-  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>Un point à corriger avant de lancer une équipe.</value></data>
+  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>{0} {0:plural:point à corriger|points à corriger} avant de lancer une équipe.</value></data>
   <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:vérification passée|vérifications passées}, {1} {1:plural:avertissement|avertissements}, {2} {2:plural:échec|échecs}.</value></data>
-  <data name="Studio.Diagnostics.Fix" xml:space="preserve"><value>Corriger dans les réglages</value></data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve"><value>Dossiers que les agents peuvent voir</value></data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Tout le reste de votre machine leur est invisible. Un dossier en lecture seule ne peut jamais être modifié.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>vu comme</value></data>
@@ -1849,7 +1844,7 @@
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>APPELS D’OUTILS</value></data>
   <data name="Studio.Run.ColTokens" xml:space="preserve"><value>TOKENS</value></data>
   <data name="Studio.Run.ColDuration" xml:space="preserve"><value>DURÉE</value></data>
-  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Pas lancé</value></data>
+  <data name="Studio.History.OutcomeBadgeNotStarted" xml:space="preserve"><value>Pas lancée</value></data>
   <data name="Studio.Shell.Drive" xml:space="preserve"><value>Stockage cloud</value></data>
   <data name="Studio.Settings.DriveProviderGoogle" xml:space="preserve"><value>Google Drive — vous vous connectez dans votre navigateur</value></data>
   <data name="Studio.Settings.DriveProviderOneDrive" xml:space="preserve"><value>OneDrive — personnel ou professionnel ; vous vous connectez avec un code</value></data>
@@ -1948,4 +1943,37 @@
   <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>Ne modifie rien sans votre accord</value></data>
   <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Votre question</value></data>
   <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>Le texte jeton par jeton ne s'affiche qu'avec la progression : cochez « Afficher la progression plutôt que la sortie brute ».</value></data>
+  <data name="Studio.History.Today" xml:space="preserve"><value>Aujourd'hui</value></data>
+  <data name="Studio.History.Yesterday" xml:space="preserve"><value>Hier</value></data>
+  <data name="Studio.History.AllTeams" xml:space="preserve"><value>Toutes les équipes</value></data>
+  <data name="Studio.History.AllStatuses" xml:space="preserve"><value>Tous les statuts</value></data>
+  <data name="Studio.History.NoMatch" xml:space="preserve"><value>Aucune exécution ne correspond à ces filtres.</value></data>
+  <data name="Studio.Settings.PendingChanges" xml:space="preserve"><value>{0} {0:plural:modification non enregistrée|modifications non enregistrées}</value></data>
+  <data name="Studio.Settings.LeaveQuestion" xml:space="preserve"><value>Vos modifications ne sont pas enregistrées. Les enregistrer avant de quitter ?</value></data>
+  <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Enregistrer et quitter</value></data>
+  <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Quitter sans enregistrer</value></data>
+  <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Rester</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODÈLES</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCÈS</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNEXIONS</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>AVANCÉ</value></data>
+  <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Ouvrir Modèles</value></data>
+  <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Ouvrir Dossiers autorisés</value></data>
+  <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Ouvrir le fichier de réglages</value></data>
+  <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Tester la connexion</value></data>
+  <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Vérifier à nouveau</value></data>
+  <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Fichier de réglages</value></data>
+  <data name="Studio.Diagnostics.SettingsFileOk" xml:space="preserve"><value>Le fichier de réglages est valide.</value></data>
+  <data name="Studio.Diagnostics.SettingsFileInvalid" xml:space="preserve"><value>Le fichier de réglages contient des erreurs : Studio ne peut pas l'enregistrer.</value></data>
+  <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio ne parvient pas à lire le fichier de réglages.</value></data>
+  <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>L'environnement .NET dont le moteur a besoin est introuvable.</value></data>
+  <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>Le compilateur de scripts est absent de cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>Aucun modèle n'est configuré pour les équipes.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>Un modèle n'a pas de clé, ou sa clé est introuvable.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>Un modèle est incomplet dans les réglages.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>Le modèle ne répond pas : vérifiez son adresse et sa clé.</value></data>
+  <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Les embeddings locaux ne sont pas disponibles sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>Le reclasseur ONNX n'est pas disponible sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>L'analyseur de code n'est pas disponible sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>Le moteur ne peut pas écrire dans son dossier de travail.</value></data>
 </root>

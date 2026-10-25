@@ -67,6 +67,68 @@ public sealed class DoctorCheckViewModel
         _ => StudioStringKeys.DoctorStatusUnknown,
     }];
 
+    /// <summary>
+    /// The check's own sentence (lot 5): what is wrong, in the user's language, for a check that is
+    /// not green - « The model does not answer… »; the status sentence for a green or unknown one.
+    /// </summary>
+    public string Sentence
+    {
+        get
+        {
+            if (Status == DoctorStatus.Ok)
+                return StatusSentence;
+
+            var key = ProblemKeyPrefix + Name;
+            var localized = _strings[key];
+            return localized == key ? StatusSentence : localized;
+        }
+    }
+
+    /// <summary>Namespace of the per-check problem sentence, e.g. <c>Studio.Diagnostics.Problem.llm-config</c>.</summary>
+    public const string ProblemKeyPrefix = "Studio.Diagnostics.Problem.";
+
+    /// <summary>
+    /// What fixes this check (lot 5, one action per problem): <see cref="FixModels"/>,
+    /// <see cref="FixFolders"/>, <see cref="FixFile"/>, <see cref="FixTest"/>, or
+    /// <see cref="FixAgain"/> when the fix is outside Studio (a runtime, a tool to install).
+    /// </summary>
+    public string FixKind => Name switch
+    {
+        "llm-config" or "llm-profiles" or "llm-profile-key" => FixModels,
+        "llm-reachability" => FixTest,
+        "workspace-write" => FixFolders,
+        "appsettings" => FixFile,
+        _ => FixAgain,
+    };
+
+    /// <summary>The label of the check's action: « Open Models », « Test the connection »…</summary>
+    public string FixLabel => _strings[FixKind switch
+    {
+        FixModels => StudioStringKeys.DiagOpenModels,
+        FixTest => StudioStringKeys.DiagTestConnection,
+        FixFolders => StudioStringKeys.DiagOpenFolders,
+        FixFile => StudioStringKeys.DiagOpenFile,
+        _ => StudioStringKeys.DiagCheckAgain,
+    }];
+
+    /// <summary>A check that is not green carries its action.</summary>
+    public bool HasFix => Status != DoctorStatus.Ok;
+
+    /// <summary>Opens the Models section of the settings.</summary>
+    public const string FixModels = "models";
+
+    /// <summary>Opens the Allowed folders section.</summary>
+    public const string FixFolders = "folders";
+
+    /// <summary>Opens the File section (the raw settings).</summary>
+    public const string FixFile = "file";
+
+    /// <summary>Opens Models and tests the connection of the selected model.</summary>
+    public const string FixTest = "test";
+
+    /// <summary>Runs the diagnostic again.</summary>
+    public const string FixAgain = "again";
+
     /// <summary>A short status glyph, so the view needs no converter.</summary>
     public string Glyph => Status switch
     {
@@ -249,16 +311,48 @@ public sealed class DiagnosticViewModel : ObservableObject
     public int FailureCount =>
         Checks.Count(c => c.Status == DoctorStatus.Failure) + (ErrorMessage is { Length: > 0 } ? 1 : 0);
 
-    /// <summary>"Everything is in place." / "One point to fix…" — the verdict card's headline.</summary>
-    public string VerdictHeadline => _strings[
-        HasIssues ? StudioStringKeys.DiagFixNeeded : StudioStringKeys.DiagAllGood];
+    /// <summary>
+    /// The points to fix (lot 5, an exact count): the checks that warned or failed, an unreadable
+    /// report, and the settings file when it has errors.
+    /// </summary>
+    public int IssueCount =>
+        (HasRun ? WarningCount + FailureCount : 0) + (IsSettingsFileInvalid ? 1 : 0);
 
-    /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)." under the headline.</summary>
+    /// <summary>"Everything is in place." / "2 points to fix…" — the verdict card's headline.</summary>
+    public string VerdictHeadline => HasIssues
+        ? _strings.Format(StudioStringKeys.DiagFixNeeded, IssueCount)
+        : _strings[StudioStringKeys.DiagAllGood];
+
+    /// <summary>
+    /// Whether the settings file has blocking errors (lot 5: the former sidebar card is this line
+    /// of the diagnostic); the settings tab tells, through <see cref="RefreshSettingsFile"/>.
+    /// </summary>
+    public bool IsSettingsFileInvalid => _settingsFileInvalid?.Invoke() == true;
+
+    /// <summary>« The settings file is valid. » or what is wrong with it.</summary>
+    public string SettingsFileSentence => _strings[IsSettingsFileInvalid
+        ? StudioStringKeys.DiagSettingsFileInvalid
+        : StudioStringKeys.DiagSettingsFileOk];
+
+    /// <summary>The settings tab's own reading of its file; set once by the tab that owns this panel.</summary>
+    internal void WatchSettingsFile(Func<bool> invalid)
+    {
+        _settingsFileInvalid = invalid;
+        RefreshSettingsFile();
+    }
+
+    /// <summary>Re-reads the settings file's state after a validation.</summary>
+    internal void RefreshSettingsFile() => OnPropertiesChanged(
+        nameof(IsSettingsFileInvalid), nameof(SettingsFileSentence), nameof(IssueCount),
+        nameof(HasIssues), nameof(VerdictHeadline));
+
+    private Func<bool>? _settingsFileInvalid;
+
+    /// <summary>"2 checks passed, 1 warning, 0 failures." under the headline.</summary>
     public string VerdictDetail => _strings.Format(
         StudioStringKeys.DiagCounts,
         OkCount, WarningCount, FailureCount);
 
-    /// <summary>There is something to copy once a run has produced checks or an error.</summary>
     /// <summary>The "copied!" feedback of the header button; the view resets it after ~1.6 s.</summary>
     public bool ReportCopied
     {
@@ -268,6 +362,7 @@ public sealed class DiagnosticViewModel : ObservableObject
 
     private bool _reportCopied;
 
+    /// <summary>There is something to copy once a run has produced checks or an error.</summary>
     public bool CanCopyReport => HasRun && (Checks.Count > 0 || ErrorMessage is { Length: > 0 });
 
     /// <summary>
@@ -302,7 +397,8 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// dot on the Diagnostic entry so the operator learns before a team fails mid-run.
     /// </summary>
     public bool HasIssues =>
-        HasRun && (ErrorMessage is { Length: > 0 } || Checks.Any(c => c.Status != DoctorStatus.Ok));
+        IsSettingsFileInvalid
+        || (HasRun && (ErrorMessage is { Length: > 0 } || Checks.Any(c => c.Status != DoctorStatus.Ok)));
 
     /// <summary>The orphan workshop sessions of the last run (STUDIO-27, D-08).</summary>
     public ObservableCollection<OrphanSessionViewModel> OrphanSessions { get; } = [];
@@ -382,6 +478,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(OkCount));
             OnPropertyChanged(nameof(WarningCount));
             OnPropertyChanged(nameof(FailureCount));
+            OnPropertyChanged(nameof(IssueCount));
             OnPropertyChanged(nameof(VerdictHeadline));
             OnPropertyChanged(nameof(VerdictDetail));
         });
