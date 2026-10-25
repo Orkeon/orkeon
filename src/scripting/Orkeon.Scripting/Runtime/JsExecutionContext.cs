@@ -23,6 +23,7 @@ public class JsExecutionContext
     private readonly JsCrew _crew;
     private readonly JsAgentChannel _channel;
     private readonly CancellationToken _ct;
+    private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
 
     public JsCrewProxy crew { get; }
     public JsMemoryRoot memory { get; }
@@ -42,6 +43,7 @@ public class JsExecutionContext
         _crew = environment.Crew;
         _channel = environment.Channel;
         _ct = environment.Ct;
+        _budget = environment.Budget;
         memory = new JsMemoryRoot(environment.CrewMemory);
         crew = new JsCrewProxy(environment.Crew, environment.Engine, environment.Ct);
         log = new JsLogger(environment.Logger);
@@ -167,7 +169,10 @@ public class JsExecutionContext
     // JavaScript throw its catch and finally run for — and a JS `await` on the
     // returned promise does the waiting. A delegated body that rejects surfaces
     // through the pump as a normal promise rejection.
-    public Func<JsValue, JsValue, JsValue> @delegate => (target, input) => JsHostError.Guard(_engine, () =>
+    //
+    // `opts` carries `budget` and `charge` (#189), handed on to runAgent with this context's own
+    // budget, the one `charge: "crew"` charges.
+    public Func<JsValue, JsValue, JsValue, JsValue> @delegate => (target, input, opts) => JsHostError.Guard(_engine, () =>
     {
         EnsureSelfInCrew();
         _ct.ThrowIfCancellationRequested();
@@ -175,6 +180,12 @@ public class JsExecutionContext
         // Linked to this context's token: cancelling the delegating body cancels the delegated one.
         var options = new Jint.Native.JsObject(_engine);
         options.Set("signal", JsValue.FromObject(_engine, _ct));
+        if (opts is not null && opts.IsObject())
+        {
+            options.Set("budget", opts.Get("budget"));
+            options.Set("charge", opts.Get("charge"));
+            options.Set("caller", JsValue.FromObject(_engine, new CallerBudget(_budget)));
+        }
         return _engine.Invoke(_crew.runAgent, [JsValue.FromObject(_engine, agent), input ?? JsValue.Undefined, options]);
     });
 

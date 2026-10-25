@@ -1388,3 +1388,5 @@ Orkeon.Domain.Tools.LlmExchangeLogExclusion.ClientName.get -> string!
 Orkeon.Domain.Tools.LlmExchangeLogExclusion.LlmExchangeLogExclusion(string! clientName) -> void
 Orkeon.Domain.Exceptions.DomainException.DomainException(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ChargedTo.get -> Orkeon.Domain.Autonomous.AgentExecutionBudget?
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ChargedTo.init -> void

@@ -44,3 +44,5 @@ Orkeon.Scripting.Builders.JsAgentBuilder.workingRoot(string! path) -> Orkeon.Scr
 Orkeon.Scripting.ScriptingHostPorts.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService?
 Orkeon.Scripting.ScriptingHostPorts.FileSystem.init -> void
 Orkeon.Scripting.Runtime.JsAgentContext.tools.get -> System.Collections.Generic.IDictionary<string!, object?>!
+*REMOVED*Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!>!

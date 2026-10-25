@@ -136,7 +136,7 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>Faults with an <see cref="OperationCanceledException"/> when <see cref="Token"/> fires; never completes otherwise.</summary>
     internal Task<JsValue> Cancelled => _cancelled.Task;
 
-    /// <summary>Typed budget of this run (<see cref="Start"/>, <see cref="CrewRunKind.Run"/>/<see cref="CrewRunKind.Stream"/> only); null without a budget spec.</summary>
+    /// <summary>Typed budget of this run: the crew's (<see cref="Start"/>, <see cref="CrewRunKind.Run"/>/<see cref="CrewRunKind.Stream"/>), or the <c>budget</c>/<c>charge</c> options of a <c>runAgent</c> (#189); null without one.</summary>
     internal AgentExecutionBudget? Budget { get; set; }
 
     /// <summary>The permit of the crew's concurrency gate this run is a child under; null for a run holding none.</summary>
@@ -527,3 +527,10 @@ internal sealed class BrokerAttribution(string agentId, CrewRunScope scope)
 /// script's own <c>crew.run({ root })</c> cannot pass one.
 /// </summary>
 internal sealed record InheritedWorkingRoot(string Root);
+
+/// <summary>
+/// The budget of the context a <c>ctx.delegate</c> is called from, which <c>charge: "crew"</c> charges
+/// (#189): a CLR object in the run options, so a script cannot name another run's budget. Null when that
+/// context runs under none.
+/// </summary>
+internal sealed record CallerBudget(AgentExecutionBudget? Budget);

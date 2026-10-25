@@ -236,8 +236,9 @@ declare global {
          * Runs another agent of the crew, by object or by name, exactly as `crew.runAgent` does:
          * under its own context, its semaphore and its `onError` policy. An unknown name throws
          * `AgentNotInThisCrewError`; the calling agent itself, `RecursiveAgentInvocationError`.
+         * `opts.budget` bounds the run; `opts.charge: "crew"` also charges it to this context's budget.
          */
-        delegate<T = unknown>(agent: string | Agent<unknown, T>, input: unknown): Promise<T>;
+        delegate<T = unknown>(agent: string | Agent<unknown, T>, input: unknown, opts?: DelegateOptions): Promise<T>;
         /** Queues `message` for an agent of the crew, by object or by name. Synchronous. */
         send(agent: string | Agent, message: unknown): void;
         /** The next message for this agent. `timeout` (ms or "2s") rejects with `ReceiveTimeoutError`. */

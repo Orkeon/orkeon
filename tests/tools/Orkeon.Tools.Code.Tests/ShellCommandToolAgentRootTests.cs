@@ -6,6 +6,7 @@ using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Code.Confinement;
+using Orkeon.Tools.Code.Sessions;
 using Orkeon.Tools.Code.Tests.Doubles;
 
 namespace Orkeon.Tools.Code.Tests;
@@ -238,5 +239,167 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
             .Select(p => $"{p.Destination}:{p.Access}")
             .ToList();
         Assert.Empty(exposed);
+    }
+
+    // ── a linked git worktree as the root (#188) ────────────────────────────
+
+    private const string WorktreeRoot = "/workspace/.orkeon/worktrees/p1";
+
+    /// <summary>
+    /// A main checkout at the mount root (its <c>.git</c>, a working tree file) and a linked worktree
+    /// at <see cref="WorktreeRoot"/> whose <c>.git</c> file says <paramref name="gitdir"/>; the layout
+    /// <c>git worktree add</c> writes, without running git.
+    /// </summary>
+    private (ShellCommandTool Tool, FakeShellSandbox Sandbox) NewWorktreeTool(string gitdir, string commondir = "../..")
+    {
+        var git = Path.Combine(_tempDir, ".git");
+        var worktreeGit = Path.Combine(git, "worktrees", "p1");
+        Directory.CreateDirectory(Path.Combine(git, "objects"));
+        Directory.CreateDirectory(Path.Combine(git, "refs", "heads"));
+        Directory.CreateDirectory(Path.Combine(git, "hooks"));
+        Directory.CreateDirectory(worktreeGit);
+        File.WriteAllText(Path.Combine(git, "HEAD"), "ref: refs/heads/main\n");
+        File.WriteAllText(Path.Combine(git, "config"), "[core]\n");
+        File.WriteAllText(Path.Combine(worktreeGit, "HEAD"), "ref: refs/heads/p1\n");
+        File.WriteAllText(Path.Combine(worktreeGit, "commondir"), commondir + "\n");
+        File.WriteAllText(Path.Combine(worktreeGit, "gitdir"), "../../../.orkeon/worktrees/p1/.git\n");
+        File.WriteAllText(Path.Combine(_tempDir, "README.md"), "main tree");
+        var root = Path.Combine(_tempDir, ".orkeon", "worktrees", "p1");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, ".git"), $"gitdir: {gitdir}\n");
+
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        var tool = new ShellCommandTool(new DiskBackedFileSystemService(_tempDir, "/workspace")) { Sandbox = sandbox };
+        return (tool, sandbox);
+    }
+
+    private static async Task<ShellSessionView> ViewAtWorktreeRootAsync(ShellCommandTool tool, FakeShellSandbox sandbox)
+    {
+        await using (AgentRunScope.Begin("agent-1", "dev", WorktreeRoot))
+            Assert.True((await tool.CallAsync(Request("echo x", WorktreeRoot), Ct)).Success);
+        return Assert.Single(sandbox.Views);
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindWorktreeGitDirsAtVirtualPaths_WhenRootGitdirIsRelative()
+    {
+        var (tool, sandbox) = NewWorktreeTool("../../../.git/worktrees/p1");
+        using var _ = tool;
+
+        var view = await ViewAtWorktreeRootAsync(tool, sandbox);
+
+        var git = Path.Combine(_tempDir, ".git");
+        Assert.Contains(view.Paths, p => p.Source == git && p.Destination == "/workspace/.git" && p.Access == ConfinedAccess.ReadWrite);
+        Assert.Contains(view.Paths, p => p.Source == Path.Combine(git, "worktrees", "p1")
+            && p.Destination == "/workspace/.git/worktrees/p1" && p.Access == ConfinedAccess.ReadWrite);
+        Assert.Contains(view.Paths, p => p.Destination == "/workspace/.git/config" && p.Access == ConfinedAccess.ReadOnly);
+        Assert.Contains(view.Paths, p => p.Destination == "/workspace/.git/hooks" && p.Access == ConfinedAccess.ReadOnly);
+        // Nothing else of the main checkout: its working tree stays unbound.
+        Assert.All(view.Paths, p => Assert.True(
+            ShellCommandTool.MatchesMountPrefix(p.Destination, WorktreeRoot) || ShellCommandTool.MatchesMountPrefix(p.Destination, "/workspace/.git"),
+            $"unexpected bind {p.Destination}"));
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindWorktreeGitDirsAtHostPaths_WhenRootGitdirIsAbsoluteHostPathInMount()
+    {
+        var git = Path.Combine(_tempDir, ".git");
+        var (tool, sandbox) = NewWorktreeTool(Path.Combine(git, "worktrees", "p1"));
+        using var _ = tool;
+
+        var view = await ViewAtWorktreeRootAsync(tool, sandbox);
+
+        Assert.Contains(view.Paths, p => p.Source == git && p.Destination == git && p.Access == ConfinedAccess.ReadWrite);
+        var worktreeGit = Path.Combine(git, "worktrees", "p1");
+        Assert.Contains(view.Paths, p => p.Source == worktreeGit && p.Destination == worktreeGit && p.Access == ConfinedAccess.ReadWrite);
+        Assert.Contains(view.Paths, p => p.Destination == Path.Combine(git, "config") && p.Access == ConfinedAccess.ReadOnly);
+        Assert.DoesNotContain(view.Paths, p => p.Destination == "/workspace" || p.Source == _tempDir);
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindWorktreeGitDirsAtVirtualPaths_WhenRootGitdirIsAbsoluteVirtualPath()
+    {
+        var (tool, sandbox) = NewWorktreeTool("/workspace/.git/worktrees/p1");
+        using var _ = tool;
+
+        var view = await ViewAtWorktreeRootAsync(tool, sandbox);
+
+        Assert.Contains(view.Paths, p => p.Destination == "/workspace/.git" && p.Access == ConfinedAccess.ReadWrite);
+        Assert.Contains(view.Paths, p => p.Destination == "/workspace/.git/worktrees/p1" && p.Access == ConfinedAccess.ReadWrite);
+    }
+
+    [Theory]
+    [Trait("BR", "GH-188")]
+    [InlineData("../../../../elsewhere/.git/worktrees/p1", "../..")]
+    [InlineData("../../../../../../../../../../../../../../../../../../.git/worktrees/p1", "../..")]
+    [InlineData("../../../.git/worktrees/p1", "../../..")]
+    [InlineData("../../../.git/worktrees/p1", "../../../../../../../../../../../../../../../../../..")]
+    [InlineData("../../../README.md", "../..")]
+    public async Task ShouldBindRootAlone_WhenWorktreeGitdirOrCommondirLeavesMountOrHoldsRoot(string gitdir, string commondir)
+    {
+        var (tool, sandbox) = NewWorktreeTool(gitdir, commondir);
+        using var _ = tool;
+
+        var view = await ViewAtWorktreeRootAsync(tool, sandbox);
+
+        var bound = Assert.Single(view.Paths);
+        Assert.Equal(WorktreeRoot, bound.Destination);
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindRootAlone_WhenWorktreeGitdirIsAbsoluteHostPathOutsideMount()
+    {
+        var outside = Directory.CreateTempSubdirectory("orkeon-shell-outside-").FullName;
+        try
+        {
+            var outsideGit = Path.Combine(outside, ".git", "worktrees", "p1");
+            Directory.CreateDirectory(Path.Combine(outside, ".git", "objects"));
+            Directory.CreateDirectory(outsideGit);
+            await File.WriteAllTextAsync(Path.Combine(outside, ".git", "HEAD"), "ref: refs/heads/main\n", Ct);
+            await File.WriteAllTextAsync(Path.Combine(outsideGit, "HEAD"), "ref: refs/heads/p1\n", Ct);
+            await File.WriteAllTextAsync(Path.Combine(outsideGit, "commondir"), "../..\n", Ct);
+            var (tool, sandbox) = NewWorktreeTool(outsideGit);
+            using var _ = tool;
+
+            var view = await ViewAtWorktreeRootAsync(tool, sandbox);
+
+            Assert.Equal(WorktreeRoot, Assert.Single(view.Paths).Destination);
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindRootAlone_WhenRootHoldsGitDirectory()
+    {
+        var (tool, sandbox) = NewTool();
+        using var _ = tool;
+        Directory.CreateDirectory(Path.Combine(_tempDir, "job", ".git", "objects"));
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "job", ".git", "HEAD"), "ref: refs/heads/main\n", Ct);
+
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            Assert.True((await tool.CallAsync(Request("echo x", Root), Ct)).Success);
+
+        Assert.Equal(Root, Assert.Single(Assert.Single(sandbox.Views).Paths).Destination);
+    }
+
+    [Fact]
+    [Trait("BR", "GH-188")]
+    public async Task ShouldBindNoGitDir_WhenNoAgentRootDeclared()
+    {
+        var (tool, sandbox) = NewWorktreeTool("../../../.git/worktrees/p1");
+        using var _ = tool;
+
+        Assert.True((await tool.CallAsync(Request("echo x", WorktreeRoot), Ct)).Success);
+
+        var bound = Assert.Single(Assert.Single(sandbox.Views).Paths);
+        Assert.Equal("/workspace", bound.Destination);
     }
 }

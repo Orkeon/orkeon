@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a delegated run's budget (#189)
+
+`ctx.delegate(agent, input, opts)` and `crew.runAgent(agent, input, opts)` take `budget` (the keys of
+`crewBuilder().budget(...)`: `toolCalls`, `tokens`, `wallTime`, `delegationDepth`, `spawnedAgents`), applied as a crew
+run applies the crew's: a spent dimension ends the run with `BudgetExhaustedError`, and a child it spawns derives its
+budget from the run's; invalid values are refused when the run opens. `charge: "crew"` also counts what the run spends
+against the calling run's budget (`AgentExecutionBudget.ChargedTo`, experimental `ORKEXP002`), so runs started at once
+never exceed the crew's; it is refused when the caller runs under no budget. Without either option nothing changes.
+The .NET delegate behind `ctx.delegate` takes a third argument.
+
+### Added — git in a linked-worktree agent root under shell confinement (#188)
+
+When an agent's working root is a linked git worktree (its `.git` is a file), `shell_command` binds the worktree's git
+dir and the common dir its `commondir` names, with the root's rights, read through the VFS; their `config`, `hooks` and
+`config.worktree` are bound read-only. `git status`, `git add` and `git commit` then work under bubblewrap and commit
+on the worktree's branch, while the main working tree stays unreachable. A relative gitdir
+(`git worktree add --relative-paths`) is bound at its virtual path, an absolute host path only when it lies under the
+mount's physical root; anything else binds nothing. Seatbelt and AppContainer grant the same directories. The agent
+can write the whole common dir (every branch's refs), not only its own (`limitations.md`).
+
 ### Changed — SonarQube report of 2026-10-24 cleared
 
 The 213 issues and 29 security hotspots of the analysis were fixed in the code, with no suppression. Visible effects:

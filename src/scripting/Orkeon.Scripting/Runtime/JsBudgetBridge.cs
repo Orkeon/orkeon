@@ -1,5 +1,7 @@
 using System.Globalization;
+using Jint.Native;
 using Orkeon.Domain.Autonomous;
+using Orkeon.Scripting.Exceptions;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -15,9 +17,10 @@ internal static class JsBudgetBridge
     /// Recognized keys: <c>toolCalls</c>, <c>tokens</c>, <c>delegationDepth</c>,
     /// <c>spawnedAgents</c> (integers) and <c>wallTime</c> (number = seconds, string =
     /// duration with unit <c>ms|s|m|h</c>). Invalid values are ignored — a script must
-    /// never crash at build time because of a malformed budget field.
+    /// never crash at build time because of a malformed budget field. With
+    /// <paramref name="chargedTo"/>, the budget also charges that one (#189) and reads its clock.
     /// </summary>
-    internal static AgentExecutionBudget? FromSpec(IReadOnlyDictionary<string, object?>? spec)
+    internal static AgentExecutionBudget? FromSpec(IReadOnlyDictionary<string, object?>? spec, AgentExecutionBudget? chargedTo = null)
     {
         if (spec is null || spec.Count == 0) return null;
 
@@ -39,8 +42,67 @@ internal static class JsBudgetBridge
             MaxDelegationDepth = delegationDepth ?? defaults.MaxDelegationDepth,
             MaxSpawnedAgents = spawnedAgents ?? defaults.MaxSpawnedAgents,
             MaxWallTime = wallTime ?? defaults.MaxWallTime,
+            TimeProvider = chargedTo?.TimeProvider ?? TimeProvider.System,
+            ChargedTo = chargedTo,
         };
     }
+
+    /// <summary>The keys of a budget spec, in the order a refusal names them.</summary>
+    private static readonly string[] Dimensions = ["toolCalls", "tokens", "wallTime", "delegationDepth", "spawnedAgents"];
+
+    private const string Where = "crew.runAgent / ctx.delegate options:";
+
+    /// <summary>
+    /// The <c>budget</c> option of <c>crew.runAgent</c> and <c>ctx.delegate</c> (#189): the keys and
+    /// values of <c>crewBuilder().budget({...})</c>, read by <see cref="FromSpec"/>, but checked first. A
+    /// run option is given at the call that spends it, so a value <see cref="FromSpec"/> would skip (an
+    /// unknown key, a count that is not a whole number of 1 or more, a wall time it cannot read) is
+    /// refused with an <see cref="InvalidScriptException"/> instead of leaving the run unbounded. Null
+    /// for a spec with no dimension (<c>{}</c>), as for the crew.
+    /// </summary>
+    internal static AgentExecutionBudget? FromRunOption(JsValue value, AgentExecutionBudget? chargedTo)
+    {
+        if (value is not JsObject spec || spec.ToObject() is not IDictionary<string, object?> fields)
+            throw new InvalidScriptException($"{Where} budget must be an object such as {{ toolCalls: 20, tokens: 50000, wallTime: 300 }}.");
+
+        foreach (var (key, raw) in fields)
+        {
+            if (Array.IndexOf(Dimensions, key) < 0)
+                throw new InvalidScriptException(
+                    $"{Where} budget.{key} is not a budget dimension; expected one of {string.Join(", ", Dimensions)}.");
+            var number = AsNumber(raw);
+            if (key == "wallTime")
+            {
+                var valid = raw is string text ? ParseDuration(text) is not null : number is { } seconds && double.IsFinite(seconds) && seconds > 0;
+                if (!valid)
+                    throw new InvalidScriptException(
+                        $"{Where} budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got {Show(raw)}.");
+            }
+            else if (number is not { } count || !double.IsFinite(count) || count < 1 || Math.Floor(count) != count)
+            {
+                throw new InvalidScriptException($"{Where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
+            }
+        }
+
+        return FromSpec(fields.ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal), chargedTo);
+    }
+
+    private static double? AsNumber(object? raw) => raw switch
+    {
+        double d => d,
+        int i => i,
+        long l => l,
+        _ => null,
+    };
+
+    private static string Show(object? raw) => raw switch
+    {
+        null => "null",
+        string text => $"\"{text}\"",
+        double or int or long => Convert.ToString(raw, CultureInfo.InvariantCulture)!,
+        bool flag => flag ? "true" : "false",
+        _ => raw.GetType().Name,
+    };
 
     private static int? TryReadInt(IReadOnlyDictionary<string, object?> spec, string key)
     {

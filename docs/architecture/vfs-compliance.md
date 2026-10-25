@@ -152,7 +152,9 @@ start with an error naming the root. It is an intersection with the mounts, neve
   a path on the same mount that lies outside the root; other mounts (`/output`, `/tmp`) keep their
   own rights;
 - `shell_command` refuses a working directory or a path argument outside the root, defaults its
-  working directory to the root, and narrows its sandbox's confined paths to it;
+  working directory to the root, and narrows its sandbox's confined paths to it (plus, when the
+  root is a linked git worktree, the git dirs it commits through:
+  [Shell confinement](security.md#shell-confinement));
 - a refusal reuses the VFS denial shape: physical paths are redacted.
 
 A script agent's root holds every tool its body runs. `ctx.llm.act` and `ctx.tools` run as the agent.

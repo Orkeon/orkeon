@@ -107,7 +107,7 @@ public sealed partial class JsCrew
     /// <summary>
     /// Builds the shared runtime environment record handed to execution contexts. The budget is the
     /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
-    /// <c>runAgent</c> contexts are intentionally unbudgeted and pass <c>null</c>.
+    /// <c>runAgent</c> contexts without a <c>budget</c> or <c>charge</c> option (#189) are unbudgeted and pass <c>null</c>.
     /// </summary>
     internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct, GatePermit? permit = null, AgentInstanceRun? instance = null, string? workingRoot = null) => new()
     {

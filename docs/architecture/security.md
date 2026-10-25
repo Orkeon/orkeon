@@ -72,6 +72,21 @@ agent's **shell session**, which the operating system confines
 - **Paths.** Under bubblewrap the arguments are checked and passed virtual. Under Seatbelt,
   AppContainer and `None` they are translated virtual→physical, and physical paths in the output
   come back virtual.
+- **Agent working root.** An agent that declares a
+  [working root](vfs-compliance.md#agent-working-root-vs-mount) sees, of the mount that holds it,
+  the root alone. When the root is a linked git worktree (its `.git` is a file,
+  `gitdir: <path>`, written by `git worktree add`), the worktree's git dir
+  (`<main>/.git/worktrees/<name>`) and the common dir its `commondir` names (`<main>/.git`) are
+  bound too, with the root's rights, so `git status`, `git add` and `git commit` work there and
+  commit on the worktree's branch; the common dir's `config` and `hooks` are bound read-only (they
+  name programs git runs on the host). Nothing else of the main checkout is bound: its working
+  tree stays out of reach. A relative gitdir (`git worktree add --relative-paths`, git 2.48 and
+  later) is resolved against the root's virtual path and bound at virtual paths; an absolute one
+  that names the host's path (plain `git worktree add`) is bound at that host path, and only when
+  it lies under the mount's physical root. A gitdir or commondir that leaves the mount, holds the
+  root, cannot be read or is not a worktree layout binds nothing (logged at Debug). All three
+  backends take these paths from the same list: Seatbelt and AppContainer grant them at their
+  physical paths, where git finds them through a relative or a host-path gitdir.
 - **Jobs.** `action = start_job` runs an allowlisted command detached, with the same confinement
   as a blocking call, and returns a `job_id` and the virtual path of its output file,
   `/output/jobs/<id>.log` (the first mount with Write rights when `/output` is not writable;
