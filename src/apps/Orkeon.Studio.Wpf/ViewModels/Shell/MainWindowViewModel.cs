@@ -195,7 +195,8 @@ public sealed class MainWindowViewModel : ObservableObject
             // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge. STUDIO-61:
             // its « Teams folder » card says the root in force and writes the preference through the
             // same merge, the folder picked in the window's dialog.
-            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings, TeamsRoot, picker));
+            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings, TeamsRoot, picker),
+            strings);
 
         // STUDIO-50: what a team's launchers are written against — the run the operating system
         // schedules is the run Studio launches: the model settings, the folders the settings

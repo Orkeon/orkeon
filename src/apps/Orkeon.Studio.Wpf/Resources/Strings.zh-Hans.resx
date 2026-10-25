@@ -1081,7 +1081,7 @@
     <value>供创建助手、结论与问答使用——独立于各团队的模型。</value>
   </data>
   <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
-    <value>智能体使用哪个 AI 模型</value>
+    <value>团队的模型</value>
   </data>
   <data name="Studio.Settings.HintNovice" xml:space="preserve">
     <value>配置 = 一个 AI 模型加它的地址。想建多少建多少，并分配给每个团队。</value>
@@ -3626,6 +3626,69 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>本次运行：{0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>为此团队记住</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} 个团队，其中 {1} 个使用默认</value></data>
+  <data name="Studio.Settings.TabModelCount" xml:space="preserve">
+    <value>{0} 个模型 · 助手：{1}</value>
+  </data>
+  <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
+    <value>选择助手的模型</value>
+  </data>
+  <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
+    <value>尚无模型</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
+    <value>已授权 {0} 个文件夹</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersEmpty" xml:space="preserve">
+    <value>未授权任何文件夹</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersProblems" xml:space="preserve">
+    <value>{0} 个文件夹需修正</value>
+  </data>
+  <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
+    <value>{0} 个工具</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
+    <value>{0} 个账户</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsEmpty" xml:space="preserve">
+    <value>没有账户</value>
+  </data>
+  <data name="Studio.Settings.TabMcpCount" xml:space="preserve">
+    <value>{0} 个服务器</value>
+  </data>
+  <data name="Studio.Settings.TabMcpEmpty" xml:space="preserve">
+    <value>没有服务器</value>
+  </data>
+  <data name="Studio.Settings.TabStudioSub" xml:space="preserve">
+    <value>Studio 的行为</value>
+  </data>
+  <data name="Studio.Settings.TabLimitsSub" xml:space="preserve">
+    <value>速率、索引、日志</value>
+  </data>
+  <data name="Studio.Settings.TabFileValid" xml:space="preserve">
+    <value>文件有效</value>
+  </data>
+  <data name="Studio.Settings.TabFileErrors" xml:space="preserve">
+    <value>{0} 个错误需修正</value>
+  </data>
+  <data name="Studio.Settings.AssistantRow" xml:space="preserve">
+    <value>助手</value>
+  </data>
+  <data name="Studio.Settings.FieldProvider" xml:space="preserve">
+    <value>提供方</value>
+  </data>
+  <data name="Studio.Settings.FieldEndpoint" xml:space="preserve">
+    <value>接入点</value>
+  </data>
+  <data name="Studio.Settings.FieldInFile" xml:space="preserve">
+    <value>在文件中</value>
+  </data>
+  <data name="Studio.Settings.EndpointDefault" xml:space="preserve">
+    <value>提供方默认</value>
+  </data>
+  <data name="Studio.Settings.UsedByNone" xml:space="preserve">
+    <value>没有团队</value>
+  </data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>默认模型设置：{0}。跟随默认的团队在其上运行。</value></data>
   <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>技术详情</value></data>
   <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>更多操作</value></data>

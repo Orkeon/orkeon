@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
@@ -12,7 +13,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// back to novice while one of them is showing falls back to the model tab rather than leaving
 /// a blank screen.
 /// </summary>
-public sealed class SettingsScreenViewModel : ObservableObject
+public sealed partial class SettingsScreenViewModel : ObservableObject
 {
     /// <summary>Tab names, as stored in <see cref="ActiveTab"/>.</summary>
     public const string ModelTab = "model";
@@ -59,7 +60,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         UiModeViewModel mode,
         TeamFoldersViewModel? teamFolders = null,
         ToolsSettingsViewModel? tools = null,
-        StudioSettingsViewModel? studio = null)
+        StudioSettingsViewModel? studio = null,
+        IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -72,6 +74,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         Studio = studio ?? new StudioSettingsViewModel();
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        InitializeTabStates();
         // The E-mail form is in both modes and shows more to the expert (STUDIO-67).
         Config.Email.IsExpert = _mode.IsExpert;
         Config.Drive.IsExpert = _mode.IsExpert;
@@ -99,12 +103,15 @@ public sealed class SettingsScreenViewModel : ObservableObject
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
-        // The folders tab re-reads the teams' own folders on arrival: the section is a view
-        // over the sidecars, and a team adopted or deleted since the last visit must show.
+        // The folders tab re-reads the teams' own folders on arrival (ActiveTab): the section is
+        // a view over the sidecars, and a team adopted or deleted since the last visit must show.
+        // Asked again while it shows, it reads them again.
         ShowFoldersCommand = new RelayCommand(() =>
         {
-            TeamFolders.Refresh();
-            ActiveTab = FoldersTab;
+            if (IsFoldersTab)
+                TeamFolders.Refresh();
+            else
+                ActiveTab = FoldersTab;
         });
         ShowLimitsCommand = new RelayCommand(() => ActiveTab = LimitsTab);
         ShowJsonCommand = new RelayCommand(() => ActiveTab = JsonTab);
@@ -223,6 +230,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
                 OnPropertiesChanged(
                     nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
                     nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab), nameof(IsDriveTab));
+                // The classeur selects a tab through ActiveTab itself, not through its command.
+                if (IsFoldersTab)
+                    TeamFolders.Refresh();
 
                 // The e-mail tab asks the engine about its accounts on arrival, and stops what it
                 // was running when it is left: a connection test never outlives its tab (STUDIO-69).

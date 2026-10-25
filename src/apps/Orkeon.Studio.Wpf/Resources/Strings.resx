@@ -393,7 +393,9 @@
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Studio's assistant model</value></data>
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>It composes your teams and writes the trial verdicts.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Used by the creation assistant, the verdicts and the answers to questions — independent from the teams' models.</value></data>
-<data name="Studio.Settings.ProfileTitle" xml:space="preserve"><value>Which AI model your agents use</value></data>
+  <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
+    <value>Teams' models</value>
+  </data>
 <data name="Studio.Settings.HintNovice" xml:space="preserve"><value>A setting is an AI model and its address. Create as many as you want and assign one to each team.</value></data>
 <data name="Studio.Settings.HintExpert" xml:space="preserve"><value>Named, reusable LLM profiles. The one marked default applies to new teams and is mirrored into the Llm section; the API key stays read from the environment.</value></data>
 <data name="Studio.Settings.New" xml:space="preserve"><value>New setting</value></data>
@@ -1914,6 +1916,69 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>This run: {0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Remember for this team</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} team(s), {1} by default</value></data>
+  <data name="Studio.Settings.TabModelCount" xml:space="preserve">
+    <value>{0} {0:plural:model|models} · assistant: {1}</value>
+  </data>
+  <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
+    <value>Choose the assistant's model</value>
+  </data>
+  <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
+    <value>No model yet</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} allowed</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersEmpty" xml:space="preserve">
+    <value>No folder allowed</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersProblems" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} to fix</value>
+  </data>
+  <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
+    <value>{0} {0:plural:tool|tools}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
+    <value>{0} {0:plural:account|accounts}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsEmpty" xml:space="preserve">
+    <value>No account</value>
+  </data>
+  <data name="Studio.Settings.TabMcpCount" xml:space="preserve">
+    <value>{0} {0:plural:server|servers}</value>
+  </data>
+  <data name="Studio.Settings.TabMcpEmpty" xml:space="preserve">
+    <value>No server</value>
+  </data>
+  <data name="Studio.Settings.TabStudioSub" xml:space="preserve">
+    <value>How Studio behaves</value>
+  </data>
+  <data name="Studio.Settings.TabLimitsSub" xml:space="preserve">
+    <value>Rates, index, logs</value>
+  </data>
+  <data name="Studio.Settings.TabFileValid" xml:space="preserve">
+    <value>Valid file</value>
+  </data>
+  <data name="Studio.Settings.TabFileErrors" xml:space="preserve">
+    <value>{0} {0:plural:error|errors} to fix</value>
+  </data>
+  <data name="Studio.Settings.AssistantRow" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="Studio.Settings.FieldProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="Studio.Settings.FieldEndpoint" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="Studio.Settings.FieldInFile" xml:space="preserve">
+    <value>In a file</value>
+  </data>
+  <data name="Studio.Settings.EndpointDefault" xml:space="preserve">
+    <value>The provider's own</value>
+  </data>
+  <data name="Studio.Settings.UsedByNone" xml:space="preserve">
+    <value>No team</value>
+  </data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Default model setting: {0}. The teams that follow the default run on it.</value></data>
   <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Technical details</value></data>
   <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>More actions</value></data>

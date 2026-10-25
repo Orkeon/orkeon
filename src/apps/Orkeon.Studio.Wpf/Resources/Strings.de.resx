@@ -1081,7 +1081,7 @@
     <value>Genutzt vom Erstellungsassistenten, den Urteilen und den Antworten auf Fragen — unabhängig von den Modellen der Teams.</value>
   </data>
   <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
-    <value>Welches KI-Modell Ihre Agenten nutzen</value>
+    <value>Modelle der Teams</value>
   </data>
   <data name="Studio.Settings.HintNovice" xml:space="preserve">
     <value>Ein Profil ist ein KI-Modell und seine Adresse. Erstellen Sie beliebig viele und weisen Sie jedem Team eines zu.</value>
@@ -3626,6 +3626,69 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Dieser Lauf: {0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Für dieses Team merken</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} Team(s), davon {1} per Standard</value></data>
+  <data name="Studio.Settings.TabModelCount" xml:space="preserve">
+    <value>{0} {0:plural:Modell|Modelle} · Assistent: {1}</value>
+  </data>
+  <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
+    <value>Modell des Assistenten wählen</value>
+  </data>
+  <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
+    <value>Noch kein Modell</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
+    <value>{0} {0:plural:Ordner|Ordner} freigegeben</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersEmpty" xml:space="preserve">
+    <value>Kein Ordner freigegeben</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersProblems" xml:space="preserve">
+    <value>{0} {0:plural:Ordner|Ordner} zu korrigieren</value>
+  </data>
+  <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
+    <value>{0} {0:plural:Werkzeug|Werkzeuge}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
+    <value>{0} {0:plural:Konto|Konten}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsEmpty" xml:space="preserve">
+    <value>Kein Konto</value>
+  </data>
+  <data name="Studio.Settings.TabMcpCount" xml:space="preserve">
+    <value>{0} {0:plural:Server|Server}</value>
+  </data>
+  <data name="Studio.Settings.TabMcpEmpty" xml:space="preserve">
+    <value>Kein Server</value>
+  </data>
+  <data name="Studio.Settings.TabStudioSub" xml:space="preserve">
+    <value>Verhalten von Studio</value>
+  </data>
+  <data name="Studio.Settings.TabLimitsSub" xml:space="preserve">
+    <value>Raten, Index, Protokolle</value>
+  </data>
+  <data name="Studio.Settings.TabFileValid" xml:space="preserve">
+    <value>Gültige Datei</value>
+  </data>
+  <data name="Studio.Settings.TabFileErrors" xml:space="preserve">
+    <value>{0} {0:plural:Fehler|Fehler} zu beheben</value>
+  </data>
+  <data name="Studio.Settings.AssistantRow" xml:space="preserve">
+    <value>Assistent</value>
+  </data>
+  <data name="Studio.Settings.FieldProvider" xml:space="preserve">
+    <value>Anbieter</value>
+  </data>
+  <data name="Studio.Settings.FieldEndpoint" xml:space="preserve">
+    <value>Endpunkt</value>
+  </data>
+  <data name="Studio.Settings.FieldInFile" xml:space="preserve">
+    <value>In einer Datei</value>
+  </data>
+  <data name="Studio.Settings.EndpointDefault" xml:space="preserve">
+    <value>Der des Anbieters</value>
+  </data>
+  <data name="Studio.Settings.UsedByNone" xml:space="preserve">
+    <value>Kein Team</value>
+  </data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Standard-Modelleinstellung: {0}. Die Teams, die dem Standard folgen, laufen darauf.</value></data>
   <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Technische Details</value></data>
   <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>Weitere Aktionen</value></data>

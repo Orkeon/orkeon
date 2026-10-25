@@ -1,6 +1,6 @@
-<!-- The unified "Réglages" screen (refonte lot 5): a vertical navigation in four groups - Models
+<!-- The unified "Réglages" screen (refonte lots 5 and 9): a classeur of tabs in four groups - Models
      (the AI model), Access (allowed folders, tools), Connections (e-mail, cloud storage, MCP),
-     Advanced (Studio, limits & index, the file) - beside the section it shows. The bar « N unsaved
+     Advanced (Studio, limits & index, the file) - each tab with its state under its title. The bar « N unsaved
      changes · Cancel · Save » appears with the first edit, and leaving the screen with edits pending
      asks first. DataContext: SettingsScreenViewModel (Settings). -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.SettingsView"
@@ -9,42 +9,6 @@
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
-  <UserControl.Resources>
-    <!-- one entry of the side navigation; Tag carries « selected » -->
-    <Style x:Key="SettingsNavItem" TargetType="Button">
-      <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="13"/>
-      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="HorizontalContentAlignment" Value="Left"/>
-      <Setter Property="Margin" Value="0,0,0,2"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border x:Name="Bg" Background="Transparent" CornerRadius="8" Padding="10,7">
-              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-              </Trigger>
-              <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-              </Trigger>
-              <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-              </DataTrigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-    <Style x:Key="SettingsNavGroup" TargetType="TextBlock" BasedOn="{StaticResource Eyebrow}">
-      <Setter Property="Margin" Value="10,14,0,6"/>
-    </Style>
-  </UserControl.Resources>
   <StackPanel>
 
     <!-- header (R3) -->
@@ -114,91 +78,37 @@
       </DockPanel>
     </Border>
 
-    <Grid Margin="0,20,0,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="200"/>
-        <ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
-
-      <!-- side navigation, four groups -->
-      <StackPanel x:Name="SettingsNav" Grid.Column="0" Margin="0,0,24,0">
-        <TextBlock Style="{StaticResource SettingsNavGroup}" Margin="10,0,0,6"
-                   Text="{Binding [Studio.Settings.GroupModels], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowModelCommand}" Tag="{Binding IsModelTab}"
-                Content="{Binding [Studio.Shell.Model], Source={x:Static services:I18n.Instance}}"/>
-
-        <TextBlock Style="{StaticResource SettingsNavGroup}"
-                   Text="{Binding [Studio.Settings.GroupAccess], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowFoldersCommand}" Tag="{Binding IsFoldersTab}"
-                Content="{Binding [Studio.Shell.Folders], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowToolsCommand}" Tag="{Binding IsToolsTab}"
-                Content="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"/>
-
-        <TextBlock Style="{StaticResource SettingsNavGroup}"
-                   Text="{Binding [Studio.Settings.GroupConnections], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowMailsCommand}" Tag="{Binding IsMailsTab}"
-                Content="{Binding [Studio.Shell.Mails], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowDriveCommand}" Tag="{Binding IsDriveTab}"
-                Content="{Binding [Studio.Shell.Drive], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowMcpCommand}" Tag="{Binding IsMcpTab}"
-                Content="{Binding [Studio.Shell.Mcp], Source={x:Static services:I18n.Instance}}"
-                Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
-
-        <TextBlock Style="{StaticResource SettingsNavGroup}"
-                   Text="{Binding [Studio.Settings.GroupAdvanced], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowStudioCommand}" Tag="{Binding IsStudioTab}"
-                Content="{Binding [Studio.Shell.StudioTab], Source={x:Static services:I18n.Instance}}"/>
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowLimitsCommand}" Tag="{Binding IsLimitsTab}"
-                Content="{Binding [Studio.Shell.Limits], Source={x:Static services:I18n.Instance}}"
-                Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
-        <!-- the file: its state is the dot (the former sidebar card) -->
-        <Button Style="{StaticResource SettingsNavItem}" Command="{Binding ShowJsonCommand}" Tag="{Binding IsJsonTab}"
-                Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding [Studio.Shell.Json], Source={x:Static services:I18n.Instance}}"/>
-            <Ellipse Width="7" Height="7" Fill="{DynamicResource DangerBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
-                     Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource BooleanToVisibility}}"/>
-          </StackPanel>
-        </Button>
-      </StackPanel>
-
-      <StackPanel Grid.Column="1">
+    <!-- lot 9: the classeur in groups (R14, grouped variant) — Models · Access · Connections ·
+         Advanced. Each tab says its state under its title (SettingsScreenViewModel.Tabs); the
+         selected tab is ActiveTab itself, so the Diagnostic's actions still land on a section. -->
+    <controls:StepTabs Margin="0,20,0,0" SelectedValuePath="Tag" SelectedValue="{Binding ActiveTab}">
+      <controls:StepTab Tag="model" Header="{Binding [Studio.Shell.Model], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ModelTabSubtitle}" State="{Binding ModelTabState}"
+                      Group="{Binding [Studio.Settings.GroupModels], Source={x:Static services:I18n.Instance}}">
         <!-- ══ MODÈLE D'IA ══ -->
-        <StackPanel Visibility="{Binding IsModelTab, Converter={StaticResource BooleanToVisibility}}">
+        <StackPanel>
 
-          <!-- the model Studio itself uses (wizard, verdicts) — distinct from the teams' models -->
-          <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-            <DockPanel>
-              <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="9" VerticalAlignment="Center"
-                      Background="{DynamicResource AccentWeakBrush}" Margin="0,0,11,0">
-                <controls:LucideIcon Kind="wand-2" Size="15" Foreground="{DynamicResource AccentBrush}"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              </Border>
-              <Grid DockPanel.Dock="Right" Width="210" VerticalAlignment="Center">
+          <!-- lot 9: the model Studio itself uses (wizard, verdicts), distinct from the teams'
+               models: a property row and its list. The tab's subtitle says when it is missing. -->
+          <StackPanel Margin="0,0,0,18">
+            <controls:PropertyRow Label="{Binding [Studio.Settings.AssistantRow], Source={x:Static services:I18n.Instance}}">
+              <Grid Width="260" HorizontalAlignment="Left">
                 <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
-                          SelectedItem="{Binding Profiles.StudioProfileName}"/>
+                          SelectedItem="{Binding Profiles.StudioProfileName}"
+                          AutomationProperties.Name="{Binding [Studio.Settings.ModelTitle], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
                            IsHitTestVisible="False"
                            Text="{Binding [Studio.Settings.ModelPlaceholder], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
               </Grid>
-              <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding [Studio.Settings.ModelTitle], Source={x:Static services:I18n.Instance}}"/>
-                  <controls:LucideIcon Kind="triangle-alert" Size="13" Foreground="{DynamicResource WarningBrush}"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"
-                                       Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
-                </StackPanel>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0"
-                           Text="{Binding [Studio.Settings.ModelHintNovice], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0"
-                           Text="{Binding [Studio.Settings.ModelHintExpert], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
-              </StackPanel>
-            </DockPanel>
-          </Border>
+            </controls:PropertyRow>
+            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Settings.ModelHintNovice], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Settings.ModelHintExpert], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
+          </StackPanel>
 
           <!-- the teams' named settings -->
           <Border Style="{StaticResource Card}" Margin="0,0,0,16">
@@ -250,17 +160,13 @@
                          Text="{Binding Profiles.KeyStoreError}"
                          Visibility="{Binding Profiles.HasKeyStoreError, Converter={StaticResource BooleanToVisibility}}"/>
 
+              <!-- lot 9: one card per model — its name and badges, four label/value rows, and its
+                   action bar (R5): the work actions, a rule, « Delete » in the danger tone. -->
               <ItemsControl ItemsSource="{Binding Profiles.Profiles}" Margin="0,10,0,0">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,0,0,8">
-                      <Border.Style>
-                        <!-- audit 07/16: the border stays quiet even for the default —
-                             the badge already carries that information. -->
-                        <Style TargetType="Border">
-                          <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
-                        </Style>
-                      </Border.Style>
+                    <!-- audit 07/16: the border stays quiet even for the default — the badge says it. -->
+                    <Border BorderThickness="1" BorderBrush="{DynamicResource LineBrush}" CornerRadius="11" Padding="14,12" Margin="0,0,0,8">
                       <StackPanel>
                         <StackPanel Orientation="Horizontal">
                           <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
@@ -298,35 +204,51 @@
                             </StackPanel>
                           </Border>
                         </StackPanel>
-                        <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
-                        <!-- STUDIO-48: the name a crew writes to run on this setting — it is the host
-                             profile Llm:Profiles:<id> of the settings file —, or why no crew can. -->
-                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
-                                   Visibility="{Binding HasHostIdText, Converter={StaticResource BooleanToVisibility}}">
-                          <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
-                                  <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </TextBlock.Style>
-                        </TextBlock>
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,4,0,0" Text="{Binding Endpoint}"
-                                   Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-                        <!-- STUDIO-49 (decision 7): a setting that keeps its key in ORKEON_Llm__ApiKey
-                             without being the default — every run reads that key as its default's. -->
-                        <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
-                          <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                     Foreground="{DynamicResource WarningBrush}" Text="{Binding DefaultKeyVariableWarning}"
-                                     Visibility="{Binding HasDefaultKeyVariableWarning, Converter={StaticResource BooleanToVisibility}}"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
-                                    Visibility="{Binding IsUsedByTeams, Converter={StaticResource BooleanToVisibility}}">
-                          <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
-                                     Text="{Binding [Studio.Settings.UsedBy], Source={x:Static services:I18n.Instance}}"/>
-                          <ItemsControl ItemsSource="{Binding UsedByTeams}">
+                        <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,8" Text="{Binding Summary}"/>
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldProvider], Source={x:Static services:I18n.Instance}}">
+                          <TextBlock VerticalAlignment="Center" Text="{Binding Provider}"/>
+                        </controls:PropertyRow>
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldEndpoint], Source={x:Static services:I18n.Instance}}">
+                          <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Endpoint}">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="Text" Value="{Binding Endpoint}"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding Endpoint}" Value="{x:Null}">
+                                    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                                    <Setter Property="Text" Value="{Binding [Studio.Settings.EndpointDefault], Source={x:Static services:I18n.Instance}}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </controls:PropertyRow>
+                        <!-- STUDIO-48: the name a crew writes to run on this model — the host profile
+                             Llm:Profiles:<id> of the settings file —, or why no crew can. -->
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldInFile], Source={x:Static services:I18n.Instance}}"
+                                              Visibility="{Binding HasHostIdText, Converter={StaticResource BooleanToVisibility}}">
+                          <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding HostIdText}">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </controls:PropertyRow>
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.UsedBy], Source={x:Static services:I18n.Instance}}">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="{Binding [Studio.Settings.UsedByNone], Source={x:Static services:I18n.Instance}}"
+                                       Visibility="{Binding IsUsedByTeams, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                          <ItemsControl ItemsSource="{Binding UsedByTeams}" Margin="0,3,0,0"
+                                        Visibility="{Binding IsUsedByTeams, Converter={StaticResource BooleanToVisibility}}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
@@ -340,34 +262,46 @@
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>
+                            <!-- STUDIO-73: on the elected default, how many of its teams follow it. -->
+                            <TextBlock Style="{StaticResource Hint}" Text="{Binding UsedByCountLine}"
+                                       Visibility="{Binding UsedByCountLine, Converter={StaticResource StringPresentToVisibility}}"/>
+                          </StackPanel>
+                        </controls:PropertyRow>
+                        <!-- STUDIO-49 (decision 7): a setting that keeps its key in ORKEON_Llm__ApiKey
+                             without being the default — every run reads that key as its default's. -->
+                        <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
+                          <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource WarningBrush}" Text="{Binding DefaultKeyVariableWarning}"
+                                     Visibility="{Binding HasDefaultKeyVariableWarning, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
-                        <!-- STUDIO-73: on the elected default, how many of its teams follow it. -->
-                        <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" Text="{Binding UsedByCountLine}"
-                                   Visibility="{Binding UsedByCountLine, Converter={StaticResource StringPresentToVisibility}}"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
-                          <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
-                                  Content="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
-                          <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding EditCommand}" Margin="0,0,7,0">
+                        <controls:ActionBar ButtonHeight="32" Margin="0,10,0,0">
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding SetDefaultCommand}"
+                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
                             <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,6,0"/>
+                              <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
+                              <TextBlock Text="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
+                            </StackPanel>
+                          </Button>
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding EditCommand}">
+                            <StackPanel Orientation="Horizontal">
+                              <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,7,0"/>
                               <TextBlock Text="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
                             </StackPanel>
                           </Button>
-                          <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding DuplicateCommand}" Margin="0,0,7,0">
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}">
                             <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                              <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,7,0"/>
                               <TextBlock Text="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
                             </StackPanel>
                           </Button>
-                          <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding DeleteCommand}"
-                                  Foreground="{DynamicResource DangerBrush}">
+                          <Rectangle Style="{StaticResource VSeparator}" Margin="4,0,4,0"/>
+                          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Command="{Binding DeleteCommand}">
                             <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
+                              <controls:LucideIcon Kind="trash-2" Size="16" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                               <TextBlock Text="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
                             </StackPanel>
                           </Button>
-                        </StackPanel>
+                        </controls:ActionBar>
                       </StackPanel>
                     </Border>
                   </DataTemplate>
@@ -442,9 +376,12 @@
           </Border>
 
         </StackPanel>
-
+      </controls:StepTab>
+      <controls:StepTab Tag="folders" Header="{Binding [Studio.Shell.Folders], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding FoldersTabSubtitle}" State="{Binding FoldersTabState}"
+                      Group="{Binding [Studio.Settings.GroupAccess], Source={x:Static services:I18n.Instance}}">
         <!-- ══ DOSSIERS AUTORISÉS ══ -->
-        <StackPanel Visibility="{Binding IsFoldersTab, Converter={StaticResource BooleanToVisibility}}">
+        <StackPanel>
 
           <!-- novice: one card per folder + "Autoriser un dossier…" (audit 08/17); the typed
                two-pane form below stays the expert tool. -->
@@ -597,34 +534,48 @@
             </StackPanel>
           </Border>
         </StackPanel>
-
+      </controls:StepTab>
+      <controls:StepTab Tag="tools" Header="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ToolsTabSubtitle}">
         <!-- ══ OUTILS (STUDIO-21): the tool keys, the catalogue, the shell allow-list ══ -->
-        <views:ToolsView Visibility="{Binding IsToolsTab, Converter={StaticResource BooleanToVisibility}}"/>
-
+        <views:ToolsView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="mails" Header="{Binding [Studio.Shell.Mails], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding MailsTabSubtitle}" State="{Binding MailsTabState}"
+                      Group="{Binding [Studio.Settings.GroupConnections], Source={x:Static services:I18n.Instance}}">
         <!-- ══ MAILS (STUDIO-67, both modes): the accounts the mail tools use ══ -->
-        <views:EmailView DataContext="{Binding Config.Email}"
-                         Visibility="{Binding DataContext.IsMailsTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-
+        <views:EmailView DataContext="{Binding Config.Email}"/>
+      </controls:StepTab>
+      <controls:StepTab Tag="drive" Header="{Binding [Studio.Shell.Drive], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding DriveTabSubtitle}" State="{Binding DriveTabState}">
         <!-- ══ DRIVE (both modes): the Google Drive and OneDrive accounts the drive tools use ══ -->
-        <views:DriveView DataContext="{Binding Config.Drive}"
-                         Visibility="{Binding DataContext.IsDriveTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-
-        <!-- ══ STUDIO (STUDIO-35): how Studio itself behaves — the provider balance first ══ -->
-        <views:StudioSettingsView Visibility="{Binding IsStudioTab, Converter={StaticResource BooleanToVisibility}}"/>
-
+        <views:DriveView DataContext="{Binding Config.Drive}"/>
+      </controls:StepTab>
+      <controls:StepTab Tag="mcp" Header="{Binding [Studio.Shell.Mcp], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding McpTabSubtitle}" State="{Binding McpTabState}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <!-- ══ MCP (expert, STUDIO-21) ══ -->
-        <views:McpView DataContext="{Binding Config.Mcp}"
-                       Visibility="{Binding DataContext.IsMcpTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-
+        <views:McpView DataContext="{Binding Config.Mcp}"/>
+      </controls:StepTab>
+      <controls:StepTab Tag="studio" Header="{Binding [Studio.Shell.StudioTab], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding StudioTabSubtitle}"
+                      Group="{Binding [Studio.Settings.GroupAdvanced], Source={x:Static services:I18n.Instance}}">
+        <!-- ══ STUDIO (STUDIO-35): how Studio itself behaves — the provider balance first ══ -->
+        <views:StudioSettingsView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="limits" Header="{Binding [Studio.Shell.Limits], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding LimitsTabSubtitle}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <!-- ══ LIMITES & JOURNAUX (expert) ══ -->
-        <views:LimitsView DataContext="{Binding Config}"
-                          Visibility="{Binding DataContext.IsLimitsTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-
+        <views:LimitsView DataContext="{Binding Config}"/>
+      </controls:StepTab>
+      <controls:StepTab Tag="json" Header="{Binding [Studio.Shell.Json], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding FileTabSubtitle}" State="{Binding FileTabState}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
         <!-- ══ JSON BRUT (expert) ══ -->
-        <views:SettingsFileView DataContext="{Binding Config}"
-                                Visibility="{Binding DataContext.IsJsonTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
-      </StackPanel>
-    </Grid>
+        <views:SettingsFileView DataContext="{Binding Config}"/>
+      </controls:StepTab>
+    </controls:StepTabs>
 
   </StackPanel>
 </UserControl>

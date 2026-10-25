@@ -246,6 +246,13 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type controls:StepTab}">
+          <StackPanel>
+          <!-- The grouped variant: the group's title in capitals over a rule, on the tab that opens it. -->
+          <StackPanel Margin="2,10,12,8" IsHitTestVisible="False" Visibility="{Binding Group, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource AlertDetailsVisibility}}">
+            <TextBlock FontSize="11" FontWeight="Bold" Foreground="{DynamicResource InkFaintBrush}"
+                       Text="{Binding Group, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Rectangle Height="1" Margin="0,5,0,0" Fill="{DynamicResource LineFaintBrush}"/>
+          </StackPanel>
           <Border x:Name="Chrome" MinHeight="44" Margin="0,0,12,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
                   Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="1" SnapsToDevicePixels="True">
@@ -258,16 +265,27 @@
                 <Ellipse x:Name="ExpectedMark" Width="10" Height="10" Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
                 <controls:LucideIcon x:Name="DoneMark" Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}"
                                      Visibility="Collapsed"/>
+                <Ellipse x:Name="VerifiedMark" Width="10" Height="10" Fill="{DynamicResource SuccessBrush}" Visibility="Collapsed"/>
               </Grid>
               <StackPanel VerticalAlignment="Center">
                 <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="13.5"
                                   TextElement.FontWeight="SemiBold" TextElement.Foreground="{DynamicResource InkMutedBrush}"/>
-                <TextBlock FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource InkFaintBrush}"
+                <TextBlock x:Name="Sub" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource InkFaintBrush}"
                            Text="{TemplateBinding Subtitle}"/>
               </StackPanel>
             </DockPanel>
           </Border>
+          </StackPanel>
           <ControlTemplate.Triggers>
+            <Trigger Property="State" Value="Warning">
+              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+            </Trigger>
+            <Trigger Property="State" Value="Verified">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="VerifiedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
             <Trigger Property="State" Value="Done">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="DoneMark" Property="Visibility" Value="Visible"/>

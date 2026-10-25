@@ -14,11 +14,19 @@ public enum StepTabState
 
     /// <summary>An amber dot: an action of the user's is expected there — the step's wait point (R13).</summary>
     Expected,
+
+    /// <summary>An amber dot and the subtitle in the warning tone: something there needs fixing.</summary>
+    Warning,
+
+    /// <summary>A green dot: the section was checked and holds.</summary>
+    Verified,
 }
 
 /// <summary>
 /// One tab of a <see cref="StepTabs"/> classeur (R14): its state mark, its title (the Header)
 /// and a 12 px state subtitle under it. Its look is the implicit style in Themes/Components.xaml.
+/// The grouped variant (Settings): a tab whose <see cref="Group"/> is set opens a group — the
+/// group's title in capitals and a rule above it; the tabs after it, with no group, belong to it.
 /// </summary>
 public sealed class StepTab : TabItem
 {
@@ -28,6 +36,9 @@ public sealed class StepTab : TabItem
     public static readonly DependencyProperty StateProperty = DependencyProperty.Register(
         nameof(State), typeof(StepTabState), typeof(StepTab), new FrameworkPropertyMetadata(StepTabState.Empty));
 
+    public static readonly DependencyProperty GroupProperty = DependencyProperty.Register(
+        nameof(Group), typeof(string), typeof(StepTab), new FrameworkPropertyMetadata(""));
+
     static StepTab()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(StepTab), new FrameworkPropertyMetadata(typeof(StepTab)));
@@ -35,6 +46,9 @@ public sealed class StepTab : TabItem
 
     public string Subtitle { get => (string)GetValue(SubtitleProperty); set => SetValue(SubtitleProperty, value); }
     public StepTabState State { get => (StepTabState)GetValue(StateProperty); set => SetValue(StateProperty, value); }
+
+    /// <summary>The title of the group this tab opens; empty for a tab inside a group, or with none.</summary>
+    public string Group { get => (string)GetValue(GroupProperty); set => SetValue(GroupProperty, value); }
 }
 
 /// <summary>

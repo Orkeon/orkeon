@@ -474,6 +474,50 @@ public sealed class SettingsScreenTests
         return new SettingsScreenViewModel(config, profiles, mode);
     }
 
+    // ── refonte lot 9: the classeur tabs say their state ──
+
+    [Fact]
+    public void The_model_tab_warns_until_the_assistant_has_a_model_then_counts_them()
+    {
+        var screen = Screen(new UiModeViewModel());
+        var raised = new List<string?>();
+        screen.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        Assert.Equal("Warning", screen.ModelTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabModelEmpty], screen.ModelTabSubtitle);
+
+        screen.Profiles.CommitEdit(Ollama("Local"), previousName: null);
+
+        Assert.Equal("Warning", screen.ModelTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabModelNoAssistant], screen.ModelTabSubtitle);
+
+        screen.Profiles.StudioProfileName = "Local";
+
+        Assert.Equal("Done", screen.ModelTabState);
+        Assert.Equal(
+            EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabModelCount, 1, "Local"),
+            screen.ModelTabSubtitle);
+        Assert.Contains(nameof(SettingsScreenViewModel.ModelTabSubtitle), raised);
+        Assert.Contains(nameof(SettingsScreenViewModel.ModelTabState), raised);
+    }
+
+    [Fact]
+    public void Empty_sections_say_so_and_a_clean_settings_file_carries_the_green_dot()
+    {
+        var screen = Screen(new UiModeViewModel("expert"));
+
+        Assert.Equal("Empty", screen.FoldersTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabFoldersEmpty], screen.FoldersTabSubtitle);
+        Assert.Equal("Empty", screen.MailsTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabAccountsEmpty], screen.MailsTabSubtitle);
+        Assert.Equal("Empty", screen.DriveTabState);
+        Assert.Equal("Empty", screen.McpTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabMcpEmpty], screen.McpTabSubtitle);
+        Assert.Equal("Verified", screen.FileTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabFileValid], screen.FileTabSubtitle);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabStudioSub], screen.StudioTabSubtitle);
+    }
+
     [Fact]
     public void An_expert_tab_requested_in_novice_mode_falls_back_to_the_model_tab()
     {

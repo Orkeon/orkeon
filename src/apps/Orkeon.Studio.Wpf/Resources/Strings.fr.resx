@@ -393,7 +393,9 @@
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Modèle de l'assistant de Studio</value></data>
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>C'est lui qui compose vos équipes et rédige les verdicts d'essai.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Utilisé par l'assistant de création, les verdicts et les réponses aux questions — indépendant des modèles des équipes.</value></data>
-<data name="Studio.Settings.ProfileTitle" xml:space="preserve"><value>Quel modèle d'IA vos agents utilisent</value></data>
+  <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
+    <value>Modèles des équipes</value>
+  </data>
 <data name="Studio.Settings.HintNovice" xml:space="preserve"><value>Un modèle, c'est une IA et son adresse. Créez-en autant que vous voulez et attribuez-le à chaque équipe.</value></data>
 <data name="Studio.Settings.HintExpert" xml:space="preserve"><value>Modèles nommés et réutilisables. Celui marqué par défaut s'applique aux nouvelles équipes et est reflété dans la section Llm ; la clé d'API reste lue depuis l'environnement.</value></data>
 <data name="Studio.Settings.New" xml:space="preserve"><value>Nouveau modèle</value></data>
@@ -1914,6 +1916,69 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Cette exécution : {0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Mémoriser pour cette équipe</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} {0:plural:équipe|équipes}, dont {1} par défaut</value></data>
+  <data name="Studio.Settings.TabModelCount" xml:space="preserve">
+    <value>{0} {0:plural:modèle|modèles} · assistant : {1}</value>
+  </data>
+  <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
+    <value>Choisir le modèle de l'assistant</value>
+  </data>
+  <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
+    <value>Aucun modèle</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
+    <value>{0} {0:plural:dossier autorisé|dossiers autorisés}</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersEmpty" xml:space="preserve">
+    <value>Aucun dossier autorisé</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersProblems" xml:space="preserve">
+    <value>{0} {0:plural:dossier|dossiers} à corriger</value>
+  </data>
+  <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
+    <value>{0} {0:plural:outil|outils}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
+    <value>{0} {0:plural:compte|comptes}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsEmpty" xml:space="preserve">
+    <value>Aucun compte</value>
+  </data>
+  <data name="Studio.Settings.TabMcpCount" xml:space="preserve">
+    <value>{0} {0:plural:serveur|serveurs}</value>
+  </data>
+  <data name="Studio.Settings.TabMcpEmpty" xml:space="preserve">
+    <value>Aucun serveur</value>
+  </data>
+  <data name="Studio.Settings.TabStudioSub" xml:space="preserve">
+    <value>Comportement de Studio</value>
+  </data>
+  <data name="Studio.Settings.TabLimitsSub" xml:space="preserve">
+    <value>Débits, index, journaux</value>
+  </data>
+  <data name="Studio.Settings.TabFileValid" xml:space="preserve">
+    <value>Fichier valide</value>
+  </data>
+  <data name="Studio.Settings.TabFileErrors" xml:space="preserve">
+    <value>{0} {0:plural:erreur|erreurs} à corriger</value>
+  </data>
+  <data name="Studio.Settings.AssistantRow" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="Studio.Settings.FieldProvider" xml:space="preserve">
+    <value>Fournisseur</value>
+  </data>
+  <data name="Studio.Settings.FieldEndpoint" xml:space="preserve">
+    <value>Point d'accès</value>
+  </data>
+  <data name="Studio.Settings.FieldInFile" xml:space="preserve">
+    <value>Dans un fichier</value>
+  </data>
+  <data name="Studio.Settings.EndpointDefault" xml:space="preserve">
+    <value>Celui du fournisseur</value>
+  </data>
+  <data name="Studio.Settings.UsedByNone" xml:space="preserve">
+    <value>Aucune équipe</value>
+  </data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Modèle par défaut : {0}. Les équipes qui suivent le défaut l'utilisent.</value></data>
   <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Détails techniques</value></data>
   <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>Autres actions</value></data>

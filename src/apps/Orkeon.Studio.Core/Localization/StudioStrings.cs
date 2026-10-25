@@ -2038,6 +2038,21 @@ public static class StudioStringKeys
 
     /// <summary>"{0} team(s), {1} by default" - the elected setting's teams, those that follow the default counted (STUDIO-73).</summary>
     public const string SettingsUsedByDefault = "Studio.Settings.UsedByDefault";
+    public const string SettingsTabModelCount = "Studio.Settings.TabModelCount";
+    public const string SettingsTabModelNoAssistant = "Studio.Settings.TabModelNoAssistant";
+    public const string SettingsTabModelEmpty = "Studio.Settings.TabModelEmpty";
+    public const string SettingsTabFoldersCount = "Studio.Settings.TabFoldersCount";
+    public const string SettingsTabFoldersEmpty = "Studio.Settings.TabFoldersEmpty";
+    public const string SettingsTabFoldersProblems = "Studio.Settings.TabFoldersProblems";
+    public const string SettingsTabToolsCount = "Studio.Settings.TabToolsCount";
+    public const string SettingsTabAccountsCount = "Studio.Settings.TabAccountsCount";
+    public const string SettingsTabAccountsEmpty = "Studio.Settings.TabAccountsEmpty";
+    public const string SettingsTabMcpCount = "Studio.Settings.TabMcpCount";
+    public const string SettingsTabMcpEmpty = "Studio.Settings.TabMcpEmpty";
+    public const string SettingsTabStudioSub = "Studio.Settings.TabStudioSub";
+    public const string SettingsTabLimitsSub = "Studio.Settings.TabLimitsSub";
+    public const string SettingsTabFileValid = "Studio.Settings.TabFileValid";
+    public const string SettingsTabFileErrors = "Studio.Settings.TabFileErrors";
 
     /// <summary>"Default model setting: {0}. The teams that follow the default run on it." - the idle segment's tooltip (STUDIO-34, STUDIO-73).</summary>
     public const string StatusBarProfileTipTeams = "Studio.Shell.StatusProfileTipTeams";
@@ -3387,6 +3402,21 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
         [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
         [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
+        [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · assistant: {1}",
+        [StudioStringKeys.SettingsTabModelNoAssistant] = "Choose the assistant's model",
+        [StudioStringKeys.SettingsTabModelEmpty] = "No model yet",
+        [StudioStringKeys.SettingsTabFoldersCount] = "{0} {0:plural:folder|folders} allowed",
+        [StudioStringKeys.SettingsTabFoldersEmpty] = "No folder allowed",
+        [StudioStringKeys.SettingsTabFoldersProblems] = "{0} {0:plural:folder|folders} to fix",
+        [StudioStringKeys.SettingsTabToolsCount] = "{0} {0:plural:tool|tools}",
+        [StudioStringKeys.SettingsTabAccountsCount] = "{0} {0:plural:account|accounts}",
+        [StudioStringKeys.SettingsTabAccountsEmpty] = "No account",
+        [StudioStringKeys.SettingsTabMcpCount] = "{0} {0:plural:server|servers}",
+        [StudioStringKeys.SettingsTabMcpEmpty] = "No server",
+        [StudioStringKeys.SettingsTabStudioSub] = "How Studio behaves",
+        [StudioStringKeys.SettingsTabLimitsSub] = "Rates, index, logs",
+        [StudioStringKeys.SettingsTabFileValid] = "Valid file",
+        [StudioStringKeys.SettingsTabFileErrors] = "{0} {0:plural:error|errors} to fix",
         [StudioStringKeys.StatusBarProfileTipTeams] = "Default model setting: {0}. The teams that follow the default run on it.",
         [StudioStringKeys.TeamsScheduledRunOnDefault] = "Scheduled, this team runs on the default setting, not on “{0}”. {1}",
         [StudioStringKeys.TeamsScheduledRunNoModel] = "“{0}” has no model: from Studio, the team answers as an echo.",
