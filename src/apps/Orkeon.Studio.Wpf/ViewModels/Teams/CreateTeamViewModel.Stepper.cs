@@ -78,9 +78,10 @@ public sealed partial class CreateTeamViewModel
     {
         get
         {
-            // R13: a wait point is named, and outranks « Running »: a paused engine is alive.
+            // R13: a wait point is named in the status bar, not here — the stepper keeps
+            // « Stop » alone, and the tab's amber dot marks the wait (R14).
             if (HasWaitPoint)
-                return WaitPointLabel;
+                return string.Empty;
             if (IsSessionWorking)
                 return _strings[StudioStringKeys.WizardSessionRunning];
             if (IsSessionWaiting)

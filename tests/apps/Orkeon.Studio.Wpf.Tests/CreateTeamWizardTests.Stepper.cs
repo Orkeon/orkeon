@@ -66,9 +66,10 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.IsDraftSaved);
         Assert.False(vm.IsSessionPaused);
         Assert.False(vm.IsSessionWorking);
-        Assert.True(vm.HasSessionState);
-        // R13: a folder still to choose is the wait point, and the stepper names it first.
-        Assert.Equal("Waiting for you: choose a folder", vm.SessionStateLabel);
+        // R13: a folder still to choose is the wait point; the status bar names it, and the
+        // stepper's end of line keeps « Stop » alone.
+        Assert.Equal(string.Empty, vm.SessionStateLabel);
+        Assert.False(vm.HasSessionState);
 
         vm.CreateAllInsideTeamCommand.Execute(null);
 
@@ -106,10 +107,11 @@ public partial class CreateTeamWizardTests
     {
         var (vm, _) = ComposedAndPaused();
         await Compose(vm);
-        Assert.True(vm.HasSessionState);
+        Assert.True(vm.IsDraftSaved);
 
         vm.RestartCommand.Execute(null);
 
+        Assert.False(vm.IsDraftSaved);
         Assert.False(vm.HasSessionState);
         Assert.Equal(string.Empty, vm.SessionStateLabel);
     }

@@ -3389,7 +3389,19 @@
     <value>Ja</value>
   </data>
   <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
-    <value>Öffnen</value>
+    <value>Ordner öffnen</value>
+  </data>
+  <data name="Studio.Create.FolderFilesNone" xml:space="preserve">
+    <value>Keine Datei</value>
+  </data>
+  <data name="Studio.Create.FolderFilesCount" xml:space="preserve">
+    <value>{0} {0:plural:Datei|Dateien}</value>
+  </data>
+  <data name="Studio.Create.FolderFieldFiles" xml:space="preserve">
+    <value>Dateien</value>
+  </data>
+  <data name="Studio.Create.FolderChange" xml:space="preserve">
+    <value>Ändern…</value>
   </data>
   <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
     <value>Öffnet den Ordner im Datei-Explorer.</value>
@@ -3711,8 +3723,16 @@
     <value>{0} Ordner · {1} zu wählen</value>
   </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:Ordner bestätigt|Ordner bestätigt}</value></data>
+  <data name="Studio.Create.TabFoldersFilling" xml:space="preserve">
+    <value>{0} {0:plural:Ordner|Ordner} · Ablage läuft</value>
+  </data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Nach der Zusammenstellung vorgeschlagen</value></data>
-  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Ordner bestätigt: Die Zusammenstellung geht weiter.</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve">
+    <value>Ordner bestätigt: Die Zusammenstellung geht im Bereich weiter.</value>
+  </data>
+  <data name="Studio.Create.TabFoldersFillingFooter" xml:space="preserve">
+    <value>Legen Sie Ihre Dateien in die Ordner Ihrer Wahl und fahren Sie dann fort: Der Assistent berücksichtigt sie.</value>
+  </data>
   <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Jeder Ordner hat seinen Platz. Bestätigen Sie, um fortzufahren.</value></data>
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält bei der Übernahme einen leeren Ordner „{0}“.</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält sie bei der Übernahme leer.</value></data>
@@ -3722,16 +3742,29 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Wartet auf Sie: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>Ordner bestätigen</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>dem Assistenten antworten</value></data>
-  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>die Ordner füllen</value></data>
-  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>Legen Sie Ihre Dateien in die Ordner und fahren Sie dann im Bereich fort.</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve">
+    <value>Ihre Dateien ablegen</value>
+  </data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve">
+    <value>Legen Sie Ihre Dateien in die Ordner und fahren Sie dann fort.</value>
+  </data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>ein Modell wählen</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>eine Wahl treffen</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>einen Ordner wählen</value></data>
   <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>das Team übernehmen</value></data>
   <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>Ich habe die Ordner des Teams aus Ihrer Anfrage abgeleitet. Prüfen Sie sie und bestätigen Sie sie, damit ich das Team zusammenstelle.</value></data>
+  <data name="Studio.Create.WaitBubbleFillFolders" xml:space="preserve">
+    <value>Die Ordner sind bereit. Legen Sie Ihre Dateien hinein und sagen Sie mir, wenn Sie fertig sind.</value>
+  </data>
+  <data name="Studio.Create.WaitActionLabelFillFolders" xml:space="preserve">
+    <value>Abgelegt, weiter</value>
+  </data>
   <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>Ein Ordner des Teams ist vor dem Probelauf noch zu wählen.</value></data>
   <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>Das Team ist bereit. Übernehmen Sie es, um es in Ihren Teams wiederzufinden.</value></data>
   <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Bestätigen Sie die Ordner, um fortzufahren, oder stellen Sie eine Frage</value></data>
+  <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
+    <value>Legen Sie Ihre Dateien ab und fahren Sie fort, oder stellen Sie eine Frage</value>
+  </data>
   <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Wählen Sie den Ordner, um fortzufahren, oder stellen Sie eine Frage</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Übernehmen Sie das Team zum Abschluss, oder stellen Sie eine Frage</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ordner anzeigen</value></data>
@@ -3750,5 +3783,4 @@
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Strg+Eingabe zum Senden · Umschalt+Eingabe für eine neue Zeile</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Karte anzeigen</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>Der Probelauf ist bewertet. Wie geht es weiter?</value></data>
-  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>Legen Sie Ihre Dateien in die Ordner und fahren Sie dann fort.</value></data>
 </root>

@@ -1730,12 +1730,14 @@ public static class StudioStringKeys
 
     /// <summary>"{0} folders confirmed".</summary>
     public const string WizardTabFoldersConfirmed = "Studio.Create.TabFoldersConfirmed";
+    public const string WizardTabFoldersFilling = "Studio.Create.TabFoldersFilling";
 
     /// <summary>"Proposed after the composition" — the folders tab before the engine proposes them.</summary>
     public const string WizardTabFoldersEmpty = "Studio.Create.TabFoldersEmpty";
 
     /// <summary>"Folders confirmed: the composition goes on."</summary>
     public const string WizardTabFoldersConfirmedFooter = "Studio.Create.TabFoldersConfirmedFooter";
+    public const string WizardTabFoldersFillingFooter = "Studio.Create.TabFoldersFillingFooter";
 
     /// <summary>"Every folder has its place. Confirm to continue."</summary>
     public const string WizardTabFoldersReadyFooter = "Studio.Create.TabFoldersReadyFooter";
@@ -1783,6 +1785,8 @@ public static class StudioStringKeys
 
     /// <summary>The assistant's bubble while the folders wait for the confirm.</summary>
     public const string WizardWaitBubbleFolders = "Studio.Create.WaitBubbleFolders";
+    public const string WizardWaitBubbleFillFolders = "Studio.Create.WaitBubbleFillFolders";
+    public const string WizardWaitActionLabelFillFolders = "Studio.Create.WaitActionLabelFillFolders";
 
     /// <summary>The assistant's bubble while a folder is still to choose.</summary>
     public const string WizardWaitBubbleChooseFolder = "Studio.Create.WaitBubbleChooseFolder";
@@ -1792,6 +1796,7 @@ public static class StudioStringKeys
 
     /// <summary>The composer's placeholder while the folders wait.</summary>
     public const string WizardWaitPlaceholderFolders = "Studio.Create.WaitPlaceholderFolders";
+    public const string WizardWaitPlaceholderFillFolders = "Studio.Create.WaitPlaceholderFillFolders";
 
     /// <summary>The composer's placeholder while a folder is to choose.</summary>
     public const string WizardWaitPlaceholderChooseFolder = "Studio.Create.WaitPlaceholderChooseFolder";
@@ -1905,9 +1910,9 @@ public static class StudioStringKeys
 
     /// <summary>"Continue"</summary>
     public const string WizardFillFoldersContinue = "Studio.Create.FillFoldersContinue";
+    public const string WizardFolderFilesNone = "Studio.Create.FolderFilesNone";
+    public const string WizardFolderFilesCount = "Studio.Create.FolderFilesCount";
 
-    /// <summary>"Drop your files in the folders, then continue." (R15: the answer « Yes » leads to the card)</summary>
-    public const string WizardFillFoldersDrop = "Studio.Create.FillFoldersDrop";
 
 
     /// <summary>"On demand"</summary>
@@ -3295,8 +3300,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
         [StudioStringKeys.WizardTabFoldersPendingToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
         [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",
+        [StudioStringKeys.WizardTabFoldersFilling] = "{0} {0:plural:folder|folders} · dropping files",
         [StudioStringKeys.WizardTabFoldersEmpty] = "Proposed after the composition",
-        [StudioStringKeys.WizardTabFoldersConfirmedFooter] = "Folders confirmed: the composition goes on.",
+        [StudioStringKeys.WizardTabFoldersConfirmedFooter] = "Folders confirmed: the composition goes on in the panel.",
+        [StudioStringKeys.WizardTabFoldersFillingFooter] = "Drop your files in the folders of your choice, then continue: the assistant will take them into account.",
         [StudioStringKeys.WizardTabFoldersReadyFooter] = "Every folder has its place. Confirm to continue.",
         [StudioStringKeys.WizardTabFoldersOneToChoose] = "1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.",
         [StudioStringKeys.WizardTabFoldersManyToChoose] = "{0} folders to choose. You can confirm now: the team will get them empty at adoption.",
@@ -3310,13 +3317,16 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardWaitActionModel] = "choose a model",
         [StudioStringKeys.WizardWaitActionDecide] = "settle a choice",
         [StudioStringKeys.WizardWaitActionChooseFolder] = "choose a folder",
-        [StudioStringKeys.WizardWaitActionFillFolders] = "fill the folders",
-        [StudioStringKeys.WizardHintFillFolders] = "Drop your files in the folders, then continue in the panel.",
+        [StudioStringKeys.WizardWaitActionFillFolders] = "drop your files",
+        [StudioStringKeys.WizardHintFillFolders] = "Drop your files in the folders, then continue.",
         [StudioStringKeys.WizardWaitActionAdopt] = "adopt the team",
         [StudioStringKeys.WizardWaitBubbleFolders] = "I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.",
+        [StudioStringKeys.WizardWaitBubbleFillFolders] = "The folders are ready. Drop your files in them, then tell me when you're done.",
+        [StudioStringKeys.WizardWaitActionLabelFillFolders] = "Done, continue",
         [StudioStringKeys.WizardWaitBubbleChooseFolder] = "A folder of the team is still to choose before the trial.",
         [StudioStringKeys.WizardWaitBubbleAdopt] = "The team is ready. Adopt it to find it in your teams.",
         [StudioStringKeys.WizardWaitPlaceholderFolders] = "Confirm the folders to continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderFillFolders] = "Drop your files then continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderChooseFolder] = "Choose the folder to continue, or ask a question",
         [StudioStringKeys.WizardWaitPlaceholderAdopt] = "Adopt the team to finish, or ask a question",
         [StudioStringKeys.WizardWaitShowCard] = "Show the folder",
@@ -3334,7 +3344,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardFillFoldersYes] = "Yes",
         [StudioStringKeys.WizardFillFoldersNo] = "No",
         [StudioStringKeys.WizardFillFoldersContinue] = "Continue",
-        [StudioStringKeys.WizardFillFoldersDrop] = "Drop your files in the folders, then continue.",
+        [StudioStringKeys.WizardFolderFilesNone] = "No file",
+        [StudioStringKeys.WizardFolderFilesCount] = "{0} {0:plural:file|files}",
 
         [StudioStringKeys.TeamsOnDemand] = "On demand",
         [StudioStringKeys.TeamsDaily] = "Every day at {0}",

@@ -434,7 +434,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Style="{StaticResource LinkBtn}" HorizontalAlignment="Left" Margin="0,0,0,0"
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Left"
                         Command="{Binding QuestionRevealCommand}"
                         Visibility="{Binding Question.HasReveal, Converter={StaticResource BooleanToVisibility}}"
                         Content="{Binding [Studio.Chat.PendingReveal], Source={x:Static services:I18n.Instance}}"/>
@@ -443,8 +443,9 @@
           </DockPanel>
 
           <!-- R13: the screen waits on a card. The assistant names the action, runs the card's
-               own command from its button, and links to the card; its activity indicator is
-               stopped meanwhile (SetPendingAction). -->
+               own command from its button and « Show the card » beside it, two secondaries (the
+               card keeps the screen's one primary); its activity indicator is stopped meanwhile
+               (SetPendingAction). -->
           <DockPanel Margin="0,0,0,13" Visibility="{Binding HasPendingAction, Converter={StaticResource BooleanToVisibility}}">
             <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
                     Margin="0,0,9,0" Background="{DynamicResource AccentWeakBrush}">
@@ -457,9 +458,9 @@
                 <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
                            Foreground="{DynamicResource InkBrush}" Text="{Binding PendingAction.Text}"/>
                 <WrapPanel Margin="0,10,0,0">
-                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,12,0"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                           Command="{Binding PendingActionCommand}" Content="{Binding PendingAction.ActionLabel}"/>
-                  <Button Style="{StaticResource LinkBtn}" VerticalAlignment="Center"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                           Command="{Binding PendingRevealCommand}"
                           Content="{Binding [Studio.Chat.PendingReveal], Source={x:Static services:I18n.Instance}}"/>
                 </WrapPanel>

@@ -36,7 +36,8 @@ public enum WizardWaitPoint
 
 /// <summary>
 /// The single wait point (refonte R13). When the creation waits on the user, one point is
-/// named: the stepper and the status bar say « Waiting for you: confirm the folders », the
+/// named: the status bar says « Waiting for you: confirm the folders » — not the stepper, whose
+/// end of line keeps « Stop » alone (the tab's amber dot marks the wait, R14) —, the
 /// assistant stops its activity indicator and posts a bubble that runs the same command as
 /// the card, the composer's placeholder says what is expected and Enter no longer sends, and
 /// the view moves the keyboard focus to the card's main button — or into « Your question »
@@ -138,7 +139,7 @@ public sealed partial class CreateTeamViewModel
             nameof(IsWaitOnChooseFolder), nameof(IsWaitOnAdopt),
             nameof(SessionStateLabel), nameof(HasSessionState), nameof(Step1Hint));
         GoToWaitPointCommand?.RaiseCanExecuteChanged();
-        if (next == WizardWaitPoint.ConfirmFolders)
+        if (next is WizardWaitPoint.ConfirmFolders or WizardWaitPoint.FillFolders)
             Step1TabIndex = Step1FoldersTab;
         SyncProgress();
         if (next != WizardWaitPoint.None)
@@ -153,15 +154,12 @@ public sealed partial class CreateTeamViewModel
             case WizardWaitPoint.None:
                 return;
             case WizardWaitPoint.ConfirmFolders:
+            case WizardWaitPoint.FillFolders:
                 GoStep(1);
                 Step1TabIndex = Step1FoldersTab;
                 break;
             case WizardWaitPoint.ChooseModel:
                 GoStep(1);
-                break;
-            case WizardWaitPoint.FillFolders:
-                Chat.OpenCommand.Execute(null);
-                FillFoldersRevealRequested?.Invoke(this, EventArgs.Empty);
                 break;
             case WizardWaitPoint.AnswerAssistant:
                 Chat.OpenCommand.Execute(null);
@@ -190,6 +188,12 @@ public sealed partial class CreateTeamViewModel
             ConfirmFoldersCommand,
             GoToWaitPointCommand,
             _strings[StudioStringKeys.WizardWaitPlaceholderFolders]),
+        WizardWaitPoint.FillFolders => new ChatPendingAction(
+            _strings[StudioStringKeys.WizardWaitBubbleFillFolders],
+            _strings[StudioStringKeys.WizardWaitActionLabelFillFolders],
+            FillFoldersContinueCommand,
+            GoToWaitPointCommand,
+            _strings[StudioStringKeys.WizardWaitPlaceholderFillFolders]),
         WizardWaitPoint.ChooseFolder => new ChatPendingAction(
             _strings[StudioStringKeys.WizardWaitBubbleChooseFolder],
             _strings[StudioStringKeys.WizardWaitShowCard],

@@ -352,6 +352,12 @@ public sealed record CreateTeamDependencies
     public IDiskEntryProbe? DiskEntries { get; init; }
 
     /// <summary>
+    /// Counts and watches the files dropped in the folders the session holds, while the engine
+    /// waits on them (refonte, « drop files »); the real disk when null.
+    /// </summary>
+    public IFolderWatch? FolderWatch { get; init; }
+
+    /// <summary>
     /// What an adopted team's launchers are written against (STUDIO-50): the model settings, the
     /// settings' folders and the settings file. When null, the wizard's own settings and the
     /// declared folders, and no settings file — the run then resolves its own.
@@ -388,6 +394,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>Agent-addressed roots the user dropped; nothing will be bound to them at save.</summary>
     private readonly HashSet<string> _droppedDerivedRoots = new(StringComparer.Ordinal);
     private readonly IUiDispatcher _dispatcher;
+    private readonly IFolderWatch _folderWatch;
     private readonly IStudioStrings _strings;
     private readonly IShellOpener? _shellOpener;
     private readonly string _workspace;
@@ -453,6 +460,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _suggestionDelay = wired.SuggestionDelay ?? ImmediateUiDelay.Instance;
         _uiLanguage = wired.UiLanguage ?? (() => UseCaseLanguages.English);
         _diskEntries = wired.DiskEntries ?? PhysicalDiskEntryProbe.Instance;
+        _folderWatch = wired.FolderWatch ?? PhysicalFolderWatch.Instance;
 
         // The conversation is the window's, not this screen's: it has to survive a tab
         // change, and losing it on the first one is precisely the defect being fixed. A
@@ -533,7 +541,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         GoStep4Command = new RelayCommand(() => GoStep(4), () => MaxStep >= 4);
         InitializeStepper(wired.Clock);
         InitializeWaitPoint();
-        InitializeQuestions();
         InitializeStep1Tabs();
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);

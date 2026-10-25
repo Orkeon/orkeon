@@ -19,17 +19,11 @@ public partial class CreateTeamView : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_wizard is not null)
-        {
             _wizard.WaitPointReached -= OnWaitPointReached;
-            _wizard.FillFoldersRevealRequested -= OnFillFoldersRevealRequested;
-        }
 
         _wizard = e.NewValue as CreateTeamViewModel;
         if (_wizard is not null)
-        {
             _wizard.WaitPointReached += OnWaitPointReached;
-            _wizard.FillFoldersRevealRequested += OnFillFoldersRevealRequested;
-        }
     }
 
     /// <summary>
@@ -56,8 +50,8 @@ public partial class CreateTeamView : UserControl
                 _wizard.Chat.RequestAnswerFocus();
                 break;
             case WizardWaitPoint.FillFolders:
-                // R15: « Continue » in the panel; the card's « Open » stays one link away.
-                _wizard.Chat.RequestAnswerFocus();
+                // The folders tab is the wait point: its footer's « Continue » takes the focus.
+                Reveal(FillContinueButton);
                 break;
             case WizardWaitPoint.ChooseModel:
                 RevealFirst(AssistantGate);
@@ -70,10 +64,6 @@ public partial class CreateTeamView : UserControl
                 break;
         }
     }
-
-    /// <summary>The bubble's link (R15): the folders to fill on screen, their first « Open » focused.</summary>
-    private void OnFillFoldersRevealRequested(object? sender, EventArgs e) =>
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => RevealFirst(FillFoldersCard));
 
     private static void Reveal(UIElement target)
     {

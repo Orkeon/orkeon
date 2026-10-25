@@ -88,13 +88,16 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Whether the folders were confirmed in this session.</summary>
     private bool FoldersConfirmed => !_model.FoldersPending && _model.Folders.Count > 0;
 
-    /// <summary>The folders tab's state: the amber dot while they wait for the confirm, a check once confirmed.</summary>
+    /// <summary>
+    /// The folders tab's state: the amber dot while they wait for the confirm or for the files
+    /// the user drops in them, a check once confirmed.
+    /// </summary>
     public string FoldersTabState =>
-        _model.FoldersPending ? TabExpected : FoldersConfirmed ? TabDone : TabEmpty;
+        _model.FoldersPending || IsFillingFolders ? TabExpected : FoldersConfirmed ? TabDone : TabEmpty;
 
     /// <summary>
     /// « Proposed after the composition », « 3 folders to confirm », « 2 folders · 1 to choose »,
-    /// « 3 folders confirmed ».
+    /// « 2 folders · dropping files », « 3 folders confirmed ».
     /// </summary>
     public string FoldersTabSubtitle
     {
@@ -108,6 +111,8 @@ public sealed partial class CreateTeamViewModel
                     : _strings.Format(StudioStringKeys.WizardTabFoldersPendingToChoose, FolderRows.Count, toChoose);
             }
 
+            if (IsFillingFolders)
+                return _strings.Format(StudioStringKeys.WizardTabFoldersFilling, _model.Folders.Count);
             if (FoldersConfirmed)
                 return _strings.Format(StudioStringKeys.WizardTabFoldersConfirmed, _model.Folders.Count);
 
@@ -121,12 +126,15 @@ public sealed partial class CreateTeamViewModel
     /// <summary>
     /// The folders pane's footer: how many folders are still to choose and what confirming now
     /// gives them — « 1 folder to choose. You can confirm now: the team will get an empty
-    /// « documents » folder at adoption. » — or that each folder has its place.
+    /// « documents » folder at adoption. » — or that each folder has its place. While the user
+    /// drops files, it says the assistant reads them once they continue.
     /// </summary>
     public string FoldersFooter
     {
         get
         {
+            if (IsFillingFolders)
+                return _strings[StudioStringKeys.WizardTabFoldersFillingFooter];
             if (!_model.FoldersPending)
             {
                 return _strings[FoldersConfirmed
@@ -174,12 +182,14 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>
     /// A language switch: the wait point's words — the bubble, the composer's placeholder, the
-    /// stepper's and the status bar's « Waiting for you: … » — and the tabs' are read again.
+    /// status bar's « Waiting for you: … » — and the tabs' are read again.
     /// </summary>
     private void OnWaitPointLanguageChanged()
     {
         Chat.SetPendingAction(PendingActionFor(_waitPoint));
         OnQuestionsLanguageChanged();
+        foreach (var held in HeldFolderRows)
+            held.OnLanguageChanged();
         OnPropertiesChanged(nameof(WaitPointLabel), nameof(SessionStateLabel), nameof(Step1Hint));
         RefreshStep1Tabs();
         SyncProgress();

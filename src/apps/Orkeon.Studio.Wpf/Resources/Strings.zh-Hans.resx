@@ -3389,7 +3389,19 @@
     <value>是</value>
   </data>
   <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
-    <value>打开</value>
+    <value>打开文件夹</value>
+  </data>
+  <data name="Studio.Create.FolderFilesNone" xml:space="preserve">
+    <value>没有文件</value>
+  </data>
+  <data name="Studio.Create.FolderFilesCount" xml:space="preserve">
+    <value>{0} 个文件</value>
+  </data>
+  <data name="Studio.Create.FolderFieldFiles" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="Studio.Create.FolderChange" xml:space="preserve">
+    <value>更改…</value>
   </data>
   <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
     <value>在文件资源管理器中打开该文件夹。</value>
@@ -3711,8 +3723,16 @@
     <value>{0} 个文件夹 · {1} 个待选择</value>
   </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>已确认 {0} 个文件夹</value></data>
+  <data name="Studio.Create.TabFoldersFilling" xml:space="preserve">
+    <value>{0} 个文件夹 · 正在放入文件</value>
+  </data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>组建后提出</value></data>
-  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>文件夹已确认：组建继续进行。</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve">
+    <value>文件夹已确认：组建在面板中继续进行。</value>
+  </data>
+  <data name="Studio.Create.TabFoldersFillingFooter" xml:space="preserve">
+    <value>将文件放入您选择的文件夹，然后继续：助手会将它们考虑在内。</value>
+  </data>
   <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>每个文件夹都已就位。确认以继续。</value></data>
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>还有 1 个文件夹待选择。您现在即可确认：团队在采用时将获得一个空的“{0}”文件夹。</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>还有 {0} 个文件夹待选择。您现在即可确认：团队在采用时将获得空文件夹。</value></data>
@@ -3722,16 +3742,29 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>等待您：{0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>确认文件夹</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>回答助手</value></data>
-  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>填充文件夹</value></data>
-  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>将文件放入文件夹，然后在面板中继续。</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve">
+    <value>放入您的文件</value>
+  </data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve">
+    <value>将文件放入文件夹，然后继续。</value>
+  </data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>选择模型</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>做出选择</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>选择文件夹</value></data>
   <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>采用团队</value></data>
   <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>我已根据您的请求推断出团队的文件夹。请检查并确认，以便我组建团队。</value></data>
+  <data name="Studio.Create.WaitBubbleFillFolders" xml:space="preserve">
+    <value>文件夹已准备好。请将文件放入其中，完成后告诉我。</value>
+  </data>
+  <data name="Studio.Create.WaitActionLabelFillFolders" xml:space="preserve">
+    <value>已放好，继续</value>
+  </data>
   <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>试运行前还需选择团队的一个文件夹。</value></data>
   <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>团队已就绪。采用后即可在您的团队中找到它。</value></data>
   <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>确认文件夹以继续，或提出问题</value></data>
+  <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
+    <value>放入文件后继续，或提出问题</value>
+  </data>
   <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>选择文件夹以继续，或提出问题</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>采用团队以完成，或提出问题</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>查看文件夹</value></data>
@@ -3750,5 +3783,4 @@
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter 发送 · Shift+Enter 换行</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>查看卡片</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>试运行已评估。接下来怎么做？</value></data>
-  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>请把文件放入这些文件夹，然后继续。</value></data>
 </root>

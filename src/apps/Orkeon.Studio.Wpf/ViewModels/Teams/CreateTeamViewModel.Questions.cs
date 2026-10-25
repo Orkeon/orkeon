@@ -1,5 +1,4 @@
 using Orkeon.Studio.Core.Localization;
-using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 
@@ -7,23 +6,13 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// The wizard's own questions, asked in the panel (refonte R15): the arbitration after the
 /// trial and the fill step's « Yes » / « No ». Each is a bubble of the assistant's with its
 /// answers as secondary buttons, the recommended one first and focused; the main column keeps
-/// the work only — the verdict, the folders to fill. « Yes » leads to the folders: the next
-/// bubble gives « Continue » as a button, with the link that brings the folders on screen.
+/// the work only — the verdict, the folders to fill. « Yes » leads to the folders: the drop is
+/// the next wait point (R13), whose bubble gives « Done, continue » and « Show the card ».
 /// </summary>
 public sealed partial class CreateTeamViewModel
 {
     private ChatQuestion? _decisionQuestion;
     private ChatQuestion? _fillQuestion;
-    private ChatQuestion? _fillDropQuestion;
-
-    /// <summary>Raised when the folders to fill must come on screen — the bubble's link.</summary>
-    public event EventHandler? FillFoldersRevealRequested;
-
-    /// <summary>The bubble's link: the folders to fill, on screen.</summary>
-    public RelayCommand RevealFillFoldersCommand { get; private set; } = null!;
-
-    private void InitializeQuestions() =>
-        RevealFillFoldersCommand = new RelayCommand(() => FillFoldersRevealRequested?.Invoke(this, EventArgs.Empty));
 
     /// <summary>Hands the panel the question of the moment, if the wizard asks one.</summary>
     private void SyncQuestion(bool announce = true) => Chat.SetQuestion(ReadQuestion(), announce);
@@ -33,7 +22,6 @@ public sealed partial class CreateTeamViewModel
     {
         _decisionQuestion = null;
         _fillQuestion = null;
-        _fillDropQuestion = null;
         SyncQuestion(announce: false);
     }
 
@@ -49,13 +37,6 @@ public sealed partial class CreateTeamViewModel
                     new ChatReply(_strings[StudioStringKeys.WizardFillFoldersYes], FillFoldersYesCommand, isRecommended: true),
                     new ChatReply(_strings[StudioStringKeys.WizardFillFoldersNo], FillFoldersNoCommand),
                 ]);
-        if (IsFillingFolders)
-            return _fillDropQuestion ??= new ChatQuestion(
-                _strings[StudioStringKeys.WizardFillFoldersDrop],
-                "",
-                [new ChatReply(_strings[StudioStringKeys.WizardFillFoldersContinue], FillFoldersContinueCommand, isRecommended: true)],
-                RevealFillFoldersCommand);
-
         return null;
     }
 

@@ -88,7 +88,7 @@ public partial class CreateTeamWizardTests
         ScriptFoldersStep(vm, processes, PdfFolders, wizard => failure = Record.Exception(() =>
         {
             Assert.Equal(WizardWaitPoint.ConfirmFolders, wizard.WaitPoint);
-            Assert.Equal("Waiting for you: confirm the folders", wizard.SessionStateLabel);
+            Assert.Equal(string.Empty, wizard.SessionStateLabel);
             Assert.False(wizard.IsSessionWorking);
             Assert.Equal("Confirm the folders to move on to the composition.", wizard.Step1Hint);
             Assert.Equal("Waiting for you: confirm the folders", wizard.Progress.Title);
@@ -122,6 +122,38 @@ public partial class CreateTeamWizardTests
         // The next wait point takes over: /inpdf is still to choose before the trial.
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.Equal("Show the folder", vm.Chat.PendingAction!.ActionLabel);
+    }
+
+    /// <summary>
+    /// The « Folders confirmed » state: the fiches stay readable, a folder of this machine keeps
+    /// « Change… » — the folder the shell binds behind it answers the fiche —, and the footer
+    /// says the composition goes on in the panel.
+    /// </summary>
+    [Fact]
+    public async Task Confirmed_folders_stay_readable_and_change_answers_a_fiche_of_this_machine()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
+
+        await Compose(vm);
+        vm.FillFoldersNoCommand.Execute(null);
+
+        Assert.False(vm.IsFoldersStep);
+        Assert.Equal("Done", vm.FoldersTabState);
+        Assert.Equal("2 folders confirmed", vm.FoldersTabSubtitle);
+        Assert.Equal("Folders confirmed: the composition goes on in the panel.", vm.FoldersFooter);
+        Assert.All(vm.FolderRows, row => Assert.False(row.HasHeld));
+        Assert.Equal("/data/pdf", vm.FolderRows[0].Directory);
+
+        vm.BindTeamMount("/inpdf", Folder("/data/pdf-2024", "/inpdf"));
+
+        Assert.Equal("/data/pdf-2024", vm.FolderRows[0].Directory);
+        Assert.True(vm.FolderRows[0].IsOnMachine);
     }
 
     [Fact]

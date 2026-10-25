@@ -3389,7 +3389,19 @@
     <value>Sí</value>
   </data>
   <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
-    <value>Abrir</value>
+    <value>Abrir la carpeta</value>
+  </data>
+  <data name="Studio.Create.FolderFilesNone" xml:space="preserve">
+    <value>Ningún archivo</value>
+  </data>
+  <data name="Studio.Create.FolderFilesCount" xml:space="preserve">
+    <value>{0} {0:plural:archivo|archivos}</value>
+  </data>
+  <data name="Studio.Create.FolderFieldFiles" xml:space="preserve">
+    <value>Archivos</value>
+  </data>
+  <data name="Studio.Create.FolderChange" xml:space="preserve">
+    <value>Cambiar…</value>
   </data>
   <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
     <value>Abre la carpeta en el explorador de archivos.</value>
@@ -3711,8 +3723,16 @@
     <value>{0} {0:plural:carpeta|carpetas} · {1} por elegir</value>
   </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:carpeta confirmada|carpetas confirmadas}</value></data>
+  <data name="Studio.Create.TabFoldersFilling" xml:space="preserve">
+    <value>{0} {0:plural:carpeta|carpetas} · depósito en curso</value>
+  </data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Propuestas tras la composición</value></data>
-  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Carpetas confirmadas: la composición continúa.</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve">
+    <value>Carpetas confirmadas: la composición continúa en el panel.</value>
+  </data>
+  <data name="Studio.Create.TabFoldersFillingFooter" xml:space="preserve">
+    <value>Deje sus archivos en las carpetas que elija y luego continúe: el asistente los tendrá en cuenta.</value>
+  </data>
   <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Cada carpeta tiene su lugar. Confirme para continuar.</value></data>
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 carpeta por elegir. Puede confirmar ahora: el equipo recibirá una carpeta «{0}» vacía al adoptarlo.</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} carpetas por elegir. Puede confirmar ahora: el equipo las recibirá vacías al adoptarlo.</value></data>
@@ -3722,16 +3742,29 @@
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Esperando su acción: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirmar las carpetas</value></data>
   <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>responder al asistente</value></data>
-  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve"><value>llenar las carpetas</value></data>
-  <data name="Studio.Create.HintFillFolders" xml:space="preserve"><value>Deje sus archivos en las carpetas y luego continúe en el panel.</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve">
+    <value>dejar sus archivos</value>
+  </data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve">
+    <value>Deje sus archivos en las carpetas y luego continúe.</value>
+  </data>
   <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>elegir un modelo</value></data>
   <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>resolver una elección</value></data>
   <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>elegir una carpeta</value></data>
   <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>adoptar el equipo</value></data>
   <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>He deducido las carpetas del equipo de su solicitud. Revíselas y confírmelas para que componga el equipo.</value></data>
+  <data name="Studio.Create.WaitBubbleFillFolders" xml:space="preserve">
+    <value>Las carpetas están listas. Deje en ellas sus archivos y dígame cuando haya terminado.</value>
+  </data>
+  <data name="Studio.Create.WaitActionLabelFillFolders" xml:space="preserve">
+    <value>Hecho, continuar</value>
+  </data>
   <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>Queda una carpeta del equipo por elegir antes de la prueba.</value></data>
   <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>El equipo está listo. Adóptelo para encontrarlo en sus equipos.</value></data>
   <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Confirme las carpetas para continuar, o haga una pregunta</value></data>
+  <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
+    <value>Deje sus archivos y continúe, o haga una pregunta</value>
+  </data>
   <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Elija la carpeta para continuar, o haga una pregunta</value></data>
   <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Adopte el equipo para terminar, o haga una pregunta</value></data>
   <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ver la carpeta</value></data>
@@ -3750,5 +3783,4 @@
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Intro para enviar · Mayús+Intro para una nueva línea</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Ver la tarjeta</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>La prueba está evaluada. ¿Qué hacemos ahora?</value></data>
-  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>Deje sus archivos en las carpetas y luego continúe.</value></data>
 </root>

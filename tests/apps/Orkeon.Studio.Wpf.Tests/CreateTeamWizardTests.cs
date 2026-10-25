@@ -35,7 +35,8 @@ public partial class CreateTeamWizardTests
         string? workspace = null,
         IApiKeyStore? keyStore = null,
         string? assistantKeyEnvName = null,
-        Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null)
+        Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null,
+        FakeFolderWatch? folderWatch = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { });
@@ -72,6 +73,7 @@ public partial class CreateTeamWizardTests
                 ShellOpener = shellOpener,
                 Dispatcher = dispatcher,
                 DiskEntries = diskEntries,
+                FolderWatch = folderWatch ?? new FakeFolderWatch(),
             });
         return (vm, processes, profiles);
     }
@@ -1815,16 +1817,21 @@ public partial class CreateTeamWizardTests
 
     /// <summary>
     /// STUDIO-57. Once the folders are confirmed, the engine names the ones it holds for the
-    /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » shows
-    /// « Open » behind each — the file explorer on the session directory the engine created —
-    /// and « Continue » below; « No » lets the construction go on. The engine composes meanwhile,
-    /// but the wizard waits on the answer: the step and the trial are held until it comes.
+    /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » makes the
+    /// folders tab the wait point: each fiche of a held folder gains « Files » — its count,
+    /// watched, and « Open the folder » —, the footer offers « Continue » and the assistant's
+    /// bubble runs the same command. The engine waits on the answer: the step and the trial are
+    /// held until it comes.
     /// </summary>
     [Fact]
     public async Task The_fill_step_asks_once_the_folders_are_confirmed_and_opens_each_held_folder()
     {
         var opener = new RecordingShellOpener();
-        var (vm, processes, _) = Build(shellOpener: opener);
+        var watch = new FakeFolderWatch();
+        const string inpdf = "/ws/.orkeon/forge/veille/folders/inpdf";
+        const string outmd = "/ws/.orkeon/forge/veille/folders/outmd";
+        watch.Counts[outmd] = 3;
+        var (vm, processes, _) = Build(shellOpener: opener, folderWatch: watch);
         FillStepOne(vm);
         ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
         {
@@ -1845,9 +1852,10 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.IsFillingFolders);
         Assert.Equal(["/inpdf", "/outmd"], vm.HeldFolderRows.Select(r => r.VirtualPath));
         Assert.Equal(["read", "read, write"], vm.HeldFolderRows.Select(r => r.RoleLabel));
-        Assert.Equal("/ws/.orkeon/forge/veille/folders/inpdf", vm.HeldFolderRows[0].Directory);
+        Assert.Equal(inpdf, vm.HeldFolderRows[0].Directory);
         Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
         Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
+        Assert.All(vm.FolderRows, row => Assert.False(row.HasHeld));
 
         // R15: the question is the assistant's, in the panel — « Yes » first, and recommended.
         var question = vm.Chat.Question!;
@@ -1858,29 +1866,50 @@ public partial class CreateTeamWizardTests
 
         question.Replies[0].ReplyCommand.Execute(null);
         Assert.True(vm.IsFillingFolders);
-        // The next bubble gives the action the answer leads to, with the link to the folders.
-        var drop = vm.Chat.Question!;
-        Assert.Equal("Drop your files in the folders, then continue.", drop.Text);
-        Assert.Same(vm.FillFoldersContinueCommand, Assert.Single(drop.Replies).Command);
-        Assert.True(vm.Chat.QuestionRevealCommand.CanExecute(null));
-        var revealed = 0;
-        vm.FillFoldersRevealRequested += (_, _) => revealed++;
-        vm.Chat.QuestionRevealCommand.Execute(null);
-        Assert.Equal(1, revealed);
         Assert.False(vm.IsFillFoldersQuestion);
+        Assert.Null(vm.Chat.Question);
+
+        // The folders tab is the wait point: amber dot, « dropping files », the footer's « Continue ».
         Assert.Equal(WizardWaitPoint.FillFolders, vm.WaitPoint);
-        Assert.Equal("Waiting for you: fill the folders", vm.WaitPointLabel);
+        Assert.Equal("Waiting for you: drop your files", vm.WaitPointLabel);
+        Assert.Equal("Waiting for you: drop your files", vm.Progress.WaitPhrase);
+        Assert.Equal(CreateTeamViewModel.Step1FoldersTab, vm.Step1TabIndex);
+        Assert.Equal("Expected", vm.FoldersTabState);
+        Assert.Equal("2 folders · dropping files", vm.FoldersTabSubtitle);
+        Assert.Equal(
+            "Drop your files in the folders of your choice, then continue: the assistant will take them into account.",
+            vm.FoldersFooter);
         Assert.Equal(1, vm.Step);
         Assert.False(vm.CanTryTeam);
-        Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
-        vm.HeldFolderRows[0].OpenCommand.Execute(null);
-        vm.HeldFolderRows[1].OpenCommand.Execute(null);
-        Assert.Equal(["/ws/.orkeon/forge/veille/folders/inpdf", "/ws/.orkeon/forge/veille/folders/outmd"], opener.Opened);
 
-        vm.FillFoldersContinueCommand.Execute(null);
+        // The bubble runs the footer's command; « Show the card » brings the tab back.
+        var pending = vm.Chat.PendingAction!;
+        Assert.Equal("The folders are ready. Drop your files in them, then tell me when you're done.", pending.Text);
+        Assert.Equal("Done, continue", pending.ActionLabel);
+        Assert.Same(vm.FillFoldersContinueCommand, pending.Action);
+        Assert.Equal("Drop your files then continue, or ask a question", vm.Chat.Placeholder);
+
+        // Each fiche of a held folder gains its « Files » line, the count watched.
+        Assert.All(vm.FolderRows, row => Assert.True(row.HasHeld));
+        Assert.Equal("No file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.Equal("3 files", vm.FolderRows[1].Held!.FilesLabel);
+        Assert.Equal([inpdf, outmd], watch.Watched.Order(StringComparer.Ordinal));
+        watch.Drop(inpdf, 1);
+        Assert.Equal("1 file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
+        vm.FolderRows[0].Held!.OpenCommand.Execute(null);
+        vm.FolderRows[1].Held!.OpenCommand.Execute(null);
+        Assert.Equal([inpdf, outmd], opener.Opened);
+
+        vm.Chat.PendingActionCommand.Execute(null);
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.IsFillingFolders);
         Assert.Null(vm.Chat.Question);
+        // The watch stops; the « Files » line stays, with the count it last read.
+        Assert.Empty(watch.Watched);
+        Assert.Equal("1 file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.Equal("2 folders confirmed", vm.FoldersTabSubtitle);
+        Assert.Equal("Folders confirmed: the composition goes on in the panel.", vm.FoldersFooter);
         // The answer releases the composition: the step it reached comes, the trial can start.
         Assert.Equal(2, vm.Step);
         Assert.True(vm.CanTryTeam);

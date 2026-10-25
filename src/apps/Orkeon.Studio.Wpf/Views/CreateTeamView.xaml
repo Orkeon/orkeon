@@ -388,28 +388,10 @@
           <controls:LucideIcon Kind="save" Size="16" Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,7,0"
                                VerticalAlignment="Center"
                                Visibility="{Binding IsDraftSaved, Converter={StaticResource BooleanToVisibility}}"/>
-          <TextBlock FontSize="13" VerticalAlignment="Center" Text="{Binding SessionStateLabel}">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
-                <Setter Property="Visibility" Value="{Binding HasSessionState, Converter={StaticResource BooleanToVisibility}}"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasWaitPoint}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-          <!-- R13: the single wait point, named and clickable — it brings the expected card on
-               screen and moves the focus to it. -->
-          <Button Style="{StaticResource LinkBtn}" VerticalAlignment="Center" Command="{Binding GoToWaitPointCommand}"
-                  Foreground="{DynamicResource WarningBrush}"
-                  Visibility="{Binding HasWaitPoint, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <Ellipse Width="8" Height="8" Fill="{DynamicResource WarningBrush}" Margin="0,0,7,0" VerticalAlignment="Center"/>
-              <TextBlock Text="{Binding WaitPointLabel}" VerticalAlignment="Center"/>
-            </StackPanel>
-          </Button>
+          <!-- R13: during a wait point the label is empty — the status bar names the wait and the
+               folders tab carries the amber dot; « Stop » stays alone at the end of the line. -->
+          <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Text="{Binding SessionStateLabel}"
+                     Visibility="{Binding HasSessionState, Converter={StaticResource BooleanToVisibility}}"/>
           <!-- The engine build that drives the session: a stale binary must not look like a working one. -->
           <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center"
                      Text="{Binding EngineLabel}"
@@ -558,62 +540,6 @@
              overlay, or a panel with a constant width, covers it the moment the window
              is resized. The width comes from the grid; nothing here names one. -->
         <StackPanel Grid.Column="0">
-        <!-- STUDIO-57: the fill step. Once the folders are confirmed, when some are kept inside
-             the team, the assistant asks in the panel whether to put files or sub-folders in
-             them (refonte R15): « No » lets the construction go on; « Yes » brings this card —
-             « Open » behind each such folder, the file explorer on the session directory the
-             engine created — and « Continue » below, also offered in the next bubble. The
-             engine composes meanwhile; the trial reads what was dropped. -->
-        <Border x:Name="FillFoldersCard" Style="{StaticResource Card}" Margin="0,0,0,16"
-                Visibility="{Binding IsFillingFolders, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel>
-            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                       Text="{Binding [Studio.Create.FillFoldersDrop], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,2,0,12" TextWrapping="Wrap"
-                       Text="{Binding [Studio.Create.FillFoldersHint], Source={x:Static services:I18n.Instance}}"/>
-            <StackPanel>
-              <ItemsControl ItemsSource="{Binding HeldFolderRows}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
-                      <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" VerticalAlignment="Center" Margin="10,0,0,0"
-                                Command="{Binding OpenCommand}"
-                                ToolTip="{Binding [Studio.Create.FillFoldersOpenTip], Source={x:Static services:I18n.Instance}}">
-                          <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Kind="folder-open" Size="16" Foreground="{DynamicResource AccentBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock VerticalAlignment="Center"
-                                       Text="{Binding [Studio.Create.FillFoldersOpen], Source={x:Static services:I18n.Instance}}"/>
-                          </StackPanel>
-                        </Button>
-                        <StackPanel>
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource InkBrush}" Text="{Binding VirtualPath}"/>
-                            <TextBlock Style="{StaticResource ToolChipText}" Margin="8,0,0,0" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding RoleLabel}"/>
-                          </StackPanel>
-                          <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,3,0,0" TextTrimming="CharacterEllipsis"
-                                     Text="{Binding Directory}" ToolTip="{Binding Directory}"/>
-                        </StackPanel>
-                      </DockPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <DockPanel Margin="0,12,0,0" LastChildFill="False">
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding FillFoldersContinueCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding [Studio.Create.FillFoldersContinue], Source={x:Static services:I18n.Instance}}"/>
-                    <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  </StackPanel>
-                </Button>
-              </DockPanel>
-            </StackPanel>
-          </StackPanel>
-        </Border>
-
         <!-- The conversation lives in the shell's side panel (refonte R10): the step stays
              on screen while the user talks to the assistant. -->
         <StackPanel>
@@ -753,7 +679,9 @@
           <!-- Between the brief and the plan the forge proposes the folders the need names — or
                the defaults — and waits. Each fiche holds three lines with 104 px labels: the name
                in the team and its rights, the note the assistant follows, and where the folder
-               lives. Once confirmed the fiches stay readable, no longer editable. -->
+               lives. Once confirmed the fiches stay readable, no longer editable: a folder of this
+               machine keeps « Change… », and while the engine waits on the drop (« Yes » to the
+               fill question) the fiches kept inside the team gain a fourth line, « Files ». -->
           <controls:StepTab Header="{Binding [Studio.Create.TabFolders], Source={x:Static services:I18n.Instance}}"
                             Subtitle="{Binding FoldersTabSubtitle}" State="{Binding FoldersTabState}">
             <DockPanel>
@@ -765,6 +693,15 @@
                           Visibility="{Binding IsFoldersStep, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <TextBlock Text="{Binding [Studio.Create.FoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
+                      <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    </StackPanel>
+                  </Button>
+                  <!-- STUDIO-57: the drop is done — the engine reads folders.filled and designs the team. -->
+                  <Button x:Name="FillContinueButton" DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}"
+                          Command="{Binding FillFoldersContinueCommand}"
+                          Visibility="{Binding IsFillingFolders, Converter={StaticResource BooleanToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding [Studio.Create.FillFoldersContinue], Source={x:Static services:I18n.Instance}}"/>
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
                     </StackPanel>
                   </Button>
@@ -784,7 +721,9 @@
                        standard proposal when the request named no folder. -->
                   <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,2,0,12" TextWrapping="Wrap"
                              Text="{Binding FoldersStepSubtitle}"/>
-                  <ItemsControl ItemsSource="{Binding FolderRows}" IsEnabled="{Binding IsFoldersStep}">
+                  <!-- Tag carries « still editable » to every fiche: once confirmed, only « Change… » and
+                       « Open the folder » stay live. -->
+                  <ItemsControl ItemsSource="{Binding FolderRows}" Tag="{Binding IsFoldersStep}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <Border x:Name="Fiche" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
@@ -808,10 +747,12 @@
                             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                               <TextBox Style="{StaticResource Input}" Width="180" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}"
                                        AutomationProperties.Name="{Binding [Studio.Create.FolderFieldName], Source={x:Static services:I18n.Instance}}"
+                                       IsReadOnly="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource Negate}}"
                                        Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
                               <!-- STUDIO-57: read, or read and write — the two halves flip the one role;
                                    the active half is the one that cannot be pressed. -->
                               <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15" Margin="10,0,0,0"
+                                      IsEnabled="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                       ToolTip="{Binding [Studio.Create.FolderRoleTip], Source={x:Static services:I18n.Instance}}">
                                 <StackPanel Orientation="Horizontal" Margin="2">
                                   <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ToggleRoleCommand}"
@@ -831,7 +772,7 @@
                             </WrapPanel>
                             <!-- STUDIO-57: the cross takes the fiche off the list. -->
                             <Button Grid.Column="2" Style="{StaticResource IconBtn}" VerticalAlignment="Top"
-                                    Command="{Binding RemoveCommand}"
+                                    Command="{Binding RemoveCommand}" Visibility="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BooleanToVisibility}}"
                                     ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
                                     AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
                               <controls:LucideIcon Kind="x" Size="16" Foreground="{DynamicResource InkMutedBrush}"/>
@@ -848,7 +789,7 @@
                                 <controls:LucideIcon DockPanel.Dock="Left" Kind="pencil" Size="14" Margin="10,0,0,0"
                                                      Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
                                 <TextBox Style="{StaticResource Input}" BorderThickness="0" Background="Transparent"
-                                         TextWrapping="Wrap" AcceptsReturn="False"
+                                         TextWrapping="Wrap" AcceptsReturn="False" IsReadOnly="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource Negate}}"
                                          Tag="{Binding [Studio.Create.FolderNotePlaceholder], Source={x:Static services:I18n.Instance}}"
                                          ToolTip="{Binding [Studio.Create.FolderPurposeHint], Source={x:Static services:I18n.Instance}}"
                                          AutomationProperties.Name="{Binding [Studio.Create.FolderFieldNote], Source={x:Static services:I18n.Instance}}"
@@ -861,7 +802,8 @@
                             <TextBlock Grid.Row="2" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"
                                        Text="{Binding [Studio.Create.FolderLocation], Source={x:Static services:I18n.Instance}}"/>
                             <DockPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0">
-                              <Border DockPanel.Dock="Left" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
+                              <Border DockPanel.Dock="Left" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15"
+                                      IsEnabled="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                 <StackPanel Orientation="Horizontal" Margin="2">
                                   <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding InsideTeamCommand}"
                                           Tag="{Binding IsInsideTeam}" ToolTipService.ShowOnDisabled="True"
@@ -884,8 +826,9 @@
                                   <TextBlock Text="{Binding [Studio.Create.ChooseShort], Source={x:Static services:I18n.Instance}}"/>
                                 </StackPanel>
                               </Button>
+                              <!-- « Change… »: a chosen folder of this machine, still editable once confirmed. -->
                               <Button DockPanel.Dock="Right" Margin="10,0,0,0" VerticalAlignment="Center"
-                                      Command="{Binding PickCommand}"
+                                      controls:ButtonSize.Height="28" Command="{Binding PickCommand}"
                                       ToolTip="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}">
                                 <Button.Style>
                                   <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
@@ -903,7 +846,7 @@
                                 </Button.Style>
                                 <StackPanel Orientation="Horizontal">
                                   <controls:LucideIcon Kind="folder-open" Size="16" Margin="0,0,7,0"/>
-                                  <TextBlock Text="{Binding [Studio.Create.ChooseShort], Source={x:Static services:I18n.Instance}}"/>
+                                  <TextBlock Text="{Binding [Studio.Create.FolderChange], Source={x:Static services:I18n.Instance}}"/>
                                 </StackPanel>
                               </Button>
                               <!-- The state: the chosen path, the team's own path in mono, or « To choose ». -->
@@ -911,10 +854,14 @@
                                 <Border.Style>
                                   <Style TargetType="Border" BasedOn="{StaticResource Well}">
                                     <Style.Triggers>
-                                      <DataTrigger Binding="{Binding NeedsChoice}" Value="True">
+                                      <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                          <Condition Binding="{Binding NeedsChoice}" Value="True"/>
+                                          <Condition Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
                                         <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
                                         <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
-                                      </DataTrigger>
+                                      </MultiDataTrigger>
                                     </Style.Triggers>
                                   </Style>
                                 </Border.Style>
@@ -925,13 +872,40 @@
                                 </DockPanel>
                               </Border>
                             </DockPanel>
+
+                            <!-- Line 4 (STUDIO-57, the drop): a folder kept inside the team — its file
+                                 count, watched while the engine waits, the explorer on it, its path. -->
+                            <TextBlock Grid.Row="3" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"
+                                       Text="{Binding [Studio.Create.FolderFieldFiles], Source={x:Static services:I18n.Instance}}"
+                                       Visibility="{Binding HasHeld, Converter={StaticResource BooleanToVisibility}}"/>
+                            <DockPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0" DataContext="{Binding Held}"
+                                       Visibility="{Binding DataContext.HasHeld, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource BooleanToVisibility}}">
+                              <TextBlock DockPanel.Dock="Left" FontSize="13" VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}"
+                                         Text="{Binding FilesLabel}"/>
+                              <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
+                                      Margin="10,0,0,0" VerticalAlignment="Center" Command="{Binding OpenCommand}"
+                                      ToolTip="{Binding [Studio.Create.FillFoldersOpenTip], Source={x:Static services:I18n.Instance}}">
+                                <StackPanel Orientation="Horizontal">
+                                  <controls:LucideIcon Kind="folder-open" Size="16" Foreground="{DynamicResource AccentBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                  <TextBlock VerticalAlignment="Center"
+                                             Text="{Binding [Studio.Create.FillFoldersOpen], Source={x:Static services:I18n.Instance}}"/>
+                                </StackPanel>
+                              </Button>
+                              <controls:MiddleEllipsisText Style="{StaticResource PathText}" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                           Text="{Binding Directory}" ToolTip="{Binding Directory}"/>
+                            </DockPanel>
                           </Grid>
                         </Border>
                         <DataTemplate.Triggers>
-                          <DataTrigger Binding="{Binding NeedsChoice}" Value="True">
+                          <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                              <Condition Binding="{Binding NeedsChoice}" Value="True"/>
+                              <Condition Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
                             <Setter TargetName="Fiche" Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
                             <Setter TargetName="Fiche" Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
-                          </DataTrigger>
+                          </MultiDataTrigger>
                         </DataTemplate.Triggers>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>

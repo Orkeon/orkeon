@@ -26,6 +26,7 @@ public sealed class WizardFolderRow : ObservableObject
     private bool _isInsideTeam;
     private readonly bool _isDeduced;
     private bool _isEdited;
+    private WizardHeldFolderRow? _held;
 
     internal WizardFolderRow(
         ForgeFolder proposed,
@@ -176,6 +177,23 @@ public sealed class WizardFolderRow : ObservableObject
     /// <summary>The folder's name inside the team: <c>input</c> for <c>/workspace</c>, its own otherwise.</summary>
     internal string FolderName =>
         _virtualPath.Trim('/') is { Length: > 0 } ? TeamMountPaths.FolderFor(_virtualPath) : "";
+
+    /// <summary>
+    /// The folder the session holds behind this fiche, once the user said they drop files in it
+    /// (« Yes » to the fill question): its « Files » line. Null otherwise.
+    /// </summary>
+    public WizardHeldFolderRow? Held
+    {
+        get => _held;
+        internal set
+        {
+            if (SetProperty(ref _held, value))
+                OnPropertyChanged(nameof(HasHeld));
+        }
+    }
+
+    /// <summary>Whether the fiche shows its « Files » line.</summary>
+    public bool HasHeld => _held is not null;
 
     /// <summary>« Choose a folder… »: the disk picker, behind this row.</summary>
     public RelayCommand PickCommand { get; }
@@ -464,11 +482,12 @@ public sealed partial class CreateTeamViewModel
 
     /// <summary>
     /// The folder the shell bound behind <paramref name="virtualPath"/> answers the panel's row
-    /// of that name too, while the folders wait for their confirmation.
+    /// of that name too, while the folders wait for their confirmation — and once confirmed,
+    /// when « Change… » picks another folder of this machine behind a fiche.
     /// </summary>
     private void AnswerFolderRow(string virtualPath, MountDefinition mount)
     {
-        if (!_model.FoldersPending)
+        if (!_model.FoldersPending && !FoldersConfirmed)
             return;
 
         foreach (var row in FolderRows)
