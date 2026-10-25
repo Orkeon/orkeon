@@ -2152,7 +2152,7 @@
     <value>Team type</value>
   </data>
   <data name="Studio.Run.RowMounts" xml:space="preserve">
-    <value>Mounts</value>
+    <value>Allowed folders</value>
   </data>
   <data name="Studio.Run.RowMode" xml:space="preserve">
     <value>Mode</value>

@@ -20,6 +20,7 @@ public sealed partial class CreateTeamViewModel
     /// <summary>Words the questions again in the new language, without announcing them anew.</summary>
     private void OnQuestionsLanguageChanged()
     {
+        RebuildDecisions();
         _decisionQuestion = null;
         _fillQuestion = null;
         SyncQuestion(announce: false);

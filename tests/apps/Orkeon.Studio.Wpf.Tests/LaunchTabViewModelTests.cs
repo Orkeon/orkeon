@@ -1656,6 +1656,12 @@ public sealed class LaunchTabViewModelTests
             await gone.ReplayAsync(entry, TestContext.Current.CancellationToken);
             Assert.StartsWith("This run: ", gone.RunLlmLine, StringComparison.Ordinal);
             Assert.NotEqual("This run: Qwen", gone.RunLlmLine);
+            // The model list keeps it, in the same words, instead of showing the default (refonte lot 12).
+            var kept = Assert.IsType<RunModelChoice>(gone.SelectedModelChoice);
+            Assert.Equal(RunModelChoiceKind.Named, kept.Kind);
+            Assert.Equal("Qwen", kept.Profile);
+            Assert.NotEqual("Qwen", kept.Label);
+            Assert.Same(kept, gone.ModelChoices[^1]);
         }
         finally
         {

@@ -3838,7 +3838,7 @@
     <value>Team-Typ</value>
   </data>
   <data name="Studio.Run.RowMounts" xml:space="preserve">
-    <value>Einhängungen</value>
+    <value>Freigegebene Ordner</value>
   </data>
   <data name="Studio.Run.RowMode" xml:space="preserve">
     <value>Modus</value>

@@ -3335,14 +3335,27 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     private void SyncDecisions()
     {
-        Decisions.Clear();
-        foreach (var option in _model.DecisionOptions)
-        {
-            // "edit" is not a button: the agent editor's Save is its whole UI — it sends
-            // the decision and the amended blueprint itself.
-            if (string.Equals(option, "edit", StringComparison.Ordinal))
-                continue;
+        // Every forge event syncs: the same options keep the same question, so the panel a user
+        // closed stays closed and the focus stays where it is.
+        if (DecisionValues().SequenceEqual(Decisions.Select(decision => decision.Value), StringComparer.Ordinal))
+            return;
 
+        RebuildDecisions();
+        _decisionQuestion = null;
+        SyncQuestion();
+    }
+
+    // "edit" is not a button: the agent editor's Save is its whole UI — it sends the decision
+    // and the amended blueprint itself.
+    private IEnumerable<string> DecisionValues() =>
+        _model.DecisionOptions.Where(option => !string.Equals(option, "edit", StringComparison.Ordinal));
+
+    /// <summary>Builds the arbitration buttons in the current language.</summary>
+    private void RebuildDecisions()
+    {
+        Decisions.Clear();
+        foreach (var option in DecisionValues())
+        {
             var label = option switch
             {
                 "accept" => _strings[StudioStringKeys.WizardDecisionAccept],
@@ -3353,9 +3366,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             };
             Decisions.Add(new WizardDecision(option, label, Decide));
         }
-
-        _decisionQuestion = null;
-        SyncQuestion();
     }
 
     // ── STUDIO-14 — « Open the folder » (D-15) ───────────────────────────────

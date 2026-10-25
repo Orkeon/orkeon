@@ -695,6 +695,10 @@
                         <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
                         <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
                       </DataTrigger>
+                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="warn">
+                        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                        <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                      </DataTrigger>
                       <DataTrigger Binding="{Binding RunBadgeTone}" Value="fail">
                         <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
                         <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>

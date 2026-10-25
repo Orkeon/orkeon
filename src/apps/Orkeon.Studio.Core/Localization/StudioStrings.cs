@@ -2815,7 +2815,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunRightsReadWrite] = "Read and write",
         [StudioStringKeys.RunRowEngine] = "Engine",
         [StudioStringKeys.RunRowTeamType] = "Team type",
-        [StudioStringKeys.RunRowMounts] = "Mounts",
+        [StudioStringKeys.RunRowMounts] = "Allowed folders",
         [StudioStringKeys.RunRowMode] = "Mode",
         [StudioStringKeys.RunMountsCount] = "{0} {0:plural:folder|folders} mounted",
         [StudioStringKeys.RunEngineMissing] = "not found",

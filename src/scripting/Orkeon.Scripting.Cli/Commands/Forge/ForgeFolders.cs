@@ -285,11 +285,21 @@ internal static class ForgeFolders
         if (!System.IO.Directory.Exists(directory))
             return [];
 
+        // A tree the user dropped may hold what this process cannot read: it is skipped, never a
+        // failure of the forge, and a folder removed while it is listed lists what was read.
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
         var entries = new List<string>();
-        foreach (var entry in System.IO.Directory.EnumerateFileSystemEntries(directory, "*", SearchOption.AllDirectories))
+        try
         {
-            var relative = System.IO.Path.GetRelativePath(directory, entry).Replace('\\', '/');
-            entries.Add(System.IO.Directory.Exists(entry) ? relative + "/" : relative);
+            foreach (var entry in System.IO.Directory.EnumerateFileSystemEntries(directory, "*", options))
+            {
+                var relative = System.IO.Path.GetRelativePath(directory, entry).Replace('\\', '/');
+                entries.Add(System.IO.Directory.Exists(entry) ? relative + "/" : relative);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // what was read so far stands
         }
 
         entries.Sort(StringComparer.Ordinal);

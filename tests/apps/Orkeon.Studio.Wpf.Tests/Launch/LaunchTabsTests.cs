@@ -94,6 +94,15 @@ public sealed class LaunchTabsTests : IDisposable
         launcher.ExitCode = 1;
         await tab.RunAsync(TestContext.Current.CancellationToken);
         Assert.Equal("Warning", tab.RunTabState);
+        Assert.Equal("fail", tab.RunBadgeTone);
+
+        // A Stop reads as cancelled, never as a failure of the team.
+        launcher.ExitCode = 130;
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("Warning", tab.RunTabState);
+        Assert.Equal("warn", tab.RunBadgeTone);
+        Assert.Equal("Cancelled", tab.RunBadgeText);
+        Assert.Equal("Cancelled", tab.RunPaneTitle);
     }
 
     [Fact]

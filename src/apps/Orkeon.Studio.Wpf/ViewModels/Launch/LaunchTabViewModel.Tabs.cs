@@ -205,6 +205,13 @@ public sealed partial class LaunchTabViewModel
         if (_team.LlmChoice is { } saved && Target.IsResolved)
             choices.Add(new(_strings.Format(StudioStringKeys.RunModelTeam, RunLlmLabelOf(saved)), RunModelChoiceKind.Team));
         choices.AddRange(LlmProfiles.Select(name => new RunModelChoice(name, RunModelChoiceKind.Named, name)));
+
+        // A setting the run named and this machine no longer has stays in the list, in the words
+        // of the card (STUDIO-52): the list must not pass it off as the default it falls back to.
+        if (RunLlmChoice is { UseDefault: false, Profile: { Length: > 0 } pinned } current
+            && current != _team.LlmChoice
+            && !choices.Any(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, pinned, StringComparison.Ordinal)))
+            choices.Add(new(RunLlmLabelOf(current), RunModelChoiceKind.Named, pinned));
         return choices;
     }
 
@@ -329,16 +336,16 @@ public sealed partial class LaunchTabViewModel
 
     // ── The run tab ──
 
-    /// <summary>Empty at rest, turning while the run lives, a check on success, the amber dot on a failure.</summary>
+    /// <summary>Empty at rest, turning while the run lives, a check on success, the amber dot on a failure or a stop.</summary>
     public string RunTabState => CardState switch
     {
         RunCardState.Running => "Working",
         RunCardState.Succeeded => "Done",
-        RunCardState.Failed => "Warning",
+        RunCardState.Failed or RunCardState.Cancelled => "Warning",
         _ => "Empty",
     };
 
-    /// <summary>« Waiting · nothing to report », « Running · 2 min 05 s », « Succeeded · 4 min 12 s », « Failed ».</summary>
+    /// <summary>« Waiting · nothing to report », « Running · 2 min 05 s », « Succeeded · 4 min 12 s », « Failed », « Cancelled ».</summary>
     public string RunTabSubtitle => CardState switch
     {
         RunCardState.Running => _strings.Format(StudioStringKeys.RunTabRunRunning, RunDuration ?? "…"),
@@ -346,15 +353,17 @@ public sealed partial class LaunchTabViewModel
             ? _strings.Format(StudioStringKeys.RunTabRunSucceeded, took)
             : _strings[StudioStringKeys.RunPaneSucceeded],
         RunCardState.Failed => _strings[StudioStringKeys.RunTabRunFailed],
+        RunCardState.Cancelled => _strings[StudioStringKeys.HistStatusCancelled],
         _ => _strings[StudioStringKeys.RunTabRunIdle],
     };
 
-    /// <summary>The run pane's title: « Ready to work », running, « Finished », failed — the badge says the outcome.</summary>
+    /// <summary>The run pane's title: « Ready to work », running, « Finished », failed, cancelled — the badge says the outcome.</summary>
     public string RunPaneTitle => _strings[CardState switch
     {
         RunCardState.Running => StudioStringKeys.RunPaneRunning,
         RunCardState.Succeeded => StudioStringKeys.RunPaneDone,
         RunCardState.Failed => StudioStringKeys.RunTabRunFailed,
+        RunCardState.Cancelled => StudioStringKeys.HistStatusCancelled,
         _ => StudioStringKeys.RunStateIdle,
     }];
 
@@ -501,6 +510,19 @@ public sealed partial class LaunchTabViewModel
                 OnPropertiesChanged(nameof(TargetTypeNote), nameof(TeamFicheLine));
         };
         PropertyChanged += OnOwnPropertyChangedForTabs;
+        _strings.CultureChanged += (_, _) => OnTabsLanguageChanged();
+    }
+
+    // Every reading of the tabs is worded by the strings: a language switch re-reads them all.
+    private void OnTabsLanguageChanged()
+    {
+        RebuildAgentLanes();
+        RaiseTeamTabChanged();
+        RaiseFoldersChanged();
+        OnPropertiesChanged(
+            nameof(OptionsNextLabel), nameof(OptionsTabSubtitle), nameof(DisplayLabel), nameof(CommandTabSubtitle),
+            nameof(EngineRow), nameof(ModeRow), nameof(RunTabSubtitle), nameof(RunPaneTitle), nameof(RunPaneContext),
+            nameof(JournalTitle), nameof(JournalEnlargeLabel), nameof(RunFooter));
     }
 
     private void OnOptionsChangedForTabs(object? sender, PropertyChangedEventArgs e)
@@ -525,6 +547,7 @@ public sealed partial class LaunchTabViewModel
                 RaiseTeamTabChanged();
                 break;
             case nameof(RunLlmChoice):
+                RefreshModelChoices();
                 OnPropertiesChanged(nameof(SelectedModelChoice), nameof(TeamFicheLine));
                 break;
             case nameof(LlmProfiles):

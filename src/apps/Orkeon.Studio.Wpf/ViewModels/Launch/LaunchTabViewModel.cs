@@ -1355,6 +1355,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         Running,
         Succeeded,
         Failed,
+        Cancelled,
     }
 
     // Title, badge, tone and button label are four readings of one and the same state, so they
@@ -1370,7 +1371,13 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             if (!HasResult)
                 return RunCardState.Idle;
 
-            return Outcome == RunOutcome.Success ? RunCardState.Succeeded : RunCardState.Failed;
+            return Outcome switch
+            {
+                RunOutcome.Success => RunCardState.Succeeded,
+                // A Stop is the user's own gesture, not a failure of the team.
+                RunOutcome.Cancelled => RunCardState.Cancelled,
+                _ => RunCardState.Failed,
+            };
         }
     }
 
@@ -1390,15 +1397,17 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             RunCardState.Running => StudioStringKeys.RunBadgeRunning,
             RunCardState.Idle => StudioStringKeys.RunBadgeIdle,
             RunCardState.Succeeded => StudioStringKeys.RunBadgeDone,
+            RunCardState.Cancelled => StudioStringKeys.HistStatusCancelled,
             _ => StudioStringKeys.RunBadgeFailed,
         }];
 
-    /// <summary>Tone key the view maps to colours: idle | running | ok | fail.</summary>
+    /// <summary>Tone key the view maps to colours: idle | running | ok | warn | fail.</summary>
     public string RunBadgeTone => CardState switch
     {
         RunCardState.Running => "running",
         RunCardState.Idle => "idle",
         RunCardState.Succeeded => "ok",
+        RunCardState.Cancelled => "warn",
         _ => "fail",
     };
 

@@ -250,6 +250,13 @@ public sealed class StudioLocalizationSwitchTests
 
         Assert.Contains(nameof(LaunchTabViewModel.BinaryStatus), raised);
         Assert.Contains(nameof(LaunchTabViewModel.ValidationSummary), raised);
+        // Refonte lot 12: the classeur's tabs re-read their words too.
+        Assert.Contains(nameof(LaunchTabViewModel.OptionsTabSubtitle), raised);
+        Assert.Contains(nameof(LaunchTabViewModel.FolderRows), raised);
+        Assert.Contains(nameof(LaunchTabViewModel.EngineRow), raised);
+        Assert.Contains(nameof(LaunchTabViewModel.MountsRow), raised);
+        Assert.Contains(nameof(LaunchTabViewModel.JournalTitle), raised);
+        Assert.Contains(nameof(LaunchTabViewModel.TeamFooter), raised);
     }
 
     // STUDIO-56, decision 2: the open editor and the tab's lines follow the language ──────────
