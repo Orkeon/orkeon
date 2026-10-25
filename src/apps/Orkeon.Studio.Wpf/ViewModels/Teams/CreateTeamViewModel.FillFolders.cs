@@ -47,9 +47,9 @@ public sealed class WizardHeldFolderRow
 /// The fill step (STUDIO-57): once the folders are confirmed, when one or more of them are kept
 /// inside the team, the wizard asks whether the user wants to put files or sub-folders in them.
 /// « No » lets the composition go on; « Yes » shows « Open » behind each such folder and
-/// « Continue » below. The engine composes meanwhile — the plan does not depend on the files;
-/// the trial, launched later by the user, reads them — but the wizard waits on the answer: the
-/// step stays, and the trial cannot start, until « No » or « Continue ».
+/// « Continue » below. The engine waits on the answer (<c>folders.filled</c>): it then reads
+/// what the folders hold and designs the team for those files; the wizard holds its step and
+/// the trial until then.
 /// </summary>
 public sealed partial class CreateTeamViewModel
 {
@@ -112,10 +112,21 @@ public sealed partial class CreateTeamViewModel
 
     private void SettleFillStep()
     {
+        if (_model.FillPending && IsEngineRunning)
+        {
+            if (!_client.SendFoldersFilled())
+            {
+                StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning];
+                return;
+            }
+
+            _model.AcknowledgeFill();
+        }
+
         _fillFoldersAnswered = true;
         _isFillingFolders = false;
         RefreshFillStep();
-        // The composition went on meanwhile: the step it reached comes now.
+        // The engine composes from now on; a session that composed already shows its step now.
         SyncFromModel();
     }
 

@@ -1351,7 +1351,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// the <c>edit</c> option, so an edit-only arbitration would read as «not waiting».
     /// </para>
     /// </summary>
-    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking || _model.FoldersPending;
+    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking || _model.FoldersPending || _model.FillPending;
 
     /// <summary>
     /// Whether the trial is genuinely under way.

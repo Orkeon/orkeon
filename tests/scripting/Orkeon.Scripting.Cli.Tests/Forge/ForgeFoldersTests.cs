@@ -301,6 +301,87 @@ public sealed class ForgeFoldersTests : IDisposable
         Assert.DoesNotContain(session.Directory, Event("brief.ready").GetProperty("brief").GetRawText(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// STUDIO-57. With folders kept inside the team, the engine waits on the fill step before it
+    /// designs anything; once settled, what the user dropped in each folder is in the brief —
+    /// names relative to the folder, never a physical path — and <c>folders.filled</c> counts it.
+    /// </summary>
+    [Fact]
+    public async Task The_engine_waits_on_the_fill_step_and_the_brief_names_what_the_user_dropped()
+    {
+        var session = ForgeSession.Create(_workspace, "fill");
+        var channel = new ScriptedUserChannel
+        {
+            WhileFilling = held =>
+            {
+                var workspace = held[0].Directory!;
+                File.WriteAllText(Path.Combine(workspace, "offre.pdf"), "x");
+                Directory.CreateDirectory(Path.Combine(workspace, "lots"));
+                File.WriteAllText(Path.Combine(workspace, "lots", "b.pdf"), "x");
+            },
+        };
+
+        await Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        var wait = Assert.Single(channel.FillWaits);
+        Assert.Equal(["/workspace", "/output"], wait.Select(f => f.Path));
+        var kinds = Events().Select(e => e.GetProperty("kind").GetString()).ToList();
+        Assert.True(kinds.IndexOf("brief.ready") < kinds.IndexOf("folders.filled"));
+
+        var folders = Assert.IsType<ForgeBrief>(session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)).Folders!;
+        Assert.Equal(["lots/", "lots/b.pdf", "offre.pdf"], folders[0].Contents);
+        Assert.Null(folders[1].Contents);
+        Assert.True(ForgeFolders.ListOf(session)!.Filled);
+        Assert.Equal([3, 0], Event("folders.filled").GetProperty("folders").EnumerateArray().Select(f => f.GetProperty("entries").GetInt32()));
+        Assert.DoesNotContain(session.Directory, await File.ReadAllTextAsync(Path.Combine(session.Directory, ForgeSession.BriefFileName), TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    /// <summary>STUDIO-57. A run stopped at the fill step asks it again on resume — without a new interview — and --auto never waits.</summary>
+    [Fact]
+    public async Task A_session_stopped_at_the_fill_step_asks_it_again_and_auto_never_waits()
+    {
+        var session = ForgeSession.Create(_workspace, "fill-resume");
+        var closing = new ScriptedUserChannel { ClosesAtFill = true };
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Engine(session, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), closing))
+                .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.False(ForgeFolders.ListOf(session)!.Filled);
+
+        Assert.True(ForgeSession.TryLoad(session.Directory, out var loaded, out var error), error);
+        var resumed = loaded!;
+        var channel = new ScriptedUserChannel();
+        await Engine(resumed, new BriefStage(new ScriptedAssistant(), channel))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Single(channel.FillWaits);
+        Assert.Empty(channel.ProposedFolders);
+        Assert.True(ForgeFolders.ListOf(resumed)!.Filled);
+
+        var auto = ForgeSession.Create(_workspace, "fill-auto");
+        var unattended = new ScriptedUserChannel();
+        await Engine(auto, new BriefStage(new ScriptedAssistant().SubmitsBrief(ForgeDocuments.ValidBrief), unattended, autoConfirmFolders: true))
+            .RunAsync(stopBefore: ForgeState.Blueprint, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Empty(unattended.FillWaits);
+        Assert.True(ForgeFolders.ListOf(auto)!.Filled);
+    }
+
+    [Fact]
+    public void The_inventory_names_at_most_its_bound_and_counts_the_rest()
+    {
+        var directory = Path.Combine(_workspace, "many");
+        Directory.CreateDirectory(directory);
+        for (var i = 0; i < ForgeFolders.MaxContents + 5; i++)
+            File.WriteAllText(Path.Combine(directory, $"f{i:D2}.txt"), "x");
+
+        var contents = ForgeFolders.Inventory(directory);
+
+        Assert.Equal(ForgeFolders.MaxContents, contents.Count);
+        Assert.Equal("f00.txt", contents[0]);
+        Assert.Equal("... and 6 more", contents[^1]);
+        Assert.Empty(ForgeFolders.Inventory(Path.Combine(_workspace, "absent")));
+    }
+
     [Theory]
     [InlineData("/forge")]
     [InlineData("/credentials")]

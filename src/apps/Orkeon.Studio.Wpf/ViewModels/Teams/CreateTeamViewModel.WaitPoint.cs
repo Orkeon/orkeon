@@ -23,7 +23,7 @@ public enum WizardWaitPoint
 
     /// <summary>
     /// Step 1: « Yes » to the fill question — the folders kept inside the team wait for the
-    /// files and « Continue ». The engine composes meanwhile; Studio holds the step and the trial.
+    /// files and « Continue »; the engine waits on <c>folders.filled</c> to design the team.
     /// </summary>
     FillFolders,
 
@@ -105,9 +105,8 @@ public sealed partial class CreateTeamViewModel
         // the wait point moves the keyboard focus, and it must not take it from under the
         // user's keys. A point a step reached stays named from the other steps, so that
         // « Waiting for you: … » brings it back.
-        // The fill question waits on the user although the engine reads nothing (STUDIO-57):
-        // the engine composes meanwhile, and Studio holds the step and the trial until the
-        // answer, so that the composition does not move on under the question.
+        // The fill step (STUDIO-57): the engine waits on folders.filled — and the wizard holds
+        // the step and the trial on the question even when no engine is alive to wait.
         if (IsFillFoldersQuestion)
             return WizardWaitPoint.AnswerAssistant;
         if (IsFillingFolders)

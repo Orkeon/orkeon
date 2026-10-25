@@ -207,4 +207,54 @@ public partial class CreateTeamWizardTests
         Assert.Equal(WizardWaitPoint.None, vm.WaitPoint);
         Assert.False(vm.Chat.HasPendingAction);
     }
+
+    /// <summary>
+    /// STUDIO-57. The engine waits on the fill step: the session says it waits on the user, the
+    /// question is the wait point, and « No » sends <c>folders.filled</c> — only then does the
+    /// engine compose, and the wizard follows it to step 2.
+    /// </summary>
+    [Fact]
+    public async Task The_engine_waits_on_the_fill_step_and_the_answer_lets_it_compose()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Exception? failure = null;
+        processes.WhileRunning = () =>
+        {
+            processes.WhileRunning = null;
+            processes.Emit(Out(SessionStarted));
+            processes.Emit(Out(FoldersProposedLine(PdfFolders)));
+            vm.ConfirmFoldersCommand.Execute(null);
+        };
+        processes.OnInputLine = line =>
+        {
+            if (line.Contains("\"folders.confirmed\"", StringComparison.Ordinal))
+            {
+                processes.Emit(Out(
+                    """{"v":2,"seq":3,"ts":"t","kind":"brief.ready","brief":{"goal":"g","folders":[{"path":"/inpdf","role":"input"},{"path":"/outmd","role":"output"}]},"heldFolders":[{"path":"/outmd","role":"output","dir":"/ws/.orkeon/forge/veille/folders/outmd"}]}"""));
+                failure = Record.Exception(() =>
+                {
+                    Assert.True(vm.IsSessionWaiting);
+                    Assert.False(vm.IsEngineWorking);
+                    Assert.Equal(WizardWaitPoint.AnswerAssistant, vm.WaitPoint);
+                    Assert.Equal(1, vm.Step);
+                    vm.Chat.Question!.Replies[1].ReplyCommand.Execute(null);
+                });
+            }
+            else if (line.Contains("\"folders.filled\"", StringComparison.Ordinal))
+            {
+                processes.Emit(Out("""{"v":2,"seq":4,"ts":"t","kind":"folders.filled","folders":[{"path":"/outmd","entries":0}]}"""));
+                processes.Emit(Out(PdfBlueprint()));
+                processes.Emit(Out(Paused));
+            }
+        };
+
+        await Compose(vm);
+
+        Assert.Null(failure);
+        Assert.Single(processes.InputLines, line => line == """{"kind":"folders.filled"}""");
+        Assert.False(vm.IsFillFoldersStep);
+        Assert.Equal(2, vm.Step);
+        Assert.True(vm.CanTryTeam);
+    }
 }

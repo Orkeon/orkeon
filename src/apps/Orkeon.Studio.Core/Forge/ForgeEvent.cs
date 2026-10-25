@@ -141,4 +141,11 @@ public static class ForgeEventKinds
     /// is the real directory the user bound behind the folder (absent: inside the team).
     /// </summary>
     public const string FoldersConfirmed = "folders.confirmed";
+
+    /// <summary>
+    /// The fill step settled (STUDIO-57): a stdin line Studio sends on « No » or « Continue »,
+    /// and the event the engine emits once it read what the folders hold (<c>folders</c>:
+    /// <c>path</c>, <c>entries</c>).
+    /// </summary>
+    public const string FoldersFilled = "folders.filled";
 }

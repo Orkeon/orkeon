@@ -119,6 +119,26 @@ internal sealed class ScriptedUserChannel(params string[] messages) : IForgeUser
         ProposedFolders.Add(proposed);
         return Task.FromResult(_folders.Count > 0 ? _folders.Dequeue() : proposed);
     }
+
+    /// <summary>Every held list the fill step waited on, in order.</summary>
+    public List<IReadOnlyList<ForgeFolder>> FillWaits { get; } = [];
+
+    /// <summary>Runs while the engine waits on the fill step — the user dropping files — before it is settled.</summary>
+    public Action<IReadOnlyList<ForgeFolder>>? WhileFilling { get; set; }
+
+    /// <summary>When set, the channel closes at the fill step instead of settling it.</summary>
+    public bool ClosesAtFill { get; set; }
+
+    /// <inheritdoc />
+    public Task<bool> ReadFolderFillAsync(IReadOnlyList<ForgeFolder> held, CancellationToken cancellationToken)
+    {
+        FillWaits.Add(held);
+        if (ClosesAtFill)
+            return Task.FromResult(false);
+
+        WhileFilling?.Invoke(held);
+        return Task.FromResult(true);
+    }
 }
 
 /// <summary>
@@ -189,7 +209,7 @@ public sealed class ForgeStagesTests : IDisposable
         // The stream tells the whole story, ending paused — the folders are proposed between
         // the brief and the plan (STUDIO-46), and brief.ready carries the confirmed list.
         Assert.Equal(
-            ["session.started", "stage.entered", "assistant.message", "folders.proposed", "brief.ready",
+            ["session.started", "stage.entered", "assistant.message", "folders.proposed", "brief.ready", "folders.filled",
              "stage.entered", "blueprint.ready", "stage.entered", "file.written", "file.written",
              "file.written", "file.written", "file.written", "stage.entered", "validation.result",
              "session.finished"],

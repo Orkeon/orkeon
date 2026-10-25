@@ -286,6 +286,16 @@ public sealed class ForgeSessionModel
     public IReadOnlyList<ForgeFolder> HeldFolders { get; private set; } = [];
 
     /// <summary>
+    /// Whether the engine waits on the fill step (STUDIO-57): a <c>brief.ready</c> named held
+    /// folders, and no <c>folders.filled</c> settled them yet — the engine designs nothing
+    /// until then, so that the plan is made for the files the user put there.
+    /// </summary>
+    public bool FillPending { get; private set; }
+
+    /// <summary>Clears the fill wait once the client sent its <c>folders.filled</c>.</summary>
+    public void AcknowledgeFill() => FillPending = false;
+
+    /// <summary>
     /// The confirmed folders, as the brief carries them (<c>brief.ready</c>): the list every
     /// folder surface of the team follows. Empty until a brief settles it.
     /// </summary>
@@ -463,6 +473,7 @@ public sealed class ForgeSessionModel
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
                 HeldFolders = [];
+                FillPending = false;
                 FoldersConfirmed = false;
                 ProposedFoldersAreDefaults = false;
                 ReferenceUseCaseId = ReadReferenceId(orkeonEvent);
@@ -477,6 +488,7 @@ public sealed class ForgeSessionModel
                 if (ForgeMilestones.FromStage(Stage) is { } milestone)
                     Milestone = milestone;
                 _decisionOptions.Clear();
+                FillPending = false;
                 break;
 
             // A closed question is the assistant taking its turn: it must reach the
@@ -497,7 +509,12 @@ public sealed class ForgeSessionModel
             case ForgeEventKinds.BriefReady:
                 ReadBrief(orkeonEvent);
                 HeldFolders = ReadFolders(orkeonEvent.Root, "heldFolders");
+                FillPending = HeldFolders.Count > 0;
                 FoldersPending = false;
+                break;
+
+            case ForgeEventKinds.FoldersFilled:
+                FillPending = false;
                 break;
 
             case ForgeEventKinds.BlueprintReady:
@@ -580,6 +597,7 @@ public sealed class ForgeSessionModel
                 FinishedStatus = orkeonEvent.GetString("status");
                 _decisionOptions.Clear();
                 FoldersPending = false;
+                FillPending = false;
                 // Ready is the engine's ordinary stop — no runner, no stage.entered — and
                 // for the user it IS the Adopt milestone: the crew waits to be taken.
                 if (string.Equals(FinishedStatus, "ready", StringComparison.Ordinal))

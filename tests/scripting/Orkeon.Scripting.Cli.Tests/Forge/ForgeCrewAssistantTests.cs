@@ -300,6 +300,35 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     }
 
     /// <summary>
+    /// STUDIO-57. What the user put in a folder kept inside the team reaches the design prompt,
+    /// by names relative to the folder, so the tasks are made for the files that are there.
+    /// </summary>
+    [Fact]
+    public async Task ShouldNameWhatTheUserPutInAFolder_InTheDesignPrompt()
+    {
+        var provider = new ScriptedLlmProvider().Answers("(no submission)");
+        var assistant = Build(provider);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        brief = brief! with
+        {
+            Folders =
+            [
+                new ForgeFolder { Path = "/workspace", Role = "input", Purpose = "Les offres", Contents = ["a.pdf", "lots/", "lots/b.pdf"] },
+                new ForgeFolder { Path = "/output", Role = "output", Purpose = "Les résumés" },
+            ],
+        };
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = provider.Chats[0][0].Content;
+        Assert.Contains("The user put in it: a.pdf, lots/, lots/b.pdf", header, StringComparison.Ordinal);
+        Assert.Contains("design the tasks for them", header, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// D-03, measured: the same composition with and without the same use case. The reference
     /// adds its section to the stable header and nothing else, within the bound of its outline
     /// plus the section's fixed text.

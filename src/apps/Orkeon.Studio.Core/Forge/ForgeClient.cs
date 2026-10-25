@@ -643,6 +643,13 @@ public sealed class ForgeClient
         });
     }
 
+    /// <summary>
+    /// Settles the fill step (STUDIO-57): the files are in the folders kept inside the team, or
+    /// there is nothing to put there — one <c>folders.filled</c> line, after which the engine
+    /// reads what the folders hold and designs the team. False when no child is listening.
+    /// </summary>
+    public bool SendFoldersFilled() => WriteLine(new { kind = ForgeEventKinds.FoldersFilled });
+
     /// <summary>One folder on the wire: <c>dir</c> omitted when the folder lives inside the team.</summary>
     private sealed record ForgeFolderWire(
         [property: System.Text.Json.Serialization.JsonPropertyName("path")] string Path,

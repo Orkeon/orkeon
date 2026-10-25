@@ -37,8 +37,10 @@ places is no longer shown as « no folder chosen », and the « Your brief » ca
 The assistant's questions move into the side panel: each is a bubble with its answers as buttons, the recommended one first
 and focused — the options the engine lists under its question, then « I don't know ». The trial's arbitration and « Do you
 want to put files in the folders? » leave the main column for the panel, which opens itself on a new question.
-That question now waits for its answer: the engine still composes meanwhile, but the wizard keeps its step and « Try the
-team » stays off until « No » or « Continue » (« Waiting for you: fill the folders »).
+That question now waits for its answer, in the engine too: with folders kept inside the team, `orkeon forge` waits after
+`brief.ready` for `folders.filled` on stdin (Enter in the terminal; `--auto` does not wait), then adds what each folder
+holds to the brief (`contents`), so the plan is designed for the files the user dropped. Studio sends it on « No » or
+« Continue », keeps its step and « Try the team » off until then (« Waiting for you: fill the folders »).
 
 ### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
 
