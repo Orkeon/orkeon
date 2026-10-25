@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
+
+The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A
+Trial | Real switch picks the launcher on show. Each mode keeps its own launcher, so what the engine receives does not
+change: a trial records no history and stamps no last run, and both launchers can run at once. The team picker, Check
+and Launch share the action line of the team card. The trial can now be reached in Novice mode, from the switch, from
+the « Try out » button of a team card, from « Test it first » after an import, and from the Test group of the status bar.
+`TestTeamViewModel`, `TestTeamView` and the Test entry of the sidebar are removed; `MainWindowViewModel.Test` becomes
+`MainWindowViewModel.Run` (`Run.Real`, `Run.Trial`).
+
+The screens share new controls (`Alert`, `Badge`, `PropertyRow`, `PageHeader`, `ActionBar`) and button styles (`BtnPrimary`,
+`BtnSecondary`, `BtnDanger`, with a `ButtonSize`). The accent colour is now teal. The assistant moves from the three
+screens that each embedded it into one side panel, opened with « Ask the assistant » in the title bar. My teams gets
+card action bars, one banner for refused scheduled runs and an Undo toast after an archive. Create a team shows one step
+per screen behind a stepper. The French wording follows one lexicon (Équipe, Modèle, Essai, Vérifier, Lancer, real plurals).
+A guard test refuses a resource dictionary that declares the same key twice: a duplicated icon key stopped Studio at startup.
+
 ### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
 
 Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by

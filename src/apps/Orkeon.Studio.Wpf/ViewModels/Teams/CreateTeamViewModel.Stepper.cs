@@ -128,8 +128,15 @@ public sealed partial class CreateTeamViewModel
             if (Checklist.Count == 0 || VerdictIsMechanical)
                 return string.Empty;
 
-            var met = Checklist.Count(line => line.Passed == true && !line.IsRemark);
-            return _strings.Format(StudioStringKeys.WizardVerdictSummary, met, Checklist.Count);
+            // The criteria are the checklist's last lines; the findings that name none come first
+            // and are not criteria. A remark blocks nothing, so its criterion is met (the engine's
+            // own rule for « passing »).
+            var criteria = Math.Min(_model.Criteria.Count, Checklist.Count);
+            if (criteria == 0)
+                return string.Empty;
+
+            var met = Checklist.Skip(Checklist.Count - criteria).Count(line => line.Passed == true || line.IsRemark);
+            return _strings.Format(StudioStringKeys.WizardVerdictSummary, met, criteria);
         }
     }
 

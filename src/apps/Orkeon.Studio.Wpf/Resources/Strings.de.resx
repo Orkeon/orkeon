@@ -2954,10 +2954,10 @@
     <value>Neuer Name</value>
   </data>
   <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
-    <value>Nicht umbenannt: Das Team läuft gerade unter „Ausführen“ — warten Sie das Ende des Laufs ab.</value>
+    <value>Nicht umbenannt: Ein Lauf des Teams läuft gerade unter „Ausführen“ — warten Sie sein Ende ab.</value>
   </data>
   <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
-    <value>Nicht umbenannt: Das Team läuft gerade unter „Erproben“ — warten Sie das Ende der Erprobung ab.</value>
+    <value>Nicht umbenannt: Eine Erprobung des Teams läuft gerade unter „Ausführen“ — warten Sie ihr Ende ab.</value>
   </data>
   <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
     <value>Nicht umbenannt: Das Team ist im Assistenten geöffnet — speichern Sie es zuerst unter „Meine Teams“ oder beginnen Sie dort neu.</value>
@@ -3015,7 +3015,7 @@
     <value>Archiv ({0})</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>Archivierte Teams verlassen die Liste, die Auswahl von Erproben und das Guthaben; ihre Ordner, Sitzungen und ihr Verlauf bleiben, wo sie sind. „Wiederherstellen“ holt ein Team zu den anderen zurück.</value>
+    <value>Archivierte Teams verlassen die Liste, die Auswahl von „Ausführen“ und das Guthaben; ihre Ordner, Sitzungen und ihr Verlauf bleiben, wo sie sind. „Wiederherstellen“ holt ein Team zu den anderen zurück.</value>
   </data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>Archivieren</value>
@@ -3670,4 +3670,8 @@
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>Probelauf starten</value></data>
   <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Diagnose öffnen</value></data>
+  <data name="Studio.Run.Stop" xml:space="preserve"><value>Anhalten</value></data>
+  <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>Ändert nichts ohne Ihre Zustimmung</value></data>
+  <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Ihre Frage</value></data>
+  <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>Der Text Token für Token erscheint nur mit dem Fortschritt: Aktivieren Sie „Fortschritt statt Rohausgabe anzeigen“.</value></data>
 </root>

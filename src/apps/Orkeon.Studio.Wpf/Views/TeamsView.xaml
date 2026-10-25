@@ -247,7 +247,7 @@
               <StackPanel>
                 <!-- The title wraps, never trimmed; the badge rides on its last line and never
                      shrinks (an InlineUIContainer, not a column). One status: this badge. -->
-                <TextBlock Style="{StaticResource ObjectTitle}">
+                <TextBlock Style="{StaticResource ObjectTitle}" FontSize="17">
                   <Run Text="{Binding Name, Mode=OneWay}"/>
                   <InlineUIContainer BaselineAlignment="Center">
                     <Border Margin="8,0,0,0">
@@ -416,7 +416,7 @@
                          screen's banner. -->
                     <controls:LucideIcon DockPanel.Dock="Right" Kind="triangle-alert" Size="16" Margin="8,0,0,0"
                                          VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"
-                                         Background="Transparent" ToolTip="{Binding ScheduledRunLine}"
+                                         Background="Transparent" Focusable="True" ToolTip="{Binding ScheduledRunLine}"
                                          AutomationProperties.Name="{Binding ScheduledRunLine}"
                                          Visibility="{Binding HasScheduledRunLine, Converter={StaticResource BooleanToVisibility}}"/>
                     <TextBlock FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"

@@ -378,6 +378,10 @@
                                Visibility="{Binding IsDraftSaved, Converter={StaticResource BooleanToVisibility}}"/>
           <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Text="{Binding SessionStateLabel}"
                      Visibility="{Binding HasSessionState, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- The engine build that drives the session: a stale binary must not look like a working one. -->
+          <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center"
+                     Text="{Binding EngineLabel}"
+                     Visibility="{Binding HasEngineVersion, Converter={StaticResource BooleanToVisibility}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="10,0,0,0"
                   Command="{Binding ResumeHereCommand}"
                   Visibility="{Binding IsSessionPaused, Converter={StaticResource BooleanToVisibility}}">

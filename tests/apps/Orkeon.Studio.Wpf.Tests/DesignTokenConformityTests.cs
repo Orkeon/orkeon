@@ -105,6 +105,20 @@ public sealed partial class DesignTokenConformityTests
         Assert.True(offenders.Count == 0, "Key declared twice in one dictionary: " + string.Join(", ", offenders));
     }
 
+    [Fact]
+    public void Should_Name_Its_Radio_Groups_Per_Instance_When_A_View_Is_Shown_Twice_In_The_Window()
+    {
+        // The Launch screen holds two LaunchTabView (real, trial): WPF groups radios by name across
+        // the whole window, so a literal GroupName made the two launchers uncheck each other.
+        var view = XDocument.Load(Path.Combine(WpfSourceRoot(), "Views", "LaunchTabView.xaml"));
+        var literal = view.Descendants()
+            .Select(e => (string?)e.Attribute("GroupName"))
+            .Where(name => name is not null && !name.StartsWith("{Binding", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(literal.Count == 0, "Literal GroupName in LaunchTabView: " + string.Join(", ", literal));
+    }
+
     private static string Theme(string fileName) =>
         Path.Combine(WpfSourceRoot(), "Themes", fileName);
 

@@ -23,6 +23,7 @@ public sealed class ActionBar : Panel
 
     private readonly Button _more;
     private readonly List<UIElement> _hidden = [];
+    private readonly HashSet<Control> _untabbed = [];
 
     public ActionBar()
     {
@@ -106,6 +107,11 @@ public sealed class ActionBar : Panel
             child.Arrange(new Rect(x, y, child.DesiredSize.Width, child.DesiredSize.Height));
             child.Clip = null;
             child.IsHitTestVisible = true;
+            if (child is Control shownControl && _untabbed.Remove(shownControl))
+            {
+                shownControl.SetCurrentValue(Control.IsTabStopProperty, true);
+            }
+
             x += child.DesiredSize.Width + Gap;
         }
 
@@ -114,6 +120,12 @@ public sealed class ActionBar : Panel
             child.Arrange(new Rect(0, 0, 0, 0));
             child.Clip = Geometry.Empty;
             child.IsHitTestVisible = false;
+            // A button gone to the menu is reached from the menu, never by Tab on an empty spot.
+            if (child is Control { IsTabStop: true } hiddenControl)
+            {
+                hiddenControl.SetCurrentValue(Control.IsTabStopProperty, false);
+                _untabbed.Add(hiddenControl);
+            }
         }
 
         foreach (var child in InternalChildren.Cast<UIElement>().Where(c => c.Visibility == Visibility.Collapsed))
@@ -141,6 +153,17 @@ public sealed class ActionBar : Panel
                 IsEnabled = button.IsEnabled,
                 ToolTip = button.ToolTip,
             };
+            if (FirstIcon(button) is { } icon)
+            {
+                item.Icon = new LucideIcon { Kind = icon.Kind, Size = 14 };
+            }
+
+            // A destructive action keeps its colour in the menu (R2).
+            if (ReferenceEquals(button.Style, button.TryFindResource("BtnDanger")))
+            {
+                item.SetResourceReference(Control.ForegroundProperty, "DangerBrush");
+            }
+
             ToolTipService.SetShowOnDisabled(item, true);
             var target = button;
             item.Click += (_, _) => Invoke(target);
@@ -173,6 +196,24 @@ public sealed class ActionBar : Panel
             DependencyObject tree => FirstText(tree) ?? "",
             _ => "",
         };
+    }
+
+    private static LucideIcon? FirstIcon(DependencyObject node)
+    {
+        if (node is LucideIcon icon)
+        {
+            return icon;
+        }
+
+        foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
+        {
+            if (FirstIcon(child) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static string? FirstText(DependencyObject node)

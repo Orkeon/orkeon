@@ -2954,10 +2954,10 @@
     <value>新名称</value>
   </data>
   <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
-    <value>未重命名：该团队正在「执行」界面中运行——请等待运行结束。</value>
+    <value>未重命名：该团队正在「执行」界面中运行——请等待其结束。</value>
   </data>
   <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
-    <value>未重命名：该团队正在「试运行」界面中运行——请等待试运行结束。</value>
+    <value>未重命名：该团队正在「执行」界面中试运行——请等待其结束。</value>
   </data>
   <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
     <value>未重命名：该团队正在助手中打开——请先将其保存到我的团队，或在助手中重新开始。</value>
@@ -3015,7 +3015,7 @@
     <value>归档（{0}）</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>已归档的团队不再出现在列表、试运行的选择器和余额中；它们的文件夹、会话和历史保持原样。“恢复”可让团队回到其他团队之中。</value>
+    <value>已归档的团队不再出现在列表、「执行」界面的选择器和余额中；它们的文件夹、会话和历史保持原样。“恢复”可让团队回到其他团队之中。</value>
   </data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>归档</value>
@@ -3670,4 +3670,8 @@
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>团队</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>开始试运行</value></data>
   <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>打开诊断</value></data>
+  <data name="Studio.Run.Stop" xml:space="preserve"><value>停止</value></data>
+  <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>未经您同意不做任何更改</value></data>
+  <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>您的问题</value></data>
+  <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>逐个令牌的文本仅在显示进度时出现：请勾选「显示进度，而不是原始输出」。</value></data>
 </root>

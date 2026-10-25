@@ -349,6 +349,8 @@
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.StreamGeneratedText}"
                       IsEnabled="{Binding Options.CanStreamGeneratedText}"
+                      ToolTipService.ShowOnDisabled="True"
+                      ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
                       Content="{Binding [Studio.Run.Stream], Source={x:Static services:I18n.Instance}}"/>
             <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
                       IsChecked="{Binding Options.LlmLogEnabled}"
@@ -366,10 +368,10 @@
           <StackPanel Margin="13,4,0,4"
                       Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
             <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
-            <RadioButton Margin="0,8,0,0" GroupName="RunSettings" Checked="OnSettingsAutomaticChecked"
+            <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                          IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
                          Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton Margin="0,5,0,0" GroupName="RunSettings" Checked="OnSettingsExplicitChecked"
+            <RadioButton Margin="0,5,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsExplicitChecked"
                          IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
                          Content="{Binding [Studio.Run.SettingsExplicit], Source={x:Static services:I18n.Instance}}"/>
             <DockPanel Margin="0,7,0,0">
@@ -633,8 +635,19 @@
         </Style>
       </Border.Style>
       <StackPanel>
-        <!-- #117: one status, the badge beside the title. -->
-        <WrapPanel Margin="0,0,0,8">
+        <!-- #117: one status, the badge beside the title; [Arrêter] on the right while the run lives,
+             in both modes - a novice trial has no other way to stop. -->
+        <DockPanel Margin="0,0,0,8" LastChildFill="True">
+          <Button x:Name="StopRun" DockPanel.Dock="Right" Style="{StaticResource BtnDanger}" VerticalAlignment="Center"
+                  Command="{Binding CancelCommand}"
+                  Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="square" Size="13" Margin="0,0,7,0"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+              <TextBlock Text="{Binding [Studio.Run.Stop], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+        <WrapPanel>
           <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
                      Text="{Binding RunStateTitle}"/>
           <Border x:Name="RunBadge" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -675,6 +688,7 @@
             <TextBlock Style="{StaticResource BadgeText}" Text="{Binding RunBadgeText}"/>
           </Border>
         </WrapPanel>
+        </DockPanel>
 
         <!-- While it runs: the plain-language state and the meter. Once it has a result (#117): one
              mono line — tokens · cache · duration · model — under the badge that says how it went.

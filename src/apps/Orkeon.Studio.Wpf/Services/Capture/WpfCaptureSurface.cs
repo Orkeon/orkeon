@@ -59,7 +59,7 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
         CaptureScreen.Create => Window.CreatePanel,
         CaptureScreen.Teams => Window.TeamsPanel,
         CaptureScreen.Import => Window.ImportPanel,
-        CaptureScreen.Run => Window.RunPanel,
+        CaptureScreen.Run or CaptureScreen.Test => Window.RunPanel,
         CaptureScreen.History => Window.HistoryPanel,
         CaptureScreen.Diagnostic => Window.DiagPanel,
         _ => Window.SettingsPanel,

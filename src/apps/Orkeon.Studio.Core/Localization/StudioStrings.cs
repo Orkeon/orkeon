@@ -3139,8 +3139,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagOrphanFolder] = "Its team folder is gone: {0}",
         [StudioStringKeys.DiagOrphanCleanFailed] = "The session could not be deleted — one of its files may be open.",
 
-        [StudioStringKeys.TeamsRenameBusyRunning] = "Not renamed: the team is running on the Run screen — wait for the run to end.",
-        [StudioStringKeys.TeamsRenameBusyTesting] = "Not renamed: the team is running on the Test screen — wait for the trial to end.",
+        [StudioStringKeys.TeamsRenameBusyRunning] = "Not renamed: a run of the team is in flight on the Run screen — wait for it to end.",
+        [StudioStringKeys.TeamsRenameBusyTesting] = "Not renamed: a trial of the team is running on the Run screen — wait for it to end.",
         [StudioStringKeys.TeamsRenameBusyWizard] = "Not renamed: the team is open in the assistant — save it to My teams or start over there first.",
         [StudioStringKeys.TeamsRenameFailed] = "The rename did not go through: {0}",
         [StudioStringKeys.TeamsRenamed] = "Team renamed “{0}” — its folder is now {1}.",

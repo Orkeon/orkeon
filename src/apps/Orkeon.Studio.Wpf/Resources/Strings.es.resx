@@ -2954,10 +2954,10 @@
     <value>Nuevo nombre</value>
   </data>
   <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
-    <value>No se renombró: el equipo se está ejecutando en la pantalla Ejecutar — espere a que termine la ejecución.</value>
+    <value>No se renombró: una ejecución del equipo está en curso en la pantalla Ejecutar — espere a que termine.</value>
   </data>
   <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
-    <value>No se renombró: el equipo se está probando en la pantalla Probar — espere a que termine la prueba.</value>
+    <value>No se renombró: una prueba del equipo está en curso en la pantalla Ejecutar — espere a que termine.</value>
   </data>
   <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
     <value>No se renombró: el equipo está abierto en el asistente — guárdelo en Mis equipos o empiece de nuevo allí primero.</value>
@@ -3015,7 +3015,7 @@
     <value>Archivados ({0})</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>Los equipos archivados salen de la lista, del selector de Probar y del saldo; sus carpetas, sesiones e historial se quedan donde están. « Restaurar » devuelve un equipo junto a los demás.</value>
+    <value>Los equipos archivados salen de la lista, del selector de la pantalla Ejecutar y del saldo; sus carpetas, sesiones e historial se quedan donde están. « Restaurar » devuelve un equipo junto a los demás.</value>
   </data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>Archivar</value>
@@ -3670,4 +3670,8 @@
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Equipo</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>Lanzar la prueba</value></data>
   <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Abrir el diagnóstico</value></data>
+  <data name="Studio.Run.Stop" xml:space="preserve"><value>Detener</value></data>
+  <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>No cambia nada sin su consentimiento</value></data>
+  <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Su pregunta</value></data>
+  <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>El texto token a token solo se muestra con el progreso: marque « Mostrar el progreso en vez de la salida bruta ».</value></data>
 </root>

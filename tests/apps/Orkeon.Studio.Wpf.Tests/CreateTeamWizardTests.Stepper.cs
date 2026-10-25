@@ -158,8 +158,26 @@ public partial class CreateTeamWizardTests
         Assert.True(remark.IsRemark);
         Assert.False(remark.IsFailure);
         Assert.True(vm.Checklist[1].Passed);
-        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 1, 2), vm.VerdictSummary);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
         Assert.True(vm.HasVerdictSummary);
+    }
+
+    [Fact]
+    public async Task A_finding_that_names_no_criterion_is_shown_but_not_counted_as_a_criterion()
+    {
+        var (vm, processes, _) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefTwoCriteria));
+            processes.Emit(Out(
+                """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.8,"passing":true,"judge":"llm","findings":[{"id":"F1","severity":"minor","statement":"Un fichier en trop"}],"suggestions":[]}"""));
+        };
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.Equal(3, vm.Checklist.Count);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
     }
 
     [Fact]
