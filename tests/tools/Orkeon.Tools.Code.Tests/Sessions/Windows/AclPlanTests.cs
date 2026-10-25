@@ -60,6 +60,39 @@ public sealed class AclPlanTests
     }
 
     [Fact]
+    [Trait("BR", "GH-188")]
+    public void ShouldGrantModifyOnTheGitDirsOnly_UnderAReadOnlyCommonDir()
+    {
+        // A linked worktree's binds: the common dir read-only, what a commit writes read-write over it,
+        // then overrides narrowed to read-only on hooks (an admin's widening) and on refs/heads.
+        ConfinedPath[] paths =
+        [
+            new(@"C:\repo\.git", "/workspace/.git", ConfinedAccess.ReadOnly),
+            new(@"C:\repo\.git\objects", "/workspace/.git/objects", ConfinedAccess.ReadWrite),
+            new(@"C:\repo\.git\refs", "/workspace/.git/refs", ConfinedAccess.ReadWrite),
+            new(@"C:\repo\.git\worktrees\p1", "/workspace/.git/worktrees/p1", ConfinedAccess.ReadWrite),
+            new(@"C:\repo\.git\hooks", "/workspace/.git/hooks", ConfinedAccess.ReadOnly),
+            new(@"C:\repo\.git\refs\heads", "/workspace/.git/refs/heads", ConfinedAccess.ReadOnly),
+        ];
+
+        var plan = AclPlan.Build(paths, []);
+        var isolations = AclPlan.Isolations(paths, []);
+
+        Assert.Equal(
+        [
+            new AclEntry(@"C:\repo\.git", AclRights.ReadAndExecute, Deny: false),
+            new AclEntry(@"C:\repo\.git\hooks", AclRights.ReadAndExecute, Deny: false),
+            new AclEntry(@"C:\repo\.git\objects", AclRights.Modify, Deny: false),
+            new AclEntry(@"C:\repo\.git\refs", AclRights.Modify, Deny: false),
+            new AclEntry(@"C:\repo\.git\refs\heads", AclRights.ReadAndExecute, Deny: false),
+            new AclEntry(@"C:\repo\.git\refs\heads", AclRights.Write, Deny: true),
+            new AclEntry(@"C:\repo\.git\worktrees\p1", AclRights.Modify, Deny: false),
+        ], plan);
+        // Nothing grants Modify above the common dir: only the ref narrowed under refs is cut off.
+        Assert.Equal([@"C:\repo\.git\refs\heads"], isolations);
+    }
+
+    [Fact]
     public void ShouldNotDenyWriting_OnAReadOnlyMountBesideAReadWriteOneWithAPrefixInCommon()
     {
         var plan = AclPlan.Build(

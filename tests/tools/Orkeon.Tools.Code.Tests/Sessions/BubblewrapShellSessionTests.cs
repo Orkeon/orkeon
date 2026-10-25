@@ -108,7 +108,16 @@ public sealed class BubblewrapShellSessionTests
             Git(repo, "commit", "-q", "-m", "init");
             Git(repo, [ "worktree", "add", "-q", .. relativePaths ? ["--relative-paths"] : Array.Empty<string>(),
                 "-b", "probe-p1", ".orkeon/worktrees/p1", "main" ]);
+            Git(repo, [ "worktree", "add", "-q", .. relativePaths ? ["--relative-paths"] : Array.Empty<string>(),
+                "-b", "probe-p2", ".orkeon/worktrees/p2", "main" ]);
             await File.WriteAllTextAsync(Path.Combine(repo, ".orkeon", "worktrees", "p1", "f.txt"), "from the agent", Ct);
+            var gitDir = Path.Combine(repo, ".git");
+            var config = await File.ReadAllTextAsync(Path.Combine(gitDir, "config"), Ct);
+            var otherHead = await File.ReadAllTextAsync(Path.Combine(gitDir, "worktrees", "p2", "HEAD"), Ct);
+            // The common dir as the process sees it: at its virtual path (named relative to the root, since
+            // the tool refuses a virtual path argument outside the root before the kernel sees it), or at
+            // the host path the .git file names.
+            var common = relativePaths ? "../../../.git" : gitDir;
 
             const string root = "/workspace/.orkeon/worktrees/p1";
             using var tool = new ShellCommandTool(new DiskBackedFileSystemService(repo, "/workspace"), allowInterpreters: true)
@@ -117,13 +126,32 @@ public sealed class BubblewrapShellSessionTests
                 Sessions = new ShellSessionManager(),
             };
             Dictionary<string, object?> status, add, commit, mainTree;
+            var tampering = new List<(string Command, Dictionary<string, object?> Result)>();
             await using (AgentRunScope.Begin("agent-1", "dev", root))
             {
                 status = await RunAsync(tool, "git status --porcelain=v1 -b", root);
                 add = await RunAsync(tool, "git add f.txt", root);
                 commit = await RunAsync(tool, "git commit -q -m add-f", root);
                 mainTree = await RunAsync(tool, "cat ../../../README.md", root);
+                // What the user's git reads in the common dir is read-only to the agent.
+                foreach (var command in new[]
+                {
+                    // git is the one writer the default allow list holds: each of these writes a lock file
+                    // in the directory, or creates the directory.
+                    $"git config --file {common}/hooks/pre-commit core.pwned true",
+                    $"git config --file {common}/config core.hooksPath /tmp",
+                    $"git init -q --bare {common}/modules/x",
+                    $"git config --file {common}/worktrees/p2/HEAD core.pwned true",
+                })
+                    tampering.Add((command, await RunAsync(tool, command, root)));
             }
+
+            // Each target directory exists, so only the read-only bind makes these fail (git's messages follow the locale).
+            Assert.All(tampering, t => Assert.True(!Equals(t.Result["exit_code"], 0), $"`{t.Command}` succeeded"));
+            Assert.False(File.Exists(Path.Combine(gitDir, "hooks", "pre-commit")));
+            Assert.False(Directory.Exists(Path.Combine(gitDir, "modules")));
+            Assert.Equal(config, await File.ReadAllTextAsync(Path.Combine(gitDir, "config"), Ct));
+            Assert.Equal(otherHead, await File.ReadAllTextAsync(Path.Combine(gitDir, "worktrees", "p2", "HEAD"), Ct));
 
             Assert.Equal(0, status["exit_code"]);
             Assert.StartsWith("## probe-p1", status["stdout"]!.ToString(), StringComparison.Ordinal);

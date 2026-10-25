@@ -75,18 +75,38 @@ agent's **shell session**, which the operating system confines
 - **Agent working root.** An agent that declares a
   [working root](vfs-compliance.md#agent-working-root-vs-mount) sees, of the mount that holds it,
   the root alone. When the root is a linked git worktree (its `.git` is a file,
-  `gitdir: <path>`, written by `git worktree add`), the worktree's git dir
-  (`<main>/.git/worktrees/<name>`) and the common dir its `commondir` names (`<main>/.git`) are
-  bound too, with the root's rights, so `git status`, `git add` and `git commit` work there and
-  commit on the worktree's branch; the common dir's `config` and `hooks` are bound read-only (they
-  name programs git runs on the host). Nothing else of the main checkout is bound: its working
-  tree stays out of reach. A relative gitdir (`git worktree add --relative-paths`, git 2.48 and
-  later) is resolved against the root's virtual path and bound at virtual paths; an absolute one
-  that names the host's path (plain `git worktree add`) is bound at that host path, and only when
-  it lies under the mount's physical root. A gitdir or commondir that leaves the mount, holds the
-  root, cannot be read or is not a worktree layout binds nothing (logged at Debug). All three
-  backends take these paths from the same list: Seatbelt and AppContainer grant them at their
-  physical paths, where git finds them through a relative or a host-path gitdir.
+  `gitdir: <path>`, written by `git worktree add`), git commits through two directories outside
+  it, which are bound after every other path of the mount so that `git status`, `git add` and
+  `git commit` work there and commit on the worktree's branch:
+  - the repository's common dir (`<main>/.git`) **read-only** as a whole: its `config`, `hooks`,
+    `info`, `modules`, the other worktrees' git dirs, and anything created there later, are read
+    by the user's own git in the main checkout, so the agent can neither change nor add them;
+  - over it, **read-write** (capped by the root's rights and the rights in force there):
+    `<common>/objects`, `<common>/refs`, `<common>/logs` (each only when it is a directory, not a
+    symlink; a repository without `logs/` cannot record reflogs from the agent) and the worktree's
+    own git dir (`<common>/worktrees/<name>`), which was already the agent's in effect since git
+    in the worktree trusts the `.git` file of the root;
+  - then the mount's overrides under these directories, each narrowed to the lesser of what it
+    grants and what the git rule grants there: an override narrows a git dir (a read-only
+    `refs/heads` stays read-only) but never widens one (a read-write override on the common dir
+    leaves its `hooks` and `config` read-only).
+
+  Nothing is bound unless every check holds: the gitdir sits in a `worktrees` directory and the
+  common dir is its grandparent; its `commondir` names exactly that common dir; its back-link
+  `gitdir` names exactly this root's `.git` (an agent cannot point its `.git` at another
+  worktree's git dir); both have the git layout; both lie on the mount outside the root and do not
+  hold it; and no component of their path below the mount's root is a symlink, read through the
+  VFS without following the last link (the VFS resolves paths lexically, while the kernel follows
+  links when it binds a source). A gitdir, commondir or back-link may be relative (to the
+  directory that holds the file; `git worktree add --relative-paths`, git 2.48 and later), a
+  virtual path, or a host path under the mount's physical root (plain `git worktree add`), bound
+  at that host path. Anything else binds nothing and is logged at Debug. The checks run when the
+  command starts; what a job of the same agent may write meanwhile lies in `objects`, `refs`,
+  `logs` or the gitdir, none of which is a component of the checked paths. Nothing else of the
+  main checkout is bound: its working tree stays out of reach. The three backends take these
+  paths from the same list and give a read-only parent with read-write children the same rights:
+  bubblewrap binds deeper paths last, Seatbelt writes them last (its last matching rule wins),
+  AppContainer grants Modify on the children over an inherited read-and-execute.
 - **Jobs.** `action = start_job` runs an allowlisted command detached, with the same confinement
   as a blocking call, and returns a `job_id` and the virtual path of its output file,
   `/output/jobs/<id>.log` (the first mount with Write rights when `/output` is not writable;
