@@ -172,12 +172,8 @@ internal static class ChatReplyReader
             text = text.Remove(at, mark.Length);
         }
 
-        foreach (var cut in Cuts)
-        {
-            var at = text.IndexOf(cut, StringComparison.Ordinal);
-            if (at > 0)
-                text = text[..at];
-        }
+        foreach (var at in Cuts.Select(cut => text.IndexOf(cut, StringComparison.Ordinal)).Where(at => at > 0))
+            text = text[..at];
 
         return (text.Trim().TrimEnd('.', ';', ',', '?', ' '), recommended);
     }

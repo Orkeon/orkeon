@@ -27,17 +27,13 @@ public static partial class CrewAgentRoles
         try
         {
             var roles = new List<string>();
-            foreach (var file in CrewLlmDeclarations.YamlFilesOf(targetPath))
+            // A task file names its agent, it declares none.
+            var agentFiles = CrewLlmDeclarations.YamlFilesOf(targetPath).Where(file =>
+                !string.Equals(Path.GetFileName(Path.GetDirectoryName(file)), "tasks", StringComparison.OrdinalIgnoreCase));
+            foreach (var file in agentFiles)
             {
-                // A task file names its agent, it declares none.
-                if (string.Equals(Path.GetFileName(Path.GetDirectoryName(file)), "tasks", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                foreach (var role in Of(File.ReadAllLines(file)))
-                {
-                    if (!roles.Contains(role, StringComparer.OrdinalIgnoreCase))
-                        roles.Add(role);
-                }
+                foreach (var role in Of(File.ReadAllLines(file)).Where(role => !roles.Contains(role, StringComparer.OrdinalIgnoreCase)))
+                    roles.Add(role);
             }
 
             return roles;
@@ -54,12 +50,8 @@ public static partial class CrewAgentRoles
         ArgumentNullException.ThrowIfNull(lines);
 
         var roles = new List<string>();
-        foreach (var line in lines)
+        foreach (var match in lines.Select(line => RoleKey().Match(line)).Where(match => match.Success))
         {
-            var match = RoleKey().Match(line);
-            if (!match.Success)
-                continue;
-
             var value = match.Groups["value"].Value;
             var hash = value.IndexOf(" #", StringComparison.Ordinal);
             if (hash >= 0)

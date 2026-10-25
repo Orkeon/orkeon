@@ -285,11 +285,11 @@ public sealed partial class LaunchTabViewModel
         get
         {
             var rows = new List<RunFolderRow>();
-            foreach (var mount in Mounts.ResolvedTeamMounts)
+            var definitions = Mounts.ResolvedTeamMounts
+                .Select(mount => MountDefinition.TryParse(mount.Effective, out var parsed, out _) ? parsed : null)
+                .OfType<MountDefinition>();
+            foreach (var definition in definitions)
             {
-                if (!MountDefinition.TryParse(mount.Effective, out var definition, out _) || definition is null)
-                    continue;
-
                 var writable = definition.Rights != MountRights.ReadOnly;
                 rows.Add(new(
                     definition.VirtualPath,
@@ -603,11 +603,9 @@ public sealed partial class LaunchTabViewModel
     private void RebuildAgentLanes()
     {
         var names = new List<string>(_crewRoles);
-        foreach (var title in Progress.Tasks.Select(t => t.Title).Concat(Progress.RunningTasks.Select(t => t.Title)))
-        {
-            if (!names.Contains(title, StringComparer.OrdinalIgnoreCase))
-                names.Add(title);
-        }
+        var titles = Progress.Tasks.Select(t => t.Title).Concat(Progress.RunningTasks.Select(t => t.Title));
+        foreach (var title in titles.Where(title => !names.Contains(title, StringComparer.OrdinalIgnoreCase)))
+            names.Add(title);
 
         AgentLanes.Clear();
         foreach (var name in names)

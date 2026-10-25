@@ -143,9 +143,10 @@ public sealed class TeamLastRunConverter : IValueConverter
 {
     /// <inheritdoc />
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        // The pattern is a translation with one {0}: a missing key renders as itself, never a crash.
         value is DateTimeOffset at
-            ? string.Format(CultureInfo.CurrentCulture, Services.I18n.Instance["Studio.Run.TeamLastRun"],
-                at.ToLocalTime().ToString("dd/MM", CultureInfo.CurrentCulture))
+            ? Services.I18n.Instance["Studio.Run.TeamLastRun"].Replace(
+                "{0}", at.ToLocalTime().ToString("dd/MM", CultureInfo.CurrentCulture), StringComparison.Ordinal)
             : Services.I18n.Instance["Studio.Run.TeamNeverRun"];
 
     /// <inheritdoc />

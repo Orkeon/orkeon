@@ -558,11 +558,10 @@ public sealed partial class CreateTeamViewModel
     private void SeedFolderBindings(IReadOnlyList<ForgeFolder>? folders = null)
     {
         var declared = _declaredMounts();
-        foreach (var folder in folders ?? _model.Folders)
+        var unbound = (folders ?? _model.Folders).Where(folder => folder.Directory is { Length: > 0 } && BoundEntry(folder.Path) is null);
+        foreach (var folder in unbound)
         {
-            if (folder.Directory is not { Length: > 0 } directory || BoundEntry(folder.Path) is not null)
-                continue;
-
+            var directory = folder.Directory!;
             var rights = folder.IsInput ? MountRights.ReadOnly : MountRights.ReadWrite;
             var entry = declared.FirstOrDefault(candidate =>
                 MountDefinition.TryParse(candidate, out var mount, out _)
