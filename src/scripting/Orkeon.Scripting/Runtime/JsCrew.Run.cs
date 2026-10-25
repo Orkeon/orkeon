@@ -183,7 +183,8 @@ public sealed partial class JsCrew
 
                 // crew.d.ts: runAgent(agent: string | Agent, input, opts?). The agent runs under its
                 // instance semaphore with an AgentContext and its own onError policy (chapter 05); no
-                // crew hooks, no result recording, no budget, no span. Calling it on the agent whose
+                // crew hooks, no result recording, no span, and a budget only from its `budget` and
+                // `charge` options (#189, read by `open`). Calling it on the agent whose
                 // body is executing throws RecursiveAgentInvocationException (resolveAgent) instead
                 // of deadlocking on the semaphore that body already holds.
                 async runAgent(agentOrName, input, options) {
@@ -328,12 +329,39 @@ public sealed partial class JsCrew
             CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
         var bag = options is not null && options.IsObject() ? options : null;
         // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
-        if (bag?.Get("budget").ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
+        var budget = bag?.Get("budget") ?? JsValue.Undefined;
+        if (budget.ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
             scope.Budget = childBudget;
+        else if (scope.Kind == CrewRunKind.Agent)
+            scope.Budget = ScriptRunBudget(bag, budget, scope.Parent);
         scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
         scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
         scope.InheritedRoot = (bag?.Get("root").ToObject() as InheritedWorkingRoot)?.Root;
         return scope;
+    }
+
+    /// <summary>
+    /// The budget a script gives <c>crew.runAgent</c> or <c>ctx.delegate</c> (#189): <c>budget</c>, the spec
+    /// of <c>crewBuilder().budget({...})</c>, and <c>charge: "crew"</c>, which charges what the run spends to
+    /// the budget of the run it is called from as well — the caller's context's for <c>ctx.delegate</c>
+    /// (<see cref="CallerBudget"/>), the innermost open attempt's for <c>crew.runAgent</c>. With the charge and
+    /// no <c>budget</c>, the run spends straight from the caller's. Neither: no budget, as before.
+    /// </summary>
+    private static Orkeon.Domain.Autonomous.AgentExecutionBudget? ScriptRunBudget(JsValue? bag, JsValue budget, CrewRunScope? parent)
+    {
+        Orkeon.Domain.Autonomous.AgentExecutionBudget? charged = null;
+        var charge = bag?.Get("charge") ?? JsValue.Undefined;
+        if (!charge.IsUndefined() && !charge.IsNull())
+        {
+            if (!charge.IsString() || !string.Equals(charge.AsString(), "crew", StringComparison.Ordinal))
+                throw new InvalidScriptException($"crew.runAgent / ctx.delegate options: charge must be \"crew\"; got {charge}.");
+            charged = (bag!.Get("caller").ToObject() is CallerBudget caller ? caller.Budget : parent?.Budget)
+                ?? throw new InvalidScriptException(
+                    "crew.runAgent / ctx.delegate options: charge: \"crew\" charges the budget of the run it is called from, "
+                    + "and this call runs under none: give the crew a budget, crewBuilder().budget({...}).");
+        }
+        if (budget.IsUndefined() || budget.IsNull()) return charged;
+        return JsBudgetBridge.FromRunOption(budget, charged) ?? charged;
     }
 
     /// <summary>Begins the follow-up run of instance <paramref name="id"/>: the options its run is opened with.</summary>

@@ -91,4 +91,58 @@ public sealed class JsBudgetBridgeTests
         Assert.Equal(3, mixed.MaxToolCalls);
         Assert.Equal(Orkeon.Domain.Autonomous.AgentExecutionBudget.Default.MaxWallTime, mixed.MaxWallTime);
     }
+
+    // #189: the budget option of crew.runAgent / ctx.delegate.
+
+    private static Jint.Native.JsValue Js(Jint.Engine engine, string expression) => engine.Evaluate("(" + expression + ")");
+
+    [Theory]
+    [InlineData("{ wallTime: 30 }", 30d)]
+    [InlineData("{ wallTime: \"2m\" }", 120d)]
+    [InlineData("{ wallTime: \"500ms\" }", 0.5d)]
+    public void FromRunOption_maps_wallTime_to_the_wall_time_limit(string spec, double seconds)
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        var budget = JsBudgetBridge.FromRunOption(Js(engine, spec), chargedTo: null);
+
+        Assert.NotNull(budget);
+        Assert.Equal(TimeSpan.FromSeconds(seconds), budget.MaxWallTime);
+        Assert.Null(budget.ChargedTo);
+    }
+
+    [Fact]
+    public void FromRunOption_charges_the_given_budget_and_reads_its_clock()
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+        var clock = new Orkeon.Tests.Shared.Timing.ManualTimeProvider();
+        var crew = new Orkeon.Domain.Autonomous.AgentExecutionBudget { TimeProvider = clock };
+
+        var budget = JsBudgetBridge.FromRunOption(Js(engine, "{ toolCalls: 3, tokens: 500 }"), crew);
+
+        Assert.NotNull(budget);
+        Assert.Equal(3, budget.MaxToolCalls);
+        Assert.Equal(500, budget.MaxTokensConsumed);
+        Assert.Same(crew, budget.ChargedTo);
+        Assert.Same(clock, budget.TimeProvider);
+    }
+
+    [Fact]
+    public void FromRunOption_without_a_dimension_returns_null()
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        Assert.Null(JsBudgetBridge.FromRunOption(Js(engine, "{}"), chargedTo: null));
+    }
+
+    [Fact]
+    public void FromRunOption_refuses_what_FromSpec_would_skip()
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        var ex = Assert.Throws<Orkeon.Scripting.Exceptions.InvalidScriptException>(
+            () => JsBudgetBridge.FromRunOption(Js(engine, "{ toolCalls: -5 }"), chargedTo: null));
+
+        Assert.Equal("crew.runAgent / ctx.delegate options: budget.toolCalls must be a whole number of 1 or more; got -5.", ex.Message);
+    }
 }

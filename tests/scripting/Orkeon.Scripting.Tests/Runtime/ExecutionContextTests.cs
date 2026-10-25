@@ -251,7 +251,7 @@ public sealed class ExecutionContextTests
 
         // delegate is synchronous and bridged (JsHostError): the detached-self guard throws a JavaScript Error
         // carrying the typed CLR exception, so an async body's catch/finally run.
-        var js = Assert.Throws<Jint.Runtime.JavaScriptException>(() => ctx.@delegate(Jint.Native.JsValue.FromObject(engine, target), null!));
+        var js = Assert.Throws<Jint.Runtime.JavaScriptException>(() => ctx.@delegate(Jint.Native.JsValue.FromObject(engine, target), null!, Jint.Native.JsValue.Undefined));
         Assert.IsType<AgentNotInCrewException>(JsHostError.Unwrap(js.Error));
     }
 

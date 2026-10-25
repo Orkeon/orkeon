@@ -225,7 +225,24 @@ a un), et il est refusé sinon ; le temps que la porte met à décider ne compte
 streamé de chaque tour de l'assistant.
 
 `ctx.delegate(agentOuNom, input)` est `crew.runAgent` : la cible s'exécute avec son propre
-contexte, sous son sémaphore et sa politique `onError`. `ctx.send(agentOuNom, message)`,
+contexte, sous son sémaphore et sa politique `onError`. Ni l'un ni l'autre ne donne de budget à
+l'exécution sans qu'on le demande :
+`ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (et le
+même `budget` dans les options de `crew.runAgent`) borne cette exécution avec les clés et valeurs de
+`crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` en secondes ou sous la forme `"5m"`,
+`delegationDepth`, `spawnedAgents`). Une dimension épuisée termine l'exécution par
+`BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
+(`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. Une clé inconnue, un compte qui
+n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,
+là où `crewBuilder().budget(...)` l'ignore. `charge: "crew"`, à côté de `budget`, compte ce que
+l'exécution dépense (appels d'outils, tokens, enfants ; son horloge murale court avec celle de
+l'appelant) aussi sur le budget de l'exécution d'où elle est appelée — celui de la crew, depuis un
+`body` d'agent de `crew.run` — si bien que des exécutions lancées ensemble ne dépensent jamais plus
+que la crew ne le permet ; sans `budget`, l'exécution dépense directement sur celui de l'appelant, et
+elle est refusée quand l'appelant ne tourne sous aucun budget. `ctx.delegate` charge le budget de son
+propre contexte ; `crew.runAgent` celui du `body` d'agent d'où il est appelé (le plus interne encore
+en cours, lors d'un fan-out depuis plusieurs `body`). `crew.run` et `crew.runStream` ignorent les deux
+clés. `ctx.send(agentOuNom, message)`,
 `receive({ timeout })` et `broadcast(message)` échangent des messages ; `send` et `broadcast`
 sont synchrones. `ctx.crew` est une vue en lecture seule de la crew (`name`, `findByName`,
 `findById`, `findByRole`, `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joint les

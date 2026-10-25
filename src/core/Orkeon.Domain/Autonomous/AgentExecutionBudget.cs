@@ -43,6 +43,15 @@ public sealed class AgentExecutionBudget
         }
     }
 
+    /// <summary>
+    /// A budget this one also charges: every tool call, token and spawn recorded here is recorded
+    /// there too, its wall clock pauses with this one, and this budget is exhausted as soon as that
+    /// one is. Several budgets charging one share its tally, which is thread-safe like this one's,
+    /// so runs at once never spend more than it allows. Null (the default): this budget stands alone.
+    /// Delegation depth is not charged, and <see cref="CreateChildBudget"/> does not carry it over.
+    /// </summary>
+    public AgentExecutionBudget? ChargedTo { get; init; }
+
     // ── Counters (thread-safe, mutable) ──────────────────────────────────
     private int _toolCalls;
     private int _delegationDepth;
@@ -90,13 +99,19 @@ public sealed class AgentExecutionBudget
     /// </summary>
     public IDisposable PauseWallClock()
     {
+        PauseWallClockCore();
+        return new WallClockResumption(this);
+    }
+
+    private void PauseWallClockCore()
+    {
         lock (_pauseGate)
         {
             if (_pauses++ == 0)
                 _pausedSince = _timeProvider.GetTimestamp();
         }
 
-        return new WallClockResumption(this);
+        ChargedTo?.PauseWallClockCore();
     }
 
     private void ResumeWallClock()
@@ -106,6 +121,8 @@ public sealed class AgentExecutionBudget
             if (--_pauses == 0)
                 _paused += _timeProvider.GetElapsedTime(_pausedSince);
         }
+
+        ChargedTo?.ResumeWallClock();
     }
 
     private sealed class WallClockResumption(AgentExecutionBudget owner) : IDisposable
@@ -125,7 +142,8 @@ public sealed class AgentExecutionBudget
         _delegationDepth > MaxDelegationDepth ||
         _tokensConsumed >= MaxTokensConsumed ||
         _spawnedAgents >= MaxSpawnedAgents ||
-        Elapsed >= MaxWallTime;
+        Elapsed >= MaxWallTime ||
+        ChargedTo?.IsExhausted == true;
 
     // ── Recording actions ────────────────────────────────────────────────
 
@@ -134,7 +152,9 @@ public sealed class AgentExecutionBudget
     public void RecordToolCall()
     {
         AssertWallTime();
-        if (Interlocked.Increment(ref _toolCalls) > MaxToolCalls)
+        var toolCalls = Interlocked.Increment(ref _toolCalls);
+        ChargedTo?.RecordToolCall();
+        if (toolCalls > MaxToolCalls)
             throw new BudgetExhaustedException(
                 BudgetDimension.ToolCalls,
                 $"Agent exceeded {MaxToolCalls} tool calls.");
@@ -156,10 +176,12 @@ public sealed class AgentExecutionBudget
     public void RecordTokens(int tokens)
     {
         AssertWallTime();
-        if (Interlocked.Add(ref _tokensConsumed, tokens) > MaxTokensConsumed)
+        var consumed = Interlocked.Add(ref _tokensConsumed, tokens);
+        ChargedTo?.RecordTokens(tokens);
+        if (consumed > MaxTokensConsumed)
             throw new BudgetExhaustedException(
                 BudgetDimension.Tokens,
-                $"Token budget exhausted ({_tokensConsumed}/{MaxTokensConsumed}).");
+                $"Token budget exhausted ({consumed}/{MaxTokensConsumed}).");
     }
 
     /// <summary>Records a sub-agent spawn and throws if the spawn limit is exceeded.</summary>
@@ -167,7 +189,9 @@ public sealed class AgentExecutionBudget
     public void RecordSpawn()
     {
         AssertWallTime();
-        if (Interlocked.Increment(ref _spawnedAgents) > MaxSpawnedAgents)
+        var spawned = Interlocked.Increment(ref _spawnedAgents);
+        ChargedTo?.RecordSpawn();
+        if (spawned > MaxSpawnedAgents)
             throw new BudgetExhaustedException(
                 BudgetDimension.SpawnedAgents,
                 $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
@@ -198,6 +222,7 @@ public sealed class AgentExecutionBudget
             throw new BudgetExhaustedException(
                 BudgetDimension.SpawnedAgents,
                 $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
+        ChargedTo?.ThrowIfExhausted();
     }
 
     /// <summary>Asserts that the wall-clock time has not been exceeded.</summary>
