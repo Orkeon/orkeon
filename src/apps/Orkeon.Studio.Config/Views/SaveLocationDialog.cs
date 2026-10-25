@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -49,7 +50,7 @@ internal sealed class SaveLocationDialog : Window
         _customPath = FormLayout.AddField(this, 4, "Path", _model.CustomPath);
 
         var browse = new Button { X = FormLayout.Margin, Y = 5, Text = "Browse…" };
-        browse.Accepting += (_, _) => Browse();
+        browse.OnAccept(Browse);
 
         FormLayout.AddNote(this, 7, "Resolution chain used by the runtime (first match wins):");
         var chain = new ListView
@@ -67,8 +68,8 @@ internal sealed class SaveLocationDialog : Window
         var accept = new Button { X = FormLayout.Margin, Y = Pos.AnchorEnd(1), Text = "Use this location", IsDefault = true };
         var cancel = new Button { X = Pos.Right(accept) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        accept.Accepting += (_, _) => Accept();
-        cancel.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        accept.OnAccept(Accept);
+        cancel.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(browse, chain, _problem, accept, cancel);
     }

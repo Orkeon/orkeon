@@ -38,9 +38,17 @@ The 213 issues and 29 security hotspots of the analysis were fixed in the code, 
 | `RunnerHost`'s silent-base-URL warning logged event id 14, shared with the notice | event id 15 |
 | `orkeon usecases`/`forge --reference` threw `UnknownUseCaseException`, `UseCaseModelUnavailableException` | `KeyNotFoundException`, `FileNotFoundException`; the reported codes and messages are unchanged |
 | `scripts/sonar-analyze.*` installed the latest SonarScanner, which refuses the 9.9 LTS server | pinned to 10.4.1 (`SONAR_SCANNER_VERSION` overrides it) |
+| `LlmRateLimitException`, `HumanInputRefusedException`, `ChainDepthExceededException` and the 8 exceptions above were not `[Serializable]`; `DomainException` had no serialization constructor | `[Serializable]`, with the serialization constructor and, where they hold state, a `GetObjectData` override that keeps it; `DomainException` gains a protected serialization constructor; these members are obsolete (`SYSLIB0051`) |
 
 `TypedDictionaryGenerator` emitted `struct, unmanaged` for an `unmanaged` type parameter, which does not compile
 (CS0449): it now emits `unmanaged` alone. Coverage now measures the WPF ViewModels and the source generator.
+
+### Fixed — a Studio button no longer also presses the window's default button
+
+In Orkeon Studio (Config and Run) and the console's find and quit dialogs, an Accept a button left unhandled travelled
+on to the window's `IsDefault` button, whose action ran too: Cancel in a picker also confirmed the highlighted choice,
+Browse in the mount dialog also ran OK, and every button of the run launcher also pressed Run. Each handler now marks
+its Accept handled (`AcceptHandlers.OnAccept`, `Orkeon.Cli.TerminalGui.Layout`).
 
 ### Added — a script agent takes a working root: `agentBuilder().workingRoot(path)` (#186)
 

@@ -159,8 +159,8 @@ public class RunLauncherWindowTests
     [Fact]
     public void Choose_and_Detect_on_an_unrunnable_path_report_it_and_open_no_list()
     {
-        // The launcher's default button is Run: a pressed button's Accept reaches it too, which
-        // here only repeats that no crew is selected.
+        // The launcher's default button is Run: a pressed button keeps its Accept, so Run never
+        // repeats that no crew is selected.
         var fixture = new LauncherFixture().WithInstalledCli();
         using var window = new RunLauncherWindow(fixture.Build());
         ViewTree.All<TextField>(window)[0].Text = "/nowhere/crew.yaml";
@@ -171,6 +171,7 @@ public class RunLauncherWindowTests
         ViewTree.Press(ViewTree.Button(window, "Detect"));
         Assert.Contains("/nowhere/crew.yaml", window.TargetStatusText, StringComparison.Ordinal);
         Assert.Equal(0, fixture.Processes.StartCount);
+        Assert.NotEqual("Select a crew first.", window.StatusText);
     }
 
     [Fact]

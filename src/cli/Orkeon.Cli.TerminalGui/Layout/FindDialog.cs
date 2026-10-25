@@ -29,8 +29,8 @@ public sealed class FindDialog : Window
         var find = new Button { X = 1, Y = 3, Text = "Find next" };
         var close = new Button { X = Pos.Right(find) + 2, Y = 3, Text = "Close" };
 
-        find.Accepting += (_, _) => DoFind();
-        close.Accepting += (_, _) => Application.RequestStop(this);
+        find.OnAccept(DoFind);
+        close.OnAccept(() => Application.RequestStop(this));
 
         Add(label, _input, find, close);
     }

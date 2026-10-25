@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Validation;
@@ -82,12 +83,12 @@ internal sealed class MountDialog : Window
         var accept = new Button { X = FormLayout.Margin, Y = Pos.AnchorEnd(1), Text = "OK", IsDefault = true };
         var cancel = new Button { X = Pos.Right(accept) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        browse.Accepting += (_, _) => Browse();
-        create.Accepting += (_, _) => CreateFolder();
-        addOverride.Accepting += (_, _) => AddOverride();
-        removeOverride.Accepting += (_, _) => RemoveOverride();
-        accept.Accepting += (_, _) => Accept();
-        cancel.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        browse.OnAccept(Browse);
+        create.OnAccept(CreateFolder);
+        addOverride.OnAccept(AddOverride);
+        removeOverride.OnAccept(RemoveOverride);
+        accept.OnAccept(Accept);
+        cancel.OnAccept(() => TerminalApp.RequestStop(this));
 
         _physicalPath.TextChanged += (_, _) => RefreshPhysicalStatus();
 

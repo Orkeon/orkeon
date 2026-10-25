@@ -6,6 +6,9 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 [Serializable]
 public sealed class ChainDepthExceededException : InvalidOperationException
 {
+    private const string DepthKey = "Depth";
+    private const string LimitKey = "Limit";
+
     public ChainDepthExceededException()
     {
     }
@@ -34,5 +37,16 @@ public sealed class ChainDepthExceededException : InvalidOperationException
     private ChainDepthExceededException(SerializationInfo info, StreamingContext context)
         : base(info, context)
     {
+        Depth = info.GetInt32(DepthKey);
+        Limit = info.GetInt32(LimitKey);
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(DepthKey, Depth);
+        info.AddValue(LimitKey, Limit);
     }
 }

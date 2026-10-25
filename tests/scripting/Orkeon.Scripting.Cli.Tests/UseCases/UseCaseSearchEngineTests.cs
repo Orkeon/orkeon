@@ -223,6 +223,23 @@ public sealed class UseCaseSearchEngineTests
         Assert.NotNull(second.Degraded);
     }
 
+    /// <summary>A missing model file is said as is; an assembly that fails to load is a load failure.</summary>
+    [Fact]
+    public async Task Only_a_missing_model_file_is_reported_as_not_installed()
+    {
+        var modelFile = Path.Combine(AppContext.BaseDirectory, "LocalEmbeddingsModel", "default", "model.onnx");
+        using var missing = UseCaseFixtures.Engine(UseCaseSearchMode.Hybrid, () =>
+            throw new FileNotFoundException("the local embedding model is not installed", modelFile));
+        using var assembly = UseCaseFixtures.Engine(UseCaseSearchMode.Hybrid, () =>
+            throw new FileNotFoundException("Could not load file or assembly 'Onnx'", "Onnx"));
+
+        var notInstalled = await missing.SearchAsync(new UseCaseQuery { Text = "email", Language = "en" }, Ct);
+        var failed = await assembly.SearchAsync(new UseCaseQuery { Text = "email", Language = "en" }, Ct);
+
+        Assert.Equal("the local embedding model is not installed", notInstalled.Degraded);
+        Assert.StartsWith("the local embedding model failed to load: ", failed.Degraded, StringComparison.Ordinal);
+    }
+
     /// <summary>The native runtime can fail in ways no probe predicts: still terms, still said.</summary>
     [Fact]
     public async Task A_model_that_crashes_while_loading_degrades_the_same_way()

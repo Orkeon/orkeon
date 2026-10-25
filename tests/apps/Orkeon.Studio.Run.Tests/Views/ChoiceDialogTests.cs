@@ -41,4 +41,15 @@ public class ChoiceDialogTests
 
         Assert.Equal(-1, dialog.SelectedIndex);
     }
+
+    [Fact]
+    public void ShouldReturnMinusOne_WhenCancelledWithAChoiceHighlighted()
+    {
+        using var dialog = new ChoiceDialog("t", "p", ["a", "b", "c"], "Run this one");
+        ViewTree.One<ListView>(dialog).SelectedItem = 2;
+
+        ViewTree.Press(ViewTree.Button(dialog, "Cancel"));
+
+        Assert.Equal(-1, dialog.SelectedIndex);
+    }
 }

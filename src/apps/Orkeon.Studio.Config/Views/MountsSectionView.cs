@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.FileSystem;
 using Terminal.Gui.ViewBase;
@@ -46,9 +47,9 @@ internal sealed class MountsSectionView : SectionView
         var edit = new Button { X = Pos.Right(add) + 2, Y = Pos.AnchorEnd(3), Text = "Edit" };
         var remove = new Button { X = Pos.Right(edit) + 2, Y = Pos.AnchorEnd(3), Text = "Remove" };
 
-        add.Accepting += (_, _) => AddMount();
-        edit.Accepting += (_, _) => EditSelected();
-        remove.Accepting += (_, _) => RemoveSelected();
+        add.OnAccept(AddMount);
+        edit.OnAccept(EditSelected);
+        remove.OnAccept(RemoveSelected);
 
         _status = new Label { X = FormLayout.Margin, Y = Pos.AnchorEnd(1), Width = Dim.Fill(FormLayout.Margin) };
 

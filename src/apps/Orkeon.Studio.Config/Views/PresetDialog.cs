@@ -1,4 +1,5 @@
 using System.Globalization;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.Presets;
 using Terminal.Gui.ViewBase;
@@ -63,8 +64,8 @@ internal sealed class PresetDialog : Window
         var apply = new Button { X = FormLayout.Margin, Y = Pos.AnchorEnd(1), Text = "Apply", IsDefault = true };
         var cancel = new Button { X = Pos.Right(apply) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        apply.Accepting += (_, _) => Accept();
-        cancel.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        apply.OnAccept(Accept);
+        cancel.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(apply, cancel);
     }

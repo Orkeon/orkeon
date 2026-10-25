@@ -30,6 +30,14 @@ internal static class UseCaseLocalModel
     private static readonly string[] ModelFiles = ["model.onnx", "vocab.txt"];
 
     /// <summary>
+    /// True for the error <see cref="Load"/> throws when a model file is missing; an assembly that
+    /// fails to load is a <see cref="FileNotFoundException"/> too, and is not that error.
+    /// </summary>
+    public static bool IsNotInstalled(Exception exception) =>
+        exception is FileNotFoundException { FileName: { } file }
+        && file.StartsWith(Path.Combine(AppContext.BaseDirectory, "LocalEmbeddingsModel"), StringComparison.Ordinal);
+
+    /// <summary>
     /// Loads the model; throws <see cref="FileNotFoundException"/> when its files are
     /// not installed. The provider returned is disposable and owns its container.
     /// </summary>

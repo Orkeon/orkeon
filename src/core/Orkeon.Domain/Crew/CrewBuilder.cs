@@ -300,10 +300,6 @@ public sealed class CrewBuilder
             "or .Parallel(), or drop .Async().");
     }
 
-    /// <summary>
-    /// A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a manager
-    /// agent ran it as one more worker, and only two modes ever call a manager LLM.
-    /// </summary>
     // The manager agent the builder carries: the one given, else the member its id names.
     private DomainAgent? ResolveManagerAgent()
     {
@@ -313,6 +309,10 @@ public sealed class CrewBuilder
         return _managerAgentId is { } managerId ? _agents.FirstOrDefault(a => a.Id == managerId) : null;
     }
 
+    /// <summary>
+    /// A manager where the mode uses one, never elsewhere (GAP-33): the four modes without a manager
+    /// agent ran it as one more worker, and only two modes ever call a manager LLM.
+    /// </summary>
     private void EnsureManagerAccepted()
     {
         if (_managerAgentId is not null && !_processType.AcceptsManagerAgent)

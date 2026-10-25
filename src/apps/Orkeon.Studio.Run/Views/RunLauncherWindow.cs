@@ -146,11 +146,11 @@ internal sealed class RunLauncherWindow : Window
             _statusLabel, _logs);
 
         // ── Wiring ────────────────────────────────────────────────────────────────
-        detectButton.Accepting += (_, _) => DetectTarget();
-        _targetField.Accepting += (_, _) => DetectTarget();
-        browseButton.Accepting += (_, _) => ChooseCandidate();
-        chainButton.Accepting += (_, _) =>
-            InfoDialog.Show("Settings resolution chain", LaunchOptionsModel.DescribeResolutionChain());
+        detectButton.OnAccept(DetectTarget);
+        _targetField.OnAccept(DetectTarget);
+        browseButton.OnAccept(ChooseCandidate);
+        chainButton.OnAccept(() =>
+            InfoDialog.Show("Settings resolution chain", LaunchOptionsModel.DescribeResolutionChain()));
 
         _automaticSettings.ValueChanged += (_, _) =>
         {
@@ -160,18 +160,18 @@ internal sealed class RunLauncherWindow : Window
             RefreshCommandLine();
         };
 
-        mountsButton.Accepting += (_, _) =>
+        mountsButton.OnAccept(() =>
         {
             MountsDialog.Show(_launcher);
             RefreshMountsSummary();
             RefreshCommandLine();
-        };
+        });
 
-        _validateButton.Accepting += (_, _) => StartRun(dryRun: true);
-        _runButton.Accepting += (_, _) => StartRun(dryRun: false);
-        _stopButton.Accepting += (_, _) => RequestStopOfRun();
-        historyButton.Accepting += (_, _) => ShowHistory();
-        quitButton.Accepting += (_, _) => Quit();
+        _validateButton.OnAccept(() => StartRun(dryRun: true));
+        _runButton.OnAccept(() => StartRun(dryRun: false));
+        _stopButton.OnAccept(RequestStopOfRun);
+        historyButton.OnAccept(ShowHistory);
+        quitButton.OnAccept(Quit);
 
         // Two subscriptions on purpose. The view-level one is what a focused button sees,
         // while the application-level one fires before any view handler and is the only

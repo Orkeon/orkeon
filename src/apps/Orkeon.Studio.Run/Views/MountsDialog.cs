@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Run.Launcher;
 using Terminal.Gui.App;
@@ -78,16 +79,16 @@ internal sealed class MountsDialog : Window
 
         var close = new Button { X = 1, Y = Pos.AnchorEnd(1), Text = "Close", IsDefault = true };
 
-        add.Accepting += (_, _) =>
+        add.OnAccept(() =>
         {
             if (MountFormDialog.Show() is { } mount)
             {
                 _launcher.Options.AddMount(mount);
                 Refresh();
             }
-        };
+        });
 
-        edit.Accepting += (_, _) =>
+        edit.OnAccept(() =>
         {
             var index = _mounts.SelectedItem ?? -1;
             if (index < 0 || index >= _launcher.Options.Mounts.Count)
@@ -98,9 +99,9 @@ internal sealed class MountsDialog : Window
                 _launcher.Options.ReplaceMountAt(index, mount);
                 Refresh();
             }
-        };
+        });
 
-        remove.Accepting += (_, _) =>
+        remove.OnAccept(() =>
         {
             var index = _mounts.SelectedItem ?? -1;
             if (index < 0 || index >= _launcher.Options.Mounts.Count)
@@ -108,12 +109,12 @@ internal sealed class MountsDialog : Window
 
             _launcher.Options.RemoveMountAt(index);
             Refresh();
-        };
+        });
 
         _allowExternal.ValueChanged += (_, _) =>
             _launcher.Options.AllowExternalMounts = _allowExternal.Value == CheckState.Checked;
 
-        close.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        close.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(rule, listLabel, _mounts, add, edit, remove, _allowExternal, securityWarning,
             effectiveLabel, _effective, close);

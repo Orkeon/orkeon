@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.FileSystem;
@@ -137,12 +138,12 @@ internal sealed class StudioConfigWindow : Window
         var diagnostic = new Button { X = Pos.Right(preset) + 1, Y = Pos.AnchorEnd(3), Text = "Diagnostic" };
         var quit = new Button { X = Pos.Right(diagnostic) + 1, Y = Pos.AnchorEnd(3), Text = "Quit" };
 
-        open.Accepting += (_, _) => OpenFile();
-        save.Accepting += (_, _) => SaveFile();
-        validate.Accepting += (_, _) => ShowValidation();
-        preset.Accepting += (_, _) => ApplyPreset();
-        diagnostic.Accepting += (_, _) => RunDiagnostic();
-        quit.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        open.OnAccept(OpenFile);
+        save.OnAccept(SaveFile);
+        validate.OnAccept(ShowValidation);
+        preset.OnAccept(ApplyPreset);
+        diagnostic.OnAccept(RunDiagnostic);
+        quit.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(open, save, validate, preset, diagnostic, quit);
     }

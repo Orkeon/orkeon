@@ -3,12 +3,8 @@ using Orkeon.Tools.Data.Relational;
 namespace Orkeon.Tools.Data.Tests.Relational;
 
 /// <summary>
-/// Proves the SQL-identifier safety invariant that backs the S2077 security hotspots in
-/// <see cref="DatabaseSchemaTool"/>. SQLite PRAGMA statements cannot bind parameters, so table and
-/// index identifiers must be interpolated — but only after
-/// <see cref="DatabaseSchemaTool.IsSafeIdentifier"/> allow-lists them (<c>^[a-zA-Z0-9_]+$</c>) and
-/// <see cref="DatabaseSchemaTool.QuoteSqliteIdentifier"/> double-quotes/escapes them. These tests make
-/// the invariant executable rather than only documented in the suppression justifications.
+/// The identifier allowlist of <see cref="DatabaseSchemaTool"/>: a table or index whose name falls
+/// outside <c>^[a-zA-Z0-9_]+$</c> is skipped. The names themselves reach SQLite as bound parameters.
 /// </summary>
 public sealed class SqlIdentifierSafetyTests
 {
@@ -34,12 +30,4 @@ public sealed class SqlIdentifierSafetyTests
     [InlineData("t_é")]
     public void IsSafeIdentifier_RejectsInjectionAndNonAllowlisted(string identifier)
         => Assert.False(DatabaseSchemaTool.IsSafeIdentifier(identifier));
-
-    [Fact]
-    public void QuoteSqliteIdentifier_WrapsInDoubleQuotes()
-        => Assert.Equal("\"users\"", DatabaseSchemaTool.QuoteSqliteIdentifier("users"));
-
-    [Fact]
-    public void QuoteSqliteIdentifier_DoublesEmbeddedQuotes_SoTheIdentifierCannotBreakOut()
-        => Assert.Equal("\"a\"\"b\"", DatabaseSchemaTool.QuoteSqliteIdentifier("a\"b"));
 }
