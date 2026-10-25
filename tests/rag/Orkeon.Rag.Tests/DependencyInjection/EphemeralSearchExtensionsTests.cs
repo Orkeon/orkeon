@@ -136,12 +136,4 @@ public class EphemeralSearchExtensionsTests
         Assert.NotNull(descriptor.ImplementationFactory);
         return Assert.IsType<IEphemeralCollectionSearch>(descriptor.ImplementationFactory(provider), exactMatch: false);
     }
-
-    /// <summary>A provider that does not implement IServiceProviderIsService.</summary>
-    private sealed class StubServiceProvider : IServiceProvider
-    {
-        public Dictionary<Type, object> Services { get; } = [];
-
-        public object? GetService(Type serviceType) => Services.GetValueOrDefault(serviceType);
-    }
 }

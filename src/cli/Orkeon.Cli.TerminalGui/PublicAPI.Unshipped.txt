@@ -105,3 +105,5 @@ Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.get -> Orkeon.Cli.Ter
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.init -> void
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.ResolveEffectiveMode(Orkeon.Cli.TerminalGui.Hosting.UiMode? requested, Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> Orkeon.Cli.TerminalGui.Hosting.UiMode
+Orkeon.Cli.TerminalGui.Layout.AcceptHandlers
+static Orkeon.Cli.TerminalGui.Layout.AcceptHandlers.OnAccept(this Terminal.Gui.ViewBase.View! view, System.Action! action) -> void

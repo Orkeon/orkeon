@@ -12,20 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `ctx.delegate(agent, input, opts)` and `crew.runAgent(agent, input, opts)` take `budget` (the keys of
 `crewBuilder().budget(...)`: `toolCalls`, `tokens`, `wallTime`, `delegationDepth`, `spawnedAgents`), applied as a crew
 run applies the crew's: a spent dimension ends the run with `BudgetExhaustedError`, and a child it spawns derives its
-budget from the run's; invalid values are refused when the run opens. `charge: "crew"` also counts what the run spends
-against the calling run's budget (`AgentExecutionBudget.ChargedTo`, experimental `ORKEXP002`), so runs started at once
-never exceed the crew's; it is refused when the caller runs under no budget. Without either option nothing changes.
-The .NET delegate behind `ctx.delegate` takes a third argument.
+budget from the run's; invalid values are refused when the run opens. `charge: "crew"` also counts what the run spends against the calling run's budget
+(`AgentExecutionBudget.ChargedTo`, experimental `ORKEXP002`), so runs started at once never exceed the crew's: a call
+the run's own budget refuses is not charged, and a child the run spawns is charged too, each limit capped by what both
+budgets have left. `ctx.delegate` charges its context's budget; `crew.runAgent` charges the one budget every open agent
+body runs under and refuses when they differ. The charge is refused when the caller runs under no budget.
+`BudgetSnapshot.Charged` carries the charged budget's state. Without either option nothing changes.
+
+### Changed — the .NET delegate behind `ctx.delegate` takes an options argument **[breaking]** (#189)
+
+`JsExecutionContext.delegate` is now `Func<JsValue, JsValue, JsValue, JsValue>` (agent, input, options) instead of
+`Func<JsValue, JsValue, JsValue>`. Migration: a .NET caller invoking `delegate(target, input)` passes
+`JsValue.Undefined` as the third argument. Scripts are unaffected.
 
 ### Added — git in a linked-worktree agent root under shell confinement (#188)
 
-When an agent's working root is a linked git worktree (its `.git` is a file), `shell_command` binds the worktree's git
-dir and the common dir its `commondir` names, with the root's rights, read through the VFS; their `config`, `hooks` and
-`config.worktree` are bound read-only. `git status`, `git add` and `git commit` then work under bubblewrap and commit
-on the worktree's branch, while the main working tree stays unreachable. A relative gitdir
-(`git worktree add --relative-paths`) is bound at its virtual path, an absolute host path only when it lies under the
-mount's physical root; anything else binds nothing. Seatbelt and AppContainer grant the same directories. The agent
-can write the whole common dir (every branch's refs), not only its own (`limitations.md`).
+When an agent's working root is a linked git worktree (its `.git` is a file), `shell_command` binds the repository's
+common git dir read-only and, over it, its `objects`, `refs` and `logs` and the worktree's own git dir with the root's
+rights, read through the VFS: `git status`, `git add` and `git commit` then work under bubblewrap and commit on the
+worktree's branch, while the main working tree stays unreachable. Nothing is bound unless the layout checks out: the
+gitdir sits in `<common>/worktrees/`, its `commondir` and `gitdir` back-link name exactly the common dir and the root's
+`.git`, and no component of the path is a symlink; a relative gitdir (`git worktree add --relative-paths`) is bound at
+its virtual path, an absolute host path only under the mount's physical root. Mount overrides narrow these binds but
+never widen them, so the common dir's `config`, `hooks`, `info`, `modules` and the other worktrees stay read-only.
+Seatbelt and AppContainer grant the same directories. Limits (`limitations.md`): the agent can rewrite every branch's
+refs and the shared objects, git on the host follows a link it creates inside `objects`, `refs` or `logs`, and a
+repository without `logs/` records no reflog.
 
 ### Changed — SonarQube report of 2026-10-24 cleared
 
@@ -38,9 +50,17 @@ The 213 issues and 29 security hotspots of the analysis were fixed in the code, 
 | `RunnerHost`'s silent-base-URL warning logged event id 14, shared with the notice | event id 15 |
 | `orkeon usecases`/`forge --reference` threw `UnknownUseCaseException`, `UseCaseModelUnavailableException` | `KeyNotFoundException`, `FileNotFoundException`; the reported codes and messages are unchanged |
 | `scripts/sonar-analyze.*` installed the latest SonarScanner, which refuses the 9.9 LTS server | pinned to 10.4.1 (`SONAR_SCANNER_VERSION` overrides it) |
+| `LlmRateLimitException`, `HumanInputRefusedException`, `ChainDepthExceededException` and the 8 exceptions above were not `[Serializable]`; `DomainException` had no serialization constructor | `[Serializable]`, with the serialization constructor and, where they hold state, a `GetObjectData` override that keeps it; `DomainException` gains a protected serialization constructor; these members are obsolete (`SYSLIB0051`) |
 
 `TypedDictionaryGenerator` emitted `struct, unmanaged` for an `unmanaged` type parameter, which does not compile
 (CS0449): it now emits `unmanaged` alone. Coverage now measures the WPF ViewModels and the source generator.
+
+### Fixed — a Studio button no longer also presses the window's default button
+
+In Orkeon Studio (Config and Run) and the console's find and quit dialogs, an Accept a button left unhandled travelled
+on to the window's `IsDefault` button, whose action ran too: Cancel in a picker also confirmed the highlighted choice,
+Browse in the mount dialog also ran OK, and every button of the run launcher also pressed Run. Each handler now marks
+its Accept handled (`AcceptHandlers.OnAccept`, `Orkeon.Cli.TerminalGui.Layout`).
 
 ### Added — a script agent takes a working root: `agentBuilder().workingRoot(path)` (#186)
 

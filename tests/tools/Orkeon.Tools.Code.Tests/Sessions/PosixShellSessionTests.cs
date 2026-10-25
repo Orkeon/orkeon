@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using Orkeon.Domain.Execution;
 using Orkeon.Tests.Shared.Timing;
@@ -83,7 +84,8 @@ public sealed class PosixShellSessionTests : IDisposable
     {
         var startInfo = new ProcessStartInfo(Path.Combine(_tempDir, "no-such-shell"));
 
-        await Assert.ThrowsAnyAsync<Exception>(
+        // Process.Start reports the missing shell; the dedicated thread hands that very error back.
+        await Assert.ThrowsAsync<Win32Exception>(
             () => PosixShellSession.StartAsync(startInfo, watchedHostPid: null, startOnDedicatedThread: true, hostSeesPrivateDirectory: false, Ct));
     }
 

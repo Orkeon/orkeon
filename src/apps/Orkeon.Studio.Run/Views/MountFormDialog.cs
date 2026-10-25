@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Core.FileSystem;
 using TerminalApp = Terminal.Gui.App.Application;
 using Terminal.Gui.ViewBase;
@@ -104,14 +105,14 @@ internal sealed class MountFormDialog : Window
         var accept = new Button { X = 1, Y = Pos.AnchorEnd(1), Text = "OK", IsDefault = true };
         var cancel = new Button { X = Pos.Right(accept) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        browse.Accepting += (_, _) => Browse();
-        create.Accepting += (_, _) => CreateFolder();
-        accept.Accepting += (_, _) => TryAccept();
-        cancel.Accepting += (_, _) =>
+        browse.OnAccept(Browse);
+        create.OnAccept(CreateFolder);
+        accept.OnAccept(TryAccept);
+        cancel.OnAccept(() =>
         {
             Mount = null;
             TerminalApp.RequestStop(this);
-        };
+        });
 
         _physical.TextChanged += (_, _) => RefreshPhysicalStatus();
 

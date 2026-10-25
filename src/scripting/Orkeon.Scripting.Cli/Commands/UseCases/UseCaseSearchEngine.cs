@@ -392,7 +392,7 @@ internal sealed class UseCaseSearchEngine : IDisposable
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _modelUnavailable = ex is FileNotFoundException
+                _modelUnavailable = UseCaseLocalModel.IsNotInstalled(ex)
                     ? ex.Message
                     : $"the local embedding model failed to load: {ex.Message}";
                 (_model as IDisposable)?.Dispose();

@@ -1,3 +1,4 @@
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -41,9 +42,9 @@ internal sealed class LoggingSectionView : SectionView
         var edit = new Button { X = Pos.Right(add) + 2, Y = Pos.AnchorEnd(3), Text = "Edit" };
         var remove = new Button { X = Pos.Right(edit) + 2, Y = Pos.AnchorEnd(3), Text = "Remove" };
 
-        add.Accepting += (_, _) => AddCategory();
-        edit.Accepting += (_, _) => EditSelected();
-        remove.Accepting += (_, _) => RemoveSelected();
+        add.OnAccept(AddCategory);
+        edit.OnAccept(EditSelected);
+        remove.OnAccept(RemoveSelected);
 
         _status = new Label { X = FormLayout.Margin, Y = Pos.AnchorEnd(1), Width = Dim.Fill(FormLayout.Margin) };
 

@@ -1,3 +1,4 @@
+using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.App;
 using TerminalApp = Terminal.Gui.App.Application;
 using Terminal.Gui.ViewBase;
@@ -32,7 +33,7 @@ internal sealed class InfoDialog : Window
         };
 
         var close = new Button { X = 1, Y = Pos.AnchorEnd(1), Text = "Close", IsDefault = true };
-        close.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        close.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(body, close);
     }

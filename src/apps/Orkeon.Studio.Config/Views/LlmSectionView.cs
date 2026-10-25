@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Config.Presentation;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
@@ -71,7 +72,7 @@ internal sealed class LlmSectionView : SectionView
         _streamIdle = FormLayout.AddField(this, 13, "Stream idle (seconds, blank = none)", _form.StreamIdleSeconds);
 
         _testConnection = new Button { X = FormLayout.Margin, Y = 14, Text = "Test connection" };
-        _testConnection.Accepting += (_, _) => TestConnection();
+        _testConnection.OnAccept(() => TestConnection());
         Add(_testConnection);
         _testResult = FormLayout.AddText(this, 15, "");
 

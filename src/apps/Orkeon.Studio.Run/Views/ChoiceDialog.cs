@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.App;
 using TerminalApp = Terminal.Gui.App.Application;
 using Terminal.Gui.ViewBase;
@@ -39,16 +40,16 @@ internal sealed class ChoiceDialog : Window
         var accept = new Button { X = 1, Y = Pos.AnchorEnd(1), Text = acceptLabel, IsDefault = true };
         var cancel = new Button { X = Pos.Right(accept) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        accept.Accepting += (_, _) =>
+        accept.OnAccept(() =>
         {
             SelectedIndex = choices.Count == 0 ? -1 : _list.SelectedItem ?? -1;
             TerminalApp.RequestStop(this);
-        };
-        cancel.Accepting += (_, _) =>
+        });
+        cancel.OnAccept(() =>
         {
             SelectedIndex = -1;
             TerminalApp.RequestStop(this);
-        };
+        });
 
         Add(promptLabel, _list, accept, cancel);
     }

@@ -54,17 +54,12 @@ public sealed partial class SqliteMemoryProvider
             if (string.IsNullOrWhiteSpace(query))
             {
                 // Empty query returns all items (same semantics as InMemoryProvider).
-                cmd.CommandText = $"SELECT {ColumnList} FROM {_options.TableName} ORDER BY created_at DESC {limitClause}";
+                cmd.CommandText = SelectAllSql(limitClause);
             }
             else
             {
                 // SQLite LIKE is case-insensitive for ASCII by default.
-                cmd.CommandText = $"""
-                    SELECT {ColumnList} FROM {_options.TableName}
-                    WHERE content LIKE @pattern ESCAPE '\'
-                    ORDER BY created_at DESC
-                    {limitClause}
-                    """;
+                cmd.CommandText = SelectMatchingSql(limitClause);
                 cmd.Parameters.AddWithValue("@pattern", $"%{EscapeLikePattern(query)}%");
             }
 
@@ -158,7 +153,7 @@ public sealed partial class SqliteMemoryProvider
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"SELECT {ColumnList} FROM {_options.TableName} WHERE embedding IS NOT NULL";
+            cmd.CommandText = SelectWithEmbeddingSql;
 
             var scored = new List<ScoredMemoryItem>();
             using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -210,4 +205,16 @@ public sealed partial class SqliteMemoryProvider
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("%", "\\%", StringComparison.Ordinal)
             .Replace("_", "\\_", StringComparison.Ordinal);
+
+    private string SelectAllSql(string limitClause) =>
+        $"SELECT {ColumnList} FROM {_options.TableName} ORDER BY created_at DESC {limitClause}";
+
+    private string SelectMatchingSql(string limitClause) => $"""
+        SELECT {ColumnList} FROM {_options.TableName}
+        WHERE content LIKE @pattern ESCAPE '\'
+        ORDER BY created_at DESC
+        {limitClause}
+        """;
+
+    private string SelectWithEmbeddingSql => $"SELECT {ColumnList} FROM {_options.TableName} WHERE embedding IS NOT NULL";
 }

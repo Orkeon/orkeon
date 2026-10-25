@@ -161,6 +161,29 @@ public sealed class SeatbeltProfileTests
     }
 
     [Fact]
+    [Trait("BR", "GH-188")]
+    public void ShouldWriteTheGitDirsOverAReadOnlyCommonDir_AndKeepANarrowedRefReadOnly()
+    {
+        // A linked worktree's binds, in the order GitWorktreeBinds gives them: the common dir read-only,
+        // what a commit writes read-write over it, then an override that narrows refs/heads.
+        var profile = Build(
+        [
+            new ConfinedPath("/Users/me/repo/.git", "/workspace/.git", ConfinedAccess.ReadOnly),
+            new ConfinedPath("/Users/me/repo/.git/objects", "/workspace/.git/objects", ConfinedAccess.ReadWrite),
+            new ConfinedPath("/Users/me/repo/.git/refs", "/workspace/.git/refs", ConfinedAccess.ReadWrite),
+            new ConfinedPath("/Users/me/repo/.git/worktrees/p1", "/workspace/.git/worktrees/p1", ConfinedAccess.ReadWrite),
+            new ConfinedPath("/Users/me/repo/.git/refs/heads", "/workspace/.git/refs/heads", ConfinedAccess.ReadOnly),
+        ]);
+
+        var commonDeny = RuleIndex(profile, "deny file-write*", "(subpath \"/Users/me/repo/.git\")");
+        Assert.True(RuleIndex(profile, "allow file-read* file-write*", "(subpath \"/Users/me/repo/.git/objects\")") > commonDeny);
+        Assert.True(RuleIndex(profile, "allow file-read* file-write*", "(subpath \"/Users/me/repo/.git/worktrees/p1\")") > commonDeny);
+        var refs = RuleIndex(profile, "allow file-read* file-write*", "(subpath \"/Users/me/repo/.git/refs\")");
+        Assert.True(RuleIndex(profile, "deny file-write*", "(subpath \"/Users/me/repo/.git/refs/heads\")") > refs);
+        Assert.DoesNotContain("(allow file-read* file-write*\n  (subpath \"/Users/me/repo/.git\")", profile, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShouldPlaceTheMountsAfterTheSystemAndTheNetworkLast()
     {
         var profile = Build([new ConfinedPath("/Users/me/ws", "/workspace", ConfinedAccess.ReadWrite)], ["/opt/homebrew"]);

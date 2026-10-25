@@ -856,8 +856,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     }
 
     /// <summary>
-    /// Adds the paths <paramref name="mount"/> binds: its root (or the agent root it holds, with the git
-    /// dirs of a linked worktree there), then its sub-path overrides.
+    /// Adds the paths <paramref name="mount"/> binds: its root (or the agent root it holds), then its
+    /// sub-path overrides, then the git dirs of a linked worktree at the agent root.
     /// </summary>
     private async Task AddMountPathsAsync(List<ConfinedPath> paths, MountInfo mount, string? agentRoot, CancellationToken cancellationToken)
     {
@@ -871,33 +871,48 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return;
 
         // A declared agent root narrows the mount that holds it to the root, at its physical path,
-        // never the whole mount (RT-06); the other mounts stay bound as they are. Each bound area
-        // (virtual path, path the process sees it at) takes the overrides below it.
+        // never the whole mount (RT-06); the other mounts stay bound as they are.
         var heldRoot = agentRoot is not null && MatchesMountPrefix(agentRoot, virtualRoot) ? agentRoot : null;
-        var areas = new List<(string VirtualPath, string Destination)>();
-        if (heldRoot is not null)
+        if (heldRoot is null)
         {
-            areas.Add((heldRoot, heldRoot));
-            if (AddAgentRootPath(paths, heldRoot) is { } rootAccess)
-            {
-                // A linked worktree commits through git dirs outside the root (#188).
-                var gitBinds = await GitWorktreeBinds.FindAsync(_fileSystem, heldRoot, virtualRoot, root.ResolvedPath, rootAccess,
-                    virtualPath => Granted(RightsAt(virtualPath)), _logger, cancellationToken).ConfigureAwait(false);
-                foreach (var bind in gitBinds)
-                {
-                    paths.Add(bind.Path);
-                    areas.Add((bind.VirtualPath, bind.Path.Destination));
-                }
-            }
-        }
-        else
-        {
-            areas.Add((virtualRoot, virtualRoot));
             if (Granted(mount.DefaultRights) is { } access)
                 paths.Add(new ConfinedPath(root.ResolvedPath, virtualRoot, access));
+            AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, virtualRoot);
+            return;
         }
 
-        AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, areas);
+        var rootAccess = AddAgentRootPath(paths, heldRoot);
+        AddOverridePaths(paths, mount.Overrides, root.ResolvedPath, virtualRoot, heldRoot);
+        if (rootAccess is { } heldAccess)
+            await AddGitWorktreePathsAsync(paths, mount.Overrides, heldRoot, virtualRoot, root.ResolvedPath, heldAccess, cancellationToken)
+                .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Adds, after every other path of the mount, the git dirs a linked worktree at <paramref name="agentRoot"/>
+    /// commits through (#188), then the overrides under them, each narrowed to what the git dir that holds
+    /// it grants: an override narrows a git dir, never widens one.
+    /// </summary>
+    private async Task AddGitWorktreePathsAsync(
+        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> mountOverrides, string agentRoot, string virtualRoot,
+        string physicalRoot, ConfinedAccess rootAccess, CancellationToken cancellationToken)
+    {
+        var binds = await GitWorktreeBinds.FindAsync(_fileSystem, agentRoot, new GitWorktreeMount(virtualRoot, physicalRoot), rootAccess,
+            virtualPath => Granted(RightsAt(virtualPath)), _logger, cancellationToken).ConfigureAwait(false);
+        if (binds.Count == 0)
+            return;
+
+        paths.AddRange(binds.Select(b => b.Path));
+        var overrides = new List<GitOverride>();
+        foreach (var subPath in mountOverrides)
+        {
+            var relative = subPath.RelativePath.Trim('/');
+            var source = Path.Combine(physicalRoot, relative);
+            if (relative.Length > 0 && (Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source)) is { } access)
+                overrides.Add(new GitOverride($"{virtualRoot}/{relative}", source, access));
+        }
+
+        paths.AddRange(GitWorktreeBinds.Narrow(binds, overrides));
     }
 
     /// <summary>Adds the agent root a mount holds, with the rights in force there; how it is bound, or null when it is not.</summary>
@@ -913,13 +928,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return rootAccess;
     }
 
-    /// <summary>
-    /// Adds the sub-path overrides of a mount that lie in one of the bound <paramref name="areas"/>, at the
-    /// path that area is seen at (the first area that holds an override places it).
-    /// </summary>
+    /// <summary>Adds the sub-path overrides of a mount that lie under <paramref name="area"/>, at their virtual path.</summary>
     private static void AddOverridePaths(
-        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot,
-        List<(string VirtualPath, string Destination)> areas)
+        List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> overrides, string physicalRoot, string virtualRoot, string area)
     {
         foreach (var subPath in overrides)
         {
@@ -928,14 +939,13 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 continue;
 
             var virtualPath = $"{virtualRoot}/{relative}";
-            var area = areas.FindIndex(a => MatchesMountPrefix(virtualPath, a.VirtualPath));
-            if (area < 0)
+            if (!MatchesMountPrefix(virtualPath, area))
                 continue;
 
             var source = Path.Combine(physicalRoot, relative);
             var granted = Granted(subPath.Rights) ?? BubblewrapProbe.HiddenKindOf(source);
             if (granted is { } subAccess)
-                paths.Add(new ConfinedPath(source, areas[area].Destination + virtualPath[areas[area].VirtualPath.Length..], subAccess));
+                paths.Add(new ConfinedPath(source, virtualPath, subAccess));
         }
     }
 

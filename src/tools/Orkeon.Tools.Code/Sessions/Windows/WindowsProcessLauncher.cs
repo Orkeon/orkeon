@@ -93,6 +93,7 @@ internal sealed class WindowsLaunchedProcess : IDisposable
     private sealed class ProcessWaitHandle : WaitHandle
     {
         private SafeHandleMarshaller<SafeProcessHandle>.ManagedToUnmanagedIn _process;
+        private int _freed;
 
         public ProcessWaitHandle(SafeProcessHandle process)
         {
@@ -104,7 +105,9 @@ internal sealed class WindowsLaunchedProcess : IDisposable
         protected override void Dispose(bool explicitDisposing)
         {
             base.Dispose(explicitDisposing);
-            _process.Free();
+            // The marshaller's release is not idempotent: a second Dispose must not release the handle again.
+            if (Interlocked.Exchange(ref _freed, 1) == 0)
+                _process.Free();
         }
     }
 }

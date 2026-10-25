@@ -78,20 +78,41 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Racine de travail de l'agent.** Un agent qui déclare une
   [racine de travail](vfs-compliance.md#racine-de-travail-dun-agent-et-mount) ne voit, du mount qui
   la tient, que la racine. Quand la racine est un worktree git lié (son `.git` est un fichier,
-  `gitdir: <chemin>`, écrit par `git worktree add`), le répertoire git du worktree
-  (`<principal>/.git/worktrees/<nom>`) et le répertoire commun que nomme son `commondir`
-  (`<principal>/.git`) sont liés aussi, avec les droits de la racine, pour que `git status`,
-  `git add` et `git commit` y fonctionnent et commitent sur la branche du worktree ; le `config`
-  et les `hooks` du répertoire commun sont liés en lecture seule (ils nomment des programmes que
-  git lance sur l'hôte). Rien d'autre du checkout principal n'est lié : son arbre de travail reste
-  hors d'atteinte. Un gitdir relatif (`git worktree add --relative-paths`, git 2.48 et suivants)
-  est résolu contre le chemin virtuel de la racine et lié aux chemins virtuels ; un gitdir absolu
-  qui nomme le chemin de l'hôte (`git worktree add` simple) est lié à ce chemin de l'hôte, et
-  seulement s'il se trouve sous la racine physique du mount. Un gitdir ou un commondir qui sort du
-  mount, contient la racine, ne peut être lu ou n'a pas la forme d'un worktree ne lie rien (journal
-  au niveau Debug). Les trois backends prennent ces chemins dans la même liste : Seatbelt et
-  AppContainer les accordent à leurs chemins physiques, où git les trouve par un gitdir relatif ou
-  un chemin de l'hôte.
+  `gitdir: <chemin>`, écrit par `git worktree add`), git commite par deux répertoires hors d'elle,
+  liés après tous les autres chemins du mount pour que `git status`, `git add` et `git commit` y
+  fonctionnent et commitent sur la branche du worktree :
+  - le répertoire commun du dépôt (`<principal>/.git`) **en lecture seule** en entier : son
+    `config`, ses `hooks`, `info`, `modules`, les répertoires git des autres worktrees, et ce qui y
+    serait créé plus tard, sont lus par le git de l'utilisateur dans le checkout principal ;
+    l'agent ne peut ni les modifier ni en ajouter ;
+  - par-dessus, **en lecture-écriture** (plafonnés par les droits de la racine et ceux en vigueur
+    à cet endroit) : `<commun>/objects`, `<commun>/refs`, `<commun>/logs` (chacun seulement s'il
+    est un répertoire, pas un lien symbolique ; un dépôt sans `logs/` ne peut enregistrer de reflog
+    depuis l'agent) et le répertoire git propre au worktree (`<commun>/worktrees/<nom>`), qui était
+    déjà de fait à l'agent puisque git dans le worktree se fie au fichier `.git` de la racine ;
+  - puis les surcharges du mount sous ces répertoires, chacune réduite au moindre de ce qu'elle
+    accorde et de ce qu'accorde la règle git à cet endroit : une surcharge restreint un répertoire
+    git (un `refs/heads` en lecture seule le reste) mais ne l'élargit jamais (une surcharge en
+    lecture-écriture sur le répertoire commun laisse ses `hooks` et son `config` en lecture seule).
+
+  Rien n'est lié si l'une des vérifications échoue : le gitdir se trouve dans un répertoire
+  `worktrees` et le répertoire commun est son grand-parent ; son `commondir` nomme exactement ce
+  répertoire commun ; son lien retour `gitdir` nomme exactement le `.git` de cette racine (un agent
+  ne peut pointer son `.git` vers le répertoire git d'un autre worktree) ; les deux ont la forme
+  d'un répertoire git ; les deux sont sur le mount hors de la racine sans la contenir ; et aucun
+  composant de leur chemin sous la racine du mount n'est un lien symbolique, lu par le VFS sans
+  suivre le dernier lien (le VFS résout les chemins lexicalement, alors que le noyau suit les liens
+  quand il lie une source). Un gitdir, un commondir ou un lien retour peut être relatif (au
+  répertoire qui tient le fichier ; `git worktree add --relative-paths`, git 2.48 et suivants), un
+  chemin virtuel, ou un chemin de l'hôte sous la racine physique du mount (`git worktree add`
+  simple), lié à ce chemin de l'hôte. Tout le reste ne lie rien et est journalisé au niveau Debug.
+  Les vérifications ont lieu au démarrage de la commande ; ce qu'un job du même agent peut écrire
+  entre-temps se trouve dans `objects`, `refs`, `logs` ou le gitdir, dont aucun n'est un composant
+  des chemins vérifiés. Rien d'autre du checkout principal n'est lié : son arbre de travail reste
+  hors d'atteinte. Les trois backends prennent ces chemins dans la même liste et donnent les mêmes
+  droits à un parent en lecture seule aux enfants en lecture-écriture : bubblewrap lie les chemins
+  les plus profonds en dernier, Seatbelt les écrit en dernier (sa dernière règle qui correspond
+  l'emporte), AppContainer accorde Modify aux enfants par-dessus une lecture-exécution héritée.
 - **Tâches.** `action = start_job` lance une commande de l'allowlist en tâche détachée, avec le
   même confinement qu'un appel bloquant, et renvoie un `job_id` et le chemin virtuel de son fichier
   de sortie, `/output/jobs/<id>.log` (le premier montage avec droit d'écriture quand `/output`

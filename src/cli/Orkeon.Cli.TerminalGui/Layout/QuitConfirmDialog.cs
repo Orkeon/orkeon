@@ -45,8 +45,8 @@ public sealed class QuitConfirmDialog : Window
             IsDefault = true,
         };
 
-        yes.Accepting += (_, _) => { Confirmed = true; Application.RequestStop(this); };
-        no.Accepting += (_, _) => { Confirmed = false; Application.RequestStop(this); };
+        yes.OnAccept(() => { Confirmed = true; Application.RequestStop(this); });
+        no.OnAccept(() => { Confirmed = false; Application.RequestStop(this); });
 
         Add(label, yes, no);
     }

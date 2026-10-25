@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Core.FileSystem;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -57,7 +58,7 @@ internal sealed class DirectoryPickerDialog : Window
 
         // Enter walks into the highlighted folder, or picks the highlighted file; the button
         // below picks where we stand.
-        _entries.Accepting += (_, _) => Activate(_entries.SelectedItem ?? -1);
+        _entries.OnAccept(() => Activate(_entries.SelectedItem ?? -1));
 
         var select = new Button
         {
@@ -68,8 +69,8 @@ internal sealed class DirectoryPickerDialog : Window
         };
         var cancel = new Button { X = Pos.Right(select) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        select.Accepting += (_, _) => Confirm(_entries.SelectedItem ?? -1);
-        cancel.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        select.OnAccept(() => Confirm(_entries.SelectedItem ?? -1));
+        cancel.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(_current, _entries, select, cancel);
     }

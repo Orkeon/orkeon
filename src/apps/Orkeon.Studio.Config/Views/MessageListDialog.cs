@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 // Aliased under a distinct name: the bare name `Application` binds to the enclosing
@@ -87,11 +88,11 @@ internal sealed class MessageListDialog : Window
                 IsDefault = i == labels.Count - 1,
             };
 
-            button.Accepting += (_, _) =>
+            button.OnAccept(() =>
             {
                 ChoiceIndex = index;
                 TerminalApp.RequestStop(this);
-            };
+            });
 
             _buttons.Add(button);
             Add(button);

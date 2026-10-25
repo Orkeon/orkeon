@@ -366,8 +366,6 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         return foreignKeys;
     }
 
-    // internal (not private) so the SQL-injection invariant can be proven by unit tests
-    // (Orkeon.Tools.Data.Tests via InternalsVisibleTo) rather than only asserted in a justification.
     private static void AddParameter(DbCommand command, string name, object value)
     {
         var parameter = command.CreateParameter();
@@ -376,12 +374,10 @@ public partial class DatabaseSchemaTool : ToolBase<DatabaseSchemaRequest, Databa
         command.Parameters.Add(parameter);
     }
 
-    internal static string QuoteSqliteIdentifier(string identifier)
-        => $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
-
     /// <summary>
     /// Returns true when the identifier matches the allowlist <c>^[a-zA-Z0-9_]+$</c>.
-    /// PRAGMA statements do not accept parameters, so only allowlisted identifiers may be interpolated.
+    /// The names reach SQLite as bound parameters of the <c>pragma_*</c> table functions; the allowlist only
+    /// skips the tables and indexes whose name falls outside it, as the tool always did.
     /// </summary>
     internal static bool IsSafeIdentifier(string identifier)
         => !string.IsNullOrEmpty(identifier) && SafeIdentifierRegex().IsMatch(identifier);

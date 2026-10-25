@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Orkeon.Cli.TerminalGui.Layout;
 using Orkeon.Studio.Core.FileSystem;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
@@ -34,21 +35,21 @@ internal sealed class DirectoryPickerDialog : Window
         RefreshEntries();
 
         // Enter walks into the highlighted entry; the button below picks where we stand.
-        _entries.Accepting += (_, _) =>
+        _entries.OnAccept(() =>
         {
             _browser.Enter(_entries.SelectedItem ?? -1);
             RefreshEntries();
-        };
+        });
 
         var select = new Button { X = 1, Y = Pos.AnchorEnd(1), Text = "Use this folder", IsDefault = true };
         var cancel = new Button { X = Pos.Right(select) + 2, Y = Pos.AnchorEnd(1), Text = "Cancel" };
 
-        select.Accepting += (_, _) =>
+        select.OnAccept(() =>
         {
             SelectedPath = _browser.CurrentPath;
             TerminalApp.RequestStop(this);
-        };
-        cancel.Accepting += (_, _) => TerminalApp.RequestStop(this);
+        });
+        cancel.OnAccept(() => TerminalApp.RequestStop(this));
 
         Add(_current, _entries, select, cancel);
     }
