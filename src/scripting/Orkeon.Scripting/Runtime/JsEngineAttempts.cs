@@ -61,6 +61,27 @@ internal static class JsEngineAttempts
             $"Call it as ctx.tools.{jsName}(...) from the agent's body.");
     }
 
+    /// <summary>
+    /// #189: the budget <c>crew.runAgent(agent, input, { charge: "crew" })</c> charges. A call from code
+    /// cannot name the body it comes from, so the budget is read off the open attempts: the one budget
+    /// they all run under; <c>null</c> when none is open or none of them runs under a budget. Attempts
+    /// under different budgets (a fan-out, a budgeted delegated run beside the crew's bodies) leave the
+    /// charge ambiguous, and it is refused rather than charged to a neighbour's budget:
+    /// <c>ctx.delegate</c> names its own context's.
+    /// </summary>
+    internal static Orkeon.Domain.Autonomous.AgentExecutionBudget? BudgetToCharge(Engine engine)
+    {
+        if (!Registries.TryGetValue(engine, out var registry)) return null;
+        List<BrokerAttribution> open;
+        lock (registry.Sync) open = [.. registry.Entries];
+        var budgets = open.Select(entry => entry.Scope.Budget).Distinct(ReferenceEqualityComparer.Instance).ToList();
+        if (budgets.Count <= 1) return budgets.Count == 0 ? null : (Orkeon.Domain.Autonomous.AgentExecutionBudget?)budgets[0];
+        throw new Orkeon.Scripting.Exceptions.InvalidScriptException(
+            "crew.runAgent / ctx.delegate options: charge: \"crew\" from crew.runAgent cannot tell which budget to charge: "
+            + "runs under different budgets are open. Call ctx.delegate(agent, input, { charge: \"crew\" }) from the agent's body, "
+            + "which charges that body's budget.");
+    }
+
     private sealed class Registry
     {
         internal readonly Lock Sync = new();

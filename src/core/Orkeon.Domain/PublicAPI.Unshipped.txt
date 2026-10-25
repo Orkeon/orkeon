@@ -1390,3 +1390,5 @@ Orkeon.Domain.Exceptions.DomainException.DomainException(System.Runtime.Serializ
 override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ChargedTo.get -> Orkeon.Domain.Autonomous.AgentExecutionBudget?
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ChargedTo.init -> void
+[ORKEXP002]Orkeon.Domain.Autonomous.BudgetSnapshot.Charged.get -> Orkeon.Domain.Autonomous.BudgetSnapshot?
+[ORKEXP002]Orkeon.Domain.Autonomous.BudgetSnapshot.Charged.init -> void

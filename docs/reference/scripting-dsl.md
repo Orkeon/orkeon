@@ -226,11 +226,14 @@ its budget from the run's. An unknown key, a count that is not a whole number of
 unreadable `wallTime` is refused when the run opens, where `crewBuilder().budget(...)` skips it.
 `charge: "crew"`, beside `budget`, counts what the run spends (tool calls, tokens, spawns; its wall
 clock runs with the caller's) against the budget of the run it is called from as well — the crew's,
-from an agent body of `crew.run` — so runs started at once never spend more than the crew allows;
-without `budget` the run spends straight from the caller's, and it is refused when the caller runs
-under no budget. `ctx.delegate` charges its own context's budget; `crew.runAgent` the agent body it
-is called from (the innermost one still running, under a fan-out from several bodies). `crew.run`
-and `crew.runStream` ignore both keys. `ctx.send(agentOrName, message)`, `receive({
+from an agent body of `crew.run` — so runs started at once never spend more than the crew allows.
+A call the run's own budget refuses is not charged, and the children it spawns are charged too,
+each allowed no more than what both budgets have left. Without `budget` the run spends straight
+from the caller's, and it is refused when the caller runs under no budget. `ctx.delegate` charges
+its own context's budget. `crew.runAgent` cannot name the body it is called from: it charges the
+one budget every open agent body runs under, and is refused when bodies under different budgets
+are open (a fan-out beside a budgeted delegated run); call `ctx.delegate` from the body instead.
+`crew.run` and `crew.runStream` ignore both keys. `ctx.send(agentOrName, message)`, `receive({
 timeout })` and `broadcast(message)` exchange messages; `send` and `broadcast` are synchronous.
 `ctx.crew` is a read-only view of the crew (`name`, `findByName`, `findById`, `findByRole`,
 `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joins the extra arguments with a

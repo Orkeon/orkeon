@@ -333,7 +333,7 @@ public sealed partial class JsCrew
         if (budget.ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
             scope.Budget = childBudget;
         else if (scope.Kind == CrewRunKind.Agent)
-            scope.Budget = ScriptRunBudget(bag, budget, scope.Parent);
+            scope.Budget = ScriptRunBudget(_engine, bag, budget);
         scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
         scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
         scope.InheritedRoot = (bag?.Get("root").ToObject() as InheritedWorkingRoot)?.Root;
@@ -344,10 +344,11 @@ public sealed partial class JsCrew
     /// The budget a script gives <c>crew.runAgent</c> or <c>ctx.delegate</c> (#189): <c>budget</c>, the spec
     /// of <c>crewBuilder().budget({...})</c>, and <c>charge: "crew"</c>, which charges what the run spends to
     /// the budget of the run it is called from as well — the caller's context's for <c>ctx.delegate</c>
-    /// (<see cref="CallerBudget"/>), the innermost open attempt's for <c>crew.runAgent</c>. With the charge and
-    /// no <c>budget</c>, the run spends straight from the caller's. Neither: no budget, as before.
+    /// (<see cref="CallerBudget"/>); for <c>crew.runAgent</c>, the one budget every open attempt runs under,
+    /// refused when they run under several (<see cref="JsEngineAttempts.BudgetToCharge"/>). With the charge
+    /// and no <c>budget</c>, the run spends straight from the caller's. Neither: no budget, as before.
     /// </summary>
-    private static Orkeon.Domain.Autonomous.AgentExecutionBudget? ScriptRunBudget(JsValue? bag, JsValue budget, CrewRunScope? parent)
+    private static Orkeon.Domain.Autonomous.AgentExecutionBudget? ScriptRunBudget(Jint.Engine engine, JsValue? bag, JsValue budget)
     {
         Orkeon.Domain.Autonomous.AgentExecutionBudget? charged = null;
         var charge = bag?.Get("charge") ?? JsValue.Undefined;
@@ -355,7 +356,7 @@ public sealed partial class JsCrew
         {
             if (!charge.IsString() || !string.Equals(charge.AsString(), "crew", StringComparison.Ordinal))
                 throw new InvalidScriptException($"crew.runAgent / ctx.delegate options: charge must be \"crew\"; got {charge}.");
-            charged = (bag!.Get("caller").ToObject() is CallerBudget caller ? caller.Budget : parent?.Budget)
+            charged = (bag!.Get("caller").ToObject() is CallerBudget caller ? caller.Budget : JsEngineAttempts.BudgetToCharge(engine))
                 ?? throw new InvalidScriptException(
                     "crew.runAgent / ctx.delegate options: charge: \"crew\" charges the budget of the run it is called from, "
                     + "and this call runs under none: give the crew a budget, crewBuilder().budget({...}).");

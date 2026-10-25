@@ -37,10 +37,12 @@ declare global {
         /**
          * `"crew"`: what this run spends (tool calls, tokens, spawns; its wall clock runs with the
          * caller's) counts against the budget of the run it is called from as well, so runs started
-         * at once never spend more than the crew's budget; the first budget spent ends the run. Without
-         * `budget`, the run spends straight from the caller's. Refused when the caller runs under no
-         * budget. `ctx.delegate` charges its own context's budget; `crew.runAgent`, the agent body it is
-         * called from (the innermost one still running, under a fan-out from several bodies).
+         * at once never spend more than the crew's budget; the first budget spent ends the run. A call
+         * this run's own budget refuses is not charged; a child it spawns is charged too, allowed no more
+         * than what both budgets have left. Without `budget`, the run spends straight from the caller's.
+         * Refused when the caller runs under no budget. `ctx.delegate` charges its own context's budget;
+         * `crew.runAgent`, the one budget every open agent body runs under, and is refused when bodies
+         * under different budgets are open (call `ctx.delegate` from the body instead).
          */
         charge?: "crew";
     }

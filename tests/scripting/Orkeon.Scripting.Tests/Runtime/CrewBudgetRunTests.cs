@@ -5,6 +5,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Doubles;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -23,6 +24,14 @@ public sealed class CrewBudgetRunTests
         var argsEncoded = System.Text.Json.JsonSerializer.Serialize(argsJson);
         return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
                "{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"" + name + "\",\"arguments\":" + argsEncoded + "}}]}}]}";
+    }
+
+    /// <summary>A turn asking for <c>echo_tool</c> twice: two tool calls recorded within one turn.</summary>
+    private static string TwoToolCallsBody()
+    {
+        var args = System.Text.Json.JsonSerializer.Serialize("{\"text\":\"again\"}");
+        string Call(string id) => "{\"id\":\"" + id + "\",\"type\":\"function\",\"function\":{\"name\":\"echo_tool\",\"arguments\":" + args + "}}";
+        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" + Call("c1") + "," + Call("c2") + "]}}]}";
     }
 
     private static JsCrew BuildCrew(Jint.Engine engine, string script)
@@ -111,13 +120,40 @@ public sealed class CrewBudgetRunTests
         """;
 
     private static (Jint.Engine Engine, CountingTool Tool, LoopingProvider Provider) NewDelegatingCrew(
-        string call, string crewBudget = "", int tokensPerTurn = 0)
+        string call, string crewBudget = "", int tokensPerTurn = 0, string? providerBody = null)
     {
         var tool = new CountingTool("echo_tool");
-        var provider = new LoopingProvider(ToolCallBody("echo_tool", "{\"text\":\"again\"}"), tokensPerTurn);
+        var provider = new LoopingProvider(providerBody ?? ToolCallBody("echo_tool", "{\"text\":\"again\"}"), tokensPerTurn);
         var engine = new Orkeon.Scripting.JsEngineFactory(builtInTools: new IBaseTool[] { tool }, llmProvider: provider).Create();
         engine.Execute(DelegatingCrew.Replace("CALL", call, StringComparison.Ordinal).Replace("BUDGET", crewBudget, StringComparison.Ordinal));
         return (engine, tool, provider);
+    }
+
+    /// <summary>What the crews of the tests below share: <c>describe</c> and the <c>looping</c> agent of <see cref="DelegatingCrew"/>.</summary>
+    private const string Prelude = """
+        const looping = (n) => agentBuilder().name(n).role("R").goal("G").tools(["echo_tool"])
+          .body(async (input, ctx) => {
+            if (input === undefined) return null;
+            const r = await ctx.llm.act("loop forever", { maxIterations: 40 });
+            return String(r?.output ?? r);
+          }).build();
+        const describe = (e) => (e instanceof BudgetExhaustedError ? "budget: " : "other: ") + e.message;
+
+        """;
+
+    private static async Task<(Jint.Engine Engine, CountingTool Tool)> NewCrewAsync(string script)
+    {
+        var tool = new CountingTool("echo_tool");
+        var provider = new LoopingProvider(ToolCallBody("echo_tool", "{\"text\":\"again\"}"));
+        var engine = new Orkeon.Scripting.JsEngineFactory(builtInTools: new IBaseTool[] { tool }, llmProvider: provider).Create();
+        await engine.ExecuteAsync(Prelude + script, null, Ct);
+        return (engine, tool);
+    }
+
+    private static async Task<string> RunCrewAsync(Jint.Engine engine)
+    {
+        var crew = (JsCrew)(await engine.EvaluateAsync("crew", null, Ct)).ToObject()!;
+        return (await crew.RunAsync(null, Ct)).output;
     }
 
     private static async Task<string> RunAAsync(Jint.Engine engine)
@@ -278,6 +314,190 @@ public sealed class CrewBudgetRunTests
         Assert.Equal(40, tool.CallCount);
     }
 
+    [Fact]
+    public async Task ShouldNotChargeTheCrew_WhenTheRunsOwnLimitRefusesACall()
+    {
+        // Arrange: every turn asks for two calls; the crew allows 4, B 1, C charges the crew straight
+        var (engine, tool, _) = NewDelegatingCrew(
+            """
+            ctx.delegate("B", "go", { budget: { toolCalls: 1 }, charge: "crew" }).catch(describe)
+              .then(b => ctx.delegate("C", "go", { charge: "crew" }).catch(describe).then(c => b + " | " + c))
+            """,
+            crewBudget: ".budget({ toolCalls: 4 })",
+            providerBody: TwoToolCallsBody());
+        using var owned = engine;
+
+        // Act
+        var output = await RunCrewAsync(engine);
+
+        // Assert: B's second call is refused by B and never reaches the crew, so C gets the three left
+        Assert.Equal("completed: budget: Agent exceeded 1 tool calls. | budget: Agent exceeded 4 tool calls.", output);
+        Assert.Equal(4, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task ShouldEndTheDelegatedRunOnItsWallTime_WhenItsClockRunsOut()
+    {
+        // Arrange: A runs under a host budget on a fake clock that each model turn moves by 30 s; B
+        // allows itself one minute and charges A's budget, whose clock it reads
+        var clock = new FakeTimeProvider();
+        var (engine, _, provider) = NewDelegatingCrew("ctx.delegate(\"B\", \"go\", { budget: { wallTime: \"1m\" }, charge: \"crew\" })");
+        using var owned = engine;
+        provider.OnChat = () => clock.Advance(TimeSpan.FromSeconds(30));
+        engine.SetValue("hostBudget", new AgentExecutionBudget
+        {
+            MaxWallTime = TimeSpan.FromHours(1),
+            MaxToolCalls = 1_000,
+            MaxTokensConsumed = 100_000,
+            TimeProvider = clock,
+        });
+
+        // Act
+        var outcome = (await engine.EvaluateAsync("(async () => await crew.runAgent(\"A\", \"go\", { budget: hostBudget }))()", null, Ct)).AsString();
+
+        // Assert
+        Assert.StartsWith("budget: Wall time exceeded", outcome, StringComparison.Ordinal);
+        Assert.Equal(2, provider.ChatCount);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheSecondSpawn_WhenTheDelegatedRunGivesSpawnedAgentsOne()
+    {
+        // Arrange
+        var (engine, _) = await NewCrewAsync("""
+            const b = agentBuilder().name("B").role("R").goal("G").body(async (input, ctx) => {
+              try { ctx.spawnBackground("D", "go"); ctx.spawnBackground("D", "go"); return "both"; } catch (e) { return describe(e); }
+            }).build();
+            const d = agentBuilder().name("D").role("R").goal("G").body(async () => "d").build();
+            const a = agentBuilder().name("A").role("R").goal("G")
+              .body(async (input, ctx) => await ctx.delegate("B", "go", { budget: { spawnedAgents: 1 } })).build();
+            globalThis.crew = crewBuilder().name("c").withAgent(a).withAgent(b).withAgent(d).build();
+            """);
+        using var owned = engine;
+
+        // Act
+        var outcome = await RunAAsync(engine);
+
+        // Assert
+        Assert.Equal("budget: Agent exceeded 1 spawned sub-agents.", outcome);
+    }
+
+    [Fact]
+    public async Task ShouldChargeTheCrew_WhenAChildIsSpawnedInsideAChargedRun()
+    {
+        // Arrange: B allows itself 100 calls and charges the crew's 3; its child C spends them, so D,
+        // charging the crew after it, finds none left
+        var (engine, tool) = await NewCrewAsync("""
+            const b = agentBuilder().name("B").role("R").goal("G").body(async (input, ctx) => {
+              if (input === undefined) return null;
+              ctx.spawnBackground("C", "go");
+              return await ctx.receive({ timeout: 60000 });
+            }).build();
+            const c = agentBuilder().name("C").role("R").goal("G").tools(["echo_tool"]).body(async (input, ctx) => {
+              if (input === undefined) return null;
+              try { await ctx.llm.act("loop forever", { maxIterations: 40 }); ctx.send("B", "completed"); } catch (e) { ctx.send("B", describe(e)); }
+              return "c";
+            }).build();
+            const a = agentBuilder().name("A").role("R").goal("G").body(async (input, ctx) => {
+              const child = await ctx.delegate("B", "go", { budget: { toolCalls: 100 }, charge: "crew" });
+              let after;
+              try { after = "completed: " + await ctx.delegate("D", "go", { charge: "crew" }); } catch (e) { after = describe(e); }
+              return child + " | " + after;
+            }).build();
+            globalThis.crew = crewBuilder().name("c").budget({ toolCalls: 3 }).withAgent(a).withAgent(b).withAgent(c).withAgent(looping("D")).build();
+            """);
+        using var owned = engine;
+
+        // Act
+        var output = await RunCrewAsync(engine);
+
+        // Assert
+        Assert.Equal("budget: Tool-call budget exhausted (3/3). | budget: Tool-call budget exhausted (3/3).", output);
+        Assert.Equal(3, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task ShouldChargeEveryLevel_WhenAChargedRunDelegatesAChargedRun()
+    {
+        // Arrange: run -> run -> crew. C allows itself 100 calls, B 2, the crew 3: B's limit ends C, and
+        // the crew counted C's two calls, so D gets the one left
+        var (engine, tool) = await NewCrewAsync("""
+            const b = agentBuilder().name("B").role("R").goal("G").body(async (input, ctx) => {
+              if (input === undefined) return null;
+              try { return "completed: " + await ctx.delegate("C", "go", { budget: { toolCalls: 100 }, charge: "crew" }); } catch (e) { return describe(e); }
+            }).build();
+            const a = agentBuilder().name("A").role("R").goal("G").body(async (input, ctx) => {
+              const nested = await ctx.delegate("B", "go", { budget: { toolCalls: 2 }, charge: "crew" });
+              let after;
+              try { after = "completed: " + await ctx.delegate("D", "go", { charge: "crew" }); } catch (e) { after = describe(e); }
+              return nested + " | " + after;
+            }).build();
+            globalThis.crew = crewBuilder().name("c").budget({ toolCalls: 3 }).withAgent(a).withAgent(b).withAgent(looping("C")).withAgent(looping("D")).build();
+            """);
+        using var owned = engine;
+
+        // Act
+        var output = await RunCrewAsync(engine);
+
+        // Assert
+        Assert.Equal("budget: Tool-call budget exhausted (2/2). | budget: Tool-call budget exhausted (3/3).", output);
+        Assert.Equal(3, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task ShouldChargeTheCrew_WhenRunAgentChargesFromTheOnlyBodyRunning()
+    {
+        // Arrange
+        var (engine, tool, _) = NewDelegatingCrew("crew.runAgent(\"B\", \"go\", { charge: \"crew\" })", crewBudget: ".budget({ toolCalls: 2 })");
+        using var owned = engine;
+
+        // Act
+        var output = await RunCrewAsync(engine);
+
+        // Assert
+        Assert.Equal("budget: Tool-call budget exhausted (2/2).", output);
+        Assert.Equal(2, tool.CallCount);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseTheCharge_WhenRunAgentIsCalledWhileRunsUnderDifferentBudgetsAreOpen()
+    {
+        // Arrange: under Promise.all, B runs under its own budget beside A's body under the crew's when
+        // crew.runAgent asks to charge: which one is meant cannot be told
+        var (engine, tool) = await NewCrewAsync("""
+            const b = agentBuilder().name("B").role("R").goal("G").body(async (input, ctx) => {
+              if (input === undefined) return null;
+              ctx.send("A", "started");
+              return await ctx.receive({ timeout: 60000 });
+            }).build();
+            const a = agentBuilder().name("A").role("R").goal("G").body(async (input, ctx) => {
+              const [held, charged] = await Promise.all([
+                ctx.delegate("B", "go", { budget: { toolCalls: 5 } }),
+                (async () => {
+                  await ctx.receive({ timeout: 60000 });
+                  try { return "completed: " + await crew.runAgent("C", "go", { charge: "crew" }); }
+                  catch (e) { return describe(e); }
+                  finally { ctx.send("B", "released"); }
+                })(),
+              ]);
+              return held + " | " + charged;
+            }).build();
+            globalThis.crew = crewBuilder().name("c").budget({ toolCalls: 10 }).withAgent(a).withAgent(b).withAgent(looping("C")).build();
+            """);
+        using var owned = engine;
+
+        // Act
+        var output = await RunCrewAsync(engine);
+
+        // Assert
+        Assert.Equal(
+            "released | other: crew.runAgent / ctx.delegate options: charge: \"crew\" from crew.runAgent cannot tell which budget to charge: "
+            + "runs under different budgets are open. Call ctx.delegate(agent, input, { charge: \"crew\" }) from the agent's body, "
+            + "which charges that body's budget.",
+            output);
+        Assert.Equal(0, tool.CallCount);
+    }
+
     // ── fakes ────────────────────────────────────────────────────────────────
 
     /// <summary>Always answers with the same tool-call body: a divergent model.</summary>
@@ -294,6 +514,8 @@ public sealed class CrewBudgetRunTests
         public string Name => "fake";
         public LlmConfig? BaseConfig => LlmConfig.Create("fake-model");
         public int ChatCount => Volatile.Read(ref _chatCount);
+        /// <summary>Runs on each chat turn, before it answers: a test moves its fake clock there.</summary>
+        public Action? OnChat { get; set; }
 
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
             => Task.FromResult(new LlmResponse { Content = "", RawResponseBody = _body });
@@ -301,6 +523,7 @@ public sealed class CrewBudgetRunTests
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
         {
             Interlocked.Increment(ref _chatCount);
+            OnChat?.Invoke();
             return Task.FromResult(new LlmResponse { Content = "", RawResponseBody = _body, TokensUsed = _tokensPerTurn });
         }
     }

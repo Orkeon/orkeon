@@ -47,8 +47,10 @@ public sealed class AgentExecutionBudget
     /// A budget this one also charges: every tool call, token and spawn recorded here is recorded
     /// there too, its wall clock pauses with this one, and this budget is exhausted as soon as that
     /// one is. Several budgets charging one share its tally, which is thread-safe like this one's,
-    /// so runs at once never spend more than it allows. Null (the default): this budget stands alone.
-    /// Delegation depth is not charged, and <see cref="CreateChildBudget"/> does not carry it over.
+    /// so runs at once never spend more than it allows. A call this budget refuses is not charged, and
+    /// a call the charged one refuses is not counted here either. Null (the default): this budget stands
+    /// alone. Delegation depth is not charged. <see cref="CreateChildBudget"/> carries the charge over,
+    /// so what a child spends is charged too.
     /// </summary>
     public AgentExecutionBudget? ChargedTo { get; init; }
 
@@ -152,12 +154,11 @@ public sealed class AgentExecutionBudget
     public void RecordToolCall()
     {
         AssertWallTime();
-        var toolCalls = Interlocked.Increment(ref _toolCalls);
-        ChargedTo?.RecordToolCall();
-        if (toolCalls > MaxToolCalls)
+        if (Interlocked.Increment(ref _toolCalls) > MaxToolCalls)
             throw new BudgetExhaustedException(
                 BudgetDimension.ToolCalls,
                 $"Agent exceeded {MaxToolCalls} tool calls.");
+        ChargeOrRollBack(ref _toolCalls, static charged => charged.RecordToolCall());
     }
 
     /// <summary>Records a delegation hop and throws if the depth limit is exceeded.</summary>
@@ -189,12 +190,30 @@ public sealed class AgentExecutionBudget
     public void RecordSpawn()
     {
         AssertWallTime();
-        var spawned = Interlocked.Increment(ref _spawnedAgents);
-        ChargedTo?.RecordSpawn();
-        if (spawned > MaxSpawnedAgents)
+        if (Interlocked.Increment(ref _spawnedAgents) > MaxSpawnedAgents)
             throw new BudgetExhaustedException(
                 BudgetDimension.SpawnedAgents,
                 $"Agent exceeded {MaxSpawnedAgents} spawned sub-agents.");
+        ChargeOrRollBack(ref _spawnedAgents, static charged => charged.RecordSpawn());
+    }
+
+    /// <summary>
+    /// Records on <see cref="ChargedTo"/> an action this budget has just counted in
+    /// <paramref name="counter"/> and allowed. When the charged budget refuses it, the count here is
+    /// taken back before the refusal propagates: a refused action is counted on neither tally.
+    /// </summary>
+    private void ChargeOrRollBack(ref int counter, Action<AgentExecutionBudget> record)
+    {
+        if (ChargedTo is not { } charged) return;
+        try
+        {
+            record(charged);
+        }
+        catch (BudgetExhaustedException)
+        {
+            Interlocked.Decrement(ref counter);
+            throw;
+        }
     }
 
     /// <summary>
@@ -225,7 +244,10 @@ public sealed class AgentExecutionBudget
         ChargedTo?.ThrowIfExhausted();
     }
 
-    /// <summary>Asserts that the wall-clock time has not been exceeded.</summary>
+    /// <summary>
+    /// Asserts that the wall-clock time has not been exceeded, on this budget and on the one it
+    /// charges (<see cref="ChargedTo"/>).
+    /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
     public void AssertWallTime()
     {
@@ -234,9 +256,15 @@ public sealed class AgentExecutionBudget
             throw new BudgetExhaustedException(
                 BudgetDimension.WallTime,
                 $"Wall time exceeded ({elapsed:g} >= {MaxWallTime:g}).");
+        ChargedTo?.AssertWallTime();
     }
 
-    /// <summary>Returns a snapshot of the current budget state.</summary>
+    /// <summary>
+    /// Returns a snapshot of the current budget state. A budget that charges another one
+    /// (<see cref="ChargedTo"/>) carries that one's snapshot in <see cref="BudgetSnapshot.Charged"/>: it
+    /// tells why <see cref="BudgetSnapshot.IsExhausted"/> can be true while every dimension of this one
+    /// is under its limit.
+    /// </summary>
     public BudgetSnapshot ToSnapshot() => new()
     {
         ToolCalls = _toolCalls,
@@ -249,19 +277,46 @@ public sealed class AgentExecutionBudget
         MaxSpawnedAgents = MaxSpawnedAgents,
         Elapsed = Elapsed,
         MaxWallTime = MaxWallTime,
-        IsExhausted = IsExhausted
+        IsExhausted = IsExhausted,
+        Charged = ChargedTo?.ToSnapshot()
     };
 
-    /// <summary>Creates a child budget for a delegated sub-agent, inheriting remaining allowances with reduced depth.</summary>
+    /// <summary>
+    /// Creates a child budget for a delegated sub-agent, inheriting remaining allowances with reduced depth.
+    /// A budget that charges another one (<see cref="ChargedTo"/>) hands the charge to its child, and each
+    /// allowance is also capped by what the charged budget has left.
+    /// </summary>
     public AgentExecutionBudget CreateChildBudget() => new()
     {
-        MaxToolCalls = Math.Max(1, MaxToolCalls - _toolCalls),
+        MaxToolCalls = Math.Max(1, Remaining(static b => b.MaxToolCalls - b._toolCalls)),
         MaxDelegationDepth = Math.Max(0, MaxDelegationDepth - _delegationDepth - 1),
-        MaxWallTime = MaxWallTime - Elapsed,
-        MaxTokensConsumed = Math.Max(100, MaxTokensConsumed - _tokensConsumed),
-        MaxSpawnedAgents = Math.Max(0, MaxSpawnedAgents - _spawnedAgents),
-        TimeProvider = _timeProvider
+        MaxWallTime = RemainingWallTime(),
+        MaxTokensConsumed = Math.Max(100, Remaining(static b => b.MaxTokensConsumed - b._tokensConsumed)),
+        MaxSpawnedAgents = Math.Max(0, Remaining(static b => b.MaxSpawnedAgents - b._spawnedAgents)),
+        TimeProvider = _timeProvider,
+        ChargedTo = ChargedTo
     };
+
+    /// <summary>The smallest of <paramref name="left"/> over this budget and every budget it charges, transitively.</summary>
+    private int Remaining(Func<AgentExecutionBudget, int> left)
+    {
+        var remaining = int.MaxValue;
+        for (var budget = this; budget is not null; budget = budget.ChargedTo)
+            remaining = Math.Min(remaining, left(budget));
+        return remaining;
+    }
+
+    /// <summary>The smallest wall time left over this budget and every budget it charges, transitively.</summary>
+    private TimeSpan RemainingWallTime()
+    {
+        var remaining = TimeSpan.MaxValue;
+        for (var budget = this; budget is not null; budget = budget.ChargedTo)
+        {
+            var left = budget.MaxWallTime - budget.Elapsed;
+            if (left < remaining) remaining = left;
+        }
+        return remaining;
+    }
 
     // ── Presets ──────────────────────────────────────────────────────────
 
@@ -329,8 +384,13 @@ public sealed record BudgetSnapshot
     public required TimeSpan Elapsed { get; init; }
     /// <summary>Maximum wall time.</summary>
     public required TimeSpan MaxWallTime { get; init; }
-    /// <summary>Whether any dimension is exhausted.</summary>
+    /// <summary>Whether any dimension is exhausted, on this budget or on the one it charges (<see cref="Charged"/>).</summary>
     public required bool IsExhausted { get; init; }
+    /// <summary>
+    /// The snapshot of the budget this one charges (<see cref="AgentExecutionBudget.ChargedTo"/>), taken
+    /// with this one; null for a budget that charges none.
+    /// </summary>
+    public BudgetSnapshot? Charged { get; init; }
 }
 
 /// <summary>

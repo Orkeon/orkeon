@@ -238,11 +238,14 @@ là où `crewBuilder().budget(...)` l'ignore. `charge: "crew"`, à côté de `bu
 l'exécution dépense (appels d'outils, tokens, enfants ; son horloge murale court avec celle de
 l'appelant) aussi sur le budget de l'exécution d'où elle est appelée — celui de la crew, depuis un
 `body` d'agent de `crew.run` — si bien que des exécutions lancées ensemble ne dépensent jamais plus
-que la crew ne le permet ; sans `budget`, l'exécution dépense directement sur celui de l'appelant, et
-elle est refusée quand l'appelant ne tourne sous aucun budget. `ctx.delegate` charge le budget de son
-propre contexte ; `crew.runAgent` celui du `body` d'agent d'où il est appelé (le plus interne encore
-en cours, lors d'un fan-out depuis plusieurs `body`). `crew.run` et `crew.runStream` ignorent les deux
-clés. `ctx.send(agentOuNom, message)`,
+que la crew ne le permet. Un appel que le budget propre de l'exécution refuse n'est pas imputé, et
+les enfants qu'elle lance sont imputés aussi, chacun borné par ce qui reste aux deux budgets. Sans
+`budget`, l'exécution dépense directement sur celui de l'appelant, et elle est refusée quand
+l'appelant ne tourne sous aucun budget. `ctx.delegate` charge le budget de son propre contexte.
+`crew.runAgent` ne peut pas nommer le `body` d'où il est appelé : il charge l'unique budget sous
+lequel tournent tous les `body` d'agent ouverts, et il est refusé quand des `body` sous des budgets
+différents sont ouverts (un fan-out à côté d'une exécution déléguée budgétée) ; appelez alors
+`ctx.delegate` depuis le `body`. `crew.run` et `crew.runStream` ignorent les deux clés. `ctx.send(agentOuNom, message)`,
 `receive({ timeout })` et `broadcast(message)` échangent des messages ; `send` et `broadcast`
 sont synchrones. `ctx.crew` est une vue en lecture seule de la crew (`name`, `findByName`,
 `findById`, `findByRole`, `has`, `lock(name, fn)`). `ctx.log.info(message, ...args)` joint les
