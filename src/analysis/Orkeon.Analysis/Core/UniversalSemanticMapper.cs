@@ -212,6 +212,8 @@ public sealed partial class UniversalSemanticMapper
             }
             if (d.StartIndex >= declNode.StartIndex) continue;
             if (d.EndIndex < declNode.StartIndex - 200) continue;
+            // A Java annotation in `modifiers` belongs to its own declaration, never to the next one.
+            if (d.Parent?.Type == "modifiers") continue;
             if (IsAdjacentBefore(d, declNode)) AddDecorator(node, d);
         }
     }
@@ -225,7 +227,8 @@ public sealed partial class UniversalSemanticMapper
 
     private static bool IsDirectChildDecorator(TsNode decorator, TsNode declNode)
     {
-        var parent = decorator.Parent;
+        // A Java annotation sits in the declaration's `modifiers` child.
+        var parent = decorator.Parent?.Type == "modifiers" ? decorator.Parent.Parent : decorator.Parent;
         return parent is not null && parent.StartIndex == declNode.StartIndex
             && parent.EndIndex == declNode.EndIndex
             && parent.Type == declNode.Type;

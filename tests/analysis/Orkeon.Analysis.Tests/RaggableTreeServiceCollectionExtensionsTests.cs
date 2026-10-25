@@ -33,7 +33,7 @@ public class RaggableTreeServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddRaggableTree_registers_five_language_adapters()
+    public void AddRaggableTree_registers_every_language_adapter()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
@@ -42,12 +42,9 @@ public class RaggableTreeServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var adapters = provider.GetServices<ILanguageAdapter>().ToList();
 
-        Assert.Equal(5, adapters.Count);
-        Assert.Contains(adapters, a => a.LanguageName == "typescript");
-        Assert.Contains(adapters, a => a.LanguageName == "python");
-        Assert.Contains(adapters, a => a.LanguageName == "csharp");
-        Assert.Contains(adapters, a => a.LanguageName == "go");
-        Assert.Contains(adapters, a => a.LanguageName == "rust");
+        Assert.Equal(
+            ["bash", "c", "cpp", "csharp", "go", "java", "javascript", "php", "python", "ruby", "rust", "typescript"],
+            adapters.Select(a => a.LanguageName).Order(StringComparer.Ordinal));
     }
 
     [Fact]

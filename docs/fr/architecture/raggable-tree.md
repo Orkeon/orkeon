@@ -47,7 +47,7 @@ services.AddRaggableTree(new RaggableTreeOptions
 services.AddRaggableTreeTools();   // les 28 tools agents (Orkeon.Tools.Analysis)
 ```
 
-`AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les cinq
+`AddRaggableTree` (`Orkeon.Analysis.DependencyInjection`) enregistre les douze
 adaptateurs de langage, les cinq fingerprinters de framework, le summarizer, le
 provider d'embedding, le singleton `InMemoryRaggableStore` (exposé aussi comme
 `IRaggableStore` et `IIndexInvalidation`), l'`IndexFreshnessService`, le provider de
@@ -223,7 +223,7 @@ par-dessus la passe paresseuse.
 
 Un sélecteur résout exactement un nœud ou échoue en listant les candidats. L'étendue d'un nœud inclut ses commentaires de tête et ses attributs ou décorateurs.
 
-Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), markdown (`.md`, `.markdown`). Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
+Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). Un en-tête `.h` est lu en C++, sur-ensemble qui parse aussi les en-têtes C. Le registre charge aussi agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala et verilog, parsées à la demande seulement : aucun adaptateur ne les indexe et la découverte ne réclame pas leurs fichiers. OCaml (pas de build macOS dans le paquet) et les grammaires swift, toml et tsq, propres à Windows, sont élaguées à la publication. Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
 
 `node_outline` liste les membres avec sélecteur, genre, plage d'octets et plage de lignes. `node_read` renvoie le texte d'un membre, sa plage et le SHA-256 de ses octets, sans coupure : l'outil porte sa propre borne de résultat (`node_read` = 256 000 caractères dans `AgentDefaults`), la coupure par défaut des résultats d'outil ne s'applique donc pas.
 
@@ -378,7 +378,7 @@ Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (
 
 ### Ajouter un langage
 
-Implémenter `ILanguageAdapter` (`Orkeon.Analysis.Abstractions.Interfaces`) : fournir `LanguageName`, `FileExtensions`, les sept queries Tree-sitter (`DeclarationQuery`, `ImportQuery`, `CallQuery`, `InheritanceQuery`, `DocCommentQuery`, `DecoratorQuery`, `StatementQuery`), les mappings `MapNodeKind` et `MapStatementKind`, et les extracteurs `ExtractSignature` / `ResolveImportPath` (`RefineKind`, `ResolveDocComment`, `ExtractName` et `GetExtraModifiers` ont une implémentation par défaut). Enregistrer l'adaptateur via DI (`services.AddSingleton<ILanguageAdapter, MyAdapter>()`) : le builder et le moteur incrémental prennent tous les `ILanguageAdapter` enregistrés, à côté des cinq intégrés (`LanguageAdapterFactory`). Un adaptateur Java exécutable vit dans [`examples/raggable-tree/custom-adapter/`](https://github.com/Orkeon/orkeon/blob/main/examples/raggable-tree/custom-adapter/README.md).
+Implémenter `ILanguageAdapter` (`Orkeon.Analysis.Abstractions.Interfaces`) : fournir `LanguageName`, `FileExtensions`, les sept queries Tree-sitter (`DeclarationQuery`, `ImportQuery`, `CallQuery`, `InheritanceQuery`, `DocCommentQuery`, `DecoratorQuery`, `StatementQuery`), les mappings `MapNodeKind` et `MapStatementKind`, et les extracteurs `ExtractSignature` / `ResolveImportPath` (`RefineKind`, `ResolveDocComment`, `ExtractName` et `GetExtraModifiers` ont une implémentation par défaut). Enregistrer l'adaptateur via DI (`services.AddSingleton<ILanguageAdapter, MyAdapter>()`) : le builder et le moteur incrémental prennent tous les `ILanguageAdapter` enregistrés, à côté des douze intégrés (`LanguageAdapterFactory` : TypeScript, Python, C#, Go, Rust, JavaScript, Java, C, C++, PHP, Ruby, Bash) ; un adaptateur enregistré après `AddRaggableTree` avec le `LanguageName` d'un intégré le remplace. Un adaptateur Java exécutable, écrit avant que Java soit intégré et gardé comme exemple minimal du contrat, vit dans [`examples/raggable-tree/custom-adapter/`](https://github.com/Orkeon/orkeon/blob/main/examples/raggable-tree/custom-adapter/README.md).
 
 ### Ajouter un fingerprinter
 
@@ -480,7 +480,8 @@ Implémenter `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`)
 ## Limitations V1
 
 - Pas de support des macros C++ / templates pleinement résolus, ni des méta-programmations Ruby/Elixir.
-- Le résolveur d'imports est heuristique pour les langages dynamiques (Python, TypeScript) : les re-exports et les monkey patches peuvent produire des `UnresolvedRef`.
+- Le résolveur d'imports est heuristique pour les langages dynamiques (Python, TypeScript, JavaScript, Ruby, PHP) : les re-exports et les monkey patches peuvent produire des `UnresolvedRef`.
+- Les arêtes d'import entre fichiers ne viennent que des chemins relatifs : un `import` Java, un `use` PHP, un `require` Ruby (à la différence de `require_relative`) et un `#include <...>` C nomment un paquet, un namespace ou un en-tête système, pas un fichier, et ne tracent aucune arête vers un fichier de l'arbre ; un `source` Bash dont le chemin contient une variable n'est pas résolu.
 - Le summarizer se configure uniquement en C# (`Summarizer.Provider` + un `ILlmProvider`) ; les embeddings OpenAI/Ollama exigent leur endpoint, alors que le défaut on-device du runner host ne demande rien. Le pipeline fonctionne sans embeddings (`codebase_search` classe alors par BM25 seul).
 - L'index est local au processus : `InMemoryRaggableStore` est reconstruit par `index_codebase` dans chaque processus, et le miroir vector store optionnel n'est jamais relu.
 - `FileSystemWatcherCodebaseWatcher` (l'implémentation d'`ICodebaseWatcher`, qu'aucun hôte livré n'enregistre) se base sur `System.IO.FileSystemWatcher` — sous Linux/WSL, les événements de rename peuvent arriver décomposés (observés comme Deleted puis Created).

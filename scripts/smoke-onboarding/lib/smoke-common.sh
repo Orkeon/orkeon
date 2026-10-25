@@ -29,6 +29,25 @@ SMOKE_KEPT_GRAMMARS=(
   tree-sitter-c-sharp
   tree-sitter-go
   tree-sitter-rust
+  tree-sitter-javascript
+  tree-sitter-java
+  tree-sitter-c
+  tree-sitter-cpp
+  tree-sitter-php
+  tree-sitter-ruby
+  tree-sitter-bash
+  tree-sitter-agda
+  tree-sitter-css
+  tree-sitter-embedded-template
+  tree-sitter-haskell
+  tree-sitter-html
+  tree-sitter-jsdoc
+  tree-sitter-json
+  tree-sitter-julia
+  tree-sitter-ql
+  tree-sitter-razor
+  tree-sitter-scala
+  tree-sitter-verilog
 )
 
 # doctor downgrades a missing esbuild / embedding model / grammar to a warning,

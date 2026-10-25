@@ -191,7 +191,7 @@ public sealed class DependencyGraphBuilder
         {
             var ownerSymbol = FindEnclosingSymbol(call, ctx.Nodes);
             var name = ExtractCallName(call);
-            if (_adapter.LanguageName == "typescript")
+            if (_adapter.LanguageName is "typescript" or "javascript")
             {
                 ownerSymbol ??= moduleNode;
                 if (ownerSymbol is not null && IsBareIdentifierCall(call) && TestEdgeLinker.IsTestCallName(name))
@@ -333,7 +333,7 @@ public sealed class DependencyGraphBuilder
     {
         foreach (var descendant in Descend(importNode))
         {
-            if (descendant.Type == "string" || descendant.Type == "string_fragment")
+            if (descendant.Type is "string" or "string_fragment" or "string_literal" or "system_lib_string")
             {
                 var text = descendant.Text ?? string.Empty;
                 if (!string.IsNullOrEmpty(text)) return text;
@@ -346,7 +346,8 @@ public sealed class DependencyGraphBuilder
     {
         foreach (var descendant in Descend(clause))
         {
-            if (descendant.Type == "identifier" || descendant.Type == "type_identifier")
+            // `name` is PHP's identifier, `constant` Ruby's class name.
+            if (descendant.Type is "identifier" or "type_identifier" or "name" or "constant")
             {
                 var text = descendant.Text ?? string.Empty;
                 if (!string.IsNullOrEmpty(text)) yield return text;
@@ -359,14 +360,19 @@ public sealed class DependencyGraphBuilder
 
     private static string ExtractCallName(TsNode call)
     {
+        // Java and PHP name the method `name`, Ruby `method`; a constructor call names its `type`.
         var funcChild = call.GetChildForField("function")
             ?? call.GetChildForField("constructor")
-            ?? call.GetChildForField("callee");
+            ?? call.GetChildForField("callee")
+            ?? call.GetChildForField("name")
+            ?? call.GetChildForField("method")
+            ?? call.GetChildForField("type");
         if (funcChild is not null)
         {
             return ShortNameOf(funcChild);
         }
-        if (call.Children.Count > 0) return ShortNameOf(call.Children[0]);
+        var first = call.FirstNamedChild ?? call.FirstChild;
+        if (first is not null) return ShortNameOf(first);
         return string.Empty;
     }
 

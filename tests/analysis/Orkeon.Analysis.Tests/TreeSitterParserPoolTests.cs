@@ -25,6 +25,50 @@ public class TreeSitterParserPoolTests
         Assert.Contains(parsed.Root.Children, c => c.Type == "function_definition");
     }
 
+    /// <summary>One valid snippet per grammar the registry loads beyond the indexed six covered above.</summary>
+    public static TheoryData<string, string> GrammarSnippets { get; } = new()
+    {
+        { "javascript", "export function f(a) { return a + 1; }\n" },
+        { "java", "class A { int f() { return 1; } }\n" },
+        { "c", "int f(int a) { return a; }\n" },
+        { "cpp", "namespace n { class A { public: int f(); }; }\n" },
+        { "php", "<?php function f($a) { return $a; }\n" },
+        { "ruby", "class A\n  def f; 1; end\nend\n" },
+        { "bash", "f() { echo \"$1\"; }\n" },
+        { "agda", "module A where\n" },
+        { "css", "a { color: red; }\n" },
+        { "embedded-template", "<% if x %>y<% end %>\n" },
+        { "haskell", "f :: Int -> Int\nf x = x\n" },
+        { "html", "<p>hi</p>\n" },
+        { "jsdoc", "/**\n * Adds one.\n * @param {number} a\n */" },
+        { "json", "{\"a\": [1, true, null]}\n" },
+        { "julia", "function f(x)\n  x + 1\nend\n" },
+        { "ql", "select 1\n" },
+        { "razor", "<p>@Model.Name</p>\n" },
+        { "scala", "object A { def f(x: Int): Int = x }\n" },
+        { "verilog", "module m; endmodule\n" },
+    };
+
+    [Theory]
+    [MemberData(nameof(GrammarSnippets))]
+    public void Parses_every_registered_grammar(string language, string source)
+    {
+        using var pool = new TreeSitterParserPool();
+        using var parsed = pool.Parse(source, language);
+
+        Assert.Empty(parsed.Diagnostics);
+        Assert.NotEmpty(parsed.Root.Children);
+    }
+
+    [Fact]
+    public void Every_registered_grammar_has_a_parse_case()
+    {
+        var covered = GrammarSnippets.Select(row => row.Data.Item1)
+            .Concat(["typescript", "tsx", "python", "csharp", "go", "rust"]);
+
+        Assert.Empty(LanguageRegistry.Supported.Except(covered));
+    }
+
     [Fact]
     public void Reports_diagnostic_on_unclosed_brace()
     {

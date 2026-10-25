@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
+
+Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by
+`AddRaggableTree`): `JavaScriptAdapter` (`.js`, `.jsx`, `.mjs`, `.cjs`), `JavaAdapter` (`.java`), `CAdapter` (`.c`),
+`CppAdapter` (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), `PhpAdapter` (`.php`), `RubyAdapter` (`.rb`) and
+`BashAdapter` (`.sh`, `.bash`). Each extracts declarations with their kind, parent, modifiers, decorators, doc comment,
+signature and statements, and feeds the graph its import, call and inheritance edges; a file import edge comes from a
+relative path only (`require_relative`, a quoted `#include`, `require_once`, `source`). `LanguageRegistry` also loads
+agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog, parsed on request only,
+and the publish step no longer prunes these 19 grammars; OCaml (no macOS build) and the Windows-only swift, toml and
+tsq are still pruned. The structural tools (`node_outline`, `node_read`, `node_replace`, `structural_search`) still
+serve C#, TypeScript and Markdown only.
+
+### Fixed — two adapter queries that never compiled
+
+The C# `StatementQuery` named an `else_clause` node the grammar does not have, and the Python `DocCommentQuery` had a
+structure error; `UniversalSemanticMapper` dropped both silently. The C# query no longer names it, and Python docstrings
+stay read by `ResolveDocComment`. A test now compiles every query of every built-in adapter against its grammar.
+
 ### Added — a delegated run's budget (#189)
 
 `ctx.delegate(agent, input, opts)` and `crew.runAgent(agent, input, opts)` take `budget` (the keys of
