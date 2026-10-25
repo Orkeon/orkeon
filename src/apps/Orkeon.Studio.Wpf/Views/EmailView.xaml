@@ -47,7 +47,7 @@
          one reads its Tag, as the strip does. -->
     <Style x:Key="MailTab" TargetType="Button">
       <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontSize" Value="13"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -141,7 +141,7 @@
               <TextBlock Text="{Binding [Studio.Settings.MailAddConfirm], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-          <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CancelAddCommand}"
+          <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelAddCommand}"
                   Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </StackPanel>
@@ -183,7 +183,7 @@
               <Ellipse DockPanel.Dock="Left" Style="{StaticResource MailStateDot}" Margin="0,0,8,0"
                        ToolTip="{Binding State}"
                        Visibility="{Binding HasState, Converter={StaticResource BooleanToVisibility}}"/>
-              <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="12" TextWrapping="NoWrap"
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" TextWrapping="NoWrap"
                          VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
               <!-- an account the run will set aside says so before it is opened -->
               <controls:LucideIcon DockPanel.Dock="Right" Kind="triangle-alert" Size="13" VerticalAlignment="Center"
@@ -203,7 +203,7 @@
             Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibility}}">
       <StackPanel>
         <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center"
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center"
                   Command="{Binding ToggleSectionCommand}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Size="12" Margin="0,0,6,0">
@@ -247,7 +247,7 @@
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" ToolTip="CredentialsDirectory"
                      Text="{Binding [Studio.Settings.MailCredentialsDirectory], Source={x:Static services:I18n.Instance}}"/>
           <DockPanel MaxWidth="620" HorizontalAlignment="Left">
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0"
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                     Command="{Binding BrowseCredentialsDirectoryCommand}"
                     Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMono}" Width="480"
@@ -279,7 +279,7 @@
                   <Grid DockPanel.Dock="Right" VerticalAlignment="Top">
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
-                      <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+                      <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
                               Command="{Binding DataContext.RenameAccountCommand, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                               CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
@@ -287,7 +287,7 @@
                           <TextBlock Text="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhostDanger}"
+                      <Button Style="{StaticResource BtnDanger}"
                               Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                               CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
@@ -311,11 +311,11 @@
                              Visibility="{Binding HasState, Converter={StaticResource BooleanToVisibility}}">
                     <Ellipse DockPanel.Dock="Left" Style="{StaticResource MailStateDot}" VerticalAlignment="Top"
                              Margin="0,5,7,0"/>
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkBrush}" Text="{Binding State}"/>
                   </DockPanel>
                   <!-- the engine's own sentence: it names the variable to fill or the sign-in to run -->
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="15,3,0,0" Text="{Binding StateDetail}"
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="15,3,0,0" Text="{Binding StateDetail}"
                              Visibility="{Binding HasStateDetail, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- unsaved edits: the state is the saved file's, and the test waits for the save -->
                   <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
@@ -323,7 +323,7 @@
                              Visibility="{Binding DataContext.IsStateOfSavedFile, RelativeSource={RelativeSource AncestorType=views:EmailView}, Converter={StaticResource BooleanToVisibility}}"/>
                   <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <!-- the one gesture that connects for real: never run on its own, stopped when the tab is left -->
-                    <Button Style="{StaticResource BtnGhost}" Command="{Binding TestCommand}">
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Settings.MailTest], Source={x:Static services:I18n.Instance}}"/>
@@ -331,14 +331,14 @@
                     </Button>
                     <!-- STUDIO-70: an account that signs in with OAuth2 is signed in and out from here;
                          both read the file as saved, like the test, and wait for the save -->
-                    <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding SignInCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding SignInCommand}"
                             Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="key-round" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.Settings.MailSignIn], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding SignOutCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding SignOutCommand}"
                             Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
@@ -352,7 +352,7 @@
                   <!-- the verdict: a localized word, then the engine's sentence as printed -->
                   <StackPanel Margin="0,8,0,0"
                               Visibility="{Binding HasLastCheck, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LastCheckHeadline}">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LastCheckHeadline}">
                       <TextBlock.Style>
                         <Style TargetType="TextBlock">
                           <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
@@ -364,7 +364,7 @@
                         </Style>
                       </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" Text="{Binding LastCheckDetail}"/>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding LastCheckDetail}"/>
                     <!-- the engine's sentence sends to a terminal; when its code names something this screen does, the gesture is said here -->
                     <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding LastCheckHint}"
                                Visibility="{Binding HasLastCheckHint, Converter={StaticResource BooleanToVisibility}}"/>
@@ -372,10 +372,10 @@
                   <!-- STUDIO-70: a sign-out the verb refused - a localized word, then its sentence as printed -->
                   <StackPanel Margin="0,8,0,0"
                               Visibility="{Binding HasSignOutFailure, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource WarningBrush}"
                                Text="{Binding [Studio.Settings.MailSignOutFailed], Source={x:Static services:I18n.Instance}}"/>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" Text="{Binding SignOutFailure}"/>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding SignOutFailure}"/>
                   </StackPanel>
                 </StackPanel>
 
@@ -396,7 +396,7 @@
 
                     <!-- the device sign-in: the page, the code in large, the time it has left -->
                     <StackPanel Visibility="{Binding IsDeviceCode, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                  Foreground="{DynamicResource InkBrush}" Text="{Binding DeviceCodeLine}"/>
                       <!-- a read-only well, so the code can be selected; it is never copied by a button -->
                       <TextBox Style="{StaticResource InputMono}" FontSize="26" FontWeight="SemiBold" IsReadOnly="True"
@@ -406,7 +406,7 @@
                     </StackPanel>
 
                     <!-- the browser sign-in: what to do with the address below -->
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkBrush}"
                                Text="{Binding [Studio.Settings.MailAuthorizationUrl], Source={x:Static services:I18n.Instance}}"
                                Visibility="{Binding IsAuthorizationUrl, Converter={StaticResource BooleanToVisibility}}"/>
@@ -417,7 +417,7 @@
                       <TextBox Style="{StaticResource InputMono}" IsReadOnly="True" TextWrapping="Wrap"
                                Text="{Binding Address, Mode=OneWay}"/>
                       <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Style="{StaticResource BtnGhost}" Command="{Binding CopyLinkCommand}">
+                        <Button Style="{StaticResource BtnSecondary}" Command="{Binding CopyLinkCommand}">
                           <StackPanel Orientation="Horizontal">
                             <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,7,0"/>
                             <TextBlock Text="{Binding [Studio.Settings.MailCopyLink], Source={x:Static services:I18n.Instance}}"/>
@@ -440,7 +440,7 @@
                       <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
                                  Text="{Binding [Studio.Settings.MailPasteRedirect], Source={x:Static services:I18n.Instance}}"/>
                       <DockPanel Margin="0,6,0,0" LastChildFill="True">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="8,0,0,0"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                                 Command="{Binding SubmitRedirectCommand}"
                                 Content="{Binding [Studio.Settings.MailPasteRedirectSend], Source={x:Static services:I18n.Instance}}"/>
                         <TextBox Style="{StaticResource InputMono}" Tag="http://127.0.0.1:…"
@@ -451,17 +451,17 @@
                         </TextBox>
                       </DockPanel>
                       <!-- nothing read the address (the verb left, its end not landed yet): it stays in the field -->
-                      <TextBlock FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                      <TextBlock FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"
                                  Foreground="{DynamicResource WarningBrush}"
                                  Text="{Binding [Studio.Settings.MailPasteRedirectNotSent], Source={x:Static services:I18n.Instance}}"
                                  Visibility="{Binding RedirectNotSent, Converter={StaticResource BooleanToVisibility}}"/>
                       <!-- the verb rejected the address, and still waits: its sentence as printed, the address back in the field -->
                       <StackPanel Margin="0,6,0,0"
                                   Visibility="{Binding RedirectRejected, Converter={StaticResource BooleanToVisibility}}">
-                        <TextBlock FontSize="11" TextWrapping="Wrap"
+                        <TextBlock FontSize="13" TextWrapping="Wrap"
                                    Foreground="{DynamicResource WarningBrush}"
                                    Text="{Binding [Studio.Settings.MailPasteRedirectRejected], Source={x:Static services:I18n.Instance}}"/>
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" TextWrapping="Wrap"
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"
                                    Text="{Binding RedirectRejectedDetail}"/>
                       </StackPanel>
                     </StackPanel>
@@ -471,19 +471,19 @@
                                 Visibility="{Binding IsCompleted, Converter={StaticResource BooleanToVisibility}}">
                       <controls:LucideIcon Kind="circle-check" Size="14" Margin="0,0,7,0" VerticalAlignment="Center"
                                            Foreground="{DynamicResource SuccessBrush}"/>
-                      <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"
                                  Text="{Binding [Studio.Settings.MailSignedIn], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource WarningBrush}"
                                Text="{Binding [Studio.Settings.MailDeviceCodeExpired], Source={x:Static services:I18n.Instance}}"
                                Visibility="{Binding IsExpired, Converter={StaticResource BooleanToVisibility}}"/>
                     <!-- a refusal: the verb's sentence as printed, never tried again unasked ("start again" below, when a code showed) -->
                     <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                  Foreground="{DynamicResource WarningBrush}"
                                  Text="{Binding [Studio.Settings.MailSignInFailed], Source={x:Static services:I18n.Instance}}"/>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,2,0,0" Text="{Binding FailureDetail}"/>
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding FailureDetail}"/>
                       <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
                                  Text="{Binding [Studio.Settings.MailSignInFailedHint], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
@@ -500,7 +500,7 @@
                       </Button>
                       <Button Command="{Binding CancelCommand}">
                         <Button.Style>
-                          <Style TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+                          <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
                             <Setter Property="Content" Value="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
                             <Style.Triggers>
                               <DataTrigger Binding="{Binding IsWaiting}" Value="True">
@@ -520,7 +520,7 @@
                         Visibility="{Binding IsRenaming, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource AccentBrush}"
                                  Text="{Binding [Studio.Settings.MailRenameLabel], Source={x:Static services:I18n.Instance}}"/>
                       <TextBox Style="{StaticResource InputMono}" Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -532,7 +532,7 @@
                           <TextBlock Text="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CancelRenameCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelRenameCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
@@ -549,17 +549,17 @@
                         Visibility="{Binding IsConfirmingRemove, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource DangerBrush}"
                                  Text="{Binding [Studio.Settings.MailRemoveQuestion], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmRemoveCommand}">
+                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmRemoveCommand}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
                                                Foreground="{DynamicResource DangerFgBrush}"/>
                           <TextBlock Text="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CancelRemoveCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelRemoveCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
@@ -573,17 +573,17 @@
                         BorderThickness="1" CornerRadius="11" Padding="12,8" Margin="0,12,0,0"
                         Visibility="{Binding IsConfirmingSignOut, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
-                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource DangerBrush}" Text="{Binding SignOutConfirmText}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                      <Button Style="{StaticResource BtnDanger}" Command="{Binding ConfirmSignOutCommand}">
+                      <Button Style="{StaticResource BtnDangerSolid}" Command="{Binding ConfirmSignOutCommand}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="eraser" Size="12" Margin="0,0,6,0"
                                                Foreground="{DynamicResource DangerFgBrush}"/>
                           <TextBlock Text="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CancelSignOutCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelSignOutCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </StackPanel>
@@ -605,7 +605,7 @@
                           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
                                      TextWrapping="Wrap" Text="{Binding FriendlyText}"/>
                           <!-- the engine's own sentence names the key: the expert's -->
-                          <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,1,0,0"
+                          <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="Wrap" Margin="0,1,0,0"
                                      Text="{Binding Text}"
                                      Visibility="{Binding DataContext.IsExpert, RelativeSource={RelativeSource AncestorType=views:EmailView}, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
@@ -697,7 +697,7 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Command="{Binding AddRecipientCommand}">
+                  <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding AddRecipientCommand}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
                       <TextBlock Text="{Binding [Studio.Settings.MailRecipientAdd], Source={x:Static services:I18n.Instance}}"/>
@@ -748,7 +748,7 @@
                     <!-- A secret even in transit (T-31): masked while it is typed or pasted, wiped once kept. -->
                     <PasswordBox Style="{StaticResource InputPassword}" Width="320" VerticalAlignment="Center" Margin="0,0,8,0"
                                  views:PasswordBinding.Text="{Binding Password.KeyInput}"/>
-                    <Button Style="{StaticResource BtnGhost}" Command="{Binding Password.StoreCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding Password.StoreCommand}"
                             Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                   <!-- the state, never the value: saving again replaces what is kept -->
@@ -765,7 +765,7 @@
                     </TextBlock.Style>
                   </TextBlock>
                   <!-- where it is kept: the expert's line, empty for the novice -->
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="Wrap" Margin="0,2,0,0"
                              Text="{Binding PasswordVariable}"
                              Visibility="{Binding PasswordVariable, Converter={StaticResource StringPresentToVisibility}}"/>
                   <!-- STUDIO-44: kept for this session even when the user scope refused it; the line says why -->
@@ -791,7 +791,7 @@
                     <!-- A secret even in transit (T-31): masked while it is typed or pasted, wiped once kept. -->
                     <PasswordBox Style="{StaticResource InputPassword}" Width="320" VerticalAlignment="Center" Margin="0,0,8,0"
                                  views:PasswordBinding.Text="{Binding ClientSecret.KeyInput}"/>
-                    <Button Style="{StaticResource BtnGhost}" Command="{Binding ClientSecret.StoreCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding ClientSecret.StoreCommand}"
                             Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                   <!-- the state, never the value: saving again replaces what is kept -->
@@ -808,7 +808,7 @@
                     </TextBlock.Style>
                   </TextBlock>
                   <!-- where it is kept: the expert's line, empty for the novice -->
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0"
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="Wrap" Margin="0,2,0,0"
                              Text="{Binding ClientSecretVariable}"
                              Visibility="{Binding ClientSecretVariable, Converter={StaticResource StringPresentToVisibility}}"/>
                   <!-- STUDIO-44: kept for this session even when the user scope refused it; the line says why -->

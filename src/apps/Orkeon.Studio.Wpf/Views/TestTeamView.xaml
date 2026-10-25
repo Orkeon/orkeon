@@ -37,7 +37,7 @@
               <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
                          Text="{Binding [Studio.Trial.Empty], Source={x:Static services:I18n.Instance}}"
                          Visibility="{Binding Launcher.Target.IsResolved, Converter={StaticResource InverseBooleanToVisibility}}"/>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Launcher.Target.SelectedPath}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Launcher.Target.StatusDisplay}"/>
 
               <!-- STUDIO-73: the model this run takes, pre-filled with the team's; « Remember for this team »
@@ -52,18 +52,18 @@
                              Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
                   <ComboBox Width="240" ItemsSource="{Binding Launcher.LlmProfiles}" SelectedItem="{Binding Launcher.RunLlmProfile}"/>
                 </StackPanel>
-                <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding Launcher.ConfigureModelCommand}"
+                <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding Launcher.ConfigureModelCommand}"
                         Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
                         Visibility="{Binding Launcher.HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
                 <DockPanel Margin="0,7,0,0" Visibility="{Binding Launcher.RunLlmLine, Converter={StaticResource StringPresentToVisibility}}">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="11.5" Padding="10,5" Margin="12,0,0,0"
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Padding="10,5" Margin="12,0,0,0"
                           VerticalAlignment="Center" Command="{Binding Launcher.RememberLlmForTeamCommand}"
                           Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
                           Visibility="{Binding Launcher.CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
-                  <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                  <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
                              Text="{Binding Launcher.RunLlmLine}"/>
                 </DockPanel>
-                <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
                            Text="{Binding Launcher.CrewLlmWarning}"
                            Visibility="{Binding Launcher.CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
               </StackPanel>
@@ -79,7 +79,7 @@
               </StackPanel>
 
               <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.ValidateCommand}" Margin="0,0,8,0">
+                <Button Style="{StaticResource BtnSecondary}" Command="{Binding Launcher.ValidateCommand}" Margin="0,0,8,0">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
                     <TextBlock Text="{Binding [Studio.Trial.Validate], Source={x:Static services:I18n.Instance}}"/>
@@ -91,7 +91,7 @@
                     <TextBlock Text="{Binding [Studio.Trial.Run], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
-                <Button Style="{StaticResource BtnGhost}" Command="{Binding Launcher.CancelCommand}"
+                <Button Style="{StaticResource BtnSecondary}" Command="{Binding Launcher.CancelCommand}"
                         Content="{Binding [Studio.Run.Cancel], Source={x:Static services:I18n.Instance}}"
                         Visibility="{Binding Launcher.IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
@@ -103,12 +103,12 @@
               <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,12,0,0"
                       Visibility="{Binding Launcher.IsTargetArchived, Converter={StaticResource BooleanToVisibility}}">
                 <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="12,0,0,0" VerticalAlignment="Center"
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="12,0,0,0" VerticalAlignment="Center"
                           Command="{Binding Launcher.RestoreTargetCommand}"
                           Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
                   <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,0,10,0"
                                        VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
-                  <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                  <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
                              Foreground="{DynamicResource WarningBrush}" Text="{Binding Launcher.ArchivedTargetMessage}"/>
                 </DockPanel>
               </Border>
@@ -124,7 +124,7 @@
               <ItemsControl ItemsSource="{Binding Launcher.ValidationMessages}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2"
+                    <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,2"
                                Text="{Binding FriendlyText}" ToolTip="{Binding Display}"/>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -140,7 +140,7 @@
       <Border Grid.Column="2" Background="{DynamicResource ConsoleBgBrush}" CornerRadius="14" Padding="10"
               MinHeight="120" MaxHeight="440" VerticalAlignment="Top">
         <Grid>
-          <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Padding="6,1" Opacity="0.55"
+          <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Padding="6,1" Opacity="0.55"
                      Foreground="{DynamicResource ConsoleFgBrush}"
                      Text="{Binding [Studio.Trial.ConsoleEmpty], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Launcher.Log.Lines.Count, Converter={StaticResource ZeroToVisibility}}"/>
@@ -155,9 +155,9 @@
                       <ColumnDefinition Width="Auto"/>
                       <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Opacity="0.55" Margin="0,0,10,0"
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Opacity="0.55" Margin="0,0,10,0"
                                Foreground="{DynamicResource ConsoleFgBrush}" Text="{Binding Time}"/>
-                    <TextBlock Grid.Column="1" FontFamily="{StaticResource MonoFont}" FontSize="11.5" TextWrapping="Wrap"
+                    <TextBlock Grid.Column="1" FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap"
                                Style="{StaticResource ConsoleLineText}" Text="{Binding Text}"/>
                   </Grid>
                 </DataTemplate>

@@ -227,7 +227,7 @@ public sealed partial class I18nResourceParityTests
             [.. PlaceholderPattern().Matches(text).Select(m => m.Groups[1].Value)];
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+)\}")]
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+)(?::[^{}]*)?\}")]
     private static partial System.Text.RegularExpressions.Regex PlaceholderPattern();
 
     /// <summary>

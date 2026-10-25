@@ -14,26 +14,6 @@
                Text="{Binding [Studio.History.Sub], Source={x:Static services:I18n.Instance}}"/>
 
 
-    <!-- T-08: the way in, with the accent dot when the assistant spoke while it was closed. -->
-    <Button Style="{StaticResource BtnGhost}" Height="32" Padding="13,0" Margin="0,14,0,0"
-            HorizontalAlignment="Left"
-            Command="{Binding DataContext.Chat.ToggleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-            ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}">
-      <StackPanel Orientation="Horizontal">
-        <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-        <TextBlock Text="{Binding [Studio.Chat.Ask], Source={x:Static services:I18n.Instance}}"/>
-        <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
-                 Fill="{DynamicResource MarkBrush}"
-                 Visibility="{Binding DataContext.Chat.HasUnread, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-      </StackPanel>
-    </Button>
-
-    <!-- T-07: the conversation, third mount point. Capped at 700 px because this screen's
-         content is a single column of cards rather than a content/help pair — the cap is
-         the mock's, and it is on the panel, never on what it sits above. -->
-    <views:ChatThreadView MaxWidth="700" HorizontalAlignment="Left" Margin="0,16,0,0"
-                          DataContext="{Binding DataContext.Chat, RelativeSource={RelativeSource AncestorType=Window}}"
-                          Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
 
     <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
                Text="{Binding [Studio.History.Empty], Source={x:Static services:I18n.Instance}}"
@@ -71,14 +51,14 @@
               <StackPanel>
                 <DockPanel>
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
-                    <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" Margin="0,0,7,0" Command="{Binding OpenResultCommand}"
                             Visibility="{Binding HasResultFolder, Converter={StaticResource BooleanToVisibility}}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.History.Result], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource BtnGhost}" Command="{Binding ReplayCommand}">
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReplayCommand}">
                       <StackPanel Orientation="Horizontal">
                         <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0"/>
                         <TextBlock Text="{Binding [Studio.History.Replay], Source={x:Static services:I18n.Instance}}"/>
@@ -137,12 +117,12 @@
 
                 <!-- Expert: the exit code, then the exact command line at full width, on one line. -->
                 <DockPanel Margin="0,4,0,0" Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,0,10,0"
+                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" Margin="0,0,10,0"
                              Foreground="{DynamicResource InkFaintBrush}">
                     <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
                     <Run Text="{Binding ExitCode, Mode=OneWay}"/>
                   </TextBlock>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" TextWrapping="NoWrap"
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="NoWrap"
                              TextTrimming="CharacterEllipsis" Text="{Binding CommandLine, Mode=OneWay}"
                              ToolTip="{Binding CommandLine, Mode=OneWay}"/>
                 </DockPanel>
@@ -156,13 +136,13 @@
                     <DockPanel>
                       <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="14" Margin="0,0,9,0"
                                            VerticalAlignment="Top" Foreground="{DynamicResource WarningBrush}"/>
-                      <TextBlock FontSize="12" TextWrapping="Wrap"
+                      <TextBlock FontSize="13" TextWrapping="Wrap"
                                  Foreground="{DynamicResource WarningBrush}" Text="{Binding RestoreOffer, Mode=OneWay}"/>
                     </DockPanel>
                     <WrapPanel Margin="23,8,0,0">
-                      <Button Style="{StaticResource BtnGhost}" Margin="0,0,7,0" Command="{Binding RestoreCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" Margin="0,0,7,0" Command="{Binding RestoreCommand}"
                               Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnGhost}" Command="{Binding DismissRestoreCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" Command="{Binding DismissRestoreCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </WrapPanel>
                   </StackPanel>

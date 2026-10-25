@@ -10,7 +10,7 @@
     <!-- Header (mock §D-3): « Copier le rapport » sits left of « Relancer », both in the header. -->
     <DockPanel Margin="0,0,0,22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-        <Button Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Click="OnCopyReport"
+        <Button Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Click="OnCopyReport"
                 Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
@@ -28,7 +28,7 @@
             </TextBlock>
           </StackPanel>
         </Button>
-        <Button Style="{StaticResource BtnGhost}" Command="{Binding RunCommand}">
+        <Button Style="{StaticResource BtnSecondary}" Command="{Binding RunCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
             <TextBlock Text="{Binding [Studio.Diagnostics.Run], Source={x:Static services:I18n.Instance}}"/>
@@ -54,7 +54,7 @@
     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
             Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center"
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center"
                 Margin="12,0,0,0" Click="OnFixInSettings"
                 Visibility="{Binding HasIssues, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
@@ -125,9 +125,9 @@
                 </controls:LucideIcon>
                 <StackPanel>
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                Text="{Binding FriendlyName, Mode=OneWay}"/>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10" Margin="9,0,0,0" VerticalAlignment="Center"
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center"
                                Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Name, Mode=OneWay}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
@@ -180,7 +180,7 @@
             <DataTemplate>
               <DockPanel Margin="0,4">
                 <Grid DockPanel.Dock="Right" VerticalAlignment="Center">
-                  <Button Style="{StaticResource BtnGhost}" Command="{Binding AskCleanCommand}"
+                  <Button Style="{StaticResource BtnSecondary}" Command="{Binding AskCleanCommand}"
                           Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
@@ -191,19 +191,19 @@
                           BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
                           Visibility="{Binding IsConfirmingClean, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource DangerBrush}"
                                  Text="{Binding [Studio.Diagnostics.OrphanCleanConfirm], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmCleanCommand}"
+                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmCleanCommand}"
                               Content="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
                               Command="{Binding CancelCleanCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                 </Grid>
                 <StackPanel Margin="0,0,12,0">
-                  <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding FolderLine}"/>
                 </StackPanel>
               </DockPanel>

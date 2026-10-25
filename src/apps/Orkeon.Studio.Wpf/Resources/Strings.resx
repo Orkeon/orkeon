@@ -1931,4 +1931,9 @@
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Remember for this team</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} team(s), {1} by default</value></data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Default model setting: {0}. The teams that follow the default run on it.</value></data>
+  <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Technical details</value></data>
+  <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>More actions</value></data>
+  <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Ask the assistant</value></data>
+  <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Status bar counters</value></data>
+  <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>The tokens the status bar shows: those of the execution on screen, or of the whole Studio session.</value></data>
 </root>

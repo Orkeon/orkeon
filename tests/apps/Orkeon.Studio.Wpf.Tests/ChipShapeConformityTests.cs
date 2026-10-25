@@ -55,8 +55,8 @@ public sealed partial class ChipShapeConformityTests
 
     [Theory]
     [InlineData("ToolChip", 22.0)]
-    [InlineData("MetricChip", 20.0)]
-    [InlineData("BadgeBase", 20.0)]
+    [InlineData("MetricChip", 22.0)]
+    [InlineData("BadgeBase", 22.0)]
     [InlineData("SegmentedGroup", 26.0)]
     public void Should_Keep_Radius_At_Exactly_Half_The_Height_When_Reading_The_Pill_Styles(string styleKey, double expectedHeight)
     {
@@ -99,7 +99,6 @@ public sealed partial class ChipShapeConformityTests
     [Theory]
     [InlineData("StepPill", 28.0)]
     [InlineData("SelectableChip", 28.0)]
-    [InlineData("ChipAction", 24.0)]
     public void Should_Keep_Template_Radius_At_Half_The_Height_When_Reading_The_Templated_Pills(
         string styleKey, double expectedHeight)
     {

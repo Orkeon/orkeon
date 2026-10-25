@@ -17,7 +17,7 @@
         <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="10,0,0,0"
                    Text="{Binding Title, ElementName=Root}"/>
       </StackPanel>
-      <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,7,0,12"
+      <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,7,0,12"
                  Text="{Binding [Studio.Create.NotesSub], Source={x:Static services:I18n.Instance}}"/>
 
       <!-- the field IS the consigne: typed text is taken as-is, no add step, no list -->
@@ -30,7 +30,7 @@
           <TextBlock Style="{StaticResource Hint}" Margin="5,0,0,0" VerticalAlignment="Center"
                      Text="{Binding [Studio.Create.Taken], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
-        <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="10"
+        <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
                    VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
                    Text="{Binding MessageCount}"
                    Visibility="{Binding MessageCount, Converter={StaticResource StringPresentToVisibility}}"/>

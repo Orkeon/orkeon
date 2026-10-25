@@ -1,0 +1,209 @@
+<!-- Orkeon Studio — the shared components of the refonte (2026-10): Alert (R7), Badge (R8),
+     PropertyRow (R6), PageHeader (R3). Their code is in Controls/Components.cs; ActionBar (R5)
+     draws itself. Merged after Studio.xaml, whose fonts and button styles it uses.
+     Every brush is DynamicResource so the theme can be swapped at runtime. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+                    xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
+                    xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
+
+  <!-- A converter used INSIDE a theme template is declared by the theme: the theme cannot
+       reach the converters App.xaml declares (DesignTokenConformityTests, STUDIO-21). -->
+  <views:StringPresentToVisibilityConverter x:Key="AlertDetailsVisibility"/>
+  <BooleanToVisibilityConverter x:Key="AlertBoolVisibility"/>
+
+  <!-- ══ Alert: icon · message (+ content, + folded technical details) · actions ══ -->
+  <Style TargetType="{x:Type controls:Alert}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Background" Value="{DynamicResource InfoWeakBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Tag" Value="info"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:Alert}">
+          <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="1" CornerRadius="10" Padding="14,12" SnapsToDevicePixels="True">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <controls:LucideIcon x:Name="icon" Kind="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Size="16"
+                                   Foreground="{TemplateBinding BorderBrush}" VerticalAlignment="Top" Margin="0,1,10,0"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{TemplateBinding Message}" TextWrapping="Wrap" LineHeight="19"
+                           Foreground="{TemplateBinding Foreground}"/>
+                <ContentPresenter Margin="0,6,0,0" x:Name="body"/>
+                <StackPanel x:Name="details" Margin="0,6,0,0"
+                            Visibility="{Binding Details, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource AlertDetailsVisibility}}">
+                  <ToggleButton x:Name="detailsToggle" HorizontalAlignment="Left" Cursor="Hand" Focusable="True"
+                                Foreground="{DynamicResource InkMutedBrush}">
+                    <ToggleButton.Template>
+                      <ControlTemplate TargetType="ToggleButton">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                          <controls:LucideIcon x:Name="chev" Kind="chevron-down" Size="14" Foreground="{TemplateBinding Foreground}"
+                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}"
+                                     Text="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="chev" Property="Kind" Value="chevron-up"/>
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </ToggleButton.Template>
+                  </ToggleButton>
+                  <Border Style="{StaticResource Well}" Margin="0,6,0,0"
+                          Visibility="{Binding IsChecked, ElementName=detailsToggle, Converter={StaticResource AlertBoolVisibility}}">
+                    <TextBox Text="{Binding Details, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                             Style="{StaticResource InputMultilineMono}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" MinLines="1"/>
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+              <ContentPresenter Grid.Column="2" Content="{TemplateBinding Actions}" VerticalAlignment="Center"
+                                Margin="12,0,0,0"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="body" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="IsBanner" Value="True">
+              <Setter TargetName="bd" Property="Padding" Value="16,12"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tone" Value="Success">
+        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Tag" Value="circle-check"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Warning">
+        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        <Setter Property="Tag" Value="triangle-alert"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Danger">
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Tag" Value="circle-x"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Info">
+        <Setter Property="Tag" Value="info"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Neutral">
+        <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+        <Setter Property="Tag" Value="info"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ══ Badge: a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase). ══ -->
+  <Style TargetType="{x:Type controls:Badge}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Height" Value="22"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:Badge}">
+          <Border Background="{TemplateBinding Background}" CornerRadius="11" Padding="10,0" SnapsToDevicePixels="True">
+            <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tone" Value="Info">
+        <Setter Property="Background" Value="{DynamicResource InfoWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Success">
+        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Warning">
+        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Danger">
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ══ PropertyRow: label (104 px, tertiary ink) · value · 28 px secondary button ══ -->
+  <Style TargetType="{x:Type controls:PropertyRow}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:PropertyRow}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="104"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{TemplateBinding Label}" Foreground="{DynamicResource InkFaintBrush}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+            <ContentPresenter Grid.Column="2" Content="{TemplateBinding Action}" VerticalAlignment="Center"
+                              Margin="12,0,0,0"/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ══ PageHeader: title + one-line subtitle on the left, page actions on the right ══ -->
+  <Style TargetType="{x:Type controls:PageHeader}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Margin" Value="0,0,0,20"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:PageHeader}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource H1}" TextWrapping="Wrap"/>
+              <TextBlock Text="{TemplateBinding Subtitle}" Style="{StaticResource SubTitle}" Margin="0,4,0,0"
+                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                         ToolTip="{TemplateBinding Subtitle}"/>
+            </StackPanel>
+            <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The row of buttons of a page header, an alert or a form footer: 8 px apart. -->
+  <Style x:Key="ActionRow" TargetType="StackPanel">
+    <Setter Property="Orientation" Value="Horizontal"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+</ResourceDictionary>

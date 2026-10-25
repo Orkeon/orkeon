@@ -36,8 +36,8 @@ public sealed class TourOverlay : Grid
     };
     private readonly Border _pop = new() { Width = PopW, CornerRadius = new CornerRadius(14), BorderThickness = new Thickness(1) };
     private readonly TextBlock _title = new() { FontSize = 16, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
-    private readonly TextBlock _body = new() { FontSize = 12.5, TextWrapping = TextWrapping.Wrap, LineHeight = 20, Margin = new Thickness(0, 6, 0, 0) };
-    private readonly TextBlock _counter = new() { FontSize = 10.5 };
+    private readonly TextBlock _body = new() { FontSize = 13, TextWrapping = TextWrapping.Wrap, LineHeight = 20, Margin = new Thickness(0, 6, 0, 0) };
+    private readonly TextBlock _counter = new() { FontSize = 13 };
     private readonly StackPanel _dots = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0) };
     private readonly Button _skip = new(), _back = new(), _next = new();
     private readonly Canvas _canvas = new();
@@ -50,7 +50,7 @@ public sealed class TourOverlay : Grid
         Children.Add(_canvas);
 
         var head = new DockPanel();
-        var label = new TextBlock { FontSize = 10 };
+        var label = new TextBlock { FontSize = 13 };
         label.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
         label.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[Studio.Shell.TourLabel]") { Source = I18n.Instance });
         _counter.Margin = new Thickness(9, 1, 0, 0);
@@ -94,8 +94,8 @@ public sealed class TourOverlay : Grid
 
     private void Wire(Button b, string key, RoutedEventHandler click)
     {
-        b.SetResourceReference(StyleProperty, key == "Studio.Shell.Next" ? "BtnPrimary" : "BtnGhost");
-        b.FontSize = 12;
+        b.SetResourceReference(StyleProperty, key == "Studio.Shell.Next" ? "BtnPrimary" : "BtnSecondary");
+        b.FontSize = 13;
         b.Padding = new Thickness(10, 6, 10, 6);
         b.SetBinding(ContentControl.ContentProperty, new System.Windows.Data.Binding("[" + key + "]") { Source = I18n.Instance });
         b.Click += click;

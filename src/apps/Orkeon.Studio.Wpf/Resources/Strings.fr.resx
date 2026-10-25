@@ -6,7 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
               <data name="Studio.Shell.Diag" xml:space="preserve"><value>Diagnostic</value></data>
-  <data name="Studio.Shell.Run" xml:space="preserve"><value>Exécuter</value></data>
+  <data name="Studio.Shell.Run" xml:space="preserve"><value>Lancer</value></data>
   <data name="Studio.Shell.History" xml:space="preserve"><value>Historique</value></data>
 
   <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve"><value>FICHIER DE RÉGLAGES</value></data>
@@ -49,16 +49,16 @@
   <data name="Studio.Shell.TourStep2Title" xml:space="preserve"><value>Tout tourne autour des équipes</value></data>
   <data name="Studio.Shell.TourStep2Body" xml:space="preserve"><value>Une équipe d'agents est l'objet central : vous la créez, vous la gardez, vous la lancez. Le reste de l'application ne fait que servir cet objet.</value></data>
   <data name="Studio.Shell.TourStep3Title" xml:space="preserve"><value>Le travail quotidien</value></data>
-  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Tester avant de lancer, exécuter, puis retrouver chaque exécution dans l'historique — avec son résultat et de quoi la rejouer à l'identique.</value></data>
+  <data name="Studio.Shell.TourStep3Body" xml:space="preserve"><value>Essayer avant de lancer, lancer, puis retrouver chaque exécution dans l'historique — avec son résultat et de quoi la rejouer à l'identique.</value></data>
   <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>L'environnement, une fois pour toutes</value></data>
-  <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux réglages seulement : le modèle d'IA et les dossiers que les agents peuvent voir. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
+  <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux choses à régler : le modèle d'IA et les dossiers autorisés aux agents. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, chaque écran porte une colonne d'explications à droite. Elle s'efface en mode Expert.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>en attente d'une réponse</value></data>
-  <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} outil(s) : {1}</value></data>
+  <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} {0:plural:outil|outils} : {1}</value></data>
   <data name="Studio.Shell.StatusToolsTitle" xml:space="preserve"><value>Outils en cours</value></data>
-  <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} délégation(s)</value></data>
+  <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} {0:plural:délégation|délégations}</value></data>
   <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve"><value>Délégations en cours</value></data>
   <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve"><value>{0} jetons restants</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — facturé par le fournisseur</value></data>
@@ -82,7 +82,7 @@
   <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve"><value>cliquez pour ouvrir sa console</value></data>
   <data name="Studio.Shell.StudioTab" xml:space="preserve"><value>Studio</value></data>
   <data name="Studio.Settings.StudioIntro" xml:space="preserve"><value>Le comportement de Studio lui-même sur cette machine. Ces choix restent dans votre profil Windows — jamais dans le fichier de réglages de vos équipes.</value></data>
-  <data name="Studio.Settings.BalanceIntro" xml:space="preserve"><value>La barre d'état affiche ce qu'il reste sur les comptes de vos réglages de modèle — celui par défaut, celui de l'assistant et ceux de vos équipes. Elle les lit au démarrage, à la fin de chaque exécution, essai ou composition, et quand vous cliquez dessus. Rien n'est enregistré : un montant affiché vient d'être lu.</value></data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve"><value>La barre d'état affiche ce qu'il reste sur les comptes de vos modèles — celui par défaut, celui de l'assistant et ceux de vos équipes. Elle les lit au démarrage, à la fin de chaque exécution, essai ou composition, et quand vous cliquez dessus. Rien n'est enregistré : un montant affiché vient d'être lu.</value></data>
   <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve"><value>Lecture automatique</value></data>
   <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve"><value>Désactivée par défaut : Studio n'envoie alors aucune requête que vous n'avez pas demandée, et ménage les limites de débit des fournisseurs.</value></data>
   <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve"><value>Jamais — par défaut</value></data>
@@ -132,20 +132,20 @@
 
   <data name="Studio.Diagnostics.ScreenTitle" xml:space="preserve"><value>Diagnostic</value></data>
   <data name="Studio.Diagnostics.SubNovice" xml:space="preserve"><value>Studio vérifie que tout est en place avant qu'une équipe échoue en cours de route.</value></data>
-  <data name="Studio.Diagnostics.SubExpert" xml:space="preserve"><value>Exécute orkeon doctor : binaire, fichier de settings, joignabilité LLM, montages.</value></data>
+  <data name="Studio.Diagnostics.SubExpert" xml:space="preserve"><value>Exécute orkeon doctor : binaire, fichier de réglages, joignabilité du modèle, dossiers autorisés.</value></data>
   <data name="Studio.Diagnostics.Run" xml:space="preserve"><value>Lancer le diagnostic</value></data>
   <data name="Studio.Diagnostics.CopyReport" xml:space="preserve"><value>Copier le rapport</value></data>
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Vérifications</value></data>
 
-  <data name="Studio.Run.Title" xml:space="preserve"><value>Exécuter</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Lancer</value></data>
   <data name="Studio.Run.SubNovice" xml:space="preserve"><value>Une équipe, un bouton. Le détail technique reste disponible si vous en avez besoin.</value></data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Cible, options, commande exacte et journal streamé. Le dry-run valide sans effet de bord.</value></data>
+  <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Cible, options, commande exacte et journal en direct. « Vérifier » contrôle l'équipe sans rien exécuter.</value></data>
   <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Équipe à lancer</value></data>
   <data name="Studio.Run.Detect" xml:space="preserve"><value>Détecter</value></data>
   <data name="Studio.Run.File" xml:space="preserve"><value>Fichier…</value></data>
   <data name="Studio.Run.Folder" xml:space="preserve"><value>Dossier…</value></data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve"><value>Utiliser ce fichier</value></data>
-  <data name="Studio.Run.TabMounts" xml:space="preserve"><value>Montages</value></data>
+  <data name="Studio.Run.TabMounts" xml:space="preserve"><value>Dossiers autorisés</value></data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve"><value>Automatique (résolu par le runtime)</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve"><value>Chemin explicite</value></data>
   <data name="Studio.Run.VarsTitle" xml:space="preserve"><value>Variables (-V KEY=VALUE)</value></data>
@@ -156,9 +156,9 @@
   <data name="Studio.Run.LblInputsJson" xml:space="preserve"><value>JSON en ligne (--inputs)</value></data>
   <data name="Studio.Run.LblInputsFile" xml:space="preserve"><value>Fichier (--inputs-file)</value></data>
   <data name="Studio.Run.LblVerbosity" xml:space="preserve"><value>Verbosité (--verbose)</value></data>
-  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Journaliser les échanges LLM (--llm-log)</value></data>
-  <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Montages déjà présents dans le appsettings sélectionné</value></data>
-  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser les montages hors du répertoire de travail (--allow-external-mounts)</value></data>
+  <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Journaliser les échanges avec le modèle (--llm-log)</value></data>
+  <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Dossiers déjà autorisés dans le fichier de réglages sélectionné</value></data>
+  <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser des dossiers hors du répertoire de travail (--allow-external-mounts)</value></data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMANDE</value></data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copier la commande</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Commande copiée</value></data>
@@ -167,14 +167,14 @@
   <data name="Studio.Run.StateDone" xml:space="preserve"><value>Exécution terminée</value></data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve"><value>en attente</value></data>
   <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>en cours</value></data>
-  <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>réussie</value></data>
+  <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>Réussie</value></data>
   <data name="Studio.Run.BadgeFailed" xml:space="preserve"><value>échouée</value></data>
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Lancer maintenant</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>En cours…</value></data>
   <data name="Studio.Run.BtnRelaunch" xml:space="preserve"><value>Relancer</value></data>
   <data name="Studio.Run.CliMissing" xml:space="preserve"><value>L'exécutable orkeon n'a pas été localisé sur cette machine — le lancement est désactivé. Lancez le diagnostic.</value></data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
-  <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>réglage {0}</value></data>
+  <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>modèle {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Changer d'équipe</value></data>
   <data name="Studio.Run.JournalTitle" xml:space="preserve"><value>Journal technique</value></data>
   <data name="Studio.Run.JournalShow" xml:space="preserve"><value>Afficher</value></data>
@@ -182,7 +182,7 @@
   <data name="Studio.Run.OpenResult" xml:space="preserve"><value>Ouvrir le résultat</value></data>
   <data name="Studio.Run.OpenLogs" xml:space="preserve"><value>Ouvrir le dossier des journaux</value></data>
   <data name="Studio.Run.OpenLogsNotYet" xml:space="preserve"><value>Le dossier des journaux n'existe pas encore : il est créé au premier appel journalisé.</value></data>
-  <data name="Studio.Run.OpenLogsLoggingOff" xml:space="preserve"><value>La journalisation des échanges LLM est désactivée pour ce lancement.</value></data>
+  <data name="Studio.Run.OpenLogsLoggingOff" xml:space="preserve"><value>La journalisation des échanges avec le modèle est désactivée pour ce lancement.</value></data>
   <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Ouvrir les {0} dossiers de résultat</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve"><value>Options avancées</value></data>
   <data name="Studio.Run.VerbNormal" xml:space="preserve"><value>normal</value></data>
@@ -190,7 +190,7 @@
   <data name="Studio.Run.VerbDiagnostic" xml:space="preserve"><value>diagnostic</value></data>
   <data name="Studio.Run.Empty" xml:space="preserve"><value>Choisissez une équipe dans « Mes équipes » — son bouton Lancer arrive ici.</value></data>
   <data name="Studio.Run.RunLines" xml:space="preserve"><value>lignes</value></data>
-  <data name="Studio.Run.Validate" xml:space="preserve"><value>Valider (dry-run)</value></data>
+  <data name="Studio.Run.Validate" xml:space="preserve"><value>Vérifier</value></data>
   <data name="Studio.Run.Cancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="Studio.Run.ClearLog" xml:space="preserve"><value>Vider le journal</value></data>
 
@@ -199,8 +199,8 @@
   <data name="Studio.History.Replay" xml:space="preserve"><value>Préparer le rejeu</value></data>
 
   <!-- STUDIO-11: strings fabricated below the view layer (Core formatters via IStudioStrings) -->
-  <data name="Studio.Diagnostics.NoFindings" xml:space="preserve"><value>Validation : aucun constat.</value></data>
-  <data name="Studio.Diagnostics.Summary" xml:space="preserve"><value>Validation : {0} erreur(s), {1} avertissement(s), {2} note(s).</value></data>
+  <data name="Studio.Diagnostics.NoFindings" xml:space="preserve"><value>Vérification : aucun constat.</value></data>
+  <data name="Studio.Diagnostics.Summary" xml:space="preserve"><value>Vérification : {0} {0:plural:erreur|erreurs}, {1} {1:plural:avertissement|avertissements}, {2} {2:plural:note|notes}.</value></data>
   <data name="Studio.Run.NothingRan" xml:space="preserve"><value>Rien n'a été exécuté — {0}</value></data>
   <data name="Studio.Run.Tokens" xml:space="preserve"><value>{0} tokens</value></data>
   <data name="Studio.Run.Cache" xml:space="preserve"><value>cache {0} % · {1} tokens</value></data>
@@ -243,11 +243,11 @@
   <data name="Studio.Settings.ZaiDesc" xml:space="preserve"><value>Zhipu</value></data>
   <data name="Studio.Settings.OpenAIShortDesc" xml:space="preserve"><value>GPT</value></data>
   <data name="Studio.Settings.CustomShortDesc" xml:space="preserve"><value>n'importe quel endpoint : URL + modèle à saisir</value></data>
-  <data name="Studio.Settings.NoneShortDesc" xml:space="preserve"><value>tester l'installation, sans modèle</value></data>
+  <data name="Studio.Settings.NoneShortDesc" xml:space="preserve"><value>vérifier l'installation, sans modèle</value></data>
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve"><value>Le preset custom exige à la fois une URL de base et un modèle.</value></data>
-  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve"><value>Le preset « {0} » contredit l'URL de base, qu'un run lit comme « {1} ». Choisissez le preset qui correspond à l'adresse, ou changez l'adresse.</value></data>
+  <data name="Studio.Settings.ErrorReadingContradicts" xml:space="preserve"><value>Le préréglage « {0} » contredit l'URL de base, qu'une exécution lit comme « {1} ». Choisissez le préréglage qui correspond à l'adresse, ou changez l'adresse.</value></data>
   <data name="Studio.Settings.EndpointReadAs" xml:space="preserve"><value>Lue comme : {0}</value></data>
-  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve"><value>Cette adresse est lue comme {0}, pas comme Ollama : un run ne parlerait pas à Ollama ici. Utilisez le port Ollama 11434, ou choisissez une autre carte.</value></data>
+  <data name="Studio.Settings.OllamaReadElsewhere" xml:space="preserve"><value>Cette adresse est lue comme {0}, pas comme Ollama : une exécution ne parlerait pas à Ollama ici. Utilisez le port Ollama 11434, ou choisissez une autre carte.</value></data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve"><value>Preset inconnu « {0} ». Pris en charge : {1}.</value></data>
   <data name="Studio.Settings.GuidanceNone" xml:space="preserve"><value>Aucun LLM configuré : les exécutions utiliseront le provider écho &lt;undefined-llm&gt;. Configurez-en un quand vous serez prêt.</value></data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>Clé d'API : gardée hors du fichier — définissez-la dans votre environnement : export {0}=&lt;votre-clé&gt;</value></data>
@@ -266,22 +266,22 @@
   <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve"><value>Lecture / écriture sans suppression</value></data>
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve"><value>Ceci est un dossier d'équipe multi-fichiers : son exécution passe par « orkeon run &lt;dossier&gt; », qui requiert Orkeon &gt;= {0}. Le CLI installé avec Studio le prend en charge.</value></data>
   <!-- STUDIO-15 : la règle des montages est par racine virtuelle, plus par index -->
-  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner insère d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis place chaque argument --mount selon sa racine virtuelle dans « Orkeon:FileSystem:Mounts » : sur une racine que les réglages déclarent déjà, le --mount remplace toutes les entrées de cette racine pour cette exécution ; sur une racine neuve, il s'ajoute après toutes les entrées déclarées. Plusieurs entrées des réglages peuvent déclarer une même racine si chacune porte un identifiant : un --mount-id (ou le bloc mounts: de l'équipe) en retient une et les autres ne sont pas montées pour l'exécution. Les réglages qu'aucun --mount ne nomme restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
-  <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts ajoute en plus chaque chemin de base --mount à la liste blanche « PathSecurity:AdditionalAllowedDirectories », permettant aux montages de pointer hors du répertoire de travail (même effet que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
-  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner insère {0} montage(s) à lui ({1}), ajouté(s) après les entrées des réglages ; tout --mount sur une racine neuve vient ensuite.</value></data>
+  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner insère d'abord son propre dossier — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis place chaque argument --mount selon sa racine virtuelle dans « Orkeon:FileSystem:Mounts » : sur une racine que les réglages déclarent déjà, le --mount remplace toutes les entrées de cette racine pour cette exécution ; sur une racine neuve, il s'ajoute après toutes les entrées déclarées. Plusieurs entrées des réglages peuvent déclarer une même racine si chacune porte un identifiant : un --mount-id (ou le bloc mounts: de l'équipe) en retient une et les autres ne sont pas ouvertes pour l'exécution. Les réglages qu'aucun --mount ne nomme restent en vigueur. Le dossier du journal des échanges avec le modèle est ouvert à part, invisible pour les agents, et ne décale rien.</value></data>
+  <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts ajoute en plus chaque chemin de base --mount à la liste blanche « PathSecurity:AdditionalAllowedDirectories », permettant aux dossiers autorisés de pointer hors du répertoire de travail (même effet que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
+  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner insère {0} {0:plural:dossier|dossiers} à lui ({1}), {0:plural:ajouté|ajoutés} après les entrées des réglages ; tout --mount sur une racine neuve vient ensuite.</value></data>
 
   <!-- STUDIO-11 tranche 2 : chaînes fabriquées par les ViewModels -->
   <data name="Studio.Settings.NewDocument" xml:space="preserve"><value>Nouveau document vide. Choisissez un preset pour remplir la section Llm.</value></data>
   <data name="Studio.Settings.NoFileSelected" xml:space="preserve"><value>Aucun fichier sélectionné.</value></data>
   <data name="Studio.Settings.Loaded" xml:space="preserve"><value>Chargé : {0}.</value></data>
-  <data name="Studio.Settings.NotSavedErrors" xml:space="preserve"><value>Non enregistré : {0} erreur(s) à corriger d'abord.</value></data>
+  <data name="Studio.Settings.NotSavedErrors" xml:space="preserve"><value>Non enregistré : {0} {0:plural:erreur|erreurs} à corriger d'abord.</value></data>
   <data name="Studio.Settings.NotSavedNoDestination" xml:space="preserve"><value>Non enregistré : aucune destination sélectionnée.</value></data>
   <data name="Studio.Settings.Saved" xml:space="preserve"><value>Enregistré dans {0}.</value></data>
   <data name="Studio.Settings.SavedLlmWarning" xml:space="preserve"><value>Enregistré dans {0}. Avertissement {1} : pas de section Llm, les exécutions utiliseront le provider écho.</value></data>
   <data name="Studio.Settings.NoProblem" xml:space="preserve"><value>Aucun problème détecté.</value></data>
-  <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve"><value>{0} erreur(s), {1} avertissement(s).</value></data>
+  <data name="Studio.Settings.ErrorsWarnings" xml:space="preserve"><value>{0} {0:plural:erreur|erreurs}, {1} {1:plural:avertissement|avertissements}.</value></data>
   <data name="Studio.Settings.Testing" xml:space="preserve"><value>Test de la connexion…</value></data>
-  <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Point d'accès joignable — {0} modèle(s).</value></data>
+  <data name="Studio.Settings.ProbeReachable" xml:space="preserve"><value>Point d'accès joignable — {0} {0:plural:modèle|modèles}.</value></data>
   <data name="Studio.Settings.ProbeReachableNoCount" xml:space="preserve"><value>Point d'accès joignable.</value></data>
   <data name="Studio.Settings.ProbeCompletionPassed" xml:space="preserve"><value>Point d'accès joignable, et {0} a répondu à une requête d'essai en {1} s.</value></data>
   <data name="Studio.Settings.ProbeFailed" xml:space="preserve"><value>Échec de la connexion : {0}</value></data>
@@ -295,40 +295,40 @@
   <data name="Studio.Settings.ProbeTimeout" xml:space="preserve"><value>pas de réponse en {0} s.</value></data>
   <data name="Studio.Settings.ProbeHttpStatus" xml:space="preserve"><value>le point d'accès a répondu {0}. {1}</value></data>
   <data name="Studio.Diagnostics.NoCheck" xml:space="preserve"><value>orkeon doctor n'a rapporté aucun check.</value></data>
-  <data name="Studio.Diagnostics.AllGreen" xml:space="preserve"><value>{0} check(s), tous au vert.</value></data>
-  <data name="Studio.Diagnostics.Findings" xml:space="preserve"><value>{0} check(s) : {1} échec(s), {2} avertissement(s).</value></data>
-  <data name="Studio.Settings.SummaryOk" xml:space="preserve"><value>{0} montage(s), aucune erreur.</value></data>
-  <data name="Studio.Settings.SummaryErrors" xml:space="preserve"><value>{0} montage(s), {1} erreur(s).</value></data>
-  <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve"><value>Sélectionnez d'abord une équipe : le runner injecte ses propres montages avant chaque --mount, la clé de configuration occupée par chaque montage dépend donc de l'équipe lancée.</value></data>
-  <data name="Studio.Settings.ExternalWarning" xml:space="preserve"><value>Sécurité : ceci permet à un montage de pointer n'importe où sur la machine, hors du répertoire de travail. N'activez que pour un chemin choisi délibérément.</value></data>
-  <data name="Studio.Settings.EffectiveNone" xml:space="preserve"><value>{0} montage(s) effectif(s) ; aucune entrée appsettings n'est remplacée.</value></data>
+  <data name="Studio.Diagnostics.AllGreen" xml:space="preserve"><value>{0} {0:plural:vérification|vérifications}, {0:plural:au vert|toutes au vert}.</value></data>
+  <data name="Studio.Diagnostics.Findings" xml:space="preserve"><value>{0} {0:plural:vérification|vérifications} : {1} {1:plural:échec|échecs}, {2} {2:plural:avertissement|avertissements}.</value></data>
+  <data name="Studio.Settings.SummaryOk" xml:space="preserve"><value>{0} {0:plural:dossier autorisé|dossiers autorisés}, aucune erreur.</value></data>
+  <data name="Studio.Settings.SummaryErrors" xml:space="preserve"><value>{0} {0:plural:dossier autorisé|dossiers autorisés}, {1} {1:plural:erreur|erreurs}.</value></data>
+  <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve"><value>Sélectionnez d'abord une équipe : le runner ajoute ses propres dossiers avant chaque --mount, la clé de configuration occupée par chaque dossier dépend donc de l'équipe lancée.</value></data>
+  <data name="Studio.Settings.ExternalWarning" xml:space="preserve"><value>Sécurité : ceci permet à un dossier autorisé de pointer n'importe où sur la machine, hors du répertoire de travail. N'activez que pour un chemin choisi délibérément.</value></data>
+  <data name="Studio.Settings.EffectiveNone" xml:space="preserve"><value>{0} {0:plural:dossier effectif|dossiers effectifs} ; aucune entrée appsettings n'est remplacée.</value></data>
   <!-- STUDIO-15 : par racine, plus par index -->
-  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} montage(s) effectif(s) ; {1} entrée(s) appsettings remplacée(s) par un montage de lancement sur la même racine.</value></data>
+  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} {0:plural:dossier effectif|dossiers effectifs} ; {1} {1:plural:entrée appsettings remplacée|entrées appsettings remplacées} par un dossier du lancement sur la même racine.</value></data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve"><value>auto (injecté par le runner)</value></data>
   <data name="Studio.Settings.OriginReplaces" xml:space="preserve"><value>{0} (remplace « {1} »)</value></data>
   <data name="Studio.Run.BinaryNotLocated" xml:space="preserve"><value>Le CLI orkeon n'a pas encore été localisé.</value></data>
   <data name="Studio.Run.BinaryNotFound" xml:space="preserve"><value>Le CLI orkeon est introuvable.</value></data>
   <data name="Studio.Run.Ready" xml:space="preserve"><value>Prêt à lancer.</value></data>
   <data name="Studio.Run.NoTarget" xml:space="preserve"><value>Aucune cible résolue.</value></data>
-  <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve"><value>Non lancé : {0} erreur(s) à corriger d'abord.</value></data>
-  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve"><value>Non lancé : les réglages dont dépend cette exécution n'ont pas pu être enregistrés — {0}</value></data>
+  <data name="Studio.Run.NotLaunchedErrors" xml:space="preserve"><value>Non lancée : {0} {0:plural:erreur|erreurs} à corriger d'abord.</value></data>
+  <data name="Studio.Run.SettingsNotSaved" xml:space="preserve"><value>Non lancée : les réglages dont dépend cette exécution n'ont pas pu être enregistrés — {0}</value></data>
   <data name="Studio.Run.TeamFoldersCreated" xml:space="preserve"><value>Créé dans le dossier de l'équipe : {0}</value></data>
   <data name="Studio.Run.TeamFolderCreateFailed" xml:space="preserve"><value>Le dossier de l'équipe « {0} » n'a pas pu être créé : {1}</value></data>
-  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve"><value>Rien à lire : le dossier de l'équipe « {0} » (point de montage {1}) n'existe pas. Créez-le et placez-y les entrées.</value></data>
-  <data name="Studio.Run.SettingsTeamFile" xml:space="preserve"><value>Fichier de réglages de l'équipe : {0} — le run le lit à la place du fichier de la machine ; épinglez un autre fichier ci-dessus pour le remplacer.</value></data>
-  <data name="Studio.Run.SettingsTeamFileProfileNote" xml:space="preserve"><value>Le réglage de modèle de la carte recouvre sa section Llm.</value></data>
+  <data name="Studio.Run.TeamFolderMissingReadOnly" xml:space="preserve"><value>Rien à lire : le dossier de l'équipe « {0} » (dossier {1}) n'existe pas. Créez-le et placez-y les entrées.</value></data>
+  <data name="Studio.Run.SettingsTeamFile" xml:space="preserve"><value>Fichier de réglages de l'équipe : {0} — l'exécution le lit à la place du fichier de la machine ; épinglez un autre fichier ci-dessus pour le remplacer.</value></data>
+  <data name="Studio.Run.SettingsTeamFileProfileNote" xml:space="preserve"><value>Le modèle choisi sur la carte recouvre sa section Llm.</value></data>
   <data name="Studio.Run.Cancelling" xml:space="preserve"><value>Annulation : le CLI est invité à s'arrêter, et tué s'il ne le fait pas.</value></data>
   <data name="Studio.Run.NothingToReplay" xml:space="preserve"><value>Rien à rejouer : l'entrée pour « {0} » n'a enregistré aucun argument.</value></data>
-  <data name="Studio.Run.Validating" xml:space="preserve"><value>Validation…</value></data>
+  <data name="Studio.Run.Validating" xml:space="preserve"><value>Vérification…</value></data>
   <data name="Studio.Run.Running" xml:space="preserve"><value>Exécution…</value></data>
   <data name="Studio.Run.NothingYet" xml:space="preserve"><value>Rien de rapporté pour l'instant.</value></data>
-  <data name="Studio.Run.TasksDone" xml:space="preserve"><value>{0} tâche(s) terminée(s).</value></data>
-  <data name="Studio.Run.TasksProgress" xml:space="preserve"><value>{0} tâche(s) terminée(s), {1} en cours.</value></data>
+  <data name="Studio.Run.TasksDone" xml:space="preserve"><value>{0} {0:plural:tâche terminée|tâches terminées}.</value></data>
+  <data name="Studio.Run.TasksProgress" xml:space="preserve"><value>{0} {0:plural:tâche terminée|tâches terminées}, {1} en cours.</value></data>
   <data name="Studio.Run.TaskSince" xml:space="preserve"><value>depuis {0}</value></data>
   <data name="Studio.Run.ToolActive" xml:space="preserve"><value>Outil {0} en cours…</value></data>
-  <data name="Studio.Run.ToolCalls" xml:space="preserve"><value>{0} appel(s) d'outil</value></data>
-  <data name="Studio.Run.Succeeded" xml:space="preserve"><value>Terminé avec succès.</value></data>
-  <data name="Studio.Run.Failed" xml:space="preserve"><value>Terminé en échec.</value></data>
+  <data name="Studio.Run.ToolCalls" xml:space="preserve"><value>{0} {0:plural:appel|appels} d'outil</value></data>
+  <data name="Studio.Run.Succeeded" xml:space="preserve"><value>Réussie.</value></data>
+  <data name="Studio.Run.Failed" xml:space="preserve"><value>Échouée.</value></data>
   <data name="Studio.Run.Cost" xml:space="preserve"><value>{0} jetons · {1}</value></data>
   <data name="Studio.Run.Watch" xml:space="preserve"><value>Afficher la progression plutôt que la sortie brute</value></data>
   <data name="Studio.Run.Stream" xml:space="preserve"><value>Diffuser le texte généré jeton par jeton</value></data>
@@ -338,19 +338,19 @@
   <data name="Studio.Run.HubMessages" xml:space="preserve"><value>Messages du hub</value></data>
   <data name="Studio.Run.None" xml:space="preserve"><value>Aucune cible sélectionnée.</value></data>
   <data name="Studio.Run.Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
-  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} fichier(s) de définition trouvé(s) : choisissez celui à exécuter.</value></data>
+  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} {0:plural:fichier de définition trouvé|fichiers de définition trouvés} : choisissez celui à lancer.</value></data>
   <data name="Studio.Run.DetectionFailed" xml:space="preserve"><value>Échec de la détection.</value></data>
   <data name="Studio.Run.KindYamlFile" xml:space="preserve"><value>Fichier d'équipe YAML</value></data>
   <data name="Studio.Run.KindScriptFile" xml:space="preserve"><value>Fichier d'équipe scripté</value></data>
   <data name="Studio.Run.KindCrewDirectory" xml:space="preserve"><value>Dossier d'équipe multi-fichiers</value></data>
   <data name="Studio.Run.KindScriptDirectory" xml:space="preserve"><value>Dossier d'équipe scripté</value></data>
-  <data name="Studio.Run.LogLines" xml:space="preserve"><value>{0} ligne(s).</value></data>
-  <data name="Studio.Run.LinesDropped" xml:space="preserve"><value>{0} ligne(s) ; {1} ligne(s) plus ancienne(s) supprimée(s) (plafond {2}).</value></data>
+  <data name="Studio.Run.LogLines" xml:space="preserve"><value>{0} {0:plural:ligne|lignes}.</value></data>
+  <data name="Studio.Run.LinesDropped" xml:space="preserve"><value>{0} {0:plural:ligne|lignes} ; {1} {1:plural:ligne plus ancienne supprimée|lignes plus anciennes supprimées} (plafond {2}).</value></data>
   <data name="Studio.Settings.OpenAppSettings" xml:space="preserve"><value>Ouvrir appsettings.json</value></data>
   <data name="Studio.Settings.SaveAppSettings" xml:space="preserve"><value>Enregistrer appsettings.json</value></data>
   <data name="Studio.Settings.SelectAppSettings" xml:space="preserve"><value>Sélectionner un appsettings.json</value></data>
   <data name="Studio.Settings.SelectInputsFile" xml:space="preserve"><value>Sélectionner un fichier d'inputs</value></data>
-  <data name="Studio.Settings.SelectLlmLogDest" xml:space="preserve"><value>Sélectionner la destination du log LLM</value></data>
+  <data name="Studio.Settings.SelectLlmLogDest" xml:space="preserve"><value>Choisir où écrire le journal des échanges avec le modèle</value></data>
   <data name="Studio.Settings.SelectCrewDefinition" xml:space="preserve"><value>Sélectionner une définition d'équipe</value></data>
   <data name="Studio.Settings.SelectCrewDirectory" xml:space="preserve"><value>Sélectionner un dossier d'équipe</value></data>
   <data name="Studio.Settings.SelectMountFolder" xml:space="preserve"><value>Sélectionner le dossier à monter</value></data>
@@ -364,13 +364,13 @@
   <data name="Studio.Create.StatusPreparing" xml:space="preserve"><value>Je prépare une proposition…</value></data>
   <data name="Studio.Create.StatusTrying" xml:space="preserve"><value>J&#x27;essaie sur votre exemple…</value></data>
   <data name="Studio.Create.StatusJudging" xml:space="preserve"><value>Je vérifie le résultat par rapport à votre demande…</value></data>
-  <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Votre solution est prête.</value></data>
+  <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Votre équipe est prête.</value></data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Quelque chose s'est mal passé — le détail est dans la carte ci-dessous.</value></data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Arrêté — reprenez quand vous voulez depuis « Mes solutions ».</value></data>
+  <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Arrêté — reprenez quand vous voulez depuis « Mes équipes ».</value></data>
   <data name="Studio.Create.Attempt" xml:space="preserve"><value>Essai {0}</value></data>
   <data name="Studio.Create.CheckUnverified" xml:space="preserve"><value>Je n&#x27;ai pas pu vérifier ce point automatiquement — jugez sur pièce.</value></data>
   <data name="Studio.Create.ResultScore" xml:space="preserve"><value>L&#x27;essai est terminé (score {0}).</value></data>
-  <data name="Studio.Create.StorePickTitle" xml:space="preserve"><value>Choisissez où ranger la solution</value></data>
+  <data name="Studio.Create.StorePickTitle" xml:space="preserve"><value>Choisissez où ranger l'équipe</value></data>
 <data name="Studio.Shell.ModeLabel" xml:space="preserve"><value>MODE</value></data>
 <data name="Studio.Shell.Novice" xml:space="preserve"><value>Novice</value></data>
 <data name="Studio.Shell.Expert" xml:space="preserve"><value>Expert</value></data>
@@ -389,7 +389,7 @@
 <data name="Studio.Shell.Settings" xml:space="preserve"><value>Réglages</value></data>
 <data name="Studio.Common.Title" xml:space="preserve"><value>Réglages</value></data>
 <data name="Studio.Common.SubNovice" xml:space="preserve"><value>Deux choses à régler : quel modèle d'IA, et quels dossiers vos agents peuvent voir.</value></data>
-<data name="Studio.Common.SubExpert" xml:space="preserve"><value>appsettings.json — formulaires typés, montages, limites de débit, et le fichier brut en lecture seule.</value></data>
+<data name="Studio.Common.SubExpert" xml:space="preserve"><value>appsettings.json — formulaires typés, dossiers autorisés, limites de débit, et le fichier brut en lecture seule.</value></data>
 <data name="Studio.Shell.Model" xml:space="preserve"><value>Modèle d'IA</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limites &amp; index</value></data>
@@ -401,25 +401,25 @@
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>C'est lui qui compose vos équipes et rédige les verdicts d'essai.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Utilisé par l'assistant de création, les verdicts et les réponses aux questions — indépendant des modèles des équipes.</value></data>
 <data name="Studio.Settings.ProfileTitle" xml:space="preserve"><value>Quel modèle d'IA vos agents utilisent</value></data>
-<data name="Studio.Settings.HintNovice" xml:space="preserve"><value>Un réglage, c'est un modèle d'IA et son adresse. Créez-en autant que vous voulez et attribuez-le à chaque équipe.</value></data>
-<data name="Studio.Settings.HintExpert" xml:space="preserve"><value>Profils LLM nommés et réutilisables. Celui marqué par défaut s'applique aux nouvelles équipes et est reflété dans la section Llm ; la clé d'API reste lue depuis l'environnement.</value></data>
-<data name="Studio.Settings.New" xml:space="preserve"><value>Nouveau réglage</value></data>
-<data name="Studio.Settings.ProfileEmpty" xml:space="preserve"><value>Aucun réglage pour l'instant — créez-en un pour donner un modèle à vos équipes.</value></data>
+<data name="Studio.Settings.HintNovice" xml:space="preserve"><value>Un modèle, c'est une IA et son adresse. Créez-en autant que vous voulez et attribuez-le à chaque équipe.</value></data>
+<data name="Studio.Settings.HintExpert" xml:space="preserve"><value>Modèles nommés et réutilisables. Celui marqué par défaut s'applique aux nouvelles équipes et est reflété dans la section Llm ; la clé d'API reste lue depuis l'environnement.</value></data>
+<data name="Studio.Settings.New" xml:space="preserve"><value>Nouveau modèle</value></data>
+<data name="Studio.Settings.ProfileEmpty" xml:space="preserve"><value>Aucun modèle pour l'instant — créez-en un pour vos équipes.</value></data>
 <data name="Studio.Settings.DefaultBadge" xml:space="preserve"><value>par défaut</value></data>
 <data name="Studio.Settings.StudioBadge" xml:space="preserve"><value>assistant</value></data>
 <data name="Studio.Settings.UseDefault" xml:space="preserve"><value>Utiliser par défaut</value></data>
 <data name="Studio.Settings.Edit" xml:space="preserve"><value>Modifier</value></data>
 <data name="Studio.Settings.Duplicate" xml:space="preserve"><value>Dupliquer</value></data>
 <data name="Studio.Settings.Delete" xml:space="preserve"><value>Supprimer</value></data>
-<data name="Studio.Settings.NewTitle" xml:space="preserve"><value>Nouveau réglage</value></data>
-<data name="Studio.Settings.EditTitle" xml:space="preserve"><value>Modifier le réglage</value></data>
-<data name="Studio.Settings.EditSub" xml:space="preserve"><value>Un réglage porte un nom et peut servir à plusieurs équipes.</value></data>
-<data name="Studio.Settings.NameLabel" xml:space="preserve"><value>Nom du réglage</value></data>
-<data name="Studio.Settings.NameTaken" xml:space="preserve"><value>Un autre réglage porte déjà ce nom.</value></data>
+<data name="Studio.Settings.NewTitle" xml:space="preserve"><value>Nouveau modèle</value></data>
+<data name="Studio.Settings.EditTitle" xml:space="preserve"><value>Modifier le modèle</value></data>
+<data name="Studio.Settings.EditSub" xml:space="preserve"><value>Un modèle porte un nom et peut servir à plusieurs équipes.</value></data>
+<data name="Studio.Settings.NameLabel" xml:space="preserve"><value>Nom du modèle</value></data>
+<data name="Studio.Settings.NameTaken" xml:space="preserve"><value>Un autre modèle porte déjà ce nom.</value></data>
 <data name="Studio.Settings.ProviderLabel" xml:space="preserve"><value>D'où vient le modèle</value></data>
-<data name="Studio.Settings.Save" xml:space="preserve"><value>Enregistrer le réglage</value></data>
+<data name="Studio.Settings.Save" xml:space="preserve"><value>Enregistrer le modèle</value></data>
 <data name="Studio.Common.Cancel" xml:space="preserve"><value>Annuler</value></data>
-<data name="Studio.Settings.NewName" xml:space="preserve"><value>Nouveau réglage</value></data>
+<data name="Studio.Settings.NewName" xml:space="preserve"><value>Nouveau modèle</value></data>
   <data name="Studio.Settings.GroupLocal" xml:space="preserve"><value>SUR VOTRE MACHINE · GRATUIT, SANS CLÉ</value></data>
   <data name="Studio.Settings.GroupCloud" xml:space="preserve"><value>DANS LE NUAGE · CLÉ D'API REQUISE</value></data>
   <data name="Studio.Settings.KeyTitleFor" xml:space="preserve"><value>Clé d'API {0}</value></data>
@@ -441,7 +441,7 @@
 <data name="Studio.Shell.NavTeams" xml:space="preserve"><value>Mes équipes</value></data>
 <data name="Studio.Create.Title" xml:space="preserve"><value>Créer une équipe d'agents</value></data>
 <data name="Studio.Create.SubNovice" xml:space="preserve"><value>Quatre étapes : décrire le besoin, valider la composition, essayer, adopter. Rien n'est écrit avant la dernière.</value></data>
-<data name="Studio.Create.SubExpert" xml:space="preserve"><value>Assistant de composition. La définition YAML est éditable dès l'étape 2 ; l'essai s'exécute en dry-run.</value></data>
+<data name="Studio.Create.SubExpert" xml:space="preserve"><value>Assistant de composition. La définition YAML est éditable dès l'étape 2 ; l'essai commence par une vérification sans exécution.</value></data>
 <data name="Studio.Teams.ScreenTitle" xml:space="preserve"><value>Mes équipes d'agents</value></data>
 <data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Chaque équipe est un dossier autonome sur cette machine — copiable, partageable, supprimable.</value></data>
 <data name="Studio.Create.Restart" xml:space="preserve"><value>Recommencer</value></data>
@@ -449,8 +449,8 @@
 <data name="Studio.Create.AssistantBy" xml:space="preserve"><value>Assistant opéré par</value></data>
 <data name="Studio.Create.AssistantMissing" xml:space="preserve"><value>Assistant non configuré — choisissez son modèle ci-dessous.</value></data>
 <data name="Studio.Create.GateTitle" xml:space="preserve"><value>L'assistant a besoin d'un modèle d'IA</value></data>
-<data name="Studio.Create.GateBody" xml:space="preserve"><value>C'est lui qui composera votre équipe et rédigera les verdicts d'essai. Choisissez un réglage — la création s'ouvrira juste après, et vous pourrez en changer à tout moment dans Réglages.</value></data>
-<data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Gérer les réglages</value></data>
+<data name="Studio.Create.GateBody" xml:space="preserve"><value>C'est lui qui composera votre équipe et rédigera les verdicts d'essai. Choisissez un modèle — la création s'ouvrira juste après, et vous pourrez en changer à tout moment dans Réglages.</value></data>
+<data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Gérer les modèles</value></data>
 <data name="Studio.Create.Step1" xml:space="preserve"><value>Décrire</value></data>
 <data name="Studio.Create.Step2" xml:space="preserve"><value>Composer</value></data>
 <data name="Studio.Create.Step3" xml:space="preserve"><value>Essayer</value></data>
@@ -462,7 +462,7 @@
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Composer l'équipe</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Voici l'équipe que je propose</value></data>
 <data name="Studio.Create.ToolsLabel" xml:space="preserve"><value>Peut :</value></data>
-<data name="Studio.Create.ValidationTitle" xml:space="preserve"><value>Constats de validation</value></data>
+<data name="Studio.Create.ValidationTitle" xml:space="preserve"><value>Constats de la vérification</value></data>
 <data name="Studio.Create.FilesTitle" xml:space="preserve"><value>Définition générée</value></data>
 <data name="Studio.Create.TryTitle" xml:space="preserve"><value>Essai de l'équipe sur un cas réel</value></data>
 <data name="Studio.Create.TrySub" xml:space="preserve"><value>Un essai ne modifie rien de définitif : le résultat est écrit dans un dossier de session que vous pouvez jeter.</value></data>
@@ -470,7 +470,7 @@
 <data name="Studio.Create.ChecklistLabel" xml:space="preserve"><value>Par rapport à ce que vous vouliez</value></data>
 <data name="Studio.Create.AdoptTitle" xml:space="preserve"><value>Votre équipe est prête. Comment voulez-vous l'utiliser ?</value></data>
 <data name="Studio.Create.TeamName" xml:space="preserve"><value>Nom de l'équipe</value></data>
-<data name="Studio.Create.AdoptProfile" xml:space="preserve"><value>Réglage de modèle</value></data>
+<data name="Studio.Create.AdoptProfile" xml:space="preserve"><value>Modèle</value></data>
 <data name="Studio.Create.ScheduleLabel" xml:space="preserve"><value>Quand doit-elle travailler ?</value></data>
 <data name="Studio.Create.SchedOnDemand" xml:space="preserve"><value>À la demande</value></data>
 <data name="Studio.Create.SchedOnDemandHint" xml:space="preserve"><value>je la lance moi-même</value></data>
@@ -519,19 +519,19 @@
 <data name="Studio.Teams.Daily" xml:space="preserve"><value>Chaque jour à {0}</value></data>
 <data name="Studio.Teams.Hourly" xml:space="preserve"><value>Chaque heure</value></data>
 <data name="Studio.Shell.Import" xml:space="preserve"><value>Importer</value></data>
-<data name="Studio.Shell.Test" xml:space="preserve"><value>Tester</value></data>
+<data name="Studio.Shell.Test" xml:space="preserve"><value>Essayer</value></data>
 <data name="Studio.Import.Title" xml:space="preserve"><value>Importer une équipe</value></data>
 <data name="Studio.Import.SubNovice" xml:space="preserve"><value>Quelqu'un vous a partagé une équipe ? Indiquez son dossier : Studio vérifie qu'elle est complète et sans danger avant de l'ajouter.</value></data>
 <data name="Studio.Import.SubExpert" xml:space="preserve"><value>Une définition YAML, un script .ork.ts, ou un dossier d'équipe complet. Rien n'est copié avant votre validation.</value></data>
 <data name="Studio.Import.SecretsTitle" xml:space="preserve"><value>Une clé d'API voyage dans cette définition</value></data>
 <data name="Studio.Import.SecretsBody" xml:space="preserve"><value>Ces fichiers semblent porter un secret collé en clair. Les clés vivent dans l'environnement, jamais dans un dossier partagé — nettoyez-les avant d'importer.</value></data>
 <data name="Studio.Import.Add" xml:space="preserve"><value>Ajouter à mes équipes</value></data>
-<data name="Studio.Trial.Title" xml:space="preserve"><value>Tester une équipe</value></data>
-<data name="Studio.Trial.Sub" xml:space="preserve"><value>Validation à blanc puis essai réel sur un jeu d'exemple. Aucun effet de bord hors du dossier d'essai.</value></data>
+<data name="Studio.Trial.Title" xml:space="preserve"><value>Essayer une équipe</value></data>
+<data name="Studio.Trial.Sub" xml:space="preserve"><value>Vérification puis essai réel sur un jeu d'exemple. Aucun effet de bord hors du dossier d'essai.</value></data>
 <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Équipe</value></data>
-<data name="Studio.Trial.Validate" xml:space="preserve"><value>Valider à blanc</value></data>
+<data name="Studio.Trial.Validate" xml:space="preserve"><value>Vérifier</value></data>
 <data name="Studio.Trial.Run" xml:space="preserve"><value>Lancer l'essai</value></data>
-<data name="Studio.Trial.Findings" xml:space="preserve"><value>CONSTATS DE VALIDATION</value></data>
+<data name="Studio.Trial.Findings" xml:space="preserve"><value>CONSTATS DE LA VÉRIFICATION</value></data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve"><value>Pas de section Llm : le moteur démarrera sur ses valeurs par défaut (Ollama, en local).</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-JSON" xml:space="preserve"><value>Le fichier de réglages n'est pas un JSON valide.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>Un champ des réglages n'a pas le bon type.</value></data>
@@ -566,7 +566,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-APIKEY-PLACEHOLDER" xml:space="preserve"><value>La clé d'API est écrite ${NOM}, que le moteur ne remplace jamais : nommez sa variable dans ApiKeyEnvVar.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-SETTING-PLACEHOLDER" xml:space="preserve"><value>Un réglage contient une référence de variable (${NOM} ou %NOM%), que le moteur ne remplace jamais : il utiliserait le texte tel quel. Écrivez la valeur, ou le nom seul, comme le message l'indique.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LLM-ENDPOINT" xml:space="preserve"><value>Une adresse de modèle est refusée ou reste muette : une adresse sous le chemin /anthropic d'un autre fournisseur est refusée, et une adresse sans chemin est lue comme un serveur compatible OpenAI à sa racine.</value></data>
-  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve"><value>Un profil de modèle s'appelle « default », le nom propre de la section Llm : le moteur refuse de démarrer. Renommez-le.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-LLM-PROFILE-NAME" xml:space="preserve"><value>Un modèle s'appelle « default », le nom propre de la section Llm : le moteur refuse de démarrer. Renommez-le.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-ID" xml:space="preserve"><value>Deux dossiers portent le même identifiant : un identifiant nomme un seul dossier.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-SHARED" xml:space="preserve"><value>Plusieurs entrées partagent un même nom interne : une équipe en choisit une par exécution, et le même dossier deux fois est de trop.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-MOUNT-DASH" xml:space="preserve"><value>Une ligne de dossier ajoutée commence par « - » : le moteur la lirait comme une option.</value></data>
@@ -586,7 +586,7 @@
   <data name="Studio.Settings.CardRate" xml:space="preserve"><value>Débit</value></data>
   <data name="Studio.Settings.CardRag" xml:space="preserve"><value>Index documentaire</value></data>
   <data name="Studio.Settings.CardLogging" xml:space="preserve"><value>Journalisation</value></data>
-  <data name="Studio.Settings.CardLlmLog" xml:space="preserve"><value>Journal LLM</value></data>
+  <data name="Studio.Settings.CardLlmLog" xml:space="preserve"><value>Journal des échanges avec le modèle</value></data>
   <data name="Studio.History.OutcomeSuccess" xml:space="preserve"><value>Terminée sans erreur.</value></data>
   <data name="Studio.History.OutcomeFailed" xml:space="preserve"><value>Échouée (code {0}).</value></data>
   <data name="Studio.History.OutcomeCancelled" xml:space="preserve"><value>Interrompue avant la fin.</value></data>
@@ -596,8 +596,8 @@
   <data name="Studio.Diagnostics.Check.dotnet-runtime" xml:space="preserve"><value>L'environnement .NET</value></data>
   <data name="Studio.Diagnostics.Check.esbuild" xml:space="preserve"><value>Le compilateur de scripts (esbuild)</value></data>
   <data name="Studio.Diagnostics.Check.llm-config" xml:space="preserve"><value>La configuration du modèle</value></data>
-  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve"><value>La clé d'un profil LLM</value></data>
-  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve"><value>Les profils LLM</value></data>
+  <data name="Studio.Diagnostics.Check.llm-profile-key" xml:space="preserve"><value>La clé d'un modèle</value></data>
+  <data name="Studio.Diagnostics.Check.llm-profiles" xml:space="preserve"><value>Les modèles</value></data>
   <data name="Studio.Diagnostics.Check.llm-reachability" xml:space="preserve"><value>La connexion au modèle</value></data>
   <data name="Studio.Diagnostics.Check.local-embeddings" xml:space="preserve"><value>Les embeddings locaux</value></data>
   <data name="Studio.Diagnostics.Check.onnx-reranker" xml:space="preserve"><value>Le reclasseur ONNX</value></data>
@@ -605,7 +605,7 @@
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>L'écriture dans le dossier de travail</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Tout est en place.</value></data>
   <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>Un point à corriger avant de lancer une équipe.</value></data>
-  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} vérifications passées, {1} avertissement(s), {2} échec(s).</value></data>
+  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:vérification passée|vérifications passées}, {1} {1:plural:avertissement|avertissements}, {2} {2:plural:échec|échecs}.</value></data>
   <data name="Studio.Diagnostics.Fix" xml:space="preserve"><value>Corriger dans les réglages</value></data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve"><value>Dossiers que les agents peuvent voir</value></data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Tout le reste de votre machine leur est invisible. Un dossier en lecture seule ne peut jamais être modifié.</value></data>
@@ -614,16 +614,16 @@
   <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Cliquer pour passer de lecture seule à lecture et écriture, et inversement</value></data>
   <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Jeu d'exemple (JSON)</value></data>
   <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Transmis à l'essai via --inputs ; les lancements réels gardent leurs propres entrées.</value></data>
-  <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
+  <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} {1:plural:agent|agents}</value></data>
   <data name="Studio.Import.SecretsClean" xml:space="preserve"><value>Aucun secret dans les fichiers</value></data>
   <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve"><value>Les clés API voyagent par l'environnement, et ces fichiers n'en contiennent pas.</value></data>
   <data name="Studio.Import.SecretsFound" xml:space="preserve"><value>Quelque chose ressemble à une clé collée</value></data>
-  <data name="Studio.Import.SecretsFoundDetail" xml:space="preserve"><value>{0} fichier(s) contiennent ce qui ressemble à un secret en clair — voir l'avertissement ci-dessous.</value></data>
+  <data name="Studio.Import.SecretsFoundDetail" xml:space="preserve"><value>{0} {0:plural:fichier contient|fichiers contiennent} ce qui ressemble à un secret en clair — voir l'avertissement ci-dessous.</value></data>
   <data name="Studio.Import.ToolsLater" xml:space="preserve"><value>Outils</value></data>
   <data name="Studio.Import.ToolsLaterDetail" xml:space="preserve"><value>Les outils de l'équipe sont vérifiés à son premier lancement.</value></data>
   <data name="Studio.Import.DropHint" xml:space="preserve"><value>…ou déposez ici un dossier / un fichier .yaml ou .ork.ts</value></data>
   <data name="Studio.Import.ReportTitle" xml:space="preserve"><value>RAPPORT DE RECONNAISSANCE</value></data>
-  <data name="Studio.Import.TestFirst" xml:space="preserve"><value>Tester d'abord</value></data>
+  <data name="Studio.Import.TestFirst" xml:space="preserve"><value>Essayer d'abord</value></data>
   <data name="Studio.Run.Browse" xml:space="preserve"><value>Parcourir…</value></data>
   <data name="Studio.Settings.UsedBy" xml:space="preserve"><value>Utilisé par</value></data>
   <data name="Studio.Settings.ModelPlaceholder" xml:space="preserve"><value>— à configurer —</value></data>
@@ -631,7 +631,7 @@
   <data name="Studio.History.Empty" xml:space="preserve"><value>Aucune exécution pour l'instant. Le premier lancement d'une équipe apparaîtra ici.</value></data>
   <data name="Studio.Trial.Empty" xml:space="preserve"><value>Choisissez une équipe pour préparer un essai.</value></data>
   <data name="Studio.Teams.Open" xml:space="preserve"><value>Ouvrir le dossier</value></data>
-  <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>Ceci est la base commune (fichier de réglages + environnement de ce shell). Une équipe qui a élu son propre réglage de modèle le reçoit par-dessus, au lancement seulement — il n'apparaît pas ici.</value></data>
+  <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>Ceci est la base commune (fichier de réglages + environnement de ce shell). Une équipe qui a choisi son propre modèle le reçoit par-dessus, au lancement seulement — il n'apparaît pas ici.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>Clés API</value></data>
   <data name="Studio.Settings.Intro" xml:space="preserve"><value>Les clés vivent dans vos variables d'environnement utilisateur, jamais dans un fichier. Collez une clé puis mémorisez-la ; le champ se vide une fois la clé enregistrée.</value></data>
   <data name="Studio.Settings.Unlimited" xml:space="preserve"><value>illimité</value></data>
@@ -825,10 +825,10 @@
   <data name="Studio.Create.UndeclaredLegend" xml:space="preserve"><value>En rouge : les dossiers qui ne font pas partie de vos dossiers autorisés.</value></data>
   <data name="Studio.Settings.AlreadyAdded" xml:space="preserve"><value>déjà ajouté</value></data>
   <data name="Studio.Settings.Conflict" xml:space="preserve"><value>{0} est déjà utilisé par un autre dossier</value></data>
-  <data name="Studio.Settings.Summary" xml:space="preserve"><value>{0} dossier(s) sélectionné(s)</value></data>
+  <data name="Studio.Settings.Summary" xml:space="preserve"><value>{0} {0:plural:dossier sélectionné|dossiers sélectionnés}</value></data>
   <data name="Studio.Settings.Declared" xml:space="preserve"><value>« {0} » ajouté aux dossiers autorisés</value></data>
   <data name="Studio.Settings.NotSaved" xml:space="preserve"><value>« {0} » ajouté, mais les réglages n'ont pas pu être enregistrés — {1}</value></data>
-  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>déclaré comme {0} — ce point de montage est {1}</value></data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>déclaré comme {0} — ce dossier est {1}</value></data>
   <data name="Studio.Settings.Reused" xml:space="preserve"><value>« {0} » était déjà autorisé ; l'équipe utilise désormais cette entrée</value></data>
   <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>l'un des {0} dossiers déclarés comme {1}</value></data>
   <data name="Studio.Settings.MountId" xml:space="preserve"><value>Identifiant {0}</value></data>
@@ -842,9 +842,9 @@
   <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>« {0} » autorisé et relié comme {1}</value></data>
   <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Cette équipe désigne des déclarations de dossier absentes ici : {0}. Déclarez-les dans Réglages › Dossiers autorisés ou changez les dossiers de l'équipe.</value></data>
   <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (sélectionné par identifiant parmi {1})</value></data>
-  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (non monté pour cette exécution)</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (non autorisé pour cette exécution)</value></data>
   <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (l'une de {1} entrées — rien ne la sélectionne)</value></data>
-  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} dossier(s) désignent des déclarations absentes de cette machine</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} {0:plural:dossier désigne une déclaration absente|dossiers désignent des déclarations absentes} de cette machine</value></data>
   <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>Les autoriser tels qu'enregistrés</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve"><value>Un agent fait une seule chose. Décrivez-la en une phrase, puis n'ouvrez que les capacités nécessaires.</value></data>
   <data name="Studio.Create.Name" xml:space="preserve"><value>Nom</value></data>
@@ -870,7 +870,7 @@
   <data name="Studio.Teams.MountRo" xml:space="preserve"><value>{0} · lecture</value></data>
   <data name="Studio.Teams.MountRw" xml:space="preserve"><value>{0} · lecture, écriture</value></data>
   <data name="Studio.Teams.MountUnreadable" xml:space="preserve"><value>dossier illisible</value></data>
-  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>à tester</value></data>
+  <data name="Studio.Teams.ToTest" xml:space="preserve"><value>à essayer</value></data>
   <data name="Studio.Teams.LastRun" xml:space="preserve"><value>Dernière exécution : {0}, {1}</value></data>
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>réussie</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>échouée</value></data>
@@ -879,13 +879,13 @@
   <data name="Studio.Teams.NoMounts" xml:space="preserve"><value>Aucun dossier associé —</value></data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Changer les dossiers</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Exporter</value></data>
-  <data name="Studio.Teams.Test" xml:space="preserve"><value>Tester</value></data>
+  <data name="Studio.Teams.Test" xml:space="preserve"><value>Essayer</value></data>
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>lit {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>écrit dans {0}</value></data>
-  <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Validation à blanc d'abord</value></data>
+  <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Vérifier d'abord</value></data>
   <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve"><value>En attente d'un essai…</value></data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve"><value>Dossiers déclarés</value></data>
-  <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} dossier(s) : {1}</value></data>
+  <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} {0:plural:dossier|dossiers} : {1}</value></data>
   <data name="Studio.Import.MountsNone" xml:space="preserve"><value>Aucun dossier déclaré</value></data>
   <data name="Studio.Import.MountsNoneDetail" xml:space="preserve"><value>Autorisez ses dossiers après l'ajout — Mes équipes, Changer les dossiers.</value></data>
   <data name="Studio.Create.TrialCommand" xml:space="preserve"><value>COMMANDE DE L'ESSAI</value></data>
@@ -1633,8 +1633,8 @@
   </data>
   <!-- STUDIO-12 -->
   <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve"><value>Dossier d'équipe contenant une définition YAML mono-fichier</value></data>
-  <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être lu — {0}. Corrigez-le ou supprimez-le ; d'ici là, la liste démarre vide et la prochaine modification l'écrasera.</value></data>
-  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être écrit — {0}. Les réglages restent tels qu'affichés pour cette session ; la prochaine modification les écrit à nouveau.</value></data>
+  <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>Le fichier des modèles n'a pas pu être lu — {0}. Corrigez-le ou supprimez-le ; d'ici là, la liste démarre vide et la prochaine modification l'écrasera.</value></data>
+  <data name="Studio.Settings.ProfileFileNotWritten" xml:space="preserve"><value>Le fichier des modèles n'a pas pu être écrit — {0}. Les réglages restent tels qu'affichés pour cette session ; la prochaine modification les écrit à nouveau.</value></data>
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Non importé — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Réponse maximale (jetons, optionnel)</value></data>
   <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve"><value>Vide : le maximum documenté du modèle, {0} jetons — envoyé comme plafond de réponse.</value></data>
@@ -1864,9 +1864,9 @@
   <data name="Studio.Create.FolderLocation" xml:space="preserve"><value>Emplacement</value></data>
   <data name="Studio.Create.FolderOnMachine" xml:space="preserve"><value>Dossier sur cet ordinateur</value></data>
   <data name="Studio.Create.ChooseShort" xml:space="preserve"><value>Choisir…</value></data>
-  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Réussi</value></data>
-  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Échoué</value></data>
-  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Annulé</value></data>
+  <data name="Studio.Run.OutcomeSucceeded" xml:space="preserve"><value>Réussie</value></data>
+  <data name="Studio.Run.OutcomeFailed" xml:space="preserve"><value>Échouée</value></data>
+  <data name="Studio.Run.OutcomeCancelled" xml:space="preserve"><value>Annulée</value></data>
   <data name="Studio.Run.ExitCodeLabel" xml:space="preserve"><value>code de sortie</value></data>
   <data name="Studio.Run.ColAgent" xml:space="preserve"><value>AGENT</value></data>
   <data name="Studio.Run.ColToolCalls" xml:space="preserve"><value>APPELS D’OUTILS</value></data>
@@ -1916,19 +1916,24 @@
   <data name="Studio.Diagnostics.Code.STUDIO-DRIVE-SCREENING" xml:space="preserve"><value>L'interrupteur de filtrage de la section de stockage cloud n'est ni true ni false : le moteur met tous les comptes de côté tant qu'il ne l'est pas.</value></data>
   <data name="Studio.Teams.LlmLine" xml:space="preserve"><value>Modèle : {0}</value></data>
   <data name="Studio.Teams.LlmLabelDefault" xml:space="preserve"><value>Défaut ({0})</value></data>
-  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>Aucun défaut élu : le run prend la section Llm du fichier de réglages</value></data>
+  <data name="Studio.Teams.LlmNoDefault" xml:space="preserve"><value>Aucun modèle par défaut : l'exécution prend la section Llm du fichier de réglages</value></data>
   <data name="Studio.Teams.LlmTeamFileDefault" xml:space="preserve"><value>Défaut du fichier de l'équipe</value></data>
-  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>Le run planifié répondra en écho : le fichier de réglages enregistré n'a pas de modèle par défaut. Enregistrez les réglages.</value></data>
-  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} agent(s) ou tâche(s) de cette équipe nomment leur propre modèle : le choix ne s'applique qu'aux autres.</value></data>
-  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Utiliser le LLM par défaut ({0})</value></data>
-  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Utiliser le LLM par défaut</value></data>
-  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Cochée, l'équipe tourne sur le réglage élu par défaut au moment du run, et le suit quand il change. Décochée, elle reste sur le réglage choisi ci-dessous.</value></data>
-  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>Ou tourner sur ce réglage :</value></data>
+  <data name="Studio.Teams.ScheduledRunNoDefault" xml:space="preserve"><value>L'exécution planifiée répondra en écho : le fichier de réglages enregistré n'a pas de modèle par défaut. Enregistrez les réglages.</value></data>
+  <data name="Studio.Teams.CrewOverridesLlm" xml:space="preserve"><value>{0} {0:plural:agent ou tâche de cette équipe nomme son|agents ou tâches de cette équipe nomment leur} propre modèle : le choix ne s'applique qu'aux autres.</value></data>
+  <data name="Studio.Teams.UseDefaultLlm" xml:space="preserve"><value>Utiliser le modèle par défaut ({0})</value></data>
+  <data name="Studio.Teams.UseDefaultLlmNone" xml:space="preserve"><value>Utiliser le modèle par défaut</value></data>
+  <data name="Studio.Teams.UseDefaultLlmHint" xml:space="preserve"><value>Cochée, l'équipe utilise le modèle par défaut au moment de l'exécution, et le suit quand il change. Décochée, elle garde le modèle choisi ci-dessous.</value></data>
+  <data name="Studio.Teams.PinnedLlm" xml:space="preserve"><value>Ou utiliser ce modèle :</value></data>
   <data name="Studio.Teams.ChangeLlm" xml:space="preserve"><value>Changer le modèle</value></data>
   <data name="Studio.Teams.LlmSaved" xml:space="preserve"><value>{0} tourne désormais sur : {1}.</value></data>
   <data name="Studio.Teams.ConfigureModel" xml:space="preserve"><value>Configurer un modèle</value></data>
-  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Ce run : {0}</value></data>
+  <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>Cette exécution : {0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Mémoriser pour cette équipe</value></data>
-  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} équipe(s), dont {1} par défaut</value></data>
-  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Réglage de modèle par défaut : {0}. Les équipes qui suivent le défaut tournent dessus.</value></data>
+  <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} {0:plural:équipe|équipes}, dont {1} par défaut</value></data>
+  <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Modèle par défaut : {0}. Les équipes qui suivent le défaut l'utilisent.</value></data>
+  <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Détails techniques</value></data>
+  <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>Autres actions</value></data>
+  <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Demander à l'assistant</value></data>
+  <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Compteurs de la barre d'état</value></data>
+  <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>Les jetons qu'affiche la barre d'état : ceux de l'exécution à l'écran, ou de toute la session Studio.</value></data>
 </root>

@@ -17,6 +17,12 @@ public interface IStudioStrings
 
     /// <summary>Raised when the culture changes, so ViewModels can re-emit their bindings.</summary>
     event EventHandler? CultureChanged;
+
+    /// <summary>
+    /// The two-letter code of the language the strings are read in; it picks the plural rule
+    /// of <see cref="StudioStringsFormatting"/>. English unless the front says otherwise.
+    /// </summary>
+    string Language => "en";
 }
 
 /// <summary>
@@ -29,8 +35,16 @@ public interface IStudioStrings
 /// such call (CodeQL's <c>cs/invalid-string-formatting</c>, a false positive per call).
 /// A guard test keeps the direct form out of Core and the WPF front.
 /// </summary>
-public static class StudioStringsFormatting
+public static partial class StudioStringsFormatting
 {
+    /// <summary>
+    /// A plural choice inside a pattern: <c>{0:plural:dossier|dossiers}</c> reads the count of
+    /// placeholder 0 and keeps one of the two forms; the count itself is written apart, as a
+    /// plain <c>{0}</c> (<c>"{0} {0:plural:dossier|dossiers}"</c>). No form holds a brace.
+    /// </summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+):plural:([^|{}]*)\|([^{}]*)\}")]
+    private static partial System.Text.RegularExpressions.Regex PluralPattern();
+
     /// <summary>Formats the string of <paramref name="key"/> in the current culture.</summary>
     /// <param name="strings">The localization port.</param>
     /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
@@ -47,8 +61,49 @@ public static class StudioStringsFormatting
     {
         ArgumentNullException.ThrowIfNull(strings);
 
-        return string.Format(provider, strings[key], arguments);
+        if (!strings[key].Contains(":plural:", StringComparison.Ordinal))
+        {
+            return string.Format(provider, strings[key], arguments);
+        }
+
+        var chosen = ChoosePlurals(strings[key], strings.Language, arguments);
+        return string.Format(provider, chosen, arguments);
     }
+
+    /// <summary>
+    /// Replaces each plural choice of <paramref name="pattern"/> by the form its count asks for
+    /// in <paramref name="language"/>: French keeps the singular for 0 and 1, Chinese and
+    /// Japanese have a single form (the second), every other language keeps the singular for 1
+    /// alone. A choice whose placeholder is missing or not a number keeps the plural form.
+    /// </summary>
+    private static string ChoosePlurals(string pattern, string language, object?[] arguments) =>
+        PluralPattern().Replace(pattern, match =>
+        {
+            var index = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            var count = index < arguments.Length ? AsCount(arguments[index]) : null;
+            return count is { } n && IsSingular(n, language) ? match.Groups[2].Value : match.Groups[3].Value;
+        });
+
+    private static decimal? AsCount(object? value) => value switch
+    {
+        int i => i,
+        long l => l,
+        short s => s,
+        byte b => b,
+        uint u => u,
+        ulong ul => ul,
+        decimal d => d,
+        double d when !double.IsNaN(d) && !double.IsInfinity(d) => (decimal)d,
+        float f when !float.IsNaN(f) && !float.IsInfinity(f) => (decimal)f,
+        _ => null,
+    };
+
+    private static bool IsSingular(decimal count, string language) => language switch
+    {
+        "fr" => Math.Abs(count) < 2,
+        "zh" or "ja" => false,
+        _ => count == 1,
+    };
 }
 
 /// <summary>

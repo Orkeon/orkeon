@@ -199,4 +199,40 @@ public sealed partial class StudioStringsFormattingTests
         Assert.True(directory is not null, $"Could not locate the repo root above {AppContext.BaseDirectory}.");
         return directory!.FullName;
     }
+
+    /// <summary>A port whose one pattern holds a plural choice, in the language given.</summary>
+    private sealed class PluralStrings(string language) : IStudioStrings
+    {
+        public string this[string key] => key switch
+        {
+            StudioStringKeys.MountsSummaryOk => "{0} {0:plural:dossier autorisé|dossiers autorisés}, aucune erreur.",
+            _ => key,
+        };
+
+        public string Language => language;
+
+        public event EventHandler? CultureChanged { add { } remove { } }
+    }
+
+    [Theory]
+    [InlineData("fr", 0, "0 dossier autorisé, aucune erreur.")]
+    [InlineData("fr", 1, "1 dossier autorisé, aucune erreur.")]
+    [InlineData("fr", 2, "2 dossiers autorisés, aucune erreur.")]
+    [InlineData("en", 0, "0 dossiers autorisés, aucune erreur.")]
+    [InlineData("en", 1, "1 dossier autorisé, aucune erreur.")]
+    [InlineData("zh", 1, "1 dossiers autorisés, aucune erreur.")]
+    public void A_plural_choice_keeps_the_form_the_count_asks_for_in_the_language(string language, int count, string expected)
+    {
+        var line = new PluralStrings(language).Format(CultureInfo.InvariantCulture, StudioStringKeys.MountsSummaryOk, count);
+
+        Assert.Equal(expected, line);
+    }
+
+    [Fact]
+    public void A_plural_choice_without_a_number_keeps_the_plural_form()
+    {
+        var line = new PluralStrings("fr").Format(CultureInfo.InvariantCulture, StudioStringKeys.MountsSummaryOk, "un");
+
+        Assert.Equal("un dossiers autorisés, aucune erreur.", line);
+    }
 }

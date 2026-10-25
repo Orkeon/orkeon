@@ -1,7 +1,7 @@
-<!-- The conversation with the assistant (30/08 mock, ChatThread.dc.html). It does NOT float
-     over the screen: it is mounted in the content column and takes its place, so the Novice
-     help rail beside it stays readable and clickable. Every dimension here comes from the
-     mock; nothing is positioned by a constant width. DataContext: ChatThreadViewModel. -->
+<!-- The conversation with the assistant (30/08 mock, ChatThread.dc.html). One instance for the
+     window: the shell mounts it as the 420 px side panel on the right of the content (refonte
+     R10), opened by «Demander à l'assistant» in the title bar; it never covers the screen.
+     DataContext: ChatThreadViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.ChatThreadView"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -59,7 +59,7 @@
   </UserControl.Resources>
 
   <Border x:Name="Panel" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
-          BorderThickness="1" CornerRadius="14" MaxHeight="640" ClipToBounds="True">
+          BorderThickness="1,0,0,0" ClipToBounds="True">
     <Border.RenderTransform>
       <!-- Unnamed on purpose: SlotStoryboard reaches it by property path, not by name. -->
       <TranslateTransform/>
@@ -129,7 +129,7 @@
                   ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}">
             <controls:LucideIcon Kind="x" Size="14"/>
           </Button>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="28" Padding="11,0" FontSize="12"
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Height="28" Padding="11,0" FontSize="13"
                   Margin="0,0,8,0" Command="{Binding StopCommand}"
                   Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
@@ -141,7 +141,7 @@
           <StackPanel VerticalAlignment="Center">
             <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                        Text="{Binding [Studio.Chat.Title], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,1,0,0"
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1,0,0"
                        Foreground="{DynamicResource InkFaintBrush}" TextTrimming="CharacterEllipsis"
                        Text="{Binding Status}"/>
           </StackPanel>
@@ -153,10 +153,10 @@
         <DockPanel>
           <controls:LucideIcon DockPanel.Dock="Left" Kind="{Binding RecapIcon}" Size="13" Margin="0,0,9,0"
                                Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
-          <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="10.5"
+          <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
                      VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
                      Text="{Binding RecapProgress}"/>
-          <TextBlock FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"
+          <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                      Foreground="{DynamicResource InkBrush}"
                      Text="{Binding [Studio.Chat.Recap], Source={x:Static services:I18n.Instance}}"/>
         </DockPanel>
@@ -184,9 +184,9 @@
                     </controls:LucideIcon.Style>
                   </controls:LucideIcon>
                   <StackPanel>
-                    <TextBlock FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Label}"/>
-                    <TextBlock FontSize="12" Margin="0,1,0,0" TextWrapping="Wrap" Text="{Binding Value}">
+                    <TextBlock FontSize="13" Margin="0,1,0,0" TextWrapping="Wrap" Text="{Binding Value}">
                       <TextBlock.Style>
                         <Style TargetType="TextBlock">
                           <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
@@ -233,7 +233,7 @@
               <!-- The placeholder: the question's own example while one is on the table,
                    the neutral invitation otherwise. WPF has no watermark, and one overlay
                    is cheaper than an attached property nothing else would use. -->
-              <TextBlock IsHitTestVisible="False" FontSize="12.5" Margin="12,10,0,0" TextTrimming="CharacterEllipsis"
+              <TextBlock IsHitTestVisible="False" FontSize="13" Margin="12,10,0,0" TextTrimming="CharacterEllipsis"
                          Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Placeholder}"
                          Visibility="{Binding Text, ElementName=Composer, Converter={StaticResource StringPresentToVisibility}, ConverterParameter=invert}"/>
             </Grid>
@@ -243,7 +243,7 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource LinkBtn}" Command="{Binding SkipCommand}"
                     Visibility="{Binding IsAsking, Converter={StaticResource BooleanToVisibility}}"
                     Content="{Binding [Studio.Chat.Skip], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="10" Foreground="{DynamicResource InkFaintBrush}"
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                        Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"/>
           </DockPanel>
         </StackPanel>
@@ -260,9 +260,9 @@
             <StackPanel>
               <!-- STUDIO-57: no « Edit » any more — it only went back to step 1, which « Start
                    over » does; what was wanted here is the text, selectable and copyable. -->
-              <TextBlock Style="{StaticResource Eyebrow}" FontSize="9.5" VerticalAlignment="Center"
+              <TextBlock Style="{StaticResource Eyebrow}" FontSize="13" VerticalAlignment="Center"
                          Text="{Binding [Studio.Chat.YourBrief], Source={x:Static services:I18n.Instance}}"/>
-              <controls:MarkdownText FontSize="12.5" LineHeight="18.5" Margin="0,6,0,0" Source="{Binding Brief}"
+              <controls:MarkdownText FontSize="13" LineHeight="18.5" Margin="0,6,0,0" Source="{Binding Brief}"
                                      CodeFontFamily="{StaticResource MonoFont}"
                                      Foreground="{DynamicResource InkBrush}"/>
               <ItemsControl ItemsSource="{Binding BriefChips}" Margin="0,9,0,0">
@@ -272,7 +272,7 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border Style="{StaticResource BriefChip}">
-                      <TextBlock FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"
+                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource InkMutedBrush}" Text="{Binding}"/>
                     </Border>
                   </DataTemplate>
@@ -290,7 +290,7 @@
             </Border>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
-              <TextBlock FontSize="12.5" TextWrapping="Wrap" LineHeight="18.5"
+              <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
                          Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Primer}"/>
             </Border>
           </DockPanel>
@@ -337,10 +337,10 @@
                             </Style>
                           </controls:MarkdownText.Style>
                         </controls:MarkdownText>
-                        <TextBlock FontSize="12" Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="18.5"
+                        <TextBlock FontSize="13" Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="18.5"
                                    Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Detail}"
                                    Visibility="{Binding HasDetail, Converter={StaticResource BooleanToVisibility}}"/>
-                        <TextBlock FontSize="11.5" Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="17"
+                        <TextBlock FontSize="13" Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="17"
                                    Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Hint}">
                           <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -390,7 +390,7 @@
                   <Ellipse x:Name="Dot2" Style="{StaticResource ChatDot}"/>
                   <Ellipse x:Name="Dot3" Style="{StaticResource ChatDot}" Margin="0"/>
                 </StackPanel>
-                <TextBlock FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"
+                <TextBlock FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
                            Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Thinking}"/>
               </StackPanel>
               <Border.Triggers>

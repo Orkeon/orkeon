@@ -48,7 +48,7 @@ public static class LlmProbeText
         }
 
         return result.ModelCount is { } count
-            ? strings.Format(culture, StudioStringKeys.ProbeReachable, count.ToString(culture))
+            ? strings.Format(culture, StudioStringKeys.ProbeReachable, count)
             : strings[StudioStringKeys.ProbeReachableNoCount];
     }
 

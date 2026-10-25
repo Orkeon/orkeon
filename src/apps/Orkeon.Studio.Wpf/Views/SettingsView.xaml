@@ -12,7 +12,7 @@
     <!-- the maquette's underlined tab button -->
     <Style x:Key="SettingsTab" TargetType="Button">
       <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="FontSize" Value="13"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -39,7 +39,7 @@
     <!-- header -->
     <DockPanel Margin="0,0,0,4">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-        <Button Style="{StaticResource BtnGhost}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
+        <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
                 Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
@@ -66,7 +66,7 @@
                    Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
       </StackPanel>
     </DockPanel>
-    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding Config.StatusMessage}"/>
+    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,6,0,0" Text="{Binding Config.StatusMessage}"/>
 
     <!-- tab strip -->
     <StackPanel Orientation="Horizontal" Margin="0,20,0,18">
@@ -237,7 +237,7 @@
                         </StackPanel>
                       </Border>
                     </StackPanel>
-                    <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
+                    <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
                     <!-- STUDIO-48: the name a crew writes to run on this setting — it is the host
                          profile Llm:Profiles:<id> of the settings file —, or why no crew can. -->
                     <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"
@@ -252,7 +252,7 @@
                         </Style>
                       </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,4,0,0" Text="{Binding Endpoint}"
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,4,0,0" Text="{Binding Endpoint}"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
                     <!-- STUDIO-49 (decision 7): a setting that keeps its key in ORKEON_Llm__ApiKey
                          without being the default — every run reads that key as its default's. -->
@@ -284,22 +284,22 @@
                     <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" Text="{Binding UsedByCountLine}"
                                Visibility="{Binding UsedByCountLine, Converter={StaticResource StringPresentToVisibility}}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
-                      <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
+                      <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding SetDefaultCommand}" Margin="0,0,7,0"
                               Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
                               Content="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding EditCommand}" Margin="0,0,7,0">
+                      <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding EditCommand}" Margin="0,0,7,0">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,6,0"/>
                           <TextBlock Text="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding DuplicateCommand}" Margin="0,0,7,0">
+                      <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding DuplicateCommand}" Margin="0,0,7,0">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
                           <TextBlock Text="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
                         </StackPanel>
                       </Button>
-                      <Button Style="{StaticResource BtnGhost}" FontSize="12" Command="{Binding DeleteCommand}"
+                      <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding DeleteCommand}"
                               Foreground="{DynamicResource DangerBrush}">
                         <StackPanel Orientation="Horizontal">
                           <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
@@ -320,7 +320,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
               <controls:LucideIcon Kind="file-json-2" Size="13" Foreground="{DynamicResource InkFaintBrush}"
                                    Margin="0,0,7,0" VerticalAlignment="Center"/>
-              <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
+              <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
                          Text="{Binding [Studio.Settings.HandWrittenTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
@@ -332,7 +332,7 @@
                           CornerRadius="11" Padding="14,10" Margin="0,0,0,8">
                     <StackPanel>
                       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Id}"/>
-                      <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0" Text="{Binding Summary}"
+                      <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,3,0,0" Text="{Binding Summary}"
                                  Visibility="{Binding HasSummary, Converter={StaticResource BooleanToVisibility}}"/>
                       <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="Wrap" Text="{Binding HostIdText}"/>
                     </StackPanel>
@@ -409,7 +409,7 @@
                             CommandParameter="{Binding}">
                       <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ChipAction}">
-                          <Setter Property="FontSize" Value="10"/>
+                          <Setter Property="FontSize" Value="13"/>
                           <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                           <Style.Triggers>
@@ -421,16 +421,16 @@
                         </Style>
                       </Button.Style>
                     </Button>
-                    <Button Width="29" Height="29" Padding="0" Style="{StaticResource BtnGhost}"
+                    <Button Width="29" Height="29" Padding="0" Style="{StaticResource BtnSecondary}"
                             Command="{Binding DataContext.Config.Mounts.DropMountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}">
                       <controls:LucideIcon Kind="x" Size="13"/>
                     </Button>
                   </StackPanel>
                   <StackPanel>
-                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                Text="{Binding PhysicalPath}" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,3,0,0"
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0"
                                Foreground="{DynamicResource InkFaintBrush}">
                       <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
                     </TextBlock>
@@ -438,15 +438,15 @@
                          for a hand-written crew's mounts: block. -->
                     <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
                                 Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" VerticalAlignment="Center"
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center"
                                  Foreground="{DynamicResource InkFaintBrush}" Text="{Binding IdDisplay, Mode=OneWay}"/>
-                      <Button Width="22" Height="22" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnGhost}"
+                      <Button Width="22" Height="22" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnSecondary}"
                               ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
                               Command="{Binding CopyIdCommand}">
                         <controls:LucideIcon Kind="copy" Size="11"/>
                       </Button>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource Hint}" FontSize="10.5" Margin="0,3,0,0"
+                    <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,3,0,0"
                                Text="{Binding UsedByDisplay, Mode=OneWay}"
                                Visibility="{Binding IsReferenced, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
@@ -455,7 +455,7 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left"
+        <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left"
                 Command="{Binding Config.Mounts.AllowFolderCommand}">
           <StackPanel Orientation="Horizontal">
             <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
@@ -477,7 +477,7 @@
         <ItemsControl ItemsSource="{Binding Config.Mounts.Mounts}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding MountString}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="13" Text="{Binding MountString}"/>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -508,14 +508,14 @@
                 <!-- The line first, the badge last as the fill child, the STUDIO-16 way: one
                      word, bounded, the full rights label in its tooltip — the name never shrinks. -->
                 <DockPanel LastChildFill="True" Margin="0,0,0,4">
-                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="11"
+                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13"
                              Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                              Text="{Binding Label, Mode=OneWay}"/>
                   <Border Style="{StaticResource BadgeOk}" Margin="8,0,0,0" MaxWidth="160"
                           HorizontalAlignment="Right" VerticalAlignment="Center"
                           ToolTip="{Binding RightsLabel, Mode=OneWay}">
-                    <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" TextTrimming="CharacterEllipsis"
+                    <TextBlock Style="{StaticResource BadgeText}" FontSize="13" TextTrimming="CharacterEllipsis"
                                Text="{Binding RightsBadge, Mode=OneWay}"/>
                   </Border>
                 </DockPanel>

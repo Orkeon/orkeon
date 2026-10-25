@@ -28,7 +28,7 @@
                      VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}"
                      Text="{Binding [Studio.Create.GalleryTitle], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
-        <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+        <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                    Margin="0,6,0,0" Text="{Binding [Studio.Create.GallerySub], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </DockPanel>
@@ -97,11 +97,11 @@
         </Button>
         <StackPanel>
           <StackPanel Visibility="{Binding HasConflict, Converter={StaticResource BooleanToVisibility}}">
-            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Text="{Binding Conflict}"/>
+            <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Text="{Binding Conflict}"/>
             <WrapPanel Margin="0,8,0,0">
-              <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+              <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
                       Command="{Binding UseFreeNameCommand}" Content="{Binding UseFreeNameLabel}"/>
-              <Button Style="{StaticResource BtnGhost}"
+              <Button Style="{StaticResource BtnSecondary}"
                       Command="{Binding OpenConflictingTeamCommand}"
                       Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
                       Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
@@ -109,21 +109,21 @@
           </StackPanel>
           <StackPanel Orientation="Horizontal" Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibility}}">
             <controls:LucideIcon Kind="loader-circle" Size="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportingLabel}"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportingLabel}"/>
           </StackPanel>
-          <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Text="{Binding Failure}"
+          <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Text="{Binding Failure}"
                      Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}"/>
           <StackPanel Visibility="{Binding HasImported, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="circle-check" Size="14" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
-              <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
+              <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                          Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportedLine}"/>
             </StackPanel>
             <!-- One line of markup: the whitespace between inlines would render as a space. -->
-            <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="22,4,0,0">
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="22,4,0,0">
               <Run FontWeight="SemiBold" Text="{Binding FoldersReport.Title, Mode=OneWay}"/><LineBreak/><Run Text="{Binding FoldersReport.Detail, Mode=OneWay}"/>
             </TextBlock>
-            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="22,8,0,0"
+            <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="22,8,0,0"
                     Command="{Binding OpenTeamsCommand}"
                     Content="{Binding [Studio.Create.GalleryOpenTeams], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
@@ -132,7 +132,7 @@
     </Border>
 
     <!-- reading the catalogue: a line, no spinner — the read takes a moment, not a wait -->
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" FontSize="12" Margin="24,16,24,0"
+    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" FontSize="13" Margin="24,16,24,0"
                Text="{Binding [Studio.Create.GalleryLoading], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibility}}"/>
 
@@ -150,18 +150,18 @@
         <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="10,8" Margin="0,10,0,0" MaxHeight="180"
                 Visibility="{Binding Failure.HasDetail, Converter={StaticResource BooleanToVisibility}}">
           <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" TextWrapping="Wrap"
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap"
                        Foreground="{DynamicResource ConsoleFgBrush}" Text="{Binding Failure.Detail}"/>
           </ScrollViewer>
         </Border>
         <WrapPanel Margin="0,12,0,0">
-          <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding RetryCommand}">
+          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding RetryCommand}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="rotate-cw" Size="12" Margin="0,0,7,0"/>
               <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-          <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
+          <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
                   Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="stethoscope" Size="12" Margin="0,0,7,0"/>
@@ -175,7 +175,7 @@
     <!-- nothing kept: say so, and the way back -->
     <StackPanel DockPanel.Dock="Top" Margin="24,18,24,0"
                 Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
-      <TextBlock Style="{StaticResource Hint}" FontSize="12"
+      <TextBlock Style="{StaticResource Hint}" FontSize="13"
                  Text="{Binding [Studio.Create.GalleryEmpty], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,8,0,0"
               Command="{Binding ClearFiltersCommand}"
@@ -209,7 +209,7 @@
                 <StackPanel>
                   <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                              Text="{Binding Title}"/>
-                  <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18"
+                  <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18"
                              Margin="0,4,0,0" Text="{Binding Problem}"
                              Visibility="{Binding HasProblem, Converter={StaticResource BooleanToVisibility}}"/>
                   <WrapPanel Margin="0,9,0,0">
@@ -226,7 +226,7 @@
                                  Text="{Binding [Studio.Create.GalleryReferenceOnly], Source={x:Static services:I18n.Instance}}"/>
                     </Border>
                     <!-- expert: the id STUDIO-40 hands the engine, and the process as the engine spells it -->
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="10" VerticalAlignment="Center" Margin="2,0,0,4"
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center" Margin="2,0,0,4"
                                Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                       <Run Text="{Binding Id, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Process, Mode=OneWay}"/>
                     </TextBlock>
