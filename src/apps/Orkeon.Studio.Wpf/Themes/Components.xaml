@@ -206,4 +206,111 @@
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
 
+  <!-- ══ StepTabs (R14): the vertical classeur of a step with sections. 232 px of tabs on the
+       left, the pane on the right; the active tab takes the pane's background, its border runs
+       into the pane's (it covers the pane's left border by 1 px) and only its left corners are
+       rounded, so the pane loses its top-left radius. No ring, no shadow on the pane. ══ -->
+  <Style TargetType="{x:Type controls:StepTabs}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:StepTabs}">
+          <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="232"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <!-- Above the pane, so the active tab's 1 px overlap hides the pane's border. -->
+            <StackPanel Grid.Column="0" Panel.ZIndex="1">
+              <StackPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1"/>
+              <!-- Empty in Expert; the Novice help card « What this step does » otherwise. -->
+              <ContentPresenter Content="{TemplateBinding SideContent}" Margin="0,10,16,0"/>
+            </StackPanel>
+            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1" CornerRadius="0,14,14,14" Padding="20,18" KeyboardNavigation.TabIndex="2">
+              <ContentPresenter ContentSource="SelectedContent"/>
+            </Border>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ══ StepTab: state mark · title · 12 px state subtitle, 44 px at the least. Inactive: the
+       surface-2 background, a faint border, secondary ink, 12 px short of the pane; hovered, it
+       turns white, takes the line border and the xs shadow and slides 3 px toward the pane in
+       150 ms. The keyboard focus draws the accent ring. ══ -->
+  <Style TargetType="{x:Type controls:StepTab}">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:StepTab}">
+          <Border x:Name="Chrome" MinHeight="44" Margin="0,0,12,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
+                  Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="1" SnapsToDevicePixels="True">
+            <Border.RenderTransform>
+              <TranslateTransform x:Name="Slide"/>
+            </Border.RenderTransform>
+            <DockPanel>
+              <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top">
+                <Ellipse x:Name="EmptyMark" Stroke="{DynamicResource LineStrongBrush}" StrokeThickness="1.5"/>
+                <Ellipse x:Name="ExpectedMark" Width="10" Height="10" Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+                <controls:LucideIcon x:Name="DoneMark" Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}"
+                                     Visibility="Collapsed"/>
+              </Grid>
+              <StackPanel VerticalAlignment="Center">
+                <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="13.5"
+                                  TextElement.FontWeight="SemiBold" TextElement.Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource InkFaintBrush}"
+                           Text="{TemplateBinding Subtitle}"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="State" Value="Done">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="DoneMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Expected">
+              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsMouseOver" Value="True"/>
+                <Condition Property="IsSelected" Value="False"/>
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+              <Setter TargetName="Chrome" Property="Effect" Value="{DynamicResource ShadowXs}"/>
+              <MultiTrigger.EnterActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="3" Duration="0:0:0.15"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </MultiTrigger.EnterActions>
+              <MultiTrigger.ExitActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.15"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </MultiTrigger.ExitActions>
+            </MultiTrigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter Property="Panel.ZIndex" Value="1"/>
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderThickness" Value="1,1,0,1"/>
+              <Setter TargetName="Chrome" Property="Margin" Value="0,0,-1,6"/>
+              <Setter TargetName="Title" Property="TextElement.Foreground" Value="{DynamicResource InkBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
 </ResourceDictionary>

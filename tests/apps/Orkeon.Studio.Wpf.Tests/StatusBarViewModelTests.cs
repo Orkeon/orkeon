@@ -496,7 +496,7 @@ public sealed class StatusBarViewModelTests
         card.Update(Composing(waitingOnUser: true));
 
         Assert.True(bar.Atelier.IsWaiting);
-        Assert.Equal("I am waiting for your answer.", bar.Atelier.Stage);
+        Assert.Equal("Waiting for you", bar.Atelier.Stage);
 
         card.Update(Composing(engineRunning: false));
 

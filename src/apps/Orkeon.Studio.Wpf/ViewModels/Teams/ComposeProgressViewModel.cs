@@ -22,6 +22,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// What the session's token allowance has left, as the engine's last meter reading said it;
 /// null for a session with no cap (STUDIO-34).
 /// </param>
+/// <param name="WaitPhrase">
+/// What the session waits on the user for, named (refonte R13): « Waiting for you: confirm the
+/// folders ». It is the card's title while the engine waits; null when nothing waits.
+/// </param>
 public sealed record ComposeProgress(
     string? Stage,
     bool EngineRunning,
@@ -33,7 +37,8 @@ public sealed record ComposeProgress(
     long PromptTokens,
     long CompletionTokens,
     bool Estimated,
-    long? TokensRemaining = null);
+    long? TokensRemaining = null,
+    string? WaitPhrase = null);
 
 /// <summary>
 /// The card that stands between «Composer» and the proposal, and between «Essayer» and the
@@ -98,12 +103,14 @@ public sealed class ComposeProgressViewModel : ObservableObject
     /// What the engine is doing, in one line. Waiting outranks the stage: «I am waiting for
     /// you» is the only sentence that matters while it is true.
     /// </summary>
-    public string Title => _strings[TitleKey()];
+    public string Title => IsWaiting && _reading.WaitPhrase is { Length: > 0 } phrase ? phrase : _strings[TitleKey()];
 
     private string TitleKey()
     {
+        // R13: no « I am waiting for your answer » with no complement — the phrase names the
+        // wait; without one, the session's own « Waiting for you ».
         if (IsWaiting)
-            return StudioStringKeys.ComposeWaitingOnYou;
+            return StudioStringKeys.WizardSessionWaiting;
         if (_reading.Finished || !_reading.EngineRunning)
             return StudioStringKeys.ComposeStageIdle;
 

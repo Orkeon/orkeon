@@ -983,7 +983,7 @@
     <value>The assistant stopped before the brief was finished. Start again when you are ready.</value>
   </data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
-    <value>The assistant is composing — answer it in the conversation.</value>
+    <value>Composition under way: the assistant prepares the team.</value>
   </data>
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No judge was available, so the criteria below were not checked one by one — read them yourself.</value>
@@ -1020,9 +1020,6 @@
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
     <value>Stopped.</value>
-  </data>
-  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
-    <value>I am waiting for your answer.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Tokens sent to the model</value>
@@ -1747,7 +1744,7 @@
     <value>Where the team writes its results.</value>
   </data>
   <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
-    <value>Checked: the folder is the team's own and travels with it. Uncheck it to choose a folder on the disk instead.</value>
+    <value>Creates an empty folder inside the team; you will drop the files in it after the adoption</value>
   </data>
   <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
     <value>Do you want to put files or sub-folders in the folders you set up?</value>
@@ -1775,9 +1772,6 @@
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>read, write</value>
-  </data>
-  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
-    <value>no folder chosen yet</value>
   </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.</value>
@@ -1976,4 +1970,53 @@
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>The ONNX reranker is not available on this machine.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>The code parser is not available on this machine.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>The engine cannot write to its working folder.</value></data>
+  <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>waiting for you</value></data>
+  <data name="Studio.Create.ComposeBusyTip" xml:space="preserve"><value>Composition under way</value></data>
+  <data name="Studio.Create.FolderToChooseRead" xml:space="preserve"><value>To choose: the team must read documents that already exist.</value></data>
+  <data name="Studio.Create.HintAnswer" xml:space="preserve"><value>Answer the assistant to continue.</value></data>
+  <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirm the folders to move on to the composition.</value></data>
+  <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Settle the choice in the conversation to continue.</value></data>
+  <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Described</value></data>
+  <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>To describe</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describe the work to continue.</value></data>
+  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Need described.</value></data>
+  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Need described, {0} {0:plural:question settled|questions settled} with the assistant</value></data>
+  <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:folder to confirm|folders to confirm}</value></data>
+  <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:folder confirmed|folders confirmed}</value></data>
+  <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Proposed after the composition</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Folders confirmed: the composition goes on.</value></data>
+  <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Every folder has its place. Confirm to continue.</value></data>
+  <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.</value></data>
+  <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} folders to choose. You can confirm now: the team will get them empty at adoption.</value></data>
+  <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Written</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Optional</value></data>
+  <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>No instruction yet.</value></data>
+  <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Waiting for you: {0}</value></data>
+  <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirm the folders</value></data>
+  <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>answer the assistant</value></data>
+  <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>choose a model</value></data>
+  <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>settle a choice</value></data>
+  <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>choose a folder</value></data>
+  <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>adopt the team</value></data>
+  <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.</value></data>
+  <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>A folder of the team is still to choose before the trial.</value></data>
+  <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>The team is ready. Adopt it to find it in your teams.</value></data>
+  <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Confirm the folders to continue, or ask a question</value></data>
+  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Choose the folder to continue, or ask a question</value></data>
+  <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Adopt the team to finish, or ask a question</value></data>
+  <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Show the folder</value></data>
+  <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Need</value></data>
+  <data name="Studio.Create.TabFolders" xml:space="preserve"><value>The team's folders</value></data>
+  <data name="Studio.Create.FoldersTabEmptyBody" xml:space="preserve"><value>The assistant proposes the team's folders once it has read your need, during the composition. They will appear here.</value></data>
+  <data name="Studio.Create.FolderFieldName" xml:space="preserve"><value>Name in the team</value></data>
+  <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>Note</value></data>
+  <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>What is this folder for, for the team?</value></data>
+  <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>Deduced from your request</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve"><value>See the folders</value></data>
+  <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>Back to the folders</value></data>
+  <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Optional. An instruction applies to every agent, travels with the team, and becomes a point to check at trial time.</value></data>
+  <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>For example: write every answer in French, and quote the source document.</value></data>
+  <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Leave it empty if you have nothing to impose: the assistant will propose its own rules at the Compose step.</value></data>
+  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter to send · Shift+Enter for a new line</value></data>
+  <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Show the card</value></data>
 </root>

@@ -1693,7 +1693,7 @@ public partial class CreateTeamWizardTests
             Assert.Equal(["read", "read, write"], wizard.FolderRows.Select(r => r.RoleLabel));
             Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
             Assert.True(wizard.FolderRows[0].IsUnanswered);
-            Assert.Equal("no folder chosen yet", wizard.FolderRows[0].FolderLabel);
+            Assert.Equal("To choose: the team must read documents that already exist.", wizard.FolderRows[0].FolderLabel);
             Assert.True(wizard.FolderRows[1].IsInsideTeam);
             Assert.Equal("inside the team: outmd", wizard.FolderRows[1].FolderLabel);
             Assert.False(wizard.HasFoldersProblem);
@@ -1782,7 +1782,7 @@ public partial class CreateTeamWizardTests
             input.IsInsideTeam = false;
             Assert.False(input.IsInsideTeam);
             Assert.True(input.IsUnanswered);
-            Assert.Equal("no folder chosen yet", input.FolderLabel);
+            Assert.Equal("To choose: the team must read documents that already exist.", input.FolderLabel);
 
             output.IsInsideTeam = false;
             Assert.True(output.IsInsideTeam);

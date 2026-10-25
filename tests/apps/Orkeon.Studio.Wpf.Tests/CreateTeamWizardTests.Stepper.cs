@@ -67,6 +67,11 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.IsSessionPaused);
         Assert.False(vm.IsSessionWorking);
         Assert.True(vm.HasSessionState);
+        // R13: a folder still to choose is the wait point, and the stepper names it first.
+        Assert.Equal("Waiting for you: choose a folder", vm.SessionStateLabel);
+
+        vm.CreateAllInsideTeamCommand.Execute(null);
+
         var prefix = EnglishStudioStrings.Instance[StudioStringKeys.WizardDraftSavedAt].Replace("{0}", "", StringComparison.Ordinal);
         Assert.StartsWith(prefix, vm.SessionStateLabel, StringComparison.Ordinal);
         Assert.Matches(@"\d\d:\d\d$", vm.SessionStateLabel);

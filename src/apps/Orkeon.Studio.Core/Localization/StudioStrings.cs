@@ -1680,6 +1680,120 @@ public static class StudioStringKeys
     /// <summary>The line under the compose button while the engine interviews.</summary>
     public const string WizardHintComposing = "Studio.Create.HintComposing";
 
+    /// <summary>"waiting for you" — the chat status while a card of the step waits on the user.</summary>
+    public const string ChatStatusWaitingCard = "Studio.Chat.StatusWaitingCard";
+
+    /// <summary>"Composition under way" — the tooltip of the disabled compose button.</summary>
+    public const string WizardComposeBusyTip = "Studio.Create.ComposeBusyTip";
+
+    /// <summary>"Confirm the folders" — the folders card's main button.</summary>
+    public const string WizardFoldersConfirm = "Studio.Create.FoldersConfirm";
+
+    /// <summary>"Save to my teams" — the adoption button of step 4.</summary>
+    public const string WizardSave = "Studio.Create.Save";
+
+    /// <summary>"To choose: the team must read documents that already exist." — an input folder nothing answers yet.</summary>
+    public const string WizardFolderToChooseRead = "Studio.Create.FolderToChooseRead";
+
+    /// <summary>"Answer the assistant to continue."</summary>
+    public const string WizardHintAnswer = "Studio.Create.HintAnswer";
+
+    /// <summary>"Confirm the folders to move on to the composition."</summary>
+    public const string WizardHintConfirmFolders = "Studio.Create.HintConfirmFolders";
+
+    /// <summary>"Settle the choice in the conversation to continue."</summary>
+    public const string WizardHintDecide = "Studio.Create.HintDecide";
+
+    /// <summary>"Described" — the need tab's subtitle once typed.</summary>
+    public const string WizardTabNeedDone = "Studio.Create.TabNeedDone";
+
+    /// <summary>"To describe" — the need tab's subtitle before.</summary>
+    public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
+
+    /// <summary>"Describe the work to continue." — the need pane's footer before.</summary>
+    public const string WizardTabNeedEmptyFooter = "Studio.Create.TabNeedEmptyFooter";
+
+    /// <summary>"Need described."</summary>
+    public const string WizardTabNeedFooter = "Studio.Create.TabNeedFooter";
+
+    /// <summary>"Need described, {0} questions settled with the assistant".</summary>
+    public const string WizardTabNeedFooterAnswers = "Studio.Create.TabNeedFooterAnswers";
+
+    /// <summary>"{0} folders to confirm" — the folders tab's subtitle while they wait.</summary>
+    public const string WizardTabFoldersPending = "Studio.Create.TabFoldersPending";
+
+    /// <summary>"{0} folders confirmed".</summary>
+    public const string WizardTabFoldersConfirmed = "Studio.Create.TabFoldersConfirmed";
+
+    /// <summary>"Proposed after the composition" — the folders tab before the engine proposes them.</summary>
+    public const string WizardTabFoldersEmpty = "Studio.Create.TabFoldersEmpty";
+
+    /// <summary>"Folders confirmed: the composition goes on."</summary>
+    public const string WizardTabFoldersConfirmedFooter = "Studio.Create.TabFoldersConfirmedFooter";
+
+    /// <summary>"Every folder has its place. Confirm to continue."</summary>
+    public const string WizardTabFoldersReadyFooter = "Studio.Create.TabFoldersReadyFooter";
+
+    /// <summary>"1 folder to choose. You can confirm now…" — {0} the folder's name.</summary>
+    public const string WizardTabFoldersOneToChoose = "Studio.Create.TabFoldersOneToChoose";
+
+    /// <summary>"{0} folders to choose. You can confirm now…".</summary>
+    public const string WizardTabFoldersManyToChoose = "Studio.Create.TabFoldersManyToChoose";
+
+    /// <summary>"Written" — the instruction tab once written.</summary>
+    public const string WizardTabNotesDone = "Studio.Create.TabNotesDone";
+
+    /// <summary>"Optional" — the instruction tab before.</summary>
+    public const string WizardTabNotesEmpty = "Studio.Create.TabNotesEmpty";
+
+    /// <summary>"No instruction yet."</summary>
+    public const string WizardTabNotesFooterEmpty = "Studio.Create.TabNotesFooterEmpty";
+
+    /// <summary>"Instruction taken as written."</summary>
+    public const string WizardTabNotesFooterTaken = "Studio.Create.Taken";
+
+    /// <summary>"Waiting for you: {0}" — the single wait point (R13).</summary>
+    public const string WizardWaitingFor = "Studio.Create.WaitingFor";
+
+    /// <summary>"confirm the folders".</summary>
+    public const string WizardWaitActionFolders = "Studio.Create.WaitActionFolders";
+
+    /// <summary>"answer the assistant".</summary>
+    public const string WizardWaitActionAnswer = "Studio.Create.WaitActionAnswer";
+
+    /// <summary>"choose a model".</summary>
+    public const string WizardWaitActionModel = "Studio.Create.WaitActionModel";
+
+    /// <summary>"settle a choice".</summary>
+    public const string WizardWaitActionDecide = "Studio.Create.WaitActionDecide";
+
+    /// <summary>"choose a folder".</summary>
+    public const string WizardWaitActionChooseFolder = "Studio.Create.WaitActionChooseFolder";
+
+    /// <summary>"adopt the team".</summary>
+    public const string WizardWaitActionAdopt = "Studio.Create.WaitActionAdopt";
+
+    /// <summary>The assistant's bubble while the folders wait for the confirm.</summary>
+    public const string WizardWaitBubbleFolders = "Studio.Create.WaitBubbleFolders";
+
+    /// <summary>The assistant's bubble while a folder is still to choose.</summary>
+    public const string WizardWaitBubbleChooseFolder = "Studio.Create.WaitBubbleChooseFolder";
+
+    /// <summary>The assistant's bubble while the team waits to be adopted.</summary>
+    public const string WizardWaitBubbleAdopt = "Studio.Create.WaitBubbleAdopt";
+
+    /// <summary>The composer's placeholder while the folders wait.</summary>
+    public const string WizardWaitPlaceholderFolders = "Studio.Create.WaitPlaceholderFolders";
+
+    /// <summary>The composer's placeholder while a folder is to choose.</summary>
+    public const string WizardWaitPlaceholderChooseFolder = "Studio.Create.WaitPlaceholderChooseFolder";
+
+    /// <summary>The composer's placeholder while the team waits to be adopted.</summary>
+    public const string WizardWaitPlaceholderAdopt = "Studio.Create.WaitPlaceholderAdopt";
+
+    /// <summary>"Show the folder" — the bubble's button on a folder to choose.</summary>
+    public const string WizardWaitShowCard = "Studio.Create.WaitShowCard";
+
     /// <summary>Header over what the engine suggests changing.</summary>
     public const string WizardSuggestions = "Studio.Create.Suggestions";
 
@@ -1723,9 +1837,6 @@ public static class StudioStringKeys
 
     /// <summary>"Stopped."</summary>
     public const string ComposeStageIdle = "Studio.Create.StageIdle";
-
-    /// <summary>"I am waiting for your answer."</summary>
-    public const string ComposeWaitingOnYou = "Studio.Create.WaitingOnYou";
 
     /// <summary>Accessible name of the ascending token chip.</summary>
     public const string ComposeTokensUp = "Studio.Create.TokensUp";
@@ -2327,9 +2438,6 @@ public static class StudioStringKeys
 
     /// <summary>"read, write" — the role of an output folder on the Folders step.</summary>
     public const string WizardFolderRoleOutput = "Studio.Create.FolderRoleOutput";
-
-    /// <summary>"no folder chosen yet" — an input folder nothing answers yet.</summary>
-    public const string WizardFolderNotChosen = "Studio.Create.FolderNotChosen";
 
     /// <summary>"« {0} » is not a folder name…" — a renamed folder the engine would refuse.</summary>
     public const string WizardFolderInvalidName = "Studio.Create.FolderInvalidName";
@@ -3126,7 +3234,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeStagePromote] = "I am saving the team…",
         [StudioStringKeys.ComposeStageWorking] = "Working…",
         [StudioStringKeys.ComposeStageIdle] = "Stopped.",
-        [StudioStringKeys.ComposeWaitingOnYou] = "I am waiting for your answer.",
         [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
         [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
         [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
@@ -3141,7 +3248,45 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
         [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
-        [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
+        [StudioStringKeys.WizardHintComposing] = "Composition under way: the assistant prepares the team.",
+        [StudioStringKeys.ChatStatusWaitingCard] = "waiting for you",
+        [StudioStringKeys.WizardComposeBusyTip] = "Composition under way",
+        [StudioStringKeys.WizardFoldersConfirm] = "Confirm the folders",
+        [StudioStringKeys.WizardSave] = "Save to my teams",
+        [StudioStringKeys.WizardFolderToChooseRead] = "To choose: the team must read documents that already exist.",
+        [StudioStringKeys.WizardHintAnswer] = "Answer the assistant to continue.",
+        [StudioStringKeys.WizardHintConfirmFolders] = "Confirm the folders to move on to the composition.",
+        [StudioStringKeys.WizardHintDecide] = "Settle the choice in the conversation to continue.",
+        [StudioStringKeys.WizardTabNeedDone] = "Described",
+        [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
+        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Describe the work to continue.",
+        [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
+        [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
+        [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
+        [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",
+        [StudioStringKeys.WizardTabFoldersEmpty] = "Proposed after the composition",
+        [StudioStringKeys.WizardTabFoldersConfirmedFooter] = "Folders confirmed: the composition goes on.",
+        [StudioStringKeys.WizardTabFoldersReadyFooter] = "Every folder has its place. Confirm to continue.",
+        [StudioStringKeys.WizardTabFoldersOneToChoose] = "1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.",
+        [StudioStringKeys.WizardTabFoldersManyToChoose] = "{0} folders to choose. You can confirm now: the team will get them empty at adoption.",
+        [StudioStringKeys.WizardTabNotesDone] = "Written",
+        [StudioStringKeys.WizardTabNotesEmpty] = "Optional",
+        [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
+        [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
+        [StudioStringKeys.WizardWaitingFor] = "Waiting for you: {0}",
+        [StudioStringKeys.WizardWaitActionFolders] = "confirm the folders",
+        [StudioStringKeys.WizardWaitActionAnswer] = "answer the assistant",
+        [StudioStringKeys.WizardWaitActionModel] = "choose a model",
+        [StudioStringKeys.WizardWaitActionDecide] = "settle a choice",
+        [StudioStringKeys.WizardWaitActionChooseFolder] = "choose a folder",
+        [StudioStringKeys.WizardWaitActionAdopt] = "adopt the team",
+        [StudioStringKeys.WizardWaitBubbleFolders] = "I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.",
+        [StudioStringKeys.WizardWaitBubbleChooseFolder] = "A folder of the team is still to choose before the trial.",
+        [StudioStringKeys.WizardWaitBubbleAdopt] = "The team is ready. Adopt it to find it in your teams.",
+        [StudioStringKeys.WizardWaitPlaceholderFolders] = "Confirm the folders to continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderChooseFolder] = "Choose the folder to continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderAdopt] = "Adopt the team to finish, or ask a question",
+        [StudioStringKeys.WizardWaitShowCard] = "Show the folder",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",
         [StudioStringKeys.WizardJudgeMechanical] = "No judge was available, so the criteria below were not checked one by one — read them yourself.",
         [StudioStringKeys.WizardMailActionsLabel] = "Simulated mail — nothing was sent",
@@ -3337,7 +3482,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         // STUDIO-14 wizard: where a team's folders live; STUDIO-46: the Folders step
         [StudioStringKeys.WizardFolderRoleInput] = "read",
         [StudioStringKeys.WizardFolderRoleOutput] = "read, write",
-        [StudioStringKeys.WizardFolderNotChosen] = "no folder chosen yet",
         [StudioStringKeys.WizardFolderInvalidName] = "« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
         [StudioStringKeys.WizardFolderTwice] = "{0} is listed twice.",
         [StudioStringKeys.WizardInsideTeamFolder] = "inside the team: {0}",

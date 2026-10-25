@@ -231,7 +231,10 @@
                        the footer says so under the box. The gesture is unmodified Return only:
                        a KeyBinding matches the exact modifier set, so Shift+Return never reaches
                        the command and falls through to the box, which AcceptsReturn (T-32). -->
-                  <KeyBinding Key="Return" Command="{Binding SendCommand}"/>
+                  <KeyBinding Key="Return" Command="{Binding EnterCommand}"/>
+                  <!-- R13: while a card waits on the user, Enter no longer sends; Ctrl+Enter
+                       still does, and the footer says so. -->
+                  <KeyBinding Key="Return" Modifiers="Control" Command="{Binding SendCommand}"/>
                 </TextBox.InputBindings>
               </TextBox>
               <!-- The placeholder: the question's own example while one is on the table,
@@ -248,7 +251,11 @@
                     Visibility="{Binding IsAsking, Converter={StaticResource BooleanToVisibility}}"
                     Content="{Binding [Studio.Chat.Skip], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding EnterSends, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
+                       Text="{Binding [Studio.Chat.KeyHintPending], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding HasPendingAction, Converter={StaticResource BooleanToVisibility}}"/>
           </DockPanel>
         </StackPanel>
       </Border>
@@ -377,6 +384,31 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+
+          <!-- R13: the screen waits on a card. The assistant names the action, runs the card's
+               own command from its button, and links to the card; its activity indicator is
+               stopped meanwhile (SetPendingAction). -->
+          <DockPanel Margin="0,0,0,13" Visibility="{Binding HasPendingAction, Converter={StaticResource BooleanToVisibility}}">
+            <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                    Margin="0,0,9,0" Background="{DynamicResource AccentWeakBrush}">
+              <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource WarningBrush}"
+                    BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
+              <StackPanel>
+                <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
+                           Foreground="{DynamicResource InkBrush}" Text="{Binding PendingAction.Text}"/>
+                <WrapPanel Margin="0,10,0,0">
+                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,12,0"
+                          Command="{Binding PendingActionCommand}" Content="{Binding PendingAction.ActionLabel}"/>
+                  <Button Style="{StaticResource LinkBtn}" VerticalAlignment="Center"
+                          Command="{Binding PendingRevealCommand}"
+                          Content="{Binding [Studio.Chat.PendingReveal], Source={x:Static services:I18n.Instance}}"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </DockPanel>
 
           <!-- working: three dots and the sentence the user reads, the other register of
                the same beat the mono header line shows -->

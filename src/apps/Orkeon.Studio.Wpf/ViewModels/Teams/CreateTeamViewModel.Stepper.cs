@@ -57,7 +57,7 @@ public sealed partial class CreateTeamViewModel
         string.Join(' ', Need.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Whether the engine works for the session right now — « Running ».</summary>
-    public bool IsSessionWorking => IsEngineWorking;
+    public bool IsSessionWorking => IsEngineWorking && !HasWaitPoint;
 
     /// <summary>Whether the engine lives but waits for the user — an answer, a choice, the folders.</summary>
     public bool IsSessionWaiting => IsEngineRunning && IsEngineWaitingOnUser;
@@ -78,6 +78,9 @@ public sealed partial class CreateTeamViewModel
     {
         get
         {
+            // R13: a wait point is named, and outranks « Running »: a paused engine is alive.
+            if (HasWaitPoint)
+                return WaitPointLabel;
             if (IsSessionWorking)
                 return _strings[StudioStringKeys.WizardSessionRunning];
             if (IsSessionWaiting)

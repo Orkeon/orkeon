@@ -2595,7 +2595,7 @@
     <value>Der Assistent hat vor dem Ende des Briefings abgebrochen. Starten Sie erneut, wenn Sie möchten.</value>
   </data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
-    <value>Der Assistent stellt zusammen – antworten Sie ihm in der Unterhaltung.</value>
+    <value>Zusammenstellung läuft: Der Assistent bereitet das Team vor.</value>
   </data>
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>Es stand kein Prüfer zur Verfügung: Die Kriterien unten wurden nicht einzeln geprüft – urteilen Sie selbst.</value>
@@ -2632,9 +2632,6 @@
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
     <value>Angehalten.</value>
-  </data>
-  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
-    <value>Ich warte auf Ihre Antwort.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>An das Modell gesendete Token</value>
@@ -3377,7 +3374,7 @@
     <value>Wohin das Team seine Ergebnisse schreibt.</value>
   </data>
   <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
-    <value>Angekreuzt: der Ordner gehört dem Team und reist mit ihm. Abwählen, um stattdessen einen Ordner auf der Festplatte zu wählen.</value>
+    <value>Erstellt einen leeren Ordner im Team; Sie legen die Dateien nach der Übernahme hinein</value>
   </data>
   <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
     <value>Möchten Sie Dateien oder Unterordner in die eingerichteten Ordner legen?</value>
@@ -3405,9 +3402,6 @@
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>Lesen, Schreiben</value>
-  </data>
-  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
-    <value>noch kein Ordner gewählt</value>
   </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>„{0}“ ist kein Ordnername: ein Wort aus Buchstaben, Ziffern, - _ oder ., und kein Name, den die Laufzeit für sich reserviert.</value>
@@ -3692,4 +3686,53 @@
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>Der ONNX-Reranker ist auf diesem Rechner nicht verfügbar.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>Der Code-Parser ist auf diesem Rechner nicht verfügbar.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>Die Engine kann nicht in ihren Arbeitsordner schreiben.</value></data>
+  <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>wartet auf Sie</value></data>
+  <data name="Studio.Create.ComposeBusyTip" xml:space="preserve"><value>Zusammenstellung läuft</value></data>
+  <data name="Studio.Create.FolderToChooseRead" xml:space="preserve"><value>Zu wählen: Das Team muss bereits vorhandene Dokumente lesen.</value></data>
+  <data name="Studio.Create.HintAnswer" xml:space="preserve"><value>Antworten Sie dem Assistenten, um fortzufahren.</value></data>
+  <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Bestätigen Sie die Ordner, um zur Zusammenstellung überzugehen.</value></data>
+  <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Treffen Sie die Wahl im Gespräch, um fortzufahren.</value></data>
+  <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Beschrieben</value></data>
+  <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Zu beschreiben</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Beschreiben Sie die Arbeit, um fortzufahren.</value></data>
+  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Bedarf beschrieben.</value></data>
+  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Bedarf beschrieben, {0} {0:plural:Frage|Fragen} mit dem Assistenten geklärt</value></data>
+  <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:Ordner zu bestätigen|Ordner zu bestätigen}</value></data>
+  <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:Ordner bestätigt|Ordner bestätigt}</value></data>
+  <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Nach der Zusammenstellung vorgeschlagen</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Ordner bestätigt: Die Zusammenstellung geht weiter.</value></data>
+  <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Jeder Ordner hat seinen Platz. Bestätigen Sie, um fortzufahren.</value></data>
+  <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält bei der Übernahme einen leeren Ordner „{0}“.</value></data>
+  <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält sie bei der Übernahme leer.</value></data>
+  <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Verfasst</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Freiwillig</value></data>
+  <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Noch keine Anweisung.</value></data>
+  <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Wartet auf Sie: {0}</value></data>
+  <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>Ordner bestätigen</value></data>
+  <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>dem Assistenten antworten</value></data>
+  <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>ein Modell wählen</value></data>
+  <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>eine Wahl treffen</value></data>
+  <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>einen Ordner wählen</value></data>
+  <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>das Team übernehmen</value></data>
+  <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>Ich habe die Ordner des Teams aus Ihrer Anfrage abgeleitet. Prüfen Sie sie und bestätigen Sie sie, damit ich das Team zusammenstelle.</value></data>
+  <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>Ein Ordner des Teams ist vor dem Probelauf noch zu wählen.</value></data>
+  <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>Das Team ist bereit. Übernehmen Sie es, um es in Ihren Teams wiederzufinden.</value></data>
+  <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Bestätigen Sie die Ordner, um fortzufahren, oder stellen Sie eine Frage</value></data>
+  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Wählen Sie den Ordner, um fortzufahren, oder stellen Sie eine Frage</value></data>
+  <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Übernehmen Sie das Team zum Abschluss, oder stellen Sie eine Frage</value></data>
+  <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ordner anzeigen</value></data>
+  <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Bedarf</value></data>
+  <data name="Studio.Create.TabFolders" xml:space="preserve"><value>Ordner des Teams</value></data>
+  <data name="Studio.Create.FoldersTabEmptyBody" xml:space="preserve"><value>Der Assistent schlägt die Ordner des Teams vor, sobald er Ihren Bedarf gelesen hat, während der Zusammenstellung. Sie erscheinen hier.</value></data>
+  <data name="Studio.Create.FolderFieldName" xml:space="preserve"><value>Name im Team</value></data>
+  <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>Notiz</value></data>
+  <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>Wofür dient dieser Ordner dem Team?</value></data>
+  <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>Aus Ihrer Anfrage abgeleitet</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve"><value>Ordner ansehen</value></data>
+  <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>Zurück zu den Ordnern</value></data>
+  <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Optional. Eine Anweisung gilt für alle Agenten, reist mit dem Team und wird beim Probelauf zum Prüfpunkt.</value></data>
+  <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>Zum Beispiel: Jede Antwort auf Deutsch verfassen und das Quelldokument zitieren.</value></data>
+  <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Lassen Sie es leer, wenn Sie nichts vorgeben wollen: Der Assistent schlägt im Schritt Zusammenstellen eigene Regeln vor.</value></data>
+  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Strg+Eingabe zum Senden · Umschalt+Eingabe für eine neue Zeile</value></data>
+  <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Karte anzeigen</value></data>
 </root>

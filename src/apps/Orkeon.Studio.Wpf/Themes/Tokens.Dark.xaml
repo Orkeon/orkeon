@@ -69,6 +69,8 @@
 
   <!-- ══ Elevation (see Tokens.Light.xaml). On a dark ground the navy tint reads as a
        smudge and the light recipe disappears: pure black, carried deeper. ══ -->
+  <DropShadowEffect x:Key="ShadowXs" Color="#000000" Direction="270" ShadowDepth="1"
+                    BlurRadius="3" Opacity="0.30" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowMd" Color="#000000" Direction="270" ShadowDepth="8"
                     BlurRadius="34" Opacity="0.34" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowLg" Color="#000000" Direction="270" ShadowDepth="14"

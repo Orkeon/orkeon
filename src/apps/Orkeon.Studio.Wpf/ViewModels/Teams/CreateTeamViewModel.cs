@@ -196,6 +196,7 @@ public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : E
 /// </param>
 /// <param name="ShortId">The last six characters of the settings declaration the row names (VFS-90); empty otherwise.</param>
 /// <param name="IsUnknownId">Whether the row names a declaration this machine does not have (D-06).</param>
+/// <param name="Note">The confirmed folder's note — what it holds for the team (lot 6); empty when none was given.</param>
 public sealed record MountRow(
     string VirtualPath,
     bool IsReadWrite,
@@ -207,8 +208,12 @@ public sealed record MountRow(
     bool IsInsideTeam = false,
     string Title = "",
     string ShortId = "",
-    bool IsUnknownId = false)
+    bool IsUnknownId = false,
+    string Note = "")
 {
+    /// <summary>Whether the row carries the note its step-1 fiche gave it (lot 6).</summary>
+    public bool HasNote => Note.Length > 0;
+
     /// <summary>Whether the row names a settings declaration by id (VFS-90); the last six characters are shown.</summary>
     public bool HasId => ShortId.Length > 0;
 
@@ -527,6 +532,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         GoStep3Command = new RelayCommand(() => GoStep(3), () => MaxStep >= 3);
         GoStep4Command = new RelayCommand(() => GoStep(4), () => MaxStep >= 4);
         InitializeStepper(wired.Clock);
+        InitializeWaitPoint();
+        InitializeStep1Tabs();
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
         OpenConflictingTeamCommand = new RelayCommand(OpenConflictingTeam, () => CanOpenConflictingTeam);
@@ -746,6 +753,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.RefreshMessageCount();
         TryNotes.RefreshMessageCount();
         AdoptNotes.RefreshMessageCount();
+        OnPropertyChanged(nameof(NeedFooter));
     }
 
     private void OnChatPropertyChanged(string? propertyName)
@@ -769,6 +777,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
             RaiseSessionStateChanged();
+            SyncWaitPoint();
         }
     }
 
@@ -874,6 +883,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4));
             RaiseDraftChanged();
             GoBackCommand?.RaiseCanExecuteChanged();
+            SyncWaitPoint();
         }
     }
 
@@ -888,6 +898,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
             RestartCommand?.RaiseCanExecuteChanged();
             RaiseStepperChanged();
+            SyncWaitPoint();
         }
     }
 
@@ -996,6 +1007,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             if (SetProperty(ref _need, value))
             {
                 OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint), nameof(NeedSummary));
+                RefreshStep1Tabs();
+                // The pinned « Your brief » card and the recap read the need as typed.
+                Chat.OwnerChanged();
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
                 RefreshRephrase();
@@ -1031,9 +1045,18 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 return _strings[StudioStringKeys.WizardHintDescribe];
 
             // A greyed button under «Everything is there — I can compose the team» is a lie:
-            // the engine is already composing, and what it wants is an answer in the thread.
+            // the engine is already composing. While it waits on the user, the sentence names
+            // the wait point (R13); otherwise it says the composition is under way.
             if (IsEngineRunning)
-                return _strings[StudioStringKeys.WizardHintComposing];
+            {
+                return _strings[_waitPoint switch
+                {
+                    WizardWaitPoint.ConfirmFolders => StudioStringKeys.WizardHintConfirmFolders,
+                    WizardWaitPoint.AnswerAssistant => StudioStringKeys.WizardHintAnswer,
+                    WizardWaitPoint.Decide => StudioStringKeys.WizardHintDecide,
+                    _ => StudioStringKeys.WizardHintComposing,
+                }];
+            }
 
             // With the need typed and no engine running, only the assistant's model is missing.
             if (!CanCompose)
@@ -1292,7 +1315,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             // silent on the event stream — nothing else would raise them.
             OnPropertiesChanged(
                 nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking),
-                nameof(TrialInProgress), nameof(CanTryTeam));
+                nameof(TrialInProgress), nameof(CanTryTeam), nameof(ComposeTip));
             RefreshRephrase();
             // The card's first and last readings come from here: the engine starting and
             // the engine dying are both silent on the event stream, and both change what
@@ -1478,7 +1501,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 rows.Add(new MountRow(
                     derived.VirtualPath,
                     derived.IsReadWrite,
-                    Agents: string.Join(", ", derived.Agents ?? [])));
+                    Agents: string.Join(", ", derived.Agents ?? []),
+                    Note: NoteOf(derived.VirtualPath)));
             }
 
             return rows;
@@ -1515,8 +1539,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             IsInsideTeam: insideTeam,
             Title: title,
             ShortId: insideTeam ? "" : (declaredEntry?.ShortId ?? mount.ShortId ?? ""),
-            IsUnknownId: unknownId);
+            IsUnknownId: unknownId,
+            Note: NoteOf(mount.VirtualPath));
     }
+
+    /// <summary>The note the step-1 fiche gave the folder of that name, as confirmed (lot 6).</summary>
+    private string NoteOf(string virtualPath) =>
+        _model.Folders.FirstOrDefault(folder => string.Equals(folder.Path, virtualPath, StringComparison.Ordinal))?.Purpose?.Trim() ?? "";
 
     /// <summary>
     /// The folder name a team-relative entry names (<c>output</c> for <c>./output:/output:rw</c>);
@@ -1771,6 +1800,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
             nameof(DroppedDerivedWarning));
+        SyncWaitPoint();
     }
 
     /// <summary>Adds the picker's choice to the team's future mounts.</summary>
@@ -3151,6 +3181,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam),
             nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
         RaiseSessionStateChanged();
+        RefreshStep1Tabs();
+        SyncWaitPoint();
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();
@@ -3217,7 +3249,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model.PromptTokens,
         _model.CompletionTokens,
         _model.TokensAreEstimated,
-        _model.TokensRemaining));
+        _model.TokensRemaining,
+        HasWaitPoint ? WaitPointLabel : null));
 
     private void SyncActivity()
     {

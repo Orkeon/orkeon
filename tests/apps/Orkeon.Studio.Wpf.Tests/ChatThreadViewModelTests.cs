@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -273,6 +274,35 @@ public class ChatThreadViewModelTests
         var reply = vm.Chat.Turns.Last();
         Assert.True(reply.IsBot);
         Assert.Contains("Ollama", reply.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_card_waiting_on_the_user_stops_the_indicator_and_holds_enter_back()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.StartSession();
+        var ran = 0;
+        var action = new RelayCommand(() => ran++);
+        var reveal = new RelayCommand(() => { });
+
+        chat.SetPendingAction(new ChatPendingAction("Confirm them.", "Confirm the folders", action, reveal, "Confirm, or ask"));
+
+        Assert.False(chat.IsBusy);
+        Assert.Equal("Confirm, or ask", chat.Placeholder);
+        Assert.False(chat.EnterSends);
+        var before = chat.Turns.Count;
+        chat.Draft = "why these folders?";
+        chat.EnterCommand.Execute(null);
+        Assert.Equal(before, chat.Turns.Count);
+        Assert.Equal("why these folders?", chat.Draft);
+
+        chat.PendingActionCommand.Execute(null);
+        Assert.Equal(1, ran);
+
+        chat.SetPendingAction(null);
+
+        Assert.True(chat.IsBusy);
+        Assert.True(chat.EnterSends);
     }
 
     [Fact]

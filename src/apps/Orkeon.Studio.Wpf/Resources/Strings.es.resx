@@ -2595,7 +2595,7 @@
     <value>El asistente se detuvo antes de terminar el resumen. Vuelve a empezar cuando quieras.</value>
   </data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
-    <value>El asistente está componiendo: respóndele en la conversación.</value>
+    <value>Composición en curso: el asistente prepara el equipo.</value>
   </data>
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No había ningún juez disponible: los criterios siguientes no se verificaron uno a uno; júzguelos usted mismo.</value>
@@ -2632,9 +2632,6 @@
   </data>
   <data name="Studio.Create.StageIdle" xml:space="preserve">
     <value>Detenido.</value>
-  </data>
-  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
-    <value>Estoy esperando su respuesta.</value>
   </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Tokens enviados al modelo</value>
@@ -3377,7 +3374,7 @@
     <value>Donde el equipo escribe sus resultados.</value>
   </data>
   <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
-    <value>Marcada: la carpeta pertenece al equipo y viaja con él. Desmárquela para elegir una carpeta del disco.</value>
+    <value>Crea una carpeta vacía en el equipo; dejará los archivos en ella tras la adopción</value>
   </data>
   <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
     <value>¿Quiere poner archivos o subcarpetas en las carpetas que ha configurado?</value>
@@ -3405,9 +3402,6 @@
   </data>
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>lectura, escritura</value>
-  </data>
-  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
-    <value>ninguna carpeta elegida</value>
   </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>« {0} » no es un nombre de carpeta: una sola palabra de letras, cifras, - _ o ., y no un nombre que el motor se reserva.</value>
@@ -3692,4 +3686,53 @@
   <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>El reclasificador ONNX no está disponible en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>El analizador de código no está disponible en este equipo.</value></data>
   <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>El motor no puede escribir en su carpeta de trabajo.</value></data>
+  <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>esperando su acción</value></data>
+  <data name="Studio.Create.ComposeBusyTip" xml:space="preserve"><value>Composición en curso</value></data>
+  <data name="Studio.Create.FolderToChooseRead" xml:space="preserve"><value>Por elegir: el equipo debe leer documentos que ya existen.</value></data>
+  <data name="Studio.Create.HintAnswer" xml:space="preserve"><value>Responda al asistente para continuar.</value></data>
+  <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirme las carpetas para pasar a la composición.</value></data>
+  <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Resuelva la elección en la conversación para continuar.</value></data>
+  <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Descrito</value></data>
+  <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Por describir</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describa el trabajo para continuar.</value></data>
+  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Necesidad descrita.</value></data>
+  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Necesidad descrita, {0} {0:plural:pregunta resuelta|preguntas resueltas} con el asistente</value></data>
+  <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:carpeta por confirmar|carpetas por confirmar}</value></data>
+  <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:carpeta confirmada|carpetas confirmadas}</value></data>
+  <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Propuestas tras la composición</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Carpetas confirmadas: la composición continúa.</value></data>
+  <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Cada carpeta tiene su lugar. Confirme para continuar.</value></data>
+  <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 carpeta por elegir. Puede confirmar ahora: el equipo recibirá una carpeta «{0}» vacía al adoptarlo.</value></data>
+  <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} carpetas por elegir. Puede confirmar ahora: el equipo las recibirá vacías al adoptarlo.</value></data>
+  <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Redactada</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Ninguna instrucción por ahora.</value></data>
+  <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Esperando su acción: {0}</value></data>
+  <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirmar las carpetas</value></data>
+  <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>responder al asistente</value></data>
+  <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>elegir un modelo</value></data>
+  <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>resolver una elección</value></data>
+  <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>elegir una carpeta</value></data>
+  <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>adoptar el equipo</value></data>
+  <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>He deducido las carpetas del equipo de su solicitud. Revíselas y confírmelas para que componga el equipo.</value></data>
+  <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>Queda una carpeta del equipo por elegir antes de la prueba.</value></data>
+  <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>El equipo está listo. Adóptelo para encontrarlo en sus equipos.</value></data>
+  <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Confirme las carpetas para continuar, o haga una pregunta</value></data>
+  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Elija la carpeta para continuar, o haga una pregunta</value></data>
+  <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Adopte el equipo para terminar, o haga una pregunta</value></data>
+  <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Ver la carpeta</value></data>
+  <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Necesidad</value></data>
+  <data name="Studio.Create.TabFolders" xml:space="preserve"><value>Carpetas del equipo</value></data>
+  <data name="Studio.Create.FoldersTabEmptyBody" xml:space="preserve"><value>El asistente propone las carpetas del equipo una vez leída su necesidad, durante la composición. Aparecerán aquí.</value></data>
+  <data name="Studio.Create.FolderFieldName" xml:space="preserve"><value>Nombre en el equipo</value></data>
+  <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>Nota</value></data>
+  <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>¿Para qué sirve esta carpeta al equipo?</value></data>
+  <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>Deducido de su solicitud</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve"><value>Ver las carpetas</value></data>
+  <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>Volver a las carpetas</value></data>
+  <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Opcional. Una instrucción se aplica a todos los agentes, viaja con el equipo y se convierte en un punto a verificar en la prueba.</value></data>
+  <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>Por ejemplo: redactar cada respuesta en español y citar el documento de origen.</value></data>
+  <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Déjelo vacío si no tiene nada que imponer: el asistente propondrá sus propias reglas en el paso Componer.</value></data>
+  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Intro para enviar · Mayús+Intro para una nueva línea</value></data>
+  <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Ver la tarjeta</value></data>
 </root>

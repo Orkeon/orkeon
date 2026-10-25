@@ -29,6 +29,11 @@ vertical navigation in four groups and an unsaved-changes bar that guards leavin
 a dot on the Settings entry and a line of the Diagnostic. The Diagnostic counts the points to fix exactly and gives each problem its
 own action. An allowed folder's error shows on its own row.
 
+Step 1 of Create a team becomes three vertical tabs (need, team folders, composition instruction). A card the engine waits on is
+now the one named wait point: the assistant stops its indicator and offers the card's own button, Enter no longer sends, the
+focus goes to the card and the stepper and the status bar say « Waiting for you: … ». A read folder the definition already
+places is no longer shown as « no folder chosen », and the « Your brief » card follows every edit of the need.
+
 ### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
 
 Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by

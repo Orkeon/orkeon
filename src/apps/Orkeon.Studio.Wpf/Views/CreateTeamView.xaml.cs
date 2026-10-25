@@ -7,8 +7,70 @@ namespace Orkeon.Studio.Wpf.Views;
 /// <summary>The create-a-team wizard. XAML wiring only; every behaviour lives in the ViewModel.</summary>
 public partial class CreateTeamView : UserControl
 {
-    /// <summary>Loads the XAML.</summary>
-    public CreateTeamView() => InitializeComponent();
+    private CreateTeamViewModel? _wizard;
+
+    /// <summary>Loads the XAML and follows the wizard's wait point (refonte R13).</summary>
+    public CreateTeamView()
+    {
+        InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (_wizard is not null)
+            _wizard.WaitPointReached -= OnWaitPointReached;
+        _wizard = e.NewValue as CreateTeamViewModel;
+        if (_wizard is not null)
+            _wizard.WaitPointReached += OnWaitPointReached;
+    }
+
+    /// <summary>
+    /// R13: a wait point reached, or « Waiting for you: … » clicked — the keyboard focus goes to
+    /// the expected card's main button (Enter presses it), or into « Your question » when the
+    /// answer goes to the assistant. After the layout, once the step and the tab are on screen.
+    /// </summary>
+    private void OnWaitPointReached(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, FocusWaitPoint);
+
+    private void FocusWaitPoint()
+    {
+        if (_wizard is null)
+            return;
+
+        switch (_wizard.WaitPoint)
+        {
+            case WizardWaitPoint.ConfirmFolders:
+                Reveal(ConfirmFoldersButton);
+                break;
+            case WizardWaitPoint.AnswerAssistant:
+            case WizardWaitPoint.Decide:
+                _wizard.Chat.RequestInputFocus();
+                break;
+            case WizardWaitPoint.ChooseModel:
+                RevealFirst(AssistantGate);
+                break;
+            case WizardWaitPoint.ChooseFolder:
+                RevealFirst(MountFoldersBlock);
+                break;
+            case WizardWaitPoint.Adopt:
+                Reveal(AdoptButton);
+                break;
+        }
+    }
+
+    private static void Reveal(UIElement target)
+    {
+        target.Focus();
+        (target as FrameworkElement)?.BringIntoView();
+    }
+
+    /// <summary>The first control of a card takes the focus: the card has no single main button.</summary>
+    private static void RevealFirst(FrameworkElement card)
+    {
+        card.BringIntoView();
+        card.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.First));
+    }
 
     /// <summary>
     /// Files dragged over the need (STUDIO-47): a copy, and the field lights up. Anything else —

@@ -24,15 +24,19 @@ public sealed class WizardFolderRow : ObservableObject
     private string _purpose;
     private string? _directory;
     private bool _isInsideTeam;
+    private readonly bool _isDeduced;
+    private bool _isEdited;
 
     internal WizardFolderRow(
         ForgeFolder proposed,
         IStudioStrings strings,
         Action<WizardFolderRow> pick,
         Action<WizardFolderRow, string> pathChanged,
-        Action<WizardFolderRow> remove)
+        Action<WizardFolderRow> remove,
+        bool isDeduced = false)
     {
         _strings = strings;
+        _isDeduced = isDeduced;
         _pathChanged = pathChanged;
         _virtualPath = proposed.Path;
         _role = proposed.Role;
@@ -42,7 +46,7 @@ public sealed class WizardFolderRow : ObservableObject
         // with the team. An input waits for a folder to be chosen.
         _isInsideTeam = proposed.Directory is null && !proposed.IsInput;
         PickCommand = new RelayCommand(() => pick(this));
-        InsideTeamCommand = new RelayCommand(AnswerInsideTeam, () => !_isInsideTeam);
+        InsideTeamCommand = new RelayCommand(() => { MarkEdited(); AnswerInsideTeam(); }, () => !_isInsideTeam);
         ToggleRoleCommand = new RelayCommand(ToggleRole);
         RemoveCommand = new RelayCommand(() => remove(this));
     }
@@ -56,6 +60,8 @@ public sealed class WizardFolderRow : ObservableObject
             var previous = _virtualPath;
             if (!SetProperty(ref _virtualPath, value ?? ""))
                 return;
+
+            MarkEdited();
 
             // A folder chosen on the disk was declared under the previous name: it no longer
             // answers this one. The row falls back to its default answer.
@@ -90,7 +96,10 @@ public sealed class WizardFolderRow : ObservableObject
         set
         {
             if (SetProperty(ref _purpose, value ?? ""))
+            {
                 OnPropertiesChanged(nameof(HasPurpose));
+                MarkEdited();
+            }
         }
     }
 
@@ -115,6 +124,7 @@ public sealed class WizardFolderRow : ObservableObject
             if (value == _isInsideTeam)
                 return;
 
+            MarkEdited();
             if (value)
             {
                 AnswerInsideTeam();
@@ -140,15 +150,31 @@ public sealed class WizardFolderRow : ObservableObject
     /// <summary>Whether nothing answers it yet — an input left for the engine's default.</summary>
     public bool IsUnanswered => !_isInsideTeam && _directory is null;
 
-    /// <summary>What the row shows on its right: the folder, « inside the team: x », or « not chosen yet ».</summary>
+    /// <summary>
+    /// Whether the location half « Folder on this machine » is the selected one: a folder chosen,
+    /// or a read folder still to choose — pre-positioned there, since the team must read
+    /// documents that already exist (lot 6).
+    /// </summary>
+    public bool IsOnMachine => !_isInsideTeam;
+
+    /// <summary>Whether the fiche asks for a folder: a read folder nothing answers yet — its warning tint, « Choose… » as its primary.</summary>
+    public bool NeedsChoice => IsInput && IsUnanswered;
+
+    /// <summary>Whether « Deduced from your request » shows: a folder read in the request, until the fiche is edited.</summary>
+    public bool ShowsDeduced => _isDeduced && !_isEdited;
+
+    /// <summary>
+    /// What the location line says: the folder chosen, « inside the team: x », or, for a read
+    /// folder still to choose, « To choose: the team must read documents that already exist ».
+    /// </summary>
     public string FolderLabel =>
         _directory
         ?? (_isInsideTeam
             ? _strings.Format(StudioStringKeys.WizardInsideTeamFolder, FolderName)
-            : _strings[StudioStringKeys.WizardFolderNotChosen]);
+            : _strings[StudioStringKeys.WizardFolderToChooseRead]);
 
     /// <summary>The folder's name inside the team: <c>input</c> for <c>/workspace</c>, its own otherwise.</summary>
-    private string FolderName =>
+    internal string FolderName =>
         _virtualPath.Trim('/') is { Length: > 0 } ? TeamMountPaths.FolderFor(_virtualPath) : "";
 
     /// <summary>« Choose a folder… »: the disk picker, behind this row.</summary>
@@ -188,6 +214,7 @@ public sealed class WizardFolderRow : ObservableObject
     /// </summary>
     private void ToggleRole()
     {
+        MarkEdited();
         _role = IsInput ? ForgeFolder.OutputRole : ForgeFolder.InputRole;
         var hadDirectory = _directory is not null;
         _directory = null;
@@ -198,10 +225,21 @@ public sealed class WizardFolderRow : ObservableObject
             _pathChanged(this, _virtualPath);
     }
 
+    /// <summary>The user changed the fiche: « Deduced from your request » no longer holds.</summary>
+    internal void MarkEdited()
+    {
+        if (_isEdited)
+            return;
+
+        _isEdited = true;
+        OnPropertiesChanged(nameof(ShowsDeduced));
+    }
+
     private void RaiseAnswer()
     {
         OnPropertiesChanged(
-            nameof(Directory), nameof(IsInsideTeam), nameof(HasDirectory), nameof(IsUnanswered), nameof(FolderLabel));
+            nameof(Directory), nameof(IsInsideTeam), nameof(HasDirectory), nameof(IsUnanswered), nameof(FolderLabel),
+            nameof(IsOnMachine), nameof(NeedsChoice));
         InsideTeamCommand.RaiseCanExecuteChanged();
     }
 }
@@ -285,15 +323,18 @@ public sealed partial class CreateTeamViewModel
     }
 
     /// <summary>A row of the panel, wired to the picker, the rename and the cross, and watched for its answer.</summary>
-    private WizardFolderRow NewFolderRow(ForgeFolder folder)
+    private WizardFolderRow NewFolderRow(ForgeFolder folder, bool isDeduced = false)
     {
-        var row = new WizardFolderRow(folder, _strings, PickRowFolder, OnFolderRowPathChanged, RemoveFolderRow);
+        var row = new WizardFolderRow(folder, _strings, PickRowFolder, OnFolderRowPathChanged, RemoveFolderRow, isDeduced);
         row.PropertyChanged += (sender, e) =>
         {
             if (e.PropertyName == nameof(WizardFolderRow.Directory) && sender is WizardFolderRow changed)
                 OnFolderRowAnswered(changed);
-            if (e.PropertyName is nameof(WizardFolderRow.VirtualPath) or nameof(WizardFolderRow.Role))
+            if (e.PropertyName is nameof(WizardFolderRow.VirtualPath) or nameof(WizardFolderRow.Role)
+                or nameof(WizardFolderRow.NeedsChoice))
+            {
                 RefreshFolderStep();
+            }
         };
         return row;
     }
@@ -333,7 +374,7 @@ public sealed partial class CreateTeamViewModel
             _proposalShown = _model.ProposedFolders;
             FolderRows.Clear();
             foreach (var proposed in _model.ProposedFolders)
-                FolderRows.Add(NewFolderRow(InUsersWords(proposed)));
+                FolderRows.Add(NewFolderRow(WithKnownLocation(InUsersWords(proposed)), isDeduced: !IsDefaultFolderProposal));
 
             // The folders dropped on the need answer their rows, or join the list (STUDIO-47).
             MergeDroppedFolders();
@@ -357,11 +398,34 @@ public sealed partial class CreateTeamViewModel
         return proposed with { Purpose = _strings[purposeKey] };
     }
 
+    /// <summary>
+    /// A proposed folder with the location the team's definition already gives it (lot 6): a
+    /// folder bound behind that name — a team reopened with « Modify », a folder dropped earlier
+    /// — answers its fiche, rather than the fiche reading « to choose » over a folder the team
+    /// already has.
+    /// </summary>
+    private ForgeFolder WithKnownLocation(ForgeFolder proposed)
+    {
+        if (proposed.Directory is { Length: > 0 }
+            || !TryNormalizeRootName(proposed.Path, out var root)
+            || BoundEntry(root) is not { } entry
+            || DeclaredMounts.IsInsideTeam(entry, _reopenedTeamPath)
+            || !MountDefinition.TryParse(entry, out var mount, out _)
+            || mount is null)
+        {
+            return proposed;
+        }
+
+        return proposed with { Directory = mount.PhysicalPath };
+    }
+
     private void RefreshFolderStep()
     {
         OnPropertiesChanged(
             nameof(IsFoldersStep), nameof(IsDefaultFolderProposal), nameof(FoldersStepSubtitle),
             nameof(FoldersProblem), nameof(HasFoldersProblem), nameof(CanConfirmFolders));
+        RefreshStep1Tabs();
+        SyncWaitPoint();
         ConfirmFoldersCommand.RaiseCanExecuteChanged();
         AddFolderRowCommand.RaiseCanExecuteChanged();
     }
@@ -372,6 +436,7 @@ public sealed partial class CreateTeamViewModel
         ForgetDroppedFolders();
         _proposalShown = null;
         FolderRows.Clear();
+        Step1TabIndex = Step1NeedTab;
         RefreshFolderStep();
         ClearFillStep();
         ClearRephrase();
@@ -410,6 +475,7 @@ public sealed partial class CreateTeamViewModel
         {
             if (TryNormalizeRootName(row.VirtualPath, out var root) && string.Equals(root, virtualPath, StringComparison.Ordinal))
             {
+                row.MarkEdited();
                 row.AnswerWithDirectory(mount.PhysicalPath);
                 _bindingStatusRoot = root;
             }
@@ -458,19 +524,22 @@ public sealed partial class CreateTeamViewModel
         }
 
         _model.AcknowledgeFolders(folders);
-        RefreshMountSurfaces();
+        // A folder the definition gave its location (no picker behind it) is bound now: step 2
+        // must not read « to choose » over a folder the fiche showed as chosen (lot 6).
+        SeedFolderBindings(folders);
         SyncFromModel();
     }
 
     /// <summary>
-    /// A resumed session's confirmed folders bound to real ones (<c>folders.json</c>): each gets
+    /// A resumed session's confirmed folders bound to real ones (<c>folders.json</c>), or the list
+    /// just confirmed (<paramref name="folders"/>): each gets
     /// its binding back — the settings declaration of that folder under that name when there is
     /// one, the folder as it is otherwise — so the Composer rows and the sidecar keep it.
     /// </summary>
-    private void SeedFolderBindings()
+    private void SeedFolderBindings(IReadOnlyList<ForgeFolder>? folders = null)
     {
         var declared = _declaredMounts();
-        foreach (var folder in _model.Folders)
+        foreach (var folder in folders ?? _model.Folders)
         {
             if (folder.Directory is not { Length: > 0 } directory || BoundEntry(folder.Path) is not null)
                 continue;
