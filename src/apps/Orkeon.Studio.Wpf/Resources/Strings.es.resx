@@ -340,9 +340,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve">
     <value>Comprobaciones</value>
   </data>
-  <data name="Studio.Run.TargetTitle" xml:space="preserve">
-    <value>Equipo a lanzar</value>
-  </data>
   <data name="Studio.Run.Detect" xml:space="preserve">
     <value>Detectar</value>
   </data>
@@ -354,9 +351,6 @@
   </data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve">
     <value>Usar este archivo</value>
-  </data>
-  <data name="Studio.Run.TabMounts" xml:space="preserve">
-    <value>Montajes</value>
   </data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>Automático (resuelto por el runtime)</value>
@@ -396,9 +390,6 @@
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
     <value>Permitir montajes fuera del directorio de trabajo (--allow-external-mounts)</value>
-  </data>
-  <data name="Studio.Run.CmdTitle" xml:space="preserve">
-    <value>COMANDO</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copiar el comando</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Comando copiado</value></data>
@@ -444,15 +435,6 @@
   <data name="Studio.Run.ChangeTeam" xml:space="preserve">
     <value>Cambiar de equipo</value>
   </data>
-  <data name="Studio.Run.JournalTitle" xml:space="preserve">
-    <value>Registro técnico</value>
-  </data>
-  <data name="Studio.Run.JournalShow" xml:space="preserve">
-    <value>Mostrar</value>
-  </data>
-  <data name="Studio.Run.JournalHide" xml:space="preserve">
-    <value>Ocultar</value>
-  </data>
   <data name="Studio.Run.OpenResult" xml:space="preserve">
     <value>Abrir el resultado</value>
   </data>
@@ -475,14 +457,8 @@
   <data name="Studio.Run.Empty" xml:space="preserve">
     <value>Elija un equipo en «Mis equipos» — su botón Lanzar llega aquí.</value>
   </data>
-  <data name="Studio.Run.RunLines" xml:space="preserve">
-    <value>líneas</value>
-  </data>
   <data name="Studio.Run.Validate" xml:space="preserve">
     <value>Validar (dry-run)</value>
-  </data>
-  <data name="Studio.Run.Cancel" xml:space="preserve">
-    <value>Cancelar</value>
   </data>
   <data name="Studio.Run.ClearLog" xml:space="preserve">
     <value>Vaciar el registro</value>
@@ -3644,6 +3620,9 @@
   <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
     <value>Ninguna clave que proporcionar</value>
   </data>
+  <data name="Studio.Settings.TabKeysNoneStored" xml:space="preserve">
+    <value>{0} {0:plural:clave|claves}, ninguna guardada</value>
+  </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>{0} {0:plural:carpeta autorizada|carpetas autorizadas}</value>
   </data>
@@ -3732,10 +3711,213 @@
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Necesidad</value></data>
   <data name="Studio.Run.Title" xml:space="preserve"><value>Ejecutar un equipo</value></data>
   <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>Una prueba se ejecuta como una ejecución real pero no entra en el historial; una ejecución real queda registrada en él.</value></data>
+  <data name="Studio.Run.TabTeam" xml:space="preserve">
+    <value>Equipo</value>
+  </data>
+  <data name="Studio.Run.TabOptions" xml:space="preserve">
+    <value>Opciones</value>
+  </data>
+  <data name="Studio.Run.TabCommand" xml:space="preserve">
+    <value>Comando</value>
+  </data>
+  <data name="Studio.Run.TabRun" xml:space="preserve">
+    <value>Ejecución</value>
+  </data>
+  <data name="Studio.Run.TabTeamToChoose" xml:space="preserve">
+    <value>Por elegir</value>
+  </data>
+  <data name="Studio.Run.TabTeamBlocked" xml:space="preserve">
+    <value>{0} · no se puede lanzar</value>
+  </data>
+  <data name="Studio.Run.DisplayProgress" xml:space="preserve">
+    <value>Progreso</value>
+  </data>
+  <data name="Studio.Run.DisplayRaw" xml:space="preserve">
+    <value>Salida sin procesar</value>
+  </data>
+  <data name="Studio.Run.LblDisplay" xml:space="preserve">
+    <value>Visualización</value>
+  </data>
+  <data name="Studio.Run.StreamShort" xml:space="preserve">
+    <value>token a token</value>
+  </data>
+  <data name="Studio.Run.TabRunIdle" xml:space="preserve">
+    <value>En espera · nada que informar</value>
+  </data>
+  <data name="Studio.Run.TabRunRunning" xml:space="preserve">
+    <value>En curso · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunSucceeded" xml:space="preserve">
+    <value>Correcta · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunFailed" xml:space="preserve">
+    <value>Fallida</value>
+  </data>
+  <data name="Studio.Run.PaneIdle" xml:space="preserve">
+    <value>En espera</value>
+  </data>
+  <data name="Studio.Run.PaneRunning" xml:space="preserve">
+    <value>En curso</value>
+  </data>
+  <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
+    <value>Correcta</value>
+  </data>
+  <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
+    <value>Todavía no se ha lanzado nada: cada agente del equipo tendrá aquí su columna.</value>
+  </data>
+  <data name="Studio.Run.TeamReady" xml:space="preserve">
+    <value>Equipo listo: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
+    <value>Ningún equipo elegido.</value>
+  </data>
+  <data name="Studio.Run.SeeOptions" xml:space="preserve">
+    <value>Ver las opciones →</value>
+  </data>
+  <data name="Studio.Run.SeeCommand" xml:space="preserve">
+    <value>Ver el comando →</value>
+  </data>
+  <data name="Studio.Run.SeeRun" xml:space="preserve">
+    <value>Ver la ejecución →</value>
+  </data>
+  <data name="Studio.Run.BackToTeam" xml:space="preserve">
+    <value>← Volver al equipo</value>
+  </data>
+  <data name="Studio.Run.OrAPath" xml:space="preserve">
+    <value>o una ruta</value>
+  </data>
+  <data name="Studio.Run.LblModel" xml:space="preserve">
+    <value>Modelo</value>
+  </data>
+  <data name="Studio.Run.ModelDefault" xml:space="preserve">
+    <value>Predeterminado ({0})</value>
+  </data>
+  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
+    <value>Predeterminado</value>
+  </data>
+  <data name="Studio.Run.ModelTeam" xml:space="preserve">
+    <value>El del equipo ({0})</value>
+  </data>
+  <data name="Studio.Run.TeamLastRun" xml:space="preserve">
+    <value>lanzado el {0}</value>
+  </data>
+  <data name="Studio.Run.TeamNeverRun" xml:space="preserve">
+    <value>nunca lanzado</value>
+  </data>
+  <data name="Studio.Run.OptionsFooter" xml:space="preserve">
+    <value>{0} · {1} · {2} {2:plural:carpeta|carpetas}</value>
+  </data>
+  <data name="Studio.Run.FoldersSection" xml:space="preserve">
+    <value>Carpetas autorizadas — {0} {0:plural:carpeta|carpetas} del equipo, {1}</value>
+  </data>
+  <data name="Studio.Run.FoldersAddedNone" xml:space="preserve">
+    <value>nada añadido</value>
+  </data>
+  <data name="Studio.Run.FoldersAdded" xml:space="preserve">
+    <value>{0} {0:plural:añadida|añadidas}</value>
+  </data>
+  <data name="Studio.Run.AddLaunchFolder" xml:space="preserve">
+    <value>Añadir una carpeta para este lanzamiento</value>
+  </data>
+  <data name="Studio.Run.RightsRead" xml:space="preserve">
+    <value>Lectura</value>
+  </data>
+  <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
+    <value>Lectura y escritura</value>
+  </data>
+  <data name="Studio.Run.RowEngine" xml:space="preserve">
+    <value>Motor</value>
+  </data>
+  <data name="Studio.Run.RowTeamType" xml:space="preserve">
+    <value>Tipo de equipo</value>
+  </data>
+  <data name="Studio.Run.RowMounts" xml:space="preserve">
+    <value>Montajes</value>
+  </data>
+  <data name="Studio.Run.RowMode" xml:space="preserve">
+    <value>Modo</value>
+  </data>
+  <data name="Studio.Run.MountsCount" xml:space="preserve">
+    <value>{0} {0:plural:carpeta montada|carpetas montadas}</value>
+  </data>
+  <data name="Studio.Run.EngineMissing" xml:space="preserve">
+    <value>no encontrado</value>
+  </data>
+  <data name="Studio.Run.CommandFooter" xml:space="preserve">
+    <value>El comando exacto que acepta un terminal.</value>
+  </data>
+  <data name="Studio.Run.ModeLabel" xml:space="preserve">
+    <value>MODO</value>
+  </data>
+  <data name="Studio.Run.FigSent" xml:space="preserve">
+    <value>Enviados</value>
+  </data>
+  <data name="Studio.Run.FigReceived" xml:space="preserve">
+    <value>Recibidos</value>
+  </data>
+  <data name="Studio.Run.FigResult" xml:space="preserve">
+    <value>Resultado en</value>
+  </data>
+  <data name="Studio.Run.JournalCount" xml:space="preserve">
+    <value>Registro técnico · {0} {0:plural:línea|líneas}</value>
+  </data>
+  <data name="Studio.Run.JournalEnlarge" xml:space="preserve">
+    <value>Ampliar</value>
+  </data>
+  <data name="Studio.Run.JournalReduce" xml:space="preserve">
+    <value>Reducir</value>
+  </data>
+  <data name="Studio.Run.NoRunFooter" xml:space="preserve">
+    <value>Ninguna ejecución en curso.</value>
+  </data>
+  <data name="Studio.Run.RunningFooter" xml:space="preserve">
+    <value>La ejecución continúa: «Detener» la interrumpe.</value>
+  </data>
+  <data name="Studio.Run.DoneFooter" xml:space="preserve">
+    <value>Ejecución terminada.</value>
+  </data>
+  <data name="Studio.Run.LockedDuringRun" xml:space="preserve">
+    <value>Modificable después de la ejecución</value>
+  </data>
+  <data name="Studio.Run.ReadyReal" xml:space="preserve">
+    <value>Listo para lanzar en modo Real.</value>
+  </data>
+  <data name="Studio.Run.ReadyTrial" xml:space="preserve">
+    <value>Listo para lanzar en modo Prueba.</value>
+  </data>
+  <data name="Studio.Run.ReadyResult" xml:space="preserve">
+    <value>El resultado irá a {0}.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoCli" xml:space="preserve">
+    <value>No se encuentra el motor de Orkeon: el lanzamiento espera al diagnóstico.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoTeam" xml:space="preserve">
+    <value>Elija primero un equipo.</value>
+  </data>
+  <data name="Studio.Run.BlockedFolders" xml:space="preserve">
+    <value>Una carpeta del equipo no está autorizada en esta máquina.</value>
+  </data>
+  <data name="Studio.Run.BlockedArchived" xml:space="preserve">
+    <value>Este equipo está archivado: restáurelo para lanzarlo.</value>
+  </data>
+  <data name="Studio.Run.RunningLine" xml:space="preserve">
+    <value>{0} · en curso · {1}</value>
+  </data>
+  <data name="Studio.Run.LaneWaiting" xml:space="preserve">
+    <value>En espera</value>
+  </data>
+  <data name="Studio.Run.LaneRunning" xml:space="preserve">
+    <value>Trabajando</value>
+  </data>
+  <data name="Studio.Run.LaneDone" xml:space="preserve">
+    <value>Terminado</value>
+  </data>
+  <data name="Studio.Run.LaneFailed" xml:space="preserve">
+    <value>Fallido</value>
+  </data>
   <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Prueba</value></data>
   <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Ejecución real</value></data>
   <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Prueba o ejecución real</value></data>
-  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Prueba: nada se registra en el historial y la última ejecución del equipo no cambia.</value></data>
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Equipo</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>Lanzar la prueba</value></data>
   <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Abrir el diagnóstico</value></data>

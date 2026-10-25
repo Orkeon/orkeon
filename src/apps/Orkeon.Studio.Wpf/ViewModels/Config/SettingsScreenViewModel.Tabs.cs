@@ -41,11 +41,13 @@ public sealed partial class SettingsScreenViewModel
     /// <summary>The key variables whose value is in place.</summary>
     private int StoredKeyCount => Profiles.Secrets.Count(secret => secret.HasKey);
 
-    /// <summary>« 2 keys remembered », or nothing to provide.</summary>
+    /// <summary>« 2 keys remembered », « 2 keys, none remembered », or nothing to provide.</summary>
     public string KeysTabSubtitle =>
-        Profiles.HasSecrets
-            ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, StoredKeyCount)
-            : _strings[StudioStringKeys.SettingsTabKeysNone];
+        !Profiles.HasSecrets
+            ? _strings[StudioStringKeys.SettingsTabKeysNone]
+            : StoredKeyCount is > 0 and var stored
+                ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
+                : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Profiles.Secrets.Count);
 
     /// <summary>The green dot when every key is in place, the amber dot while one is missing, empty without keys.</summary>
     public string KeysTabState =>

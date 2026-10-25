@@ -134,3 +134,21 @@ public sealed class NullToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException("This converter is one-way: a Visibility carries no instance.");
 }
+
+/// <summary>
+/// The second line of a team in the Launch screen's list (refonte lot 12): « launched on 24/10 »
+/// from the team's last run, or « never launched ». Only the date is known, not how it went.
+/// </summary>
+public sealed class TeamLastRunConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is DateTimeOffset at
+            ? string.Format(CultureInfo.CurrentCulture, Services.I18n.Instance["Studio.Run.TeamLastRun"],
+                at.ToLocalTime().ToString("dd/MM", CultureInfo.CurrentCulture))
+            : Services.I18n.Instance["Studio.Run.TeamNeverRun"];
+
+    /// <inheritdoc />
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

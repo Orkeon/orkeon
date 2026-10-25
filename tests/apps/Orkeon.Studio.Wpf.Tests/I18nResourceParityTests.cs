@@ -168,9 +168,12 @@ public sealed partial class I18nResourceParityTests
         // Refonte lot 10: raised by the step-2 labels no language rewrites — the « + {0} » of a
         // folded pill row and « YAML » (all), « Composition » (fr), « Team » and « Engine » (de)
         // — the same floor, measured, not above it.
-        ["Strings.fr.resx"] = 62,
+        // Refonte lot 12: raised by the Launch classeur's labels no language rewrites —
+        // « Options », « Mode » and « MODE » (fr), « Team » and « Engine » (de) — the same
+        // floor, measured, not above it.
+        ["Strings.fr.resx"] = 65,
         ["Strings.es.resx"] = 45,
-        ["Strings.de.resx"] = 50,
+        ["Strings.de.resx"] = 52,
         ["Strings.zh-Hans.resx"] = 37,
     };
 

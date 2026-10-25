@@ -340,9 +340,6 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve">
     <value>检查</value>
   </data>
-  <data name="Studio.Run.TargetTitle" xml:space="preserve">
-    <value>要启动的团队</value>
-  </data>
   <data name="Studio.Run.Detect" xml:space="preserve">
     <value>检测</value>
   </data>
@@ -354,9 +351,6 @@
   </data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve">
     <value>使用此文件</value>
-  </data>
-  <data name="Studio.Run.TabMounts" xml:space="preserve">
-    <value>挂载</value>
   </data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve">
     <value>自动（由运行时解析）</value>
@@ -396,9 +390,6 @@
   </data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve">
     <value>允许工作目录之外的挂载（--allow-external-mounts）</value>
-  </data>
-  <data name="Studio.Run.CmdTitle" xml:space="preserve">
-    <value>命令</value>
   </data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>复制命令</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>命令已复制</value></data>
@@ -444,15 +435,6 @@
   <data name="Studio.Run.ChangeTeam" xml:space="preserve">
     <value>切换团队</value>
   </data>
-  <data name="Studio.Run.JournalTitle" xml:space="preserve">
-    <value>技术日志</value>
-  </data>
-  <data name="Studio.Run.JournalShow" xml:space="preserve">
-    <value>显示</value>
-  </data>
-  <data name="Studio.Run.JournalHide" xml:space="preserve">
-    <value>隐藏</value>
-  </data>
   <data name="Studio.Run.OpenResult" xml:space="preserve">
     <value>打开结果</value>
   </data>
@@ -475,14 +457,8 @@
   <data name="Studio.Run.Empty" xml:space="preserve">
     <value>在「我的团队」中选择一个团队——它的「启动」按钮会指向这里。</value>
   </data>
-  <data name="Studio.Run.RunLines" xml:space="preserve">
-    <value>行</value>
-  </data>
   <data name="Studio.Run.Validate" xml:space="preserve">
     <value>校验（dry-run）</value>
-  </data>
-  <data name="Studio.Run.Cancel" xml:space="preserve">
-    <value>取消</value>
   </data>
   <data name="Studio.Run.ClearLog" xml:space="preserve">
     <value>清空日志</value>
@@ -3644,6 +3620,9 @@
   <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
     <value>无需提供密钥</value>
   </data>
+  <data name="Studio.Settings.TabKeysNoneStored" xml:space="preserve">
+    <value>{0} 个密钥，均未保存</value>
+  </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>已授权 {0} 个文件夹</value>
   </data>
@@ -3732,10 +3711,213 @@
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>需求</value></data>
   <data name="Studio.Run.Title" xml:space="preserve"><value>启动团队</value></data>
   <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>试运行与真实运行方式相同，但不会进入历史记录；真实运行会记录在历史中。</value></data>
+  <data name="Studio.Run.TabTeam" xml:space="preserve">
+    <value>团队</value>
+  </data>
+  <data name="Studio.Run.TabOptions" xml:space="preserve">
+    <value>选项</value>
+  </data>
+  <data name="Studio.Run.TabCommand" xml:space="preserve">
+    <value>命令</value>
+  </data>
+  <data name="Studio.Run.TabRun" xml:space="preserve">
+    <value>运行</value>
+  </data>
+  <data name="Studio.Run.TabTeamToChoose" xml:space="preserve">
+    <value>待选择</value>
+  </data>
+  <data name="Studio.Run.TabTeamBlocked" xml:space="preserve">
+    <value>{0} · 无法启动</value>
+  </data>
+  <data name="Studio.Run.DisplayProgress" xml:space="preserve">
+    <value>进度</value>
+  </data>
+  <data name="Studio.Run.DisplayRaw" xml:space="preserve">
+    <value>原始输出</value>
+  </data>
+  <data name="Studio.Run.LblDisplay" xml:space="preserve">
+    <value>显示</value>
+  </data>
+  <data name="Studio.Run.StreamShort" xml:space="preserve">
+    <value>逐个令牌</value>
+  </data>
+  <data name="Studio.Run.TabRunIdle" xml:space="preserve">
+    <value>等待中 · 暂无内容</value>
+  </data>
+  <data name="Studio.Run.TabRunRunning" xml:space="preserve">
+    <value>运行中 · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunSucceeded" xml:space="preserve">
+    <value>成功 · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunFailed" xml:space="preserve">
+    <value>失败</value>
+  </data>
+  <data name="Studio.Run.PaneIdle" xml:space="preserve">
+    <value>等待中</value>
+  </data>
+  <data name="Studio.Run.PaneRunning" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
+    <value>尚未启动任何内容：团队的每个代理将在此处拥有一列。</value>
+  </data>
+  <data name="Studio.Run.TeamReady" xml:space="preserve">
+    <value>团队已就绪：{0}</value>
+  </data>
+  <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
+    <value>尚未选择团队。</value>
+  </data>
+  <data name="Studio.Run.SeeOptions" xml:space="preserve">
+    <value>查看选项 →</value>
+  </data>
+  <data name="Studio.Run.SeeCommand" xml:space="preserve">
+    <value>查看命令 →</value>
+  </data>
+  <data name="Studio.Run.SeeRun" xml:space="preserve">
+    <value>查看运行 →</value>
+  </data>
+  <data name="Studio.Run.BackToTeam" xml:space="preserve">
+    <value>← 返回团队</value>
+  </data>
+  <data name="Studio.Run.OrAPath" xml:space="preserve">
+    <value>或一个路径</value>
+  </data>
+  <data name="Studio.Run.LblModel" xml:space="preserve">
+    <value>模型</value>
+  </data>
+  <data name="Studio.Run.ModelDefault" xml:space="preserve">
+    <value>默认（{0}）</value>
+  </data>
+  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
+    <value>默认</value>
+  </data>
+  <data name="Studio.Run.ModelTeam" xml:space="preserve">
+    <value>团队的（{0}）</value>
+  </data>
+  <data name="Studio.Run.TeamLastRun" xml:space="preserve">
+    <value>于 {0} 启动</value>
+  </data>
+  <data name="Studio.Run.TeamNeverRun" xml:space="preserve">
+    <value>从未启动</value>
+  </data>
+  <data name="Studio.Run.OptionsFooter" xml:space="preserve">
+    <value>{0} · {1} · {2} 个文件夹</value>
+  </data>
+  <data name="Studio.Run.FoldersSection" xml:space="preserve">
+    <value>允许的文件夹 — 团队的 {0} 个文件夹，{1}</value>
+  </data>
+  <data name="Studio.Run.FoldersAddedNone" xml:space="preserve">
+    <value>未添加</value>
+  </data>
+  <data name="Studio.Run.FoldersAdded" xml:space="preserve">
+    <value>已添加 {0} 个</value>
+  </data>
+  <data name="Studio.Run.AddLaunchFolder" xml:space="preserve">
+    <value>为本次启动添加文件夹</value>
+  </data>
+  <data name="Studio.Run.RightsRead" xml:space="preserve">
+    <value>读取</value>
+  </data>
+  <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
+    <value>读写</value>
+  </data>
+  <data name="Studio.Run.RowEngine" xml:space="preserve">
+    <value>引擎</value>
+  </data>
+  <data name="Studio.Run.RowTeamType" xml:space="preserve">
+    <value>团队类型</value>
+  </data>
+  <data name="Studio.Run.RowMounts" xml:space="preserve">
+    <value>挂载</value>
+  </data>
+  <data name="Studio.Run.RowMode" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="Studio.Run.MountsCount" xml:space="preserve">
+    <value>已挂载 {0} 个文件夹</value>
+  </data>
+  <data name="Studio.Run.EngineMissing" xml:space="preserve">
+    <value>未找到</value>
+  </data>
+  <data name="Studio.Run.CommandFooter" xml:space="preserve">
+    <value>终端可直接接受的确切命令。</value>
+  </data>
+  <data name="Studio.Run.ModeLabel" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="Studio.Run.FigSent" xml:space="preserve">
+    <value>已发送</value>
+  </data>
+  <data name="Studio.Run.FigReceived" xml:space="preserve">
+    <value>已接收</value>
+  </data>
+  <data name="Studio.Run.FigResult" xml:space="preserve">
+    <value>结果位于</value>
+  </data>
+  <data name="Studio.Run.JournalCount" xml:space="preserve">
+    <value>技术日志 · {0} 行</value>
+  </data>
+  <data name="Studio.Run.JournalEnlarge" xml:space="preserve">
+    <value>放大</value>
+  </data>
+  <data name="Studio.Run.JournalReduce" xml:space="preserve">
+    <value>缩小</value>
+  </data>
+  <data name="Studio.Run.NoRunFooter" xml:space="preserve">
+    <value>没有正在进行的运行。</value>
+  </data>
+  <data name="Studio.Run.RunningFooter" xml:space="preserve">
+    <value>运行正在进行：「停止」可中断。</value>
+  </data>
+  <data name="Studio.Run.DoneFooter" xml:space="preserve">
+    <value>运行已结束。</value>
+  </data>
+  <data name="Studio.Run.LockedDuringRun" xml:space="preserve">
+    <value>运行结束后可修改</value>
+  </data>
+  <data name="Studio.Run.ReadyReal" xml:space="preserve">
+    <value>已准备好以真实模式启动。</value>
+  </data>
+  <data name="Studio.Run.ReadyTrial" xml:space="preserve">
+    <value>已准备好以试运行模式启动。</value>
+  </data>
+  <data name="Studio.Run.ReadyResult" xml:space="preserve">
+    <value>结果将保存到 {0}。</value>
+  </data>
+  <data name="Studio.Run.BlockedNoCli" xml:space="preserve">
+    <value>找不到 Orkeon 引擎：启动需等待诊断。</value>
+  </data>
+  <data name="Studio.Run.BlockedNoTeam" xml:space="preserve">
+    <value>请先选择一个团队。</value>
+  </data>
+  <data name="Studio.Run.BlockedFolders" xml:space="preserve">
+    <value>团队的某个文件夹在此计算机上未获允许。</value>
+  </data>
+  <data name="Studio.Run.BlockedArchived" xml:space="preserve">
+    <value>该团队已归档：请恢复后再启动。</value>
+  </data>
+  <data name="Studio.Run.RunningLine" xml:space="preserve">
+    <value>{0} · 运行中 · {1}</value>
+  </data>
+  <data name="Studio.Run.LaneWaiting" xml:space="preserve">
+    <value>等待中</value>
+  </data>
+  <data name="Studio.Run.LaneRunning" xml:space="preserve">
+    <value>工作中</value>
+  </data>
+  <data name="Studio.Run.LaneDone" xml:space="preserve">
+    <value>完成</value>
+  </data>
+  <data name="Studio.Run.LaneFailed" xml:space="preserve">
+    <value>失败</value>
+  </data>
   <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>试运行</value></data>
   <data name="Studio.Run.ModeReal" xml:space="preserve"><value>真实</value></data>
   <data name="Studio.Run.ModeHint" xml:space="preserve"><value>试运行或真实运行</value></data>
-  <data name="Studio.Trial.Sub" xml:space="preserve"><value>试运行：不会写入历史记录，团队的上次运行保持不变。</value></data>
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>团队</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>开始试运行</value></data>
   <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>打开诊断</value></data>

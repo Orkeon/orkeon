@@ -168,6 +168,9 @@ public sealed class TargetSelectionViewModel : ObservableObject
         _ => Detection.Error ?? _strings[StudioStringKeys.TargetDetectionFailed],
     };
 
+    /// <summary>The detected shape alone (« multi-file team folder »); null until one is resolved.</summary>
+    public string? KindDisplay => Target is { } target ? Describe(target.Kind) : null;
+
     /// <summary>The extensions the CLI accepts, shown next to the browse button.</summary>
     public static string SupportedFileExtensions => RunTargetDetector.SupportedFileExtensions;
 
@@ -194,7 +197,8 @@ public sealed class TargetSelectionViewModel : ObservableObject
             nameof(YamlLayoutBlockedMessage),
             nameof(DirectoryRunNotice),
             nameof(RunPath),
-            nameof(StatusDisplay));
+            nameof(StatusDisplay),
+            nameof(KindDisplay));
 
         TargetChanged?.Invoke(this, EventArgs.Empty);
         return detection;

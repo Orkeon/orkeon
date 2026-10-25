@@ -153,16 +153,6 @@ public sealed class MainWindowViewModel : ObservableObject
             RememberLlmChoice = RememberLlmChoice,
         });
 
-        // The technical journal opens by default in expert mode and stays closed in novice mode; the
-        // view's toggle then decides. A view trigger used to force it open in expert mode, so the
-        // toggle only changed its own label.
-        Launch.IsJournalOpen = Mode.IsExpert;
-        Mode.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(UiModeViewModel.IsExpert))
-                Launch.IsJournalOpen = Mode.IsExpert;
-        };
-
         // VFS-90: each settings row says which teams name it by id, and removing one asks
         // first — the composition root supplies the question, the view model the facts. Every
         // team counts, archived ones too (STUDIO-31, D-08): removing a folder an archived team
@@ -308,6 +298,19 @@ public sealed class MainWindowViewModel : ObservableObject
                 RememberLlmChoice = RememberLlmChoice,
             }),
             teamsHome);
+
+        // The command tab of the launcher is the expert's (refonte lot 12): both launchers follow
+        // the window's mode, a novice on the command tab lands on the options.
+        Launch.IsExpertMode = Mode.IsExpert;
+        Run.Trial.IsExpertMode = Mode.IsExpert;
+        Mode.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(UiModeViewModel.IsExpert))
+            {
+                Launch.IsExpertMode = Mode.IsExpert;
+                Run.Trial.IsExpertMode = Mode.IsExpert;
+            }
+        };
 
         // STUDIO-34: the bar at the foot of the window watches the three activities that can run
         // at once — each with its own engine — and gives each a group while it runs (DD-2).

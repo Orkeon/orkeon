@@ -118,7 +118,7 @@ public static partial class CrewLlmDeclarations
     }
 
     /// <summary>The YAML files of the crew: the file itself, or every YAML file of the crew folder and of its <c>agents/</c> and <c>tasks/</c>.</summary>
-    private static IEnumerable<string> YamlFilesOf(string targetPath)
+    internal static IEnumerable<string> YamlFilesOf(string targetPath)
     {
         if (File.Exists(targetPath))
             return IsYaml(targetPath) ? [targetPath] : [];

@@ -27,7 +27,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// it, and the behaviour is identical to the CLI by construction rather than by re-implementation.
 /// </para>
 /// </summary>
-public sealed class LaunchTabViewModel : ObservableObject
+public sealed partial class LaunchTabViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly RunSession _session;
@@ -52,7 +52,6 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly Func<IReadOnlyList<string>, string?, Task<string?>>? _prepareLaunch;
     private bool _isRunning;
     private string? _runningTarget;
-    private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
     /// <summary>The model this run takes (STUDIO-73): the default, or the setting <see cref="_runLlmProfile"/>.</summary>
@@ -156,6 +155,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // is open, and the Diagnostic screen re-runs it.
         BinaryLocation = _runner.LocateBinary();
 
+        InitializeTabs();
         RefreshPreview();
     }
 
@@ -850,6 +850,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         RunningTarget = request.TargetPath;
         ForgetLogFolderProbe();
         IsRunning = true;
+        ActiveTab = RunTab;
 
         Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
         StatusMessage = dryRun
@@ -1418,13 +1419,6 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     /// <summary>Localized banner when the CLI is missing; the raw locator detail stays expert.</summary>
     public string? CliBanner => IsBinaryAvailable ? null : _strings[StudioStringKeys.RunCliMissing];
-
-    /// <summary>Whether the technical journal is unfolded (novice folds it by default).</summary>
-    public bool IsJournalOpen
-    {
-        get => _isJournalOpen;
-        set => SetProperty(ref _isJournalOpen, value);
-    }
 
     /// <summary>Opens the result — one Explorer window per folder the run could write to.</summary>
     public RelayCommand OpenResultCommand { get; }

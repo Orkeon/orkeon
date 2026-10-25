@@ -12,6 +12,10 @@
     <!-- R3: one header; the mode switch on the right. -->
     <controls:PageHeader Title="{Binding [Studio.Run.Title], Source={x:Static services:I18n.Instance}}"
                          Subtitle="{Binding [Studio.Run.ScreenSub], Source={x:Static services:I18n.Instance}}">
+      <StackPanel Orientation="Horizontal">
+      <!-- lot 12: « MODE », mono, before the switch; the header's subtitle says what each one does. -->
+      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center"
+                 Text="{Binding [Studio.Run.ModeLabel], Source={x:Static services:I18n.Instance}}"/>
       <Border Style="{StaticResource SegmentedGroup}"
               ToolTip="{Binding [Studio.Run.ModeHint], Source={x:Static services:I18n.Instance}}">
         <StackPanel Orientation="Horizontal">
@@ -51,12 +55,8 @@
           </Button>
         </StackPanel>
       </Border>
+      </StackPanel>
     </controls:PageHeader>
-
-    <!-- What a trial does not do, said once while the trial is shown (R7). -->
-    <controls:Alert Tone="Info" Margin="0,16,0,0"
-                    Message="{Binding [Studio.Trial.Sub], Source={x:Static services:I18n.Instance}}"
-                    Visibility="{Binding IsTrial, Converter={StaticResource BooleanToVisibility}}"/>
 
     <views:LaunchTabView x:Name="RealLauncher" DataContext="{Binding Real}"
                          Visibility="{Binding DataContext.IsReal, RelativeSource={RelativeSource AncestorType=views:RunScreenView}, Converter={StaticResource BooleanToVisibility}}"/>

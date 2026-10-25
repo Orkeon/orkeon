@@ -518,7 +518,7 @@ public sealed class SettingsScreenTests
         screen.Profiles.CommitEdit(Zai(thinking: null), previousName: null);
 
         Assert.Equal("Expected", screen.KeysTabState);
-        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabKeysCount, 0), screen.KeysTabSubtitle);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabKeysNoneStored, 1), screen.KeysTabSubtitle);
 
         raised.Clear();
         var row = Assert.Single(screen.Profiles.Secrets);

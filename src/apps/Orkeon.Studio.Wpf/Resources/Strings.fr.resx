@@ -134,12 +134,10 @@
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Vérifications</value></data>
 
   <data name="Studio.Run.Title" xml:space="preserve"><value>Lancer une équipe</value></data>
-  <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Équipe à lancer</value></data>
   <data name="Studio.Run.Detect" xml:space="preserve"><value>Détecter</value></data>
   <data name="Studio.Run.File" xml:space="preserve"><value>Fichier…</value></data>
   <data name="Studio.Run.Folder" xml:space="preserve"><value>Dossier…</value></data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve"><value>Utiliser ce fichier</value></data>
-  <data name="Studio.Run.TabMounts" xml:space="preserve"><value>Dossiers autorisés</value></data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve"><value>Automatique (résolu par le runtime)</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve"><value>Chemin explicite</value></data>
   <data name="Studio.Run.VarsTitle" xml:space="preserve"><value>Variables (-V KEY=VALUE)</value></data>
@@ -153,7 +151,6 @@
   <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Journaliser les échanges avec le modèle (--llm-log)</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Dossiers déjà autorisés dans le fichier de réglages sélectionné</value></data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser des dossiers hors du répertoire de travail (--allow-external-mounts)</value></data>
-  <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMANDE</value></data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copier la commande</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Commande copiée</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Prête à travailler</value></data>
@@ -170,22 +167,23 @@
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
   <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>modèle {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Changer d'équipe</value></data>
-  <data name="Studio.Run.JournalTitle" xml:space="preserve"><value>Journal technique</value></data>
-  <data name="Studio.Run.JournalShow" xml:space="preserve"><value>Afficher</value></data>
-  <data name="Studio.Run.JournalHide" xml:space="preserve"><value>Masquer</value></data>
   <data name="Studio.Run.OpenResult" xml:space="preserve"><value>Ouvrir le résultat</value></data>
   <data name="Studio.Run.OpenLogs" xml:space="preserve"><value>Ouvrir le dossier des journaux</value></data>
   <data name="Studio.Run.OpenLogsNotYet" xml:space="preserve"><value>Le dossier des journaux n'existe pas encore : il est créé au premier appel journalisé.</value></data>
   <data name="Studio.Run.OpenLogsLoggingOff" xml:space="preserve"><value>La journalisation des échanges avec le modèle est désactivée pour ce lancement.</value></data>
   <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Ouvrir les {0} dossiers de résultat</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve"><value>Options avancées</value></data>
-  <data name="Studio.Run.VerbNormal" xml:space="preserve"><value>normal</value></data>
-  <data name="Studio.Run.VerbDetailed" xml:space="preserve"><value>détaillé</value></data>
-  <data name="Studio.Run.VerbDiagnostic" xml:space="preserve"><value>diagnostic</value></data>
+  <data name="Studio.Run.VerbNormal" xml:space="preserve">
+    <value>normal</value>
+  </data>
+  <data name="Studio.Run.VerbDetailed" xml:space="preserve">
+    <value>détaillé</value>
+  </data>
+  <data name="Studio.Run.VerbDiagnostic" xml:space="preserve">
+    <value>diagnostic</value>
+  </data>
   <data name="Studio.Run.Empty" xml:space="preserve"><value>Choisissez une équipe dans « Mes équipes » — son bouton Lancer arrive ici.</value></data>
-  <data name="Studio.Run.RunLines" xml:space="preserve"><value>lignes</value></data>
   <data name="Studio.Run.Validate" xml:space="preserve"><value>Vérifier</value></data>
-  <data name="Studio.Run.Cancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="Studio.Run.ClearLog" xml:space="preserve"><value>Vider le journal</value></data>
 
   <data name="Studio.History.Title" xml:space="preserve"><value>Historique</value></data>
@@ -517,7 +515,6 @@
 <data name="Studio.Import.SecretsTitle" xml:space="preserve"><value>Une clé d'API voyage dans cette définition</value></data>
 <data name="Studio.Import.SecretsBody" xml:space="preserve"><value>Ces fichiers semblent porter un secret collé en clair. Les clés vivent dans l'environnement, jamais dans un dossier partagé — nettoyez-les avant d'importer.</value></data>
 <data name="Studio.Import.Add" xml:space="preserve"><value>Ajouter à mes équipes</value></data>
-  <data name="Studio.Trial.Sub" xml:space="preserve"><value>Essai : rien n'est inscrit dans l'historique, et la dernière exécution de l'équipe reste inchangée.</value></data>
   <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Équipe</value></data>
   <data name="Studio.Trial.Run" xml:space="preserve"><value>Lancer l'essai</value></data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve"><value>Pas de section Llm : le moteur démarrera sur ses valeurs par défaut (Ollama, en local).</value></data>
@@ -1936,6 +1933,9 @@
   <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
     <value>Aucune clé à fournir</value>
   </data>
+  <data name="Studio.Settings.TabKeysNoneStored" xml:space="preserve">
+    <value>{0} {0:plural:clé|clés}, aucune mémorisée</value>
+  </data>
   <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
     <value>{0} {0:plural:dossier autorisé|dossiers autorisés}</value>
   </data>
@@ -2023,6 +2023,210 @@
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>À choisir : sans dossier source, l'équipe partira d'un dossier « input » vide.</value></data>
   <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Besoin</value></data>
   <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>Un essai tourne comme une exécution réelle mais n'entre pas dans l'historique ; une exécution réelle y est inscrite.</value></data>
+  <data name="Studio.Run.TabTeam" xml:space="preserve">
+    <value>Équipe</value>
+  </data>
+  <data name="Studio.Run.TabOptions" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Studio.Run.TabCommand" xml:space="preserve">
+    <value>Commande</value>
+  </data>
+  <data name="Studio.Run.TabRun" xml:space="preserve">
+    <value>Exécution</value>
+  </data>
+  <data name="Studio.Run.TabTeamToChoose" xml:space="preserve">
+    <value>À choisir</value>
+  </data>
+  <data name="Studio.Run.TabTeamBlocked" xml:space="preserve">
+    <value>{0} · ne peut pas être lancée</value>
+  </data>
+  <data name="Studio.Run.DisplayProgress" xml:space="preserve">
+    <value>Progression</value>
+  </data>
+  <data name="Studio.Run.DisplayRaw" xml:space="preserve">
+    <value>Sortie brute</value>
+  </data>
+  <data name="Studio.Run.LblDisplay" xml:space="preserve">
+    <value>Affichage</value>
+  </data>
+  <data name="Studio.Run.StreamShort" xml:space="preserve">
+    <value>jeton par jeton</value>
+  </data>
+  <data name="Studio.Run.TabRunIdle" xml:space="preserve">
+    <value>En attente · rien à rapporter</value>
+  </data>
+  <data name="Studio.Run.TabRunRunning" xml:space="preserve">
+    <value>En cours · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunSucceeded" xml:space="preserve">
+    <value>Réussie · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunFailed" xml:space="preserve">
+    <value>Échouée</value>
+  </data>
+  <data name="Studio.Run.PaneIdle" xml:space="preserve">
+    <value>En attente</value>
+  </data>
+  <data name="Studio.Run.PaneRunning" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
+    <value>Réussie</value>
+  </data>
+  <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
+    <value>Rien n'a encore été lancé : chaque agent de l'équipe aura sa colonne ici.</value>
+  </data>
+  <data name="Studio.Run.TeamReady" xml:space="preserve">
+    <value>Équipe prête : {0}</value>
+  </data>
+  <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
+    <value>Aucune équipe choisie.</value>
+  </data>
+  <data name="Studio.Run.SeeOptions" xml:space="preserve">
+    <value>Voir les options →</value>
+  </data>
+  <data name="Studio.Run.SeeCommand" xml:space="preserve">
+    <value>Voir la commande →</value>
+  </data>
+  <data name="Studio.Run.SeeRun" xml:space="preserve">
+    <value>Voir l'exécution →</value>
+  </data>
+  <data name="Studio.Run.BackToTeam" xml:space="preserve">
+    <value>← Retour à l'équipe</value>
+  </data>
+  <data name="Studio.Run.OrAPath" xml:space="preserve">
+    <value>ou un chemin</value>
+  </data>
+  <data name="Studio.Run.LblModel" xml:space="preserve">
+    <value>Modèle</value>
+  </data>
+  <data name="Studio.Run.ModelDefault" xml:space="preserve">
+    <value>Par défaut ({0})</value>
+  </data>
+  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
+    <value>Par défaut</value>
+  </data>
+  <data name="Studio.Run.ModelTeam" xml:space="preserve">
+    <value>Celui de l'équipe ({0})</value>
+  </data>
+  <data name="Studio.Run.TeamLastRun" xml:space="preserve">
+    <value>lancée le {0}</value>
+  </data>
+  <data name="Studio.Run.TeamNeverRun" xml:space="preserve">
+    <value>jamais lancée</value>
+  </data>
+  <data name="Studio.Run.OptionsFooter" xml:space="preserve">
+    <value>{0} · {1} · {2} {2:plural:dossier|dossiers}</value>
+  </data>
+  <data name="Studio.Run.FoldersSection" xml:space="preserve">
+    <value>Dossiers autorisés — {0} {0:plural:dossier|dossiers} de l'équipe, {1}</value>
+  </data>
+  <data name="Studio.Run.FoldersAddedNone" xml:space="preserve">
+    <value>aucun ajout</value>
+  </data>
+  <data name="Studio.Run.FoldersAdded" xml:space="preserve">
+    <value>{0} {0:plural:ajout|ajouts}</value>
+  </data>
+  <data name="Studio.Run.AddLaunchFolder" xml:space="preserve">
+    <value>Ajouter un dossier pour ce lancement</value>
+  </data>
+  <data name="Studio.Run.RightsRead" xml:space="preserve">
+    <value>Lecture</value>
+  </data>
+  <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
+    <value>Lecture et écriture</value>
+  </data>
+  <data name="Studio.Run.RowEngine" xml:space="preserve">
+    <value>Moteur</value>
+  </data>
+  <data name="Studio.Run.RowTeamType" xml:space="preserve">
+    <value>Type d'équipe</value>
+  </data>
+  <data name="Studio.Run.RowMounts" xml:space="preserve">
+    <value>Montages</value>
+  </data>
+  <data name="Studio.Run.RowMode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Studio.Run.MountsCount" xml:space="preserve">
+    <value>{0} {0:plural:dossier monté|dossiers montés}</value>
+  </data>
+  <data name="Studio.Run.EngineMissing" xml:space="preserve">
+    <value>introuvable</value>
+  </data>
+  <data name="Studio.Run.CommandFooter" xml:space="preserve">
+    <value>La commande exacte qu'un terminal accepte.</value>
+  </data>
+  <data name="Studio.Run.ModeLabel" xml:space="preserve">
+    <value>MODE</value>
+  </data>
+  <data name="Studio.Run.FigSent" xml:space="preserve">
+    <value>Envoyés</value>
+  </data>
+  <data name="Studio.Run.FigReceived" xml:space="preserve">
+    <value>Reçus</value>
+  </data>
+  <data name="Studio.Run.FigResult" xml:space="preserve">
+    <value>Résultat dans</value>
+  </data>
+  <data name="Studio.Run.JournalCount" xml:space="preserve">
+    <value>Journal technique · {0} {0:plural:ligne|lignes}</value>
+  </data>
+  <data name="Studio.Run.JournalEnlarge" xml:space="preserve">
+    <value>Agrandir</value>
+  </data>
+  <data name="Studio.Run.JournalReduce" xml:space="preserve">
+    <value>Réduire</value>
+  </data>
+  <data name="Studio.Run.NoRunFooter" xml:space="preserve">
+    <value>Aucune exécution en cours.</value>
+  </data>
+  <data name="Studio.Run.RunningFooter" xml:space="preserve">
+    <value>L'exécution suit son cours : « Arrêter » l'interrompt.</value>
+  </data>
+  <data name="Studio.Run.DoneFooter" xml:space="preserve">
+    <value>Exécution terminée.</value>
+  </data>
+  <data name="Studio.Run.LockedDuringRun" xml:space="preserve">
+    <value>Modifiable après l'exécution</value>
+  </data>
+  <data name="Studio.Run.ReadyReal" xml:space="preserve">
+    <value>Prête à lancer en mode Réel.</value>
+  </data>
+  <data name="Studio.Run.ReadyTrial" xml:space="preserve">
+    <value>Prête à lancer en mode Essai.</value>
+  </data>
+  <data name="Studio.Run.ReadyResult" xml:space="preserve">
+    <value>Le résultat ira dans {0}.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoCli" xml:space="preserve">
+    <value>Le moteur Orkeon est introuvable : le lancement attend le diagnostic.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoTeam" xml:space="preserve">
+    <value>Choisissez d'abord une équipe.</value>
+  </data>
+  <data name="Studio.Run.BlockedFolders" xml:space="preserve">
+    <value>Un dossier de l'équipe n'est pas autorisé sur cette machine.</value>
+  </data>
+  <data name="Studio.Run.BlockedArchived" xml:space="preserve">
+    <value>Cette équipe est archivée : restaurez-la pour la lancer.</value>
+  </data>
+  <data name="Studio.Run.RunningLine" xml:space="preserve">
+    <value>{0} · en cours · {1}</value>
+  </data>
+  <data name="Studio.Run.LaneWaiting" xml:space="preserve">
+    <value>En attente</value>
+  </data>
+  <data name="Studio.Run.LaneRunning" xml:space="preserve">
+    <value>Au travail</value>
+  </data>
+  <data name="Studio.Run.LaneDone" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="Studio.Run.LaneFailed" xml:space="preserve">
+    <value>Échoué</value>
+  </data>
   <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Essai</value></data>
   <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Réel</value></data>
   <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Essai ou exécution réelle</value></data>

@@ -270,7 +270,13 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     }
 
     /// <summary>The beat: the elapsed time moved without an event.</summary>
-    internal void RefreshClock() => OnPropertiesChanged(nameof(Duration), nameof(Details), nameof(DetailsTip));
+    internal void RefreshClock()
+    {
+        OnPropertiesChanged(nameof(Duration), nameof(Details), nameof(DetailsTip));
+
+        // The run tab of the launcher counts on the same beat (refonte lot 12).
+        _launcher?.RefreshClock();
+    }
 
     /// <summary>The window switched between novice and expert.</summary>
     internal void RefreshMode()

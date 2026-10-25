@@ -72,6 +72,9 @@ public partial class MainWindow : Window
                 shell.Run.IsTrial = true;
             else if (e.Activity == ViewModels.Shell.StatusBarActivity.Launch)
                 shell.Run.IsTrial = false;
+            // Refonte lot 12: the launcher's group lands on its « Run » tab.
+            if (e.Activity is ViewModels.Shell.StatusBarActivity.Test or ViewModels.Shell.StatusBarActivity.Launch)
+                shell.Run.Active.ActiveTab = ViewModels.Launch.LaunchTabViewModel.RunTab;
             NavFor(e.Activity).IsChecked = true;
             // R13: the assistant's group names a wait point — the click lands on it.
             if (e.Activity == ViewModels.Shell.StatusBarActivity.Atelier

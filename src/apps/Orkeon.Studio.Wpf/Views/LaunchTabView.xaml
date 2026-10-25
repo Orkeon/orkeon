@@ -1,8 +1,8 @@
-<!-- One launcher of the "Lancer" screen (design v3, remediation lot 2; refonte lot 4: shown twice by
-     RunScreenView, once per mode): a vertical flow of cards —
-     team card (novice-first, one primary button), plain-language progress, folded
-     technical journal. The expert machinery (target picker, options, COMMANDE, raw
-     validation) lives inside the same flow, never in a side panel.
+<!-- One launcher of the "Lancer" screen (refonte lot 4: shown twice by RunScreenView, once per mode;
+     lot 12: a classeur, R14). Four tabs — Team, Options, Command (Expert), Run — each with its state
+     mark and subtitle (LaunchTabViewModel.Tabs), then the action bar under them: the readiness
+     sentence, [Vérifier] [Lancer maintenant], [Arrêter] while the run lives. The launch opens the
+     Run tab; during a run the other tabs stay readable, their controls disabled.
      DataContext: LaunchTabViewModel. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.LaunchTabView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -14,6 +14,7 @@
 
   <UserControl.Resources>
     <views:VerbosityLabelConverter x:Key="VerbosityLabel"/>
+    <views:TeamLastRunConverter x:Key="TeamLastRun"/>
     <!-- collapsible section header (Expander without the Aero chrome) -->
     <Style x:Key="FoldToggle" TargetType="ToggleButton">
       <Setter Property="Cursor" Value="Hand"/>
@@ -37,6 +38,21 @@
           </ControlTemplate>
         </Setter.Value>
       </Setter>
+    </Style>
+    <!-- the footer of a pane: its summary on the left, the next step on the right -->
+    <Style x:Key="PaneFooter" TargetType="Border">
+      <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
+      <Setter Property="BorderThickness" Value="0,1,0,0"/>
+      <Setter Property="Padding" Value="0,12,0,0"/>
+      <Setter Property="Margin" Value="0,16,0,0"/>
+    </Style>
+    <!-- « Can be changed after the run », at the top of a pane while a run lives -->
+    <Style x:Key="LockedNotice" TargetType="Border">
+      <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="11,7"/>
+      <Setter Property="Margin" Value="0,0,0,14"/>
+      <Setter Property="Visibility" Value="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
     </Style>
   </UserControl.Resources>
 
@@ -64,7 +80,7 @@
           <Style.Triggers>
             <MultiDataTrigger>
               <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                <Condition Binding="{Binding IsExpertMode}" Value="True"/>
                 <Condition Binding="{Binding IsBinaryAvailable}" Value="False"/>
               </MultiDataTrigger.Conditions>
               <Setter Property="Visibility" Value="Visible"/>
@@ -74,429 +90,504 @@
       </TextBlock.Style>
     </TextBlock>
 
-    <!-- ══ Target picker — the machinery, expert only ══ -->
-    <Border Style="{StaticResource Card}" Margin="0,16,0,0"
-            Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-          <controls:LucideIcon Kind="compass" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Run.TargetTitle], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
+    <controls:StepTabs Margin="0,16,0,0" SelectedValuePath="Tag" SelectedValue="{Binding ActiveTab}">
+
+      <!-- ══ ÉQUIPE ══ -->
+      <controls:StepTab Tag="team" Header="{Binding [Studio.Run.TabTeam], Source={x:Static services:I18n.Instance}}"
+                        Subtitle="{Binding TeamTabSubtitle}" State="{Binding TeamTabState}">
         <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                  Command="{Binding Target.BrowseFolderCommand}"
-                  Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                  Command="{Binding Target.BrowseFileCommand}"
-                  Content="{Binding [Studio.Run.File], Source={x:Static services:I18n.Instance}}"/>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                  Command="{Binding Target.DetectCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="scan-search" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <TextBox Style="{StaticResource InputMono}" Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
-        </DockPanel>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="{Binding Target.StatusDisplay}"/>
-
-        <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
-          <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
-                    SelectedItem="{Binding Target.PreferredDirectoryKind}"
-                    Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>
-        </StackPanel>
-
-        <StackPanel Visibility="{Binding Target.NeedsSelection, Converter={StaticResource BooleanToVisibility}}">
-          <ListBox ItemsSource="{Binding Target.Candidates}" SelectedItem="{Binding Target.SelectedCandidate}"
-                   MaxHeight="120" Margin="0,6,0,0" FontFamily="{StaticResource MonoFont}" FontSize="13"/>
-          <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,6,0,0"
-                  Command="{Binding Target.UseCandidateCommand}"
-                  Content="{Binding [Studio.Run.UseCandidate], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-
-        <TextBlock Style="{StaticResource Hint}" Text="{Binding Target.DirectoryRunNotice}"
-                   Visibility="{Binding Target.DirectoryRunNotice, Converter={StaticResource StringPresentToVisibility}}"/>
-      </StackPanel>
-    </Border>
-
-    <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,18,0,0" TextWrapping="Wrap"
-               Text="{Binding [Studio.Run.Empty], Source={x:Static services:I18n.Instance}}">
-      <TextBlock.Style>
-        <Style TargetType="TextBlock">
-          <Setter Property="Visibility" Value="Collapsed"/>
-          <Style.Triggers>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
-                <Condition Binding="{Binding HasTeamCard}" Value="False"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-          </Style.Triggers>
-        </Style>
-      </TextBlock.Style>
-    </TextBlock>
-    <!-- empty state (T-12), and the ways out of it (T-29): the team picker of the Lancer screen,
-         and the two doors - a user with no team resolved was told where to click and given nothing. -->
-    <StackPanel Margin="0,0,0,0">
-      <StackPanel.Style>
-        <Style TargetType="StackPanel">
-          <Setter Property="Visibility" Value="Collapsed"/>
-          <Style.Triggers>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding HasTeamCard}" Value="False"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-          </Style.Triggers>
-        </Style>
-      </StackPanel.Style>
-      <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                   Text="{Binding [Studio.Trial.TeamLabel], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="320" DisplayMemberPath="Name"
-                  ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
-                  SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-        <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="brain-circuit" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
-        <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
-      </StackPanel>
-    </StackPanel>
-
-
-    <!-- ══ Card 1 — the team (#117): the content at full width, the actions in its footer bar ══ -->
-    <Border Style="{StaticResource Card}" Margin="0,16,0,0"
-            Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <DockPanel>
-          <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" Background="{DynamicResource AccentWeakBrush}"
-                  VerticalAlignment="Top" Margin="0,0,14,0">
-            <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                      Command="{Binding ShowOptionsTabCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding [Studio.Run.SeeOptions], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
+                </StackPanel>
+              </Button>
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                         Margin="0,0,12,0" Text="{Binding TeamFooter}"/>
+            </DockPanel>
           </Border>
           <StackPanel>
-            <!-- The whole name, wrapping (#117); normalized upstream to one line (STUDIO-16, D-01). -->
-            <TextBlock Style="{StaticResource ObjectTitle}" Text="{Binding TeamHeadline}"/>
-            <TextBlock Style="{StaticResource MetaLine}" Margin="0,4,0,0" Text="{Binding TeamMetaLine}"
-                       Visibility="{Binding TeamMetaLine, Converter={StaticResource StringPresentToVisibility}}"/>
-            <TextBlock Style="{StaticResource Description2Lines}" Margin="0,6,0,0"
-                       Text="{Binding TeamDescription}" ToolTip="{Binding TeamDescription}"
-                       Visibility="{Binding TeamDescription, Converter={StaticResource StringPresentToVisibility}}"/>
+            <Border Style="{StaticResource LockedNotice}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="lock" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}"
+                           Text="{Binding [Studio.Run.LockedDuringRun], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Border>
+
+            <StackPanel IsEnabled="{Binding IsEditable}">
+              <!-- One line: the team by name, then the model this run takes (STUDIO-73). « Default (X) »,
+                   « The team's (Y) », the settings by name: the list replaces the old checkbox. -->
+              <WrapPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                             Text="{Binding [Studio.Trial.TeamLabel], Source={x:Static services:I18n.Instance}}"/>
+                  <ComboBox Width="320" VerticalAlignment="Center"
+                            ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
+                            SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <DockPanel>
+                          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                     Text="{Binding LastRunAt, Converter={StaticResource TeamLastRun}}"/>
+                          <TextBlock Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
+                        </DockPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                            Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                             Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
+                  <ComboBox Width="260" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
+                            SelectedItem="{Binding SelectedModelChoice}" DisplayMemberPath="Label"
+                            ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
+                          VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
+                          Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
+                          VerticalAlignment="Center" Command="{Binding ConfigureModelCommand}"
+                          Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                </StackPanel>
+              </WrapPanel>
+              <TextBlock Margin="0,0,0,6" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                         Text="{Binding CrewLlmWarning}"
+                         Visibility="{Binding CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
+
+              <!-- Expert: « or a path » — the target picker, the machinery. -->
+              <StackPanel Margin="0,6,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
+                           Text="{Binding [Studio.Run.OrAPath], Source={x:Static services:I18n.Instance}}"/>
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
+                          Command="{Binding Target.BrowseFolderCommand}"
+                          Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
+                          Command="{Binding Target.BrowseFileCommand}"
+                          Content="{Binding [Studio.Run.File], Source={x:Static services:I18n.Instance}}"/>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
+                          Command="{Binding Target.DetectCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="scan-search" Size="13" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                  <TextBox Style="{StaticResource InputMono}" Height="36" VerticalContentAlignment="Center"
+                           Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+                <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape -->
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding TargetTypeNote}"/>
+
+                <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
+                  <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
+                            SelectedItem="{Binding Target.PreferredDirectoryKind}"
+                            Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding Target.NeedsSelection, Converter={StaticResource BooleanToVisibility}}">
+                  <ListBox ItemsSource="{Binding Target.Candidates}" SelectedItem="{Binding Target.SelectedCandidate}"
+                           MaxHeight="120" Margin="0,6,0,0" FontFamily="{StaticResource MonoFont}" FontSize="13"/>
+                  <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,6,0,0"
+                          Command="{Binding Target.UseCandidateCommand}"
+                          Content="{Binding [Studio.Run.UseCandidate], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </StackPanel>
+
+              <!-- empty state (T-12), and the ways out of it (T-29) -->
+              <StackPanel Margin="0,14,0,0" Visibility="{Binding HasTeamCard, Converter={StaticResource InverseBooleanToVisibility}}">
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
+                           Text="{Binding [Studio.Run.Empty], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding IsExpertMode, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="brain-circuit" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                      <TextBlock Text="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+
+            <!-- ── the fiche of the chosen team ── -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0"
+                    Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <DockPanel>
+                  <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" Background="{DynamicResource AccentWeakBrush}"
+                          VerticalAlignment="Top" Margin="0,0,14,0">
+                    <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                          VerticalAlignment="Top" Margin="12,0,0,0" Click="OnChangeTeam" IsEnabled="{Binding IsEditable}"
+                          Content="{Binding [Studio.Run.ChangeTeam], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel>
+                    <!-- The whole name, wrapping (#117); normalized upstream to one line (STUDIO-16, D-01). -->
+                    <TextBlock Style="{StaticResource ObjectTitle}" Text="{Binding TeamHeadline}"/>
+                    <TextBlock Style="{StaticResource MonoText}" FontSize="12.5" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="{Binding TeamFicheLine}"
+                               Visibility="{Binding TeamFicheLine, Converter={StaticResource StringPresentToVisibility}}"/>
+                    <TextBlock Style="{StaticResource Description2Lines}" Margin="0,6,0,0"
+                               Text="{Binding TeamDescription}" ToolTip="{Binding TeamDescription}"
+                               Visibility="{Binding TeamDescription, Converter={StaticResource StringPresentToVisibility}}"/>
+                    <!-- where the model comes from (STUDIO-62): the workshop's settings file for the team -->
+                    <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
+                               Text="{Binding TeamSettingsLine}"
+                               Visibility="{Binding TeamSettingsLine, Converter={StaticResource StringPresentToVisibility}}"/>
+                  </StackPanel>
+                </DockPanel>
+
+                <!-- R7: the run is refused, this team reaches outside « Réglages › Dossiers autorisés ». -->
+                <controls:Alert Tone="Danger" Margin="0,14,0,0" Message="{Binding UndeclaredFoldersMessage}"
+                                Visibility="{Binding IsBlockedByUndeclaredFolders, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenAllowedFoldersCommand}"
+                            Content="{Binding [Studio.Run.OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:Alert.Actions>
+                </controls:Alert>
+                <!-- VFS-90 D-06: folder declarations by id that this machine does not have. -->
+                <controls:Alert Tone="Danger" Margin="0,14,0,0" Message="{Binding UnknownMountIdsMessage}"
+                                Visibility="{Binding IsBlockedByUnknownMountIds, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenAllowedFoldersCommand}"
+                            Content="{Binding [Studio.Run.OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:Alert.Actions>
+                </controls:Alert>
+                <!-- STUDIO-31 (D-07): an archived team is neither launched nor tried from Studio. -->
+                <controls:Alert Tone="Warning" Margin="0,14,0,0" Message="{Binding ArchivedTargetMessage}"
+                                Visibility="{Binding IsTargetArchived, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding RestoreTargetCommand}"
+                            Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+                  </controls:Alert.Actions>
+                </controls:Alert>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </DockPanel>
+      </controls:StepTab>
 
-        <!-- STUDIO-73: the model this run takes, pre-filled with the team's; « Remember for this team »
-             makes it the team's. Greyed with « Configure a model » while this machine has no setting. -->
-        <StackPanel Margin="0,12,0,0">
-          <CheckBox IsChecked="{Binding RunUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
-                    Foreground="{DynamicResource InkBrush}" Content="{Binding UseDefaultLlmLabel}"
-                    ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
-          <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
-                      Visibility="{Binding RunUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
-            <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
-                       Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
-            <ComboBox Width="240" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding RunLlmProfile}"/>
-          </StackPanel>
-          <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding ConfigureModelCommand}"
-                  Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
-                  Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
-          <DockPanel Margin="0,7,0,0" Visibility="{Binding RunLlmLine, Converter={StaticResource StringPresentToVisibility}}">
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Padding="10,5" Margin="12,0,0,0"
-                    VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
-                    Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
-                    Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
-            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Text="{Binding RunLlmLine}"/>
-          </DockPanel>
-          <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
-                     Text="{Binding CrewLlmWarning}"
-                     Visibility="{Binding CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
-        </StackPanel>
-
-        <!-- The run is refused: this team reaches outside « Réglages › Dossiers autorisés ».
-             Naming the folders and the way out beats a run that fails halfway. -->
-        <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
-                Visibility="{Binding IsBlockedByUndeclaredFolders, Converter={StaticResource BooleanToVisibility}}">
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="12,0,0,0" VerticalAlignment="Center"
-                    Command="{Binding OpenAllowedFoldersCommand}"
-                    Content="{Binding [Studio.Run.OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
-            <controls:LucideIcon DockPanel.Dock="Left" Kind="triangle-alert" Size="15" Margin="0,0,10,0"
-                                 VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}"/>
-            <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Foreground="{DynamicResource DangerBrush}" Text="{Binding UndeclaredFoldersMessage}"/>
-          </DockPanel>
-        </Border>
-
-        <!-- VFS-90 D-06: the team names folder declarations by id that this machine does not
-             have — an imported team, or an entry removed since. Same refusal, same way out. -->
-        <Border Background="{DynamicResource DangerWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
-                Visibility="{Binding IsBlockedByUnknownMountIds, Converter={StaticResource BooleanToVisibility}}">
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="12,0,0,0" VerticalAlignment="Center"
-                    Command="{Binding OpenAllowedFoldersCommand}"
-                    Content="{Binding [Studio.Run.OpenAllowedFolders], Source={x:Static services:I18n.Instance}}"/>
-            <controls:LucideIcon DockPanel.Dock="Left" Kind="triangle-alert" Size="15" Margin="0,0,10,0"
-                                 VerticalAlignment="Center" Foreground="{DynamicResource DangerBrush}"/>
-            <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Foreground="{DynamicResource DangerBrush}" Text="{Binding UnknownMountIdsMessage}"/>
-          </DockPanel>
-        </Border>
-
-        <!-- STUDIO-31 (D-07): an archived team is neither launched nor tested from Studio. The
-             Run button stays off, and this says why and offers the way back — never a refusal
-             in silence. The CLI and the operating system are not concerned: archiving is Studio's. -->
-        <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
-                Visibility="{Binding IsTargetArchived, Converter={StaticResource BooleanToVisibility}}">
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="12,0,0,0" VerticalAlignment="Center"
-                    Command="{Binding RestoreTargetCommand}"
-                    Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
-            <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,0,10,0"
-                                 VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
-            <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
-                       Foreground="{DynamicResource WarningBrush}" Text="{Binding ArchivedTargetMessage}"/>
-          </DockPanel>
-        </Border>
-
-        <!-- The action line (R5): the team picker on the left, [Vérifier] [Lancer maintenant] on the right. -->
-        <Border Style="{StaticResource CardFooter}">
-          <DockPanel LastChildFill="False">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,8,4">
-              <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
-                         Text="{Binding [Studio.Trial.TeamLabel], Source={x:Static services:I18n.Instance}}"/>
-              <ComboBox Width="240" DisplayMemberPath="Name" VerticalAlignment="Center"
-                        ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
-                        SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"/>
-              <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Click="OnChangeTeam"
-                      Content="{Binding [Studio.Run.ChangeTeam], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,0,4">
-              <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding ValidateCommand}">
+      <!-- ══ OPTIONS ══ -->
+      <controls:StepTab Tag="options" Header="{Binding [Studio.Run.TabOptions], Source={x:Static services:I18n.Instance}}"
+                        Subtitle="{Binding OptionsTabSubtitle}" State="Empty">
+        <DockPanel>
+          <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                      Command="{Binding OptionsNextCommand}">
                 <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Run.Validate], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Text="{Binding OptionsNextLabel}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
                 </StackPanel>
               </Button>
-              <Button Style="{StaticResource BtnPrimary}" Command="{Binding RunCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="play" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding RunButtonLabel}"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
-          </DockPanel>
-        </Border>
-      </StackPanel>
-    </Border>
-
-    <!-- ══ Card 1b — the options, the command and the verdict: Expert, or once a run has a result ══ -->
-    <Border Margin="0,14,0,0">
-      <Border.Style>
-        <Style TargetType="Border" BasedOn="{StaticResource Card}">
-          <Setter Property="Visibility" Value="Collapsed"/>
-          <Style.Triggers>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding HasTeamCard}" Value="True"/>
-                <Condition Binding="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding HasTeamCard}" Value="True"/>
-                <Condition Binding="{Binding HasResult}" Value="True"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-          </Style.Triggers>
-        </Style>
-      </Border.Style>
-      <StackPanel>
-        <!-- expert machinery: the options, the command and the journal actions -->
-        <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-
-          <WrapPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,18,8">
-              <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,8,0" VerticalAlignment="Center"
-                         Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
-              <ComboBox Width="140" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
-                        SelectedItem="{Binding Options.Verbosity}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </StackPanel>
-            <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
-                      IsChecked="{Binding Options.WatchProgress}"
-                      Content="{Binding [Studio.Run.Watch], Source={x:Static services:I18n.Instance}}"/>
-            <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
-                      IsChecked="{Binding Options.StreamGeneratedText}"
-                      IsEnabled="{Binding Options.CanStreamGeneratedText}"
-                      ToolTipService.ShowOnDisabled="True"
-                      ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
-                      Content="{Binding [Studio.Run.Stream], Source={x:Static services:I18n.Instance}}"/>
-            <CheckBox Margin="0,0,18,8" VerticalAlignment="Center"
-                      IsChecked="{Binding Options.LlmLogEnabled}"
-                      Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
-            <CheckBox Margin="0,0,0,8" VerticalAlignment="Center"
-                      IsChecked="{Binding Options.ValidateFirst}"
-                      Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
-          </WrapPanel>
-
-          <!-- advanced options, folded -->
-          <ToggleButton x:Name="AdvancedFold" Style="{StaticResource FoldToggle}">
-            <TextBlock FontSize="13" FontWeight="SemiBold"
-                       Text="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}"/>
-          </ToggleButton>
-          <StackPanel Margin="13,4,0,4"
-                      Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
-            <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
-            <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
-                         IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
-                         Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton Margin="0,5,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsExplicitChecked"
-                         IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
-                         Content="{Binding [Studio.Run.SettingsExplicit], Source={x:Static services:I18n.Instance}}"/>
-            <DockPanel Margin="0,7,0,0">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                      Command="{Binding Options.BrowseSettingsCommand}"
-                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.SettingsPath, UpdateSourceTrigger=PropertyChanged}"/>
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                         Margin="0,0,12,0" Text="{Binding OptionsFooter}"/>
             </DockPanel>
+          </Border>
+          <StackPanel>
+            <Border Style="{StaticResource LockedNotice}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="lock" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}"
+                           Text="{Binding [Studio.Run.LockedDuringRun], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Border>
 
-            <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
-                         Text="{Binding [Studio.Run.VarsTitle], Source={x:Static services:I18n.Instance}}"/>
-              <ItemsControl ItemsSource="{Binding Options.Variables}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <DockPanel Margin="0,0,0,6">
-                      <TextBox DockPanel.Dock="Right" Style="{StaticResource InputMono}" Width="140" Margin="8,0,0,0"
-                               Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
-                      <TextBox Style="{StaticResource InputMono}" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"/>
-                    </DockPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                <Button Style="{StaticResource BtnSecondary}" FontSize="13" Margin="0,0,8,0" Command="{Binding Options.AddVariableCommand}">
+            <StackPanel IsEnabled="{Binding IsEditable}">
+              <!-- two columns: Check first · Verbosity / Display (+ token by token) · Log the LLM calls -->
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="24"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <CheckBox Margin="0,0,0,12" VerticalAlignment="Center"
+                          IsChecked="{Binding Options.ValidateFirst}"
+                          Content="{Binding [Studio.Run.ValidateFirst], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,12">
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                             Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
+                  <ComboBox Width="160" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
+                            SelectedItem="{Binding Options.Verbosity}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Converter={StaticResource VerbosityLabel}}"/>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Margin="0,0,0,12">
                   <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,6,0"/>
-                    <TextBlock Text="{Binding [Studio.Run.Add], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                               Text="{Binding [Studio.Run.LblDisplay], Source={x:Static services:I18n.Instance}}"/>
+                    <Border Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15">
+                      <StackPanel Orientation="Horizontal" Margin="2">
+                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowProgressDisplayCommand}"
+                                Tag="{Binding Options.WatchProgress}"
+                                Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
+                        <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ShowRawDisplayCommand}"
+                                Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
+                                Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Border>
                   </StackPanel>
-                </Button>
-                <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding Options.RemoveVariableCommand}">
+                  <!-- the stream rides on the progress: greyed, and says why, in raw output -->
+                  <CheckBox Margin="0,8,0,0"
+                            IsChecked="{Binding Options.StreamGeneratedText}"
+                            IsEnabled="{Binding Options.CanStreamGeneratedText}"
+                            ToolTipService.ShowOnDisabled="True"
+                            ToolTip="{Binding [Studio.Run.StreamNeedsWatch], Source={x:Static services:I18n.Instance}}"
+                            Content="{Binding [Studio.Run.StreamShort], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+                <CheckBox Grid.Row="1" Grid.Column="2" Margin="0,6,0,12" VerticalAlignment="Top"
+                          IsChecked="{Binding Options.LlmLogEnabled}"
+                          Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
+              </Grid>
+
+              <!-- advanced options, folded -->
+              <ToggleButton x:Name="AdvancedFold" Style="{StaticResource FoldToggle}">
+                <TextBlock FontSize="13" FontWeight="SemiBold"
+                           Text="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}"/>
+              </ToggleButton>
+              <StackPanel Margin="13,4,0,4"
+                          Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
+                <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
+                <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
+                             IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
+                             Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
+                <RadioButton Margin="0,5,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsExplicitChecked"
+                             IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
+                             Content="{Binding [Studio.Run.SettingsExplicit], Source={x:Static services:I18n.Instance}}"/>
+                <DockPanel Margin="0,7,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                          Command="{Binding Options.BrowseSettingsCommand}"
+                          Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.SettingsPath, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+
+                <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
+                             Text="{Binding [Studio.Run.VarsTitle], Source={x:Static services:I18n.Instance}}"/>
+                  <ItemsControl ItemsSource="{Binding Options.Variables}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <DockPanel Margin="0,0,0,6">
+                          <TextBox DockPanel.Dock="Right" Style="{StaticResource InputMono}" Width="140" Margin="8,0,0,0"
+                                   Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                          <TextBox Style="{StaticResource InputMono}" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <Button Style="{StaticResource BtnSecondary}" FontSize="13" Margin="0,0,8,0" Command="{Binding Options.AddVariableCommand}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding [Studio.Run.Add], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding Options.RemoveVariableCommand}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding [Studio.Run.Remove], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
+                             Text="{Binding [Studio.Run.LblInitialContext], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource Input}" Text="{Binding Options.InitialContext, UpdateSourceTrigger=PropertyChanged}"
+                           AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,0"
+                             Text="{Binding [Studio.Run.InputsTitle], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Run.LblInputsJson], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
+                           AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
+                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0"
+                             Text="{Binding [Studio.Run.LblInputsFile], Source={x:Static services:I18n.Instance}}"/>
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                            Command="{Binding Options.BrowseInputsFileCommand}"
+                            Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsFilePath, UpdateSourceTrigger=PropertyChanged}"/>
+                  </DockPanel>
+                </StackPanel>
+
+                <DockPanel Margin="0,10,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                          Command="{Binding Options.BrowseLlmLogPathCommand}"
+                          Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.LlmLogPath, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+
+                <!-- A novice has no command tab: « Copy the command » lives here. -->
+                <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                        Command="{Binding CopyCommandLineCommand}"
+                        Visibility="{Binding IsExpertMode, Converter={StaticResource InverseBooleanToVisibility}}">
                   <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
-                    <TextBlock Text="{Binding [Studio.Run.Remove], Source={x:Static services:I18n.Instance}}"/>
+                    <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                    <TextBlock>
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Text" Value="{Binding [Studio.Run.CopyCommand], Source={x:Static services:I18n.Instance}}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding CommandLineCopied}" Value="True">
+                              <Setter Property="Text" Value="{Binding [Studio.Run.CommandCopied], Source={x:Static services:I18n.Instance}}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
                   </StackPanel>
                 </Button>
               </StackPanel>
 
-              <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
-                         Text="{Binding [Studio.Run.LblInitialContext], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource Input}" Text="{Binding Options.InitialContext, UpdateSourceTrigger=PropertyChanged}"
-                       AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
-            </StackPanel>
+              <!-- the allowed folders of this launch, open by default -->
+              <ToggleButton x:Name="MountsFold" Style="{StaticResource FoldToggle}" IsChecked="True">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding FoldersSectionTitle}"/>
+              </ToggleButton>
+              <StackPanel Margin="13,4,0,4"
+                          Visibility="{Binding IsChecked, ElementName=MountsFold, Converter={StaticResource BooleanToVisibility}}">
+                <ItemsControl ItemsSource="{Binding FolderRows}" Focusable="False">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel Margin="0,0,0,8">
+                        <controls:LucideIcon DockPanel.Dock="Left" Kind="folder" Size="15" Margin="0,2,10,0"
+                                             VerticalAlignment="Top" Foreground="{DynamicResource MarkBrush}"/>
+                        <StackPanel>
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}"
+                                       VerticalAlignment="Center" Text="{Binding VirtualPath}"/>
+                            <controls:Badge Margin="10,0,0,0" VerticalAlignment="Center" Content="{Binding RightsLabel}">
+                              <controls:Badge.Style>
+                                <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                                  <Setter Property="Tone" Value="Neutral"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsWritable}" Value="True">
+                                      <Setter Property="Tone" Value="Info"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </controls:Badge.Style>
+                            </controls:Badge>
+                          </StackPanel>
+                          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding PhysicalPath}" ToolTip="{Binding PhysicalPath}"
+                                     Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
+                        </StackPanel>
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-            <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,0"
-                         Text="{Binding [Studio.Run.InputsTitle], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Run.LblInputsJson], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
-                       AcceptsReturn="True" MinHeight="60" VerticalScrollBarVisibility="Auto"/>
-              <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0"
-                         Text="{Binding [Studio.Run.LblInputsFile], Source={x:Static services:I18n.Instance}}"/>
-              <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                        Command="{Binding Options.BrowseInputsFileCommand}"
-                        Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsFilePath, UpdateSourceTrigger=PropertyChanged}"/>
-              </DockPanel>
-            </StackPanel>
+                <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
+                        Command="{Binding Mounts.LaunchMounts.AddMountCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Studio.Run.AddLaunchFolder], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <!-- the folders added for this launch, editable -->
+                <views:MountsEditorView DataContext="{Binding Mounts.LaunchMounts}" Margin="0,12,0,0"
+                                        Visibility="{Binding Mounts.Count, Converter={StaticResource CountToVisibility}}"/>
 
-            <DockPanel Margin="0,10,0,0">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                      Command="{Binding Options.BrowseLlmLogPathCommand}"
-                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.LlmLogPath, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Expert: what the settings declare, the external switch and the effective mounts -->
+                <StackPanel Margin="0,14,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13"
+                             Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
+                  <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1" Text="{Binding}"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <CheckBox Margin="0,12,0,0"
+                            IsChecked="{Binding Mounts.AllowExternalMounts}"
+                            Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
+                             Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
+
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="{Binding Mounts.Summary}"/>
+                  <!-- effective mounts: plain rows (the DataGrid's stock chrome broke T-04) -->
+                  <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,7,0,0">
+                    <ItemsControl ItemsSource="{Binding Mounts.EffectiveMounts}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <DockPanel Margin="0,1">
+                            <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13"
+                                       Width="140" Text="{Binding ConfigurationKey}"/>
+                            <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
+                                       Width="120" TextAlignment="Right" Text="{Binding OriginDisplay}"/>
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="13"
+                                       Foreground="{DynamicResource InkBrush}" Text="{Binding Value}"
+                                       TextTrimming="CharacterEllipsis"/>
+                          </DockPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </controls:StepTab>
+
+      <!-- ══ COMMANDE — Expert ══ -->
+      <controls:StepTab Tag="command" Header="{Binding [Studio.Run.TabCommand], Source={x:Static services:I18n.Instance}}"
+                        Subtitle="{Binding CommandTabSubtitle}" State="Empty"
+                        Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
+        <DockPanel>
+          <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                      Command="{Binding ShowRunTabCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding [Studio.Run.SeeRun], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
+                </StackPanel>
+              </Button>
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                         Margin="0,0,12,0" Text="{Binding [Studio.Run.CommandFooter], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
-          </StackPanel>
-
-          <!-- launch mounts, folded -->
-          <ToggleButton x:Name="MountsFold" Style="{StaticResource FoldToggle}">
-            <TextBlock FontSize="13" FontWeight="SemiBold"
-                       Text="{Binding [Studio.Run.TabMounts], Source={x:Static services:I18n.Instance}}"/>
-          </ToggleButton>
-          <StackPanel Margin="13,4,0,4"
-                      Visibility="{Binding IsChecked, ElementName=MountsFold, Converter={StaticResource BooleanToVisibility}}">
-            <TextBlock Style="{StaticResource CardTitle}" FontSize="13"
-                       Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1" Text="{Binding}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <CheckBox Margin="0,12,0,0"
-                      IsChecked="{Binding Mounts.AllowExternalMounts}"
-                      Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
-                       Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
-
-            <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
-            <TextBlock Style="{StaticResource Hint}" Text="{Binding Mounts.Summary}"/>
-            <!-- effective mounts: plain rows (the DataGrid's stock chrome broke T-04) -->
-            <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,7,0,0">
-              <ItemsControl ItemsSource="{Binding Mounts.EffectiveMounts}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <DockPanel Margin="0,1">
-                      <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13"
-                                 Width="140" Text="{Binding ConfigurationKey}"/>
-                      <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
-                                 Width="120" TextAlignment="Right" Text="{Binding OriginDisplay}"/>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="13"
-                                 Foreground="{DynamicResource InkBrush}" Text="{Binding Value}"
-                                 TextTrimming="CharacterEllipsis"/>
-                    </DockPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-
-            <views:MountsEditorView DataContext="{Binding Mounts.LaunchMounts}" Margin="0,12,0,0"/>
-          </StackPanel>
-
-          <!-- the exact command, always visible in expert — selectable, and one click away
-               from the clipboard: it is the text a terminal takes, ULID included. -->
-          <DockPanel Margin="0,10,0,5" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
-                       Text="{Binding [Studio.Run.CmdTitle], Source={x:Static services:I18n.Instance}}"/>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Padding="8,3"
+          </Border>
+          <StackPanel>
+            <!-- the exact command — selectable, and one click away from the clipboard: it is the
+                 text a terminal takes, ULID included. -->
+            <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10" Padding="14,12">
+              <TextBox Text="{Binding CommandLinePreview, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                       Background="Transparent" Padding="0" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                       Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" IsReadOnlyCaretVisible="False"/>
+            </Border>
+            <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,10,0,0"
                     Command="{Binding CopyCommandLineCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-                <TextBlock FontSize="13">
+                <TextBlock>
                   <TextBlock.Style>
                     <Style TargetType="TextBlock">
                       <Setter Property="Text" Value="{Binding [Studio.Run.CopyCommand], Source={x:Static services:I18n.Instance}}"/>
@@ -510,135 +601,557 @@
                 </TextBlock>
               </StackPanel>
             </Button>
-          </DockPanel>
-          <Border Style="{StaticResource Well}">
-            <TextBox Text="{Binding CommandLinePreview, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
-                     Background="Transparent" Padding="0" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                     Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap" IsReadOnlyCaretVisible="False"/>
+
+            <!-- R6: what the command stands on -->
+            <StackPanel Margin="0,16,0,0">
+              <controls:PropertyRow Label="{Binding [Studio.Run.RowEngine], Source={x:Static services:I18n.Instance}}">
+                <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextTrimming="CharacterEllipsis"
+                           Text="{Binding EngineRow}" ToolTip="{Binding EngineRow}"/>
+              </controls:PropertyRow>
+              <controls:PropertyRow Label="{Binding [Studio.Run.RowTeamType], Source={x:Static services:I18n.Instance}}">
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding Target.KindDisplay}"/>
+              </controls:PropertyRow>
+              <controls:PropertyRow Label="{Binding [Studio.Run.RowMounts], Source={x:Static services:I18n.Instance}}">
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding MountsRow}"/>
+              </controls:PropertyRow>
+              <controls:PropertyRow Label="{Binding [Studio.Run.RowMode], Source={x:Static services:I18n.Instance}}">
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding ModeRow}"/>
+              </controls:PropertyRow>
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </controls:StepTab>
+
+      <!-- ══ EXÉCUTION ══ -->
+      <controls:StepTab Tag="run" Header="{Binding [Studio.Run.TabRun], Source={x:Static services:I18n.Instance}}"
+                        Subtitle="{Binding RunTabSubtitle}" State="{Binding RunTabState}">
+        <DockPanel>
+          <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                        Command="{Binding ShowTeamTabCommand}"
+                        Visibility="{Binding HasResult, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Studio.Run.BackToTeam], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <!-- «Open the result», or «Open the N result folders» — one window per writable folder -->
+                <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                        Command="{Binding OpenResultCommand}">
+                  <Button.Visibility>
+                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                      <Binding Path="HasResult"/>
+                      <Binding Path="CanOpenResult"/>
+                    </MultiBinding>
+                  </Button.Visibility>
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="folder-open" Size="14" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                    <TextBlock Text="{Binding OpenResultLabel, Mode=OneWay}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                        Command="{Binding RunCommand}"
+                        Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="rotate-ccw" Size="14" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding RunButtonLabel}"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                         Margin="0,0,12,0" Text="{Binding RunFooter}"/>
+            </DockPanel>
           </Border>
+          <StackPanel>
+            <!-- title 18 px, the badge (pulsing while the process lives, STUDIO-17), the duration -->
+            <WrapPanel>
+              <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="Bold"
+                         Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" Text="{Binding RunPaneTitle}"/>
+              <Border x:Name="RunBadge" Margin="12,0,0,0" VerticalAlignment="Center">
+                <Border.Style>
+                  <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                    <Style.Triggers>
+                      <!-- No Storyboard.TargetName — a Style has no namescope — so the animation
+                           addresses the badge itself; CapturePose holds it at full opacity. -->
+                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
+                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                        <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                        <DataTrigger.EnterActions>
+                          <BeginStoryboard Name="RunBadgePulse">
+                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                              <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.35" Duration="0:0:0.7"/>
+                            </Storyboard>
+                          </BeginStoryboard>
+                        </DataTrigger.EnterActions>
+                        <DataTrigger.ExitActions>
+                          <StopStoryboard BeginStoryboardName="RunBadgePulse"/>
+                        </DataTrigger.ExitActions>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="ok">
+                        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                        <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding RunBadgeTone}" Value="fail">
+                        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+                        <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <TextBlock Style="{StaticResource BadgeText}" Text="{Binding RunBadgeText}"/>
+              </Border>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"
+                         Text="{Binding RunDuration}"
+                         Visibility="{Binding RunDuration, Converter={StaticResource StringPresentToVisibility}}"/>
+              <!-- the exit code, once the run has one -->
+              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center"
+                         ToolTip="{Binding ExitDescription}"
+                         Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
+                <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
+                <Run Text="{Binding ExitCode, Mode=OneWay}"/>
+              </TextBlock>
+            </WrapPanel>
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
+                       Text="{Binding RunPaneContext}"/>
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding StatusMessage}"
+                       Visibility="{Binding ShowsStatusMessage, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock Margin="0,6,0,0" FontSize="13" TextWrapping="Wrap"
+                       Foreground="{DynamicResource DangerBrush}"
+                       Visibility="{Binding Progress.HasError, Converter={StaticResource BooleanToVisibility}}"
+                       Text="{Binding Progress.LastError}"/>
 
-          <!-- where the model comes from (STUDIO-62): the workshop's settings file for the team,
-               outside the fold so a novice reads it without opening « Advanced » -->
-          <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
-                     Text="{Binding TeamSettingsLine}"
-                     Visibility="{Binding TeamSettingsLine, Converter={StaticResource StringPresentToVisibility}}"/>
+            <!-- the verdict of « Vérifier » -->
+            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding ValidationSummary}"
+                       Visibility="{Binding ValidationSummary, Converter={StaticResource StringPresentToVisibility}}"/>
+            <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding ValidationMessages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,1" Text="{Binding FriendlyText}" ToolTip="{Binding Display}">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                              <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
 
-          <WrapPanel Margin="0,10,0,0">
-            <!-- « Vérifier » moved to the team card's action line, beside « Lancer maintenant ». -->
-            <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding CancelCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="x" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Run.Cancel], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-            <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding OpenLogsCommand}"
-                    Visibility="{Binding ShowsOpenLogs, Converter={StaticResource BooleanToVisibility}}"
-                    ToolTip="{Binding OpenLogsUnavailableReason}" ToolTipService.ShowOnDisabled="True">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Run.OpenLogs], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-            <Button Style="{StaticResource BtnSecondary}" Command="{Binding ClearLogCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Run.ClearLog], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-
-          <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding ValidationSummary}"/>
-          <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding ValidationMessages}">
+            <!-- one column per agent, there before the launch (the crew's files), filled by the run -->
+            <ItemsControl ItemsSource="{Binding AgentLanes}" Margin="0,14,0,0" Focusable="False"
+                          Visibility="{Binding AgentLanes.Count, Converter={StaticResource CountToVisibility}}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Rows="1"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,1" Text="{Binding FriendlyText}" ToolTip="{Binding Display}">
-                    <TextBlock.Style>
-                      <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding IsError}" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                          </DataTrigger>
-                        </Style.Triggers>
-                      </Style>
-                    </TextBlock.Style>
-                  </TextBlock>
+                  <Border Background="{DynamicResource PaperSunkBrush}" CornerRadius="10" Padding="12,10" Margin="0,0,8,0">
+                    <StackPanel>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                 TextTrimming="CharacterEllipsis" Text="{Binding Name}" ToolTip="{Binding Name}"/>
+                      <Border x:Name="Bar" Height="4" CornerRadius="2" Margin="0,8,0,8" Background="{DynamicResource LineBrush}"/>
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon x:Name="Mark" Kind="circle" Size="12" Margin="0,0,6,0" VerticalAlignment="Center"
+                                             Foreground="{DynamicResource InkFaintBrush}"/>
+                        <TextBlock x:Name="Status" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Text="{Binding StatusText}"/>
+                      </StackPanel>
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                 Text="{Binding Detail}"
+                                 Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                    </StackPanel>
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding State}" Value="running">
+                      <Setter TargetName="Bar" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Mark" Property="Kind" Value="loader-circle"/>
+                      <Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                      <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="done">
+                      <Setter TargetName="Bar" Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                      <Setter TargetName="Mark" Property="Kind" Value="circle-check"/>
+                      <Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="failed">
+                      <Setter TargetName="Bar" Property="Background" Value="{DynamicResource DangerBrush}"/>
+                      <Setter TargetName="Mark" Property="Kind" Value="circle-x"/>
+                      <Setter TargetName="Mark" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                      <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-          </ScrollViewer>
-        </StackPanel>
 
-        <!-- run verdict + status, both modes. The verdict is ONE line (#117): the outcome badge and
-             the exit code; the outcome sentence is not repeated on the status line. -->
-        <StackPanel Margin="0,10,0,0">
-          <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding StatusMessage}"
-                     Visibility="{Binding ShowsStatusMessage, Converter={StaticResource BooleanToVisibility}}"/>
-          <TextBlock Style="{StaticResource Hint}" Text="{Binding Log.Summary}"/>
-          <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
-                      Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
-            <Border ToolTip="{Binding ExitDescription}">
+            <!-- the figures: sent, received, model, where the result lands -->
+            <UniformGrid Columns="4" Margin="0,14,0,0"
+                         Visibility="{Binding HasRunFigures, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Run.FigSent], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
+                           Typography.NumeralAlignment="Tabular" Text="{Binding SentFigure}"/>
+              </StackPanel>
+              <StackPanel Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Run.FigReceived], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
+                           Typography.NumeralAlignment="Tabular" Text="{Binding ReceivedFigure}"/>
+              </StackPanel>
+              <StackPanel Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
+                           TextTrimming="CharacterEllipsis" Text="{Binding ModelFigure}" ToolTip="{Binding ModelFigure}"/>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Run.FigResult], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Style="{StaticResource MonoText}" FontSize="14" Foreground="{DynamicResource InkBrush}" Margin="0,4,0,0"
+                           TextTrimming="CharacterEllipsis" Text="{Binding ResultFigure}"/>
+              </StackPanel>
+            </UniformGrid>
+            <!-- once it has a result (#117): tokens · cache · duration · model on one mono line.
+                 T-23: a metric the stream did not measure is absent, never a zero. -->
+            <TextBlock Style="{StaticResource MetaLine}" Margin="0,8,0,0" Text="{Binding ResultMetricsLine}">
+              <TextBlock.Visibility>
+                <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                  <Binding Path="HasResult"/>
+                  <Binding Path="IsExpertMode"/>
+                </MultiBinding>
+              </TextBlock.Visibility>
+            </TextBlock>
+
+            <!-- The tasks as a table (#117): Agent | Tool calls | Tokens | Duration. A zero call on a
+                 task meant to write a file is the diagnosis a green run hides (STUDIO-17). -->
+            <StackPanel Grid.IsSharedSizeScope="True" Margin="0,14,0,0"
+                        Visibility="{Binding Progress.Tasks.Count, Converter={StaticResource CountToVisibility}}">
+              <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="RunCalls"/>
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="RunTokens"/>
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="RunDuration"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource Eyebrow}" Margin="12,0,0,0" Text="{Binding [Studio.Run.ColAgent], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Grid.Column="1" Style="{StaticResource Eyebrow}" Margin="24,0,0,0" HorizontalAlignment="Right"
+                           Text="{Binding [Studio.Run.ColToolCalls], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Grid.Column="2" Style="{StaticResource Eyebrow}" Margin="24,0,0,0" HorizontalAlignment="Right"
+                           Text="{Binding [Studio.Run.ColTokens], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock Grid.Column="3" Style="{StaticResource Eyebrow}" Margin="24,0,12,0" HorizontalAlignment="Right"
+                           Text="{Binding [Studio.Run.ColDuration], Source={x:Static services:I18n.Instance}}"/>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Progress.Tasks}" Focusable="False">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel>
+                      <Rectangle Style="{StaticResource HSeparator}"/>
+                      <Grid Margin="0,8">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto" SharedSizeGroup="RunCalls"/>
+                          <ColumnDefinition Width="Auto" SharedSizeGroup="RunTokens"/>
+                          <ColumnDefinition Width="Auto" SharedSizeGroup="RunDuration"/>
+                        </Grid.ColumnDefinitions>
+                        <DockPanel Margin="12,0,0,0">
+                          <controls:LucideIcon DockPanel.Dock="Left" Size="13" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <controls:LucideIcon.Style>
+                              <Style TargetType="controls:LucideIcon">
+                                <Setter Property="Kind" Value="circle-x"/>
+                                <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                <Setter Property="IsTabStop" Value="False"/>
+                                <Setter Property="Focusable" Value="False"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding Success}" Value="True">
+                                    <Setter Property="Kind" Value="circle-check"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </controls:LucideIcon.Style>
+                          </controls:LucideIcon>
+                          <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
+                                     VerticalAlignment="Center" Text="{Binding Title}"/>
+                        </DockPanel>
+                        <TextBlock Grid.Column="1" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,0,0"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
+                                   Text="{Binding Task.ToolCalls, StringFormat=N0}"/>
+                        <TextBlock Grid.Column="2" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,0,0"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
+                                   Text="{Binding Tokens}"/>
+                        <TextBlock Grid.Column="3" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,12,0"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
+                                   Text="{Binding Duration}"/>
+                      </Grid>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Rectangle Style="{StaticResource HSeparator}"/>
+            </StackPanel>
+
+            <!-- What is running now (STUDIO-17): the task the run announced and has not yet reported
+                 finished. TargetName is fine here — a DataTemplate has a namescope. -->
+            <ItemsControl ItemsSource="{Binding Progress.RunningTasks}" Margin="0,8,0,0"
+                          Visibility="{Binding Progress.HasRunningTasks, Converter={StaticResource BooleanToVisibility}}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel Margin="0,2">
+                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
+                               Text="{Binding Since}"/>
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="loader-circle" Size="13" Margin="0,0,7,0"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           RenderTransformOrigin="0.5,0.5">
+                        <controls:LucideIcon.RenderTransform>
+                          <RotateTransform x:Name="RunningSpin"/>
+                        </controls:LucideIcon.RenderTransform>
+                        <controls:LucideIcon.Triggers>
+                          <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                            <BeginStoryboard>
+                              <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation Storyboard.TargetName="RunningSpin" Storyboard.TargetProperty="Angle"
+                                                 From="0" To="360" Duration="0:0:1"/>
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </EventTrigger>
+                        </controls:LucideIcon.Triggers>
+                      </controls:LucideIcon>
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                                 Text="{Binding Title}"/>
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- The tool at work, straight from tool.called / tool.returned. -->
+            <TextBlock Style="{StaticResource Hint}" Margin="20,2,0,0"
+                       Visibility="{Binding Progress.HasActivity, Converter={StaticResource BooleanToVisibility}}"
+                       Text="{Binding Progress.ActivityLine}"/>
+
+            <!-- The text the model is generating (the "stream" option). -->
+            <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
+                    Background="{DynamicResource ConsoleBgBrush}"
+                    MaxHeight="160"
+                    Visibility="{Binding Progress.HasGeneratedText, Converter={StaticResource BooleanToVisibility}}">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- ConsoleFgBrush, not InkBrush: the console pair travels together. -->
+                <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
+                           Foreground="{DynamicResource ConsoleFgBrush}"
+                           Text="{Binding Progress.GeneratedText}"/>
+              </ScrollViewer>
+            </Border>
+
+            <!-- The question the run is waiting on (BUS-04): silence is never consent. -->
+            <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
+                    Background="{DynamicResource WarningWeakBrush}"
+                    Visibility="{Binding Progress.IsAsking, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock FontSize="13" TextWrapping="Wrap"
+                           Foreground="{DynamicResource InkBrush}"
+                           Text="{Binding Progress.QuestionPrompt}"/>
+
+                <ItemsControl ItemsSource="{Binding Progress.QuestionChoices}" Margin="0,8,0,0"
+                              Visibility="{Binding Progress.IsChoice, Converter={StaticResource BooleanToVisibility}}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
+                              Content="{Binding}"
+                              CommandParameter="{Binding}"
+                              Command="{Binding DataContext.Progress.ChooseCommand,
+                                                RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <DockPanel Margin="0,8,0,0"
+                           Visibility="{Binding Progress.IsChoice, Converter={StaticResource InverseBooleanToVisibility}}">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
+                          Command="{Binding Progress.AnswerCommand}"
+                          Content="{Binding [Studio.Run.Answer], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Text="{Binding Progress.AnswerText, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- An agent's send, waiting on this process: the client://studio seat, taken. -->
+            <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
+                    Background="{DynamicResource AccentWeakBrush}"
+                    Visibility="{Binding Progress.HasAgentRequest, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock FontSize="13" TextWrapping="Wrap"
+                           Foreground="{DynamicResource InkBrush}"
+                           Text="{Binding [Studio.Run.AgentAsks], Source={x:Static services:I18n.Instance}}"/>
+                <TextBlock FontFamily="Consolas" FontSize="13" Margin="0,4,0,0"
+                           Foreground="{DynamicResource InkMutedBrush}"
+                           Text="{Binding Progress.AgentRequestFrom}"/>
+                <Border Margin="0,6,0,0" Padding="8" CornerRadius="6"
+                        Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource ConsoleFgBrush}"
+                               Text="{Binding Progress.AgentRequestPayload}"/>
+                  </ScrollViewer>
+                </Border>
+                <DockPanel Margin="0,8,0,0">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
+                          Command="{Binding Progress.ReplyCommand}"
+                          Content="{Binding [Studio.Run.Reply], Source={x:Static services:I18n.Instance}}"/>
+                  <TextBox Text="{Binding Progress.ReplyText, UpdateSourceTrigger=PropertyChanged}"/>
+                </DockPanel>
+              </StackPanel>
+            </Border>
+
+            <!-- Hub traffic addressed to this process. -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding Progress.HasHubMessages, Converter={StaticResource BooleanToVisibility}}">
+              <TextBlock Style="{StaticResource Hint}"
+                         Text="{Binding [Studio.Run.HubMessages], Source={x:Static services:I18n.Instance}}"/>
+              <Border Margin="0,4,0,0" Padding="8" CornerRadius="6"
+                      Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding Progress.HubMessages}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ConsoleFgBrush}"
+                                   Text="{Binding}"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Border>
+            </StackPanel>
+
+            <!-- ── the technical journal: 150 px at rest, stretched while the run writes or « Enlarge » ── -->
+            <DockPanel Margin="0,18,0,0">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Border Style="{StaticResource SegmentedGroup}" Height="28" CornerRadius="14" Margin="0,0,8,0">
+                  <StackPanel Orientation="Horizontal" Margin="2">
+                    <Button Style="{StaticResource SegmentBtnOn}" FontSize="12.5" Command="{Binding ShowProgressDisplayCommand}"
+                            Tag="{Binding Options.WatchProgress}"
+                            Content="{Binding [Studio.Run.DisplayProgress], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource SegmentBtnOn}" FontSize="12.5" Command="{Binding ShowRawDisplayCommand}"
+                            Tag="{Binding Options.WatchProgress, Converter={StaticResource Negate}}"
+                            Content="{Binding [Studio.Run.DisplayRaw], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Border>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,6,0" Click="OnCopyJournal"
+                        Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,6,0"
+                        Command="{Binding ToggleJournalSizeCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="maximize-2" Size="12" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding JournalEnlargeLabel}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,6,0" Command="{Binding OpenLogsCommand}"
+                        Visibility="{Binding ShowsOpenLogs, Converter={StaticResource BooleanToVisibility}}"
+                        ToolTip="{Binding OpenLogsUnavailableReason}" ToolTipService.ShowOnDisabled="True">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="folder-open" Size="12" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding [Studio.Run.OpenLogs], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Command="{Binding ClearLogCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="eraser" Size="12" Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding [Studio.Run.ClearLog], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding JournalTitle}"/>
+                <TextBlock Style="{StaticResource Hint}" Text="{Binding Log.Summary}"
+                           Visibility="{Binding Log.Summary, Converter={StaticResource StringPresentToVisibility}}"/>
+              </StackPanel>
+            </DockPanel>
+            <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="6" Margin="0,10,0,0">
               <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource BadgeFail}">
+                <Style TargetType="Border">
+                  <Setter Property="Height" Value="150"/>
                   <Style.Triggers>
-                    <DataTrigger Binding="{Binding Outcome}" Value="Success">
-                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding Outcome}" Value="Cancelled">
-                      <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                    <DataTrigger Binding="{Binding IsJournalTall}" Value="True">
+                      <Setter Property="Height" Value="440"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
               </Border.Style>
-              <TextBlock>
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                    <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeFailed], Source={x:Static services:I18n.Instance}}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding Outcome}" Value="Success">
-                        <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeSucceeded], Source={x:Static services:I18n.Instance}}"/>
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Outcome}" Value="Cancelled">
-                        <Setter Property="Text" Value="{Binding [Studio.Run.OutcomeCancelled], Source={x:Static services:I18n.Instance}}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
+              <ListBox ItemsSource="{Binding Log.Lines}"
+                       Background="Transparent" BorderThickness="0"
+                       FontFamily="{StaticResource MonoFont}" FontSize="13"
+                       Foreground="{DynamicResource ConsoleFgBrush}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.CanContentScroll="True"
+                       VirtualizingPanel.IsVirtualizing="True"
+                       VirtualizingPanel.VirtualizationMode="Recycling"
+                       VirtualizingPanel.ScrollUnit="Item">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <VirtualizingStackPanel/>
+                  </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                      <!-- When Studio read the line (STUDIO-17): local time, to the second. The CLI
+                           logger's own timestamp is dropped from the text (CliLogLine). -->
+                      <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
+                                 Foreground="{DynamicResource ConsoleFgBrush}"/>
+                      <TextBlock Text="{Binding Text}" Style="{StaticResource ConsoleLineText}"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
             </Border>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="10,0,0,0" VerticalAlignment="Center">
-              <Run Text="{Binding [Studio.Run.ExitCodeLabel], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/>
-              <Run Text="{Binding ExitCode, Mode=OneWay}"/>
-            </TextBlock>
           </StackPanel>
-        </StackPanel>
-      </StackPanel>
-    </Border>
+        </DockPanel>
+      </controls:StepTab>
+    </controls:StepTabs>
 
-    <!-- ══ Card 2 — plain-language progress (BUS-06) ══ -->
-    <Border Margin="0,14,0,0">
-      <Border.Style>
-        <Style TargetType="Border" BasedOn="{StaticResource Card}">
-          <Setter Property="Visibility" Value="Collapsed"/>
-          <Style.Triggers>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding Options.WatchProgress}" Value="True"/>
-                <Condition Binding="{Binding HasTeamCard}" Value="True"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-          </Style.Triggers>
-        </Style>
-      </Border.Style>
-      <StackPanel>
-        <!-- #117: one status, the badge beside the title; [Arrêter] on the right while the run lives,
-             in both modes - a novice trial has no other way to stop. -->
-        <DockPanel Margin="0,0,0,8" LastChildFill="True">
-          <Button x:Name="StopRun" DockPanel.Dock="Right" Style="{StaticResource BtnDanger}" VerticalAlignment="Center"
+    <!-- ══ the action bar under the classeur: the readiness, [Vérifier] [Lancer maintenant] / [Arrêter] ══ -->
+    <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,16,0,16">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                  Command="{Binding ValidateCommand}"
+                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Run.Validate], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
+                  Command="{Binding RunCommand}"
+                  ToolTip="{Binding LaunchBlockedReason}" ToolTipService.ShowOnDisabled="True"
+                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="play" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+              <TextBlock Text="{Binding RunButtonLabel}"/>
+            </StackPanel>
+          </Button>
+          <!-- in both modes - a novice trial has no other way to stop -->
+          <Button x:Name="StopRun" Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
                   Command="{Binding CancelCommand}"
                   Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
@@ -647,385 +1160,37 @@
               <TextBlock Text="{Binding [Studio.Run.Stop], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-        <WrapPanel>
-          <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                     Text="{Binding RunStateTitle}"/>
-          <Border x:Name="RunBadge" Margin="10,0,0,0" VerticalAlignment="Center">
-            <Border.Style>
-              <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource InkFaintBrush}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Ellipse x:Name="ReadinessDot" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center">
+            <Ellipse.Style>
+              <Style TargetType="Ellipse">
+                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
                 <Style.Triggers>
-                  <!-- Pulsing while the child process lives (STUDIO-17): a still «running» badge
-                       could not be told from a stalled run. No Storyboard.TargetName — a Style has
-                       no namescope — so the animation addresses the badge itself; CapturePose
-                       holds it at full opacity for the screenshot campaign. -->
-                  <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
-                    <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
-                    <DataTrigger.EnterActions>
-                      <BeginStoryboard Name="RunBadgePulse">
-                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                          <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.35" Duration="0:0:0.7"/>
-                        </Storyboard>
-                      </BeginStoryboard>
-                    </DataTrigger.EnterActions>
-                    <DataTrigger.ExitActions>
-                      <StopStoryboard BeginStoryboardName="RunBadgePulse"/>
-                    </DataTrigger.ExitActions>
+                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
+                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
                   </DataTrigger>
-                  <DataTrigger Binding="{Binding RunBadgeTone}" Value="ok">
-                    <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding RunBadgeTone}" Value="fail">
-                    <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-                    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>
+                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="running">
+                    <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
                   </DataTrigger>
                 </Style.Triggers>
               </Style>
-            </Border.Style>
-            <TextBlock Style="{StaticResource BadgeText}" Text="{Binding RunBadgeText}"/>
-          </Border>
-        </WrapPanel>
-        </DockPanel>
-
-        <!-- While it runs: the plain-language state and the meter. Once it has a result (#117): one
-             mono line — tokens · cache · duration · model — under the badge that says how it went.
-             T-23: a metric the stream did not measure is absent, never a zero. -->
-        <DockPanel Visibility="{Binding HasResult, Converter={StaticResource InverseBooleanToVisibility}}">
-          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}"
-                     Text="{Binding Progress.CostSummary}"/>
-          <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}"
-                     Text="{Binding Progress.Summary}"/>
-        </DockPanel>
-        <WrapPanel Visibility="{Binding HasResult, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource MetaLine}" Text="{Binding ResultMetricsLine}"
-                     Visibility="{Binding ResultMetricsLine, Converter={StaticResource StringPresentToVisibility}}"/>
-          <TextBlock Style="{StaticResource MetaLine}" Text="{Binding Progress.CostModel, StringFormat=' · {0}'}"
-                     Visibility="{Binding Progress.CostModel, Converter={StaticResource StringPresentToVisibility}}"/>
-        </WrapPanel>
-
-        <TextBlock Margin="0,6,0,0" FontSize="13" TextWrapping="Wrap"
-                   Foreground="{DynamicResource DangerBrush}"
-                   Visibility="{Binding Progress.HasError, Converter={StaticResource BooleanToVisibility}}"
-                   Text="{Binding Progress.LastError}"/>
-
-        <!-- The agents as a table (#117): Agent | Tool calls | Tokens | Duration, the figure columns
-             sized once for every row (IsSharedSizeScope), right-aligned, tabular figures. The calls
-             column: a zero on a task meant to write a file is the diagnosis a green run hides
-             (STUDIO-17). -->
-        <StackPanel Grid.IsSharedSizeScope="True" Margin="0,10,0,0"
-                    Visibility="{Binding Progress.Tasks.Count, Converter={StaticResource CountToVisibility}}">
-          <Grid Margin="0,0,0,6">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto" SharedSizeGroup="RunCalls"/>
-              <ColumnDefinition Width="Auto" SharedSizeGroup="RunTokens"/>
-              <ColumnDefinition Width="Auto" SharedSizeGroup="RunDuration"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Style="{StaticResource Eyebrow}" Margin="12,0,0,0" Text="{Binding [Studio.Run.ColAgent], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Grid.Column="1" Style="{StaticResource Eyebrow}" Margin="24,0,0,0" HorizontalAlignment="Right"
-                       Text="{Binding [Studio.Run.ColToolCalls], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Grid.Column="2" Style="{StaticResource Eyebrow}" Margin="24,0,0,0" HorizontalAlignment="Right"
-                       Text="{Binding [Studio.Run.ColTokens], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Grid.Column="3" Style="{StaticResource Eyebrow}" Margin="24,0,12,0" HorizontalAlignment="Right"
-                       Text="{Binding [Studio.Run.ColDuration], Source={x:Static services:I18n.Instance}}"/>
-          </Grid>
-          <ItemsControl ItemsSource="{Binding Progress.Tasks}" Focusable="False">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <StackPanel>
-                  <Rectangle Style="{StaticResource HSeparator}"/>
-                  <Grid Margin="0,8">
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="*"/>
-                      <ColumnDefinition Width="Auto" SharedSizeGroup="RunCalls"/>
-                      <ColumnDefinition Width="Auto" SharedSizeGroup="RunTokens"/>
-                      <ColumnDefinition Width="Auto" SharedSizeGroup="RunDuration"/>
-                    </Grid.ColumnDefinitions>
-                    <DockPanel Margin="12,0,0,0">
-                      <controls:LucideIcon DockPanel.Dock="Left" Size="13" Margin="0,0,8,0" VerticalAlignment="Center">
-                        <controls:LucideIcon.Style>
-                          <Style TargetType="controls:LucideIcon">
-                            <Setter Property="Kind" Value="circle-x"/>
-                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                            <Setter Property="IsTabStop" Value="False"/>
-                            <Setter Property="Focusable" Value="False"/>
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding Success}" Value="True">
-                                <Setter Property="Kind" Value="circle-check"/>
-                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </controls:LucideIcon.Style>
-                      </controls:LucideIcon>
-                      <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                                 VerticalAlignment="Center" Text="{Binding Title}"/>
-                    </DockPanel>
-                    <TextBlock Grid.Column="1" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,0,0"
-                               HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
-                               Text="{Binding Task.ToolCalls, StringFormat=N0}"/>
-                    <TextBlock Grid.Column="2" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,0,0"
-                               HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
-                               Text="{Binding Tokens}"/>
-                    <TextBlock Grid.Column="3" FontSize="13" Foreground="{DynamicResource InkBrush}" Margin="24,0,12,0"
-                               HorizontalAlignment="Right" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"
-                               Text="{Binding Duration}"/>
-                  </Grid>
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Rectangle Style="{StaticResource HSeparator}"/>
+            </Ellipse.Style>
+          </Ellipse>
+          <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding LaunchReadinessText}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
+                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
         </StackPanel>
-
-        <!-- What is running now (STUDIO-17): the task the run announced and has not yet reported
-             finished. The spinner turns while the process lives; the time is the run's own clock;
-             nothing here is inferred. TargetName is fine here — a DataTemplate has a namescope. -->
-        <ItemsControl ItemsSource="{Binding Progress.RunningTasks}"
-                      Visibility="{Binding Progress.HasRunningTasks, Converter={StaticResource BooleanToVisibility}}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <DockPanel Margin="0,2">
-                <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
-                           Text="{Binding Since}"/>
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="loader-circle" Size="13" Margin="0,0,7,0"
-                                       Foreground="{DynamicResource AccentBrush}"
-                                       RenderTransformOrigin="0.5,0.5">
-                    <controls:LucideIcon.RenderTransform>
-                      <RotateTransform x:Name="RunningSpin"/>
-                    </controls:LucideIcon.RenderTransform>
-                    <controls:LucideIcon.Triggers>
-                      <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                        <BeginStoryboard>
-                          <Storyboard RepeatBehavior="Forever">
-                            <DoubleAnimation Storyboard.TargetName="RunningSpin" Storyboard.TargetProperty="Angle"
-                                             From="0" To="360" Duration="0:0:1"/>
-                          </Storyboard>
-                        </BeginStoryboard>
-                      </EventTrigger>
-                    </controls:LucideIcon.Triggers>
-                  </controls:LucideIcon>
-                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding Title}"/>
-                </StackPanel>
-              </DockPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <!-- The tool at work, straight from tool.called / tool.returned. -->
-        <TextBlock Style="{StaticResource Hint}" Margin="20,2,0,0"
-                   Visibility="{Binding Progress.HasActivity, Converter={StaticResource BooleanToVisibility}}"
-                   Text="{Binding Progress.ActivityLine}"/>
-
-        <!-- The text the model is generating (the "stream" option). -->
-        <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
-                Background="{DynamicResource ConsoleBgBrush}"
-                MaxHeight="160"
-                Visibility="{Binding Progress.HasGeneratedText, Converter={StaticResource BooleanToVisibility}}">
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <!-- ConsoleFgBrush, not InkBrush: the console pair travels together. -->
-            <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
-                       Foreground="{DynamicResource ConsoleFgBrush}"
-                       Text="{Binding Progress.GeneratedText}"/>
-          </ScrollViewer>
-        </Border>
-
-        <!-- The question the run is waiting on (BUS-04): silence is never consent. -->
-        <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
-                Background="{DynamicResource WarningWeakBrush}"
-                Visibility="{Binding Progress.IsAsking, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel>
-            <TextBlock FontSize="13" TextWrapping="Wrap"
-                       Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding Progress.QuestionPrompt}"/>
-
-            <ItemsControl ItemsSource="{Binding Progress.QuestionChoices}" Margin="0,8,0,0"
-                          Visibility="{Binding Progress.IsChoice, Converter={StaticResource BooleanToVisibility}}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel/>
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
-                          Content="{Binding}"
-                          CommandParameter="{Binding}"
-                          Command="{Binding DataContext.Progress.ChooseCommand,
-                                            RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <DockPanel Margin="0,8,0,0"
-                       Visibility="{Binding Progress.IsChoice, Converter={StaticResource InverseBooleanToVisibility}}">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
-                      Command="{Binding Progress.AnswerCommand}"
-                      Content="{Binding [Studio.Run.Answer], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Text="{Binding Progress.AnswerText, UpdateSourceTrigger=PropertyChanged}"/>
-            </DockPanel>
-          </StackPanel>
-        </Border>
-
-        <!-- An agent's send, waiting on this process: the client://studio seat, taken. -->
-        <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
-                Background="{DynamicResource AccentWeakBrush}"
-                Visibility="{Binding Progress.HasAgentRequest, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel>
-            <TextBlock FontSize="13" TextWrapping="Wrap"
-                       Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Studio.Run.AgentAsks], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock FontFamily="Consolas" FontSize="13" Margin="0,4,0,0"
-                       Foreground="{DynamicResource InkMutedBrush}"
-                       Text="{Binding Progress.AgentRequestFrom}"/>
-            <Border Margin="0,6,0,0" Padding="8" CornerRadius="6"
-                    Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
-              <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
-                           Foreground="{DynamicResource ConsoleFgBrush}"
-                           Text="{Binding Progress.AgentRequestPayload}"/>
-              </ScrollViewer>
-            </Border>
-            <DockPanel Margin="0,8,0,0">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
-                      Command="{Binding Progress.ReplyCommand}"
-                      Content="{Binding [Studio.Run.Reply], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Text="{Binding Progress.ReplyText, UpdateSourceTrigger=PropertyChanged}"/>
-            </DockPanel>
-          </StackPanel>
-        </Border>
-
-        <!-- Hub traffic addressed to this process. -->
-        <StackPanel Margin="0,10,0,0"
-                    Visibility="{Binding Progress.HasHubMessages, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource Hint}"
-                     Text="{Binding [Studio.Run.HubMessages], Source={x:Static services:I18n.Instance}}"/>
-          <Border Margin="0,4,0,0" Padding="8" CornerRadius="6"
-                  Background="{DynamicResource ConsoleBgBrush}" MaxHeight="120">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding Progress.HubMessages}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource ConsoleFgBrush}"
-                               Text="{Binding}"/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </Border>
-        </StackPanel>
-
-        <!-- The footer bar, once the run finished (#117): «Open the result», or «Open the N result
-             folders» — one window per writable folder. The verdict sentence is the badge above. -->
-        <Border Style="{StaticResource CardFooter}">
-          <Border.Visibility>
-            <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
-              <Binding Path="HasResult"/>
-              <Binding Path="CanOpenResult"/>
-            </MultiBinding>
-          </Border.Visibility>
-          <WrapPanel>
-            <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,4" Command="{Binding OpenResultCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                <TextBlock Text="{Binding OpenResultLabel, Mode=OneWay}"/>
-              </StackPanel>
-            </Button>
-          </WrapPanel>
-        </Border>
-      </StackPanel>
-    </Border>
-
-    <!-- ══ Card 3 — the technical journal, demoted not removed ══ -->
-    <Border Style="{StaticResource Card}" Margin="0,14,0,0"
-            Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13"
-                  Margin="8,0,0,0" Click="OnCopyJournal"
-                  Visibility="{Binding Log.Lines.Count, Converter={StaticResource CountToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-              <TextBlock Text="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <ToggleButton DockPanel.Dock="Right" Style="{StaticResource FoldToggle}"
-                        IsChecked="{Binding IsJournalOpen}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="eye" Size="13" Margin="0,0,6,0"/>
-              <TextBlock FontSize="13">
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <Setter Property="Text" Value="{Binding [Studio.Run.JournalShow], Source={x:Static services:I18n.Instance}}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsJournalOpen}" Value="True">
-                        <Setter Property="Text" Value="{Binding [Studio.Run.JournalHide], Source={x:Static services:I18n.Instance}}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
-            </StackPanel>
-          </ToggleButton>
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                       Text="{Binding [Studio.Run.JournalTitle], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource CardHeaderMeta}" Margin="9,0,0,0"
-                       Text="{Binding Log.Lines.Count}"/>
-            <TextBlock Style="{StaticResource CardHeaderMeta}" Margin="4,0,0,0"
-                       Text="{Binding [Studio.Run.RunLines], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </DockPanel>
-
-        <!-- open when toggled; expert mode opens it by default (MainWindowViewModel), the
-             toggle still closes it -->
-        <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="6" Margin="0,12,0,0"
-                MaxHeight="240">
-          <Border.Style>
-            <Style TargetType="Border">
-              <Setter Property="Visibility" Value="Collapsed"/>
-              <Style.Triggers>
-                <DataTrigger Binding="{Binding IsJournalOpen}" Value="True">
-                  <Setter Property="Visibility" Value="Visible"/>
-                </DataTrigger>
-              </Style.Triggers>
-            </Style>
-          </Border.Style>
-          <ListBox ItemsSource="{Binding Log.Lines}"
-                   Background="Transparent" BorderThickness="0"
-                   FontFamily="{StaticResource MonoFont}" FontSize="13"
-                   Foreground="{DynamicResource ConsoleFgBrush}"
-                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                   ScrollViewer.CanContentScroll="True"
-                   VirtualizingPanel.IsVirtualizing="True"
-                   VirtualizingPanel.VirtualizationMode="Recycling"
-                   VirtualizingPanel.ScrollUnit="Item">
-            <ListBox.ItemsPanel>
-              <ItemsPanelTemplate>
-                <VirtualizingStackPanel/>
-              </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <StackPanel Orientation="Horizontal">
-                  <!-- When Studio read the line (STUDIO-17): a long run has to say when it last
-                       spoke. Local time, to the second. The CLI logger's own timestamp is dropped
-                       from the text (CliLogLine): one clock per line. -->
-                  <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
-                             Foreground="{DynamicResource ConsoleFgBrush}"/>
-                <TextBlock Text="{Binding Text}" Style="{StaticResource ConsoleLineText}"/>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </Border>
-      </StackPanel>
+      </DockPanel>
     </Border>
 
   </StackPanel>

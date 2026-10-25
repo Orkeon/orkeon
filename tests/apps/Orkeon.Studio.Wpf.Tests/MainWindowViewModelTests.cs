@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
+using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -451,22 +452,20 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public void The_technical_journal_opens_in_expert_mode_and_its_toggle_still_closes_it()
+    public void The_command_tab_of_both_launchers_follows_the_window_mode()
     {
         var window = Build();
-        window.Mode.SetNoviceCommand.Execute(null);
-
-        Assert.False(window.Launch.IsJournalOpen);
-
         window.Mode.SetExpertCommand.Execute(null);
-        Assert.True(window.Launch.IsJournalOpen);
+        window.Launch.ActiveTab = LaunchTabViewModel.CommandTab;
 
-        // The toggle of the view writes the property: in expert mode it closes the journal.
-        window.Launch.IsJournalOpen = false;
-        Assert.False(window.Launch.IsJournalOpen);
+        Assert.True(window.Launch.IsExpertMode);
+        Assert.True(window.Run.Trial.IsExpertMode);
+        Assert.Equal(LaunchTabViewModel.CommandTab, window.Launch.ActiveTab);
 
+        // A novice has no command tab: the launcher falls back on the options.
         window.Mode.SetNoviceCommand.Execute(null);
-        Assert.False(window.Launch.IsJournalOpen);
+        Assert.False(window.Run.Trial.IsExpertMode);
+        Assert.Equal(LaunchTabViewModel.OptionsTab, window.Launch.ActiveTab);
     }
 
     [Fact]

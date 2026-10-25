@@ -250,7 +250,7 @@
                       </ControlTemplate>
                     </Button.Template>
                     <StackPanel x:Name="GroupLine" Orientation="Horizontal" TextElement.Foreground="{DynamicResource InkMutedBrush}">
-                      <TextBlock FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Label}"/>
                       <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="7,0,0,0" VerticalAlignment="Center"
                                  Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Count}"/>
                       <Ellipse x:Name="GroupDot" Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center"
@@ -261,6 +261,9 @@
                     <DataTrigger Binding="{Binding IsActive}" Value="True">
                       <Setter TargetName="GroupLine" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
                     </DataTrigger>
+                    <Trigger SourceName="GroupButton" Property="IsMouseOver" Value="True">
+                      <Setter TargetName="GroupLine" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                    </Trigger>
                     <DataTrigger Binding="{Binding HasDot}" Value="True">
                       <Setter TargetName="GroupDot" Property="Visibility" Value="Visible"/>
                     </DataTrigger>
