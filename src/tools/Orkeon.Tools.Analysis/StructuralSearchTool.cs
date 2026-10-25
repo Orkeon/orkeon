@@ -45,8 +45,6 @@ public sealed record StructuralSearchResponse
 
 public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, StructuralSearchResponse>
 {
-    private static readonly HashSet<string> Served = new(StringComparer.Ordinal) { "csharp", "typescript", "markdown" };
-
     private readonly IFileSystemService _fs;
     private readonly TreeSitterParserPool _pool;
 
@@ -58,7 +56,8 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
 
     public override string Name => "structural_search";
     public override string Description =>
-        "Searches C#, TypeScript or Markdown files for a code pattern parsed with the target grammar: $NAME matches one node and "
+        "Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the "
+        + "target grammar: $NAME matches one node and "
         + "captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the "
         + "enclosing symbol of each match.";
     public override ToolAccess Access => ToolAccess.Read;
@@ -67,10 +66,9 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
     {
         ArgumentNullException.ThrowIfNull(request);
         var rule = await RuleOfAsync(_fs, request.Pattern, request.Rule, request.RuleFile, request.Language, cancellationToken).ConfigureAwait(false);
-        var language = LanguageRegistry.Resolve(rule.Language);
-        var grammar = Served.Contains(language) ? LanguageRegistry.Shipped.FirstOrDefault(g => g.Language == language) : null;
-        if (grammar is null)
-            throw new ArgumentException($"Unsupported language '{rule.Language}': structural_search serves csharp, typescript and markdown.", nameof(request));
+        var grammar = GrammarFor(rule.Language)
+            ?? throw new ArgumentException(
+                $"Unsupported language '{rule.Language}': structural_search serves {string.Join(", ", ServedLanguages)}.", nameof(request));
 
         var matcher = new Matcher(_pool);
         var matches = new List<StructuralMatchDto>();
@@ -112,6 +110,19 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
 
         return new StructuralSearchResponse { Matches = matches.ToImmutableList(), Truncated = truncated, FilesScanned = scanned };
     }
+
+    /// <summary>
+    /// The grammar a rule's language scans and the extensions it claims: the indexed grammar first
+    /// (typescript keeps .tsx), then a parse-only one; null for a language that claims no file.
+    /// </summary>
+    internal static GrammarInfo? GrammarFor(string language)
+    {
+        var resolved = LanguageRegistry.Resolve(language);
+        return LanguageRegistry.Shipped.FirstOrDefault(g => g.Language == resolved)
+            ?? LanguageRegistry.Parseable.FirstOrDefault(g => g.Language == resolved);
+    }
+
+    internal static IEnumerable<string> ServedLanguages => LanguageRegistry.Parseable.Select(g => g.Language);
 
     internal static async Task<StructuralRule> RuleOfAsync(
         IFileSystemService fs, string? pattern, System.Text.Json.JsonElement? rule, string? ruleFile, string language, CancellationToken cancellationToken)

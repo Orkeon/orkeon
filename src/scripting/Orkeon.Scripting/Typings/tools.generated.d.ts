@@ -312,7 +312,7 @@ declare global {
             readonly success: boolean;
         }>;
 
-        /** `edit_batch` - Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is {kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: 'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, module for TypeScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' also runs dotnet build on the project above the edited files and restores every file when it is red. On any failure all files are left as they were. */
+        /** `edit_batch` - Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is {kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: 'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, module for TypeScript or JavaScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' also runs dotnet build on the project above the edited files and restores every file when it is red. On any failure all files are left as they were. */
         editBatch(input?: {
             operations?: readonly { readonly expected_hash?: string; readonly index?: number; readonly kind: string; readonly level?: number; readonly module?: string; readonly name?: string; readonly path: string; readonly position?: string; readonly selector: string; readonly text: string; }[];
             validate?: string;
@@ -832,7 +832,7 @@ declare global {
             readonly scalar_result?: unknown;
         }>;
 
-        /** `node_ensure` - Applies one idempotent intent operation on one file: ensure_using / ensure_import (name, plus module for TypeScript) adds the using or import line in its place only when absent; ensure_field / ensure_member (selector of the type, text) adds a field, property or method next to its peers only when no member of that name exists. On Markdown: ensure_section (name = heading path, optional level) creates the missing headings; insert_under_heading (selector, text) appends at the end of a section; replace_mermaid (selector, index 0-based, text) replaces the body of the n-th mermaid fence of a section. Calling it again changes nothing and writes nothing: applied is false and range is the existing line or member. The insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
+        /** `node_ensure` - Applies one idempotent intent operation on one file: ensure_using / ensure_import (name, plus module for TypeScript or JavaScript) adds the using or import line in its place only when absent; ensure_field / ensure_member (selector of the type, text) adds a field, property or method next to its peers only when no member of that name exists. On Markdown: ensure_section (name = heading path, optional level) creates the missing headings; insert_under_heading (selector, text) appends at the end of a section; replace_mermaid (selector, index 0-based, text) replaces the body of the n-th mermaid fence of a section. Calling it again changes nothing and writes nothing: applied is false and range is the existing line or member. The insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
         nodeEnsure(input?: {
             index?: number | null;
             level?: number | null;
@@ -848,7 +848,7 @@ declare global {
             readonly range: Record<string, unknown>;
         }>;
 
-        /** `node_insert` - Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (an enum member gets its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and attributes, 'after' below the anchor. There is no expected_hash: no anchor hash is required for before/after, the anchor is only a location. The text is re-indented line by line to the siblings' indentation (tabs or spaces as the file does); the insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
+        /** `node_insert` - Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (after the last member of an indented or end-closed body; an enum member or a JSON pair gets its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and attributes, 'after' below the anchor. There is no expected_hash: no anchor hash is required for before/after, the anchor is only a location. The text is re-indented line by line to the siblings' indentation (tabs or spaces as the file does); the insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
         nodeInsert(input?: {
             path?: string;
             position?: string;
@@ -1270,7 +1270,7 @@ declare global {
             readonly truncated: boolean;
         }>;
 
-        /** `structural_search` - Searches C#, TypeScript or Markdown files for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
+        /** `structural_search` - Searches the files of one language (any tree-sitter grammar Orkeon loads, or Markdown) for a code pattern parsed with the target grammar: $NAME matches one node and captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the enclosing symbol of each match. */
         structuralSearch(input?: {
             glob?: string | null;
             language?: string;

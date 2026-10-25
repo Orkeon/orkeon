@@ -143,7 +143,7 @@ Ranges are UTF-8 **byte** offsets (`NodeRange.StartByte`/`EndByte`), like the ot
 | `complexity_report` | Top-N by metric (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `access_cost` | Port-access cost (reads, writes, calls in loops, in-memory filters) of members by `fqns` or `changed_files`, restricted to `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | L4 structural queries (if, try, return...) — every index carries the statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
-| `node_outline` | Members of a C# or TypeScript file with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
+| `node_outline` | Members of a source file (any loaded grammar) or Markdown sections, with selector, kind, byte and line ranges | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | One member by selector: text, range and SHA-256, read uncut | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 | `node_replace` | Replace one node by selector and expected SHA-256 (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 | `node_insert` | Add a node `inside`, `before` or `after` an anchor selector (Edit class) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
@@ -222,7 +222,9 @@ hosts that want push-based invalidation on top of the lazy pass.
 
 A selector resolves to exactly one node or fails listing candidates. A node's span includes its leading comments and its attributes or decorators.
 
-Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). A `.h` header is read as C++, a superset that parses C headers too. The registry also loads agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog, parsed on request only: no adapter indexes them and discovery does not claim their files. OCaml (no macOS build in the package) and the Windows-only swift, toml and tsq grammars are pruned at publish. Declarations are addressable today in C# and TypeScript, sections in Markdown; the other shipped grammars are refused by name; a file whose extension no grammar claims is refused by name.
+Shipped grammars (`LanguageRegistry.Shipped`): typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). A `.h` header is read as C++, a superset that parses C headers too. The registry also loads tsx, agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog: no adapter indexes them and discovery does not claim their files. OCaml (no macOS build in the package) and the Windows-only swift, toml and tsq grammars are pruned at publish.
+
+The node tools and the structural tools read a file in any grammar of `LanguageRegistry.Parseable`: the indexed ones above, with `.tsx` read by the `tsx` grammar, then tsx (`.tsx`), agda (`.agda`), css (`.css`), embedded-template (`.erb`, `.ejs`), haskell (`.hs`), html (`.html`, `.htm`), json (`.json`), julia (`.jl`), ql (`.ql`, `.qll`), razor (`.cshtml`, `.razor`), scala (`.scala`, `.sc`) and verilog (`.v`, `.sv`, `.vh`, `.svh`); jsdoc claims no extension. A file whose extension no grammar claims is refused by name. The readable form names declarations in C#, TypeScript, JavaScript, Python, Go (a method is `Type.Method`), Rust (the functions of an `impl` block sit under its type), Java, C and C++ (by declarator: `n::A::g` for an out-of-line definition), PHP, Ruby, Bash, Scala, Julia and JSON (the key path, `a.b`); sections in Markdown. A file in which no declaration kind is known (CSS, HTML, Haskell, Verilog...) is outlined by the `@ts:` paths of its top-level nodes, through a lone wrapping node (`@ts:document/0/element/2/element`). A method's receiver (Rust `self`, Python `self` or `cls`) is not one of its parameter types.
 
 `node_outline` lists the members with selector, kind, byte range and line range. `node_read` returns the text of one member, its range and the SHA-256 of its bytes, uncut: the tool carries its own result bound (`node_read` = 256 000 characters in `AgentDefaults`), so the default tool-result cut does not apply.
 
@@ -327,6 +329,8 @@ Input: `action`, then `fqns` / `files` for `closure`, or `a` / `b` (each `{fqns,
 
 `structural_search` (read-class) finds syntax nodes by pattern or by rule. The engine is native (no ast-grep binary): each candidate file is parsed again by the matcher, so a result never comes from a stale index. Give exactly one of `pattern`, `rule` (an object) or `rule_file`.
 
+The `language` is any grammar of `LanguageRegistry.Parseable` or an alias (`cs`, `ts`, `js`, `c++`, `rb`, `sh`, `md`); it chooses the files scanned by extension, and a `typescript` rule scans `.ts` and `.tsx`. A pattern is parsed with that grammar: a PHP pattern needs no `<?php` tag, a JSON pattern is a value whose metavariables stand for values (`{"name": $N}`).
+
 Rule subset:
 
 | Key | Meaning |
@@ -353,7 +357,7 @@ Results are capped by `max_results` (default 100) and `max_files` (default 500);
 
 `node_insert` adds a node at a position against an anchor selector:
 
-- **`inside`** appends the text as the last member of a class, struct, interface or namespace body (C#, TypeScript), or at the end of a Markdown heading's section; enum members get the separating comma. Indentation is the first sibling's, else the parent's plus the file's detected unit (spaces or tabs); an empty body uses the second rule.
+- **`inside`** appends the text as the last member of a braced body (a class, struct, interface, namespace, impl or JSON object), after the last member of an indented or `end`-closed body (Python, Ruby), or at the end of a Markdown heading's section; a C#, Rust or C enum member and a JSON pair get the separating comma. Indentation is the first sibling's, else the parent's plus the file's detected unit (spaces or tabs); an empty body uses the second rule.
 - **`before`** inserts above the anchor's leading comments and attributes, **`after`** below the anchor; multi-line text is re-indented line by line to the anchor's indentation. No anchor hash is needed for `before`/`after`.
 - The result is re-parsed as for `node_replace` and refused when it introduces a diagnostic.
 
@@ -371,7 +375,7 @@ Results are capped by `max_results` (default 100) and `max_files` (default 500);
 
 - `dry_run` defaults to `true`: nothing is written, the result carries a per-file unified diff, match count and applied count.
 - Each rewritten file is re-parsed in memory; a file whose rewrite does not parse is refused alone (`refused_reason`), the others are still applied.
-- C# and TypeScript only: Markdown files are refused.
+- Every grammar `structural_search` serves except Markdown, which is refused.
 
 ## Extensibility
 

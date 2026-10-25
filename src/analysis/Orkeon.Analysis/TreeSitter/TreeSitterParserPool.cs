@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Abstractions.Models;
@@ -13,6 +14,10 @@ public sealed class TreeSitterParserPool : ITreeSitterParser
 {
     private readonly ConcurrentDictionary<string, TsLanguage> _languages = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ConcurrentBag<TsParser>> _pools = new(StringComparer.OrdinalIgnoreCase);
+
+    // The language each rented parser was made for. Many grammars carry no name (typescript, java,
+    // cpp, ruby...), so a parser's Language cannot say which bag it goes back to.
+    private readonly ConditionalWeakTable<TsParser, string> _owners = new();
     private bool _disposed;
 
     public TsParser Rent(string language)
@@ -22,20 +27,17 @@ public sealed class TreeSitterParserPool : ITreeSitterParser
         var bag = _pools.GetOrAdd(key, _ => []);
         if (bag.TryTake(out var parser)) return parser;
         var tsLang = _languages.GetOrAdd(key, LanguageRegistry.Create);
-        return new TsParser(tsLang);
+        parser = new TsParser(tsLang);
+        _owners.AddOrUpdate(parser, key);
+        return parser;
     }
 
     public void Return(TsParser parser)
     {
         ArgumentNullException.ThrowIfNull(parser);
-        if (_disposed) { parser.Dispose(); return; }
-        var language = parser.Language;
-        if (language is null) { parser.Dispose(); return; }
-        var key = _languages
-            .FirstOrDefault(kv => ReferenceEquals(kv.Value, language) || kv.Value.Name == language.Name).Key
-            ?? language.Name;
-        var bag = _pools.GetOrAdd(key, _ => []);
-        bag.Add(parser);
+        // A parser this pool did not make has no bag of its own.
+        if (_disposed || !_owners.TryGetValue(parser, out var key)) { parser.Dispose(); return; }
+        _pools.GetOrAdd(key, _ => []).Add(parser);
     }
 
     public ParsedTree Parse(string sourceCode, string language)

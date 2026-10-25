@@ -41,14 +41,11 @@ public sealed class TreeSitterGrammarPruningTests
     }
 
     [Fact]
-    public void Whitelist_HasNoEntryBeyondTheRegistryRuntimeAndTsx()
+    public void Whitelist_HasNoEntryBeyondTheRegistryAndRuntime()
     {
         // The reverse direction: an entry nobody loads is dead weight in every archive.
-        // tree-sitter-tsx is the one deliberate extra — the package ships it as its own
-        // library while the registry maps `tsx` onto tree-sitter-typescript.
         var allowed = LanguageRegistry.Libraries
             .Append(RuntimeLibrary)
-            .Append("tree-sitter-tsx")
             .ToHashSet(StringComparer.Ordinal);
 
         var stale = ReadWhitelist()

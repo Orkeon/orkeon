@@ -37,7 +37,7 @@ internal sealed class NodeInsertOperation(NodeSelector anchor, InsertPosition po
                 indent = IndentationDetector.IndentOf(file, node.Range.StartByte);
                 break;
             default:
-                (at, indent, lead, tail) = InsideBody(file, node, eol, gap);
+                (at, indent, lead, tail) = InsideBody(file, parsed, node, eol, gap);
                 break;
         }
 
@@ -57,13 +57,27 @@ internal sealed class NodeInsertOperation(NodeSelector anchor, InsertPosition po
         };
     }
 
-    private (int At, string Indent, string Lead, string Tail) InsideBody(ReadOnlySpan<byte> file, StructuralNode node, string eol, string gap)
+    // Kinds whose body members a comma separates: a C# enum, a Rust or C enum, a JSON object.
+    private static readonly HashSet<string> CommaSeparated = new(StringComparer.Ordinal)
+    {
+        "enum_declaration", "enum_item", "enum_specifier", "pair",
+    };
+
+    private (int At, string Indent, string Lead, string Tail) InsideBody(
+        ReadOnlySpan<byte> file, StructuralFile parsed, StructuralNode node, string eol, string gap)
     {
         if (node.Kind == "section") return (node.Range.EndByte, string.Empty, gap, string.Empty);
 
         var closing = node.Range.EndByte - 1;
         if (file[closing] != (byte)'}')
-            throw new InvalidOperationException($"'{anchor.Text}' has no braced body to insert inside.");
+        {
+            // An indented body (Python) or one closed by a keyword (Ruby's end): after its last member, at its indent.
+            var members = parsed.BodyMembers(node);
+            if (members.Count == 0)
+                throw new InvalidOperationException($"'{anchor.Text}' has no braced body nor member to insert inside.");
+            var lastMember = members[^1];
+            return (lastMember.Range.EndByte, IndentationDetector.IndentOf(file, lastMember.Range.StartByte), eol, string.Empty);
+        }
         var last = closing - 1;
         while (file[last] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') last--;
 
@@ -76,7 +90,7 @@ internal sealed class NodeInsertOperation(NodeSelector anchor, InsertPosition po
                 : (last + 1, parentIndent + IndentationDetector.Unit(file), eol, string.Empty);
         }
 
-        var comma = node.Kind == "enum_declaration" && file[last] != (byte)',' ? "," : string.Empty;
+        var comma = CommaSeparated.Contains(node.Kind) && file[last] != (byte)',' ? "," : string.Empty;
         var first = node.Range.StartByte + file[node.Range.StartByte..].IndexOf((byte)'{') + 1;
         while (file[first] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') first++;
         return (last + 1, IndentationDetector.IndentOf(file, first), comma + eol, string.Empty);

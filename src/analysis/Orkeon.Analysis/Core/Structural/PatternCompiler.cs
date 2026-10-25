@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
 using TsNode = TreeSitter.Node;
 
@@ -22,12 +23,14 @@ internal sealed record CompiledPattern(PatternNode Root);
 /// </summary>
 internal static partial class PatternCompiler
 {
+    // Statement nodes a lone expression pattern parses inside; the root of the parse is unwrapped in any grammar.
     private static readonly HashSet<string> Wrappers = new(StringComparer.Ordinal)
     {
-        "compilation_unit", "program", "global_statement", "expression_statement",
+        "global_statement", "expression_statement",
     };
 
-    [GeneratedRegex(@"^__ork_(mv|va)_(.+)__$")]
+    // A JSON pattern quotes its sentinels, as an identifier is no JSON value.
+    [GeneratedRegex(@"^""?__ork_(mv|va)_(.+?)__""?$")]
     private static partial Regex Sentinel();
 
     // A variadic or single metavariable becomes a parsable sentinel identifier; an escaped dollar stays a dollar.
@@ -42,7 +45,11 @@ internal static partial class PatternCompiler
     {
         ArgumentNullException.ThrowIfNull(pattern);
         ArgumentNullException.ThrowIfNull(pool);
-        var source = MetavariableGrammar.Token().Replace(pattern, Placeholder);
+        var source = language == "json"
+            ? MetavariableGrammar.Token().Replace(pattern, token => token.Groups[1].Success || token.Groups[2].Success ? $"\"{Placeholder(token)}\"" : Placeholder(token))
+            : MetavariableGrammar.Token().Replace(pattern, Placeholder);
+        // PHP code parses only after its opening tag; the tag is skipped when the pattern is unwrapped.
+        if (language == "php" && !source.TrimStart().StartsWith("<?", StringComparison.Ordinal)) source = "<?php " + source;
         using var parsed = pool.Parse(source, language);
         if (!parsed.Root.HasError) return Snapshot(parsed.Root);
 
@@ -55,9 +62,9 @@ internal static partial class PatternCompiler
     private static CompiledPattern Snapshot(TsNode root)
     {
         var node = root;
-        while (Wrappers.Contains(node.Type))
+        for (var atRoot = true; atRoot || Wrappers.Contains(node.Type); atRoot = false)
         {
-            var named = node.Children.Where(c => c.IsNamed && c.Type != "comment").ToList();
+            var named = node.Children.Where(c => c.IsNamed && !StructuralFile.IsComment(c.Type) && c.Type != "php_tag").ToList();
             if (named.Count != 1) break;
             node = named[0];
         }
@@ -75,7 +82,7 @@ internal static partial class PatternCompiler
             return new PatternNode(node.Type, text, kind, sentinel.Groups[2].Value, []);
         }
 
-        var children = node.Children.Where(c => c.Type != "comment").Select(Build).ToList();
+        var children = node.Children.Where(c => !StructuralFile.IsComment(c.Type)).Select(Build).ToList();
         return new PatternNode(node.Type, text, PatternKind.Literal, string.Empty, children);
     }
 }

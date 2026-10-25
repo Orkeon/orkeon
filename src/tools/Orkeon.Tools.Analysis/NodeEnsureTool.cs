@@ -41,7 +41,7 @@ public sealed class NodeEnsureTool : FileToolBase<NodeEnsureRequest, NodeEnsureR
 
     public override string Name => "node_ensure";
     public override string Description =>
-        "Applies one idempotent intent operation on one file: ensure_using / ensure_import (name, plus module for TypeScript) "
+        "Applies one idempotent intent operation on one file: ensure_using / ensure_import (name, plus module for TypeScript or JavaScript) "
         + "adds the using or import line in its place only when absent; ensure_field / ensure_member (selector of the type, text) "
         + "adds a field, property or method next to its peers only when no member of that name exists. On Markdown: ensure_section (name = heading path, optional level) creates the missing headings; "
         + "insert_under_heading (selector, text) appends at the end of a section; replace_mermaid (selector, index 0-based, text) replaces the body of the n-th mermaid fence of a section. Calling it again changes "

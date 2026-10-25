@@ -171,20 +171,25 @@ public sealed class StructuralRewriteToolTests : IDisposable
     }
 
     [Theory]
-    [InlineData("python", "a.py", "print(1)\n", "print($A)")]
-    [InlineData("java", "A.java", "class A { void f() { g(1); } }\n", "g($A)")]
-    public async Task ShouldRefuseByName_WhenRuleTargetsAnIndexedLanguageItDoesNotServe(string language, string file, string source, string pattern)
+    [InlineData("python", "a.py", "print(1)\n", "print($A)", "h($A)", "h(1)\n")]
+    [InlineData("java", "A.java", "class A { void f() { g(1); } }\n", "g($A)", "h($A)", "class A { void f() { h(1); } }\n")]
+    [InlineData("go", "a.go", "package p\n\nfunc f() { g(1) }\n", "g($A)", "h($A)", "package p\n\nfunc f() { h(1) }\n")]
+    [InlineData("ruby", "a.rb", "g(1)\n", "g($A)", "h($A)", "h(1)\n")]
+    [InlineData("php", "a.php", "<?php\ng(1);\n", "g($A)", "h($A)", "<?php\nh(1);\n")]
+    [InlineData("json", "a.json", "{\"a\": 1}\n", "{\"a\": $A}", "{\"b\": $A}", "{\"b\": 1}\n")]
+    [Trait("BR", "CH-01")]
+    public async Task ShouldRewrite_WhenRuleTargetsAnyGrammar(string language, string file, string source, string pattern, string fix, string expected)
     {
         var fs = await SeedAsync(("A.cs", SrcA));
         await fs.WriteAllTextAsync($"/workspace/src/{file}", source, CancellationToken.None);
         using var tool = new StructuralRewriteTool(fs, _pool, _index);
 
-        var ex = await Assert.ThrowsAnyAsync<ArgumentException>(() => tool.ExecuteTypedForTest(
-            new StructuralRewriteRequest { Pattern = pattern, Language = language, Fix = "h($A)", Paths = ImmutableList.Create("/workspace/src"), DryRun = false },
-            CancellationToken.None));
+        var resp = await tool.ExecuteTypedForTest(
+            new StructuralRewriteRequest { Pattern = pattern, Language = language, Fix = fix, Paths = ImmutableList.Create("/workspace/src"), DryRun = false },
+            CancellationToken.None);
 
-        Assert.Contains(language, ex.Message, StringComparison.Ordinal);
-        Assert.Equal(source, await File.ReadAllTextAsync(Disk(file), TestContext.Current.CancellationToken));
+        Assert.Equal(1, Assert.Single(resp.Files).Applied);
+        Assert.Equal(expected, await File.ReadAllTextAsync(Disk(file), TestContext.Current.CancellationToken));
     }
 
     [Fact]

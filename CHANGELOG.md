@@ -22,17 +22,40 @@ the packages of these ecosystems (`pom.xml`, `build.gradle`, `build.gradle.kts`,
 `CMakeLists.txt`), and `orkeon doctor` checks the new grammar libraries. `LanguageRegistry` also loads
 agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog, parsed on request only,
 and the publish step no longer prunes these 19 grammars; OCaml (no macOS build) and the Windows-only swift, toml and
-tsq are still pruned. The structural tools (`node_outline`, `node_read`, `node_replace`, `structural_search`) still
-serve C#, TypeScript and Markdown only.
+tsq are still pruned.
 
 A C# `new Foo()` call is now named after its type, `Foo`, instead of the `new` keyword, so it resolves to the class it
 creates as a TypeScript `new` does.
 
-### Fixed — `structural_rewrite` serves C# and TypeScript only, as documented
+### Added — the structural tools serve every grammar
 
-It refused Markdown but accepted every other shipped grammar — Python, Go and Rust, and now the seven new ones —
-although its documentation and its own error message name C# and TypeScript. A rule of another language is now refused
-by name, as `structural_search` refuses it.
+`node_outline`, `node_read`, `node_replace`, `node_insert`, `node_ensure`, `edit_batch`, `structural_search` and
+`structural_rewrite` served C#, TypeScript and Markdown (and `structural_rewrite` accepted, undocumented, the other
+indexed grammars). They now take a file of any grammar the registry loads: the twelve indexed languages, `tsx`, and
+the parse-only agda (`.agda`), css, embedded-template (`.erb`, `.ejs`), haskell (`.hs`), html (`.html`, `.htm`), json,
+julia (`.jl`), ql (`.ql`, `.qll`), razor (`.cshtml`, `.razor`), scala (`.scala`, `.sc`) and verilog (`.v`, `.sv`,
+`.vh`, `.svh`), whose extensions `LanguageRegistry.Parseable` lists; discovery and the index still claim the indexed
+extensions only. The outline names declarations in Python, Go (a method as `Type.Method`), Rust (an `impl` block's
+functions under its type), Java, JavaScript, C and C++ (by declarator, a template under its function), PHP, Ruby, Bash,
+Scala, Julia and JSON (a key path, `a.b`); a grammar with no declaration kind (CSS, HTML, Haskell...) is outlined by
+the tree-sitter paths of its top-level nodes. `inside` appends after the last member of an indented or `end`-closed
+body (Python, Ruby), and gives a Rust or C enum variant and a JSON pair their separating comma. A pattern is parsed in
+any grammar (a PHP pattern without its `<?php` tag, a JSON pattern whose metavariables stand for values). A
+`.tsx` file is read with the `tsx` grammar by the node tools; a `typescript` rule still scans `.ts` and `.tsx`, a `tsx`
+rule scans `.tsx`. `ensure_import` also serves `tsx` and JavaScript; `ensure_using` stays C#. A method's receiver
+(Rust `self`, Python `self` or `cls`) is no longer a parameter of its selector.
+
+### Fixed — a parser could return to another grammar's pool
+
+`TreeSitterParserPool.Return` found a parser's pool by its grammar name, and most grammars carry none (TypeScript,
+Java, C++, Ruby, JSON, Scala...): a parser of one went back to the first nameless grammar's pool, and the next parse in
+that language ran with the wrong grammar. The pool now records each parser's language when it makes it; a parser it
+did not make is disposed.
+
+### Fixed — the `tsx` grammar never loaded
+
+`LanguageRegistry` mapped `tsx` onto the `tree-sitter-typescript` library, which has no `tree_sitter_tsx` entry point:
+every `tsx` parse threw. It loads `tree-sitter-tsx`, the library the publish whitelist already kept.
 
 ### Fixed — two adapter queries that never compiled
 

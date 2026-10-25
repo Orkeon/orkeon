@@ -34,10 +34,8 @@
          Windows form (tree-sitter-go.dll) and the Unix/macOS one
          (libtree-sitter-go.so / .dylib) are matched against this list.
          `tree-sitter` itself is the shared runtime — never prune it.
-         `tree-sitter-tsx` is a distinct native library in the package even
-         though LanguageRegistry maps the `tsx` language onto the
-         tree-sitter-typescript library; keep it, TreeSitter.DotNet probes for
-         it by name. -->
+         `tree-sitter-tsx` is a distinct native library in the package: the
+         `tsx` language loads it, not tree-sitter-typescript. -->
     <OrkeonTreeSitterKeptGrammars Condition="'$(OrkeonTreeSitterKeptGrammars)' == ''">tree-sitter;tree-sitter-typescript;tree-sitter-tsx;tree-sitter-python;tree-sitter-c-sharp;tree-sitter-go;tree-sitter-rust;tree-sitter-javascript;tree-sitter-java;tree-sitter-c;tree-sitter-cpp;tree-sitter-php;tree-sitter-ruby;tree-sitter-bash;tree-sitter-agda;tree-sitter-css;tree-sitter-embedded-template;tree-sitter-haskell;tree-sitter-html;tree-sitter-jsdoc;tree-sitter-json;tree-sitter-julia;tree-sitter-ql;tree-sitter-razor;tree-sitter-scala;tree-sitter-verilog</OrkeonTreeSitterKeptGrammars>
   </PropertyGroup>
 

@@ -141,7 +141,7 @@ Les plages sont des offsets en **octets** UTF-8 (`NodeRange.StartByte`/`EndByte`
 | `complexity_report` | Top-N par métrique (`Cyclomatic`, `NestingDepth`, `FanOut`, `LoC`, `Callers`) | `{ "metric": "Cyclomatic", "top_n": 20 }` |
 | `access_cost` | Coût d'accès aux ports (lectures, écritures, appels en boucle, filtres en mémoire) des membres par `fqns` ou `changed_files`, restreint à `roots` | `{ "changed_files": ["/src/Orders/A.cs"], "roots": ["/src/Orders"] }` |
 | `statement_query` | Requêtes structurelles L4 (if, try, return...) — chaque index porte les statements | `{ "parent_fqns": ["..."], "kinds": ["TryCatch"] }` |
-| `node_outline` | Membres d'un fichier C# ou TypeScript avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
+| `node_outline` | Membres d'un fichier source (toute grammaire chargée) ou sections Markdown, avec sélecteur, genre, plages d'octets et de lignes | `{ "path": "/workspace/Calc.cs" }` |
 | `node_read` | Un membre par sélecteur : texte, plage et SHA-256, lu sans coupure | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)" }` |
 | `node_replace` | Remplace un nœud par sélecteur et SHA-256 attendu (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc.Add(int)", "expected_hash": "<sha256>", "text": "..." }` |
 | `node_insert` | Ajoute un nœud `inside`, `before` ou `after` un sélecteur d'ancrage (classe Edit) | `{ "path": "/workspace/Calc.cs", "selector": "Demo.Calc", "position": "inside", "text": "public int Zero() => 0;" }` |
@@ -223,7 +223,9 @@ par-dessus la passe paresseuse.
 
 Un sélecteur résout exactement un nœud ou échoue en listant les candidats. L'étendue d'un nœud inclut ses commentaires de tête et ses attributs ou décorateurs.
 
-Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). Un en-tête `.h` est lu en C++, sur-ensemble qui parse aussi les en-têtes C. Le registre charge aussi agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala et verilog, parsées à la demande seulement : aucun adaptateur ne les indexe et la découverte ne réclame pas leurs fichiers. OCaml (pas de build macOS dans le paquet) et les grammaires swift, toml et tsq, propres à Windows, sont élaguées à la publication. Les déclarations sont adressables aujourd'hui en C# et TypeScript, les sections en Markdown ; les autres grammaires livrées sont refusées par leur nom ; un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom.
+Grammaires livrées (`LanguageRegistry.Shipped`) : typescript (`.ts`, `.tsx`), python (`.py`), csharp (`.cs`), go (`.go`), rust (`.rs`), javascript (`.js`, `.jsx`, `.mjs`, `.cjs`), java (`.java`), c (`.c`), cpp (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), php (`.php`), ruby (`.rb`), bash (`.sh`, `.bash`), markdown (`.md`, `.markdown`). Un en-tête `.h` est lu en C++, sur-ensemble qui parse aussi les en-têtes C. Le registre charge aussi tsx, agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala et verilog : aucun adaptateur ne les indexe et la découverte ne réclame pas leurs fichiers. OCaml (pas de build macOS dans le paquet) et les grammaires swift, toml et tsq, propres à Windows, sont élaguées à la publication.
+
+Les outils de nœuds et les outils structurels lisent un fichier dans toute grammaire de `LanguageRegistry.Parseable` : les grammaires indexées ci-dessus, `.tsx` étant lu par la grammaire `tsx`, puis tsx (`.tsx`), agda (`.agda`), css (`.css`), embedded-template (`.erb`, `.ejs`), haskell (`.hs`), html (`.html`, `.htm`), json (`.json`), julia (`.jl`), ql (`.ql`, `.qll`), razor (`.cshtml`, `.razor`), scala (`.scala`, `.sc`) et verilog (`.v`, `.sv`, `.vh`, `.svh`) ; jsdoc ne réclame aucune extension. Un fichier dont l'extension n'est réclamée par aucune grammaire est refusé par son nom. La forme lisible nomme les déclarations en C#, TypeScript, JavaScript, Python, Go (une méthode est `Type.Methode`), Rust (les fonctions d'un bloc `impl` se rangent sous son type), Java, C et C++ (par déclarateur : `n::A::g` pour une définition hors classe), PHP, Ruby, Bash, Scala, Julia et JSON (le chemin des clés, `a.b`) ; les sections en Markdown. Un fichier où aucun genre de déclaration n'est connu (CSS, HTML, Haskell, Verilog...) a pour plan les chemins `@ts:` de ses nœuds de premier niveau, à travers un nœud englobant unique (`@ts:document/0/element/2/element`). Le receveur d'une méthode (`self` en Rust, `self` ou `cls` en Python) ne compte pas parmi ses types de paramètres.
 
 `node_outline` liste les membres avec sélecteur, genre, plage d'octets et plage de lignes. `node_read` renvoie le texte d'un membre, sa plage et le SHA-256 de ses octets, sans coupure : l'outil porte sa propre borne de résultat (`node_read` = 256 000 caractères dans `AgentDefaults`), la coupure par défaut des résultats d'outil ne s'applique donc pas.
 
@@ -328,6 +330,8 @@ Entrée : `action`, puis `fqns` / `files` pour `closure`, ou `a` / `b` (chacun `
 
 `structural_search` (classe Read) trouve des nœuds de syntaxe par motif ou par règle. Le moteur est natif (aucun binaire ast-grep) : chaque fichier candidat est analysé de nouveau par le matcher, un résultat ne vient donc jamais d'un index périmé. Donner exactement un de `pattern`, `rule` (un objet) ou `rule_file`.
 
+Le `language` est toute grammaire de `LanguageRegistry.Parseable` ou un alias (`cs`, `ts`, `js`, `c++`, `rb`, `sh`, `md`) ; il choisit les fichiers parcourus par extension, et une règle `typescript` parcourt `.ts` et `.tsx`. Un motif est analysé avec cette grammaire : un motif PHP se passe de la balise `<?php`, un motif JSON est une valeur dont les métavariables tiennent lieu de valeurs (`{"name": $N}`).
+
 Sous-ensemble de règles :
 
 | Clé | Signification |
@@ -354,7 +358,7 @@ Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (
 
 `node_insert` ajoute un nœud à une position relative à un sélecteur d'ancrage :
 
-- **`inside`** ajoute le texte comme dernier membre d'un corps de classe, struct, interface ou namespace (C#, TypeScript), ou à la fin de la section d'un titre Markdown ; les membres d'enum reçoivent la virgule de séparation. L'indentation est celle du premier frère, sinon celle du parent plus l'unité détectée du fichier (espaces ou tabulations) ; un corps vide utilise la seconde règle.
+- **`inside`** ajoute le texte comme dernier membre d'un corps entre accolades (classe, struct, interface, namespace, impl ou objet JSON), après le dernier membre d'un corps indenté ou fermé par `end` (Python, Ruby), ou à la fin de la section d'un titre Markdown ; un membre d'enum C#, Rust ou C et une paire JSON reçoivent la virgule de séparation. L'indentation est celle du premier frère, sinon celle du parent plus l'unité détectée du fichier (espaces ou tabulations) ; un corps vide utilise la seconde règle.
 - **`before`** insère au-dessus des commentaires et attributs de tête de l'ancre, **`after`** en dessous ; un texte multi-ligne est ré-indenté ligne à ligne sur l'indentation de l'ancre. Aucun hash d'ancrage n'est requis pour `before`/`after`.
 - Le résultat est ré-analysé comme pour `node_replace` et refusé s'il introduit un diagnostic.
 
@@ -372,7 +376,7 @@ Les résultats sont bornés par `max_results` (100 par défaut) et `max_files` (
 
 - `dry_run` vaut `true` par défaut : rien n'est écrit, le résultat porte un diff unifié par fichier, le nombre de correspondances et le nombre appliqué.
 - Chaque fichier réécrit est ré-analysé en mémoire ; un fichier dont la réécriture ne s'analyse pas est refusé seul (`refused_reason`), les autres sont appliqués.
-- C# et TypeScript uniquement : les fichiers Markdown sont refusés.
+- Toute grammaire que sert `structural_search` sauf Markdown, qui est refusé.
 
 ## Extensibilité
 
