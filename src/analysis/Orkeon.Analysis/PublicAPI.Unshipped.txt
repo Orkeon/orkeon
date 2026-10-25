@@ -290,3 +290,5 @@ Orkeon.Analysis.Adapters.RubyAdapter.RefineKind(Orkeon.Analysis.Abstractions.Uni
 Orkeon.Analysis.Adapters.RubyAdapter.ResolveImportPath(string! importPath, string! currentVirtualFilePath) -> string?
 Orkeon.Analysis.Adapters.RubyAdapter.RubyAdapter() -> void
 Orkeon.Analysis.Adapters.RubyAdapter.StatementQuery.get -> string!
+Orkeon.Analysis.Core.DependencyGraphBuilder.RegisterFile(string! filePath, string! source, System.Collections.Generic.IReadOnlyList<Orkeon.Analysis.Abstractions.Models.RaggableNode!>! nodes, Orkeon.Analysis.Abstractions.Interfaces.ILanguageAdapter! adapter) -> void
+static Orkeon.Analysis.Core.DependencyGraphBuilder.GraphGroupOf(string! languageName) -> string!

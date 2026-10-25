@@ -57,6 +57,31 @@ public class BashAdapterTests
         Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Calls, "main", "log"));
     }
 
+    [Theory]
+    [InlineData("source ./lib/common.sh")]
+    [InlineData(". lib/common.sh")]
+    [InlineData("source 'lib/common.sh'")]
+    public async Task Graph_links_unquoted_and_single_quoted_source(string line)
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(new BashAdapter(),
+            ("/r/run.sh", line + "\n"),
+            ("/r/lib/common.sh", "log() { echo \"$1\"; }\n"));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Imports, "/r/run.sh", "/r/lib/common.sh"));
+    }
+
+    [Theory]
+    [InlineData("source $DIR/lib/common.sh")]
+    [InlineData("source \"$DIR/lib/common.sh\"")]
+    public async Task Source_built_at_run_time_draws_no_edge(string line)
+    {
+        var (_, edges) = await AdapterHarness.GraphAsync(new BashAdapter(),
+            ("/r/run.sh", line + "\n"),
+            ("/lib/common.sh", "log() { echo \"$1\"; }\n"));
+
+        Assert.DoesNotContain(edges, e => e.Kind == EdgeKind.Imports);
+    }
+
     [Fact]
     public void Source_built_from_a_variable_is_not_resolved()
     {

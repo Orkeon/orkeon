@@ -167,4 +167,57 @@ public class RaggableTreeBuilderTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task C_file_resolves_include_and_calls_into_a_header_parsed_as_cpp()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/main.c", "#include \"util.h\"\nint run(void) { return twice(2); }\n"),
+            ("src/util.h", "int twice(int a) { return a * 2; }\n"),
+        ]);
+        try
+        {
+            var builder = new RaggableTreeBuilder([new CAdapter(), new CppAdapter()], TestFixtures.CreateFs(dir));
+            var result = await builder.BuildAsync(
+                TestFixtures.TestVirtualRoot,
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var nodes = result.Tree.Nodes.ToList();
+            Assert.Equal("cpp", nodes.Single(n => n.Name == "twice").Language);
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Imports,
+                $"{TestFixtures.TestVirtualRoot}/src/main.c", $"{TestFixtures.TestVirtualRoot}/src/util.h"));
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Calls, "run", "twice"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task TypeScript_file_resolves_import_of_a_javascript_file()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/app.ts", "import { helper } from './lib';\nexport function main(): number { return helper(); }\n"),
+            ("src/lib.js", "export function helper() { return 1; }\n"),
+        ]);
+        try
+        {
+            var builder = new RaggableTreeBuilder([new TypeScriptAdapter(), new JavaScriptAdapter()], TestFixtures.CreateFs(dir));
+            var result = await builder.BuildAsync(
+                TestFixtures.TestVirtualRoot,
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            var nodes = result.Tree.Nodes.ToList();
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Imports,
+                $"{TestFixtures.TestVirtualRoot}/src/app.ts", $"{TestFixtures.TestVirtualRoot}/src/lib.js"));
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Calls, "main", "helper"));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

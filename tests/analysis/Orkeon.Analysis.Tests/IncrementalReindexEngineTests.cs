@@ -48,6 +48,40 @@ public class IncrementalReindexEngineTests
     }
 
     [Fact]
+    public async Task Modified_c_file_keeps_its_include_and_calls_into_a_cpp_header()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/main.c", "#include \"util.h\"\nint run(void) { return twice(2); }\n"),
+            ("src/util.h", "int twice(int a) { return a * 2; }\n"),
+        ]);
+        try
+        {
+            ILanguageAdapter[] adapters = [new CAdapter(), new CppAdapter()];
+            var request = new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot };
+            var initial = await new RaggableTreeBuilder(adapters, TestFixtures.CreateFs(dir))
+                .BuildAsync(TestFixtures.TestVirtualRoot, request, CancellationToken.None);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "src", "main.c"),
+                "#include \"util.h\"\nint run(void) { return twice(3); }\n",
+                TestContext.Current.CancellationToken);
+            var engine = new IncrementalReindexEngine(adapters, TestFixtures.CreateFs(dir));
+            var result = await engine.ReindexAsync(
+                initial.Tree, TestFixtures.TestVirtualRoot,
+                [$"{TestFixtures.TestVirtualRoot}/src/main.c"],
+                request,
+                CancellationToken.None);
+
+            var nodes = result.Tree.Nodes.ToList();
+            Assert.Equal(1, result.ChangedFileCount);
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Imports,
+                $"{TestFixtures.TestVirtualRoot}/src/main.c", $"{TestFixtures.TestVirtualRoot}/src/util.h"));
+            Assert.True(AdapterHarness.HasEdge(nodes, result.Tree.Edges, EdgeKind.Calls, "run", "twice"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public async Task Added_file_produces_new_module_and_symbols()
     {
         var dir = await TestFixtures.WriteDirectoryAsync([

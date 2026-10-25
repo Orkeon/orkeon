@@ -157,7 +157,8 @@ public sealed class PhpAdapter : ILanguageAdapter
     {
         ArgumentException.ThrowIfNullOrEmpty(importPath);
         ArgumentException.ThrowIfNullOrEmpty(currentVirtualFilePath);
-        var target = AdapterText.Unquote(importPath);
+        // `require __DIR__ . '/lib/a.php'` yields '/lib/a.php': a path from the file's own directory.
+        var target = AdapterText.Unquote(importPath).TrimStart('/');
         return target.Length == 0 ? null : AdapterText.JoinRelative(currentVirtualFilePath, target);
     }
 }

@@ -14,11 +14,25 @@ Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`Lang
 `CppAdapter` (`.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`), `PhpAdapter` (`.php`), `RubyAdapter` (`.rb`) and
 `BashAdapter` (`.sh`, `.bash`). Each extracts declarations with their kind, parent, modifiers, decorators, doc comment,
 signature and statements, and feeds the graph its import, call and inheritance edges; a file import edge comes from a
-relative path only (`require_relative`, a quoted `#include`, `require_once`, `source`). `LanguageRegistry` also loads
+relative path only (`require_relative`, a quoted `#include`, `require`/`include` including `__DIR__ . '/x.php'`, a
+`source` or `.` whose path is a word or a quoted string without a variable). C and C++ resolve in one graph, so a `.c`
+file reaches the `.h` header it includes, parsed as C++; JavaScript and TypeScript share one too, and an extensionless
+import also finds a `.jsx` file (`DependencyGraphBuilder.GraphGroupOf`, `RegisterFile(..., adapter)`). Discovery detects
+the packages of these ecosystems (`pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`,
+`CMakeLists.txt`), and `orkeon doctor` checks the new grammar libraries. `LanguageRegistry` also loads
 agda, css, embedded-template, haskell, html, jsdoc, json, julia, ql, razor, scala and verilog, parsed on request only,
 and the publish step no longer prunes these 19 grammars; OCaml (no macOS build) and the Windows-only swift, toml and
 tsq are still pruned. The structural tools (`node_outline`, `node_read`, `node_replace`, `structural_search`) still
 serve C#, TypeScript and Markdown only.
+
+A C# `new Foo()` call is now named after its type, `Foo`, instead of the `new` keyword, so it resolves to the class it
+creates as a TypeScript `new` does.
+
+### Fixed — `structural_rewrite` serves C# and TypeScript only, as documented
+
+It refused Markdown but accepted every other shipped grammar — Python, Go and Rust, and now the seven new ones —
+although its documentation and its own error message name C# and TypeScript. A rule of another language is now refused
+by name, as `structural_search` refuses it.
 
 ### Fixed — two adapter queries that never compiled
 

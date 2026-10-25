@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using TsNode = TreeSitter.Node;
 
@@ -22,13 +21,16 @@ internal static class AdapterText
         return SignatureUpTo(node, body is not null && body.StartIndex > node.StartIndex ? body.StartIndex : node.EndIndex);
     }
 
-    /// <summary>The declaration text up to the byte offset <paramref name="endIndex"/>, normalised as <see cref="Signature"/>.</summary>
+    /// <summary>
+    /// The declaration text up to the offset <paramref name="endIndex"/>, normalised as <see cref="Signature"/>.
+    /// Node offsets count characters of the source, as the other adapters slice <c>Text</c>.
+    /// </summary>
     public static string SignatureUpTo(TsNode node, int endIndex)
     {
         ArgumentNullException.ThrowIfNull(node);
-        var bytes = Encoding.UTF8.GetBytes(node.Text ?? string.Empty);
-        var length = Math.Clamp(endIndex - node.StartIndex, 0, bytes.Length);
-        var signature = WhitespaceRegex.Replace(Encoding.UTF8.GetString(bytes, 0, length), " ").Trim().TrimEnd(';').TrimEnd();
+        var text = node.Text ?? string.Empty;
+        var length = Math.Clamp(endIndex - node.StartIndex, 0, text.Length);
+        var signature = WhitespaceRegex.Replace(text[..length], " ").Trim().TrimEnd(';').TrimEnd();
         return signature.Length > MaxSignatureLength ? signature[..MaxSignatureLength] + "…" : signature;
     }
 

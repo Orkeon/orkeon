@@ -46,6 +46,18 @@ public class PhpAdapterTests
         Assert.Contains(area.Statements, s => s.Kind == StatementKind.TryCatch);
     }
 
+    [Theory]
+    [InlineData("require __DIR__ . '/lib/base.php';")]
+    [InlineData("include \"lib/base.php\";")]
+    public async Task Graph_links_dir_relative_and_double_quoted_requires(string line)
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(new PhpAdapter(),
+            ("/r/a.php", "<?php\n" + line + "\n"),
+            ("/r/lib/base.php", "<?php class Base {}\n"));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Imports, "/r/a.php", "/r/lib/base.php"));
+    }
+
     [Fact]
     public async Task Graph_links_require_extends_implements_and_calls()
     {

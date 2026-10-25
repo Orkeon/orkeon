@@ -103,7 +103,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 
 ## Six-phase pipeline
 
-1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`), exclusion via patterns and `.gitignore`.
+1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns and `.gitignore`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`), extracted on every build.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.
@@ -480,7 +480,8 @@ Implement `IVectorStoreProvider` (`IndexAsync`, `SearchAsync`, `DeleteAsync`) an
 
 - No support for C++ macros / fully resolved templates, nor for Ruby/Elixir metaprogramming.
 - The import resolver is heuristic for dynamic languages (Python, TypeScript, JavaScript, Ruby, PHP): re-exports and monkey patches can produce `UnresolvedRef`.
-- File import edges come from relative paths only: Java `import`, PHP `use`, Ruby `require` (as opposed to `require_relative`) and a C `#include <...>` name a package, a namespace or a system header, not a file, and draw no edge to a file of the tree; a Bash `source` whose path holds a variable is not resolved.
+- File import edges come from relative paths only: Java `import`, PHP `use`, Ruby `require` (as opposed to `require_relative`) and a C `#include <...>` name a package, a namespace or a system header, not a file, and draw no edge to a file of the tree; a Bash `source` whose path holds a variable is not resolved. A PHP path starting with `/` (`__DIR__ . '/lib/a.php'`) is read from the file's directory.
+- Edges resolve within a graph group (`DependencyGraphBuilder.GraphGroupOf`): C and C++ share one, so a `.c` file reaches the `.h` header it includes (parsed as C++) and the functions declared there; JavaScript and TypeScript share another. The other languages resolve each in their own.
 - The summarizer is C#-only (`Summarizer.Provider` + an `ILlmProvider`); OpenAI/Ollama embeddings need their endpoint, while the runner host's on-device default needs nothing. The pipeline works without embeddings (`codebase_search` then ranks by BM25 only).
 - The index is process-local: `InMemoryRaggableStore` is rebuilt by `index_codebase` in each process, and the optional vector-store mirror is never read back.
 - `FileSystemWatcherCodebaseWatcher` (the `ICodebaseWatcher` implementation, registered by no shipped host) relies on `System.IO.FileSystemWatcher` — on Linux/WSL, rename events may arrive decomposed (observed as Deleted then Created).

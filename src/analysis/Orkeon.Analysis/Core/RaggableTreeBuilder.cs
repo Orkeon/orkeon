@@ -95,7 +95,7 @@ public sealed class RaggableTreeBuilder
         List<RaggableNode> allNodes,
         List<RaggableNode> packageNodes,
         RaggableNode monorepo,
-        Dictionary<string, DependencyGraphBuilder> graphBuildersByLanguage,
+        Dictionary<string, DependencyGraphBuilder> graphBuildersByGroup,
         CancellationToken ct)
     {
         if (file.Language == MarkdownLanguage)
@@ -115,8 +115,8 @@ public sealed class RaggableTreeBuilder
         TreeAssembly.LinkToPackage(fileNodes, packageNodes, monorepo);
         allNodes.AddRange(fileNodes);
 
-        GetOrCreateBuilder(graphBuildersByLanguage, adapter)
-            .RegisterFile(file.VirtualPath, source, fileNodes);
+        GetOrCreateBuilder(graphBuildersByGroup, adapter)
+            .RegisterFile(file.VirtualPath, source, fileNodes, adapter);
     }
 
     private async Task<BuildResult> BuildCoreAsync(
@@ -142,21 +142,21 @@ public sealed class RaggableTreeBuilder
         allNodes.AddRange(packageNodes);
 
         // Phase 2/3 — Parse + Extract per file
-        var graphBuildersByLanguage = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
+        var graphBuildersByGroup = new Dictionary<string, DependencyGraphBuilder>(StringComparer.OrdinalIgnoreCase);
         var fileIndex = 0;
         foreach (var file in discovery.Files)
         {
             ct.ThrowIfCancellationRequested();
             _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Parse, ++fileIndex, discovery.Files.Length));
-            await ParseFileAsync(file, allNodes, packageNodes, monorepo, graphBuildersByLanguage, ct).ConfigureAwait(false);
+            await ParseFileAsync(file, allNodes, packageNodes, monorepo, graphBuildersByGroup, ct).ConfigureAwait(false);
         }
 
         ResolveMarkdownLinks(allNodes, new MarkdownLinkIndex(allNodes));
 
-        // Phase 3b — Resolve dependencies per language
+        // Phase 3b — Resolve dependencies per graph group (DependencyGraphBuilder.GraphGroupOf)
         _buildProgress?.Report(new IndexBuildProgress(IndexBuildPhase.Resolve, 0, 0));
         var allEdges = new List<RaggableEdge>();
-        foreach (var gb in graphBuildersByLanguage.Values)
+        foreach (var gb in graphBuildersByGroup.Values)
         {
             var edges = await gb.BuildDependenciesAsync(_resolver, ct).ConfigureAwait(false);
             allEdges.AddRange(edges);
@@ -224,10 +224,11 @@ public sealed class RaggableTreeBuilder
     private DependencyGraphBuilder GetOrCreateBuilder(
         Dictionary<string, DependencyGraphBuilder> builders, ILanguageAdapter adapter)
     {
-        if (!builders.TryGetValue(adapter.LanguageName, out var gb))
+        var group = DependencyGraphBuilder.GraphGroupOf(adapter.LanguageName);
+        if (!builders.TryGetValue(group, out var gb))
         {
             gb = new DependencyGraphBuilder(adapter, _pool);
-            builders[adapter.LanguageName] = gb;
+            builders[group] = gb;
         }
         return gb;
     }

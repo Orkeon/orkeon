@@ -189,12 +189,14 @@ public sealed class CppAdapter : ILanguageAdapter
     /// <summary>The access of a class member: the last <c>public:</c>/<c>private:</c> label before it, else the default of its class.</summary>
     private static string? AccessOf(TsNode declarationNode)
     {
-        var body = declarationNode.Parent;
+        // A member template sits in the body through its `template_declaration`.
+        var member = declarationNode.Parent?.Type == "template_declaration" ? declarationNode.Parent : declarationNode;
+        var body = member.Parent;
         if (body?.Type != "field_declaration_list") return null;
         string? access = null;
         foreach (var sibling in body.NamedChildren)
         {
-            if (sibling.StartIndex >= declarationNode.StartIndex) break;
+            if (sibling.StartIndex >= member.StartIndex) break;
             if (sibling.Type == "access_specifier") access = (sibling.Text ?? string.Empty).Trim();
         }
         return access ?? (body.Parent?.Type == "class_specifier" ? "private" : "public");

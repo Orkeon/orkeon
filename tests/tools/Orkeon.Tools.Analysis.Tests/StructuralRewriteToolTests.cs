@@ -170,6 +170,23 @@ public sealed class StructuralRewriteToolTests : IDisposable
         Assert.Equal(diff, Assert.Single(overridden.Files).Diff);
     }
 
+    [Theory]
+    [InlineData("python", "a.py", "print(1)\n", "print($A)")]
+    [InlineData("java", "A.java", "class A { void f() { g(1); } }\n", "g($A)")]
+    public async Task ShouldRefuseByName_WhenRuleTargetsAnIndexedLanguageItDoesNotServe(string language, string file, string source, string pattern)
+    {
+        var fs = await SeedAsync(("A.cs", SrcA));
+        await fs.WriteAllTextAsync($"/workspace/src/{file}", source, CancellationToken.None);
+        using var tool = new StructuralRewriteTool(fs, _pool, _index);
+
+        var ex = await Assert.ThrowsAnyAsync<ArgumentException>(() => tool.ExecuteTypedForTest(
+            new StructuralRewriteRequest { Pattern = pattern, Language = language, Fix = "h($A)", Paths = ImmutableList.Create("/workspace/src"), DryRun = false },
+            CancellationToken.None));
+
+        Assert.Contains(language, ex.Message, StringComparison.Ordinal);
+        Assert.Equal(source, await File.ReadAllTextAsync(Disk(file), TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     [Trait("BR", "RT-32")]
     public async Task ShouldRefuseMarkdownByName_WhenRuleTargetsMarkdown()

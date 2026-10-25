@@ -26,6 +26,12 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             ["pyproject.toml"] = "python",
             ["Cargo.toml"] = "cargo",
             ["go.mod"] = "go",
+            ["pom.xml"] = "maven",
+            ["build.gradle"] = "gradle",
+            ["build.gradle.kts"] = "gradle",
+            ["composer.json"] = "composer",
+            ["Gemfile"] = "bundler",
+            ["CMakeLists.txt"] = "cmake",
         };
 
     private readonly IFileSystemService _fs;

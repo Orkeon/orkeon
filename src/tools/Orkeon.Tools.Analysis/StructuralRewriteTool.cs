@@ -67,8 +67,10 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
         var language = LanguageRegistry.Resolve(rule.Language);
         if (language == StructuralFile.MarkdownLanguage)
             throw new ArgumentException("structural_rewrite rewrites csharp and typescript files only: markdown rules are refused.");
-        var grammar = LanguageRegistry.Shipped.FirstOrDefault(g => g.Language == language)
-            ?? throw new ArgumentException($"Unsupported language '{rule.Language}': structural_rewrite serves csharp and typescript.");
+        // The other shipped grammars index in RaggableTree but are not served here, as structural_search does not.
+        var grammar = language is "csharp" or "typescript" ? LanguageRegistry.Shipped.FirstOrDefault(g => g.Language == language) : null;
+        if (grammar is null)
+            throw new ArgumentException($"Unsupported language '{rule.Language}': structural_rewrite serves csharp and typescript.");
 
         var fixText = request.Fix ?? rule.Fix
             ?? throw new ArgumentException("No 'fix' given: pass 'fix' or use a rule that carries one.");

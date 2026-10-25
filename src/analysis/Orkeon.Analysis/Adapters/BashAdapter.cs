@@ -20,10 +20,13 @@ public sealed class BashAdapter : ILanguageAdapter
         (program (declaration_command) @decl)
         """;
 
+    // The first argument is the path: a word, a quoted or a raw string. A concatenation
+    // (`$DIR/lib.sh`) is built at run time and names no file.
     public string ImportQuery => """
-        ((command
+        (command
             name: (command_name) @_source
-            argument: (_)) @import
+            .
+            argument: [(word) (string) (raw_string)] @import
           (#match? @_source "^(source|\\.)$"))
         """;
 

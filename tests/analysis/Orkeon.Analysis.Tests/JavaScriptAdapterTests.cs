@@ -62,6 +62,23 @@ public class JavaScriptAdapterTests
     }
 
     [Fact]
+    public void Signature_cut_holds_with_non_ascii_text()
+    {
+        var nodes = AdapterHarness.Extract(new JavaScriptAdapter(), "/r/u.js", "// é\nfunction café(prénom) { return prénom; }\n");
+        Assert.Equal("function café(prénom)", nodes.Single(n => n.Name == "café").Signature);
+    }
+
+    [Fact]
+    public async Task Graph_resolves_an_extensionless_import_of_a_jsx_file()
+    {
+        var (nodes, edges) = await AdapterHarness.GraphAsync(new JavaScriptAdapter(),
+            ("/r/app.js", "import { Button } from './Button';\n"),
+            ("/r/Button.jsx", "export function Button() { return null; }\n"));
+
+        Assert.True(AdapterHarness.HasEdge(nodes, edges, EdgeKind.Imports, "/r/app.js", "/r/Button.jsx"));
+    }
+
+    [Fact]
     public async Task Graph_links_import_require_call_and_extends()
     {
         var (nodes, edges) = await AdapterHarness.GraphAsync(new JavaScriptAdapter(),
