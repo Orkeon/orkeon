@@ -424,7 +424,7 @@
     <value>Erneut starten</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>Die ausführbare Datei orkeon wurde auf diesem Computer nicht gefunden – der Start ist deaktiviert. Führen Sie die Diagnose aus.</value>
+    <value>Die Orkeon-Engine wurde auf diesem Rechner nicht gefunden. Nichts kann gestartet werden, bis sie installiert ist.</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} Agenten</value>
@@ -3762,11 +3762,17 @@
   <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
     <value>Erfolgreich</value>
   </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>Beendet</value>
+  </data>
   <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
     <value>Noch nichts gestartet: Jeder Agent des Teams bekommt hier seine Spalte.</value>
   </data>
   <data name="Studio.Run.TeamReady" xml:space="preserve">
     <value>Team bereit: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>Team bereit: {0} {0:plural:Agent|Agenten}, {1} {1:plural:deklarierter Ordner|deklarierte Ordner}.</value>
   </data>
   <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
     <value>Kein Team ausgewählt.</value>
@@ -3844,7 +3850,7 @@
     <value>nicht gefunden</value>
   </data>
   <data name="Studio.Run.CommandFooter" xml:space="preserve">
-    <value>Der genaue Befehl, den ein Terminal annimmt.</value>
+    <value>Befehl aus dem Team und den Optionen zusammengesetzt.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
     <value>MODUS</value>
@@ -3872,6 +3878,9 @@
   </data>
   <data name="Studio.Run.RunningFooter" xml:space="preserve">
     <value>Die Ausführung läuft: „Stoppen“ unterbricht sie.</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>Läuft seit {0}.</value>
   </data>
   <data name="Studio.Run.DoneFooter" xml:space="preserve">
     <value>Ausführung beendet.</value>

@@ -89,6 +89,7 @@ public sealed class LaunchTabsTests : IDisposable
         Assert.Equal(LaunchTabViewModel.RunTab, tab.ActiveTab);
         Assert.Equal("Done", tab.RunTabState);
         Assert.True(tab.IsEditable);
+        Assert.Equal("Finished", tab.RunPaneTitle);
 
         launcher.ExitCode = 1;
         await tab.RunAsync(TestContext.Current.CancellationToken);
@@ -107,6 +108,8 @@ public sealed class LaunchTabsTests : IDisposable
 
         Assert.Equal(["Researcher", "Writer"], tab.AgentLanes.Select(lane => lane.Name));
         Assert.All(tab.AgentLanes, lane => Assert.Equal("waiting", lane.State));
+        Assert.Equal("Team ready: 2 agents, 0 declared folders.", tab.TeamFooter);
+        Assert.Equal("Ready to work", tab.RunPaneTitle);
     }
 
     [Fact]

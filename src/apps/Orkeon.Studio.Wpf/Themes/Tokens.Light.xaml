@@ -46,6 +46,12 @@
   <SolidColorBrush x:Key="DangerWeakBrush"  Color="#F7E3E0"/>
   <SolidColorBrush x:Key="InfoBrush"        Color="#2A6E8C"/>
   <SolidColorBrush x:Key="InfoWeakBrush"    Color="#E1EEF3"/>
+  <!-- Refonte R4: the Assistant form, for the commands that ask the model; blue on purpose, apart from the accent. -->
+  <SolidColorBrush x:Key="AssistantBrush"      Color="#1F5B7A"/>
+  <SolidColorBrush x:Key="AssistantWeakBrush"  Color="#D6E8F5"/>
+  <SolidColorBrush x:Key="AssistantLineBrush"  Color="#9CC3DC"/>
+  <SolidColorBrush x:Key="AssistantHoverBrush" Color="#C8DFF0"/>
+  <SolidColorBrush x:Key="AssistantPressedBrush" Color="#B9D5EA"/>
   <SolidColorBrush x:Key="SandBrush"        Color="#BB8628"/>
   <SolidColorBrush x:Key="SandWeakBrush"    Color="#FBF3E2"/>
 

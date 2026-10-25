@@ -163,7 +163,9 @@
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Launch now</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>Running…</value></data>
   <data name="Studio.Run.BtnRelaunch" xml:space="preserve"><value>Relaunch</value></data>
-  <data name="Studio.Run.CliMissing" xml:space="preserve"><value>The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.</value></data>
+  <data name="Studio.Run.CliMissing" xml:space="preserve">
+    <value>The Orkeon engine cannot be found on this machine. Nothing can be launched until it is installed.</value>
+  </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
   <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>setting {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Change team</value></data>
@@ -2074,11 +2076,17 @@
   <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
     <value>Succeeded</value>
   </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>Finished</value>
+  </data>
   <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
     <value>Nothing has been launched yet: each agent of the team gets its column here.</value>
   </data>
   <data name="Studio.Run.TeamReady" xml:space="preserve">
     <value>Team ready: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>Team ready: {0} {0:plural:agent|agents}, {1} {1:plural:declared folder|declared folders}.</value>
   </data>
   <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
     <value>No team chosen.</value>
@@ -2156,7 +2164,7 @@
     <value>not found</value>
   </data>
   <data name="Studio.Run.CommandFooter" xml:space="preserve">
-    <value>The exact command a terminal takes.</value>
+    <value>Command composed from the team and the options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
     <value>MODE</value>
@@ -2184,6 +2192,9 @@
   </data>
   <data name="Studio.Run.RunningFooter" xml:space="preserve">
     <value>The run goes on: « Stop » interrupts it.</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>Running for {0}.</value>
   </data>
   <data name="Studio.Run.DoneFooter" xml:space="preserve">
     <value>Run finished.</value>

@@ -424,7 +424,7 @@
     <value>重新启动</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>未在本机上找到 orkeon 可执行文件——启动已禁用。请运行诊断。</value>
+    <value>在此计算机上找不到 Orkeon 引擎。安装之前无法启动任何内容。</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} 个智能体</value>
@@ -3762,11 +3762,17 @@
   <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
     <value>成功</value>
   </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>已完成</value>
+  </data>
   <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
     <value>尚未启动任何内容：团队的每个代理将在此处拥有一列。</value>
   </data>
   <data name="Studio.Run.TeamReady" xml:space="preserve">
     <value>团队已就绪：{0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>团队就绪：{0} 个智能体，{1} 个已声明的文件夹。</value>
   </data>
   <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
     <value>尚未选择团队。</value>
@@ -3844,7 +3850,7 @@
     <value>未找到</value>
   </data>
   <data name="Studio.Run.CommandFooter" xml:space="preserve">
-    <value>终端可直接接受的确切命令。</value>
+    <value>根据团队和选项组成的命令。</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
     <value>模式</value>
@@ -3872,6 +3878,9 @@
   </data>
   <data name="Studio.Run.RunningFooter" xml:space="preserve">
     <value>运行正在进行：「停止」可中断。</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>已运行 {0}。</value>
   </data>
   <data name="Studio.Run.DoneFooter" xml:space="preserve">
     <value>运行已结束。</value>

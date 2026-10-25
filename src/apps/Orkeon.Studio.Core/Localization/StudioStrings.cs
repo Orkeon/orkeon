@@ -614,8 +614,10 @@ public static class StudioStringKeys
     public const string RunPaneIdle = "Studio.Run.PaneIdle";
     public const string RunPaneRunning = "Studio.Run.PaneRunning";
     public const string RunPaneSucceeded = "Studio.Run.PaneSucceeded";
+    public const string RunPaneDone = "Studio.Run.PaneDone";
     public const string RunPaneIdleContext = "Studio.Run.PaneIdleContext";
     public const string RunTeamReady = "Studio.Run.TeamReady";
+    public const string RunTeamReadyCounts = "Studio.Run.TeamReadyCounts";
     public const string RunTeamNotChosen = "Studio.Run.TeamNotChosen";
     public const string RunSeeOptions = "Studio.Run.SeeOptions";
     public const string RunSeeCommand = "Studio.Run.SeeCommand";
@@ -653,6 +655,7 @@ public static class StudioStringKeys
     public const string RunJournalReduce = "Studio.Run.JournalReduce";
     public const string RunNoRunFooter = "Studio.Run.NoRunFooter";
     public const string RunRunningFooter = "Studio.Run.RunningFooter";
+    public const string RunRunningSince = "Studio.Run.RunningSince";
     public const string RunDoneFooter = "Studio.Run.DoneFooter";
     public const string RunLockedDuringRun = "Studio.Run.LockedDuringRun";
     public const string RunReadyReal = "Studio.Run.ReadyReal";
@@ -2787,8 +2790,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunPaneIdle] = "Waiting",
         [StudioStringKeys.RunPaneRunning] = "Running",
         [StudioStringKeys.RunPaneSucceeded] = "Succeeded",
+        [StudioStringKeys.RunPaneDone] = "Finished",
         [StudioStringKeys.RunPaneIdleContext] = "Nothing has been launched yet: each agent of the team gets its column here.",
         [StudioStringKeys.RunTeamReady] = "Team ready: {0}",
+        [StudioStringKeys.RunTeamReadyCounts] = "Team ready: {0} {0:plural:agent|agents}, {1} {1:plural:declared folder|declared folders}.",
         [StudioStringKeys.RunTeamNotChosen] = "No team chosen.",
         [StudioStringKeys.RunSeeOptions] = "See the options →",
         [StudioStringKeys.RunSeeCommand] = "See the command →",
@@ -2814,7 +2819,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunRowMode] = "Mode",
         [StudioStringKeys.RunMountsCount] = "{0} {0:plural:folder|folders} mounted",
         [StudioStringKeys.RunEngineMissing] = "not found",
-        [StudioStringKeys.RunCommandFooter] = "The exact command a terminal takes.",
+        [StudioStringKeys.RunCommandFooter] = "Command composed from the team and the options.",
         [StudioStringKeys.RunModeLabel] = "MODE",
         [StudioStringKeys.RunFigSent] = "Sent",
         [StudioStringKeys.RunFigReceived] = "Received",
@@ -2824,6 +2829,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunJournalReduce] = "Reduce",
         [StudioStringKeys.RunNoRunFooter] = "No run in progress.",
         [StudioStringKeys.RunRunningFooter] = "The run goes on: « Stop » interrupts it.",
+        [StudioStringKeys.RunRunningSince] = "Running for {0}.",
         [StudioStringKeys.RunDoneFooter] = "Run finished.",
         [StudioStringKeys.RunLockedDuringRun] = "Can be changed after the run",
         [StudioStringKeys.RunReadyReal] = "Ready to launch in Real mode.",
@@ -3093,7 +3099,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunButtonRunning] = "Running…",
         [StudioStringKeys.RunButtonRelaunch] = "Relaunch",
         [StudioStringKeys.RunButtonTrial] = "Launch the trial",
-        [StudioStringKeys.RunCliMissing] = "The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.",
+        [StudioStringKeys.RunCliMissing] = "The Orkeon engine cannot be found on this machine. Nothing can be launched until it is installed.",
         [StudioStringKeys.RunMetaAgents] = "{0} agents",
         [StudioStringKeys.RunMetaProfile] = "setting {0}",
 

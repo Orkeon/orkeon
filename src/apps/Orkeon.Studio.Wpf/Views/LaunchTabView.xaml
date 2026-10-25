@@ -61,7 +61,7 @@
     <!-- The header (title, subtitle, the Essai | Réel switch) is the Lancer screen's: RunScreenView. -->
 
     <!-- CLI missing (R7): a danger alert with its one way out - never a raw English block (T-07) -->
-    <controls:Alert Tone="Danger" Margin="0,16,0,0" Message="{Binding CliBanner}"
+    <controls:Alert Tone="Danger" Margin="0,16,0,0" Message="{Binding CliBanner}" Details="{Binding BinaryStatus}"
                     Visibility="{Binding CliBanner, Converter={StaticResource StringPresentToVisibility}}">
       <controls:Alert.Actions>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnOpenDiagnostic">

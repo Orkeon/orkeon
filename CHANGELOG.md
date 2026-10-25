@@ -18,7 +18,7 @@ the « Try out » button of a team card, from « Test it first » after an impor
 `MainWindowViewModel.Run` (`Run.Real`, `Run.Trial`).
 
 The screens share new controls (`Alert`, `Badge`, `PropertyRow`, `PageHeader`, `ActionBar`) and button styles (`BtnPrimary`,
-`BtnSecondary`, `BtnDanger`, with a `ButtonSize`). The accent colour is now teal. The assistant moves from the three
+`BtnSecondary`, `BtnDanger`, with a `ButtonSize`, and `BtnAssistant`, a light blue reserved for « Ask the assistant » and « Rephrase », the commands that ask the model). The accent colour is now teal. The assistant moves from the three
 screens that each embedded it into one side panel, opened with « Ask the assistant » in the title bar. My teams gets
 card action bars, one banner for refused scheduled runs and an Undo toast after an archive. Create a team shows one step
 per screen behind a stepper; its Compose step becomes a binder of four tabs (Team, Team folders, Composition instruction,

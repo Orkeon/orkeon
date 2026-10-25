@@ -149,10 +149,15 @@ public sealed partial class LaunchTabViewModel
         : IsTeamRefused ? _strings.Format(StudioStringKeys.RunTabTeamBlocked, TeamHeadline ?? string.Empty)
         : TeamHeadline ?? string.Empty;
 
-    /// <summary>The team pane's footer: « Team ready: X », or that none is chosen.</summary>
-    public string TeamFooter => HasTeamCard
-        ? _strings.Format(StudioStringKeys.RunTeamReady, TeamHeadline ?? string.Empty)
-        : _strings[StudioStringKeys.RunTeamNotChosen];
+    /// <summary>
+    /// The team pane's footer: « Team ready: 3 agents, 2 declared folders. » when the crew's files
+    /// name its agents, « Team ready: X » when they do not (a scripted team), or that none is chosen.
+    /// </summary>
+    public string TeamFooter => !HasTeamCard
+        ? _strings[StudioStringKeys.RunTeamNotChosen]
+        : _crewRoles.Count > 0
+            ? _strings.Format(StudioStringKeys.RunTeamReadyCounts, _crewRoles.Count, FolderRows.Count)
+            : _strings.Format(StudioStringKeys.RunTeamReady, TeamHeadline ?? string.Empty);
 
     /// <summary>
     /// The fiche's mono line: the catalog's « 3 agents · reads … · writes to … », then the model
@@ -341,13 +346,13 @@ public sealed partial class LaunchTabViewModel
         _ => _strings[StudioStringKeys.RunTabRunIdle],
     };
 
-    /// <summary>The run pane's title: waiting, running, succeeded, failed.</summary>
+    /// <summary>The run pane's title: « Ready to work », running, « Finished », failed — the badge says the outcome.</summary>
     public string RunPaneTitle => _strings[CardState switch
     {
         RunCardState.Running => StudioStringKeys.RunPaneRunning,
-        RunCardState.Succeeded => StudioStringKeys.RunPaneSucceeded,
+        RunCardState.Succeeded => StudioStringKeys.RunPaneDone,
         RunCardState.Failed => StudioStringKeys.RunTabRunFailed,
-        _ => StudioStringKeys.RunPaneIdle,
+        _ => StudioStringKeys.RunStateIdle,
     }];
 
     /// <summary>The sentence under the title: what is going on, how it ended, or what the pane will show.</summary>
@@ -419,13 +424,15 @@ public sealed partial class LaunchTabViewModel
     /// <summary>« Enlarge » or « Reduce ».</summary>
     public string JournalEnlargeLabel => _strings[_isJournalEnlarged ? StudioStringKeys.RunJournalReduce : StudioStringKeys.RunJournalEnlarge];
 
-    /// <summary>The run pane's footer: nothing running, running, or finished.</summary>
-    public string RunFooter => _strings[CardState switch
+    /// <summary>The run pane's footer: nothing running, « Running for 2 min 05 s. », or finished.</summary>
+    public string RunFooter => CardState switch
     {
-        RunCardState.Running => StudioStringKeys.RunRunningFooter,
-        RunCardState.Idle => StudioStringKeys.RunNoRunFooter,
-        _ => StudioStringKeys.RunDoneFooter,
-    }];
+        RunCardState.Running => RunDuration is { } since
+            ? _strings.Format(StudioStringKeys.RunRunningSince, since)
+            : _strings[StudioStringKeys.RunRunningFooter],
+        RunCardState.Idle => _strings[StudioStringKeys.RunNoRunFooter],
+        _ => _strings[StudioStringKeys.RunDoneFooter],
+    };
 
     // ── The action bar ──
 
@@ -466,7 +473,7 @@ public sealed partial class LaunchTabViewModel
 
     /// <summary>The beat of the status bar moves the durations between the run's events.</summary>
     internal void RefreshClock() =>
-        OnPropertiesChanged(nameof(RunDuration), nameof(RunTabSubtitle), nameof(LaunchReadinessText));
+        OnPropertiesChanged(nameof(RunDuration), nameof(RunTabSubtitle), nameof(LaunchReadinessText), nameof(RunFooter));
 
     private void InitializeTabs()
     {
@@ -544,7 +551,7 @@ public sealed partial class LaunchTabViewModel
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(
         nameof(FolderRows), nameof(FoldersSectionTitle), nameof(OptionsFooter), nameof(ResultVirtualPath), nameof(ResultFigure),
-        nameof(LaunchReadinessText), nameof(MountsRow));
+        nameof(LaunchReadinessText), nameof(MountsRow), nameof(TeamFooter));
 
     private void OnProgressTasksChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildAgentLanes();
 

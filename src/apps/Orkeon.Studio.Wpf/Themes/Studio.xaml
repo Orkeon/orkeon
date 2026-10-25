@@ -92,10 +92,12 @@
     </Setter>
   </Style>
 
-  <!-- ══ Buttons (refonte R4): three forms, no more. Primary (accent fill, one per zone: the
+  <!-- ══ Buttons (refonte R4): four forms, no more. Primary (accent fill, one per zone: the
        action that moves things forward), Secondary (surface, line-strong border, ink: every
        other action, local ones included — no text-only button anywhere), Danger (red border,
-       red text). The solid red BtnDangerSolid exists only inside a delete confirmation.
+       red text), Assistant (light blue, blue border and text: only a command that asks the
+       model — « Ask the assistant », « Rephrase » —, never a zone's main action, one per zone).
+       The solid red BtnDangerSolid exists only inside a delete confirmation.
        Heights 28 / 32 / 40 (default) / 48 through controls:ButtonSize.Height, which also sets
        the radius (6 / 8 / 10 / 10) the template reads. A disabled button still shows its
        tooltip: it must say why and how to unlock it. ══ -->
@@ -171,6 +173,21 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+  <!-- Assistant: a round trip with the model, in its own blue rather than the accent. -->
+  <Style x:Key="BtnAssistant" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+        <Setter Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
+        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
   <!-- Solid danger: the confirm half of an in-place «Supprimer « X » ?» confirmation.
        Reached only from an armed confirmation, never from a resting action row. -->
   <Style x:Key="BtnDangerSolid" TargetType="Button" BasedOn="{StaticResource BtnBase}">
@@ -192,7 +209,8 @@
     <Setter Property="controls:ButtonSize.CornerRadius" Value="8"/>
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
   </Style>
-  <!-- A pressed-in secondary for a toggle that opens a panel («Demander à l'assistant»). -->
+  <!-- The Assistant form as a toggle that opens the side panel («Demander à l'assistant»),
+       pressed in while the panel is open. -->
   <Style x:Key="BtnToggle" TargetType="ToggleButton">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -200,9 +218,9 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Height" Value="32"/>
     <Setter Property="Padding" Value="12,0"/>
-    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -217,12 +235,12 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AssistantBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="bd" Property="Opacity" Value="0.45"/>

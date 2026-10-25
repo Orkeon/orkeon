@@ -157,13 +157,15 @@
   <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Exécution en cours</value></data>
   <data name="Studio.Run.StateDone" xml:space="preserve"><value>Exécution terminée</value></data>
   <data name="Studio.Run.BadgeIdle" xml:space="preserve"><value>en attente</value></data>
-  <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>en cours</value></data>
+  <data name="Studio.Run.BadgeRunning" xml:space="preserve"><value>En cours</value></data>
   <data name="Studio.Run.BadgeDone" xml:space="preserve"><value>Réussie</value></data>
-  <data name="Studio.Run.BadgeFailed" xml:space="preserve"><value>échouée</value></data>
+  <data name="Studio.Run.BadgeFailed" xml:space="preserve"><value>Échouée</value></data>
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Lancer maintenant</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>En cours…</value></data>
   <data name="Studio.Run.BtnRelaunch" xml:space="preserve"><value>Relancer</value></data>
-  <data name="Studio.Run.CliMissing" xml:space="preserve"><value>L'exécutable orkeon n'a pas été localisé sur cette machine — le lancement est désactivé. Lancez le diagnostic.</value></data>
+  <data name="Studio.Run.CliMissing" xml:space="preserve">
+    <value>Le moteur Orkeon est introuvable sur cette machine. Rien ne peut être lancé tant qu'il n'est pas installé.</value>
+  </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
   <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>modèle {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Changer d'équipe</value></data>
@@ -2074,11 +2076,17 @@
   <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
     <value>Réussie</value>
   </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>Terminée</value>
+  </data>
   <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
     <value>Rien n'a encore été lancé : chaque agent de l'équipe aura sa colonne ici.</value>
   </data>
   <data name="Studio.Run.TeamReady" xml:space="preserve">
     <value>Équipe prête : {0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>Équipe prête : {0} {0:plural:agent|agents}, {1} {1:plural:dossier déclaré|dossiers déclarés}.</value>
   </data>
   <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
     <value>Aucune équipe choisie.</value>
@@ -2156,7 +2164,7 @@
     <value>introuvable</value>
   </data>
   <data name="Studio.Run.CommandFooter" xml:space="preserve">
-    <value>La commande exacte qu'un terminal accepte.</value>
+    <value>Commande composée depuis l'équipe et les options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
     <value>MODE</value>
@@ -2184,6 +2192,9 @@
   </data>
   <data name="Studio.Run.RunningFooter" xml:space="preserve">
     <value>L'exécution suit son cours : « Arrêter » l'interrompt.</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>En cours depuis {0}.</value>
   </data>
   <data name="Studio.Run.DoneFooter" xml:space="preserve">
     <value>Exécution terminée.</value>

@@ -602,7 +602,7 @@
                      the use cases close to the need (STUDIO-39 D-03, their titles in the tooltip), then
                      the whole catalogue (D-01, D-02, its size read from the CLI). -->
                 <WrapPanel Margin="0,8,0,0">
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
+                  <Button Style="{StaticResource BtnAssistant}" controls:ButtonSize.Height="28" Margin="0,0,8,4"
                           Command="{Binding RephraseNeedCommand}"
                           ToolTip="{Binding [Studio.Create.RephraseTip], Source={x:Static services:I18n.Instance}}">
                     <StackPanel Orientation="Horizontal">

@@ -424,7 +424,7 @@
     <value>Relanzar</value>
   </data>
   <data name="Studio.Run.CliMissing" xml:space="preserve">
-    <value>No se ha localizado el ejecutable orkeon en este equipo: el lanzamiento está desactivado. Ejecute el diagnóstico.</value>
+    <value>No se encuentra el motor de Orkeon en este equipo. No se puede lanzar nada hasta que esté instalado.</value>
   </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve">
     <value>{0} agentes</value>
@@ -3762,11 +3762,17 @@
   <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
     <value>Correcta</value>
   </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>Terminada</value>
+  </data>
   <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
     <value>Todavía no se ha lanzado nada: cada agente del equipo tendrá aquí su columna.</value>
   </data>
   <data name="Studio.Run.TeamReady" xml:space="preserve">
     <value>Equipo listo: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>Equipo listo: {0} {0:plural:agente|agentes}, {1} {1:plural:carpeta declarada|carpetas declaradas}.</value>
   </data>
   <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
     <value>Ningún equipo elegido.</value>
@@ -3844,7 +3850,7 @@
     <value>no encontrado</value>
   </data>
   <data name="Studio.Run.CommandFooter" xml:space="preserve">
-    <value>El comando exacto que acepta un terminal.</value>
+    <value>Comando compuesto a partir del equipo y las opciones.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
     <value>MODO</value>
@@ -3872,6 +3878,9 @@
   </data>
   <data name="Studio.Run.RunningFooter" xml:space="preserve">
     <value>La ejecución continúa: «Detener» la interrumpe.</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>En curso desde hace {0}.</value>
   </data>
   <data name="Studio.Run.DoneFooter" xml:space="preserve">
     <value>Ejecución terminada.</value>
