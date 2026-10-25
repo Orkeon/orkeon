@@ -34,6 +34,10 @@ now the one named wait point: the assistant stops its indicator and offers the c
 focus goes to the card and the stepper and the status bar say « Waiting for you: … ». A read folder the definition already
 places is no longer shown as « no folder chosen », and the « Your brief » card follows every edit of the need.
 
+The assistant's questions move into the side panel: each is a bubble with its answers as buttons, the recommended one first
+and focused — the options the engine lists under its question, then « I don't know ». The trial's arbitration and « Do you
+want to put files in the folders? » leave the main column for the panel, which opens itself on a new question.
+
 ### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
 
 Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by

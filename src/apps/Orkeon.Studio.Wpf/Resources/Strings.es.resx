@@ -2544,7 +2544,7 @@
     <value>Responder</value>
   </data>
   <data name="Studio.Chat.Skip" xml:space="preserve">
-    <value>Omitir esta pregunta</value>
+    <value>No lo sé</value>
   </data>
   <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>No lo sé — haz lo mejor posible.</value>
@@ -3747,4 +3747,6 @@
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Déjelo vacío si no tiene nada que imponer: el asistente propondrá sus propias reglas en el paso Componer.</value></data>
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Intro para enviar · Mayús+Intro para una nueva línea</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Ver la tarjeta</value></data>
+  <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>La prueba está evaluada. ¿Qué hacemos ahora?</value></data>
+  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>Deje sus archivos en las carpetas y luego continúe.</value></data>
 </root>

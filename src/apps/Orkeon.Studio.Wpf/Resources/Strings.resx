@@ -932,7 +932,7 @@
     <value>Reply</value>
   </data>
   <data name="Studio.Chat.Skip" xml:space="preserve">
-    <value>Skip this question</value>
+    <value>I don't know</value>
   </data>
   <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>I don't know — do your best.</value>
@@ -2031,4 +2031,6 @@
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Leave it empty if you have nothing to impose: the assistant will propose its own rules at the Compose step.</value></data>
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter to send · Shift+Enter for a new line</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Show the card</value></data>
+  <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>The trial is judged. What do we do next?</value></data>
+  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>Drop your files in the folders, then continue.</value></data>
 </root>

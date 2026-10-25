@@ -2544,7 +2544,7 @@
     <value>回答</value>
   </data>
   <data name="Studio.Chat.Skip" xml:space="preserve">
-    <value>跳过这个问题</value>
+    <value>我不知道</value>
   </data>
   <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>我不知道——你看着办吧。</value>
@@ -3747,4 +3747,6 @@
   <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>如果没有要强制的内容，请留空：助手会在“组建”步骤中提出自己的规则。</value></data>
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter 发送 · Shift+Enter 换行</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>查看卡片</value></data>
+  <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>试运行已评估。接下来怎么做？</value></data>
+  <data name="Studio.Create.FillFoldersDrop" xml:space="preserve"><value>请把文件放入这些文件夹，然后继续。</value></data>
 </root>

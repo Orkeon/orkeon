@@ -49,6 +49,10 @@ public sealed class ChatThreadViewModel : ObservableObject
     private int _tick;
     private string _draft = "";
     private ChatPendingAction? _pendingAction;
+    private ChatQuestion? _ownerQuestion;
+    private ChatQuestion? _askedQuestion;
+    private ChatTurnViewModel? _askedTurn;
+    private ChatQuestion? _shownQuestion;
     private bool _busyBeforeAction;
     private AssistantContext _context = AssistantContext.WizardStep1;
 
@@ -71,6 +75,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         PendingActionCommand = new RelayCommand(
             () => _pendingAction?.Action.Execute(null), () => _pendingAction?.Action.CanExecute(null) == true);
         PendingRevealCommand = new RelayCommand(() => _pendingAction?.Reveal.Execute(null), () => _pendingAction is not null);
+        QuestionRevealCommand = new RelayCommand(() => Question?.Reveal?.Execute(null), () => Question?.Reveal is not null);
         EnterCommand = new RelayCommand(() =>
         {
             if (EnterSends && SendCommand.CanExecute(null))
@@ -88,6 +93,9 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Raised when the keyboard focus must go into « Your question » (R13: the answer goes to the assistant).</summary>
     public event EventHandler? FocusInputRequested;
+
+    /// <summary>Raised when the keyboard focus must go to the recommended answer of the question on screen (R15).</summary>
+    public event EventHandler? FocusRepliesRequested;
 
     // ── state ──────────────────────────────────────────────────────────────
 
@@ -163,6 +171,19 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Whether the bubble of a pending action shows.</summary>
     public bool HasPendingAction => _pendingAction is not null;
+
+    /// <summary>
+    /// The question on screen (R15), with its answers as buttons: the owner's own — an
+    /// arbitration, the fill step — else the engine's standing question, its listed options
+    /// read from the bubble, then « Skip this question ». Null when nothing is asked.
+    /// </summary>
+    public ChatQuestion? Question => _ownerQuestion ?? AskedQuestion();
+
+    /// <summary>Whether a question's answers show under the bubbles.</summary>
+    public bool HasQuestion => Question is not null;
+
+    /// <summary>The question's link: the work its answer leads to, on screen (R13, R15).</summary>
+    public RelayCommand QuestionRevealCommand { get; }
 
     /// <summary>Whether Enter in the composer sends: not while a card waits on the user (R13).</summary>
     public bool EnterSends => _pendingAction is null;
@@ -273,7 +294,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _strings[IsAsking ? StudioStringKeys.ChatReply : StudioStringKeys.ChatSeeConversation];
 
     /// <summary>Whether the strip belongs on screen: work in flight, or an unanswered question.</summary>
-    public bool IsLive => _isStarted && !_isDone && !_isOpen;
+    public bool IsLive => _isStarted && !_isDone && !_isOpen && !IsAsking;
 
     /// <summary>The pinned brief card — what the user described, verbatim.</summary>
     public string Brief =>
@@ -372,6 +393,11 @@ public sealed class ChatThreadViewModel : ObservableObject
         foreach (var turn in Turns)
             turn.Retranslate();
 
+        // The standing question is read again in the new language, as the same question: the
+        // panel does not open, nor the focus move, for a language switch.
+        _askedQuestion = null;
+        _askedTurn = null;
+        _shownQuestion = Question;
         RaiseDerived();
     }
 
@@ -473,6 +499,82 @@ public sealed class ChatThreadViewModel : ObservableObject
         FocusInputRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// The answer goes to the assistant (R13, R15): the panel opens, and the focus goes to the
+    /// recommended answer when the question offers choices, into « Your question » otherwise.
+    /// </summary>
+    public void RequestAnswerFocus()
+    {
+        if (Question is { OffersChoices: true })
+        {
+            Open();
+            FocusRepliesRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        RequestInputFocus();
+    }
+
+    /// <summary>
+    /// The owner asks a question of its own (R15) — an arbitration, the fill step — or no
+    /// longer does. It wins over the engine's standing question. <paramref name="announce"/>
+    /// false re-words the same question (a language switch): the panel and the focus stay.
+    /// </summary>
+    public void SetQuestion(ChatQuestion? question, bool announce = true)
+    {
+        if (ReferenceEquals(question, _ownerQuestion))
+            return;
+
+        _ownerQuestion = question;
+        if (!announce)
+            _shownQuestion = Question;
+        RaiseDerived();
+    }
+
+    /// <summary>
+    /// The engine's standing question, read once per bubble so that its buttons keep their
+    /// identity — and the focus — while the screen re-reads it.
+    /// </summary>
+    private ChatQuestion? AskedQuestion()
+    {
+        if (!IsAsking)
+            return null;
+
+        var turn = Turns[^1];
+        if (ReferenceEquals(turn, _askedTurn) && _askedQuestion is not null)
+            return _askedQuestion;
+
+        var replies = ChatReplyReader.Read(turn.Body)
+            .Select(option => new ChatReply(
+                option.Label, new RelayCommand(() => Send(option.Label)), option.IsRecommended))
+            .ToList();
+        var offersChoices = replies.Count > 0;
+        replies.Add(new ChatReply(_strings[StudioStringKeys.ChatSkip], SkipCommand));
+        _askedTurn = turn;
+        _askedQuestion = new ChatQuestion(null, "", replies) { OffersChoices = offersChoices };
+        return _askedQuestion;
+    }
+
+    /// <summary>
+    /// A new question came on screen (R15): the panel opens — the main column no longer shows
+    /// it — and, when it offers choices, the focus goes to the recommended answer.
+    /// </summary>
+    private void FollowQuestion()
+    {
+        var question = Question;
+        if (ReferenceEquals(question, _shownQuestion))
+            return;
+
+        _shownQuestion = question;
+        if (question is null)
+            return;
+
+        if (!_isOpen)
+            Open();
+        if (question.OffersChoices)
+            FocusRepliesRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>Notifies the recap and the brief card that their source moved.</summary>
     public void OwnerChanged() =>
         OnPropertiesChanged(nameof(Facts), nameof(RecapProgress), nameof(Brief), nameof(BriefChips));
@@ -514,6 +616,10 @@ public sealed class ChatThreadViewModel : ObservableObject
         UnreadCount = 0;
         _pendingAction = null;
         _busyBeforeAction = false;
+        _ownerQuestion = null;
+        _askedQuestion = null;
+        _askedTurn = null;
+        _shownQuestion = null;
         OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(EnterSends));
         OnPropertyChanged(nameof(IsEmpty));
         RaiseDerived();
@@ -614,11 +720,16 @@ public sealed class ChatThreadViewModel : ObservableObject
     private string Format(string key, params object[] arguments) =>
         _strings.Format(key, arguments);
 
-    private void RaiseDerived() => OnPropertiesChanged(
-        nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
-        nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
-        nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
-        nameof(BriefChips), nameof(Primer));
+    private void RaiseDerived()
+    {
+        OnPropertiesChanged(
+            nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
+            nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
+            nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
+            nameof(BriefChips), nameof(Primer), nameof(Question), nameof(HasQuestion));
+        QuestionRevealCommand.RaiseCanExecuteChanged();
+        FollowQuestion();
+    }
 }
 
 /// <summary>

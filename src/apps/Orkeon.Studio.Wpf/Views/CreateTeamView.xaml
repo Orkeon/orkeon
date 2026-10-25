@@ -559,25 +559,19 @@
              is resized. The width comes from the grid; nothing here names one. -->
         <StackPanel Grid.Column="0">
         <!-- STUDIO-57: the fill step. Once the folders are confirmed, when some are kept inside
-             the team, the card asks whether to put files or sub-folders in them: « No » lets
-             the construction go on; « Yes » shows « Open » behind each such folder — the file
-             explorer on the session directory the engine created — and « Continue » below.
-             The engine composes meanwhile; the trial reads what was dropped. -->
-        <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-                Visibility="{Binding IsFillFoldersStep, Converter={StaticResource BooleanToVisibility}}">
+             the team, the assistant asks in the panel whether to put files or sub-folders in
+             them (refonte R15): « No » lets the construction go on; « Yes » brings this card —
+             « Open » behind each such folder, the file explorer on the session directory the
+             engine created — and « Continue » below, also offered in the next bubble. The
+             engine composes meanwhile; the trial reads what was dropped. -->
+        <Border x:Name="FillFoldersCard" Style="{StaticResource Card}" Margin="0,0,0,16"
+                Visibility="{Binding IsFillingFolders, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                       Text="{Binding [Studio.Create.FillFoldersQuestion], Source={x:Static services:I18n.Instance}}"/>
+                       Text="{Binding [Studio.Create.FillFoldersDrop], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,2,0,12" TextWrapping="Wrap"
                        Text="{Binding [Studio.Create.FillFoldersHint], Source={x:Static services:I18n.Instance}}"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                        Visibility="{Binding IsFillFoldersQuestion, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnSecondary}" Command="{Binding FillFoldersNoCommand}"
-                      Content="{Binding [Studio.Create.FillFoldersNo], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding FillFoldersYesCommand}"
-                      Content="{Binding [Studio.Create.FillFoldersYes], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-            <StackPanel Visibility="{Binding IsFillingFolders, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel>
               <ItemsControl ItemsSource="{Binding HeldFolderRows}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
@@ -1499,32 +1493,8 @@
               </ItemsControl>
             </StackPanel>
 
-            <!-- the arbitration lives HERE, in the verdict card (v3 W-02): «Ça me va»
-                 primary, everything else secondary — never navy pills at the top of
-                 the page. -->
-            <ItemsControl ItemsSource="{Binding Decisions}" Margin="0,14,0,0"
-                          Visibility="{Binding DecisionPending, Converter={StaticResource BooleanToVisibility}}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Margin="0,0,8,0" Command="{Binding DecideCommand}" Content="{Binding Label}">
-                    <Button.Style>
-                      <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding Value}" Value="accept">
-                            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource AccentFgBrush}"/>
-                            <Setter Property="BorderBrush" Value="Transparent"/>
-                          </DataTrigger>
-                        </Style.Triggers>
-                      </Style>
-                    </Button.Style>
-                  </Button>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- The arbitration is the assistant's question (refonte R15): it is asked in the
+                 panel, its answers as buttons, « Looks good to me » first. -->
           </StackPanel>
         </Border>
 

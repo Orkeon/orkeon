@@ -19,10 +19,17 @@ public partial class CreateTeamView : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_wizard is not null)
+        {
             _wizard.WaitPointReached -= OnWaitPointReached;
+            _wizard.FillFoldersRevealRequested -= OnFillFoldersRevealRequested;
+        }
+
         _wizard = e.NewValue as CreateTeamViewModel;
         if (_wizard is not null)
+        {
             _wizard.WaitPointReached += OnWaitPointReached;
+            _wizard.FillFoldersRevealRequested += OnFillFoldersRevealRequested;
+        }
     }
 
     /// <summary>
@@ -45,7 +52,8 @@ public partial class CreateTeamView : UserControl
                 break;
             case WizardWaitPoint.AnswerAssistant:
             case WizardWaitPoint.Decide:
-                _wizard.Chat.RequestInputFocus();
+                // R15: the recommended answer when the question offers choices, else the composer.
+                _wizard.Chat.RequestAnswerFocus();
                 break;
             case WizardWaitPoint.ChooseModel:
                 RevealFirst(AssistantGate);
@@ -58,6 +66,10 @@ public partial class CreateTeamView : UserControl
                 break;
         }
     }
+
+    /// <summary>The bubble's link (R15): the folders to fill on screen, their first « Open » focused.</summary>
+    private void OnFillFoldersRevealRequested(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => RevealFirst(FillFoldersCard));
 
     private static void Reveal(UIElement target)
     {

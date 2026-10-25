@@ -1886,6 +1886,27 @@ public static class StudioStringKeys
     /// <summary>"Abandon"</summary>
     public const string WizardDecisionAbort = "Studio.Create.DecisionAbort";
 
+    /// <summary>"The trial is judged. What do we do next?" (refonte R15: the arbitration, asked in the panel)</summary>
+    public const string WizardDecisionQuestion = "Studio.Create.DecisionQuestion";
+
+    /// <summary>"Do you want to put files or sub-folders in the folders you set up?"</summary>
+    public const string WizardFillFoldersQuestion = "Studio.Create.FillFoldersQuestion";
+
+    /// <summary>"These folders are kept inside the team. ..."</summary>
+    public const string WizardFillFoldersHint = "Studio.Create.FillFoldersHint";
+
+    /// <summary>"Yes"</summary>
+    public const string WizardFillFoldersYes = "Studio.Create.FillFoldersYes";
+
+    /// <summary>"No"</summary>
+    public const string WizardFillFoldersNo = "Studio.Create.FillFoldersNo";
+
+    /// <summary>"Continue"</summary>
+    public const string WizardFillFoldersContinue = "Studio.Create.FillFoldersContinue";
+
+    /// <summary>"Drop your files in the folders, then continue." (R15: the answer « Yes » leads to the card)</summary>
+    public const string WizardFillFoldersDrop = "Studio.Create.FillFoldersDrop";
+
 
     /// <summary>"On demand"</summary>
     public const string TeamsOnDemand = "Studio.Teams.OnDemand";
@@ -2708,7 +2729,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatStop] = "Stop",
         [StudioStringKeys.ChatSend] = "Send",
         [StudioStringKeys.ChatReply] = "Reply",
-        [StudioStringKeys.ChatSkip] = "Skip this question",
+        [StudioStringKeys.ChatSkip] = "I don't know",
         [StudioStringKeys.ChatSkipAnswer] = "I don't know — do your best.",
         [StudioStringKeys.ChatKeyHint] = "Enter to send · Shift+Enter for a new line",
         [StudioStringKeys.ChatPlaceholder] = "Ask the assistant a question…",
@@ -3303,6 +3324,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",
         [StudioStringKeys.WizardDecisionRefine] = "Fix and retry",
         [StudioStringKeys.WizardDecisionAbort] = "Abandon",
+        [StudioStringKeys.WizardDecisionQuestion] = "The trial is judged. What do we do next?",
+        [StudioStringKeys.WizardFillFoldersQuestion] = "Do you want to put files or sub-folders in the folders you set up?",
+        [StudioStringKeys.WizardFillFoldersHint] = "These folders are kept inside the team. What you drop there now is what the trial reads, and it moves into the team when you adopt it.",
+        [StudioStringKeys.WizardFillFoldersYes] = "Yes",
+        [StudioStringKeys.WizardFillFoldersNo] = "No",
+        [StudioStringKeys.WizardFillFoldersContinue] = "Continue",
+        [StudioStringKeys.WizardFillFoldersDrop] = "Drop your files in the folders, then continue.",
 
         [StudioStringKeys.TeamsOnDemand] = "On demand",
         [StudioStringKeys.TeamsDaily] = "Every day at {0}",

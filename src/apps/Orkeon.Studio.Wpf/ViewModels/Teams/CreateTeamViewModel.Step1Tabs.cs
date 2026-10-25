@@ -179,6 +179,7 @@ public sealed partial class CreateTeamViewModel
     private void OnWaitPointLanguageChanged()
     {
         Chat.SetPendingAction(PendingActionFor(_waitPoint));
+        OnQuestionsLanguageChanged();
         OnPropertiesChanged(nameof(WaitPointLabel), nameof(SessionStateLabel), nameof(Step1Hint));
         RefreshStep1Tabs();
         SyncProgress();

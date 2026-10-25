@@ -533,6 +533,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         GoStep4Command = new RelayCommand(() => GoStep(4), () => MaxStep >= 4);
         InitializeStepper(wired.Clock);
         InitializeWaitPoint();
+        InitializeQuestions();
         InitializeStep1Tabs();
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
@@ -2898,6 +2899,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         Checklist.Clear();
         Agents.Clear();
         Decisions.Clear();
+        _decisionQuestion = null;
+        SyncQuestion();
         TeamName = "";
         // A taken name and the proposal that answered it belonged to that creation (D-07).
         _adoptionFolder = null;
@@ -3313,6 +3316,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             };
             Decisions.Add(new WizardDecision(option, label, Decide));
         }
+
+        _decisionQuestion = null;
+        SyncQuestion();
     }
 
     // ── STUDIO-14 — « Open the folder » (D-15) ───────────────────────────────

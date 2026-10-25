@@ -247,9 +247,6 @@
           </DockPanel>
 
           <DockPanel Margin="0,8,0,0">
-            <Button DockPanel.Dock="Right" Style="{StaticResource LinkBtn}" Command="{Binding SkipCommand}"
-                    Visibility="{Binding IsAsking, Converter={StaticResource BooleanToVisibility}}"
-                    Content="{Binding [Studio.Chat.Skip], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                        Text="{Binding [Studio.Chat.KeyHint], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding EnterSends, Converter={StaticResource BooleanToVisibility}}"/>
@@ -384,6 +381,66 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+
+          <!-- R15: the question of the moment and its answers, as secondary buttons — the
+               recommended one first, and focused; « Send » stays the panel's one primary. A
+               question of the engine's is its last bubble: only the answers show, under it. -->
+          <DockPanel Margin="0,0,0,13" Visibility="{Binding HasQuestion, Converter={StaticResource BooleanToVisibility}}">
+            <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" VerticalAlignment="Top"
+                    Margin="0,0,9,0" Background="{DynamicResource AccentWeakBrush}">
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Question.HasText}" Value="False">
+                      <Setter Property="Visibility" Value="Hidden"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+              <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border CornerRadius="4,13,13,13" HorizontalAlignment="Left">
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+                  <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+                  <Setter Property="BorderThickness" Value="1"/>
+                  <Setter Property="Padding" Value="13,11"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Question.HasText}" Value="False">
+                      <Setter Property="Background" Value="Transparent"/>
+                      <Setter Property="BorderThickness" Value="0"/>
+                      <Setter Property="Padding" Value="0"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+              <StackPanel>
+                <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5" Margin="0,0,0,10"
+                           Foreground="{DynamicResource InkBrush}" Text="{Binding Question.Text}"
+                           Visibility="{Binding Question.HasText, Converter={StaticResource BooleanToVisibility}}"/>
+                <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5" Margin="0,-4,0,10"
+                           Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Question.Detail}"
+                           Visibility="{Binding Question.HasDetail, Converter={StaticResource BooleanToVisibility}}"/>
+                <ItemsControl x:Name="Replies" ItemsSource="{Binding Question.Replies}" Focusable="False">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,8"
+                              Command="{Binding ReplyCommand}" Content="{Binding Label}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Style="{StaticResource LinkBtn}" HorizontalAlignment="Left" Margin="0,0,0,0"
+                        Command="{Binding QuestionRevealCommand}"
+                        Visibility="{Binding Question.HasReveal, Converter={StaticResource BooleanToVisibility}}"
+                        Content="{Binding [Studio.Chat.PendingReveal], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Border>
+          </DockPanel>
 
           <!-- R13: the screen waits on a card. The assistant names the action, runs the card's
                own command from its button, and links to the card; its activity indicator is

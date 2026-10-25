@@ -614,6 +614,13 @@ public partial class CreateTeamWizardTests
         Assert.Equal(["accept", "refine", "abort"], vm.Decisions.Select(d => d.Value));
         Assert.Equal("Fix and retry", vm.Decisions[1].Label);
 
+        // R15: the arbitration is asked in the panel, « Looks good to me » first and recommended.
+        var question = vm.Chat.Question!;
+        Assert.Equal("The trial is judged. What do we do next?", question.Text);
+        Assert.Equal(["Looks good to me", "Fix and retry", "Abandon"], question.Replies.Select(r => r.Label));
+        Assert.True(question.Replies[0].IsRecommended);
+        Assert.Same(vm.Decisions[2].DecideCommand, question.Replies[2].Command);
+
         // The child is gone by now, so nothing can be written — but the mapping is pinned:
         // refine's command exists and the title prefilled from the brief's goal.
         Assert.Equal("Veille documentaire", vm.TeamName);
@@ -1835,8 +1842,24 @@ public partial class CreateTeamWizardTests
         Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
         Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
 
-        vm.FillFoldersYesCommand.Execute(null);
+        // R15: the question is the assistant's, in the panel — « Yes » first, and recommended.
+        var question = vm.Chat.Question!;
+        Assert.Equal("Do you want to put files or sub-folders in the folders you set up?", question.Text);
+        Assert.Equal(["Yes", "No"], question.Replies.Select(r => r.Label));
+        Assert.True(question.Replies[0].IsRecommended);
+        Assert.True(question.OffersChoices);
+
+        question.Replies[0].ReplyCommand.Execute(null);
         Assert.True(vm.IsFillingFolders);
+        // The next bubble gives the action the answer leads to, with the link to the folders.
+        var drop = vm.Chat.Question!;
+        Assert.Equal("Drop your files in the folders, then continue.", drop.Text);
+        Assert.Same(vm.FillFoldersContinueCommand, Assert.Single(drop.Replies).Command);
+        Assert.True(vm.Chat.QuestionRevealCommand.CanExecute(null));
+        var revealed = 0;
+        vm.FillFoldersRevealRequested += (_, _) => revealed++;
+        vm.Chat.QuestionRevealCommand.Execute(null);
+        Assert.Equal(1, revealed);
         Assert.False(vm.IsFillFoldersQuestion);
         Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
         vm.HeldFolderRows[0].OpenCommand.Execute(null);
@@ -1846,6 +1869,7 @@ public partial class CreateTeamWizardTests
         vm.FillFoldersContinueCommand.Execute(null);
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.IsFillingFolders);
+        Assert.Null(vm.Chat.Question);
     }
 
     /// <summary>

@@ -132,5 +132,6 @@ public sealed partial class CreateTeamViewModel
         FillFoldersNoCommand.RaiseCanExecuteChanged();
         FillFoldersYesCommand.RaiseCanExecuteChanged();
         FillFoldersContinueCommand.RaiseCanExecuteChanged();
+        SyncQuestion();
     }
 }
