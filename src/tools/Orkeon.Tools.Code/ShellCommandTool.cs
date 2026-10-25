@@ -897,7 +897,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         List<ConfinedPath> paths, IReadOnlyList<SubPathOverride> mountOverrides, string agentRoot, string virtualRoot,
         string physicalRoot, ConfinedAccess rootAccess, CancellationToken cancellationToken)
     {
-        var binds = await GitWorktreeBinds.FindAsync(_fileSystem, agentRoot, virtualRoot, physicalRoot, rootAccess,
+        var binds = await GitWorktreeBinds.FindAsync(_fileSystem, agentRoot, new GitWorktreeMount(virtualRoot, physicalRoot), rootAccess,
             virtualPath => Granted(RightsAt(virtualPath)), _logger, cancellationToken).ConfigureAwait(false);
         if (binds.Count == 0)
             return;

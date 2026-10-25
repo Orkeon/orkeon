@@ -826,17 +826,10 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                         request.Options.Set(Logging.LlmExchangeOptions.Rebuilt, new Logging.LlmExchangeCapture());
 
                         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                        if (attempt >= maxAttempts || !IsRetriableStreamingStatus(response.StatusCode))
+                        if (await KeepsStreamingResponseAsync(response, attempt, maxAttempts, endpoint?.Host, cancellationToken).ConfigureAwait(false))
                         {
+                            // A retriable status is never a success, so only the last answer can be one.
                             succeeded = response.IsSuccessStatusCode;
-                            return response;
-                        }
-
-                        if (!await WaitToRetryStreamingAsync(response, attempt, endpoint?.Host, cancellationToken).ConfigureAwait(false))
-                        {
-                            // The call's budget ran out while waiting to retry (LLM-12): the
-                            // vendor's last answer is the failure, not the wait — the caller
-                            // reads it with its own token, so its own cancellation still throws.
                             return response;
                         }
 
@@ -861,6 +854,17 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             }
         }
     }
+
+    /// <summary>
+    /// Whether <paramref name="response"/> goes back to the caller: the last attempt, a status not
+    /// worth retrying, or a call whose budget ran out while waiting to retry (LLM-12) — the vendor's
+    /// last answer is then the failure, not the wait, and the caller reads it with its own token, so
+    /// its own cancellation still throws. False once the retry is due.
+    /// </summary>
+    private async Task<bool> KeepsStreamingResponseAsync(HttpResponseMessage response, int attempt, int maxAttempts, string? host, CancellationToken cancellationToken) =>
+        attempt >= maxAttempts
+        || !IsRetriableStreamingStatus(response.StatusCode)
+        || !await WaitToRetryStreamingAsync(response, attempt, host, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Logs, announces and waits out the retry a retriable streaming answer asks for: the window it

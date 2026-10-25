@@ -263,11 +263,9 @@ public sealed class IncrementalReindexEngine
             if (refs.Count == 0) continue;
 
             var symbols = SymbolsInFileOrder(allNodes, language.Key, fileRank);
-            foreach (var edge in await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false))
-            {
-                if (knownIds.Add(edge.Id))
-                    relinked.Add(Relink(edge, keptEdges, nodesById));
-            }
+            var resolved = await _resolver.ResolveAsync(refs, symbols, ct).ConfigureAwait(false);
+            foreach (var edge in resolved.Where(e => knownIds.Add(e.Id)))
+                relinked.Add(Relink(edge, keptEdges, nodesById));
         }
 
         return relinked;

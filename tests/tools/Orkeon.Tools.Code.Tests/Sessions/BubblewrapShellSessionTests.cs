@@ -147,7 +147,7 @@ public sealed class BubblewrapShellSessionTests
             }
 
             // Each target directory exists, so only the read-only bind makes these fail (git's messages follow the locale).
-            Assert.All(tampering, t => Assert.True(!Equals(t.Result["exit_code"], 0), $"`{t.Command}` succeeded"));
+            Assert.All(tampering, t => Assert.False(Equals(t.Result["exit_code"], 0), $"`{t.Command}` succeeded"));
             Assert.False(File.Exists(Path.Combine(gitDir, "hooks", "pre-commit")));
             Assert.False(Directory.Exists(Path.Combine(gitDir, "modules")));
             Assert.Equal(config, await File.ReadAllTextAsync(Path.Combine(gitDir, "config"), Ct));

@@ -14,6 +14,11 @@ internal sealed record GitWorktreeBind(string VirtualPath, ConfinedPath Path);
 /// <param name="Access">What it grants, a hidden kind when it grants neither Read nor Write.</param>
 internal sealed record GitOverride(string VirtualPath, string Source, ConfinedAccess Access);
 
+/// <summary>The mount that holds an agent root, its git dirs included.</summary>
+/// <param name="VirtualRoot">The virtual root of the mount.</param>
+/// <param name="PhysicalRoot">The physical root that mount resolves to.</param>
+internal readonly record struct GitWorktreeMount(string VirtualRoot, string PhysicalRoot);
+
 /// <summary>
 /// The git directories a linked worktree needs when it is an agent's working root (#188). A root whose
 /// <c>.git</c> is a file (<c>gitdir: &lt;path&gt;</c>, written by <c>git worktree add</c>) commits through
@@ -56,8 +61,7 @@ internal static partial class GitWorktreeBinds
     /// </summary>
     /// <param name="fileSystem">The VFS the files are read through.</param>
     /// <param name="agentRoot">The agent root, a virtual path in the mount, without a trailing slash.</param>
-    /// <param name="mountVirtualRoot">The virtual root of the mount that holds the root.</param>
-    /// <param name="mountPhysicalRoot">The physical root that mount resolves to.</param>
+    /// <param name="mount">The mount that holds the root.</param>
     /// <param name="rootAccess">How the root is bound; no git dir is bound with more.</param>
     /// <param name="accessAt">How a virtual path is bound by the rights in force there, null when it grants nothing.</param>
     /// <param name="logger">Where a skipped worktree is logged, at Debug.</param>
@@ -65,8 +69,7 @@ internal static partial class GitWorktreeBinds
     public static async Task<IReadOnlyList<GitWorktreeBind>> FindAsync(
         IFileSystemService fileSystem,
         string agentRoot,
-        string mountVirtualRoot,
-        string mountPhysicalRoot,
+        GitWorktreeMount mount,
         ConfinedAccess rootAccess,
         Func<string, ConfinedAccess?> accessAt,
         ILogger logger,
@@ -81,7 +84,7 @@ internal static partial class GitWorktreeBinds
         if (await KindAsync(fileSystem, dotGit, cancellationToken).ConfigureAwait(false) != VirtualEntryKind.File)
             return [];
 
-        var context = new Context(fileSystem, agentRoot, mountVirtualRoot, mountPhysicalRoot);
+        var context = new Context(fileSystem, agentRoot, mount.VirtualRoot, mount.PhysicalRoot);
         var link = FirstLine(await ReadAsync(fileSystem, dotGit, cancellationToken).ConfigureAwait(false));
         if (link is null || !link.StartsWith(GitDirPrefix, StringComparison.Ordinal))
             return Skipped(logger, agentRoot, "the .git file names no gitdir");

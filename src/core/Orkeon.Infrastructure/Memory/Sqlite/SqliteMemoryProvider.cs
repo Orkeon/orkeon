@@ -103,26 +103,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
     private void EnsureTablesExist()
     {
         using var cmd = _connection.CreateCommand();
-        cmd.CommandText = $"""
-            CREATE TABLE IF NOT EXISTS {_options.TableName} (
-                key TEXT PRIMARY KEY,
-                item_id TEXT NOT NULL,
-                content TEXT NOT NULL,
-                embedding BLOB NULL,
-                importance REAL NOT NULL,
-                source TEXT NOT NULL,
-                relevance REAL NOT NULL,
-                tags_json TEXT NULL,
-                created_by TEXT NULL,
-                created_at TEXT NOT NULL,
-                last_accessed_at TEXT NULL,
-                access_count INTEGER NOT NULL DEFAULT 0,
-                custom_properties_json TEXT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_{_options.TableName}_source ON {_options.TableName} (source);
-            CREATE INDEX IF NOT EXISTS idx_{_options.TableName}_created_at ON {_options.TableName} (created_at);
-            """;
+        cmd.CommandText = CreateTablesSql;
         cmd.ExecuteNonQuery();
     }
 
@@ -168,7 +149,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"SELECT {ColumnList} FROM {_options.TableName} WHERE key = @key";
+            cmd.CommandText = SelectByKeySql;
             cmd.Parameters.AddWithValue("@key", key);
 
             using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -206,22 +187,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"""
-                UPDATE {_options.TableName} SET
-                    item_id = @itemId,
-                    content = @content,
-                    embedding = @embedding,
-                    importance = @importance,
-                    source = @source,
-                    relevance = @relevance,
-                    tags_json = @tagsJson,
-                    created_by = @createdBy,
-                    created_at = @createdAt,
-                    last_accessed_at = @lastAccessedAt,
-                    access_count = @accessCount,
-                    custom_properties_json = @customPropertiesJson
-                WHERE key = @key
-                """;
+            cmd.CommandText = UpdateSql;
             AddRecordParameters(cmd, record);
 
             var affected = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -256,7 +222,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"DELETE FROM {_options.TableName} WHERE key = @key";
+            cmd.CommandText = DeleteByKeySql;
             cmd.Parameters.AddWithValue("@key", key);
 
             var affected = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -284,7 +250,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"DELETE FROM {_options.TableName}";
+            cmd.CommandText = DeleteAllSql;
 
             var affected = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             LogClearedMemoryItems(affected);
@@ -309,7 +275,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"SELECT COUNT(*) FROM {_options.TableName}";
+            cmd.CommandText = CountSql;
 
             var result = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             var count = Convert.ToInt32(result, System.Globalization.CultureInfo.InvariantCulture);
@@ -336,7 +302,7 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
         try
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = $"SELECT key FROM {_options.TableName} ORDER BY key LIMIT @take OFFSET @skip";
+            cmd.CommandText = ListKeysSql;
             cmd.Parameters.AddWithValue("@take", take);
             cmd.Parameters.AddWithValue("@skip", skip);
 
@@ -384,6 +350,54 @@ public sealed partial class SqliteMemoryProvider : MemoryProviderBase, IMemoryPr
     /// <see cref="StoreAsync"/> and the batch upsert capability. The only interpolated
     /// fragments are the validated table identifier and the <see cref="ColumnList"/> const.
     /// </summary>
+    private string CreateTablesSql => $"""
+        CREATE TABLE IF NOT EXISTS {_options.TableName} (
+            key TEXT PRIMARY KEY,
+            item_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            embedding BLOB NULL,
+            importance REAL NOT NULL,
+            source TEXT NOT NULL,
+            relevance REAL NOT NULL,
+            tags_json TEXT NULL,
+            created_by TEXT NULL,
+            created_at TEXT NOT NULL,
+            last_accessed_at TEXT NULL,
+            access_count INTEGER NOT NULL DEFAULT 0,
+            custom_properties_json TEXT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_{_options.TableName}_source ON {_options.TableName} (source);
+        CREATE INDEX IF NOT EXISTS idx_{_options.TableName}_created_at ON {_options.TableName} (created_at);
+        """;
+
+    private string SelectByKeySql => $"SELECT {ColumnList} FROM {_options.TableName} WHERE key = @key";
+
+    private string UpdateSql => $"""
+        UPDATE {_options.TableName} SET
+            item_id = @itemId,
+            content = @content,
+            embedding = @embedding,
+            importance = @importance,
+            source = @source,
+            relevance = @relevance,
+            tags_json = @tagsJson,
+            created_by = @createdBy,
+            created_at = @createdAt,
+            last_accessed_at = @lastAccessedAt,
+            access_count = @accessCount,
+            custom_properties_json = @customPropertiesJson
+        WHERE key = @key
+        """;
+
+    private string DeleteByKeySql => $"DELETE FROM {_options.TableName} WHERE key = @key";
+
+    private string DeleteAllSql => $"DELETE FROM {_options.TableName}";
+
+    private string CountSql => $"SELECT COUNT(*) FROM {_options.TableName}";
+
+    private string ListKeysSql => $"SELECT key FROM {_options.TableName} ORDER BY key LIMIT @take OFFSET @skip";
+
     private string UpsertSql => $"""
         INSERT INTO {_options.TableName} ({ColumnList})
         VALUES (@key, @itemId, @content, @embedding, @importance, @source, @relevance, @tagsJson,
