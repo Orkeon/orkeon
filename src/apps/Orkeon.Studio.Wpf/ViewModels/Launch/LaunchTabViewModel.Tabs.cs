@@ -78,6 +78,7 @@ public sealed partial class LaunchTabViewModel
     private bool _isExpertMode;
     private bool _isJournalEnlarged;
     private IReadOnlyList<string> _crewRoles = [];
+    private IReadOnlyList<RunModelChoice>? _modelChoices;
 
     /// <summary>The tab on screen; the command tab is the expert's, a novice lands on the options.</summary>
     public string ActiveTab
@@ -186,23 +187,25 @@ public sealed partial class LaunchTabViewModel
 
     /// <summary>
     /// The « Model » list: « Default (X) », « The team's (Y) » when the team recorded one, then
-    /// the settings of this machine by name. Only the default without model settings.
+    /// the settings of this machine by name. Only the default without model settings. Built once
+    /// per change of what it lists, never per read: a list rebuilt on every read is a new items
+    /// source for the combo box at each pick, which writes its selection back, which raises the
+    /// list again — a loop that overflowed the stack.
     /// </summary>
-    public IReadOnlyList<RunModelChoice> ModelChoices
+    public IReadOnlyList<RunModelChoice> ModelChoices => _modelChoices ??= BuildModelChoices();
+
+    private List<RunModelChoice> BuildModelChoices()
     {
-        get
+        var choices = new List<RunModelChoice>
         {
-            var choices = new List<RunModelChoice>
-            {
-                new(_modelSettings?.Invoke().Default is { } elected
-                    ? _strings.Format(StudioStringKeys.RunModelDefault, elected.Name)
-                    : _strings[StudioStringKeys.RunModelDefaultNone], RunModelChoiceKind.Default),
-            };
-            if (_team.LlmChoice is { } saved && Target.IsResolved)
-                choices.Add(new(_strings.Format(StudioStringKeys.RunModelTeam, RunLlmLabelOf(saved)), RunModelChoiceKind.Team));
-            choices.AddRange(LlmProfiles.Select(name => new RunModelChoice(name, RunModelChoiceKind.Named, name)));
-            return choices;
-        }
+            new(_modelSettings?.Invoke().Default is { } elected
+                ? _strings.Format(StudioStringKeys.RunModelDefault, elected.Name)
+                : _strings[StudioStringKeys.RunModelDefaultNone], RunModelChoiceKind.Default),
+        };
+        if (_team.LlmChoice is { } saved && Target.IsResolved)
+            choices.Add(new(_strings.Format(StudioStringKeys.RunModelTeam, RunLlmLabelOf(saved)), RunModelChoiceKind.Team));
+        choices.AddRange(LlmProfiles.Select(name => new RunModelChoice(name, RunModelChoiceKind.Named, name)));
+        return choices;
     }
 
     /// <summary>
@@ -225,7 +228,7 @@ public sealed partial class LaunchTabViewModel
         }
         set
         {
-            if (value is null)
+            if (value is null || value == SelectedModelChoice)
                 return;
 
             switch (value.Kind)
@@ -521,8 +524,11 @@ public sealed partial class LaunchTabViewModel
                 or nameof(IsBlockedByUndeclaredFolders) or nameof(IsBlockedByUnknownMountIds):
                 RaiseTeamTabChanged();
                 break;
-            case nameof(RunLlmChoice) or nameof(LlmProfiles):
-                OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(TeamFicheLine));
+            case nameof(RunLlmChoice):
+                OnPropertiesChanged(nameof(SelectedModelChoice), nameof(TeamFicheLine));
+                break;
+            case nameof(LlmProfiles):
+                RefreshModelChoices();
                 break;
             case nameof(RunBadgeTone):
                 OnPropertiesChanged(nameof(RunTabState), nameof(RunTabSubtitle), nameof(RunPaneTitle), nameof(RunPaneContext),
@@ -544,10 +550,25 @@ public sealed partial class LaunchTabViewModel
         }
     }
 
-    private void RaiseTeamTabChanged() => OnPropertiesChanged(
-        nameof(TeamTabState), nameof(TeamTabSubtitle), nameof(TeamFooter), nameof(TeamFicheLine), nameof(TargetTypeNote),
-        nameof(ModelChoices), nameof(SelectedModelChoice),
-        nameof(LaunchReadinessTone), nameof(LaunchReadinessText), nameof(LaunchBlockedReason));
+    private void RaiseTeamTabChanged()
+    {
+        RefreshModelChoices();
+        OnPropertiesChanged(
+            nameof(TeamTabState), nameof(TeamTabSubtitle), nameof(TeamFooter), nameof(TeamFicheLine), nameof(TargetTypeNote),
+            nameof(LaunchReadinessTone), nameof(LaunchReadinessText), nameof(LaunchBlockedReason));
+    }
+
+    // The list changes only when what it lists changed — the team, its recorded model, the
+    // settings' names —, not on every pick: a pick raises LlmProfiles too (RaiseRunLlmChanged).
+    private void RefreshModelChoices()
+    {
+        var fresh = BuildModelChoices();
+        if (_modelChoices is not null && fresh.SequenceEqual(_modelChoices))
+            return;
+
+        _modelChoices = fresh;
+        OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(TeamFicheLine));
+    }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(
         nameof(FolderRows), nameof(FoldersSectionTitle), nameof(OptionsFooter), nameof(ResultVirtualPath), nameof(ResultFigure),

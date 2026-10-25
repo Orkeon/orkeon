@@ -1520,6 +1520,39 @@ public sealed class LaunchTabViewModelTests
         return (root, team);
     }
 
+    /// <summary>
+    /// A pick in the « Model » list keeps the list itself: a list rebuilt and raised on each pick
+    /// was a new items source for the combo box, which wrote its selection back, which raised the
+    /// list again until the stack overflowed.
+    /// </summary>
+    [Fact]
+    public void Should_KeepTheModelList_When_AModelIsPicked()
+    {
+        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var (tab, _, _) = BuildForModel(pinned);
+            tab.Target.Select(pinned);
+            var list = tab.ModelChoices;
+            var raised = new List<string?>();
+            tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            tab.SelectedModelChoice = list.First(choice => choice.Profile == "GLM");
+
+            Assert.Same(list, tab.ModelChoices);
+            Assert.DoesNotContain(nameof(LaunchTabViewModel.ModelChoices), raised);
+            Assert.Equal("GLM", tab.RunLlmProfile);
+
+            raised.Clear();
+            tab.SelectedModelChoice = tab.SelectedModelChoice;
+            Assert.Empty(raised);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void Should_PrefillTheRunsModelWithTheTeams_When_ATeamIsSelected()
     {
