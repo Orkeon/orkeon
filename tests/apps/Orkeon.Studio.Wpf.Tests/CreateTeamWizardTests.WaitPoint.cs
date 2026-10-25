@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -55,6 +56,28 @@ public partial class CreateTeamWizardTests
     }
 
     [Fact]
+    public void A_studio_with_no_model_waits_on_one_and_the_election_ends_the_wait()
+    {
+        var (vm, _, profiles) = Build(withAssistant: false);
+
+        Assert.Equal(WizardWaitPoint.ChooseModel, vm.WaitPoint);
+        Assert.Equal("Waiting for you: choose a model", vm.WaitPointLabel);
+        // No session is under way: the gate names the wait, the status bar stays at rest.
+        Assert.Null(vm.Progress.WaitPhrase);
+
+        profiles.CommitEdit(
+            new ModelProfile
+            {
+                Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1",
+            },
+            previousName: null);
+        profiles.StudioProfileName = "Local";
+
+        Assert.Equal(WizardWaitPoint.None, vm.WaitPoint);
+        Assert.Null(vm.Progress.WaitPhrase);
+    }
+
+    [Fact]
     public async Task Folders_waiting_for_the_confirm_are_the_one_named_wait_point()
     {
         var (vm, processes, _) = Build();
@@ -73,7 +96,7 @@ public partial class CreateTeamWizardTests
             // The tab opens itself, with the amber dot.
             Assert.Equal(CreateTeamViewModel.Step1FoldersTab, wizard.Step1TabIndex);
             Assert.Equal("Expected", wizard.FoldersTabState);
-            Assert.Equal("2 folders to confirm", wizard.FoldersTabSubtitle);
+            Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
 
             // The assistant stops its indicator, names the action and holds Enter back.
             Assert.False(wizard.Chat.IsBusy);
@@ -114,6 +137,7 @@ public partial class CreateTeamWizardTests
             Assert.True(input.IsOnMachine);
             Assert.False(output.NeedsChoice);
             Assert.False(output.IsOnMachine);
+            Assert.Equal("2 folders · 1 to choose", wizard.FoldersTabSubtitle);
             Assert.StartsWith("1 folder to choose. You can confirm now:", wizard.FoldersFooter, StringComparison.Ordinal);
             Assert.Contains("« inpdf »", wizard.FoldersFooter, StringComparison.Ordinal);
 
@@ -163,12 +187,16 @@ public partial class CreateTeamWizardTests
         Assert.Equal(2, vm.Step);
         Assert.Equal(WizardWaitPoint.ChooseFolder, vm.WaitPoint);
         Assert.True(vm.IsWaitOnChooseFolder);
+        Assert.Equal("Waiting for you: choose a folder", vm.Progress.WaitPhrase);
         Assert.True(vm.Chat.HasPendingAction);
         Assert.Equal("Choose the folder to continue, or ask a question", vm.Chat.Placeholder);
 
         // From another step, « Waiting for you: … » brings step 2 back.
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
         vm.GoStep1Command.Execute(null);
         Assert.False(vm.IsWaitOnChooseFolder);
+        Assert.Contains(nameof(CreateTeamViewModel.IsWaitOnChooseFolder), raised);
         vm.Chat.PendingRevealCommand.Execute(null);
         Assert.Equal(2, vm.Step);
 

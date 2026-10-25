@@ -96,6 +96,12 @@ public sealed class ComposeProgressViewModel : ObservableObject
     /// </summary>
     public bool IsEngineRunning => _reading.EngineRunning;
 
+    /// <summary>
+    /// What the session waits on the user for, named (refonte R13), the engine alive or paused:
+    /// « Waiting for you: choose a folder »; null when nothing waits.
+    /// </summary>
+    public string? WaitPhrase => _reading.WaitPhrase is { Length: > 0 } phrase ? phrase : null;
+
     /// <summary>What the session's token allowance has left; null when the session has no cap.</summary>
     public long? TokensRemaining => _reading.TokensRemaining;
 
@@ -210,5 +216,5 @@ public sealed class ComposeProgressViewModel : ObservableObject
         nameof(IsVisible), nameof(IsWorking), nameof(IsWaiting), nameof(Title), nameof(Detail),
         nameof(TokensUp), nameof(TokensDown), nameof(HasTokens), nameof(TokensEstimated),
         nameof(TokensNote), nameof(TokensUpLabel), nameof(TokensDownLabel),
-        nameof(Facts), nameof(HasFacts), nameof(IsEngineRunning), nameof(TokensRemaining));
+        nameof(Facts), nameof(HasFacts), nameof(IsEngineRunning), nameof(TokensRemaining), nameof(WaitPhrase));
 }

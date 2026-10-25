@@ -380,7 +380,7 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
         if (progress is null)
             return;
 
-        _isActive = progress.IsEngineRunning;
+        _isActive = progress.IsEngineRunning || progress.WaitPhrase is not null;
         progress.PropertyChanged += OnProgressChanged;
     }
 
@@ -391,11 +391,23 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
         private set => SetProperty(ref _isActive, value);
     }
 
-    /// <summary>The stage in the card's own words — or «I am waiting for your answer», which outranks it.</summary>
-    public string Stage => _progress?.Title ?? string.Empty;
+    /// <summary>
+    /// The stage in the card's own words — or the wait point, « Waiting for you: choose a
+    /// folder », which outranks it, the engine alive or paused (refonte R13).
+    /// </summary>
+    public string Stage => _progress?.WaitPhrase ?? _progress?.Title ?? string.Empty;
 
-    /// <summary>Whether the engine waits on the user rather than on itself.</summary>
-    public bool IsWaiting => _progress?.IsWaiting == true;
+    /// <summary>Whether the session waits on the user rather than on the engine.</summary>
+    public bool IsWaiting => _progress?.IsWaiting == true || _progress?.WaitPhrase is not null;
+
+    /// <summary>
+    /// The group is on the bar while the engine lives, a rephrase runs, or the session waits
+    /// on the user with the engine paused (R13: the status bar names every wait point).
+    /// </summary>
+    private bool ReadActive() =>
+        _progress?.IsEngineRunning == true
+        || _progress?.WaitPhrase is not null
+        || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false };
 
     /// <summary>running | waiting — the tone the view maps to a colour.</summary>
     public string Tone => IsWaiting ? "waiting" : "running";
@@ -456,7 +468,7 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
 
     private void OnMeterChanged()
     {
-        IsActive = _progress?.IsEngineRunning == true || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false };
+        IsActive = ReadActive();
         OnPropertiesChanged(
             nameof(CallModeText), nameof(TokensUp), nameof(TokensDown),
             nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
@@ -477,7 +489,11 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
         switch (e.PropertyName)
         {
             case nameof(ComposeProgressViewModel.IsEngineRunning):
-                IsActive = _progress?.IsEngineRunning == true || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false };
+                IsActive = ReadActive();
+                break;
+            case nameof(ComposeProgressViewModel.WaitPhrase):
+                IsActive = ReadActive();
+                OnPropertiesChanged(nameof(Stage), nameof(IsWaiting), nameof(Tone));
                 break;
             case nameof(ComposeProgressViewModel.Title):
                 OnPropertyChanged(nameof(Stage));

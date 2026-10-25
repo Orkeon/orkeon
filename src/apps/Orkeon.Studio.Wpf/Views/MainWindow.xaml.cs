@@ -73,6 +73,12 @@ public partial class MainWindow : Window
             else if (e.Activity == ViewModels.Shell.StatusBarActivity.Launch)
                 shell.Run.IsTrial = false;
             NavFor(e.Activity).IsChecked = true;
+            // R13: the assistant's group names a wait point — the click lands on it.
+            if (e.Activity == ViewModels.Shell.StatusBarActivity.Atelier
+                && shell.CreateTeam.GoToWaitPointCommand.CanExecute(null))
+            {
+                shell.CreateTeam.GoToWaitPointCommand.Execute(null);
+            }
         };
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.

@@ -71,6 +71,23 @@ public sealed class StatusBarViewModelTests
             Estimated: false, TokensRemaining: tokensRemaining);
 
     [Fact]
+    public void A_wait_point_with_the_engine_paused_keeps_the_assistant_group_on_the_bar()
+    {
+        var card = new ComposeProgressViewModel();
+        var bar = new StatusBarViewModel(new StatusBarSources { Atelier = card, Mode = Expert() });
+
+        card.Update(Composing(engineRunning: false) with { WaitPhrase = "Waiting for you: choose a folder" });
+
+        Assert.True(bar.Atelier.IsActive);
+        Assert.True(bar.Atelier.IsWaiting);
+        Assert.Equal("Waiting for you: choose a folder", bar.Atelier.Stage);
+
+        card.Update(Composing(engineRunning: false));
+
+        Assert.False(bar.Atelier.IsActive);
+    }
+
+    [Fact]
     public void Nothing_runs_so_the_bar_holds_no_group()
     {
         var (launch, _) = Launcher();

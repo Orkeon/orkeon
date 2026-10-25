@@ -564,6 +564,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
         Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
         _strings.CultureChanged += (_, _) => OnAdoptProfileLanguageChanged();
+        _strings.CultureChanged += (_, _) => OnWaitPointLanguageChanged();
+
+        // The first reading: a Studio with no model waits on one from the start.
+        SyncWaitPoint();
     }
 
     // ── what the constructor wired ──────────────────────────────────────────
@@ -753,7 +757,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.RefreshMessageCount();
         TryNotes.RefreshMessageCount();
         AdoptNotes.RefreshMessageCount();
-        OnPropertyChanged(nameof(NeedFooter));
+        OnPropertiesChanged(nameof(NeedFooter), nameof(NeedTabSubtitle));
     }
 
     private void OnChatPropertyChanged(string? propertyName)
@@ -792,6 +796,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
             nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel));
         ComposeCommand.RaiseCanExecuteChanged();
+        // A model elected (or the last one removed) opens or closes the « choose a model » wait.
+        SyncWaitPoint();
     }
 
     /// <summary>
@@ -880,7 +886,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             if (!SetProperty(ref _step, value))
                 return;
 
-            OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4));
+            // The ring of a wait point reads the step on screen, even when the wait point stays.
+            OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4),
+                nameof(IsWaitOnChooseFolder), nameof(IsWaitOnAdopt));
             RaiseDraftChanged();
             GoBackCommand?.RaiseCanExecuteChanged();
             SyncWaitPoint();
@@ -1328,6 +1336,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             SaveTeamCommand.RaiseCanExecuteChanged();
             TryTeamCommand.RaiseCanExecuteChanged();
             AdoptWithoutTrialCommand.RaiseCanExecuteChanged();
+            // The engine starting or dying moves the wait point too: a wait it held ends with
+            // it, and the adoption becomes the one expected once the session reached its end.
+            SyncWaitPoint();
         }
     }
 
@@ -3250,7 +3261,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model.CompletionTokens,
         _model.TokensAreEstimated,
         _model.TokensRemaining,
-        HasWaitPoint ? WaitPointLabel : null));
+        // A model to choose is not a session's wait: the gate's alert names it, and the status
+        // bar stays at rest until a creation is under way.
+        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel ? WaitPointLabel : null));
 
     private void SyncActivity()
     {

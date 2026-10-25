@@ -1773,6 +1773,12 @@
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>lecture, écriture</value>
   </data>
+  <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
+    <value>Lecture</value>
+  </data>
+  <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
+    <value>Lecture et écriture</value>
+  </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>« {0} » n'est pas un nom de dossier : un seul mot de lettres, chiffres, - _ ou ., et pas un nom que le moteur se réserve.</value>
   </data>
@@ -1977,11 +1983,17 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirmez les dossiers pour passer à la composition.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Tranchez le choix dans la conversation pour continuer.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Décrit</value></data>
+  <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
+    <value>Décrit, {0} {0:plural:question réglée|questions réglées}</value>
+  </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>À décrire</value></data>
   <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Décrivez le travail pour continuer.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Besoin décrit.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Besoin décrit, {0} {0:plural:question réglée|questions réglées} avec l'assistant</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:dossier à confirmer|dossiers à confirmer}</value></data>
+  <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
+    <value>{0} {0:plural:dossier|dossiers} · {1} à choisir</value>
+  </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:dossier confirmé|dossiers confirmés}</value></data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Proposés après la composition</value></data>
   <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Dossiers confirmés : la composition continue.</value></data>
@@ -1989,7 +2001,7 @@
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 dossier à choisir. Vous pouvez confirmer maintenant : l'équipe recevra un dossier « {0} » vide à l'adoption.</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} dossiers à choisir. Vous pouvez confirmer maintenant : l'équipe les recevra vides à l'adoption.</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Rédigée</value></data>
-  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Facultative</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Facultative, vide</value></data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Aucune consigne pour l'instant.</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>En attente de vous : {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirmer les dossiers</value></data>

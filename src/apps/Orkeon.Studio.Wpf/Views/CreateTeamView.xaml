@@ -822,10 +822,10 @@
                                 <StackPanel Orientation="Horizontal" Margin="2">
                                   <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ToggleRoleCommand}"
                                           Tag="{Binding IsInput}" IsEnabled="{Binding IsInput, Converter={StaticResource Negate}}"
-                                          Content="{Binding [Studio.Create.FolderRoleInput], Source={x:Static services:I18n.Instance}}"/>
+                                          Content="{Binding [Studio.Create.FolderRoleRead], Source={x:Static services:I18n.Instance}}"/>
                                   <Button Style="{StaticResource SegmentBtnOn}" Command="{Binding ToggleRoleCommand}"
                                           Tag="{Binding IsInput, Converter={StaticResource Negate}}" IsEnabled="{Binding IsInput}"
-                                          Content="{Binding [Studio.Create.FolderRoleOutput], Source={x:Static services:I18n.Instance}}"/>
+                                          Content="{Binding [Studio.Create.FolderRoleReadWrite], Source={x:Static services:I18n.Instance}}"/>
                                 </StackPanel>
                               </Border>
                               <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center"
@@ -935,6 +935,7 @@
                         </Border>
                         <DataTemplate.Triggers>
                           <DataTrigger Binding="{Binding NeedsChoice}" Value="True">
+                            <Setter TargetName="Fiche" Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
                             <Setter TargetName="Fiche" Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
                           </DataTrigger>
                         </DataTemplate.Triggers>

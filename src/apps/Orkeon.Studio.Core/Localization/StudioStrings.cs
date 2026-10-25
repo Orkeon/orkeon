@@ -1707,6 +1707,9 @@ public static class StudioStringKeys
     /// <summary>"Described" — the need tab's subtitle once typed.</summary>
     public const string WizardTabNeedDone = "Studio.Create.TabNeedDone";
 
+    /// <summary>"Described, {0} questions settled" — the need tab's subtitle once the assistant asked.</summary>
+    public const string WizardTabNeedDoneAnswers = "Studio.Create.TabNeedDoneAnswers";
+
     /// <summary>"To describe" — the need tab's subtitle before.</summary>
     public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
 
@@ -1721,6 +1724,9 @@ public static class StudioStringKeys
 
     /// <summary>"{0} folders to confirm" — the folders tab's subtitle while they wait.</summary>
     public const string WizardTabFoldersPending = "Studio.Create.TabFoldersPending";
+
+    /// <summary>"{0} folders · {1} to choose" — the folders tab while some wait for a place.</summary>
+    public const string WizardTabFoldersPendingToChoose = "Studio.Create.TabFoldersPendingToChoose";
 
     /// <summary>"{0} folders confirmed".</summary>
     public const string WizardTabFoldersConfirmed = "Studio.Create.TabFoldersConfirmed";
@@ -1743,7 +1749,7 @@ public static class StudioStringKeys
     /// <summary>"Written" — the instruction tab once written.</summary>
     public const string WizardTabNotesDone = "Studio.Create.TabNotesDone";
 
-    /// <summary>"Optional" — the instruction tab before.</summary>
+    /// <summary>"Optional, empty" — the instruction tab before.</summary>
     public const string WizardTabNotesEmpty = "Studio.Create.TabNotesEmpty";
 
     /// <summary>"No instruction yet."</summary>
@@ -3258,11 +3264,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintConfirmFolders] = "Confirm the folders to move on to the composition.",
         [StudioStringKeys.WizardHintDecide] = "Settle the choice in the conversation to continue.",
         [StudioStringKeys.WizardTabNeedDone] = "Described",
+        [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
         [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
         [StudioStringKeys.WizardTabNeedEmptyFooter] = "Describe the work to continue.",
         [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
         [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
         [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
+        [StudioStringKeys.WizardTabFoldersPendingToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
         [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",
         [StudioStringKeys.WizardTabFoldersEmpty] = "Proposed after the composition",
         [StudioStringKeys.WizardTabFoldersConfirmedFooter] = "Folders confirmed: the composition goes on.",
@@ -3270,7 +3278,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabFoldersOneToChoose] = "1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.",
         [StudioStringKeys.WizardTabFoldersManyToChoose] = "{0} folders to choose. You can confirm now: the team will get them empty at adoption.",
         [StudioStringKeys.WizardTabNotesDone] = "Written",
-        [StudioStringKeys.WizardTabNotesEmpty] = "Optional",
+        [StudioStringKeys.WizardTabNotesEmpty] = "Optional, empty",
         [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
         [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
         [StudioStringKeys.WizardWaitingFor] = "Waiting for you: {0}",

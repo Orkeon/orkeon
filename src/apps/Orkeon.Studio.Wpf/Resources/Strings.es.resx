@@ -3403,6 +3403,12 @@
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>lectura, escritura</value>
   </data>
+  <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
+    <value>Lectura</value>
+  </data>
+  <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
+    <value>Lectura y escritura</value>
+  </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>« {0} » no es un nombre de carpeta: una sola palabra de letras, cifras, - _ o ., y no un nombre que el motor se reserva.</value>
   </data>
@@ -3693,11 +3699,17 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirme las carpetas para pasar a la composición.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Resuelva la elección en la conversación para continuar.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Descrito</value></data>
+  <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
+    <value>Descrito, {0} {0:plural:pregunta resuelta|preguntas resueltas}</value>
+  </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Por describir</value></data>
   <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describa el trabajo para continuar.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Necesidad descrita.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Necesidad descrita, {0} {0:plural:pregunta resuelta|preguntas resueltas} con el asistente</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:carpeta por confirmar|carpetas por confirmar}</value></data>
+  <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
+    <value>{0} {0:plural:carpeta|carpetas} · {1} por elegir</value>
+  </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:carpeta confirmada|carpetas confirmadas}</value></data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Propuestas tras la composición</value></data>
   <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Carpetas confirmadas: la composición continúa.</value></data>
@@ -3705,7 +3717,7 @@
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 carpeta por elegir. Puede confirmar ahora: el equipo recibirá una carpeta «{0}» vacía al adoptarlo.</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} carpetas por elegir. Puede confirmar ahora: el equipo las recibirá vacías al adoptarlo.</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Redactada</value></data>
-  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Opcional, vacía</value></data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Ninguna instrucción por ahora.</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Esperando su acción: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirmar las carpetas</value></data>

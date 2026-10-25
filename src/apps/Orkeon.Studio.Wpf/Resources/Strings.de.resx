@@ -3403,6 +3403,12 @@
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>Lesen, Schreiben</value>
   </data>
+  <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
+    <value>Lesen</value>
+  </data>
+  <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
+    <value>Lesen und Schreiben</value>
+  </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>„{0}“ ist kein Ordnername: ein Wort aus Buchstaben, Ziffern, - _ oder ., und kein Name, den die Laufzeit für sich reserviert.</value>
   </data>
@@ -3693,11 +3699,17 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Bestätigen Sie die Ordner, um zur Zusammenstellung überzugehen.</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Treffen Sie die Wahl im Gespräch, um fortzufahren.</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Beschrieben</value></data>
+  <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
+    <value>Beschrieben, {0} {0:plural:Frage|Fragen} geklärt</value>
+  </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Zu beschreiben</value></data>
   <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Beschreiben Sie die Arbeit, um fortzufahren.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Bedarf beschrieben.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Bedarf beschrieben, {0} {0:plural:Frage|Fragen} mit dem Assistenten geklärt</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:Ordner zu bestätigen|Ordner zu bestätigen}</value></data>
+  <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
+    <value>{0} Ordner · {1} zu wählen</value>
+  </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:Ordner bestätigt|Ordner bestätigt}</value></data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Nach der Zusammenstellung vorgeschlagen</value></data>
   <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>Ordner bestätigt: Die Zusammenstellung geht weiter.</value></data>
@@ -3705,7 +3717,7 @@
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält bei der Übernahme einen leeren Ordner „{0}“.</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} Ordner zu wählen. Sie können jetzt bestätigen: Das Team erhält sie bei der Übernahme leer.</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Verfasst</value></data>
-  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Freiwillig</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Freiwillig, leer</value></data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Noch keine Anweisung.</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Wartet auf Sie: {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>Ordner bestätigen</value></data>

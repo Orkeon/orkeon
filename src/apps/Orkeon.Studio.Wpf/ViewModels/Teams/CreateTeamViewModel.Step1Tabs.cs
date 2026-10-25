@@ -49,10 +49,23 @@ public sealed partial class CreateTeamViewModel
     /// <summary>The « Need » tab's state: done once the need is typed.</summary>
     public string NeedTabState => _need.Trim().Length > 0 ? TabDone : TabEmpty;
 
-    /// <summary>« To describe » or « Described ».</summary>
-    public string NeedTabSubtitle => _strings[_need.Trim().Length > 0
-        ? StudioStringKeys.WizardTabNeedDone
-        : StudioStringKeys.WizardTabNeedEmpty];
+    /// <summary>« To describe », « Described », or « Described, 2 questions settled ».</summary>
+    public string NeedTabSubtitle
+    {
+        get
+        {
+            if (_need.Trim().Length == 0)
+                return _strings[StudioStringKeys.WizardTabNeedEmpty];
+
+            var answers = AnswersGiven;
+            return answers == 0
+                ? _strings[StudioStringKeys.WizardTabNeedDone]
+                : _strings.Format(StudioStringKeys.WizardTabNeedDoneAnswers, answers);
+        }
+    }
+
+    /// <summary>The answers given in the conversation: what the need tab counts as settled.</summary>
+    private int AnswersGiven => Chat.Turns.Count(turn => turn.IsUser);
 
     /// <summary>
     /// The « Need » pane's footer: « Need described, 2 questions settled with the assistant »,
@@ -65,7 +78,7 @@ public sealed partial class CreateTeamViewModel
             if (_need.Trim().Length == 0)
                 return _strings[StudioStringKeys.WizardTabNeedEmptyFooter];
 
-            var answers = Chat.Turns.Count(turn => turn.IsUser);
+            var answers = AnswersGiven;
             return answers == 0
                 ? _strings[StudioStringKeys.WizardTabNeedFooter]
                 : _strings.Format(StudioStringKeys.WizardTabNeedFooterAnswers, answers);
@@ -79,13 +92,22 @@ public sealed partial class CreateTeamViewModel
     public string FoldersTabState =>
         _model.FoldersPending ? TabExpected : FoldersConfirmed ? TabDone : TabEmpty;
 
-    /// <summary>« Proposed after the composition », « 3 folders to confirm », « 3 folders confirmed ».</summary>
+    /// <summary>
+    /// « Proposed after the composition », « 3 folders to confirm », « 2 folders · 1 to choose »,
+    /// « 3 folders confirmed ».
+    /// </summary>
     public string FoldersTabSubtitle
     {
         get
         {
             if (_model.FoldersPending)
-                return _strings.Format(StudioStringKeys.WizardTabFoldersPending, FolderRows.Count);
+            {
+                var toChoose = FolderRows.Count(row => row.NeedsChoice);
+                return toChoose == 0
+                    ? _strings.Format(StudioStringKeys.WizardTabFoldersPending, FolderRows.Count)
+                    : _strings.Format(StudioStringKeys.WizardTabFoldersPendingToChoose, FolderRows.Count, toChoose);
+            }
+
             if (FoldersConfirmed)
                 return _strings.Format(StudioStringKeys.WizardTabFoldersConfirmed, _model.Folders.Count);
 
@@ -125,7 +147,7 @@ public sealed partial class CreateTeamViewModel
     /// <summary>The instruction tab's state: optional, so an empty circle until written.</summary>
     public string NotesTabState => ComposeNotes.HasConsigne ? TabDone : TabEmpty;
 
-    /// <summary>« Optional » or « Written ».</summary>
+    /// <summary>« Optional, empty » or « Written ».</summary>
     public string NotesTabSubtitle => _strings[ComposeNotes.HasConsigne
         ? StudioStringKeys.WizardTabNotesDone
         : StudioStringKeys.WizardTabNotesEmpty];
@@ -148,6 +170,18 @@ public sealed partial class CreateTeamViewModel
                 OnPropertiesChanged(nameof(NotesTabState), nameof(NotesTabSubtitle), nameof(NotesFooter));
         };
         FolderRows.CollectionChanged += (_, _) => RefreshStep1Tabs();
+    }
+
+    /// <summary>
+    /// A language switch: the wait point's words — the bubble, the composer's placeholder, the
+    /// stepper's and the status bar's « Waiting for you: … » — and the tabs' are read again.
+    /// </summary>
+    private void OnWaitPointLanguageChanged()
+    {
+        Chat.SetPendingAction(PendingActionFor(_waitPoint));
+        OnPropertiesChanged(nameof(WaitPointLabel), nameof(SessionStateLabel), nameof(Step1Hint));
+        RefreshStep1Tabs();
+        SyncProgress();
     }
 
     /// <summary>Republishes every tab's state, subtitle and footer.</summary>

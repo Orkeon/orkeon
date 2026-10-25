@@ -3403,6 +3403,12 @@
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>读取、写入</value>
   </data>
+  <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
+    <value>读取</value>
+  </data>
+  <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
+    <value>读取和写入</value>
+  </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>“{0}”不是有效的文件夹名称：只能是由字母、数字、- _ 或 . 组成的一个词，且不能是运行时保留的名称。</value>
   </data>
@@ -3693,11 +3699,17 @@
   <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>确认文件夹以进入组建。</value></data>
   <data name="Studio.Create.HintDecide" xml:space="preserve"><value>在对话中做出选择以继续。</value></data>
   <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>已描述</value></data>
+  <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
+    <value>已描述，已解决 {0} 个问题</value>
+  </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>待描述</value></data>
   <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>描述工作以继续。</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>需求已描述。</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>需求已描述，已与助手解决 {0} 个问题</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} 个文件夹待确认</value></data>
+  <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
+    <value>{0} 个文件夹 · {1} 个待选择</value>
+  </data>
   <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>已确认 {0} 个文件夹</value></data>
   <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>组建后提出</value></data>
   <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve"><value>文件夹已确认：组建继续进行。</value></data>
@@ -3705,7 +3717,7 @@
   <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>还有 1 个文件夹待选择。您现在即可确认：团队在采用时将获得一个空的“{0}”文件夹。</value></data>
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>还有 {0} 个文件夹待选择。您现在即可确认：团队在采用时将获得空文件夹。</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>已填写</value></data>
-  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>可选</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>可选，为空</value></data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>暂无指令。</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>等待您：{0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>确认文件夹</value></data>
