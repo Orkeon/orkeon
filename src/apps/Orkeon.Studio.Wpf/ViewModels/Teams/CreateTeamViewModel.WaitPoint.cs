@@ -141,6 +141,8 @@ public sealed partial class CreateTeamViewModel
         GoToWaitPointCommand?.RaiseCanExecuteChanged();
         if (next is WizardWaitPoint.ConfirmFolders or WizardWaitPoint.FillFolders)
             Step1TabIndex = Step1FoldersTab;
+        else if (next == WizardWaitPoint.ChooseFolder)
+            Step2TabIndex = Step2FoldersTab;
         SyncProgress();
         if (next != WizardWaitPoint.None)
             WaitPointReached?.Invoke(this, EventArgs.Empty);
@@ -166,6 +168,7 @@ public sealed partial class CreateTeamViewModel
                 break;
             case WizardWaitPoint.ChooseFolder:
                 GoStep(2);
+                Step2TabIndex = Step2FoldersTab;
                 break;
             case WizardWaitPoint.Adopt:
                 GoStep(4);

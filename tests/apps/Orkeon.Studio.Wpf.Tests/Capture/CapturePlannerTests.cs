@@ -101,8 +101,10 @@ public sealed class CapturePlannerTests
         // Sign-in tabs of an account's form, both modes, both themes) = +8 shots.
         // Drive tab: +1 stop (reglages-drive-vide, the Drive tab of the pristine machine, both modes,
         // both themes, language sweep) = +8 shots.
-        Assert.Equal(70, CaptureCatalog.All.Count);
-        Assert.Equal(390, plan.Count);
+        // Refonte lot 10: +1 stop (etape2-composition, the read-only « Composition » tab of step 2,
+        // both modes, both themes) = +4 shots.
+        Assert.Equal(71, CaptureCatalog.All.Count);
+        Assert.Equal(394, plan.Count);
     }
 
     [Fact]

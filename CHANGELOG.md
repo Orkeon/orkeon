@@ -21,7 +21,8 @@ The screens share new controls (`Alert`, `Badge`, `PropertyRow`, `PageHeader`, `
 `BtnSecondary`, `BtnDanger`, with a `ButtonSize`). The accent colour is now teal. The assistant moves from the three
 screens that each embedded it into one side panel, opened with « Ask the assistant » in the title bar. My teams gets
 card action bars, one banner for refused scheduled runs and an Undo toast after an archive. Create a team shows one step
-per screen behind a stepper. The French wording follows one lexicon (Équipe, Modèle, Essai, Vérifier, Lancer, real plurals).
+per screen behind a stepper; its Compose step becomes a binder of four tabs (Team, Team folders, Composition instruction,
+Composition), and « Try the team » waits until no folder is left to choose. The French wording follows one lexicon (Équipe, Modèle, Essai, Vérifier, Lancer, real plurals).
 A guard test refuses a resource dictionary that declares the same key twice: a duplicated icon key stopped Studio at startup.
 
 History becomes a table grouped by day with team and status filters, the team's own name and « < 1 s » under a second. Settings become

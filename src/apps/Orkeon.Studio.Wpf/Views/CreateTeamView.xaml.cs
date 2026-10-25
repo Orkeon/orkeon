@@ -57,6 +57,7 @@ public partial class CreateTeamView : UserControl
                 RevealFirst(AssistantGate);
                 break;
             case WizardWaitPoint.ChooseFolder:
+                // The folders tab of step 2 is the wait point: its first fiche takes the focus.
                 RevealFirst(MountFoldersBlock);
                 break;
             case WizardWaitPoint.Adopt:

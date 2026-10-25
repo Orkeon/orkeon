@@ -881,7 +881,9 @@
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Équipe exportée vers {0}</value></data>
   <data name="Studio.Teams.ExportFailed" xml:space="preserve"><value>Export refusé — la destination existe déjà, ou le disque a refusé.</value></data>
   <data name="Studio.Create.TryTeam" xml:space="preserve"><value>Essayer l'équipe</value></data>
-  <data name="Studio.Create.PausedHint" xml:space="preserve"><value>Composée et validée — rien n'a encore tourné.</value></data>
+  <data name="Studio.Create.PausedHint" xml:space="preserve">
+    <value>Équipe composée — vous pouvez l'essayer.</value>
+  </data>
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>Supprimer cette équipe ?</value>
   </data>
@@ -2087,6 +2089,87 @@
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} dossiers à choisir. Vous pouvez confirmer maintenant : l'équipe les recevra vides à l'adoption.</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Rédigée</value></data>
   <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Facultative, vide</value></data>
+  <data name="Studio.Create.TabTeam" xml:space="preserve">
+    <value>Équipe</value>
+  </data>
+  <data name="Studio.Create.TabTeamProposed" xml:space="preserve">
+    <value>{0} {0:plural:agent|agents} · proposée</value>
+  </data>
+  <data name="Studio.Create.TabTeamComposing" xml:space="preserve">
+    <value>Composition en cours</value>
+  </data>
+  <data name="Studio.Create.TabTeamEmpty" xml:space="preserve">
+    <value>Pas encore proposée</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersInside" xml:space="preserve">
+    <value>{0} {0:plural:dossier|dossiers} · dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersSet" xml:space="preserve">
+    <value>{0} {0:plural:dossier réglé|dossiers réglés}</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersToChoose" xml:space="preserve">
+    <value>{0} {0:plural:dossier|dossiers} · {1} à choisir</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersNone" xml:space="preserve">
+    <value>Aucun dossier</value>
+  </data>
+  <data name="Studio.Create.TabComposition" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
+    <value>Arrêtée · {0} {0:plural:fichier écrit|fichiers écrits}</value>
+  </data>
+  <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Studio.Create.TabCompositionNone" xml:space="preserve">
+    <value>Pas commencée</value>
+  </data>
+  <data name="Studio.Create.TeamFooterStopped" xml:space="preserve">
+    <value>{0} {0:plural:agent|agents}, composition arrêtée.</value>
+  </data>
+  <data name="Studio.Create.TeamFooterComposing" xml:space="preserve">
+    <value>Le moteur compose l'équipe…</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterInside" xml:space="preserve">
+    <value>{0} {0:plural:dossier, dans l'équipe|dossiers, tous dans l'équipe}.</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterSet" xml:space="preserve">
+    <value>{0} {0:plural:dossier, réglé|dossiers, tous réglés}.</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterNone" xml:space="preserve">
+    <value>Cette équipe n'utilise aucun dossier.</value>
+  </data>
+  <data name="Studio.Create.CompositionStateRunning" xml:space="preserve">
+    <value>En cours</value>
+  </data>
+  <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
+    <value>Arrêtée — définition vérifiée</value>
+  </data>
+  <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
+    <value>Arrêtée — définition à corriger</value>
+  </data>
+  <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
+    <value>Arrêtée</value>
+  </data>
+  <data name="Studio.Create.CompositionFiles" xml:space="preserve">
+    <value>{0} {0:plural:fichier|fichiers} dans le brouillon de l'équipe</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftSaved" xml:space="preserve">
+    <value>enregistré à {0}</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftNotSaved" xml:space="preserve">
+    <value>pas encore enregistré</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterDone" xml:space="preserve">
+    <value>Composition terminée.</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
+    <value>Composition en cours.</value>
+  </data>
+  <data name="Studio.Create.MoreTools" xml:space="preserve">
+    <value>+ {0}</value>
+  </data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>Aucune consigne pour l'instant.</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>En attente de vous : {0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirmer les dossiers</value></data>
@@ -2124,7 +2207,54 @@
   <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>Note</value></data>
   <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>À quoi sert ce dossier pour l'équipe ?</value></data>
   <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>Déduit de votre demande</value></data>
-  <data name="Studio.Create.SeeFolders" xml:space="preserve"><value>Voir les dossiers</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve">
+    <value>Voir les dossiers</value>
+  </data>
+  <data name="Studio.Create.SeeNotes" xml:space="preserve">
+    <value>Voir la consigne</value>
+  </data>
+  <data name="Studio.Create.SeeComposition" xml:space="preserve">
+    <value>Voir la composition</value>
+  </data>
+  <data name="Studio.Create.BackToTeam" xml:space="preserve">
+    <value>Retour à l'équipe</value>
+  </data>
+  <data name="Studio.Create.Step2NotesNote" xml:space="preserve">
+    <value>La consigne part avec la prochaine composition : la modifier ici ne recompose pas l'équipe d'elle-même — revenez à l'étape 1 et composez de nouveau.</value>
+  </data>
+  <data name="Studio.Create.CompositionTitle" xml:space="preserve">
+    <value>Composition par le moteur</value>
+  </data>
+  <data name="Studio.Create.CompositionSub" xml:space="preserve">
+    <value>Ce que le moteur a fait pour produire cette proposition. Lecture seule ; le détail complet est dans le Journal technique.</value>
+  </data>
+  <data name="Studio.Create.FieldState" xml:space="preserve">
+    <value>État</value>
+  </data>
+  <data name="Studio.Create.FieldFilesWritten" xml:space="preserve">
+    <value>Fichiers écrits</value>
+  </data>
+  <data name="Studio.Create.FieldLastExchange" xml:space="preserve">
+    <value>Dernier échange</value>
+  </data>
+  <data name="Studio.Create.FieldEngine" xml:space="preserve">
+    <value>Moteur</value>
+  </data>
+  <data name="Studio.Create.FieldDraft" xml:space="preserve">
+    <value>Brouillon</value>
+  </data>
+  <data name="Studio.Create.OpenDraft" xml:space="preserve">
+    <value>Ouvrir le brouillon</value>
+  </data>
+  <data name="Studio.Create.ViewProposal" xml:space="preserve">
+    <value>Proposition</value>
+  </data>
+  <data name="Studio.Create.ViewYaml" xml:space="preserve">
+    <value>YAML</value>
+  </data>
+  <data name="Studio.Create.RemoveShort" xml:space="preserve">
+    <value>Retirer</value>
+  </data>
   <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>Retour aux dossiers</value></data>
   <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Facultative. Une consigne s'applique à tous les agents, part avec l'équipe et devient un point à vérifier à l'essai.</value></data>
   <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>Par exemple : rédiger chaque réponse en français et citer le document source.</value></data>

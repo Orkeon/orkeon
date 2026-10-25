@@ -2085,7 +2085,10 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.FillFoldersNoCommand.CanExecute(null));
         Assert.Equal(2, vm.Step);
-        Assert.True(vm.TryTeamCommand.CanExecute(null));
+        // The pause allows the trial; « Try the team » itself waits for the folder still to
+        // choose (refonte lot 10).
+        Assert.True(vm.CanTryTeam);
+        Assert.Equal(vm.HasFoldersToChoose, !vm.TryTeamCommand.CanExecute(null));
 
         vm.RestartCommand.Execute(null);
         Assert.Empty(vm.HeldFolderRows);

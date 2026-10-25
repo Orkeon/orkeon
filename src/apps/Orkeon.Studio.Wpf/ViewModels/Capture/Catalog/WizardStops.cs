@@ -1,5 +1,6 @@
 using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
+using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
@@ -165,7 +166,29 @@ internal static class WizardStops
             Covers = ["CreateTeam.IsStep2", "CreateTeam.HasProposal", "CreateTeam.CanTryTeam"],
             SweepsLanguages = true,
             Arrange = static async c =>
-                await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug)),
+            {
+                await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug));
+                // Refonte lot 10: the team tab, even when a folder to choose opened the folders tab.
+                c.Shell.CreateTeam.Step2TabIndex = CreateTeamViewModel.Step2TeamTab;
+            },
+        },
+
+        // Refonte lot 10: the read-only « Composition » tab of step 2.
+        new()
+        {
+            Name = "etape2-composition",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "The Composer's « Composition » tab: what the engine did for the proposal — its "
+                    + "state, the files written, its last words, its build, the draft on disk — read only, "
+                    + "the technical journal behind a button.",
+            Covers = ["CreateTeam.IsStep2", "CreateTeam.HasProposal"],
+            CoversFalse = ["CreateTeam.IsComposing", "CreateTeam.IsCompositionTabEmpty"],
+            Arrange = static async c =>
+            {
+                await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug));
+                c.Shell.CreateTeam.Step2TabIndex = CreateTeamViewModel.Step2CompositionTab;
+            },
         },
 
         // STUDIO-14 wizard (D-08)
@@ -184,6 +207,7 @@ internal static class WizardStops
             {
                 await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug));
                 c.Shell.CreateTeam.CreateAllInsideTeamCommand.Execute(null);
+                c.Shell.CreateTeam.Step2TabIndex = CreateTeamViewModel.Step2FoldersTab;
             },
         },
 

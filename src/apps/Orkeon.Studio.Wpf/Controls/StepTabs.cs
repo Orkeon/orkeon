@@ -20,6 +20,9 @@ public enum StepTabState
 
     /// <summary>A green dot: the section was checked and holds.</summary>
     Verified,
+
+    /// <summary>A turning ring: the engine is working on the section.</summary>
+    Working,
 }
 
 /// <summary>

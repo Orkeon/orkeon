@@ -165,10 +165,13 @@ public sealed partial class I18nResourceParityTests
         // English does, a real cognate (the same floor), measured, not above it.
         // #117: raised by the run table's column headers no language rewrites — « AGENT » (fr, de)
         // and « TOKENS » (fr, es, de), real cognates (the same floor), measured, not above it.
-        ["Strings.fr.resx"] = 61,
-        ["Strings.es.resx"] = 43,
-        ["Strings.de.resx"] = 46,
-        ["Strings.zh-Hans.resx"] = 35,
+        // Refonte lot 10: raised by the step-2 labels no language rewrites — the « + {0} » of a
+        // folded pill row and « YAML » (all), « Composition » (fr), « Team » and « Engine » (de)
+        // — the same floor, measured, not above it.
+        ["Strings.fr.resx"] = 62,
+        ["Strings.es.resx"] = 45,
+        ["Strings.de.resx"] = 50,
+        ["Strings.zh-Hans.resx"] = 37,
     };
 
     [Theory]

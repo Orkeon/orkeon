@@ -188,6 +188,7 @@ public sealed partial class CreateTeamViewModel
             nameof(IsSessionWorking), nameof(IsSessionWaiting), nameof(IsSessionPaused),
             nameof(IsDraftSaved), nameof(CanResumeHere), nameof(SessionStateLabel), nameof(HasSessionState));
         ResumeHereCommand?.RaiseCanExecuteChanged();
+        RefreshStep2Tabs();
     }
 
     /// <summary>

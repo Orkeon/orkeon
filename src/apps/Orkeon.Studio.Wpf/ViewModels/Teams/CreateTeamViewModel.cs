@@ -59,8 +59,13 @@ public sealed class WizardChoice : ObservableObject
 }
 
 /// <summary>One agent card of the "Composer" step — a blueprint agent, or a step-group fallback.</summary>
-public sealed class WizardAgentCard
+public sealed class WizardAgentCard : ObservableObject
 {
+    /// <summary>The « Can: » pills shown before « + N » folds the rest (refonte lot 10).</summary>
+    public const int FoldedToolCount = 5;
+
+    private bool _showAllTools;
+
     internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<WizardToolChip> tools, Action<string?>? edit, Func<bool> canEdit)
     {
         Key = key;
@@ -69,7 +74,25 @@ public sealed class WizardAgentCard
         Role = role;
         Tools = tools;
         EditCommand = new RelayCommand(() => edit?.Invoke(key), () => edit is not null && key is not null && canEdit());
+        ShowAllToolsCommand = new RelayCommand(() =>
+        {
+            _showAllTools = true;
+            OnPropertiesChanged(nameof(VisibleTools), nameof(HasHiddenTools), nameof(MoreToolsLabel));
+        });
     }
+
+    /// <summary>The pills on screen: the first five until « + N » is clicked, then all of them.</summary>
+    public IReadOnlyList<WizardToolChip> VisibleTools =>
+        _showAllTools || Tools.Count <= FoldedToolCount ? Tools : [.. Tools.Take(FoldedToolCount)];
+
+    /// <summary>Whether pills are folded behind « + N ».</summary>
+    public bool HasHiddenTools => VisibleTools.Count < Tools.Count;
+
+    /// <summary>« + 3 »: the folded pills' count.</summary>
+    public string MoreToolsLabel => HasHiddenTools ? $"+ {Tools.Count - VisibleTools.Count}" : string.Empty;
+
+    /// <summary>The « + N » pill: unfolds the rest.</summary>
+    public RelayCommand ShowAllToolsCommand { get; }
 
     /// <summary>The blueprint key — expert mono; null for a step-group fallback card.</summary>
     public string? Key { get; }
@@ -523,7 +546,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The gesture IS the engine. The questions belong to the model, asked during its
         // brief stage; a local questionnaire played first only interviewed the user twice.
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
-        TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
+        TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeamNow);
         AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(
@@ -542,6 +565,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         InitializeStepper(wired.Clock);
         InitializeWaitPoint();
         InitializeStep1Tabs();
+        InitializeStep2Tabs();
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
         OpenConflictingTeamCommand = new RelayCommand(OpenConflictingTeam, () => CanOpenConflictingTeam);
@@ -1820,6 +1844,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
             nameof(DroppedDerivedWarning));
+        RefreshStep2Tabs();
         SyncWaitPoint();
     }
 
@@ -2876,6 +2901,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.Consigne = "";
         TryNotes.Consigne = "";
         AdoptNotes.Consigne = "";
+        ResetStep2Tabs();
 
         SyncFromModel();
     }
@@ -3206,6 +3232,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
         RaiseSessionStateChanged();
         RefreshStep1Tabs();
+        RefreshStep2Tabs();
         SyncWaitPoint();
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();

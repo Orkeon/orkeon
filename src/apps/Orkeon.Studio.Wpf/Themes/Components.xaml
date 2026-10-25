@@ -266,6 +266,22 @@
                 <controls:LucideIcon x:Name="DoneMark" Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}"
                                      Visibility="Collapsed"/>
                 <Ellipse x:Name="VerifiedMark" Width="10" Height="10" Fill="{DynamicResource SuccessBrush}" Visibility="Collapsed"/>
+                <controls:LucideIcon x:Name="WorkingMark" Kind="loader-circle" Size="16" Foreground="{DynamicResource AccentBrush}"
+                                     RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
+                  <controls:LucideIcon.RenderTransform>
+                    <RotateTransform/>
+                  </controls:LucideIcon.RenderTransform>
+                  <controls:LucideIcon.Triggers>
+                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                      <BeginStoryboard>
+                        <Storyboard RepeatBehavior="Forever">
+                          <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                           From="0" To="360" Duration="0:0:1"/>
+                        </Storyboard>
+                      </BeginStoryboard>
+                    </EventTrigger>
+                  </controls:LucideIcon.Triggers>
+                </controls:LucideIcon>
               </Grid>
               <StackPanel VerticalAlignment="Center">
                 <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="13.5"
@@ -289,6 +305,10 @@
             <Trigger Property="State" Value="Done">
               <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="DoneMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Working">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="WorkingMark" Property="Visibility" Value="Visible"/>
             </Trigger>
             <Trigger Property="State" Value="Expected">
               <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>

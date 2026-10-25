@@ -1753,6 +1753,33 @@ public static class StudioStringKeys
 
     /// <summary>"Optional, empty" — the instruction tab before.</summary>
     public const string WizardTabNotesEmpty = "Studio.Create.TabNotesEmpty";
+    public const string WizardTabTeam = "Studio.Create.TabTeam";
+    public const string WizardTabTeamProposed = "Studio.Create.TabTeamProposed";
+    public const string WizardTabTeamComposing = "Studio.Create.TabTeamComposing";
+    public const string WizardTabTeamEmpty = "Studio.Create.TabTeamEmpty";
+    public const string WizardTabTeamFoldersInside = "Studio.Create.TabTeamFoldersInside";
+    public const string WizardTabTeamFoldersSet = "Studio.Create.TabTeamFoldersSet";
+    public const string WizardTabTeamFoldersToChoose = "Studio.Create.TabTeamFoldersToChoose";
+    public const string WizardTabTeamFoldersNone = "Studio.Create.TabTeamFoldersNone";
+    public const string WizardTabComposition = "Studio.Create.TabComposition";
+    public const string WizardTabCompositionStopped = "Studio.Create.TabCompositionStopped";
+    public const string WizardTabCompositionRunning = "Studio.Create.TabCompositionRunning";
+    public const string WizardTabCompositionNone = "Studio.Create.TabCompositionNone";
+    public const string WizardTeamFooterStopped = "Studio.Create.TeamFooterStopped";
+    public const string WizardTeamFooterComposing = "Studio.Create.TeamFooterComposing";
+    public const string WizardStep2FoldersFooterInside = "Studio.Create.Step2FoldersFooterInside";
+    public const string WizardStep2FoldersFooterSet = "Studio.Create.Step2FoldersFooterSet";
+    public const string WizardStep2FoldersFooterNone = "Studio.Create.Step2FoldersFooterNone";
+    public const string WizardCompositionStateRunning = "Studio.Create.CompositionStateRunning";
+    public const string WizardCompositionStateValid = "Studio.Create.CompositionStateValid";
+    public const string WizardCompositionStateInvalid = "Studio.Create.CompositionStateInvalid";
+    public const string WizardCompositionStateStopped = "Studio.Create.CompositionStateStopped";
+    public const string WizardCompositionFiles = "Studio.Create.CompositionFiles";
+    public const string WizardCompositionDraftSaved = "Studio.Create.CompositionDraftSaved";
+    public const string WizardCompositionDraftNotSaved = "Studio.Create.CompositionDraftNotSaved";
+    public const string WizardCompositionFooterDone = "Studio.Create.CompositionFooterDone";
+    public const string WizardCompositionFooterRunning = "Studio.Create.CompositionFooterRunning";
+    public const string WizardMoreTools = "Studio.Create.MoreTools";
 
     /// <summary>"No instruction yet."</summary>
     public const string WizardTabNotesFooterEmpty = "Studio.Create.TabNotesFooterEmpty";
@@ -3324,6 +3351,33 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabFoldersManyToChoose] = "{0} folders to choose. You can confirm now: the team will get them empty at adoption.",
         [StudioStringKeys.WizardTabNotesDone] = "Written",
         [StudioStringKeys.WizardTabNotesEmpty] = "Optional, empty",
+        [StudioStringKeys.WizardTabTeam] = "Team",
+        [StudioStringKeys.WizardTabTeamProposed] = "{0} {0:plural:agent|agents} · proposed",
+        [StudioStringKeys.WizardTabTeamComposing] = "Being composed",
+        [StudioStringKeys.WizardTabTeamEmpty] = "Not proposed yet",
+        [StudioStringKeys.WizardTabTeamFoldersInside] = "{0} {0:plural:folder|folders} · inside the team",
+        [StudioStringKeys.WizardTabTeamFoldersSet] = "{0} {0:plural:folder|folders} · set",
+        [StudioStringKeys.WizardTabTeamFoldersToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
+        [StudioStringKeys.WizardTabTeamFoldersNone] = "No folder",
+        [StudioStringKeys.WizardTabComposition] = "Composition",
+        [StudioStringKeys.WizardTabCompositionStopped] = "Stopped · {0} {0:plural:file|files} written",
+        [StudioStringKeys.WizardTabCompositionRunning] = "Under way",
+        [StudioStringKeys.WizardTabCompositionNone] = "Not started",
+        [StudioStringKeys.WizardTeamFooterStopped] = "{0} {0:plural:agent|agents}, composition stopped.",
+        [StudioStringKeys.WizardTeamFooterComposing] = "The engine is composing the team…",
+        [StudioStringKeys.WizardStep2FoldersFooterInside] = "{0} {0:plural:folder, inside the team|folders, all inside the team}.",
+        [StudioStringKeys.WizardStep2FoldersFooterSet] = "{0} {0:plural:folder, set|folders, all set}.",
+        [StudioStringKeys.WizardStep2FoldersFooterNone] = "This team uses no folder.",
+        [StudioStringKeys.WizardCompositionStateRunning] = "Under way",
+        [StudioStringKeys.WizardCompositionStateValid] = "Stopped — definition checked",
+        [StudioStringKeys.WizardCompositionStateInvalid] = "Stopped — definition to fix",
+        [StudioStringKeys.WizardCompositionStateStopped] = "Stopped",
+        [StudioStringKeys.WizardCompositionFiles] = "{0} {0:plural:file|files} in the team's draft",
+        [StudioStringKeys.WizardCompositionDraftSaved] = "saved at {0}",
+        [StudioStringKeys.WizardCompositionDraftNotSaved] = "not saved yet",
+        [StudioStringKeys.WizardCompositionFooterDone] = "Composition finished.",
+        [StudioStringKeys.WizardCompositionFooterRunning] = "Composition under way.",
+        [StudioStringKeys.WizardMoreTools] = "+ {0}",
         [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
         [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
         [StudioStringKeys.WizardWaitingFor] = "Waiting for you: {0}",
@@ -3518,7 +3572,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDraftSavedAt] = "Draft saved at {0}",
         [StudioStringKeys.WizardResumeUnavailable] = "This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.",
         [StudioStringKeys.WizardFoldersToChoose] = "{0} {0:plural:folder|folders} to choose before the trial.",
-        [StudioStringKeys.WizardPausedHint] = "Composed and validated — nothing has run yet.",
+        [StudioStringKeys.WizardPausedHint] = "Team composed — you can try it.",
         [StudioStringKeys.WizardVerdictSummary] = "{0} of {1} {1:plural:criterion|criteria} met",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",

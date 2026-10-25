@@ -2490,7 +2490,7 @@
     <value>试运行团队</value>
   </data>
   <data name="Studio.Create.PausedHint" xml:space="preserve">
-    <value>已组建并校验——尚未运行任何内容。</value>
+    <value>团队已组建——可以试运行了。</value>
   </data>
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>删除这个团队？</value>
@@ -3801,6 +3801,87 @@
   <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>还有 {0} 个文件夹待选择。您现在即可确认：团队在采用时将获得空文件夹。</value></data>
   <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>已填写</value></data>
   <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>可选，为空</value></data>
+  <data name="Studio.Create.TabTeam" xml:space="preserve">
+    <value>团队</value>
+  </data>
+  <data name="Studio.Create.TabTeamProposed" xml:space="preserve">
+    <value>{0} 个智能体 · 已提议</value>
+  </data>
+  <data name="Studio.Create.TabTeamComposing" xml:space="preserve">
+    <value>正在组建</value>
+  </data>
+  <data name="Studio.Create.TabTeamEmpty" xml:space="preserve">
+    <value>尚未提议</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersInside" xml:space="preserve">
+    <value>{0} 个文件夹 · 在团队内</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersSet" xml:space="preserve">
+    <value>{0} 个文件夹 · 已设置</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersToChoose" xml:space="preserve">
+    <value>{0} 个文件夹 · {1} 个待选</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersNone" xml:space="preserve">
+    <value>没有文件夹</value>
+  </data>
+  <data name="Studio.Create.TabComposition" xml:space="preserve">
+    <value>组建</value>
+  </data>
+  <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
+    <value>已停止 · 已写入 {0} 个文件</value>
+  </data>
+  <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
+    <value>进行中</value>
+  </data>
+  <data name="Studio.Create.TabCompositionNone" xml:space="preserve">
+    <value>尚未开始</value>
+  </data>
+  <data name="Studio.Create.TeamFooterStopped" xml:space="preserve">
+    <value>{0} 个智能体，组建已停止。</value>
+  </data>
+  <data name="Studio.Create.TeamFooterComposing" xml:space="preserve">
+    <value>引擎正在组建团队……</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterInside" xml:space="preserve">
+    <value>{0} 个文件夹，全部在团队内。</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterSet" xml:space="preserve">
+    <value>{0} 个文件夹，全部已设置。</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterNone" xml:space="preserve">
+    <value>该团队不使用文件夹。</value>
+  </data>
+  <data name="Studio.Create.CompositionStateRunning" xml:space="preserve">
+    <value>进行中</value>
+  </data>
+  <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
+    <value>已停止 — 定义已检查</value>
+  </data>
+  <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
+    <value>已停止 — 定义需修正</value>
+  </data>
+  <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
+    <value>已停止</value>
+  </data>
+  <data name="Studio.Create.CompositionFiles" xml:space="preserve">
+    <value>团队草稿中有 {0} 个文件</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftSaved" xml:space="preserve">
+    <value>已于 {0} 保存</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftNotSaved" xml:space="preserve">
+    <value>尚未保存</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterDone" xml:space="preserve">
+    <value>组建完成。</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
+    <value>组建进行中。</value>
+  </data>
+  <data name="Studio.Create.MoreTools" xml:space="preserve">
+    <value>+ {0}</value>
+  </data>
   <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>暂无指令。</value></data>
   <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>等待您：{0}</value></data>
   <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>确认文件夹</value></data>
@@ -3838,7 +3919,54 @@
   <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>备注</value></data>
   <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>这个文件夹对团队有什么用？</value></data>
   <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>根据您的请求推断</value></data>
-  <data name="Studio.Create.SeeFolders" xml:space="preserve"><value>查看文件夹</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve">
+    <value>查看文件夹</value>
+  </data>
+  <data name="Studio.Create.SeeNotes" xml:space="preserve">
+    <value>查看指令</value>
+  </data>
+  <data name="Studio.Create.SeeComposition" xml:space="preserve">
+    <value>查看组建</value>
+  </data>
+  <data name="Studio.Create.BackToTeam" xml:space="preserve">
+    <value>返回团队</value>
+  </data>
+  <data name="Studio.Create.Step2NotesNote" xml:space="preserve">
+    <value>指令随下一次组建生效：在此修改不会自动重新组建团队——请回到第 1 步重新组建。</value>
+  </data>
+  <data name="Studio.Create.CompositionTitle" xml:space="preserve">
+    <value>引擎的组建</value>
+  </data>
+  <data name="Studio.Create.CompositionSub" xml:space="preserve">
+    <value>引擎为生成此提议所做的工作。只读；完整细节见技术日志。</value>
+  </data>
+  <data name="Studio.Create.FieldState" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="Studio.Create.FieldFilesWritten" xml:space="preserve">
+    <value>已写入文件</value>
+  </data>
+  <data name="Studio.Create.FieldLastExchange" xml:space="preserve">
+    <value>最后一次交流</value>
+  </data>
+  <data name="Studio.Create.FieldEngine" xml:space="preserve">
+    <value>引擎</value>
+  </data>
+  <data name="Studio.Create.FieldDraft" xml:space="preserve">
+    <value>草稿</value>
+  </data>
+  <data name="Studio.Create.OpenDraft" xml:space="preserve">
+    <value>打开草稿</value>
+  </data>
+  <data name="Studio.Create.ViewProposal" xml:space="preserve">
+    <value>提议</value>
+  </data>
+  <data name="Studio.Create.ViewYaml" xml:space="preserve">
+    <value>YAML</value>
+  </data>
+  <data name="Studio.Create.RemoveShort" xml:space="preserve">
+    <value>移除</value>
+  </data>
   <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>返回文件夹</value></data>
   <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>可选。指令适用于所有智能体，随团队一起保存，并成为试运行时的检查点。</value></data>
   <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>例如：每个回答都用中文撰写，并引用来源文档。</value></data>
