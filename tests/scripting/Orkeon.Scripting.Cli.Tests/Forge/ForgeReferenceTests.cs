@@ -173,10 +173,10 @@ public sealed class ForgeReferenceTests
     [Fact]
     public void An_unknown_id_is_the_catalogues_typed_error()
     {
-        var error = Assert.Throws<UnknownUseCaseException>(() => ForgeReference.Load("99-nowhere"));
+        var error = Assert.Throws<KeyNotFoundException>(() => ForgeReference.Load("99-nowhere"));
 
-        Assert.Equal("99-nowhere", error.UseCaseId);
-        Assert.Contains(UnknownUseCaseException.Code, error.Message, StringComparison.Ordinal);
+        Assert.Contains("'99-nowhere'", error.Message, StringComparison.Ordinal);
+        Assert.Contains(UnknownUseCase.Code, error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

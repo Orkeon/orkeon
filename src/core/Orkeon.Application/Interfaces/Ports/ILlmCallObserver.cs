@@ -22,11 +22,20 @@ public sealed class NullLlmCallObserver : ILlmCallObserver
     public static readonly NullLlmCallObserver Instance = new();
 
     /// <inheritdoc />
-    public void Started(string callId, LlmCallMode mode, int estimatedPromptTokens) { }
+    public void Started(string callId, LlmCallMode mode, int estimatedPromptTokens)
+    {
+        // Observes nothing: the null observer drops every notification on purpose.
+    }
 
     /// <inheritdoc />
-    public void Progress(string callId, int estimatedCompletionTokens) { }
+    public void Progress(string callId, int estimatedCompletionTokens)
+    {
+        // Observes nothing: the null observer drops every notification on purpose.
+    }
 
     /// <inheritdoc />
-    public void Finished(string callId, LlmCallMode mode, bool fellBack, int? promptTokens, int? completionTokens) { }
+    public void Finished(string callId, LlmCallMode mode, bool fellBack, int? promptTokens, int? completionTokens)
+    {
+        // Observes nothing: the null observer drops every notification on purpose.
+    }
 }

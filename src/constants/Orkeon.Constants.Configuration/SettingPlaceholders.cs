@@ -22,17 +22,10 @@ public static class SettingPlaceholders
     {
         ArgumentNullException.ThrowIfNull(settingPath);
         var segments = settingPath.Split(':');
-        foreach (var setting in Settings)
-        {
-            if (Matches(setting.Path.Split(':'), segments))
-            {
-                return setting.Correction
-                    .Replace("<LAST>", segments[^1], StringComparison.Ordinal)
-                    .Replace("<ENV>", "ORKEON_" + settingPath.Replace(":", "__", StringComparison.Ordinal), StringComparison.Ordinal);
-            }
-        }
-
-        return null;
+        var setting = Settings.FirstOrDefault(s => Matches(s.Path.Split(':'), segments));
+        return setting?.Correction
+            .Replace("<LAST>", segments[^1], StringComparison.Ordinal)
+            .Replace("<ENV>", "ORKEON_" + settingPath.Replace(":", "__", StringComparison.Ordinal), StringComparison.Ordinal);
     }
 
     private static bool Matches(string[] pattern, string[] segments)

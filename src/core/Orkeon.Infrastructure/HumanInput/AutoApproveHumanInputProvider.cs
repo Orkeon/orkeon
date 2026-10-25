@@ -19,6 +19,16 @@ public sealed partial class AutoApproveHumanInputProvider : IHumanInputProvider
 {
     private const string DefaultResponse = "approved";
 
+    // The recommended option when it names one, else the first; the default answer without options.
+    private static string RecommendedOrFirst(HumanInputContext context)
+    {
+        if (context.Options is not { Count: > 0 } options)
+            return DefaultResponse;
+
+        var index = context.Recommended is { } rec && rec >= 0 && rec < options.Count ? rec : 0;
+        return options[index];
+    }
+
     private readonly ILogger<AutoApproveHumanInputProvider> _logger;
     private readonly HumanInputHeadlessPolicy _policy;
 
@@ -71,9 +81,7 @@ public sealed partial class AutoApproveHumanInputProvider : IHumanInputProvider
         }
         else
         {
-            response = context.Options is { Count: > 0 } options
-                ? options[context.Recommended is { } rec && rec >= 0 && rec < options.Count ? rec : 0]
-                : DefaultResponse;
+            response = RecommendedOrFirst(context);
         }
         LogAutoApproved(context.InputType, response);
         return Task.FromResult(response);
@@ -84,10 +92,7 @@ public sealed partial class AutoApproveHumanInputProvider : IHumanInputProvider
     {
         ArgumentNullException.ThrowIfNull(context);
         ThrowIfRefusing();
-        var options = context.Options;
-        var response = options is { Count: > 0 }
-            ? options[context.Recommended is { } rec && rec >= 0 && rec < options.Count ? rec : 0]
-            : DefaultResponse;
+        var response = RecommendedOrFirst(context);
         LogAutoApproved(context.InputType, response);
         return Task.FromResult<IReadOnlyList<string>>([response]);
     }

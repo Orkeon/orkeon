@@ -55,31 +55,35 @@ public static partial class CrewLlmDeclarations
 
             var isOverride = key.Groups["key"].Value == "llm_override";
             var inline = key.Groups["value"].Value.Trim();
-            if (inline.Length > 0 && !inline.StartsWith('#'))
-            {
-                // « llm: writer » names a profile; a flow map « { profile: x } » is read as a block.
-                if (inline.StartsWith('{'))
-                    count += Names(inline.Trim('{', '}').Split(','), isOverride) ? 1 : 0;
-                else
-                    count += !isOverride && Names(Unquote(inline)) ? 1 : 0;
-                continue;
-            }
-
-            var indent = key.Groups["indent"].Value.Length;
-            var children = new List<string>();
-            for (var next = index + 1; next < lines.Count; next++)
-            {
-                if (string.IsNullOrWhiteSpace(lines[next]) || lines[next].TrimStart().StartsWith('#'))
-                    continue;
-                if (lines[next].Length - lines[next].TrimStart().Length <= indent)
-                    break;
-                children.Add(lines[next]);
-            }
-
-            count += Names(children, isOverride) ? 1 : 0;
+            var names = inline.Length > 0 && !inline.StartsWith('#')
+                ? InlineNames(inline, isOverride)
+                : Names(ChildrenOf(lines, index, key.Groups["indent"].Value.Length), isOverride);
+            count += names ? 1 : 0;
         }
 
         return count;
+    }
+
+    /// <summary>Whether an inline value pins a model: « llm: writer » names a profile; a flow map « { profile: x } » is read as a block.</summary>
+    private static bool InlineNames(string inline, bool isOverride) =>
+        inline.StartsWith('{')
+            ? Names(inline.Trim('{', '}').Split(','), isOverride)
+            : !isOverride && Names(Unquote(inline));
+
+    /// <summary>The lines indented under the key of line <paramref name="index"/>, blank and comment lines left out.</summary>
+    private static List<string> ChildrenOf(IReadOnlyList<string> lines, int index, int indent)
+    {
+        var children = new List<string>();
+        for (var next = index + 1; next < lines.Count; next++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[next]) || lines[next].TrimStart().StartsWith('#'))
+                continue;
+            if (lines[next].Length - lines[next].TrimStart().Length <= indent)
+                break;
+            children.Add(lines[next]);
+        }
+
+        return children;
     }
 
     /// <summary>Whether the entries of one block pin a model: a <c>profile</c> other than the default, or — for an agent — a <c>model</c>.</summary>

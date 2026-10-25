@@ -331,21 +331,8 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
 
         if (_inner is not IStreamingLlmProvider streaming)
         {
-            LlmResponse response;
-            try
-            {
-                response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                MeasureFailure(call, config, ex);
-                throw;
-            }
-
-            Report(response, attribution, new Prompt(null, messages), call);
-            if (!string.IsNullOrEmpty(response.Content))
-                yield return LlmStreamEvent.Content(response.Content);
-            yield return LlmStreamEvent.Complete(response);
+            await foreach (var buffered in BufferedChatEventsAsync(messages, config, attribution, call, cancellationToken).ConfigureAwait(false))
+                yield return buffered;
             yield break;
         }
 
@@ -353,17 +340,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         var reported = false;
         var ended = false;
         var failed = false;
-        IAsyncEnumerator<LlmStreamEvent> events;
-        try
-        {
-            events = streaming.ChatStreamingAsync(messages, config, cancellationToken)
-                .GetAsyncEnumerator(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            MeasureFailure(call, config, ex);
-            throw;
-        }
+        var events = OpenStream(streaming, messages, config, call, cancellationToken);
 
         try
         {
@@ -377,9 +354,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
                 catch (Exception ex)
                 {
                     failed = true;
-                    // A final response already measured the call: a later throw adds nothing.
-                    if (!reported)
-                        MeasureFailure(call, config, ex);
+                    MeasureStreamFailure(reported, call, config, ex);
                     throw;
                 }
 
@@ -387,15 +362,15 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
                     break;
 
                 var streamed = events.Current;
-                if (streamed is { Kind: LlmStreamEventKind.Completed, FinalResponse: { } final } && !reported)
+                if (!reported && streamed is { Kind: LlmStreamEventKind.Completed, FinalResponse: { } final })
                 {
                     // Before the consumer sees the end: the meter moves with the answer.
                     reported = true;
                     Report(final, attribution, new Prompt(null, messages), call);
                 }
-                else if (streamed.Kind is LlmStreamEventKind.ContentDelta or LlmStreamEventKind.ReasoningDelta)
+                else
                 {
-                    characters += streamed.Delta?.Length ?? 0;
+                    characters += StreamedCharacters(streamed);
                 }
 
                 yield return streamed;
@@ -406,12 +381,67 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         finally
         {
             // No final response to read: the stream is counted on what it delivered.
-            if (!failed && !reported && (ended || characters > 0))
+            if (NeedsStreamEstimate(failed, reported, ended, characters))
                 ReportStreamEstimate(attribution, LlmUsageEstimator.Prompt(messages), characters, config, call);
 
             await DisposeKeepingFailureAsync(events, failed).ConfigureAwait(false);
         }
     }
+
+    /// <summary>Measures a stream that threw; a final response already measured the call, so a later throw adds nothing.</summary>
+    private void MeasureStreamFailure(bool reported, MeteredCall call, LlmConfig? config, Exception failure)
+    {
+        if (!reported)
+            MeasureFailure(call, config, failure);
+    }
+
+    /// <summary>Whether a stream that read no final response is counted on what it delivered: it ended, or it streamed something, and did not fail.</summary>
+    private static bool NeedsStreamEstimate(bool failed, bool reported, bool ended, long characters)
+        => !failed && !reported && (ended || characters > 0);
+
+    /// <summary>Chat streaming over a provider that does not stream: one buffered call, told as events.</summary>
+    private async IAsyncEnumerable<LlmStreamEvent> BufferedChatEventsAsync(
+        LlmMessage[] messages, LlmConfig? config, LlmUsageAttribution attribution, MeteredCall call,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        LlmResponse response;
+        try
+        {
+            response = await _inner.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+
+        Report(response, attribution, new Prompt(null, messages), call);
+        if (!string.IsNullOrEmpty(response.Content))
+            yield return LlmStreamEvent.Content(response.Content);
+        yield return LlmStreamEvent.Complete(response);
+    }
+
+    /// <summary>Opens the inner stream; a provider that throws on opening it is measured as a failed call.</summary>
+    private IAsyncEnumerator<LlmStreamEvent> OpenStream(
+        IStreamingLlmProvider streaming, LlmMessage[] messages, LlmConfig? config, MeteredCall call, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return streaming.ChatStreamingAsync(messages, config, cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            MeasureFailure(call, config, ex);
+            throw;
+        }
+    }
+
+    /// <summary>The characters a content or reasoning delta carries; none for any other event.</summary>
+    private static long StreamedCharacters(LlmStreamEvent streamed) =>
+        streamed.Kind is LlmStreamEventKind.ContentDelta or LlmStreamEventKind.ReasoningDelta
+            ? streamed.Delta?.Length ?? 0
+            : 0;
 
     /// <summary>The bounded <c>error.type</c> of an answer that carries an error and no usage.</summary>
     private const string ProviderErrorType = "provider_error";
@@ -446,17 +476,13 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             return;
         }
 
-        var promptTokens = counted ? response.PromptTokens ?? 0 : prompt.EstimateTokens();
-        var completionTokens = counted
-            ? response.CompletionTokens ?? Math.Max(0, response.TokensUsed - promptTokens)
-            : LlmUsageEstimator.Completion(response);
+        var (promptTokens, completionTokens) = TokensOf(response, counted, prompt);
         var billed = LlmVendorCost.TryRead(response, out var cost, out var currency);
 
         if (!call.CountedInside)
         {
             Measure(call, model, null, counted ? promptTokens : null, counted ? completionTokens : null);
-            if (billed && string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase))
-                OrkeonMeter.AddCostUsd((double)cost);
+            AddUsdCost(billed, cost, currency);
         }
 
         if (_sink is null)
@@ -484,6 +510,23 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             Cost = billed ? cost : null,
             CostCurrency = billed ? currency : null,
         });
+    }
+
+    /// <summary>The tokens of an answer: as the provider counted them, else estimated.</summary>
+    private static (int Prompt, int Completion) TokensOf(LlmResponse response, bool counted, Prompt prompt)
+    {
+        if (!counted)
+            return (prompt.EstimateTokens(), LlmUsageEstimator.Completion(response));
+
+        var promptTokens = response.PromptTokens ?? 0;
+        return (promptTokens, response.CompletionTokens ?? Math.Max(0, response.TokensUsed - promptTokens));
+    }
+
+    /// <summary>Adds a billed cost to the meter when the vendor billed it in US dollars.</summary>
+    private static void AddUsdCost(bool billed, decimal cost, string? currency)
+    {
+        if (billed && string.Equals(currency, "USD", StringComparison.OrdinalIgnoreCase))
+            OrkeonMeter.AddCostUsd((double)cost);
     }
 
     /// <summary>

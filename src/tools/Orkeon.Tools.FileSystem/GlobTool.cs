@@ -74,7 +74,7 @@ public sealed class GlobTool : FileToolBase<GlobRequest, GlobResponse>
             return "Pattern cannot be empty";
         if (request.Pattern.StartsWith('/') || request.Pattern.StartsWith('\\'))
             return "Pattern must be relative to path, not absolute";
-        if (request.Pattern.Split('/', '\\').Contains(".."))
+        if (request.Pattern.Split(['/', '\\']).Contains(".."))
             return "Pattern cannot contain a '..' segment";
         if (request.MaxResults <= 0)
             return "max_results must be greater than 0";

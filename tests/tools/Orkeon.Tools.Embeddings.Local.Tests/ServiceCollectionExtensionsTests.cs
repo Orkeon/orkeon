@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.DependencyInjection;
 using Orkeon.Analysis.Abstractions.Interfaces;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Domain.Tools.Security;
+using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 
 namespace Orkeon.Tools.Embeddings.Local.Tests;
@@ -114,5 +117,31 @@ public sealed class ServiceCollectionExtensionsTests
         var descriptor = services.Single(d => d.ServiceType == typeof(IEmbeddingProvider));
         Assert.NotNull(descriptor.ImplementationFactory);
         Assert.Null(descriptor.ImplementationInstance);
+    }
+
+    [Fact]
+    public void AddOrkeonLocalEmbeddings_ProviderFactory_RoutesTheModelPathThroughTheRegisteredVfs()
+    {
+        // The factory hands the container's IFileSystemService and options to the provider. A model
+        // path outside every mount is refused by the VFS before any ONNX session exists.
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/workspace"));
+        services.AddOrkeonLocalEmbeddings(new LocalEmbeddingOptions { ModelPath = "/models/custom.onnx" });
+
+        using var provider = services.BuildServiceProvider();
+
+        var ex = Assert.Throws<FileAccessDeniedException>(() => provider.GetRequiredService<IEmbeddingProvider>());
+        Assert.Equal("/models/custom.onnx", ex.VirtualPath);
+    }
+
+    [Fact]
+    public void AddOrkeonLocalEmbeddings_ProviderFactory_RequiresAFileSystem()
+    {
+        var services = new ServiceCollection();
+        services.AddOrkeonLocalEmbeddings();
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IEmbeddingProvider>());
     }
 }

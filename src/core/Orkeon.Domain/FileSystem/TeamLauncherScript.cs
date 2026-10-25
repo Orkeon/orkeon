@@ -436,9 +436,8 @@ public static class TeamLauncherScript
 
         var text = new StringBuilder();
         var afterPercent = false;
-        foreach (var unit in units)
+        foreach (var c in units.Select(unit => unit.Character))
         {
-            var c = unit.Character;
             if (c == '"' || IsCmdSpecial(c) || afterPercent)
                 text.Append('^');
             text.Append(c);

@@ -39,11 +39,11 @@ internal sealed class Matcher
             var children = node.Children.ToList();
             for (var i = children.Count - 1; i >= 0; i--) stack.Push(children[i]);
 
-            var captures = evaluator.Match(node);
-            if (captures is null) continue;
+            if (!evaluator.TryMatch(node, out var captures)) continue;
 
             var startByte = bom + Encoding.UTF8.GetByteCount(source.AsSpan(0, node.StartIndex));
             var endByte = startByte + Encoding.UTF8.GetByteCount(source.AsSpan(node.StartIndex, node.EndIndex - node.StartIndex));
+            outline ??= outlineSource?.Invoke().Outline() ?? [];
             matches.Add(new StructuralMatch
             {
                 Path = virtualPath,
@@ -52,7 +52,7 @@ internal sealed class Matcher
                 StartByte = startByte,
                 EndByte = endByte,
                 Text = source[node.StartIndex..node.EndIndex],
-                EnclosingSelector = (outline ??= outlineSource?.Invoke().Outline() ?? [])
+                EnclosingSelector = outline
                     .Where(o => o.Range.StartByte <= startByte && endByte <= o.Range.EndByte)
                     .OrderBy(o => o.Range.EndByte - o.Range.StartByte)
                     .FirstOrDefault()?.Selector,
@@ -72,49 +72,62 @@ internal sealed class Matcher
         return patterns;
     }
 
-    internal static ImmutableDictionary<string, string>? MatchNode(
-        PatternNode pattern, TsNode node, string source, ImmutableDictionary<string, string> captures)
+    internal static bool TryMatchNode(
+        PatternNode pattern, TsNode node, string source, ImmutableDictionary<string, string> captures,
+        out ImmutableDictionary<string, string> result)
     {
+        result = captures;
         if (pattern.Kind == PatternKind.Single)
         {
-            return node.IsNamed ? Bind(captures, pattern.Name, source[node.StartIndex..node.EndIndex]) : null;
+            return node.IsNamed && TryBind(captures, pattern.Name, source[node.StartIndex..node.EndIndex], out result);
         }
 
-        if (pattern.Type != node.Type) return null;
+        if (pattern.Type != node.Type) return false;
         var targets = node.Children.Where(c => c.Type != "comment").ToList();
-        if (pattern.Children.Count == 0) return targets.Count == 0 && pattern.Text == node.Text ? captures : null;
+        if (pattern.Children.Count == 0) return targets.Count == 0 && pattern.Text == node.Text;
 
-        return MatchSequence(pattern.Children, 0, targets, 0, source, captures);
+        return TryMatchSequence(pattern.Children, 0, targets, 0, source, captures, out result);
     }
 
-    private static ImmutableDictionary<string, string>? MatchSequence(
+    private static bool TryMatchSequence(
         IReadOnlyList<PatternNode> pattern, int p, List<TsNode> targets, int t, string source,
-        ImmutableDictionary<string, string> captures)
+        ImmutableDictionary<string, string> captures, out ImmutableDictionary<string, string> result)
     {
-        if (p == pattern.Count) return t == targets.Count ? captures : null;
+        result = captures;
+        if (p == pattern.Count) return t == targets.Count;
+        if (pattern[p].Kind == PatternKind.Variadic) return TryMatchVariadic(pattern, p, targets, t, source, captures, out result);
+        if (t == targets.Count) return false;
 
-        if (pattern[p].Kind == PatternKind.Variadic)
+        return TryMatchNode(pattern[p], targets[t], source, captures, out var matched)
+            && TryMatchSequence(pattern, p + 1, targets, t + 1, source, matched, out result);
+    }
+
+    // A variadic metavariable takes the fewest targets that let the rest of the sequence match.
+    private static bool TryMatchVariadic(
+        IReadOnlyList<PatternNode> pattern, int p, List<TsNode> targets, int t, string source,
+        ImmutableDictionary<string, string> captures, out ImmutableDictionary<string, string> result)
+    {
+        for (var take = 0; take <= targets.Count - t; take++)
         {
-            for (var take = 0; take <= targets.Count - t; take++)
+            var text = take == 0 ? string.Empty : source[targets[t].StartIndex..targets[t + take - 1].EndIndex];
+            if (TryBind(captures, pattern[p].Name, text, out var bound)
+                && TryMatchSequence(pattern, p + 1, targets, t + take, source, bound, out result))
             {
-                var text = take == 0 ? string.Empty : source[targets[t].StartIndex..targets[t + take - 1].EndIndex];
-                var bound = Bind(captures, pattern[p].Name, text);
-                if (bound is null) continue;
-                var rest = MatchSequence(pattern, p + 1, targets, t + take, source, bound);
-                if (rest is not null) return rest;
+                return true;
             }
-
-            return null;
         }
 
-        if (t == targets.Count) return null;
-        var matched = MatchNode(pattern[p], targets[t], source, captures);
-        return matched is null ? null : MatchSequence(pattern, p + 1, targets, t + 1, source, matched);
+        result = captures;
+        return false;
     }
 
-    private static ImmutableDictionary<string, string>? Bind(ImmutableDictionary<string, string> captures, string name, string text)
+    // A metavariable bound twice must capture the same text both times.
+    private static bool TryBind(
+        ImmutableDictionary<string, string> captures, string name, string text, out ImmutableDictionary<string, string> result)
     {
-        if (captures.TryGetValue(name, out var existing)) return existing == text ? captures : null;
-        return captures.Add(name, text);
+        result = captures;
+        if (captures.TryGetValue(name, out var existing)) return existing == text;
+        result = captures.Add(name, text);
+        return true;
     }
 }

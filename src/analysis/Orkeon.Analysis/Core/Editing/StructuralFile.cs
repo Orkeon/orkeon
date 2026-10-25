@@ -1,4 +1,5 @@
-#pragma warning disable CA1032, CA1064 // internal exceptions carry one domain constructor
+#pragma warning disable CA1032, CA1064 // the exceptions carry one domain constructor
+using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using Orkeon.Analysis.Abstractions;
@@ -300,17 +301,30 @@ internal sealed class StructuralFile
                 Walk(child, prefix);
                 continue;
             }
-            var declared = child.Type == "export_statement" ? child.Ts.ChildByField("declaration") : child.Ts;
-            if (declared is null || !(Containers.Contains(declared.Type) || Members.Contains(declared.Type))) continue;
-            var name = declared.ChildByField("name")?.Text;
-            if (name is null) continue;
+            var declared = DeclaredNode(child);
+            var name = declared?.ChildByField("name")?.Text;
+            if (declared is null || name is null) continue;
 
             var fullName = prefix.Length == 0 ? name : $"{prefix}.{name}";
-            var parameters = SignatureExtractor.ParameterTypes(declared);
-            var selector = parameters is null ? fullName : $"{fullName}({string.Join(',', parameters)})";
-            _declarations.Add(new Declaration(fullName, selector, declared.Type, parameters, child, named, i));
+            _declarations.Add(DeclarationOf(fullName, declared, child, named, i));
             if (Containers.Contains(declared.Type)) Walk(child.Type == "export_statement" ? PathNode.Of(declared) : child, fullName);
         }
+    }
+
+    // The container or member a child declares, looking through an export statement; null for anything else.
+    private static TsNode? DeclaredNode(PathNode child)
+    {
+        var declared = child.Type == "export_statement" ? child.Ts.ChildByField("declaration") : child.Ts;
+        if (declared is null) return null;
+        return Containers.Contains(declared.Type) || Members.Contains(declared.Type) ? declared : null;
+    }
+
+    private static Declaration DeclarationOf(string fullName, TsNode declared, PathNode child, IReadOnlyList<PathNode> siblings, int index)
+    {
+        if (!SignatureExtractor.TryGetParameterTypes(declared, out var parameters))
+            return new Declaration(fullName, fullName, declared.Type, null, child, siblings, index);
+        var selector = $"{fullName}({string.Join(',', parameters)})";
+        return new Declaration(fullName, selector, declared.Type, parameters, child, siblings, index);
     }
 
     private NodeRange DeclarationRange(PathNode span, IReadOnlyList<PathNode> siblings, int index)
@@ -373,20 +387,89 @@ internal sealed class StructuralFile
     }
 }
 
-internal sealed class AmbiguousSelectorException(IReadOnlyList<string> candidates)
-    : Exception($"Ambiguous selector; candidates: {string.Join(", ", candidates)}")
+[Serializable]
+public sealed class AmbiguousSelectorException : Exception
 {
-    public IReadOnlyList<string> Candidates { get; } = candidates;
+    private const string CandidatesKey = "Candidates";
+
+    public AmbiguousSelectorException(IReadOnlyList<string> candidates)
+        : base($"Ambiguous selector; candidates: {string.Join(", ", candidates)}")
+    {
+        Candidates = candidates;
+    }
+
+    public IReadOnlyList<string> Candidates { get; }
+
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private AmbiguousSelectorException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Candidates = (string[]?)info.GetValue(CandidatesKey, typeof(string[])) ?? [];
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(CandidatesKey, Candidates.ToArray());
+    }
 }
 
-internal sealed class SelectorNotFoundException(IReadOnlyList<string> suggestions)
-    : Exception($"Selector not found; suggestions: {string.Join(", ", suggestions)}")
+[Serializable]
+public sealed class SelectorNotFoundException : Exception
 {
-    public IReadOnlyList<string> Suggestions { get; } = suggestions;
+    private const string SuggestionsKey = "Suggestions";
+
+    public SelectorNotFoundException(IReadOnlyList<string> suggestions)
+        : base($"Selector not found; suggestions: {string.Join(", ", suggestions)}")
+    {
+        Suggestions = suggestions;
+    }
+
+    public IReadOnlyList<string> Suggestions { get; }
+
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private SelectorNotFoundException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Suggestions = (string[]?)info.GetValue(SuggestionsKey, typeof(string[])) ?? [];
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(SuggestionsKey, Suggestions.ToArray());
+    }
 }
 
-internal sealed class UnsupportedExtensionException(string extension)
-    : Exception($"No tree-sitter grammar for extension '{extension}'")
+[Serializable]
+public sealed class UnsupportedExtensionException : Exception
 {
-    public string Extension { get; } = extension;
+    private const string ExtensionKey = "Extension";
+
+    public UnsupportedExtensionException(string extension)
+        : base($"No tree-sitter grammar for extension '{extension}'")
+    {
+        Extension = extension;
+    }
+
+    public string Extension { get; }
+
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private UnsupportedExtensionException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Extension = info.GetString(ExtensionKey) ?? string.Empty;
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(ExtensionKey, Extension);
+    }
 }

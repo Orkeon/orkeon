@@ -106,6 +106,19 @@ public sealed class ShellCommandToolJobTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldRefuseStartJob_WhenNoAgentRunIsActive()
+    {
+        var sandbox = new FakeShellSandbox();
+        var tool = NewTool(sandbox);
+
+        var refused = await Task.Run(() => tool.CallAsync(Request("start_job", command: "echo hi"), Ct), Ct);
+
+        Assert.False(refused.Success);
+        Assert.Contains("start_job needs a running agent run", refused.Error, StringComparison.Ordinal);
+        Assert.Empty(sandbox.Sessions);
+    }
+
+    [Fact]
     [Trait("BR", "RT-11")]
     public async Task ShouldRefuseStartJob_WhenRegistryIsFull()
     {

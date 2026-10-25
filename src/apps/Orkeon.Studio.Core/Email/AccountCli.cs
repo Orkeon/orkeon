@@ -149,39 +149,13 @@ internal sealed class AccountCli
                         if (!OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
                             return;
 
-                        var kind = orkeonEvent!.Kind;
-                        if (kind == _protocol.LoginDeviceCode && orkeonEvent.GetString("user_code") is { Length: > 0 } userCode)
-                        {
-                            onStep(new EmailLoginStep
-                            {
-                                Kind = EmailLoginStepKind.DeviceCode,
-                                Address = orkeonEvent.GetString("verification_uri"),
-                                UserCode = userCode,
-                                ExpiresIn = orkeonEvent.GetInt64("expires_in") is { } seconds and > 0 ? TimeSpan.FromSeconds(seconds) : null,
-                            });
-                        }
-                        else if (kind == _protocol.LoginAuthorizationUrl && orkeonEvent.GetString("authorization_uri") is { Length: > 0 } address)
-                        {
-                            onStep(new EmailLoginStep { Kind = EmailLoginStepKind.AuthorizationUrl, Address = address });
-                        }
-                        else if (kind == _protocol.LoginRedirectRejected)
-                        {
-                            // The verb still waits, and still reads: nothing is closed.
-                            onStep(new EmailLoginStep { Kind = EmailLoginStepKind.RedirectRejected, Message = orkeonEvent.GetString("message") ?? "" });
-                        }
-                        else if (kind == _protocol.LoginCompleted)
-                        {
-                            ended = EmailLoginStep.Completed;
+                        var effect = FollowLoginEvent(orkeonEvent!, onStep);
+                        if (effect.Ended is not null)
+                            ended = effect.Ended;
+                        if (effect.Refusal is not null)
+                            refusal = effect.Refusal;
+                        if (effect.Ended is not null || effect.Refusal is not null)
                             dialogue.Close();
-                        }
-                        else if (kind == _protocol.Error)
-                        {
-                            refusal = new EmailCliFailure(
-                                EmailCliFailureKind.Refused,
-                                orkeonEvent.GetString("message") ?? "",
-                                Code: orkeonEvent.GetString("code"));
-                            dialogue.Close();
-                        }
                     },
                     onInputReady: dialogue.Attach,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -211,6 +185,50 @@ internal sealed class AccountCli
                 run.ExitCode),
             _ => new EmailCliFailure(EmailCliFailureKind.Stopped, Said(run, stderr, verb), run.ExitCode),
         });
+    }
+
+    /// <summary>What one event of a <c>login</c> verb ends: the login, a refusal, or nothing.</summary>
+    private readonly record struct LoginEventEffect(EmailLoginStep? Ended, EmailCliFailure? Refusal);
+
+    /// <summary>
+    /// Follows one event of a <c>login --events jsonl</c> run: a step the operator sees goes to
+    /// <paramref name="onStep"/>; the end of the login or a refusal comes back, and closes the input.
+    /// </summary>
+    private LoginEventEffect FollowLoginEvent(OrkeonEvent orkeonEvent, Action<EmailLoginStep> onStep)
+    {
+        var kind = orkeonEvent.Kind;
+        if (kind == _protocol.LoginDeviceCode && orkeonEvent.GetString("user_code") is { Length: > 0 } userCode)
+        {
+            onStep(new EmailLoginStep
+            {
+                Kind = EmailLoginStepKind.DeviceCode,
+                Address = orkeonEvent.GetString("verification_uri"),
+                UserCode = userCode,
+                ExpiresIn = orkeonEvent.GetInt64("expires_in") is { } seconds and > 0 ? TimeSpan.FromSeconds(seconds) : null,
+            });
+        }
+        else if (kind == _protocol.LoginAuthorizationUrl && orkeonEvent.GetString("authorization_uri") is { Length: > 0 } address)
+        {
+            onStep(new EmailLoginStep { Kind = EmailLoginStepKind.AuthorizationUrl, Address = address });
+        }
+        else if (kind == _protocol.LoginRedirectRejected)
+        {
+            // The verb still waits, and still reads: nothing is closed.
+            onStep(new EmailLoginStep { Kind = EmailLoginStepKind.RedirectRejected, Message = orkeonEvent.GetString("message") ?? "" });
+        }
+        else if (kind == _protocol.LoginCompleted)
+        {
+            return new LoginEventEffect(EmailLoginStep.Completed, null);
+        }
+        else if (kind == _protocol.Error)
+        {
+            return new LoginEventEffect(null, new EmailCliFailure(
+                EmailCliFailureKind.Refused,
+                orkeonEvent.GetString("message") ?? "",
+                Code: orkeonEvent.GetString("code")));
+        }
+
+        return default;
     }
 
     /// <summary>Runs a <c>logout</c> argv: null when the verb ended well, why it did not otherwise.</summary>

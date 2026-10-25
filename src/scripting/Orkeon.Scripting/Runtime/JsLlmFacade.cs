@@ -723,8 +723,7 @@ public sealed partial class JsLlmFacade
             _facade = facade;
             Prompt = prompt;
             MaxIterations = ResolveMaxIterations(options);
-            WaitsForChildren = options is not null && options.IsObject() && options.Get("waitFor") is { } waitFor
-                && waitFor.IsString() && string.Equals(waitFor.AsString(), "children", StringComparison.Ordinal);
+            WaitsForChildren = WaitsForChildrenOf(options);
             PermissionMode = ResolvePermissionMode(options);
             // A mode the script poses on a host without a gate checks nothing: say so once for
             // this call rather than drop it in silence (#128).
@@ -733,7 +732,7 @@ public sealed partial class JsLlmFacade
             Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.OnProfile();
             // A script tool instance is offered through a proxy bound to this session: its calls
             // cross over to the JS tool pump instead of running on the loop's thread.
-            var offered = ResolveToolSubset(options) is { } subset
+            var offered = TryResolveToolSubset(options, out var subset)
                 ? SelectSubset(facade, subset)
                 : facade._tools;
             Tools = offered
@@ -745,8 +744,8 @@ public sealed partial class JsLlmFacade
                 })
                 .ToList();
             ToolSchemas = Tools.Count > 0 ? Tools.Select(t => t.Schema).ToList() : null;
-            HasToolCallback = options is not null && options.IsObject() && options.Get("onToolCall") is Jint.Native.Function.Function;
-            HasToolResultCallback = options is not null && options.IsObject() && options.Get("onToolResult") is Jint.Native.Function.Function;
+            HasToolCallback = HasCallback(options, "onToolCall");
+            HasToolResultCallback = HasCallback(options, "onToolResult");
             if (HasToolCallback || HasToolResultCallback || Tools.Any(t => t is ScriptToolProxy or SpawnToolProxy))
                 _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
@@ -770,6 +769,15 @@ public sealed partial class JsLlmFacade
             Owner = facade._background?.BeginAct();
             run = () => facade.RunActAsync(this);
         }
+
+        /// <summary>Whether the options say <c>waitFor: "children"</c>.</summary>
+        private static bool WaitsForChildrenOf(JsValue? options) =>
+            options is not null && options.IsObject() && options.Get("waitFor") is { } waitFor
+            && waitFor.IsString() && string.Equals(waitFor.AsString(), "children", StringComparison.Ordinal);
+
+        /// <summary>Whether the options hold a function under <paramref name="name"/>.</summary>
+        private static bool HasCallback(JsValue? options, string name) =>
+            options is not null && options.IsObject() && options.Get(name) is Jint.Native.Function.Function;
 
         /// <summary>The agent's tools named by <paramref name="subset"/>; a name the agent does not hold fails the call.</summary>
         private static List<IBaseTool> SelectSubset(JsLlmFacade facade, List<string> subset)
@@ -952,9 +960,17 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary><c>spawn_agent</c> as the act loop sees it: calls cross over to the session's JS tool pump.</summary>
-    private sealed class SpawnToolProxy(SpawnAgentScriptTool tool, ActSession session) : IBaseTool
+    private sealed class SpawnToolProxy : IBaseTool
     {
-        internal SpawnAgentScriptTool Tool { get; } = tool;
+        private readonly ActSession _session;
+
+        public SpawnToolProxy(SpawnAgentScriptTool tool, ActSession session)
+        {
+            Tool = tool;
+            _session = session;
+        }
+
+        internal SpawnAgentScriptTool Tool { get; }
 
         public string Name => Tool.Name;
         public string Description => Tool.Description;
@@ -964,7 +980,7 @@ public sealed partial class JsLlmFacade
         public Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallAsync(ProtocolToolCallRequest request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
-            return session.CallSpawnAsync(request.Parameters, cancellationToken);
+            return _session.CallSpawnAsync(request.Parameters, cancellationToken);
         }
 
         public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
@@ -1117,14 +1133,7 @@ public sealed partial class JsLlmFacade
         }
         finally
         {
-            // Return, interrupt, throw or cancellation: the pump reading `deltas` must always
-            // see the end of the channel, or `act` would never settle.
-            session.CompleteDeltas();
-            if (session.Owner is { } owner)
-                _background?.EndAct(owner);
-            enteredRunScope?.Dispose();
-            if (ownedRunScope is not null)
-                await ownedRunScope.DisposeAsync().ConfigureAwait(false);
+            await EndActAsync(session, enteredRunScope, ownedRunScope).ConfigureAwait(false);
         }
 
         KeepTranscript(session.Messages, interrupted: false);
@@ -1134,6 +1143,21 @@ public sealed partial class JsLlmFacade
             iterations = session.MaxIterations,
             exhausted = true,
         };
+    }
+
+    /// <summary>
+    /// The end of an <c>act</c> call, whatever ended it — return, interrupt, throw or cancellation:
+    /// the pump reading <c>deltas</c> must always see the end of the channel, or <c>act</c> would
+    /// never settle; the background children the act owns are cancelled, and its run scope left.
+    /// </summary>
+    private async Task EndActAsync(ActSession session, IDisposable? enteredRunScope, AgentRunScope? ownedRunScope)
+    {
+        session.CompleteDeltas();
+        if (session.Owner is { } owner)
+            _background?.EndAct(owner);
+        enteredRunScope?.Dispose();
+        if (ownedRunScope is not null)
+            await ownedRunScope.DisposeAsync().ConfigureAwait(false);
     }
 
     private void KeepTranscript(List<LlmMessage> messages, bool interrupted)
@@ -1304,7 +1328,6 @@ public sealed partial class JsLlmFacade
         if (!response.Success)
             return new(response.Error ?? "onToolCall failed", toolArgs);
 
-        const string NoValidVerdict = "onToolCall returned no valid verdict";
         if (response.Result is not string json)
             return new(NoValidVerdict, toolArgs);
         JsonDocument verdict;
@@ -1312,18 +1335,36 @@ public sealed partial class JsLlmFacade
         catch (JsonException) { return new(NoValidVerdict, toolArgs); }
         using var disposeVerdict = verdict;
         var root = verdict.RootElement;
-        if (root.ValueKind == JsonValueKind.String && root.GetString() == "allow")
-            return new(null, toolArgs);
-        if (root.ValueKind == JsonValueKind.String && root.GetString() == "ask")
+        return root.ValueKind switch
         {
-            if (_permissionGate is null)
-                return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
-            var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit).ConfigureAwait(false);
-            return new(DenialOf(asked, toolName, "default"), toolArgs);
-        }
-        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("deny", out var reason))
+            JsonValueKind.String => await FollowWordVerdictAsync(root.GetString(), toolName, toolArgs).ConfigureAwait(false),
+            JsonValueKind.Object => await FollowObjectVerdictAsync(root, session, tool, toolName, toolArgs).ConfigureAwait(false),
+            _ => new(NoValidVerdict, toolArgs),
+        };
+    }
+
+    private const string NoValidVerdict = "onToolCall returned no valid verdict";
+
+    /// <summary>An <c>onToolCall</c> verdict of one word: <c>allow</c>, or <c>ask</c> the gate as a default-mode edit.</summary>
+    private async Task<ToolCallbackOutcome> FollowWordVerdictAsync(string? word, string toolName, Dictionary<string, object?> toolArgs)
+    {
+        if (word == "allow")
+            return new(null, toolArgs);
+        if (word != "ask")
+            return new(NoValidVerdict, toolArgs);
+        if (_permissionGate is null)
+            return new("onToolCall asked for approval but no permission gate is registered", toolArgs);
+        var asked = await GateAsync(toolName, toolArgs, "default", ToolAccess.Edit).ConfigureAwait(false);
+        return new(DenialOf(asked, toolName, "default"), toolArgs);
+    }
+
+    /// <summary>An <c>onToolCall</c> verdict object: <c>{ deny }</c>, <c>{ input }</c> (gated again) or <c>{ context }</c>.</summary>
+    private async Task<ToolCallbackOutcome> FollowObjectVerdictAsync(
+        JsonElement root, ActSession session, IBaseTool? tool, string toolName, Dictionary<string, object?> toolArgs)
+    {
+        if (root.TryGetProperty("deny", out var reason))
             return new(reason.ToString(), toolArgs);
-        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("input", out var input))
+        if (root.TryGetProperty("input", out var input))
         {
             if (input.ValueKind != JsonValueKind.Object)
                 return new(NoValidVerdict, toolArgs);
@@ -1331,7 +1372,7 @@ public sealed partial class JsLlmFacade
             var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
             return new(DenialOf(regated, toolName, session.PermissionMode), rewritten);
         }
-        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("context", out _))
+        if (root.TryGetProperty("context", out _))
             return new(null, toolArgs);
         return new(NoValidVerdict, toolArgs);
     }
@@ -1409,12 +1450,7 @@ public sealed partial class JsLlmFacade
             if (root.ValueKind != JsonValueKind.Object)
                 return ([], null);
 
-            Orkeon.Application.Interfaces.LLM.IToolCallParser? parser =
-                root.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array
-                    ? AnthropicToolCalls
-                    : root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0
-                        ? OpenAIToolCalls
-                        : null;
+            var parser = ToolCallParserFor(root);
             if (parser is null)
                 return ([], null);
 
@@ -1427,6 +1463,16 @@ public sealed partial class JsLlmFacade
         {
             return ([], null);
         }
+    }
+
+    /// <summary>The parser of a body's shape: Anthropic's <c>content[]</c>, OpenAI's non-empty <c>choices[]</c>, else none.</summary>
+    private static Orkeon.Application.Interfaces.LLM.IToolCallParser? ToolCallParserFor(JsonElement root)
+    {
+        if (root.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            return AnthropicToolCalls;
+        if (root.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0)
+            return OpenAIToolCalls;
+        return null;
     }
 
     /// <summary>
@@ -1502,13 +1548,15 @@ public sealed partial class JsLlmFacade
         return raw.IsString() && !string.IsNullOrWhiteSpace(raw.AsString()) ? raw.AsString() : null;
     }
 
-    /// <summary>Reads the <c>tools</c> act option: the names of the agent's tools to offer, or <c>null</c> for all of them.</summary>
-    private static List<string>? ResolveToolSubset(JsValue? options)
+    /// <summary>Reads the <c>tools</c> act option: the names of the agent's tools to offer; false to offer all of them.</summary>
+    private static bool TryResolveToolSubset(JsValue? options, out List<string> subset)
     {
-        if (options is null || options.IsUndefined() || options.IsNull()) return null;
+        subset = [];
+        if (options is null || options.IsUndefined() || options.IsNull()) return false;
         var raw = options.Get("tools");
-        if (!raw.IsArray()) return null;
-        return raw.AsArray().Select(v => v.ToString()).ToList();
+        if (!raw.IsArray()) return false;
+        subset = raw.AsArray().Select(v => v.ToString()).ToList();
+        return true;
     }
 
     private static int ResolveMaxIterations(JsValue? options)

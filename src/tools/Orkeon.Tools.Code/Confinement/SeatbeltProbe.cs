@@ -28,6 +28,9 @@ internal static class SeatbeltProbe
     /// <summary>The availability probed at the first call of the process, then remembered.</summary>
     public static ShellSandboxAvailability Current() => s_current.Value;
 
+    /// <summary><paramref name="path"/> canonicalized against the host's file system.</summary>
+    public static string Canonicalize(string path) => Canonicalize(path, ReadLink);
+
     /// <summary>
     /// <paramref name="path"/> with every link along it resolved, <c>.</c> and <c>..</c> removed: the
     /// path Seatbelt matches (<c>/var/folders/...</c> is <c>/private/var/folders/...</c>). The part
@@ -48,14 +51,8 @@ internal static class SeatbeltProbe
         var links = 0;
         while (pending.TryPop(out var part))
         {
-            if (part == ".")
+            if (StepsInPlace(part, resolved))
                 continue;
-            if (part == "..")
-            {
-                if (resolved.Count > 0)
-                    resolved.RemoveAt(resolved.Count - 1);
-                continue;
-            }
 
             var candidate = "/" + string.Join('/', resolved.Append(part));
             var target = linkTarget(candidate);
@@ -78,8 +75,21 @@ internal static class SeatbeltProbe
         return "/" + string.Join('/', resolved);
     }
 
-    /// <summary><paramref name="path"/> canonicalized against the host's file system.</summary>
-    public static string Canonicalize(string path) => Canonicalize(path, ReadLink);
+    /// <summary>
+    /// Applies <c>.</c> (nothing) and <c>..</c> (one level up) to <paramref name="resolved"/>; false
+    /// for any other part, which the caller resolves.
+    /// </summary>
+    private static bool StepsInPlace(string part, List<string> resolved)
+    {
+        if (part == ".")
+            return true;
+        if (part != "..")
+            return false;
+        if (resolved.Count > 0)
+            resolved.RemoveAt(resolved.Count - 1);
+        return true;
+    }
+
 
     [SuppressVfsCompliance("OUT-OF-SCOPE: reads the target of a link along a physical path the VFS already resolved, so the Seatbelt profile names the path the kernel matches; the confined process, not the framework, uses the path.")]
     private static string? ReadLink(string path)

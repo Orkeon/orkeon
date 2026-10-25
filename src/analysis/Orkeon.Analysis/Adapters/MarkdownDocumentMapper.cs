@@ -33,9 +33,24 @@ public sealed class MarkdownDocumentMapper
         ArgumentNullException.ThrowIfNull(content);
 
         var document = Markdown.Parse(content, _pipeline);
-        var bytes = ByteOffsets(content);
+        var source = new SourceText(virtualPath, content, ByteOffsets(content));
         var nodes = new List<RaggableNode>();
 
+        var sections = MapSections(document, source, nodes);
+        MapFrontMatter(document, source, nodes);
+        MapCodeFences(document, source, nodes);
+        MapLinks(document, source, nodes, sections);
+
+        foreach (var code in document.Descendants<CodeInline>())
+            TagInnermostSection(sections, code.Span.Start, DocumentsEdgeLinker.CodeTag + code.Content);
+
+        AttachToSections(nodes);
+        return nodes;
+    }
+
+    private static List<(RaggableNode Node, int Start, int End)> MapSections(
+        MarkdownDocument document, SourceText source, List<RaggableNode> nodes)
+    {
         var headings = document.Descendants<HeadingBlock>().ToList();
         var stack = new List<(int Level, string Fqn)>();
         var sections = new List<(RaggableNode Node, int Start, int End)>();
@@ -44,50 +59,58 @@ public sealed class MarkdownDocumentMapper
             var heading = headings[i];
             var name = HeadingText(heading);
             while (stack.Count > 0 && stack[^1].Level >= heading.Level) stack.RemoveAt(stack.Count - 1);
-            var fqn = stack.Count > 0 ? $"{stack[^1].Fqn}/{name}" : $"{virtualPath}::{name}";
+            var fqn = stack.Count > 0 ? $"{stack[^1].Fqn}/{name}" : $"{source.Path}::{name}";
             stack.Add((heading.Level, fqn));
 
             var next = headings.Skip(i + 1).FirstOrDefault(h => h.Level <= heading.Level);
-            var end = next is null ? content.Length : next.Span.Start;
-            var section = Create(virtualPath, UniversalNodeKind.Section, name, fqn, NodeLevel.L3_Symbol,
-                content, bytes, heading.Span.Start, end, heading.Line);
+            var end = next is null ? source.Content.Length : next.Span.Start;
+            var section = Create(source, UniversalNodeKind.Section, name, fqn, NodeLevel.L3_Symbol,
+                new NodeSpan(heading.Span.Start, end, heading.Line));
             nodes.Add(section);
             sections.Add((section, heading.Span.Start, end));
         }
+        return sections;
+    }
 
+    private void MapFrontMatter(MarkdownDocument document, SourceText source, List<RaggableNode> nodes)
+    {
         foreach (var front in document.Descendants<YamlFrontMatterBlock>())
         {
-            var node = Create(virtualPath, UniversalNodeKind.FrontMatter, "front-matter", string.Empty, NodeLevel.L4_Statement,
-                content, bytes, front.Span.Start, front.Span.End + 1, front.Line);
+            var node = Create(source, UniversalNodeKind.FrontMatter, "front-matter", string.Empty, NodeLevel.L4_Statement,
+                new NodeSpan(front.Span.Start, front.Span.End + 1, front.Line));
             foreach (var key in YamlKeys(front.Lines.ToString()))
                 node.TagsMutable[key] = string.Empty;
             nodes.Add(node);
         }
+    }
 
+    private static void MapCodeFences(MarkdownDocument document, SourceText source, List<RaggableNode> nodes)
+    {
         foreach (var fence in document.Descendants<FencedCodeBlock>())
         {
             var language = fence.Info ?? string.Empty;
-            var node = Create(virtualPath, UniversalNodeKind.CodeFence, language.Length > 0 ? language : "code", string.Empty,
-                NodeLevel.L4_Statement, content, bytes, fence.Span.Start, fence.ClosingFencedCharCount == 0 && fence.Parent is MarkdownDocument ? content.Length : fence.Span.End + 1, fence.Line);
+            var unclosed = fence.ClosingFencedCharCount == 0 && fence.Parent is MarkdownDocument;
+            var end = unclosed ? source.Content.Length : fence.Span.End + 1;
+            var node = Create(source, UniversalNodeKind.CodeFence, language.Length > 0 ? language : "code", string.Empty,
+                NodeLevel.L4_Statement, new NodeSpan(fence.Span.Start, end, fence.Line));
             if (language.Length > 0) node.TagsMutable[language] = string.Empty;
             nodes.Add(node);
         }
+    }
 
+    private static void MapLinks(
+        MarkdownDocument document, SourceText source, List<RaggableNode> nodes,
+        List<(RaggableNode Node, int Start, int End)> sections)
+    {
         foreach (var link in document.Descendants<LinkInline>().Where(l => !l.IsImage))
         {
             var label = string.Concat(link.Descendants<LiteralInline>().Select(l => l.Content.ToString()));
-            var node = Create(virtualPath, UniversalNodeKind.Link, label, string.Empty, NodeLevel.L4_Statement,
-                content, bytes, link.Span.Start, link.Span.End + 1, link.Line);
+            var node = Create(source, UniversalNodeKind.Link, label, string.Empty, NodeLevel.L4_Statement,
+                new NodeSpan(link.Span.Start, link.Span.End + 1, link.Line));
             node.TagsMutable[TargetPrefix + link.Url] = string.Empty;
             nodes.Add(node);
             if (label.Length > 0) TagInnermostSection(sections, link.Span.Start, DocumentsEdgeLinker.LinkTag + label);
         }
-
-        foreach (var code in document.Descendants<CodeInline>())
-            TagInnermostSection(sections, code.Span.Start, DocumentsEdgeLinker.CodeTag + code.Content);
-
-        AttachToSections(nodes);
-        return nodes;
     }
 
     [SuppressMessage("Performance", "CA1822", Justification = "Instance member by public contract: callers resolve through the mapper they mapped with.")]
@@ -184,18 +207,24 @@ public sealed class MarkdownDocumentMapper
         var offsets = new int[content.Length + 1];
         for (var i = 0; i < content.Length; i++)
         {
-            var width = char.IsHighSurrogate(content[i]) ? 4
-                : char.IsLowSurrogate(content[i]) ? 0
-                : Encoding.UTF8.GetByteCount(content.AsSpan(i, 1));
-            offsets[i + 1] = offsets[i] + width;
+            offsets[i + 1] = offsets[i] + Utf8Width(content, i);
         }
         return offsets;
     }
 
-    private static RaggableNode Create(
-        string path, UniversalNodeKind kind, string name, string fqn, NodeLevel level,
-        string content, int[] bytes, int start, int endExclusive, int line)
+    // A surrogate pair is four UTF-8 bytes, all counted on its high half.
+    private static int Utf8Width(string content, int index)
     {
+        if (char.IsHighSurrogate(content[index])) return 4;
+        if (char.IsLowSurrogate(content[index])) return 0;
+        return Encoding.UTF8.GetByteCount(content.AsSpan(index, 1));
+    }
+
+    private static RaggableNode Create(
+        SourceText source, UniversalNodeKind kind, string name, string fqn, NodeLevel level, NodeSpan span)
+    {
+        var (path, content, bytes) = source;
+        var (start, endExclusive, line) = span;
         var end = Math.Min(endExclusive, content.Length);
         var snippet = content[start..end];
         return new RaggableNode
@@ -216,7 +245,8 @@ public sealed class MarkdownDocumentMapper
     private static void TagInnermostSection(List<(RaggableNode Node, int Start, int End)> sections, int position, string tag)
     {
         var innermost = sections.LastOrDefault(s => s.Start <= position && position < s.End);
-        innermost.Node?.TagsMutable[tag] = string.Empty;
+        if (innermost.Node is not null)
+            innermost.Node.TagsMutable[tag] = string.Empty;
     }
 
     private static void AttachToSections(List<RaggableNode> nodes)
@@ -230,6 +260,10 @@ public sealed class MarkdownDocumentMapper
             parent.ChildrenIdsMutable.Add(node.Id);
         }
     }
+
+    private readonly record struct SourceText(string Path, string Content, int[] Bytes);
+
+    private readonly record struct NodeSpan(int Start, int EndExclusive, int Line);
 }
 
 internal sealed class MarkdownLinkIndex

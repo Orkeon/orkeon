@@ -52,11 +52,18 @@ internal static class ShellConfinementResolver
         + ":Confinement:Mode to force it";
 
     /// <summary>The platform of the current process.</summary>
-    public static ShellPlatform CurrentPlatform { get; } =
-        OperatingSystem.IsLinux() ? ShellPlatform.Linux
-        : OperatingSystem.IsMacOS() ? ShellPlatform.MacOS
-        : OperatingSystem.IsWindows() ? ShellPlatform.Windows
-        : ShellPlatform.Other;
+    public static ShellPlatform CurrentPlatform { get; } = DetectPlatform();
+
+    private static ShellPlatform DetectPlatform()
+    {
+        if (OperatingSystem.IsLinux())
+            return ShellPlatform.Linux;
+        if (OperatingSystem.IsMacOS())
+            return ShellPlatform.MacOS;
+        if (OperatingSystem.IsWindows())
+            return ShellPlatform.Windows;
+        return ShellPlatform.Other;
+    }
 
     /// <summary>What <paramref name="mode"/> resolves to on <paramref name="platform"/>.</summary>
     /// <param name="mode">The configured mode.</param>

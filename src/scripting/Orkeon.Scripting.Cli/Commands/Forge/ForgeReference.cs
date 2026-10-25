@@ -111,7 +111,7 @@ internal sealed partial class ForgeReference
 
     /// <summary>
     /// The use case <paramref name="id"/> names in the catalogue this build embeds. An unknown id
-    /// throws <see cref="UnknownUseCaseException"/> — the typed error of D-05, which the command
+    /// throws <see cref="KeyNotFoundException"/> with the message of <see cref="UseCases.UnknownUseCase"/> — the error of D-05, which the command
     /// raises before it opens a session or boots a host, so no model is ever asked.
     /// </summary>
     public static ForgeReference Load(string id)

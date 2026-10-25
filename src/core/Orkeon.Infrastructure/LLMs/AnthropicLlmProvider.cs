@@ -757,23 +757,12 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             // Anthropic SSE uses event types: content_block_delta with delta.text
             await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
             {
-                using var doc = JsonDocument.Parse(data);
-                if (doc.RootElement.TryGetProperty("type", out var typeEl))
+                var (token, stop) = ReadStreamEvent(data);
+                finished |= stop;
+                if (token is not null)
                 {
-                    var eventType = typeEl.GetString();
-                    if (eventType == "message_stop")
-                        finished = true;
-                    if (eventType == "content_block_delta" &&
-                        doc.RootElement.TryGetProperty("delta", out var delta) &&
-                        delta.TryGetProperty("text", out var textEl))
-                    {
-                        var token = textEl.GetString();
-                        if (token is not null)
-                        {
-                            yieldedAnything |= token.Length > 0;
-                            yield return token;
-                        }
-                    }
+                    yieldedAnything |= token.Length > 0;
+                    yield return token;
                 }
             }
         }
@@ -784,6 +773,24 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         if (StreamFailureMessage(budget, finished, yieldedAnything, 0, "Anthropic") is { } failure)
             throw new HttpRequestException(failure);
+    }
+
+    // One Anthropic SSE event: the text of a content_block_delta, and whether it is the message_stop.
+    private static (string? Token, bool Stop) ReadStreamEvent(string data)
+    {
+        using var doc = JsonDocument.Parse(data);
+        if (!doc.RootElement.TryGetProperty("type", out var typeEl))
+            return (null, false);
+
+        var eventType = typeEl.GetString();
+        if (eventType == "content_block_delta" &&
+            doc.RootElement.TryGetProperty("delta", out var delta) &&
+            delta.TryGetProperty("text", out var textEl))
+        {
+            return (textEl.GetString(), false);
+        }
+
+        return (null, eventType == "message_stop");
     }
 
     /// <inheritdoc />

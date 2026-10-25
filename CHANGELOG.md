@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — SonarQube report of 2026-10-24 cleared
+
+The 213 issues and 29 security hotspots of the analysis were fixed in the code, with no suppression. Visible effects:
+
+| Before | After |
+|---|---|
+| The 8 exceptions of `Orkeon.Analysis.Core.Editing` and `.Structural` (`StaleHashException`, `AmbiguousSelectorException`, ...) were internal | `public sealed`, so a caller can catch them |
+| `OAuthException` and `OAuthFailure` (`Orkeon.Tools.Abstractions.Auth`) were internal | public |
+| `RunnerHost`'s silent-base-URL warning logged event id 14, shared with the notice | event id 15 |
+| `orkeon usecases`/`forge --reference` threw `UnknownUseCaseException`, `UseCaseModelUnavailableException` | `KeyNotFoundException`, `FileNotFoundException`; the reported codes and messages are unchanged |
+| `scripts/sonar-analyze.*` installed the latest SonarScanner, which refuses the 9.9 LTS server | pinned to 10.4.1 (`SONAR_SCANNER_VERSION` overrides it) |
+
+`TypedDictionaryGenerator` emitted `struct, unmanaged` for an `unmanaged` type parameter, which does not compile
+(CS0449): it now emits `unmanaged` alone. Coverage now measures the WPF ViewModels and the source generator.
+
 ### Added — a script agent takes a working root: `agentBuilder().workingRoot(path)` (#186)
 
 A script agent of `.ork.ts` can now be held to a virtual directory, as RT-06's `working_root:` holds a declared

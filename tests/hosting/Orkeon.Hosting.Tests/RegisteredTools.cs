@@ -18,10 +18,7 @@ internal static class RegisteredTools
         using var host = await RunnerExecution.BuildToolHostAsync(
             Path.Combine(root, "appsettings.json"),
             root,
-            [],
-            [],
-            allowExternalMounts: true,
-            OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption,
+            new ToolHostMounts([], [], AllowExternalMounts: true, OfferedMountSelectors.MountIdOption | OfferedMountSelectors.MountOption),
             (_, services) =>
             {
                 services.AddOrkeonHumanInput();

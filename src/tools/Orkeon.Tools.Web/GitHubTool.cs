@@ -152,6 +152,12 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
                 return $"Repo is required for action '{request.Action}'";
         }
 
+        return MissingActionField(request);
+    }
+
+    // The field the action itself needs beyond owner and repo, when it is missing; null when none is.
+    private static string? MissingActionField(GitHubRequest request)
+    {
         if (string.Equals(request.Action, "get_pr", StringComparison.OrdinalIgnoreCase) && request.Number is null)
             return "Number is required for action 'get_pr'";
 

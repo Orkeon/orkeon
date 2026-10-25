@@ -700,7 +700,7 @@ public static partial class RunnerHost
         var streamIdle = Shown(llmSection["StreamIdleSeconds"], "(unset)");
         var source = LlmSettings.DescribeApiKey(keySection);
         var provider = ReadEndpoint(llmSection).ProviderKey;
-        LogLlmResolved(logger, model, baseUrl, provider, temperature, timeout, streamIdle, source);
+        LogLlmResolved(logger, new LlmResolution(model, baseUrl, provider, temperature, timeout, streamIdle, source));
     }
 
     /// <summary>
@@ -728,15 +728,56 @@ public static partial class RunnerHost
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = LlmNotConfiguredMessage)]
     private static partial void LogLlmNotConfigured(ILogger logger);
 
-    [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message =
-        "LLM resolved: model={Model} baseUrl={BaseUrl} provider={Provider} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}")]
-    private static partial void LogLlmResolved(
-        ILogger logger, string model, string baseUrl, string provider, string temperature, string timeoutSeconds, string streamIdleSeconds, string apiKey);
+    /// <summary>
+    /// The startup line of the default model (event 2), its seven values kept as structured
+    /// properties under the names of <see cref="LlmResolution.Format"/>.
+    /// </summary>
+    private static void LogLlmResolved(ILogger logger, LlmResolution resolution)
+    {
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.Log(LogLevel.Information, new EventId(2, nameof(LogLlmResolved)), resolution, null, static (state, _) => state.ToString());
+    }
+
+    /// <summary>What the startup line says of the default model, as a structured log state.</summary>
+    private sealed record LlmResolution(
+        string Model, string BaseUrl, string Provider, string Temperature, string TimeoutSeconds, string StreamIdleSeconds, string ApiKey)
+        : IReadOnlyList<KeyValuePair<string, object?>>
+    {
+        /// <summary>The message template of the line.</summary>
+        public const string Format =
+            "LLM resolved: model={Model} baseUrl={BaseUrl} provider={Provider} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}";
+
+        public int Count => 8;
+
+        public KeyValuePair<string, object?> this[int index] => index switch
+        {
+            0 => new(nameof(Model), Model),
+            1 => new(nameof(BaseUrl), BaseUrl),
+            2 => new(nameof(Provider), Provider),
+            3 => new(nameof(Temperature), Temperature),
+            4 => new(nameof(TimeoutSeconds), TimeoutSeconds),
+            5 => new(nameof(StreamIdleSeconds), StreamIdleSeconds),
+            6 => new(nameof(ApiKey), ApiKey),
+            7 => new("{OriginalFormat}", Format),
+            _ => throw new ArgumentOutOfRangeException(nameof(index)),
+        };
+
+        public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
+        {
+            for (var index = 0; index < Count; index++)
+                yield return this[index];
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public override string ToString() =>
+            $"LLM resolved: model={Model} baseUrl={BaseUrl} provider={Provider} temperature={Temperature} timeoutSeconds={TimeoutSeconds} streamIdleSeconds={StreamIdleSeconds} apiKey={ApiKey}";
+    }
 
     [LoggerMessage(EventId = 10, Level = LogLevel.Information, Message = "LLM profile {Profile}: provider={Provider} apiKey={ApiKey}")]
     private static partial void LogLlmProfileKey(ILogger logger, string profile, string provider, string apiKey);
 
-    [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Warning}")]
+    [LoggerMessage(EventId = 15, Level = LogLevel.Warning, Message = "{Warning}")]
     private static partial void LogLlmBaseUrlSilent(ILogger logger, string warning);
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "{Warning}")]
@@ -1141,16 +1182,7 @@ public static partial class RunnerHost
         string? settingsPath,
         MountDecisions decisions)
     {
-        var claimed = declaredMounts.Select(entry => entry.Value)
-            .Concat(declaredInternal.Select(entry => entry.Value))
-            .Concat(cliMounts)
-            .Any(mount => mount is { Length: > 0 }
-                && string.Equals(MountSelection.TryGetVirtualRoot(mount), RunnerVirtualRoots.Credentials, StringComparison.Ordinal));
-        if (claimed)
-        {
-            throw new RunnerSettingsException(
-                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail and drive accounts there. Mount the folder under another name.");
-        }
+        EnsureCredentialsRootIsFree(declaredMounts, declaredInternal, cliMounts);
 
         var email = declared.Section(ConfigurationKeys.ToolsEmail);
         var drive = declared.Section(ConfigurationKeys.ToolsDrive);
@@ -1161,12 +1193,7 @@ public static partial class RunnerHost
 
         var emailDirectory = emailNeeds ? EmailCredentialsLocation.ConfiguredDirectory(email!) : null;
         var driveDirectory = driveNeeds ? DriveCredentialsLocation.ConfiguredDirectory(drive!) : null;
-        if (emailDirectory is not null && driveDirectory is not null && !string.Equals(emailDirectory, driveDirectory, StringComparison.Ordinal))
-        {
-            decisions.TokensUnavailable.Add(
-                $"{ConfigurationKeys.ToolsDrive}:CredentialsDirectory ({driveDirectory}) differs from {ConfigurationKeys.ToolsEmail}:CredentialsDirectory ({emailDirectory}): " +
-                "the runner keeps one credentials directory, the e-mail one, and the drive tokens go there too.");
-        }
+        WarnWhenDirectoriesDiffer(emailDirectory, driveDirectory, decisions);
 
         var directory = emailDirectory ?? driveDirectory ?? DefaultCredentialsDirectory();
         var families = string.Join(" and ", new[] { emailNeeds ? "e-mail" : null, driveNeeds ? "drive" : null }.OfType<string>());
@@ -1178,12 +1205,53 @@ public static partial class RunnerHost
             return null;
         }
 
+        var anchored = AnchorCredentialsDirectory(directory, settingsPath, families, decisions);
+        if (anchored is null)
+            return null;
+
+        return PrepareTokenDirectories(anchored, emailNeeds, driveNeeds, decisions) ? anchored : null;
+    }
+
+    /// <summary>Refuses a mount claiming <see cref="RunnerVirtualRoots.Credentials"/>, which the runner reserves.</summary>
+    private static void EnsureCredentialsRootIsFree(
+        List<(int Index, string? Value)> declaredMounts,
+        List<(int Index, string? Value)> declaredInternal,
+        IReadOnlyList<string> cliMounts)
+    {
+        var claimed = declaredMounts.Select(entry => entry.Value)
+            .Concat(declaredInternal.Select(entry => entry.Value))
+            .Concat(cliMounts)
+            .Any(mount => mount is { Length: > 0 }
+                && string.Equals(MountSelection.TryGetVirtualRoot(mount), RunnerVirtualRoots.Credentials, StringComparison.Ordinal));
+        if (claimed)
+        {
+            throw new RunnerSettingsException(
+                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail and drive accounts there. Mount the folder under another name.");
+        }
+    }
+
+    /// <summary>Says that the drive tokens go to the e-mail credentials directory when the two families name different ones.</summary>
+    private static void WarnWhenDirectoriesDiffer(string? emailDirectory, string? driveDirectory, MountDecisions decisions)
+    {
+        if (emailDirectory is not null && driveDirectory is not null && !string.Equals(emailDirectory, driveDirectory, StringComparison.Ordinal))
+        {
+            decisions.TokensUnavailable.Add(
+                $"{ConfigurationKeys.ToolsDrive}:CredentialsDirectory ({driveDirectory}) differs from {ConfigurationKeys.ToolsEmail}:CredentialsDirectory ({emailDirectory}): " +
+                "the runner keeps one credentials directory, the e-mail one, and the drive tokens go there too.");
+        }
+    }
+
+    /// <summary>
+    /// The full path of <paramref name="directory"/>, relative to the settings file that names it, so
+    /// a login and a run started from different directories share one token store; null, with the
+    /// reason in <paramref name="decisions"/>, when it cannot be read as a path.
+    /// </summary>
+    private static string? AnchorCredentialsDirectory(string directory, string? settingsPath, string families, MountDecisions decisions)
+    {
         try
         {
-            // Relative to the settings file that names it, so a login and a run started from
-            // different directories share one token store.
             var settingsDirectory = settingsPath is null ? null : Path.GetDirectoryName(Path.GetFullPath(settingsPath));
-            directory = Path.GetFullPath(settingsDirectory is null ? directory : Path.Combine(settingsDirectory, directory));
+            return Path.GetFullPath(settingsDirectory is null ? directory : Path.Combine(settingsDirectory, directory));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException)
         {
@@ -1191,18 +1259,23 @@ public static partial class RunnerHost
                 $"The directory of the {families} OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth {families} accounts have no token store in this run.");
             return null;
         }
+    }
 
-        // Each family's subdirectory on its own: one that cannot be prepared leaves the other's
-        // token store in place, instead of taking both families' OAuth accounts down.
+    /// <summary>
+    /// Prepares the token subdirectory of each family that needs one; true when at least one is
+    /// ready. Each on its own: one that cannot be prepared leaves the other's token store in place,
+    /// instead of taking both families' OAuth accounts down.
+    /// </summary>
+    private static bool PrepareTokenDirectories(string directory, bool emailNeeds, bool driveNeeds, MountDecisions decisions)
+    {
         var prepared = false;
-        foreach (var (needs, family, subdirectory) in new[]
-                 {
-                     (emailNeeds, "e-mail", EmailCredentialsLocation.TokenSubdirectory),
-                     (driveNeeds, "drive", DriveCredentialsLocation.TokenSubdirectory),
-                 })
+        var families = new[]
         {
-            if (!needs)
-                continue;
+            (Needs: emailNeeds, Family: "e-mail", Subdirectory: EmailCredentialsLocation.TokenSubdirectory),
+            (Needs: driveNeeds, Family: "drive", Subdirectory: DriveCredentialsLocation.TokenSubdirectory),
+        };
+        foreach (var (_, family, subdirectory) in families.Where(candidate => candidate.Needs))
+        {
             try
             {
                 PrepareTokenDirectory(directory, subdirectory);
@@ -1215,7 +1288,7 @@ public static partial class RunnerHost
             }
         }
 
-        return prepared ? directory : null;
+        return prepared;
     }
 
     /// <summary>Creates <paramref name="subdirectory"/> of <paramref name="directory"/>, owner-only on Unix.</summary>

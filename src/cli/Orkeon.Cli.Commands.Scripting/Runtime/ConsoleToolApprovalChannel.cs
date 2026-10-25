@@ -253,12 +253,17 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         return text.Length <= MaxArgumentsLength ? text : string.Concat(text.AsSpan(0, MaxArgumentsLength), "…");
     }
 
-    private sealed class PendingApproval(ToolApprovalRequest request)
+    private sealed class PendingApproval
     {
-        public ToolApprovalRequest Request { get; } = request;
+        public PendingApproval(ToolApprovalRequest request)
+        {
+            Request = request;
+            Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
 
-        public TaskCompletionSource<ToolApprovalDecision> Completion { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public ToolApprovalRequest Request { get; }
+
+        public TaskCompletionSource<ToolApprovalDecision> Completion { get; }
 
         public LinkedListNode<PendingApproval>? Node { get; set; }
 

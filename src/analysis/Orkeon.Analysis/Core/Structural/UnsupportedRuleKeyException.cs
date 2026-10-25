@@ -1,9 +1,12 @@
+using System.Runtime.Serialization;
+
 namespace Orkeon.Analysis.Core.Structural;
 
-#pragma warning disable CA1064 // internal by design: callers see it through the tool's refusal
-internal sealed class UnsupportedRuleKeyException : Exception
-#pragma warning restore CA1064
+[Serializable]
+public sealed class UnsupportedRuleKeyException : Exception
 {
+    private const string KeyKey = "Key";
+
     public UnsupportedRuleKeyException()
     {
     }
@@ -20,4 +23,19 @@ internal sealed class UnsupportedRuleKeyException : Exception
     }
 
     public string Key { get; } = string.Empty;
+
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private UnsupportedRuleKeyException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Key = info.GetString(KeyKey) ?? string.Empty;
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(KeyKey, Key);
+    }
 }

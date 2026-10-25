@@ -17,6 +17,13 @@ namespace Orkeon.Application.Crew.Execution;
 /// </summary>
 internal sealed class NativeToolCallingAgentLoop
 {
+    /// <summary>The optional diagnostics and limits of the loop.</summary>
+    /// <param name="VerboseLogger">The logger of the verbose trace, or <c>null</c>.</param>
+    /// <param name="Limits">The tool result limits, or <c>null</c> for the defaults.</param>
+    internal sealed record NativeToolCallingLoopOptions(
+        ILogger? VerboseLogger = null,
+        IOptions<ToolResultLimitsOptions>? Limits = null);
+
     private readonly ILogger _logger;
     private readonly ILogger? _verboseLogger;
     private readonly Domain.SharedKernel.ILlmProvider _fullProvider;
@@ -33,12 +40,11 @@ internal sealed class NativeToolCallingAgentLoop
         IEnumerable<Domain.Tools.IBaseTool>? registeredTools,
         LlmCallGate llmGate,
         IToolInvocationPipeline toolInvocation,
-        ILogger? verboseLogger = null,
-        IOptions<ToolResultLimitsOptions>? limits = null)
+        NativeToolCallingLoopOptions? options = null)
     {
-        _maxParallelToolCalls = (limits?.Value ?? new ToolResultLimitsOptions()).MaxParallelToolCalls;
+        _maxParallelToolCalls = (options?.Limits?.Value ?? new ToolResultLimitsOptions()).MaxParallelToolCalls;
         _logger = logger;
-        _verboseLogger = verboseLogger;
+        _verboseLogger = options?.VerboseLogger;
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
         _registeredTools = registeredTools;

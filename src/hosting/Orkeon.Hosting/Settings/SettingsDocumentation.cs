@@ -169,13 +169,12 @@ internal sealed partial class SettingsDocumentation
         if (home?.DeclaringType is not { } declaring)
             return null;
 
-        const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
         var type = Named(typeName, home);
         switch (kind)
         {
             case 'F' when type is { IsEnum: true }:
                 return member;
-            case 'F' when type?.GetField(member, Any) is { IsLiteral: true } constant:
+            case 'F' when type?.GetTypeInfo().GetDeclaredField(member) is { IsLiteral: true } constant:
                 return Convert.ToString(constant.GetRawConstantValue(), CultureInfo.InvariantCulture);
             case 'P' when type is not null && type.IsAssignableFrom(declaring):
                 return member;

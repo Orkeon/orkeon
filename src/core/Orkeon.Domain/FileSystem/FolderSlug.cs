@@ -67,7 +67,13 @@ public static class FolderSlug
                 break;
         }
 
-        var slug = builder.ToString().TrimEnd('-');
+        var slug = CutToMaxLength(builder.ToString().TrimEnd('-'));
+        return slug.Length > 0 ? slug : null;
+    }
+
+    // A slug longer than the cap is cut on a word boundary when one is near enough.
+    private static string CutToMaxLength(string slug)
+    {
         if (slug.Length > MaxLength)
         {
             // Back up to the last dash inside the window while that keeps at least half the
@@ -81,7 +87,7 @@ public static class FolderSlug
                 slug = slug[..last];
         }
 
-        return slug.Length > 0 ? slug : null;
+        return slug;
     }
 
     /// <summary>

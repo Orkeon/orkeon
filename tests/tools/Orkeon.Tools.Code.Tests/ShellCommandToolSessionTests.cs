@@ -157,4 +157,24 @@ public sealed class ShellCommandToolSessionTests : IDisposable
         Assert.Contains("bwrap was not found", result.Error!, StringComparison.Ordinal);
         Assert.Empty(sandbox.Sessions);
     }
+
+    [Fact]
+    public async Task ShouldFailTheCallWithoutTheHostPath_WhenTheCommandCannotBeStarted()
+    {
+        // A command missing from the host fails to start with a message naming the physical
+        // working directory: the failure reaches the agent with that path rewritten.
+        var physical = Directory.CreateDirectory(Path.Combine(_tempDir, "ws")).FullName;
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.ThrowOnRun = new System.ComponentModel.Win32Exception(
+                2, $"An error occurred trying to start process 'echo' with working directory '{physical}'. No such file or directory"),
+        };
+        var fileSystem = new DiskBackedFileSystemService(physical, "/workspace");
+        using var tool = new ShellCommandTool(fileSystem) { Sandbox = sandbox };
+
+        var result = await tool.CallAsync(Request("echo x", "/workspace"), Ct);
+
+        Assert.False(result.Success);
+        Assert.DoesNotContain(physical, result.Error!, StringComparison.Ordinal);
+    }
 }

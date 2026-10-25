@@ -2,6 +2,8 @@ using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Run.Launcher;
 using Orkeon.Studio.Run.Views;
+using Terminal.Gui.Input;
+using Terminal.Gui.Views;
 
 namespace Orkeon.Studio.Run.Tests.Views;
 
@@ -128,5 +130,58 @@ public class RunLauncherWindowTests
         using var window = new RunLauncherWindow(fixture.Build());
 
         Assert.Contains(LauncherFixture.BinaryPath, window.StatusText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Running_without_a_target_asks_for_a_crew_and_starts_nothing()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli();
+        using var window = new RunLauncherWindow(fixture.Build());
+
+        ViewTree.Press(ViewTree.Button(window, "Run"));
+
+        Assert.Equal("Select a crew first.", window.StatusText);
+        Assert.Equal(0, fixture.Processes.StartCount);
+    }
+
+    [Fact]
+    public void Ctrl_Q_quits_with_a_zero_exit_code()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli();
+        using var window = new RunLauncherWindow(fixture.Build());
+
+        var handled = window.NewKeyDownEvent(Key.Q.WithCtrl);
+
+        Assert.True(handled);
+        Assert.Equal(0, window.ExitCode);
+    }
+
+    [Fact]
+    public void Choose_and_Detect_on_an_unrunnable_path_report_it_and_open_no_list()
+    {
+        // The launcher's default button is Run: a pressed button's Accept reaches it too, which
+        // here only repeats that no crew is selected.
+        var fixture = new LauncherFixture().WithInstalledCli();
+        using var window = new RunLauncherWindow(fixture.Build());
+        ViewTree.All<TextField>(window)[0].Text = "/nowhere/crew.yaml";
+
+        ViewTree.Press(ViewTree.Button(window, "Choose…"));
+        Assert.Contains("/nowhere/crew.yaml", window.TargetStatusText, StringComparison.Ordinal);
+
+        ViewTree.Press(ViewTree.Button(window, "Detect"));
+        Assert.Contains("/nowhere/crew.yaml", window.TargetStatusText, StringComparison.Ordinal);
+        Assert.Equal(0, fixture.Processes.StartCount);
+    }
+
+    [Fact]
+    public void Unchecking_automatic_settings_unlocks_the_settings_path()
+    {
+        var fixture = new LauncherFixture().WithInstalledCli();
+        using var window = new RunLauncherWindow(fixture.Build());
+        Assert.False(window.IsOptionFieldEnabled(RunOption.Settings));
+
+        ViewTree.All<CheckBox>(window).First(c => c.Text.StartsWith("Settings", StringComparison.Ordinal)).Value = CheckState.UnChecked;
+
+        Assert.True(window.IsOptionFieldEnabled(RunOption.Settings));
     }
 }

@@ -832,23 +832,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                             return response;
                         }
 
-                        var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        TimeSpan? window;
-                        try
-                        {
-                            window = RateLimitResetHeaders.WindowOf(response, DateTimeOffset.UtcNow, Config.MaxRateLimitWait);
-                        }
-                        catch (Orkeon.Domain.Exceptions.LlmRateLimitException)
-                        {
-                            response.Dispose();
-                            throw;
-                        }
-
-                        var delay = window ?? StreamingBackoff(attempt);
-                        if (window is not null) reason = RateLimitResetHeaders.Reason;
-                        LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
-                        NotifyRetryScheduled(attempt, delay, reason, endpoint?.Host);
-                        if (!await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false))
+                        if (!await WaitToRetryStreamingAsync(response, attempt, endpoint?.Host, cancellationToken).ConfigureAwait(false))
                         {
                             // The call's budget ran out while waiting to retry (LLM-12): the
                             // vendor's last answer is the failure, not the wait — the caller
@@ -860,18 +844,14 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                     }
                     catch (HttpRequestException ex) when (attempt < maxAttempts)
                     {
-                        LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
-                        NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
-                        await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                        await BackOffAfterConnectFailureAsync(attempt, ex.Message, endpoint?.Host, cancellationToken).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException ex) when (attempt <= StreamingTimeoutRetries && !cancellationToken.IsCancellationRequested)
                     {
                         // HttpClient.Timeout expired before headers — not a user cancellation. Re-sent
                         // on the buffered path's budget (once), not Llm:MaxRetries: every attempt
                         // costs the whole timeout (LLM-12).
-                        LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, ex.Message);
-                        NotifyRetryScheduled(attempt, StreamingBackoff(attempt), ex.Message, endpoint?.Host);
-                        await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
+                        await BackOffAfterConnectFailureAsync(attempt, ex.Message, endpoint?.Host, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -880,6 +860,43 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
                 NotifyCallSettled(ResolveModel(null), succeeded, cancellationToken);
             }
         }
+    }
+
+    /// <summary>
+    /// Logs, announces and waits out the retry a retriable streaming answer asks for: the window it
+    /// names, else the backoff. False when the call's budget ran out while waiting.
+    /// </summary>
+    private async Task<bool> WaitToRetryStreamingAsync(HttpResponseMessage response, int attempt, string? host, CancellationToken cancellationToken)
+    {
+        var reason = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var window = RateLimitWindowOf(response);
+        var delay = window ?? StreamingBackoff(attempt);
+        if (window is not null) reason = RateLimitResetHeaders.Reason;
+        LogStreamingConnectRetry(attempt, delay.TotalMilliseconds, reason);
+        NotifyRetryScheduled(attempt, delay, reason, host);
+        return await WaitBeforeRetryAsync(delay, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The rate-limit window a retriable streaming answer names; the answer is disposed when the window is too long.</summary>
+    private TimeSpan? RateLimitWindowOf(HttpResponseMessage response)
+    {
+        try
+        {
+            return RateLimitResetHeaders.WindowOf(response, DateTimeOffset.UtcNow, Config.MaxRateLimitWait);
+        }
+        catch (Orkeon.Domain.Exceptions.LlmRateLimitException)
+        {
+            response.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Logs, announces and waits out the backoff after a connect failure of a streaming request.</summary>
+    private async Task BackOffAfterConnectFailureAsync(int attempt, string reason, string? host, CancellationToken cancellationToken)
+    {
+        LogStreamingConnectRetry(attempt, StreamingBackoff(attempt).TotalMilliseconds, reason);
+        NotifyRetryScheduled(attempt, StreamingBackoff(attempt), reason, host);
+        await System.Threading.Tasks.Task.Delay(StreamingBackoff(attempt), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The wait a streaming connect retry performs; overridable so tests never sleep.</summary>

@@ -253,6 +253,34 @@ public sealed class MDXSearchToolTests : IDisposable
         Assert.True(chunks.Count > 1, $"Expected sub-splitting of large section, got {chunks.Count} chunk(s)");
     }
 
+    // ── PreprocessContent (frontmatter, import and export stripping) ──
+
+    /// <summary>Exposes the protected preprocessing step of the tool.</summary>
+    private sealed class PreprocessingProbe(MockEmbeddingService embeddings)
+        : MdxSearchTool(EphemeralSearchHarness.Create(embeddings), new PassThroughFileSystemService())
+    {
+        public string Run(string content) => PreprocessContent(content);
+    }
+
+    [Theory]
+    [InlineData("---\ntitle: x\n---\n# H", "# H")]
+    [InlineData("---  \na: 1\nb: 2\n---  \nBody", "Body")]
+    [InlineData("---\na: 1\n---", "")]
+    [InlineData("---\ntitle\nbody without closing fence", "---\ntitle\nbody without closing fence")]
+    [InlineData("--- not a fence\ntext", "--- not a fence\ntext")]
+    [InlineData("# T\nimport X from 'y'\ntext", "# T\n\ntext")]
+    [InlineData("important note\nimports are fine", "important note\nimports are fine")]
+    [InlineData("text\n  import indented stays", "text\n  import indented stays")]
+    [InlineData("export const a = 1\nexport default function Page() {}\nexport  default  Foo\nbody", "body")]
+    [InlineData("exported values are listed", "exported values are listed")]
+    [InlineData("---\nk: v\n---\nimport A from 'a'\nexport const m = 1\n\n# Title\n\nBody", "# Title\n\nBody")]
+    public void PreprocessContent_StripsOnlyLineStartFrontmatterImportsAndExports(string content, string expected)
+    {
+        using var probe = new PreprocessingProbe(new MockEmbeddingService());
+
+        Assert.Equal(expected, probe.Run(content));
+    }
+
     // ── Helper methods ───────────────────────────────────────────────
 
     private string CreateFile(string fileName, string content)

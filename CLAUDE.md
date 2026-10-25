@@ -79,7 +79,7 @@ Use native xUnit assertions only: no mocking framework (Moq, NSubstitute, FakeIt
 
 ## Architecture map
 
-The repository holds **49 src projects** and **37 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
+The repository holds **49 src projects** and **38 test projects** (`Orkeon.sln`; examples in `examples/Orkeon.Examples.sln`), all `net10.0` (`net10.0-windows` for `Orkeon.Studio.Wpf`).
 - `src/core/`: Clean Architecture. `Orkeon.Domain` holds entities, value objects and most interfaces (`ILlmProvider`, `IMemoryProvider`, `IAgentFactory`) and references only `Orkeon.Constants.Llm` (ADR-009). `Orkeon.Application` holds use cases, ports and DTOs. `Orkeon.Infrastructure` holds the adapters: 16 LLM providers in `LLMs/`, memory stores, and orchestration strategies in `Crew/Strategies/` + `Consensus/`. Allowed cross-layer exceptions are in ADR-002, 003, 005, 006 and 012.
 - `src/tools/`: the tool families (`ToolBase<TReq,TRes>`). `src/rag/`: the RAG subsystem (ADR-006). `src/analysis/`: RaggableTree, the semantic code graph.
 - `src/scripting/`: the `.ork.ts` DSL (Jint + esbuild) and the `orkeon` CLI. `src/cli/`: REPL command contracts and the Terminal.Gui console.

@@ -33,21 +33,15 @@ public sealed class ScriptToolCatalogue : IEnumerable<IBaseTool>
     public IEnumerator<IBaseTool> GetEnumerator()
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var tool in _containerTools)
-        {
-            if (names.Add(tool.Name))
-                yield return tool;
-        }
+        foreach (var tool in _containerTools.Where(tool => names.Add(tool.Name)))
+            yield return tool;
 
         if (_registry is null)
             yield break;
 
         // The registry is an in-memory map: its task is complete when it is returned.
-        foreach (var tool in _registry.GetAllToolsAsync().GetAwaiter().GetResult())
-        {
-            if (names.Add(tool.Name))
-                yield return tool;
-        }
+        foreach (var tool in _registry.GetAllToolsAsync().GetAwaiter().GetResult().Where(tool => names.Add(tool.Name)))
+            yield return tool;
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

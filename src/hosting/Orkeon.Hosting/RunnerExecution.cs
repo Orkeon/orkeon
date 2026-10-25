@@ -108,7 +108,7 @@ public static partial class RunnerExecution
                 cliMounts, layers, error,
                 target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
             || !EnsureMountSelectionIsResolvable(
-                cliMounts, opts.MountIds, crewMounts, layers, target.SettingsPath, offered, error, out var selection)
+                cliMounts, opts.MountIds, crewMounts, new MountLayers(layers, target.SettingsPath), offered, error, out var selection)
             || !EnsureMountSourcesExist(cliMounts, layers, selection, error)
             || !EnsureLlmProfileIsKnown(opts.LlmProfile, target.SettingsPath, error))
         {
@@ -563,7 +563,7 @@ public static partial class RunnerExecution
         TextWriter error,
         [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? plan) =>
         EnsureMountSelectionIsResolvable(
-            userMounts, mountIds, crewMounts, RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath, offered, error, out plan);
+            userMounts, mountIds, crewMounts, new MountLayers(RunnerSettings.ReadMountConfiguration(settingsPath), settingsPath), offered, error, out plan);
 
     /// <summary>
     /// The selection guard over the layers a caller composed — the REPL's, its command line
@@ -572,8 +572,7 @@ public static partial class RunnerExecution
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="mountIds">The <c>--mount-id</c> values, unparsed.</param>
     /// <param name="crewMounts">The crew's <c>mounts:</c> block, pre-read, or <see cref="CrewMountDeclarations.None"/>.</param>
-    /// <param name="configuration">The configuration the host is built over, before its own mounts.</param>
-    /// <param name="settingsLabel">What the lines name the declarations by: the file, or the files separated by a comma; null for the configuration alone.</param>
+    /// <param name="layers">The configuration the host is built over, before its own mounts, and what the lines name its declarations by.</param>
     /// <param name="offered">What the command offers to choose with.</param>
     /// <param name="error">Where the refusal and the warnings are written: stderr, or the caller's buffer.</param>
     /// <param name="plan">The resolved plan when the guard passes.</param>
@@ -582,8 +581,7 @@ public static partial class RunnerExecution
         IEnumerable<string> userMounts,
         IEnumerable<string> mountIds,
         CrewMountDeclarations crewMounts,
-        IConfiguration configuration,
-        string? settingsLabel,
+        MountLayers layers,
         OfferedMountSelectors offered,
         TextWriter error,
         [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? plan)
@@ -591,6 +589,8 @@ public static partial class RunnerExecution
         ArgumentNullException.ThrowIfNull(userMounts);
         ArgumentNullException.ThrowIfNull(mountIds);
         ArgumentNullException.ThrowIfNull(crewMounts);
+        ArgumentNullException.ThrowIfNull(layers);
+        var (configuration, settingsLabel) = layers;
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(error);
         plan = null;
@@ -1243,6 +1243,7 @@ public static partial class RunnerExecution
         ILogger logger)
     {
         var questionNumber = 0;
+        var session = new QuestionSession(sessionCts, kickoffPerInputAsync, logger);
         while (!sessionCts.IsCancellationRequested)
         {
             var input = ReadQuestion(console);
@@ -1263,7 +1264,7 @@ public static partial class RunnerExecution
             LogQuestion(logger, questionNumber, input);
 
             var earlyExit = await RunScopedQuestionAsync(
-                host, console.Output, input, questionNumber, sessionCts, currentKickoff, kickoffPerInputAsync, logger)
+                host, console.Output, input, questionNumber, session, currentKickoff)
                 .ConfigureAwait(false);
             if (earlyExit is { } code)
                 return code;
@@ -1283,20 +1284,17 @@ public static partial class RunnerExecution
         TextWriter output,
         string input,
         int questionNumber,
-        CancellationTokenSource sessionCts,
-        StrongBox<CancellationTokenSource?> currentKickoff,
-        Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> kickoffPerInputAsync,
-        ILogger logger)
+        QuestionSession session,
+        StrongBox<CancellationTokenSource?> currentKickoff)
     {
         using var scope = host.Services.CreateScope();
-        using var kickoffCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCts.Token);
+        using var kickoffCts = CancellationTokenSource.CreateLinkedTokenSource(session.SessionCts.Token);
         Volatile.Write(ref currentKickoff.Value, kickoffCts);
 
         try
         {
             return await RunSingleQuestionAsync(
-                scope.ServiceProvider, output, input, questionNumber,
-                sessionCts, kickoffPerInputAsync, logger, kickoffCts.Token).ConfigureAwait(false);
+                scope.ServiceProvider, output, input, questionNumber, session, kickoffCts.Token).ConfigureAwait(false);
         }
         finally
         {
@@ -1335,11 +1333,10 @@ public static partial class RunnerExecution
         TextWriter console,
         string input,
         int questionNumber,
-        CancellationTokenSource sessionCts,
-        Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> kickoffPerInputAsync,
-        ILogger logger,
+        QuestionSession session,
         CancellationToken kickoffToken)
     {
+        var (sessionCts, kickoffPerInputAsync, logger) = session;
         try
         {
             await console.WriteLineAsync("  Processing...").ConfigureAwait(false);
@@ -1372,6 +1369,15 @@ public static partial class RunnerExecution
             return null;
         }
     }
+
+    /// <summary>What every question of an interactive session shares.</summary>
+    /// <param name="SessionCts">The session's source: its cancellation ends the loop.</param>
+    /// <param name="KickoffPerInputAsync">Runs one kickoff for a question.</param>
+    /// <param name="Logger">The runner's logger.</param>
+    private sealed record QuestionSession(
+        CancellationTokenSource SessionCts,
+        Func<IServiceProvider, string, CancellationToken, Task<CrewOutput>> KickoffPerInputAsync,
+        ILogger Logger);
 
     /// <summary>
     /// Registers SIGTERM + SIGINT handlers that cancel the provided token source. Returns

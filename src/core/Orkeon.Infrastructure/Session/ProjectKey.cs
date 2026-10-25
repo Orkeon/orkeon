@@ -13,7 +13,8 @@ public static class ProjectKey
     public static string Slug(string projectKey)
     {
         ArgumentNullException.ThrowIfNull(projectKey);
-        var name = new string(projectKey.TrimEnd('/', '\\').Split('/', '\\')[^1]
+        // The name splits on '/' alone: the folders already written on disk keep their name.
+        var name = new string(projectKey.TrimEnd('/', '\\').Split('/')[^1]
             .Select(c => char.IsAsciiLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-').ToArray());
         var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(projectKey)))[..12];
         return $"{name}-{hash}";

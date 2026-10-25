@@ -7,12 +7,18 @@ namespace Orkeon.Scripting.Runtime;
 /// handed back a second time by the owner's final release.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001", Justification = "The take lock never exposes AvailableWaitHandle, so it owns no unmanaged resource to dispose.")]
-internal sealed class GatePermit(SemaphoreSlim gate)
+internal sealed class GatePermit
 {
+    private readonly SemaphoreSlim _gate;
     private readonly Lock _sync = new();
     private readonly SemaphoreSlim _take = new(1, 1);
     private bool _held;
     private bool _closed;
+
+    internal GatePermit(SemaphoreSlim gate)
+    {
+        _gate = gate;
+    }
 
     /// <summary>True once the owner closed the permit.</summary>
     internal bool IsClosed { get { lock (_sync) return _closed; } }
@@ -32,12 +38,12 @@ internal sealed class GatePermit(SemaphoreSlim gate)
                 if (_closed) throw new OperationCanceledException("The permit's owner has ended.");
                 if (_held) return;
             }
-            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             bool keep;
             lock (_sync) { keep = !_closed; _held = keep; }
             if (!keep)
             {
-                gate.Release();
+                _gate.Release();
                 throw new OperationCanceledException("The permit's owner has ended.");
             }
         }
@@ -57,7 +63,7 @@ internal sealed class GatePermit(SemaphoreSlim gate)
             wasHeld = _held;
             _held = false;
         }
-        if (wasHeld) gate.Release();
+        if (wasHeld) _gate.Release();
     }
 
     /// <summary>Hands the permit back when held; a no-op otherwise.</summary>
@@ -68,6 +74,6 @@ internal sealed class GatePermit(SemaphoreSlim gate)
             if (!_held) return;
             _held = false;
         }
-        gate.Release();
+        _gate.Release();
     }
 }

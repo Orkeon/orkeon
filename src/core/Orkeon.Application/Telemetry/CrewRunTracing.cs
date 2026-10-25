@@ -97,14 +97,25 @@ public static class CrewRunTracing
     {
         public void Dispose()
         {
+            // Nothing to close: no run scope was opened.
         }
     }
 
-    private sealed class TaskSpan(Activity? span, string crewName, string? role)
+    private sealed class TaskSpan
     {
-        private readonly long _startedAt = Stopwatch.GetTimestamp();
+        private readonly long _startedAt;
+        private readonly string _crewName;
+        private readonly string? _role;
 
-        public Activity? Span { get; } = span;
+        public TaskSpan(Activity? span, string crewName, string? role)
+        {
+            _startedAt = Stopwatch.GetTimestamp();
+            Span = span;
+            _crewName = crewName;
+            _role = role;
+        }
+
+        public Activity? Span { get; }
 
         public void End(TaskSpanStatus status, string? reason, DateTimeOffset? endedAt)
         {
@@ -114,7 +125,7 @@ public static class CrewRunTracing
                 TaskSpanStatus.Failed => "failed",
                 _ => "cancelled",
             };
-            OrkeonMeter.TaskEnded(crewName, role, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
+            OrkeonMeter.TaskEnded(_crewName, _role, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
             if (Span is null)
                 return;
 
@@ -148,20 +159,34 @@ public static class CrewRunTracing
         public void Dispose() => Activity.Current = _previous;
     }
 
-    private sealed class RunScope(Activity? span, Activity? enclosing, RunScope? parent, string crewName, string process) : IDisposable
+    private sealed class RunScope : IDisposable
     {
-        private readonly long _startedAt = Stopwatch.GetTimestamp();
+        private readonly long _startedAt;
+        private readonly Activity? _enclosing;
+        private readonly RunScope? _parent;
+        private readonly string _process;
         private bool _disposed;
 
-        public Activity? Span { get; } = span;
+        public RunScope(Activity? span, Activity? enclosing, RunScope? parent, string crewName, string process)
+        {
+            _startedAt = Stopwatch.GetTimestamp();
+            Span = span;
+            CrewName = crewName;
+            Tasks = new ConcurrentDictionary<TaskId, TaskSpan>();
+            _enclosing = enclosing;
+            _parent = parent;
+            _process = process;
+        }
 
-        public string CrewName { get; } = crewName;
+        public Activity? Span { get; }
+
+        public string CrewName { get; }
 
         public bool Failed { get; set; }
 
         public bool Cancelled { get; set; }
 
-        public ConcurrentDictionary<TaskId, TaskSpan> Tasks { get; } = new();
+        public ConcurrentDictionary<TaskId, TaskSpan> Tasks { get; }
 
         public void Dispose()
         {
@@ -175,11 +200,15 @@ public static class CrewRunTracing
                     open.End(TaskSpanStatus.Cancelled, "the run ended before the task did", endedAt: null);
             }
 
-            var outcome = Cancelled ? "cancelled" : Failed ? "failed" : "completed";
-            OrkeonMeter.CrewEnded(CrewName, process, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
+            var outcome = "completed";
+            if (Cancelled)
+                outcome = "cancelled";
+            else if (Failed)
+                outcome = "failed";
+            OrkeonMeter.CrewEnded(CrewName, _process, outcome, Stopwatch.GetElapsedTime(_startedAt).TotalSeconds);
             Span?.Stop();
-            Activity.Current = enclosing;
-            Ambient.Value = parent;
+            Activity.Current = _enclosing;
+            Ambient.Value = _parent;
         }
     }
 }

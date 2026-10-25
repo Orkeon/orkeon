@@ -397,21 +397,10 @@ internal static class HostStartup
         for (var index = 0; index < args.Length && error is null; index++)
         {
             var argument = args[index];
-            var name = argument;
-            string? value = null;
-            var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
-            if (equals >= 0)
-            {
-                name = argument[..equals];
-                value = argument[(equals + 1)..];
-            }
-
+            var (name, value) = SplitAttached(argument);
             if (SwitchFlags.Contains(name, StringComparer.Ordinal))
             {
-                if (value is not null)
-                    error = $"orkeon-host: {name} takes no value.";
-                else if (name == "--allow-external-mounts")
-                    allowExternalMounts = true;
+                error = ReadSwitch(name, value, ref allowExternalMounts);
                 continue;
             }
 
@@ -421,43 +410,76 @@ internal static class HostStartup
                 continue;
             }
 
-            if (value is null)
-            {
-                if (index + 1 >= args.Length)
-                {
-                    error = name is "--mount" or "-m"
-                        ? $"orkeon-host: {name} requires a value."
-                        : $"orkeon-host: {(name == "-s" ? "--settings" : name)} requires a path.";
-                    continue;
-                }
-
-                value = args[++index];
-            }
-            else if (value.Length == 0)
-            {
-                error = $"orkeon-host: {name}= has an empty value.";
-                continue;
-            }
-
-            switch (name)
-            {
-                case "--settings" or "-s":
-                    if (settings is not null)
-                        error = "orkeon-host: --settings given twice.";
-                    settings = value;
-                    break;
-                case "--working-dir":
-                    if (workingDirectory is not null)
-                        error = "orkeon-host: --working-dir given twice.";
-                    workingDirectory = value;
-                    break;
-                default:
-                    mounts.Add(value);
-                    break;
-            }
+            error = ReadValue(args, ref index, name, ref value);
+            if (error is null)
+                error = AssignValue(name, value!, ref settings, ref workingDirectory, mounts);
         }
 
         return (new HostCommandLine(settings, mounts, workingDirectory, allowExternalMounts), error);
+    }
+
+    /// <summary>Reads the switch <paramref name="name"/>; the refusal when a value is attached to it.</summary>
+    private static string? ReadSwitch(string name, string? value, ref bool allowExternalMounts)
+    {
+        if (value is not null)
+            return $"orkeon-host: {name} takes no value.";
+        if (name == "--allow-external-mounts")
+            allowExternalMounts = true;
+        return null;
+    }
+
+    /// <summary>Records the value of the value flag <paramref name="name"/>; the refusal when --settings or --working-dir is repeated.</summary>
+    private static string? AssignValue(string name, string value, ref string? settings, ref string? workingDirectory, List<string> mounts)
+    {
+        string? error = null;
+        switch (name)
+        {
+            case "--settings" or "-s":
+                if (settings is not null)
+                    error = "orkeon-host: --settings given twice.";
+                settings = value;
+                break;
+            case "--working-dir":
+                if (workingDirectory is not null)
+                    error = "orkeon-host: --working-dir given twice.";
+                workingDirectory = value;
+                break;
+            default:
+                mounts.Add(value);
+                break;
+        }
+
+        return error;
+    }
+
+    /// <summary>The name of <paramref name="argument"/> and the value attached to it (<c>--name=value</c>), null when none is.</summary>
+    private static (string Name, string? Value) SplitAttached(string argument)
+    {
+        var equals = argument.StartsWith("--", StringComparison.Ordinal) ? argument.IndexOf('=', StringComparison.Ordinal) : -1;
+        return equals >= 0 ? (argument[..equals], argument[(equals + 1)..]) : (argument, null);
+    }
+
+    /// <summary>
+    /// Completes <paramref name="value"/> of the value flag <paramref name="name"/>: the next argument
+    /// when none is attached. The refusal when there is none, or when the attached one is empty.
+    /// </summary>
+    private static string? ReadValue(string[] args, ref int index, string name, ref string? value)
+    {
+        if (value is not null)
+            return value.Length == 0 ? $"orkeon-host: {name}= has an empty value." : null;
+        if (index + 1 >= args.Length)
+            return MissingValue(name);
+        value = args[++index];
+        return null;
+    }
+
+    /// <summary>The refusal of a value flag given last, without its value.</summary>
+    private static string MissingValue(string name)
+    {
+        if (name is "--mount" or "-m")
+            return $"orkeon-host: {name} requires a value.";
+        var shown = name == "-s" ? "--settings" : name;
+        return $"orkeon-host: {shown} requires a path.";
     }
 }
 

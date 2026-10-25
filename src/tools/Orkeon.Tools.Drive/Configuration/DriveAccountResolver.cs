@@ -73,9 +73,9 @@ internal static class DriveAccountResolver
     public static IReadOnlyList<string> Scopes(DriveProvider provider, DriveRights rights)
     {
         var readOnly = (rights & ~DriveRights.Read) == DriveRights.None;
-        return provider == DriveProvider.GoogleDrive
-            ? [readOnly ? DriveDefaults.GoogleDriveReadOnlyScope : DriveDefaults.GoogleDriveScope]
-            : [readOnly ? DriveDefaults.GraphFilesReadScope : DriveDefaults.GraphFilesReadWriteScope, DriveDefaults.OfflineAccessScope];
+        if (provider == DriveProvider.GoogleDrive)
+            return [readOnly ? DriveDefaults.GoogleDriveReadOnlyScope : DriveDefaults.GoogleDriveScope];
+        return [readOnly ? DriveDefaults.GraphFilesReadScope : DriveDefaults.GraphFilesReadWriteScope, DriveDefaults.OfflineAccessScope];
     }
 
     /// <summary>The path segments of <paramref name="root"/>; a problem when a segment is not a folder name.</summary>

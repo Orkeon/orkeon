@@ -247,20 +247,7 @@ internal sealed record ForgeCommandOptions
         }
 
         if (verb is "schedule" or "unschedule" or "rename")
-        {
-            // The folder comes first: `forge schedule --check` without one names no folder,
-            // rather than one called «--check» — nor `forge rename --name X` one called «--name».
-            if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
-                return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
-
-            var folder = args[++i];
-            return verb switch
-            {
-                "schedule" => options with { ScheduleDirectory = folder },
-                "unschedule" => options with { UnscheduleDirectory = folder },
-                _ => options with { RenameDirectory = folder },
-            };
-        }
+            return ParseFolderVerb(verb, args, ref i, options);
 
         // The slug is taken as written: it is positional, so it is whatever follows the verb.
         if (i + 1 >= args.Length)
@@ -270,6 +257,23 @@ internal sealed record ForgeCommandOptions
         return verb == "resume"
             ? options with { ResumeSlug = slug }
             : options with { PromoteSlug = slug };
+    }
+
+    /// <summary><c>schedule</c>, <c>unschedule</c> and <c>rename</c>: the promoted team folder comes first.</summary>
+    private static ForgeCommandOptions ParseFolderVerb(string verb, string[] args, ref int i, ForgeCommandOptions options)
+    {
+        // The folder comes first: `forge schedule --check` without one names no folder,
+        // rather than one called «--check» — nor `forge rename --name X` one called «--name».
+        if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
+            return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
+
+        var folder = args[++i];
+        return verb switch
+        {
+            "schedule" => options with { ScheduleDirectory = folder },
+            "unschedule" => options with { UnscheduleDirectory = folder },
+            _ => options with { RenameDirectory = folder },
+        };
     }
 
     /// <summary>One option, one flag — or one word of the need typed on the command line.</summary>
@@ -766,22 +770,20 @@ internal static class ForgeCommand
         return result.ExitCode;
     }
 
-    /// <summary>The use case <c>--reference</c> names, loaded; null without the option, or with <paramref name="unknown"/> set when it names none.</summary>
-    private static ForgeReference? LoadReference(string? referenceId, out UseCases.UnknownUseCaseException? unknown)
+    /// <summary>The use case <c>--reference</c> names, loaded; null without the option, or with <paramref name="unknown"/> set to the error message when it names none.</summary>
+    private static ForgeReference? LoadReference(string? referenceId, out string? unknown)
     {
         unknown = null;
         if (referenceId is null)
             return null;
 
-        try
+        if (!UseCases.UseCaseCatalog.Embedded.TryGet(referenceId, out _))
         {
-            return ForgeReference.Load(referenceId);
-        }
-        catch (UseCases.UnknownUseCaseException ex)
-        {
-            unknown = ex;
+            unknown = UseCases.UnknownUseCase.Message(referenceId);
             return null;
         }
+
+        return ForgeReference.Load(referenceId);
     }
 
     /// <summary>
@@ -983,16 +985,16 @@ internal static class ForgeCommand
     /// <c>USECASES-UNKNOWN-ID</c>. No session exists, so the stream carries the error and closes on
     /// «failed», like a reopen that could produce none; the terminal gets the one line.
     /// </summary>
-    private static async Task<int> RefuseReferenceAsync(IRunnerConsole console, ForgeCommandOptions options, UseCases.UnknownUseCaseException error)
+    private static async Task<int> RefuseReferenceAsync(IRunnerConsole console, ForgeCommandOptions options, string error)
     {
         if (!options.Events)
         {
-            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {error.Message}").ConfigureAwait(false);
+            await console.ErrorOutput.WriteLineAsync($"orkeon forge: {error}").ConfigureAwait(false);
             return ExitError;
         }
 
         var events = new ForgeEventWriter(console.Output);
-        events.Error(UseCases.UnknownUseCaseException.Code, error.Message, recoverable: false);
+        events.Error(UseCases.UnknownUseCase.Code, error, recoverable: false);
         events.SessionFinished("failed", ExitError);
         return ExitError;
     }

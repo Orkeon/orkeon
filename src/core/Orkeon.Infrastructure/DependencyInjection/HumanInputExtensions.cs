@@ -74,17 +74,23 @@ public static class HumanInputExtensions
             return services;
         }
 
-        var inner = registered.ImplementationInstance is { } instance
-            ? new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, instance)
-            : registered.ImplementationFactory is { } factory
-                ? new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, (sp, _) => factory(sp), registered.Lifetime)
-                : new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, registered.ImplementationType!, registered.Lifetime);
-        services[index] = inner;
+        services[index] = InnerDescriptor(registered);
         services.Add(new ServiceDescriptor(typeof(IHumanInputProvider), new Decorating(InnerKey).Create, registered.Lifetime));
         return services;
     }
 
     private const string InnerKey = "orkeon.human-input.inner";
+
+    // The registration as it was, moved under the inner key: an instance, a factory or a type.
+    private static ServiceDescriptor InnerDescriptor(ServiceDescriptor registered)
+    {
+        if (registered.ImplementationInstance is { } instance)
+            return new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, instance);
+        if (registered.ImplementationFactory is { } factory)
+            return new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, (sp, _) => factory(sp), registered.Lifetime);
+
+        return new ServiceDescriptor(typeof(IHumanInputProvider), InnerKey, registered.ImplementationType!, registered.Lifetime);
+    }
 
     private sealed class Decorating(string innerKey)
     {

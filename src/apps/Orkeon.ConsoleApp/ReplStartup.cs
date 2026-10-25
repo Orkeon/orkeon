@@ -247,7 +247,7 @@ internal static class ReplStartup
             && RunnerExecution.EnsureVirtualRootsAreUnique(scriptedOpts.Mounts, layers, label, lines)
             && RunnerExecution.EnsureReservedRootsAreFree(scriptedOpts.Mounts, layers, lines, reserved)
             && RunnerExecution.EnsureMountSelectionIsResolvable(
-                scriptedOpts.Mounts, [], CrewMountDeclarations.None, layers, label, OfferedMountSelectors.MountOption, lines, out var selection)
+                scriptedOpts.Mounts, [], CrewMountDeclarations.None, new MountLayers(layers, label), OfferedMountSelectors.MountOption, lines, out var selection)
             && RunnerExecution.EnsureMountSourcesExist([.. scriptedOpts.Mounts, .. ownMounts], layers, selection, lines);
 
         foreach (var line in lines.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries))

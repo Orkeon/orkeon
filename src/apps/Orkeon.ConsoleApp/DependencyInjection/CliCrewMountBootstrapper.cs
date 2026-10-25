@@ -47,10 +47,10 @@ internal static class CliCrewMountBootstrapper
         //    and no --mount claims one (GAP-49, decision 3).
         services.PostConfigure<FileSystemOptions>(opts =>
         {
-            foreach (var m in resolved)
+            foreach (var spec in resolved.Select(m => m.Spec))
             {
-                if (!opts.Mounts.Contains(m.Spec, StringComparer.Ordinal))
-                    opts.Mounts.Add(m.Spec);
+                if (!opts.Mounts.Contains(spec, StringComparer.Ordinal))
+                    opts.Mounts.Add(spec);
             }
         });
 
@@ -71,10 +71,10 @@ internal static class CliCrewMountBootstrapper
         //    decision 3): readable wherever they are, outside the working directory included.
         services.PostConfigure<PathSecurityOptions>(opts =>
         {
-            foreach (var m in resolved)
+            foreach (var physicalPath in resolved.Select(m => m.PhysicalPath))
             {
-                if (!opts.AdditionalAllowedDirectories.Contains(m.PhysicalPath))
-                    opts.AdditionalAllowedDirectories.Add(m.PhysicalPath);
+                if (!opts.AdditionalAllowedDirectories.Contains(physicalPath))
+                    opts.AdditionalAllowedDirectories.Add(physicalPath);
             }
         });
 

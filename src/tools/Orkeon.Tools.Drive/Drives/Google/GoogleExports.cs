@@ -58,11 +58,9 @@ internal static class GoogleExports
             return offered[0];
 
         var wanted = format.Trim().TrimStart('.');
-        foreach (var candidate in offered)
-        {
-            if (string.Equals(candidate.Extension, wanted, StringComparison.OrdinalIgnoreCase))
-                return candidate;
-        }
+        var match = Array.FindIndex(offered, candidate => string.Equals(candidate.Extension, wanted, StringComparison.OrdinalIgnoreCase));
+        if (match >= 0)
+            return offered[match];
 
         throw new DriveToolException(
             DriveErrorCode.InvalidRequest,
@@ -73,13 +71,9 @@ internal static class GoogleExports
     public static (string Extension, string MimeType)? TextExport(DriveItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        foreach (var candidate in Offered(item))
-        {
-            if (candidate.Extension is "txt" or "csv")
-                return candidate;
-        }
-
-        return null;
+        var offered = Offered(item);
+        var match = Array.FindIndex(offered, candidate => candidate.Extension is "txt" or "csv");
+        return match < 0 ? null : offered[match];
     }
 
     /// <summary><paramref name="name"/> without an extension Google may have kept from an imported file.</summary>

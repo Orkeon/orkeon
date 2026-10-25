@@ -203,7 +203,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
         var options = Search(["email", "summary"], language: "en");
-        options.LoadModel = () => throw new UseCaseModelUnavailableException("model files not found");
+        options.LoadModel = () => throw new FileNotFoundException("model files not found");
 
         var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 
@@ -218,7 +218,7 @@ public sealed class UseCasesCommandTests
     {
         using var console = new TestConsole();
         var options = Search(["email"], language: "en", events: true);
-        options.LoadModel = () => throw new UseCaseModelUnavailableException("model files not found");
+        options.LoadModel = () => throw new FileNotFoundException("model files not found");
 
         var exit = await UseCasesCommand.ExecuteSearchAsync(console, options);
 

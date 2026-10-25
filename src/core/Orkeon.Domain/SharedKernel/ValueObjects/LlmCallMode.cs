@@ -26,13 +26,8 @@ public sealed record LlmCallMode
             return Auto;
 
         var name = value.Trim();
-        foreach (var mode in new[] { Auto, Buffer, Stream })
-        {
-            if (string.Equals(mode.Name, name, StringComparison.OrdinalIgnoreCase))
-                return mode;
-        }
-
-        throw new ArgumentException($"'{value}' is not a call mode: use Auto, Buffer or Stream.", nameof(value));
+        return Array.Find(new[] { Auto, Buffer, Stream }, mode => string.Equals(mode.Name, name, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException($"'{value}' is not a call mode: use Auto, Buffer or Stream.", nameof(value));
     }
 
     /// <summary>Whether the call streams on the wire.</summary>

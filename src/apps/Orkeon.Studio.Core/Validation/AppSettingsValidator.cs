@@ -421,6 +421,35 @@ public sealed class AppSettingsValidator
     }
 
     /// <summary>
+    /// What the run will make of an absolute <c>BaseUrl</c> of a section of the <c>Llm</c> shape: an
+    /// error for an address it refuses, a notice for one it reads without a word.
+    /// </summary>
+    private static void ValidateEndpointReading(JsonObject section, string sectionPath, List<ValidationMessage> messages)
+    {
+        if (Child(section, "BaseUrl") is not JsonValue addressNode
+            || AppSettingsDocument.ReadString(addressNode) is not { } address
+            || !LlmSection.IsAbsoluteHttpUrl(address)
+            || StudioEndpointReading.Of(address) is not { } reading)
+        {
+            return;
+        }
+
+        var path = $"{sectionPath}:BaseUrl";
+        if (reading.Notice == LlmEndpointNotice.Refused)
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.LlmEndpoint,
+                OperatorMessages.LlmVendorAnthropicPathRefused(path, address, reading.ProviderKey),
+                path));
+        }
+        else if (reading.Notice == LlmEndpointNotice.Silent)
+        {
+            messages.Add(ValidationMessage.Information(
+                ValidationCodes.LlmEndpoint, OperatorMessages.LlmBaseUrlSilent(path, address), path));
+        }
+    }
+
+    /// <summary>
     /// The keys of a section of the <c>Llm</c> shape, judged as the run reads them at start
     /// (<c>LlmSettings</c>, STUDIO-55): strings, a finite temperature, three integers, two switches, an
     /// absolute http(s) address and a variable's name. A variable reference is judged apart, by
@@ -456,25 +485,7 @@ public sealed class AppSettingsValidator
                 $"{sectionPath}:BaseUrl"));
         }
 
-        if (Child(section, "BaseUrl") is JsonValue addressNode
-            && AppSettingsDocument.ReadString(addressNode) is { } address
-            && LlmSection.IsAbsoluteHttpUrl(address)
-            && StudioEndpointReading.Of(address) is { } reading)
-        {
-            var path = $"{sectionPath}:BaseUrl";
-            if (reading.Notice == LlmEndpointNotice.Refused)
-            {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.LlmEndpoint,
-                    OperatorMessages.LlmVendorAnthropicPathRefused(path, address, reading.ProviderKey),
-                    path));
-            }
-            else if (reading.Notice == LlmEndpointNotice.Silent)
-            {
-                messages.Add(ValidationMessage.Information(
-                    ValidationCodes.LlmEndpoint, OperatorMessages.LlmBaseUrlSilent(path, address), path));
-            }
-        }
+        ValidateEndpointReading(section, sectionPath, messages);
 
         if (Child(section, ConfigurationKeys.LlmApiKeyEnvVar) is JsonValue referenceNode
             && !LlmSection.IsVariableName(AppSettingsDocument.ReadString(referenceNode)))

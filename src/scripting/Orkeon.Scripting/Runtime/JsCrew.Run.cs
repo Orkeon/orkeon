@@ -276,19 +276,7 @@ public sealed partial class JsCrew
         // the outer run cancels it, and it unwinds inside the outer run's own unwind (`outerStop`)
         // instead of keeping its semaphores until some later drain settles it. Best-effort under runs
         // interleaved on one event loop; `{ signal: ctx.signal }` is the explicit form.
-        open = (kind, options) => JsHostError.Guard(_engine, () =>
-        {
-            var (signal, timeout) = CrewRunOptions.From(options);
-            var scope = new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
-                CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
-            // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
-            if (options is not null && options.IsObject() && options.Get("budget").ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
-                scope.Budget = childBudget;
-            scope.Permit = options is not null && options.IsObject() ? options.Get("permit").ToObject() as GatePermit : null;
-            scope.Instance = options is not null && options.IsObject() ? options.Get("instance").ToObject() as AgentInstanceRun : null;
-            scope.InheritedRoot = options is not null && options.IsObject() ? (options.Get("root").ToObject() as InheritedWorkingRoot)?.Root : null;
-            return scope;
-        }),
+        open = (kind, options) => JsHostError.Guard(_engine, () => OpenRunScope(kind, options)),
         start = scope => JsHostError.Guard(_engine, scope.Start),
         endRun = scope => JsHostError.Guard(_engine, scope.End),
         snapshotAgents = scope => JsHostError.Guard(_engine, () =>
@@ -328,21 +316,40 @@ public sealed partial class JsCrew
         openPermit = () => new GatePermit(ConcurrencyGate),
         gateAcquire = (permit, options) => AcquireGateAsync(permit, CrewRunOptions.From(options).Signal),
         gateRelease = permit => JsHostError.Guard(_engine, permit.Close),
-        beginSend = id => JsHostError.Guard(_engine, () =>
-        {
-            var send = Instances.BeginSend(id);
-            var options = new Jint.Native.JsObject(_engine);
-            options.Set("agent", JsValue.FromObject(_engine, send.Agent));
-            options.Set("signal", JsValue.FromObject(_engine, send.Signal));
-            options.Set("budget", JsValue.FromObject(_engine, send.Budget));
-            options.Set("instance", JsValue.FromObject(_engine, send.Run));
-            options.Set("bare", true);
-            if (send.InheritedRoot is { } root)
-                options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(root)));
-            return (JsValue)options;
-        }),
+        beginSend = id => JsHostError.Guard(_engine, () => BeginSendOptions(id)),
         finishInstance = (id, succeeded) => JsHostError.Guard(_engine, () => Instances.Finish(id, succeeded)),
     };
+
+    /// <summary>The scope of a script-opened run: <paramref name="options"/> may carry what a spawned or sent child inherits.</summary>
+    private CrewRunScope OpenRunScope(string kind, JsValue options)
+    {
+        var (signal, timeout) = CrewRunOptions.From(options);
+        var scope = new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
+            CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
+        var bag = options is not null && options.IsObject() ? options : null;
+        // A child spawned by the spawn_agent tool runs under the budget its parent derived for it.
+        if (bag?.Get("budget").ToObject() is Orkeon.Domain.Autonomous.AgentExecutionBudget childBudget)
+            scope.Budget = childBudget;
+        scope.Permit = bag?.Get("permit").ToObject() as GatePermit;
+        scope.Instance = bag?.Get("instance").ToObject() as AgentInstanceRun;
+        scope.InheritedRoot = (bag?.Get("root").ToObject() as InheritedWorkingRoot)?.Root;
+        return scope;
+    }
+
+    /// <summary>Begins the follow-up run of instance <paramref name="id"/>: the options its run is opened with.</summary>
+    private Jint.Native.JsObject BeginSendOptions(string id)
+    {
+        var begun = Instances.BeginSend(id);
+        var options = new Jint.Native.JsObject(_engine);
+        options.Set("agent", JsValue.FromObject(_engine, begun.Agent));
+        options.Set("signal", JsValue.FromObject(_engine, begun.Signal));
+        options.Set("budget", JsValue.FromObject(_engine, begun.Budget));
+        options.Set("instance", JsValue.FromObject(_engine, begun.Run));
+        options.Set("bare", true);
+        if (begun.InheritedRoot is { } root)
+            options.Set("root", JsValue.FromObject(_engine, new InheritedWorkingRoot(root)));
+        return options;
+    }
 
     private static CrewRunKind ParseKind(string kind) => kind switch
     {

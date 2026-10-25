@@ -61,13 +61,13 @@ internal static class ReplPluginsBootstrapper
 
     private static IEnumerable<FileSystemMount> Declared(IConfiguration configuration, string key, MountVisibility visibility)
     {
-        foreach (var entry in configuration.GetSection($"Orkeon:FileSystem:{key}").GetChildren())
+        foreach (var value in configuration.GetSection($"Orkeon:FileSystem:{key}").GetChildren().Select(entry => entry.Value))
         {
             // A blank entry is one the host withdrew for this run (VFS-90).
-            if (string.IsNullOrWhiteSpace(entry.Value))
+            if (string.IsNullOrWhiteSpace(value))
                 continue;
 
-            var mount = FileSystemMount.Parse(entry.Value);
+            var mount = FileSystemMount.Parse(value);
             yield return visibility == MountVisibility.AgentFacing
                 ? mount
                 : new FileSystemMount(mount.BasePath, mount.VirtualPath, mount.DefaultRights, mount.Overrides, visibility);

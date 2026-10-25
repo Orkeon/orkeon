@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Models;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Tests.Doubles;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Tests.Shared.Fixtures.DevRepo;
 
@@ -159,5 +160,32 @@ public sealed class AffectedTestsQueryTests : IDisposable
             store, ["P/lib.ts"], TestFixtures.TestVirtualRoot, CancellationToken.None);
 
         Assert.Equal([module.Fqn], result.TestClasses);
+    }
+
+    [Theory]
+    [InlineData("README.md", false)]
+    [InlineData("notes/CHANGES.TXT", false)]
+    [InlineData("assets/logo.png", false)]
+    [InlineData("assets/photo.JPG", false)]
+    [InlineData("assets/icon.svg", false)]
+    [InlineData("LICENSE", false)]
+    [InlineData("LICENSE.md", false)]
+    [InlineData("sub/LICENSE-THIRD-PARTY", false)]
+    [InlineData(".gitignore", false)]
+    [InlineData(".gitattributes", false)]
+    [InlineData(".editorconfig", false)]
+    [InlineData(".claude/skills/x.cs", false)]
+    [InlineData("src/Program.cs", true)]
+    [InlineData("src/readme.markdown", true)]
+    [InlineData("LICENSE/Header.cs", true)]
+    [InlineData("build.props", true)]
+    public async Task ShouldSkipNeutralFiles_WhenNothingButNeutralFilesChanged(string file, bool expectedAll)
+    {
+        var store = new StubUnorderedRaggableStore();
+
+        var result = await AffectedTestsQuery.RunAsync(store, [file], TestFixtures.TestVirtualRoot, CancellationToken.None);
+
+        Assert.Equal(expectedAll, result.All);
+        Assert.Empty(result.TestProjects);
     }
 }

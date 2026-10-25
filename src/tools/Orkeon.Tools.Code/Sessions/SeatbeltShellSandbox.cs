@@ -31,9 +31,10 @@ namespace Orkeon.Tools.Code.Sessions;
 /// When the host disappears, the watchdog kills the session's tree and removes the scratch directory.
 /// </para>
 /// </remarks>
-/// <param name="probe">Whether Seatbelt works here; probed once per process by default.</param>
-internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe) : IShellSandbox
+internal sealed class SeatbeltShellSandbox : IShellSandbox
 {
+    private readonly Func<ShellSandboxAvailability> _probe;
+
     /// <summary>
     /// The launcher, run as <c>/bin/sh -c '&lt;launcher&gt;' _ork_seatbelt &lt;watchdog script&gt;
     /// &lt;host pid&gt; &lt;profile&gt; &lt;scratch directory&gt;</c>: it starts the watchdog on
@@ -53,6 +54,10 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
     {
     }
 
+    /// <summary>A sandbox over <paramref name="probe"/>.</summary>
+    /// <param name="probe">Whether Seatbelt works here; probed once per process by default.</param>
+    public SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe) => _probe = probe;
+
     /// <summary>The pid the watchdog watches; the host's own unless a test stands a process in for it.</summary>
     internal int WatchedHostPid { get; init; } = Environment.ProcessId;
 
@@ -63,14 +68,14 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
     public bool UsesVirtualPaths => false;
 
     /// <inheritdoc />
-    public ShellSandboxAvailability Availability => probe();
+    public ShellSandboxAvailability Availability => _probe();
 
     /// <inheritdoc />
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The session is handed to the ScratchSession returned, which disposes it when it ends.")]
     public async Task<IShellSession> OpenAsync(ShellSessionView view, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(view);
-        var availability = probe();
+        var availability = _probe();
         if (!availability.IsAvailable)
             throw new ShellSessionException($"Confinement unavailable: {availability.Reason}.");
 
@@ -167,16 +172,24 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
     }
 
     /// <summary>A session that removes its scratch directory once its shell has ended.</summary>
-    private sealed class ScratchSession(IShellSession inner, string scratch) : IShellSession
+    private sealed class ScratchSession : IShellSession
     {
         private readonly Lock _sync = new();
+        private readonly IShellSession _inner;
+        private readonly string _scratch;
         private Task? _disposal;
 
+        public ScratchSession(IShellSession inner, string scratch)
+        {
+            _inner = inner;
+            _scratch = scratch;
+        }
+
         public Task<ShellRunResult> RunAsync(ShellInvocation invocation, CancellationToken cancellationToken)
-            => inner.RunAsync(invocation, cancellationToken);
+            => _inner.RunAsync(invocation, cancellationToken);
 
         public Task<ShellJobHandle> StartDetachedAsync(ShellInvocation invocation, string physicalLogPath, Func<CancellationToken, Task<Stream>> openLogAsync, CancellationToken cancellationToken)
-            => inner.StartDetachedAsync(invocation, physicalLogPath, openLogAsync, cancellationToken);
+            => _inner.StartDetachedAsync(invocation, physicalLogPath, openLogAsync, cancellationToken);
 
         public ValueTask DisposeAsync()
         {
@@ -187,8 +200,8 @@ internal sealed class SeatbeltShellSandbox(Func<ShellSandboxAvailability> probe)
 
         private async Task DisposeCoreAsync()
         {
-            await inner.DisposeAsync().ConfigureAwait(false);
-            RemoveScratchDirectory(scratch);
+            await _inner.DisposeAsync().ConfigureAwait(false);
+            RemoveScratchDirectory(_scratch);
         }
     }
 }

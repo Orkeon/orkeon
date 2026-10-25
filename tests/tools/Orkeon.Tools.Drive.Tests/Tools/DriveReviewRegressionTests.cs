@@ -62,13 +62,13 @@ public sealed class DriveReviewRegressionTests
     }
 
     [Theory]
-    [InlineData("invoice‮fdp.exe")]
+    [InlineData("invoice\u202Efdp.exe")]
     [InlineData("CON.txt")]
     public void A_hostile_download_name_is_neither_reversed_nor_a_device(string name)
     {
         var safe = FileNames.Sanitize(name);
 
-        Assert.DoesNotContain('‮', safe);
+        Assert.DoesNotContain('\u202E', safe);
         Assert.NotEqual("CON", Path.GetFileNameWithoutExtension(safe), StringComparer.OrdinalIgnoreCase);
     }
 

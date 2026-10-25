@@ -84,10 +84,10 @@ public sealed partial class RateLimitResetHeaders
             return null;
 
         var total = TimeSpan.Zero;
-        foreach (Match part in matches)
+        foreach (var groups in matches.Select(part => part.Groups))
         {
-            var amount = double.Parse(part.Groups[1].Value, CultureInfo.InvariantCulture);
-            total += part.Groups[2].Value switch
+            var amount = double.Parse(groups[1].Value, CultureInfo.InvariantCulture);
+            total += groups[2].Value switch
             {
                 "ms" => TimeSpan.FromMilliseconds(amount),
                 "h" => TimeSpan.FromHours(amount),

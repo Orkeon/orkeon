@@ -91,11 +91,21 @@ internal static class CrewYamlKeyCheck
         return dot < 0 ? documentPath : $"{documentPath[..dot]}[{documentPath[(dot + 1)..]}]";
     }
 
-    private sealed class Context(ExpandedYaml yaml, string? file)
+    private sealed class Context
     {
-        private readonly Dictionary<YamlNode, HashSet<Type>> _judged = new(ReferenceEqualityComparer.Instance);
+        private readonly ExpandedYaml _yaml;
+        private readonly string? _file;
+        private readonly Dictionary<YamlNode, HashSet<Type>> _judged;
 
-        public List<string> Faults { get; } = [];
+        public Context(ExpandedYaml yaml, string? file)
+        {
+            _yaml = yaml;
+            _file = file;
+            _judged = new Dictionary<YamlNode, HashSet<Type>>(ReferenceEqualityComparer.Instance);
+            Faults = [];
+        }
+
+        public List<string> Faults { get; }
 
         /// <summary>True the first time <paramref name="node"/> is judged as <paramref name="type"/>: an anchor serves many places, its faults are one.</summary>
         public bool FirstJudgement(YamlNode node, Type type)
@@ -105,7 +115,7 @@ internal static class CrewYamlKeyCheck
             return types.Add(type);
         }
 
-        public string Where(YamlNode node) => Situate(file, yaml.FileLine(node.Start.Line));
+        public string Where(YamlNode node) => Situate(_file, _yaml.FileLine(node.Start.Line));
     }
 
     private static void WalkValue(YamlNode node, Type type, string path, Context context, string? hint = null)
@@ -116,48 +126,60 @@ internal static class CrewYamlKeyCheck
 
         if (node is YamlMappingNode mapping)
         {
-            if (!isBlock)
-            {
-                if (IsCollection(type, out _))
-                    context.Faults.Add(WrongShape(node, path, "a list", "a block of keys", hint, context));
-                return;
-            }
-
-            if (!context.FirstJudgement(mapping, type))
-                return;
-
-            if (!isDictionary)
-            {
-                WalkModel(mapping, type, path, context);
-                return;
-            }
-
-            foreach (var (key, value) in mapping.Children)
-            {
-                if (key is not YamlScalarNode { Value: { } name })
-                    continue;
-
-                if (name == MergeKey)
-                    context.Faults.Add(MergeFault(context.Where(key), Entry(path, name)));
-                else
-                    WalkValue(value, valueType, Entry(path, name), context);
-            }
+            WalkMapping(mapping, type, path, context, hint, isDictionary ? valueType : null);
         }
         else if (node is YamlSequenceNode sequence)
         {
-            if (IsCollection(type, out var itemType))
-            {
-                for (var i = 0; i < sequence.Children.Count; i++)
-                    WalkValue(sequence.Children[i], itemType, Entry(path, i.ToString(CultureInfo.InvariantCulture)), context);
-            }
-            else if (isBlock)
-            {
-                context.Faults.Add(WrongShape(node, path, "a block of keys", "a list", hint, context));
-            }
+            WalkSequence(sequence, type, path, context, hint, isBlock);
         }
         else if (isBlock && node is YamlScalarNode scalar && !IsNull(scalar))
         {
             context.Faults.Add(WrongShape(node, path, "a block of keys", "a single value", hint, context));
+        }
+    }
+
+    // A block of keys: a model's keys are checked against its properties, a dictionary's values
+    // against its value type (dictionaryValueType, null when the type is no dictionary).
+    private static void WalkMapping(YamlMappingNode mapping, Type type, string path, Context context, string? hint, Type? dictionaryValueType)
+    {
+        if (dictionaryValueType is null && !IsModel(type))
+        {
+            if (IsCollection(type, out _))
+                context.Faults.Add(WrongShape(mapping, path, "a list", "a block of keys", hint, context));
+            return;
+        }
+
+        if (!context.FirstJudgement(mapping, type))
+            return;
+
+        if (dictionaryValueType is null)
+        {
+            WalkModel(mapping, type, path, context);
+            return;
+        }
+
+        foreach (var (key, value) in mapping.Children)
+        {
+            if (key is not YamlScalarNode { Value: { } name })
+                continue;
+
+            if (name == MergeKey)
+                context.Faults.Add(MergeFault(context.Where(key), Entry(path, name)));
+            else
+                WalkValue(value, dictionaryValueType, Entry(path, name), context);
+        }
+    }
+
+    private static void WalkSequence(YamlSequenceNode sequence, Type type, string path, Context context, string? hint, bool isBlock)
+    {
+        if (IsCollection(type, out var itemType))
+        {
+            for (var i = 0; i < sequence.Children.Count; i++)
+                WalkValue(sequence.Children[i], itemType, Entry(path, i.ToString(CultureInfo.InvariantCulture)), context);
+        }
+        else if (isBlock)
+        {
+            context.Faults.Add(WrongShape(sequence, path, "a block of keys", "a list", hint, context));
         }
     }
 
@@ -186,12 +208,7 @@ internal static class CrewYamlKeyCheck
                 .FirstOrDefault(p => p.SetMethod is { IsPublic: true } && Matches(key, [CamelName(p.Name)]));
             if (property is null)
             {
-                var retired = s_retired.FirstOrDefault(r => r.Model == model && Matches(key, [r.Name]));
-                var where = context.Where(keyNode);
-                context.Faults.Add(retired is not null
-                    ? $"{where}: '{keyPath}' is retired: {retired.Guidance}."
-                    : Describe(where, keyPath, key, names, model == typeof(AgentYamlConfig))
-                      + (value.Anchor.IsEmpty ? string.Empty : " An anchor on an unknown key shares nothing: put shared text under 'anchors:'."));
+                context.Faults.Add(UnknownKeyFault(context.Where(keyNode), keyPath, key, names, model, value));
                 continue;
             }
 
@@ -200,6 +217,17 @@ internal static class CrewYamlKeyCheck
             else
                 WalkValue(value, property.PropertyType, keyPath, context, ShapeHint(model, property));
         }
+    }
+
+    // A key no property takes: retired with its guidance, else unknown with the names it may mean.
+    private static string UnknownKeyFault(string where, string keyPath, string key, string[] names, Type model, YamlNode value)
+    {
+        var retired = s_retired.FirstOrDefault(r => r.Model == model && Matches(key, [r.Name]));
+        if (retired is not null)
+            return $"{where}: '{keyPath}' is retired: {retired.Guidance}.";
+
+        var anchorNote = value.Anchor.IsEmpty ? string.Empty : " An anchor on an unknown key shares nothing: put shared text under 'anchors:'.";
+        return Describe(where, keyPath, key, names, model == typeof(AgentYamlConfig)) + anchorNote;
     }
 
     private static string? ShapeHint(Type model, PropertyInfo property)

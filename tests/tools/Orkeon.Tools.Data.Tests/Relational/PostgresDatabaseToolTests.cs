@@ -146,8 +146,11 @@ internal sealed class StubDatabaseProviderFactory : IDatabaseProviderFactory
 
     public void Allow(string name) => _supported.Add(name);
 
+    /// <summary>Factory returned by <see cref="GetProvider"/>; null makes it throw.</summary>
+    public DbProviderFactory? Provider { get; set; }
+
     public DbProviderFactory GetProvider(string providerName)
-        => throw new NotSupportedException($"Test stub does not provide a real {providerName} factory.");
+        => Provider ?? throw new NotSupportedException($"Test stub does not provide a real {providerName} factory.");
 
     public bool IsSupported(string providerName)
     {

@@ -203,7 +203,7 @@ public partial class DockerSandbox : ICodeSandbox
     /// directory is irrelevant to the flags under test, so a fixed virtual path is passed.
     /// </summary>
     internal string BuildDockerArgsForTest(SandboxExecutionRequest request, long maxMemory, TimeSpan timeout)
-        => BuildDockerArgs("/tmp/orkeon-sandbox-probe", request, maxMemory, timeout);
+        => BuildDockerArgs("/sandbox/orkeon-sandbox-probe", request, maxMemory, timeout);
 
     /// <summary>
     /// Process ceiling inside the container. A .NET build plus the built program stays far

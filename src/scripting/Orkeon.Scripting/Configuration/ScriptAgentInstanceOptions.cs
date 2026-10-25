@@ -17,7 +17,7 @@ public sealed record ScriptAgentInstanceOptions
     /// <summary>Refuses a cap that is not positive.</summary>
     public void Validate()
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxTranscriptMessages, nameof(MaxTranscriptMessages));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxTranscriptCharacters, nameof(MaxTranscriptCharacters));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxTranscriptMessages);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxTranscriptCharacters);
     }
 }

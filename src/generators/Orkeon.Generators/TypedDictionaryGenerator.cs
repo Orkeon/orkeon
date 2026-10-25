@@ -366,14 +366,15 @@ public sealed class TypedDictionaryGenerator : IIncrementalGenerator
             constraints.Add("class");
         }
 
-        if (typeParameter.HasValueTypeConstraint)
-        {
-            constraints.Add("struct");
-        }
-
+        // Roslyn reports an `unmanaged` type parameter as a value type too; `struct, unmanaged`
+        // does not compile (CS0449), so `unmanaged` alone carries both.
         if (typeParameter.HasUnmanagedTypeConstraint)
         {
             constraints.Add("unmanaged");
+        }
+        else if (typeParameter.HasValueTypeConstraint)
+        {
+            constraints.Add("struct");
         }
 
         if (typeParameter.HasNotNullConstraint)

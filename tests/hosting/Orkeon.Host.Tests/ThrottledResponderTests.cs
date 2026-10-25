@@ -89,6 +89,35 @@ public class ThrottledResponderTests
     }
 
     [Fact]
+    public async Task The_idle_sweep_never_drops_a_window_still_holding_a_suppressed_line()
+    {
+        var (responder, inner, time) = Build();
+        var ct = TestContext.Current.CancellationToken;
+
+        await responder.ProgressAsync(Message("busy"), "first", ct);
+        await responder.ProgressAsync(Message("busy"), "still pending", ct);
+        for (var index = 0; index < ThrottledResponder.SweepThreshold + 2; index++)
+            await responder.ProgressAsync(Message($"idle-{index}"), $"idle {index}", ct);
+
+        // Every window is now idle for longer than the sweep tolerates; a completion sweeps.
+        time.Advance(TimeSpan.FromSeconds(2) * (ThrottledResponder.IdleIntervals + 1));
+        await responder.CompleteAsync(Message("idle-0"), "done 0", ct);
+        inner.Sent.Clear();
+
+        await responder.CompleteAsync(Message("busy"), "busy done", ct);
+        await responder.ProgressAsync(Message("idle-1"), "idle again", ct);
+
+        Assert.Equal(["still pending", "busy done", "idle again"], inner.Sent.Select(s => s.Text));
+    }
+
+    [Fact]
+    public void A_responder_needs_an_inner_responder()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ThrottledResponder(null!));
+        Assert.Equal(TimeSpan.FromSeconds(2), ThrottledResponder.DefaultInterval);
+    }
+
+    [Fact]
     public async Task The_acknowledgement_and_the_answer_are_never_held_back()
     {
         var (responder, inner, _) = Build();

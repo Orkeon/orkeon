@@ -1,16 +1,46 @@
 #pragma warning disable CA1032, CA1064
+using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Orkeon.Analysis.Core.Structural;
 
-internal sealed class UnboundMetavariableException(string name) : Exception($"The fix uses the metavariable '{name}', which the rule does not bind.")
+[Serializable]
+public sealed class UnboundMetavariableException : Exception
 {
-    public string Name { get; } = name;
+    private const string NameKey = "Name";
+
+    public UnboundMetavariableException(string name)
+        : base($"The fix uses the metavariable '{name}', which the rule does not bind.")
+    {
+        Name = name;
+    }
+
+    public string Name { get; }
+
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    private UnboundMetavariableException(SerializationInfo info, StreamingContext context)
+        : base(info, context)
+    {
+        Name = info.GetString(NameKey) ?? string.Empty;
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Formatter-based serialization is obsolete.", DiagnosticId = "SYSLIB0051")]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
+    {
+        base.GetObjectData(info, context);
+        info.AddValue(NameKey, Name);
+    }
 }
 
-internal sealed class FixTemplate(string template)
+internal sealed class FixTemplate
 {
-    public string Template { get; } = template;
+    public FixTemplate(string template)
+    {
+        Template = template;
+    }
+
+    public string Template { get; }
 
     public void Validate(IReadOnlyCollection<string> boundNames)
     {

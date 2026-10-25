@@ -126,20 +126,31 @@ public sealed class CallModeFallbackTests
         Assert.Contains("Buffer", warning.Message);
     }
 
-    public static TheoryData<Exception> NotAboutStreaming() => new()
+    public static TheoryData<string> NotAboutStreaming() => new()
     {
-        new HttpRequestException("unauthorized", null, HttpStatusCode.Unauthorized),
-        new HttpRequestException("forbidden", null, HttpStatusCode.Forbidden),
-        new HttpRequestException("slow down", null, HttpStatusCode.TooManyRequests),
-        new HttpRequestException("invalid temperature: only 1 is allowed", null, HttpStatusCode.BadRequest),
-        new TaskCanceledException("timed out", new TimeoutException()),
+        "unauthorized",
+        "forbidden",
+        "slow down",
+        "invalid temperature",
+        "timed out",
+    };
+
+    private static Exception NotAboutStreamingFailure(string name) => name switch
+    {
+        "unauthorized" => new HttpRequestException("unauthorized", null, HttpStatusCode.Unauthorized),
+        "forbidden" => new HttpRequestException("forbidden", null, HttpStatusCode.Forbidden),
+        "slow down" => new HttpRequestException("slow down", null, HttpStatusCode.TooManyRequests),
+        "invalid temperature" => new HttpRequestException("invalid temperature: only 1 is allowed", null, HttpStatusCode.BadRequest),
+        "timed out" => new TaskCanceledException("timed out", new TimeoutException()),
+        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No such failure."),
     };
 
     [Theory]
     [MemberData(nameof(NotAboutStreaming))]
     [Trait("BR", "BR-06")]
-    public async Task ShouldFailWithoutASecondCall_WhenTheRefusalIsNotAboutStreaming(Exception failure)
+    public async Task ShouldFailWithoutASecondCall_WhenTheRefusalIsNotAboutStreaming(string failureName)
     {
+        var failure = NotAboutStreamingFailure(failureName);
         var inner = Inner();
         inner.FailStreamingWith(failure);
         var provider = Decorate(inner);

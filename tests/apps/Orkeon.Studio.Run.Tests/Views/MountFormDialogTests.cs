@@ -107,4 +107,33 @@ public class MountFormDialogTests
         dialog.AcceptForTest();
         Assert.Equal(existing.ToMountString(), dialog.Mount!.ToMountString());
     }
+
+    [Fact]
+    public void The_title_says_whether_a_mount_is_added_or_edited_and_names_its_id()
+    {
+        var mount = new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" };
+        var withId = mount.WithFreshId();
+
+        using var adding = new MountFormDialog(existing: null, new FakeDirectoryProbe());
+        using var editing = new MountFormDialog(mount, new FakeDirectoryProbe("/data"));
+        using var editingWithId = new MountFormDialog(withId, new FakeDirectoryProbe("/data"));
+
+        Assert.Equal("Add a launch mount", adding.Title);
+        Assert.Equal("Edit launch mount", editing.Title);
+        Assert.Equal($"Edit launch mount [{withId.ShortId}]", editingWithId.Title);
+    }
+
+    [Fact]
+    public void Create_folder_and_OK_buttons_act_on_the_form()
+    {
+        var directories = new FakeDirectoryProbe();
+        using var dialog = new MountFormDialog(existing: null, directories);
+        dialog.FillForTest("/data", "/workspace");
+
+        ViewTree.Press(ViewTree.Button(dialog, "Create folder"));
+        ViewTree.Press(ViewTree.Button(dialog, "OK"));
+
+        Assert.Contains("/data", directories.Created);
+        Assert.Equal("/workspace", dialog.Mount!.VirtualPath);
+    }
 }

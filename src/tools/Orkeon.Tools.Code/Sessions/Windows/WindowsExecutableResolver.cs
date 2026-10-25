@@ -46,24 +46,26 @@ internal static class WindowsExecutableResolver
             ? [name]
             : [.. extensions.Select(e => name + e)];
 
-        foreach (var directory in (pathVariable ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        var found = (pathVariable ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(directory => directory.Trim('"'))
+            .Where(IsAbsolute)
+            .Select(folder => FirstExisting(folder, candidates, fileExists))
+            .FirstOrDefault(full => full is not null);
+        if (found is not null)
         {
-            var folder = directory.Trim('"');
-            if (!IsAbsolute(folder))
-                continue;
-            foreach (var candidate in candidates)
-            {
-                var full = folder.EndsWith('\\') || folder.EndsWith('/') ? folder + candidate : folder + "\\" + candidate;
-                if (fileExists(full))
-                {
-                    error = null;
-                    return full;
-                }
-            }
+            error = null;
+            return found;
         }
 
         error = $"'{name}' was not found on PATH";
         return null;
+    }
+
+    /// <summary>The first of <paramref name="candidates"/> that exists in <paramref name="folder"/>, or null.</summary>
+    private static string? FirstExisting(string folder, string[] candidates, Func<string, bool> fileExists)
+    {
+        var prefix = folder.EndsWith('\\') || folder.EndsWith('/') ? folder : folder + "\\";
+        return candidates.Select(candidate => prefix + candidate).FirstOrDefault(fileExists);
     }
 
     /// <summary>Whether <paramref name="path"/> names a batch file, which only cmd.exe runs.</summary>

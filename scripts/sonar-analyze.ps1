@@ -71,6 +71,11 @@ $CeTaskWaitTimeout    = 300  # 5 minutes
 # All conditions apply to NEW code; Op is the comparator that triggers ERROR.
 $QualityGateName    = "Orkeon Transitional"
 $QualityGateTimeout = 600  # seconds the scanner 'end' step waits for the gate verdict
+# SonarScanner for .NET pinned to a release that still talks to the 9.9 LTS server:
+# 12.0 refuses any server below 2025.1 ("Pre-processing failed"), and an
+# unpinned install takes the latest. Override with SONAR_SCANNER_VERSION when the
+# server is upgraded.
+$SonarScannerVersion = $env:SONAR_SCANNER_VERSION ?? "10.4.1"
 $QualityGateConditions = @(
     # transitional 70 (final 80) — new code at 71.3% on 2026-05-31; aligned with the 70% CI coverage gate (R5.2); raised to 75 then 80 after R5.5/R5.6
     @{ Metric = "new_coverage";                   Op = "LT"; Error = "70" }
@@ -136,14 +141,16 @@ function Test-Prerequisites {
         $env:PATH = "$env:PATH$([IO.Path]::PathSeparator)$dotnetToolsPath"
     }
 
-    if (-not (Get-Command dotnet-sonarscanner -ErrorAction SilentlyContinue)) {
-        $tools = dotnet tool list -g 2>$null
-        if ($tools -match "dotnet-sonarscanner") {
-            Log-Warn "'dotnet-sonarscanner' installed but not in PATH. Check ~/.dotnet/tools/"
-        } else {
-            Log-Warn "'dotnet-sonarscanner' not found globally. Installing..."
-            dotnet tool install --global dotnet-sonarscanner
-        }
+    $scannerLine = dotnet tool list -g 2>$null | Where-Object { $_ -match '^\s*dotnet-sonarscanner\s' } | Select-Object -First 1
+    $scannerInstalled = if ($scannerLine) { ($scannerLine.Trim() -split '\s+')[1] } else { $null }
+    if (-not $scannerInstalled) {
+        Log-Warn "'dotnet-sonarscanner' not found globally. Installing $SonarScannerVersion..."
+        dotnet tool install --global dotnet-sonarscanner --version $SonarScannerVersion
+    } elseif ($scannerInstalled -ne $SonarScannerVersion) {
+        Log-Warn "'dotnet-sonarscanner' $scannerInstalled installed, $SonarScannerVersion expected. Aligning..."
+        dotnet tool update --global dotnet-sonarscanner --version $SonarScannerVersion --allow-downgrade
+    } elseif (-not (Get-Command dotnet-sonarscanner -ErrorAction SilentlyContinue)) {
+        Log-Warn "'dotnet-sonarscanner' installed but not in PATH. Check ~/.dotnet/tools/"
     }
 
     # dotnet-coverage is what MEASURES coverage now: the test projects run on

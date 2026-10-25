@@ -84,27 +84,11 @@ public static class ToolSchemaGenerator
         if (underlying == typeof(string)) return "string";
         if (underlying == typeof(object) || IsFreeJsonType(underlying)) return null;
         if (underlying == typeof(bool)) return "boolean";
-        if (underlying == typeof(int) || underlying == typeof(long) ||
-            underlying == typeof(short) || underlying == typeof(byte) ||
-            underlying == typeof(uint) || underlying == typeof(ulong) ||
-            underlying == typeof(ushort) || underlying == typeof(sbyte))
+        if (IsIntegerType(underlying))
             return "integer";
         if (underlying == typeof(double) || underlying == typeof(float))
             return "number";
-        // decimal → string for precision safety
-        if (underlying == typeof(decimal)) return "string";
-        // Date/time types → string
-        if (underlying == typeof(DateTime) || underlying == typeof(DateTimeOffset) ||
-            underlying == typeof(DateOnly) || underlying == typeof(TimeOnly) ||
-            underlying == typeof(TimeSpan))
-            return "string";
-        // Guid → string
-        if (underlying == typeof(Guid)) return "string";
-        // Uri → string (the LLM fills URL parameters as plain strings on the wire, and
-        // System.Text.Json round-trips Uri↔string natively on deserialize/serialize)
-        if (underlying == typeof(Uri)) return "string";
-        // Enum → string
-        if (underlying.IsEnum) return "string";
+        if (IsWrittenAsString(underlying)) return "string";
         // A dictionary is semantically an object (key-value map), not an array
         if (GetDictionaryValueType(underlying) != null)
             return "object";
@@ -113,6 +97,24 @@ public static class ToolSchemaGenerator
 
         return "object";
     }
+
+    private static bool IsIntegerType(Type type) =>
+        type == typeof(int) || type == typeof(long) ||
+        type == typeof(short) || type == typeof(byte) ||
+        type == typeof(uint) || type == typeof(ulong) ||
+        type == typeof(ushort) || type == typeof(sbyte);
+
+    // Types the schema writes as a string: decimal (for precision safety), the date/time types,
+    // Guid, Uri (the LLM fills URL parameters as plain strings on the wire, and System.Text.Json
+    // round-trips Uri and string natively on deserialize/serialize) and enums.
+    private static bool IsWrittenAsString(Type type) =>
+        type == typeof(decimal) ||
+        type == typeof(DateTime) || type == typeof(DateTimeOffset) ||
+        type == typeof(DateOnly) || type == typeof(TimeOnly) ||
+        type == typeof(TimeSpan) ||
+        type == typeof(Guid) ||
+        type == typeof(Uri) ||
+        type.IsEnum;
 
     private static bool IsFreeJsonType(Type type) =>
         type.FullName is "System.Text.Json.JsonElement" or "System.Text.Json.Nodes.JsonNode";

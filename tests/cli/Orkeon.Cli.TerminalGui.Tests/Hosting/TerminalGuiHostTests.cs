@@ -188,5 +188,22 @@ public class TerminalGuiHostTests
         host.Initialize();
         Assert.NotNull(host.Toplevel);
     }
+
+    [Fact]
+    public async Task ShouldExposeIntegrationAndRefuseToplevel_WhenNotInitialized()
+    {
+        var integration = new TuiIntegration();
+        await using var host = new TerminalGuiHost(new TerminalGuiOptions(), integration);
+
+        Assert.Same(integration, host.Integration);
+        Assert.Throws<InvalidOperationException>(() => host.Toplevel);
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenHostArgumentsAreNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new TerminalGuiHost(null!));
+        Assert.Throws<ArgumentNullException>(() => new TerminalGuiHost(new TerminalGuiOptions(), null!));
+    }
 }
 #pragma warning restore xUnit1004

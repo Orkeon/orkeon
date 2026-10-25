@@ -280,40 +280,54 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         await foreach (var data in ReadSseStreamAsync(response, budget, cancellationToken).ConfigureAwait(false))
         {
-            using var doc = JsonDocument.Parse(data);
-
-            // A vendor that fails AFTER the 200 (OpenRouter: an upstream 502 arrives as an
-            // SSE event carrying a root-level `error`) used to end this sequence normally,
-            // truncated content and all — the silence StreamingRejectionAsync removed for
-            // the pre-stream refusal, reintroduced one chunk later. Same channel, same
-            // exception: the sequence has no metadata, so it fails (D-07).
-            if (TryReadStreamError(doc.RootElement, out var streamError))
+            var (tokens, stop) = ReadStreamChunk(data);
+            finished |= stop;
+            foreach (var token in tokens)
             {
-                LogMidStreamError(ProviderDisplayName, streamError.Label, streamError.SanitizedMessage);
-                throw MidStreamRejection(streamError);
-            }
-
-            var choices = doc.RootElement.GetProperty("choices");
-            foreach (var choice in choices.EnumerateArray())
-            {
-                if (HasFinishReason(choice))
-                    finished = true;
-
-                if (choice.TryGetProperty("delta", out var delta))
-                {
-                    // The trace of an array-shaped delta has no channel on a text stream.
-                    var token = ExtractMessageContent(delta).Content;
-                    if (token.Length > 0)
-                    {
-                        yieldedAnything = true;
-                        yield return token;
-                    }
-                }
+                yieldedAnything = true;
+                yield return token;
             }
         }
 
         if (StreamFailureMessage(budget, finished, yieldedAnything, 0, ProviderDisplayName) is { } failure)
             throw new HttpRequestException(failure);
+    }
+
+    /// <summary>
+    /// One SSE chunk of a text stream: the non-empty delta texts of its choices in order, and
+    /// whether a choice finished.
+    /// </summary>
+    private (List<string> Tokens, bool Finished) ReadStreamChunk(string data)
+    {
+        using var doc = JsonDocument.Parse(data);
+
+        // A vendor that fails AFTER the 200 (OpenRouter: an upstream 502 arrives as an
+        // SSE event carrying a root-level `error`) used to end this sequence normally,
+        // truncated content and all — the silence StreamingRejectionAsync removed for
+        // the pre-stream refusal, reintroduced one chunk later. Same channel, same
+        // exception: the sequence has no metadata, so it fails (D-07).
+        if (TryReadStreamError(doc.RootElement, out var streamError))
+        {
+            LogMidStreamError(ProviderDisplayName, streamError.Label, streamError.SanitizedMessage);
+            throw MidStreamRejection(streamError);
+        }
+
+        var tokens = new List<string>();
+        var finished = false;
+        foreach (var choice in doc.RootElement.GetProperty("choices").EnumerateArray())
+        {
+            if (HasFinishReason(choice))
+                finished = true;
+
+            // The trace of an array-shaped delta has no channel on a text stream.
+            if (choice.TryGetProperty("delta", out var delta)
+                && ExtractMessageContent(delta).Content is { Length: > 0 } token)
+            {
+                tokens.Add(token);
+            }
+        }
+
+        return (tokens, finished);
     }
 
     /// <summary>Whether a streamed choice carries the dialect's finish marker (<c>finish_reason</c>, any value).</summary>
@@ -995,8 +1009,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         catch (Exception ex) when (ex
             is OperationCanceledException
             or HttpRequestException
-            // KeyNotFoundException: missing JSON properties (e.g. missing "usage");
-            // InvalidOperationException: GetProperty on an undefined element (empty "choices") —
+            // A KeyNotFoundException is a missing JSON property, a missing "usage" for one, and
+            // an InvalidOperationException a GetProperty on an undefined element (empty "choices"):
             // the same list GenerateAsync catches, so a malformed body is a failed call with a
             // sanitized reason rather than an exception thrown into the agent loop (LLM-12).
             or KeyNotFoundException

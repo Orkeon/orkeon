@@ -219,6 +219,7 @@ public sealed class JsAgentBuilder
     /// </summary>
     public JsAgentBuilder maxExecutionTime(double seconds) { MaxExecutionTimeSeconds = seconds; return this; }
     public JsAgentBuilder verbose() { VerboseFlag = true; return this; }
+    public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
 
     /// <summary>
     /// YAML parity <c>working_root:</c> (RT-06): the virtual directory the agent's file and shell tools
@@ -232,7 +233,6 @@ public sealed class JsAgentBuilder
         WorkingRootValue = path;
         return this;
     }
-    public JsAgentBuilder verbose(bool value) { VerboseFlag = value; return this; }
     public JsAgentBuilder withState(JsValue factoryOrSeed) { StateFactory = factoryOrSeed; return this; }
     public JsAgentBuilder concurrency(int value) { ConcurrencyValue = value; return this; }
     public JsAgentBuilder body(JsValue fn) { BodyFunction = fn; return this; }
