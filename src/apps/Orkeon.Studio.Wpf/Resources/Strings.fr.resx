@@ -443,7 +443,7 @@
 <data name="Studio.Create.SubNovice" xml:space="preserve"><value>Quatre étapes : décrire le besoin, valider la composition, essayer, adopter. Rien n'est écrit avant la dernière.</value></data>
 <data name="Studio.Create.SubExpert" xml:space="preserve"><value>Assistant de composition. La définition YAML est éditable dès l'étape 2 ; l'essai commence par une vérification sans exécution.</value></data>
 <data name="Studio.Teams.ScreenTitle" xml:space="preserve"><value>Mes équipes d'agents</value></data>
-<data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Chaque équipe est un dossier autonome sur cette machine — copiable, partageable, supprimable.</value></data>
+<data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Chaque équipe est un dossier autonome sur cette machine : copiable, partageable, supprimable.</value></data>
 <data name="Studio.Create.Restart" xml:space="preserve"><value>Recommencer</value></data>
 <data name="Studio.Create.Stop" xml:space="preserve"><value>Arrêter</value></data>
 <data name="Studio.Create.AssistantBy" xml:space="preserve"><value>Assistant opéré par</value></data>
@@ -500,7 +500,7 @@
 <data name="Studio.Teams.Launch" xml:space="preserve"><value>Lancer</value></data>
 <data name="Studio.Teams.Duplicate" xml:space="preserve"><value>Dupliquer</value></data>
 <data name="Studio.Teams.Delete" xml:space="preserve"><value>Supprimer</value></data>
-<data name="Studio.Teams.InProgress" xml:space="preserve"><value>SESSIONS EN COURS</value></data>
+<data name="Studio.Teams.InProgress" xml:space="preserve"><value>CRÉATIONS EN COURS</value></data>
 <data name="Studio.Teams.Resume" xml:space="preserve"><value>Reprendre</value></data>
 <data name="Studio.Create.BriefConsigne" xml:space="preserve"><value>Consigne permanente pour tous les agents : {0}</value></data>
 <data name="Studio.Create.AgentFallback" xml:space="preserve"><value>Agent</value></data>
@@ -875,8 +875,6 @@
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>réussie</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>échouée</value></data>
   <data name="Studio.Teams.NeverRan" xml:space="preserve"><value>Jamais exécutée</value></data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve"><value>Dossiers :</value></data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve"><value>Aucun dossier associé —</value></data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Changer les dossiers</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Exporter</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Essayer</value></data>
@@ -909,7 +907,7 @@
     <value>Supprimer ce brouillon ?</value>
   </data>
   <data name="Studio.Teams.SessionDelete" xml:space="preserve">
-    <value>Supprimer</value>
+    <value>Supprimer le brouillon</value>
   </data>
   <data name="Studio.Teams.EmptyTitle" xml:space="preserve">
     <value>Aucune équipe pour l'instant</value>
@@ -921,7 +919,7 @@
     <value>Importer une équipe</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Aucune session en cours. Une création interrompue réapparaîtra ici.</value>
+    <value>Aucune création en cours. Une création interrompue réapparaîtra ici.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Étape {0} sur {1} · {2}</value>
@@ -1398,7 +1396,7 @@
   </data>
   <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
   <data name="Studio.Teams.SearchHint" xml:space="preserve">
-    <value>Rechercher une équipe par son nom ou son besoin…</value>
+    <value>Rechercher par nom ou par besoin</value>
   </data>
   <data name="Studio.Teams.SortTip" xml:space="preserve">
     <value>L'ordre des cartes</value>
@@ -1413,7 +1411,7 @@
     <value>Les équipes archivées — un nouveau clic ramène aux autres.</value>
   </data>
   <data name="Studio.Teams.ArchivesLabel" xml:space="preserve">
-    <value>Archives ({0})</value>
+    <value>Archives · {0}</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
     <value>Les équipes archivées quittent la liste, le sélecteur de Tester et le solde ; leurs dossiers, leurs sessions et leur historique restent en place. « Restaurer » remet une équipe parmi les autres.</value>
@@ -1936,4 +1934,15 @@
   <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Demander à l'assistant</value></data>
   <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Compteurs de la barre d'état</value></data>
   <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>Les jetons qu'affiche la barre d'état : ceux de l'exécution à l'écran, ou de toute la session Studio.</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>Modèle</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>Dossiers</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Programmation</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Changer</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>Aucun dossier</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:planification sera refusée|planifications seront refusées} au prochain passage : le fichier de réglages enregistré ne contient pas encore {1}.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Enregistrer les réglages</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importer</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuelle</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorisez d'abord le dossier {0}.</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autoriser</value></data>
 </root>

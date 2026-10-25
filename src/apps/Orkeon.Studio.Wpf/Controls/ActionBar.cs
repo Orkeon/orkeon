@@ -13,7 +13,7 @@ namespace Orkeon.Studio.Wpf.Controls;
 /// right in the order given; those that no longer fit — the right-hand ones — leave the line and
 /// are offered by a «…» button at its end, which opens them as a menu. A
 /// <see cref="Separator"/> (or a <c>VSeparator</c> rectangle) between two buttons draws the vertical rule between the groups
-/// (travailler · fichiers · cycle de vie); a rule left at the edge of the line is not drawn.
+/// (work · files · lifecycle); a rule left at the edge of the line is not drawn.
 /// A hidden button is not removed from the tree: it keeps its bindings, its command and its
 /// CanExecute, and the menu reads them at the moment it opens.
 /// </summary>

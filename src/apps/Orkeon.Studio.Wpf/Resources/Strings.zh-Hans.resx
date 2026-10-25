@@ -2489,12 +2489,6 @@
   <data name="Studio.Teams.NeverRan" xml:space="preserve">
     <value>从未执行</value>
   </data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve">
-    <value>文件夹：</value>
-  </data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve">
-    <value>未关联文件夹 —</value>
-  </data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve">
     <value>更改文件夹</value>
   </data>
@@ -3704,4 +3698,15 @@
   <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>询问助手</value></data>
   <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>状态栏计数</value></data>
   <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>状态栏显示的令牌：当前屏幕上的执行，或整个 Studio 会话。</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>模型</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>文件夹</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>计划</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>更改</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>无文件夹</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} 个计划运行将在下次执行时被拒绝：已保存的设置文件尚未包含 {1}。</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>保存设置</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>导入</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>手动</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>请先允许文件夹 {0}。</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>允许</value></data>
 </root>

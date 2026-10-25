@@ -2489,12 +2489,6 @@
   <data name="Studio.Teams.NeverRan" xml:space="preserve">
     <value>Nunca ejecutada</value>
   </data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve">
-    <value>Carpetas:</value>
-  </data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve">
-    <value>Sin carpeta asociada —</value>
-  </data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve">
     <value>Cambiar las carpetas</value>
   </data>
@@ -3704,4 +3698,15 @@
   <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Preguntar al asistente</value></data>
   <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Contadores de la barra de estado</value></data>
   <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>Los tokens que muestra la barra de estado: los de la ejecución en pantalla o los de toda la sesión de Studio.</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>Modelo</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>Carpetas</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Programación</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Cambiar</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>Ninguna carpeta</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:ejecución programada será rechazada|ejecuciones programadas serán rechazadas} en la próxima pasada: el archivo de ajustes guardado aún no contiene {1}.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Guardar los ajustes</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importar</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Sin programar</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Autorice primero la carpeta {0}.</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Autorizar</value></data>
 </root>

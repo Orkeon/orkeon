@@ -1969,6 +1969,8 @@ public static class StudioStringKeys
 
     /// <summary>"{0} teams archived." — the undo banner after the archive suggestion was accepted; {0} counts the teams, two or more (STUDIO-32, DB-1).</summary>
     public const string TeamsArchivedManyUndo = "Studio.Teams.ArchivedManyUndo";
+    public const string TeamsRefusedRuns = "Studio.Teams.RefusedRuns";
+    public const string TeamsLaunchNeedsFolder = "Studio.Teams.LaunchNeedsFolder";
 
     /// <summary>"“{0}” has not been launched for {1} days — archive it?" — the suggestion of one team; {0} its name, {1} the threshold in days (STUDIO-32, DB-1).</summary>
     public const string TeamsSuggestionOne = "Studio.Teams.SuggestionOne";
@@ -3132,6 +3134,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
         [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
         [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
+        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first.",
+        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.",
         [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
         [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",
         [StudioStringKeys.TeamsArchivedBadge] = "Archived",

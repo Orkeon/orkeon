@@ -41,11 +41,22 @@ public partial class MainWindow : Window
         shell.CreateTeam.OpenTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Launch.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Teams.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Launch.ChooseTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.Launch.CreateTeamRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Test.Launcher.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.ImportRequested += (_, _) => NavImport.IsChecked = true;
+        // The refusals banner's « Save the settings »: saved in place when the file can be; else the
+        // settings screen comes forward, where the reason it cannot be is shown.
+        shell.Teams.SaveSettingsRequested += (_, _) =>
+        {
+            var save = shell.Settings.Config.SaveCommand;
+            if (save.CanExecute(null))
+                save.Execute(null);
+            else
+                NavSettings.IsChecked = true;
+        };
         shell.TestRequested += (_, _) => NavTest.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;

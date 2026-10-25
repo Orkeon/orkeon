@@ -875,8 +875,6 @@
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>succeeded</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>failed</value></data>
   <data name="Studio.Teams.NeverRan" xml:space="preserve"><value>Never ran</value></data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve"><value>Folders:</value></data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve"><value>No folder associated —</value></data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Change the folders</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Export</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Try out</value></data>
@@ -1936,4 +1934,15 @@
   <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Ask the assistant</value></data>
   <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Status bar counters</value></data>
   <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>The tokens the status bar shows: those of the execution on screen, or of the whole Studio session.</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>Model</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>Folders</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Schedule</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Change</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>No folder</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Save the settings</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Import</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manual</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first.</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Allow</value></data>
 </root>

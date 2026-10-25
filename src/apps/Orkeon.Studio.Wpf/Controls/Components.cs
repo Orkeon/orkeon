@@ -17,7 +17,7 @@ public enum Tone
 /// The one alert of Studio (R7): icon on the left, the message, the actions on the right; in a
 /// card (<see cref="IsBanner"/> false) or as the page banner under the header. The engine's own
 /// text is shown as is: as the <see cref="Message"/> when Studio has no phrase of its own, or
-/// under a folded «Détails techniques» (<see cref="Details"/>) when it has. Content, when set,
+/// under a folded «Technical details» (<see cref="Details"/>) when it has. Content, when set,
 /// sits under the message (a list, a second line). Its look is the implicit style in
 /// Themes/Components.xaml.
 /// </summary>
@@ -53,8 +53,8 @@ public sealed class Alert : ContentControl
 
 /// <summary>
 /// The one badge (R8): a 22 px pill in one of five tones, its text the Content. Folder rights
-/// read neutral «Lecture» and info «Lecture et écriture»; run statuses success «Réussie»,
-/// danger «Échouée», neutral «Annulée», info «En cours». Never a bare coloured dot.
+/// read neutral «Read» and info «Read and write»; run statuses success «Succeeded»,
+/// danger «Failed», neutral «Cancelled», info «Running». Never a bare coloured dot.
 /// </summary>
 public sealed class Badge : ContentControl
 {
@@ -71,9 +71,9 @@ public sealed class Badge : ContentControl
 }
 
 /// <summary>
-/// One editable property in a card body (R6): «Libellé · valeur · bouton» on one line — the
+/// One editable property in a card body (R6): «label · value · button» on one line — the
 /// label in the tertiary ink on a fixed 104 px, the value (the Content), and a 28 px secondary
-/// button on the right (<see cref="Action"/>: Changer, Arrêter, Autoriser, Planifier). The same
+/// button on the right (<see cref="Action"/>: Change, Stop, Allow, Schedule). The same
 /// shape whatever the action.
 /// </summary>
 public sealed class PropertyRow : ContentControl

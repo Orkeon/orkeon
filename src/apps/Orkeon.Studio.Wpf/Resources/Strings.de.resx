@@ -2489,12 +2489,6 @@
   <data name="Studio.Teams.NeverRan" xml:space="preserve">
     <value>Nie ausgeführt</value>
   </data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve">
-    <value>Ordner:</value>
-  </data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve">
-    <value>Kein Ordner zugeordnet —</value>
-  </data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve">
     <value>Ordner ändern</value>
   </data>
@@ -3704,4 +3698,15 @@
   <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Den Assistenten fragen</value></data>
   <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Zähler der Statusleiste</value></data>
   <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>Die Tokens, die die Statusleiste zeigt: die der angezeigten Ausführung oder die der ganzen Studio-Sitzung.</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>Modell</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>Ordner</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Zeitplan</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Ändern</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>Kein Ordner</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:geplanter Lauf wird|geplante Läufe werden} beim nächsten Durchgang abgelehnt: Die gespeicherte Einstellungsdatei enthält {1} noch nicht.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Einstellungen speichern</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Importieren</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manuell</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Geben Sie zuerst den Ordner {0} frei.</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Freigeben</value></data>
 </root>
