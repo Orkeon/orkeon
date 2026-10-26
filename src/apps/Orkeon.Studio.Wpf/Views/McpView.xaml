@@ -13,13 +13,11 @@
     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
       <StackPanel>
         <DockPanel Margin="0,0,0,4">
+          <!-- C11 (R05): «Add …» is a secondary with +, at 32 px in a card header. -->
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
-                  Command="{Binding AddServerCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Settings.McpAdd], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+                  controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plus"
+                  Command="{Binding AddServerCommand}"
+                  Content="{Binding [Studio.Settings.McpAdd], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <controls:LucideIcon Kind="plug-zap" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}" ToolTip="MCP"
