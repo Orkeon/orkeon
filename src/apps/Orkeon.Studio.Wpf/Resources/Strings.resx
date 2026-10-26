@@ -2140,7 +2140,7 @@
     <value>Add a folder for this launch</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Read</value>
+    <value>Read only</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Read and write</value>

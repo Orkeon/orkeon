@@ -3826,7 +3826,7 @@
     <value>Ordner für diesen Start hinzufügen</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Lesen</value>
+    <value>Nur Lesen</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Lesen und Schreiben</value>

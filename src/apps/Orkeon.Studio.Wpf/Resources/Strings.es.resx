@@ -3826,7 +3826,7 @@
     <value>Añadir una carpeta para este lanzamiento</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Lectura</value>
+    <value>Solo lectura</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Lectura y escritura</value>

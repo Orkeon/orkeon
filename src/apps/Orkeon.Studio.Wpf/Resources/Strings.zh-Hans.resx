@@ -3826,7 +3826,7 @@
     <value>为本次启动添加文件夹</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>读取</value>
+    <value>只读</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>读写</value>

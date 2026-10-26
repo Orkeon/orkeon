@@ -2140,7 +2140,7 @@
     <value>Ajouter un dossier pour ce lancement</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Lecture et écriture</value>

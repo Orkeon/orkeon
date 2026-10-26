@@ -2811,7 +2811,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunFoldersAddedNone] = "nothing added",
         [StudioStringKeys.RunFoldersAdded] = "{0} added",
         [StudioStringKeys.RunAddLaunchFolder] = "Add a folder for this launch",
-        [StudioStringKeys.RunRightsRead] = "Read",
+        [StudioStringKeys.RunRightsRead] = "Read only",
         [StudioStringKeys.RunRightsReadWrite] = "Read and write",
         [StudioStringKeys.RunRowEngine] = "Engine",
         [StudioStringKeys.RunRowTeamType] = "Team type",
