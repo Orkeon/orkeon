@@ -4225,6 +4225,15 @@
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>Ninguna carpeta</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Añada una carpeta: los agentes solo ven las carpetas indicadas aquí.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>Ningún servidor</value>
+  </data>
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->

@@ -54,6 +54,11 @@
                   Content="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 
+        <!-- R17: an empty list says so with the shared empty state. -->
+        <controls:EmptyState DockPanel.Dock="Top" IsCompact="True" Icon="folder"
+                             Title="{Binding [Studio.Settings.MountsEmptyTitle], Source={x:Static services:I18n.Instance}}"
+                             Text="{Binding [Studio.Settings.MountsEmptyText], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
         <ListBox ItemsSource="{Binding Mounts}" SelectedItem="{Binding SelectedMount}"
                  Background="Transparent" BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -136,10 +141,10 @@
                   <controls:LucideIcon.Style>
                     <Style TargetType="controls:LucideIcon">
                       <Setter Property="Kind" Value="triangle-alert"/>
-                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsError}" Value="True">
-                          <Setter Property="Kind" Value="circle-x"/>
+                          <Setter Property="Kind" Value="ban"/>
                           <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
@@ -168,11 +173,10 @@
 
           <!-- VFS-90: the entry's identity, read-only, with a copy button and the teams naming it. -->
           <DockPanel Margin="0,0,0,7" Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-            <Button DockPanel.Dock="Right" Width="24" Height="24" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnSecondary}"
+            <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource IconBtnGhost}" controls:ButtonIcon.Kind="copy"
                     ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
-                    Command="{Binding CopyIdCommand}">
-              <controls:LucideIcon Kind="copy" Size="12"/>
-            </Button>
+                    AutomationProperties.Name="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                    Command="{Binding CopyIdCommand}"/>
             <StackPanel>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                          Text="{Binding IdDisplay, Mode=OneWay}"/>
@@ -211,7 +215,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource BtnSecondary}" FontSize="13" Padding="9,4" Margin="0,0,6,0"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,6,0"
                           FontFamily="{StaticResource MonoFont}" Tag="{Binding}" Click="OnSuggestVirtualPath"
                           Content="{Binding}"/>
                 </DataTemplate>
@@ -227,7 +231,7 @@
                       ItemsSource="{Binding RightsChoices}"
                       SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
 
-            <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
+            <TextBlock Style="{StaticResource Subhead}" Margin="0,16,0,7"
                        Text="{Binding [Studio.Settings.OverridesTitle], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Overrides}">
               <ItemsControl.ItemTemplate>

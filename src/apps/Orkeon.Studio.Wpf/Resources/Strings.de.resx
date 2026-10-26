@@ -4225,6 +4225,15 @@
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>Noch kein Ordner</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Fügen Sie einen Ordner hinzu: Die Agenten sehen nur die hier aufgeführten Ordner.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>Kein Server</value>
+  </data>
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->

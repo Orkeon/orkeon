@@ -2539,6 +2539,15 @@
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>No folder yet</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Add a folder: the agents only see the folders listed here.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>No server</value>
+  </data>
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->

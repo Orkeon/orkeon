@@ -4225,6 +4225,15 @@
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>尚无文件夹</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>添加一个文件夹：智能体只能看到此处列出的文件夹。</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>没有服务器</value>
+  </data>
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->

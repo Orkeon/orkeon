@@ -2539,6 +2539,15 @@
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>Aucun dossier</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Ajoutez un dossier : les agents ne voient que les dossiers listés ici.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>Aucun serveur</value>
+  </data>
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->
