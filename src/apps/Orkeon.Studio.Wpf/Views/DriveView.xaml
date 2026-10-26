@@ -131,9 +131,8 @@
         <ComboBox MaxWidth="520" HorizontalAlignment="Left"
                   ItemsSource="{Binding ProviderChoices}"
                   SelectedValue="{Binding NewAccountProvider}" SelectedValuePath="Value" DisplayMemberPath="Label"/>
-        <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,8,0,0"
-                   TextWrapping="Wrap" Text="{Binding AddRefusal}"
-                   Visibility="{Binding HasAddRefusal, Converter={StaticResource BooleanToVisibility}}"/>
+        <controls:Alert Tone="Danger" Margin="0,12,0,0" Message="{Binding AddRefusal}"
+                        Visibility="{Binding HasAddRefusal, Converter={StaticResource BooleanToVisibility}}"/>
         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
           <Button Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmAddCommand}" controls:ButtonIcon.Kind="plus"
                   Content="{Binding [Studio.Settings.MailAddConfirm], Source={x:Static services:I18n.Instance}}"/>
@@ -307,32 +306,26 @@
                                Visibility="{Binding IsTesting, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                   <!-- the verdict: a localized word, then the engine's sentence as printed -->
-                  <StackPanel Margin="0,8,0,0"
-                              Visibility="{Binding HasLastCheck, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LastCheckHeadline}">
-                      <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding LastCheckReachable}" Value="True">
-                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding LastCheckDetail}"/>
-                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding LastCheckHint}"
+                  <!-- R07: the verdict is the shared banner - success when the server answered, warning
+                       otherwise; the engine's sentence, as printed, is its folded technical details (R18) -->
+                  <controls:Alert Margin="0,10,0,0" Message="{Binding LastCheckHeadline}" Details="{Binding LastCheckDetail}"
+                                  Visibility="{Binding HasLastCheck, Converter={StaticResource BooleanToVisibility}}">
+                    <controls:Alert.Style>
+                      <Style TargetType="{x:Type controls:Alert}" BasedOn="{StaticResource {x:Type controls:Alert}}">
+                        <Setter Property="Tone" Value="Warning"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding LastCheckReachable}" Value="True">
+                            <Setter Property="Tone" Value="Success"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </controls:Alert.Style>
+                    <TextBlock TextWrapping="Wrap" Text="{Binding LastCheckHint}"
                                Visibility="{Binding HasLastCheckHint, Converter={StaticResource BooleanToVisibility}}"/>
-                  </StackPanel>
+                  </controls:Alert>
                   <!-- a sign-out the verb refused - a localized word, then its sentence as printed -->
-                  <StackPanel Margin="0,8,0,0"
-                              Visibility="{Binding HasSignOutFailure, Converter={StaticResource BooleanToVisibility}}">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                               Foreground="{DynamicResource WarningBrush}"
-                               Text="{Binding [Studio.Settings.MailSignOutFailed], Source={x:Static services:I18n.Instance}}"/>
-                    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding SignOutFailure}"/>
-                  </StackPanel>
+                  <controls:Alert Tone="Warning" Margin="0,10,0,0" Message="{Binding [Studio.Settings.MailSignOutFailed], Source={x:Static services:I18n.Instance}}"
+                                  Details="{Binding SignOutFailure}" Visibility="{Binding HasSignOutFailure, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
 
                 <!-- the sign-in in flight: `orkeon drive login` runs the OAuth flow and stores the
@@ -396,41 +389,22 @@
                           </TextBox.InputBindings>
                         </TextBox>
                       </DockPanel>
-                      <TextBlock FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"
-                                 Foreground="{DynamicResource WarningBrush}"
-                                 Text="{Binding [Studio.Settings.MailPasteRedirectNotSent], Source={x:Static services:I18n.Instance}}"
-                                 Visibility="{Binding RedirectNotSent, Converter={StaticResource BooleanToVisibility}}"/>
+                      <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding [Studio.Settings.MailPasteRedirectNotSent], Source={x:Static services:I18n.Instance}}"
+                                      Visibility="{Binding RedirectNotSent, Converter={StaticResource BooleanToVisibility}}"/>
                       <!-- the verb rejected the address, and still waits: its sentence as printed, the address back in the field -->
-                      <StackPanel Margin="0,6,0,0"
-                                  Visibility="{Binding RedirectRejected, Converter={StaticResource BooleanToVisibility}}">
-                        <TextBlock FontSize="13" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource WarningBrush}"
-                                   Text="{Binding [Studio.Settings.MailPasteRedirectRejected], Source={x:Static services:I18n.Instance}}"/>
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"
-                                   Text="{Binding RedirectRejectedDetail}"/>
-                      </StackPanel>
+                      <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding [Studio.Settings.MailPasteRedirectRejected], Source={x:Static services:I18n.Instance}}"
+                                      Details="{Binding RedirectRejectedDetail}" Visibility="{Binding RedirectRejected, Converter={StaticResource BooleanToVisibility}}"/>
                     </StackPanel>
 
                     <!-- the three ends -->
-                    <StackPanel Orientation="Horizontal"
-                                Visibility="{Binding IsCompleted, Converter={StaticResource BooleanToVisibility}}">
-                      <controls:LucideIcon Kind="circle-check" Size="14" Margin="0,0,7,0" VerticalAlignment="Center"
-                                           Foreground="{DynamicResource SuccessBrush}"/>
-                      <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"
-                                 Text="{Binding [Studio.Settings.MailSignedIn], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                               Foreground="{DynamicResource WarningBrush}"
-                               Text="{Binding [Studio.Settings.MailDeviceCodeExpired], Source={x:Static services:I18n.Instance}}"
-                               Visibility="{Binding IsExpired, Converter={StaticResource BooleanToVisibility}}"/>
-                    <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                                 Foreground="{DynamicResource WarningBrush}"
-                                 Text="{Binding [Studio.Settings.MailSignInFailed], Source={x:Static services:I18n.Instance}}"/>
-                      <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding FailureDetail}"/>
-                      <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                 Text="{Binding [Studio.Settings.DriveSignInFailedHint], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
+                    <controls:Alert Tone="Success" Message="{Binding [Studio.Settings.MailSignedIn], Source={x:Static services:I18n.Instance}}"
+                                    Visibility="{Binding IsCompleted, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:Alert Tone="Warning" Message="{Binding [Studio.Settings.MailDeviceCodeExpired], Source={x:Static services:I18n.Instance}}"
+                                    Visibility="{Binding IsExpired, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:Alert Tone="Warning" Message="{Binding [Studio.Settings.MailSignInFailed], Source={x:Static services:I18n.Instance}}"
+                                    Details="{Binding FailureDetail}" Visibility="{Binding IsFailed, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock TextWrapping="Wrap" Text="{Binding [Studio.Settings.DriveSignInFailedHint], Source={x:Static services:I18n.Instance}}"/>
+                    </controls:Alert>
 
                     <!-- one way out, whatever the phase: it stops the child while one waits -->
                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
@@ -471,63 +445,47 @@
                     </StackPanel>
                     <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
                                Text="{Binding [Studio.Settings.DriveRenameCost], Source={x:Static services:I18n.Instance}}"/>
-                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
-                               TextWrapping="Wrap" Text="{Binding RenameRefusal}"
-                               Visibility="{Binding HasRenameRefusal, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:Alert Tone="Danger" Margin="0,8,0,0" Message="{Binding RenameRefusal}"
+                                    Visibility="{Binding HasRenameRefusal, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
 
-                <!-- D-07: the removal confirmation says what stays on the machine -->
-                <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
-                        BorderThickness="1" CornerRadius="11" Padding="12,8" Margin="0,12,0,0"
-                        Visibility="{Binding IsConfirmingRemove, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource DangerBrush}"
-                                 Text="{Binding [Studio.Settings.MailRemoveQuestion], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmRemoveCommand}" controls:ButtonIcon.Kind="trash-2"
-                              Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelRemoveCommand}"
-                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                <!-- D-07: the removal confirmation says what stays on the machine. R07: the shared
+                     banner; the account only leaves the list until «Save», so the tone is the
+                     warning and the confirmation the neutral × (R06) -->
+                <controls:Alert Tone="Warning" Margin="0,12,0,0" Title="{Binding [Studio.Settings.MailRemoveQuestion], Source={x:Static services:I18n.Instance}}"
+                                Message="{Binding [Studio.Settings.DriveRemoveCost], Source={x:Static services:I18n.Instance}}" Visibility="{Binding IsConfirmingRemove, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <StackPanel Style="{StaticResource ActionRow}">
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x" Margin="0,0,8,0"
+                              Command="{Binding ConfirmRemoveCommand}" Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32"
+                              Command="{Binding CancelRemoveCommand}" Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
-                               Foreground="{DynamicResource DangerBrush}"
-                               Text="{Binding [Studio.Settings.DriveRemoveCost], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Border>
+                  </controls:Alert.Actions>
+                </controls:Alert>
 
                 <!-- signing out asks first - the account will need a new sign-in -->
-                <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
-                        BorderThickness="1" CornerRadius="11" Padding="12,8" Margin="0,12,0,0"
-                        Visibility="{Binding IsConfirmingSignOut, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel>
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                               Foreground="{DynamicResource DangerBrush}" Text="{Binding SignOutConfirmText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                      <Button Style="{StaticResource BtnDangerSolid}" Command="{Binding ConfirmSignOutCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="eraser"
-                              Content="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelSignOutCommand}"
-                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                <controls:Alert Tone="Danger" Margin="0,12,0,0" Message="{Binding SignOutConfirmText}"
+                                Visibility="{Binding IsConfirmingSignOut, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Alert.Actions>
+                    <StackPanel Style="{StaticResource ActionRow}">
+                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="eraser" Margin="0,0,8,0"
+                              Command="{Binding ConfirmSignOutCommand}" Content="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32"
+                              Command="{Binding CancelSignOutCommand}" Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
-                  </StackPanel>
-                </Border>
+                  </controls:Alert.Actions>
+                </controls:Alert>
 
                 <!-- what the run will say of the account as the file holds it: warnings, the file saves -->
-                <StackPanel Margin="0,12,0,0"
-                            Visibility="{Binding HasProblems, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="triangle-alert" Size="12" Foreground="{DynamicResource WarningBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"
-                               Text="{Binding [Studio.Settings.MailProblemsTitle], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                  <ItemsControl ItemsSource="{Binding Problems}" Margin="18,2,0,0">
+                <controls:Alert Tone="Warning" Margin="0,12,0,0" Message="{Binding [Studio.Settings.MailProblemsTitle], Source={x:Static services:I18n.Instance}}"
+                                Visibility="{Binding HasProblems, Converter={StaticResource BooleanToVisibility}}">
+                  <ItemsControl ItemsSource="{Binding Problems}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <StackPanel Margin="0,3,0,0">
-                          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
-                                     TextWrapping="Wrap" Text="{Binding FriendlyText}"/>
+                          <TextBlock TextWrapping="Wrap" Text="{Binding FriendlyText}"/>
                           <!-- the engine's own sentence names the key: the expert's -->
                           <TextBlock Style="{StaticResource MonoText}" FontSize="13" TextWrapping="Wrap" Margin="0,1,0,0"
                                      Text="{Binding Text}"
@@ -536,11 +494,9 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                </StackPanel>
-                <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,10,0,0"
-                           TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.MailNumberUnread], Source={x:Static services:I18n.Instance}}"
-                           Visibility="{Binding HasUnreadNumber, Converter={StaticResource BooleanToVisibility}}"/>
+                </controls:Alert>
+                <controls:Alert Tone="Danger" Margin="0,12,0,0" Message="{Binding [Studio.Settings.MailNumberUnread], Source={x:Static services:I18n.Instance}}"
+                                Visibility="{Binding HasUnreadNumber, Converter={StaticResource BooleanToVisibility}}"/>
 
               </StackPanel>
             </Border>
@@ -633,13 +589,8 @@
                   </ItemsControl>
                   <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding AddRecipientCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plus"
                           Content="{Binding [Studio.Settings.MailRecipientAdd], Source={x:Static services:I18n.Instance}}"/>
-                  <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
-                              Visibility="{Binding ShowShareClosed, Converter={StaticResource BooleanToVisibility}}">
-                    <controls:LucideIcon Kind="triangle-alert" Size="12" Foreground="{DynamicResource WarningBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
-                               Text="{Binding [Studio.Settings.DriveShareClosed], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
+                  <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding [Studio.Settings.DriveShareClosed], Source={x:Static services:I18n.Instance}}"
+                                  Visibility="{Binding ShowShareClosed, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- the public links: off unless asked for -->
                   <CheckBox Margin="0,12,0,0" IsChecked="{Binding AllowPublicLinks}" Foreground="{DynamicResource InkBrush}"
                             ToolTip="Share:AllowPublicLinks"
@@ -692,9 +643,8 @@
                              Text="{Binding ClientSecretVariable}"
                              Visibility="{Binding ClientSecretVariable, Converter={StaticResource StringPresentToVisibility}}"/>
                   <!-- STUDIO-44: kept for this session even when the user scope refused it; the line says why -->
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
-                             Margin="0,4,0,0" Text="{Binding ClientSecret.StoreError}"
-                             Visibility="{Binding ClientSecret.HasStoreError, Converter={StaticResource BooleanToVisibility}}"/>
+                  <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding ClientSecret.StoreError}"
+                                  Visibility="{Binding ClientSecret.HasStoreError, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
 
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">
