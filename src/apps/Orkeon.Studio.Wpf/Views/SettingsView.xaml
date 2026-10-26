@@ -117,13 +117,10 @@
           <Border Style="{StaticResource Card}" Margin="0,0,0,16">
             <StackPanel>
               <DockPanel Margin="0,0,0,4">
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" VerticalAlignment="Top"
-                        Command="{Binding Profiles.NewProfileCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                    <TextBlock Text="{Binding [Studio.Settings.New], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
+                <!-- R05: an « add » is a secondary with its +; the screen's one primary is « Save ». -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
+                        Command="{Binding Profiles.NewProfileCommand}" controls:ButtonIcon.Kind="plus"
+                        Content="{Binding [Studio.Settings.New], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel Margin="0,0,14,0">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="sparkles" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
