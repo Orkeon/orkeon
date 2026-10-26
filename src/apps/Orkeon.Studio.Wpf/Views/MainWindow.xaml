@@ -1537,16 +1537,16 @@
             ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
           <!-- R20 (D09): the artwork's PNG keeps opaque white outside its own rounded corners
-               (≈ 43 px at 300 px). ClipToBounds clipped to the square, so those corners showed on
-               the night paper. The artwork is now the Border's background, which the Border
-               draws inside its CornerRadius: 46 px removes the white on paper and on #0F1E2A,
-               and the shadow follows the rounded shape. -->
-          <Border Width="300" Height="300" CornerRadius="46" HorizontalAlignment="Center"
-                  RenderOptions.BitmapScalingMode="HighQuality"
-                  Effect="{DynamicResource ShadowLg}">
-              <Border.Background>
-                  <ImageBrush ImageSource="/Assets/kama_molecule.png" Stretch="UniformToFill"/>
-              </Border.Background>
+               (about 43 px at 300 px). ClipToBounds clipped to the square, so those corners showed
+               on the night paper. A 46 px rounded clip on the image removes the white on both
+               papers; the shadow sits on the parent, so it follows the rounded shape. -->
+          <Border HorizontalAlignment="Center" Effect="{DynamicResource ShadowLg}">
+              <Image Source="/Assets/kama_molecule.png" Width="300" Height="300"
+                     RenderOptions.BitmapScalingMode="HighQuality">
+                  <Image.Clip>
+                      <RectangleGeometry Rect="0,0,300,300" RadiusX="46" RadiusY="46"/>
+                  </Image.Clip>
+              </Image>
           </Border>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
               <Image Source="/Assets/orkeon-studio-mark.png" Width="26" Height="26"
