@@ -137,7 +137,10 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ══ Badge: a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase). ══ -->
+  <!-- ══ Badge (R12): a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase), the tone's
+       tinted background and the tone's dark ink — the background is kept in the dark theme.
+       Neutral paper-sunk / muted ink; Info sky / accent ink (folder rights «Lecture et
+       écriture», a run «En cours»); Success, Warning, Danger their weak background and ink. ══ -->
   <Style TargetType="{x:Type controls:Badge}">
     <Setter Property="Focusable" Value="False"/>
     <Setter Property="Height" Value="22"/>
@@ -158,20 +161,20 @@
     </Setter>
     <Style.Triggers>
       <Trigger Property="Tone" Value="Info">
-        <Setter Property="Background" Value="{DynamicResource InfoWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
       </Trigger>
       <Trigger Property="Tone" Value="Success">
         <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SuccessInkBrush}"/>
       </Trigger>
       <Trigger Property="Tone" Value="Warning">
         <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
       </Trigger>
       <Trigger Property="Tone" Value="Danger">
         <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
       </Trigger>
     </Style.Triggers>
   </Style>
