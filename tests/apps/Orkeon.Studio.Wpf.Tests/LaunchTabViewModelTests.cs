@@ -1554,9 +1554,9 @@ public sealed class LaunchTabViewModelTests
     }
 
     /// <summary>
-    /// The combo of the team tab selects by key (SelectedValuePath), the one thing stable across
-    /// the rebuilds of the list: the key follows the choice, picks it back, ignores an unknown or
-    /// empty one, and is raised after the list whenever the list is replaced.
+    /// The combo of the team tab selects by key (SelectedValuePath) over one list instance the
+    /// view model changes in place: the key follows the choice, picks it back, ignores an unknown
+    /// or empty one, and the list is never replaced under the combo when the team resolves.
     /// </summary>
     [Fact]
     public void Should_FollowAndPickTheModelByKey_When_TheComboSelectsByValue()
@@ -1565,18 +1565,21 @@ public sealed class LaunchTabViewModelTests
         try
         {
             var (tab, _, _) = BuildForModel(pinned);
+            var list = tab.ModelChoices;
             Assert.Equal("default", tab.SelectedModelKey);
+            Assert.DoesNotContain(list, choice => choice.Kind == RunModelChoiceKind.Team);
 
             var raised = new List<string?>();
             tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
             tab.Target.Select(pinned);
 
-            // The team resolved: the list gained the team's entry, and the selection moved onto it.
+            // The team resolved: the same list gained the team's entry in second place, the
+            // selection moved onto it, and the combo was told of the key, never of a new list.
+            Assert.Same(list, tab.ModelChoices);
+            Assert.Equal(RunModelChoiceKind.Team, list[1].Kind);
             Assert.Equal("team", tab.SelectedModelKey);
-            Assert.Contains(tab.SelectedModelKey, tab.ModelChoices.Select(choice => choice.Key));
-            var list = raised.IndexOf(nameof(LaunchTabViewModel.ModelChoices));
-            Assert.True(list >= 0 && raised.IndexOf(nameof(LaunchTabViewModel.SelectedModelKey), list) > list,
-                $"SelectedModelKey must follow ModelChoices: {string.Join(", ", raised)}");
+            Assert.Contains(nameof(LaunchTabViewModel.SelectedModelKey), raised);
+            Assert.DoesNotContain(nameof(LaunchTabViewModel.ModelChoices), raised);
 
             tab.SelectedModelKey = "named:GLM";
             Assert.Equal("GLM", tab.RunLlmProfile);

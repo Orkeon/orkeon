@@ -91,7 +91,7 @@ public sealed partial class LaunchTabViewModel
     private bool _isExpertMode;
     private bool _isJournalEnlarged;
     private IReadOnlyList<string> _crewRoles = [];
-    private IReadOnlyList<RunModelChoice>? _modelChoices;
+    private ObservableCollection<RunModelChoice>? _modelChoices;
 
     /// <summary>The tab on screen; the command tab is the expert's, a novice lands on the options.</summary>
     public string ActiveTab
@@ -205,7 +205,7 @@ public sealed partial class LaunchTabViewModel
     /// source for the combo box at each pick, which writes its selection back, which raises the
     /// list again — a loop that overflowed the stack.
     /// </summary>
-    public IReadOnlyList<RunModelChoice> ModelChoices => _modelChoices ??= BuildModelChoices();
+    public IReadOnlyList<RunModelChoice> ModelChoices => _modelChoices ??= new ObservableCollection<RunModelChoice>(BuildModelChoices());
 
     private List<RunModelChoice> BuildModelChoices()
     {
@@ -608,14 +608,57 @@ public sealed partial class LaunchTabViewModel
 
     // The list changes only when what it lists changed — the team, its recorded model, the
     // settings' names —, not on every pick: a pick raises LlmProfiles too (RaiseRunLlmChanged).
+    // It changes IN PLACE, never by a new instance: a combo whose items source is swapped clears
+    // its selection and writes the clearing back while the swap is under way, and a value it is
+    // handed during that write-back is kept without being resolved. The team tab's Model box
+    // then showed nothing on arrival, its value set and its index at -1.
     private void RefreshModelChoices()
     {
         var fresh = BuildModelChoices();
-        if (_modelChoices is not null && fresh.SequenceEqual(_modelChoices))
+        if (_modelChoices is null)
+        {
+            _modelChoices = new ObservableCollection<RunModelChoice>(fresh);
+            OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
+            return;
+        }
+
+        if (fresh.SequenceEqual(_modelChoices))
             return;
 
-        _modelChoices = fresh;
-        OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
+        Reconcile(_modelChoices, fresh);
+        OnPropertiesChanged(nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
+    }
+
+    /// <summary>
+    /// Brings <paramref name="list"/> to <paramref name="fresh"/> with the fewest moves: an entry
+    /// that stays is left where the combo knows it, one that goes is removed, one that comes is
+    /// inserted at its place.
+    /// </summary>
+    private static void Reconcile(ObservableCollection<RunModelChoice> list, List<RunModelChoice> fresh)
+    {
+        for (var i = list.Count - 1; i >= 0; i--)
+        {
+            if (!fresh.Contains(list[i]))
+                list.RemoveAt(i);
+        }
+
+        for (var i = 0; i < fresh.Count; i++)
+        {
+            if (i < list.Count && list[i] == fresh[i])
+                continue;
+
+            var at = -1;
+            for (var j = i + 1; j < list.Count && at < 0; j++)
+            {
+                if (list[j] == fresh[i])
+                    at = j;
+            }
+
+            if (at >= 0)
+                list.Move(at, i);
+            else
+                list.Insert(i, fresh[i]);
+        }
     }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(

@@ -140,10 +140,11 @@
                   <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
                   <StackPanel Orientation="Horizontal">
-                    <!-- Selected by key, not by item: the list is rebuilt under the combo as the team and the
-                         settings load, and a selection held by item left the box empty on arrival. -->
+                    <!-- Selected by key, not by item, over a list the view model changes in place as the team
+                         and the settings load: a list swapped under the combo left the box empty on arrival.
+                         The path comes before the value, so the first value is resolved with it. -->
                     <ComboBox Style="{StaticResource ComboM}" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
-                              SelectedValue="{Binding SelectedModelKey}" SelectedValuePath="Key" DisplayMemberPath="Label"
+                              SelectedValuePath="Key" SelectedValue="{Binding SelectedModelKey}" DisplayMemberPath="Label"
                               ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
                     <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                             VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
