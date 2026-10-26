@@ -158,7 +158,7 @@
     <!-- ══ the accounts: pick one, its form shows below ══ -->
     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
             Visibility="{Binding HasAccounts, Converter={StaticResource BooleanToVisibility}}">
-      <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+      <ListBox x:Name="AccountList" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
                Background="Transparent" BorderThickness="0"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemContainerStyle>
@@ -243,11 +243,12 @@
     </Border>
 
     <!-- ══ the selected account ══ -->
+    <!-- D11: picking another account scrolls this form into view (SelectionReveal, R24) -->
     <!-- T-30: the form exists WITH a selection, not before one. An explicit ContentTemplate is
          instantiated even over a null Content: without this gate, a machine with no account
          shows the whole form of nobody, every conditional panel open at once — each Visibility
          binding fails on the null context and keeps its default, Visible. -->
-    <ContentControl Content="{Binding SelectedAccount}" Focusable="False"
+    <ContentControl Content="{Binding SelectedAccount}" x:Name="AccountForm" Focusable="False"
                     Visibility="{Binding HasSelectedAccount, Converter={StaticResource BooleanToVisibility}}">
       <ContentControl.ContentTemplate>
         <DataTemplate>
