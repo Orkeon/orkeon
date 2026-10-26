@@ -276,31 +276,23 @@
                         </StackPanel>
                         <controls:ActionBar ButtonHeight="32" Margin="0,10,0,0">
                           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding SetDefaultCommand}"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding EditCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Rectangle Style="{StaticResource VSeparator}" Margin="4,0,4,0"/>
-                          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Command="{Binding DeleteCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="trash-2" Size="16" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
+                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
+                                  controls:ButtonIcon.Kind="badge-check"
+                                  Content="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding EditCommand}"
+                                  controls:ButtonIcon.Kind="pencil"
+                                  Content="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}"
+                                  controls:ButtonIcon.Kind="copy"
+                                  Content="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
+                          <Rectangle Style="{StaticResource ActionBarRule}"/>
+                          <!-- R06: removing a model is definitive — it takes the setting out of the
+                               profiles file and of the settings file at once, with no « Save » in
+                               between —, so it is the danger outline with its trash, at the end of
+                               the bar after a rule. -->
+                          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Command="{Binding DeleteCommand}"
+                                  controls:ButtonIcon.Kind="trash-2"
+                                  Content="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
                         </controls:ActionBar>
                       </StackPanel>
                     </Border>
