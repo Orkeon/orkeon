@@ -124,13 +124,13 @@ public sealed partial class LaunchTabViewModel
         }
     }
 
-    /// <summary>« See the options → », the team pane's footer.</summary>
+    /// <summary>« See the options » (the arrow is the button's icon, C05), the team pane's footer.</summary>
     public RelayCommand ShowOptionsTabCommand { get; private set; } = null!;
 
-    /// <summary>« See the command → » (Expert) or « See the run → » (Novice), the options pane's footer.</summary>
+    /// <summary>« See the command » (Expert) or « See the run » (Novice), the options pane's footer.</summary>
     public RelayCommand OptionsNextCommand { get; private set; } = null!;
 
-    /// <summary>« See the run → », the command pane's footer.</summary>
+    /// <summary>« See the run », the command pane's footer.</summary>
     public RelayCommand ShowRunTabCommand { get; private set; } = null!;
 
     /// <summary>« ← Back to the team », the run pane's footer, and « Change team » of the fiche.</summary>
