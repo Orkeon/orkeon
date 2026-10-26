@@ -2754,10 +2754,10 @@
     <value>Cada línea del historial conserva su registro completo. Pregúnteme «¿por qué falló la última?» y recupero el paso fallido y el mensaje de error.</value>
   </data>
   <data name="Studio.Shell.System" xml:space="preserve">
-    <value>SISTEMA</value>
+    <value>Idioma del sistema</value>
   </data>
   <data name="Studio.Shell.Chosen" xml:space="preserve">
-    <value>ELEGIDO</value>
+    <value>Idioma elegido</value>
   </data>
   <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>idioma del sistema</value>

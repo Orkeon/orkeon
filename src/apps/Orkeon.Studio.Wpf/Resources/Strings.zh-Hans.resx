@@ -2754,10 +2754,10 @@
     <value>历史记录的每一行都保留完整日志。问我“上一次为什么失败？”，我会调出出错的步骤和错误信息。</value>
   </data>
   <data name="Studio.Shell.System" xml:space="preserve">
-    <value>系统</value>
+    <value>系统语言</value>
   </data>
   <data name="Studio.Shell.Chosen" xml:space="preserve">
-    <value>已选择</value>
+    <value>已选语言</value>
   </data>
   <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>系统语言</value>

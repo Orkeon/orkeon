@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         UpdateThemeButton();
+        LanguagePopup.CustomPopupPlacementCallback = PlaceLanguageMenu;
         DataContextChanged += (_, _) => WireForgeNavigation();
         BeginSplash();
     }
@@ -175,6 +177,22 @@ public partial class MainWindow : Window
             4 => AssistantContext.WizardStep4,
             _ => AssistantContext.WizardStep1,
         };
+
+    /// <summary>
+    /// R04 (A05): the language menu under its button, right edges aligned, 6 px below. The
+    /// popup's root is wider than the visible menu by the card's 10 px side margins (room for
+    /// its shadow): the visible right edge is 10 px inside the root's. The sizes come in device
+    /// pixels, so the DIP offsets are scaled.
+    /// </summary>
+    private CustomPopupPlacement[] PlaceLanguageMenu(Size popupSize, Size targetSize, Point offset)
+    {
+        const double ShadowMargin = 10;
+        const double Gap = 6;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var x = targetSize.Width - popupSize.Width + (ShadowMargin * dpi.DpiScaleX);
+        var y = targetSize.Height + (Gap * dpi.DpiScaleY);
+        return [new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)];
+    }
 
     // ── window chrome ──
     private void OnMinimize(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);

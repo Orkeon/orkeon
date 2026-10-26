@@ -1169,10 +1169,10 @@
     <value>Chaque ligne de l'historique garde son journal complet. Demandez-moi « pourquoi la dernière a échoué ? » et je reprends l'étape fautive et le message d'erreur.</value>
   </data>
   <data name="Studio.Shell.System" xml:space="preserve">
-    <value>SYSTÈME</value>
+    <value>Langue du système</value>
   </data>
   <data name="Studio.Shell.Chosen" xml:space="preserve">
-    <value>CHOISIE</value>
+    <value>Langue choisie</value>
   </data>
   <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>langue du système</value>

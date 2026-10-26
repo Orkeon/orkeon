@@ -181,15 +181,17 @@
                 </controls:LucideIcon>
               </StackPanel>
             </Button>
-            <Popup IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
-                   Placement="Bottom" VerticalOffset="6" HorizontalOffset="-140"
+            <!-- R04 (A05): the menu opens under «FR», its right edge on the button's
+                 (MainWindow.PlaceLanguageMenu) — never under the mode switch. -->
+            <Popup x:Name="LanguagePopup" IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                   PlacementTarget="{Binding ElementName=LanguageButton}" Placement="Custom"
                    AllowsTransparency="True" PopupAnimation="Fade">
               <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
                       BorderThickness="1" CornerRadius="12" Padding="6" MinWidth="186"
                       Margin="10,0,10,14" Effect="{DynamicResource ShadowMd}">
                 <StackPanel>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Padding="8,5,8,6"
-                             Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Language.MenuHeader}"/>
+                  <!-- One sentence-case line in the UI font («Langue choisie · Français»), no mono capitals. -->
+                  <TextBlock Style="{StaticResource MetaText}" Padding="8,5,8,6" Text="{Binding Language.MenuHeader}"/>
                   <ItemsControl ItemsSource="{Binding Language.Others}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>

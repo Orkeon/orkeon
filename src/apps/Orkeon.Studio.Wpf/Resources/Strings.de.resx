@@ -2754,10 +2754,10 @@
     <value>Jede Verlaufszeile behält ihr vollständiges Protokoll. Fragen Sie mich „warum ist der letzte fehlgeschlagen?“ und ich hole den fehlerhaften Schritt und die Fehlermeldung hervor.</value>
   </data>
   <data name="Studio.Shell.System" xml:space="preserve">
-    <value>SYSTEM</value>
+    <value>Systemsprache</value>
   </data>
   <data name="Studio.Shell.Chosen" xml:space="preserve">
-    <value>GEWÄHLT</value>
+    <value>Gewählte Sprache</value>
   </data>
   <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>Systemsprache</value>
