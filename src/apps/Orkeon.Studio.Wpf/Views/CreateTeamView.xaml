@@ -154,7 +154,7 @@
                         Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AccentBrush}"/>
-              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
+              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center"
                          Foreground="{DynamicResource AccentBrush}" Text="{Binding Folder}"/>
             </StackPanel>
             <controls:Badge Grid.Row="1" Grid.Column="1" Tone="Warning" HorizontalAlignment="Left" Margin="0,4,0,0"
@@ -183,7 +183,7 @@
             </StackPanel>
           </Grid>
           <!-- Line 2: the note the step-1 fiche gave the folder. -->
-          <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="24,4,0,0" TextTrimming="CharacterEllipsis"
+          <TextBlock Style="{StaticResource Hint}" Margin="24,4,0,0" TextTrimming="CharacterEllipsis"
                      Text="{Binding Note}" ToolTip="{Binding Note}"
                      Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
           <!-- Line 3, a folder still to choose: name the folder, or give it its own inside the
@@ -232,7 +232,7 @@
     <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
                 Visibility="{Binding HasAssistant, Converter={StaticResource BooleanToVisibility}}">
       <controls:LucideIcon Kind="wand-2" Size="16" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
-      <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="7,0,0,0" VerticalAlignment="Center"
+      <TextBlock Style="{StaticResource Hint}" Margin="7,0,0,0" VerticalAlignment="Center"
                  Text="{Binding [Studio.Create.AssistantBy], Source={x:Static services:I18n.Instance}}"/>
       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Margin="4,0,0,0"
                  VerticalAlignment="Center" Text="{Binding Profiles.StudioProfileName}"/>
@@ -283,7 +283,7 @@
          the command a person can run by hand. -->
     <StackPanel Margin="0,8,0,0" MaxWidth="720" HorizontalAlignment="Left" DataContext="{Binding ScheduleOffer}"
                 Visibility="{Binding HasOutcome, Converter={StaticResource BooleanToVisibility}}">
-      <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Text="{Binding Outcome}"/>
+      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Text="{Binding Outcome}"/>
       <StackPanel Visibility="{Binding HasManualCommand, Converter={StaticResource BooleanToVisibility}}">
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,2"
                    Text="{Binding [Studio.Teams.ScheduleManual], Source={x:Static services:I18n.Instance}}"/>
@@ -338,7 +338,7 @@
         Content="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="sliders-horizontal"/>
       </controls:Alert.Actions>
       <StackPanel>
-        <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,10"
+        <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,10"
                    Text="{Binding [Studio.Create.GateBody], Source={x:Static services:I18n.Instance}}"/>
         <ItemsControl ItemsSource="{Binding Profiles.Profiles}">
           <ItemsControl.ItemTemplate>
@@ -575,9 +575,9 @@
                 </DockPanel>
               </Border>
               <StackPanel>
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.NeedTitle], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,12" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
                 <!-- STUDIO-47: files and folders dropped from the explorer land at the caret, quoted;
                      the Preview events take the drop before the TextBox, which refuses files. The
@@ -586,7 +586,7 @@
                          PreviewDragEnter="OnNeedDragOver" PreviewDragOver="OnNeedDragOver"
                          PreviewDragLeave="OnNeedDragLeave" PreviewDrop="OnNeedDrop"
                          Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NeedDropHint], Source={x:Static services:I18n.Instance}}"/>
                 <!-- Lot 3: one line under the need — « Rephrase » (STUDIO-57) and « Back to my words »,
                      the use cases close to the need (STUDIO-39 D-03, their titles in the tooltip), then
@@ -600,7 +600,7 @@
                           Command="{Binding UndoRephraseCommand}"
                           Content="{Binding [Studio.Create.RephraseUndo], Source={x:Static services:I18n.Instance}}"
                           Visibility="{Binding CanUndoRephrase, Converter={StaticResource BooleanToVisibility}}"/>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,0,8,4" VerticalAlignment="Center"
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,0,8,4" VerticalAlignment="Center"
                              Text="{Binding [Studio.Create.Rephrasing], Source={x:Static services:I18n.Instance}}"
                              Visibility="{Binding IsRephrasing, Converter={StaticResource BooleanToVisibility}}"/>
                   <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
@@ -679,16 +679,16 @@
                 </DockPanel>
               </Border>
               <StackPanel>
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.FoldersStepTitle], Source={x:Static services:I18n.Instance}}"/>
                 <!-- Before the composition: the pane says when the folders come. -->
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.FoldersTabEmptyBody], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding IsFoldersTabEmpty, Converter={StaticResource BooleanToVisibility}}"/>
                 <StackPanel Visibility="{Binding IsFoldersTabEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
                   <!-- STUDIO-57: the subtitle says where the list comes from — the request, or the
                        standard proposal when the request named no folder. -->
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,2,0,12" TextWrapping="Wrap"
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,12" TextWrapping="Wrap"
                              Text="{Binding FoldersStepSubtitle}"/>
                   <!-- Tag carries « still editable » to every fiche: once confirmed, only « Change… » and
                        « Open the folder » stay live. -->
@@ -711,7 +711,7 @@
                             </Grid.RowDefinitions>
 
                             <!-- Line 1: the name in the team, read / read and write, where the row came from. -->
-                            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
+                            <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center"
                                        Text="{Binding [Studio.Create.FolderFieldName], Source={x:Static services:I18n.Instance}}"/>
                             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                               <TextBox Style="{StaticResource Input}" MinWidth="180" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}"
@@ -750,7 +750,7 @@
 
                             <!-- Line 2: the note the assistant follows — what the folder holds and how
                                  the team must use it. The forge's words to start with. -->
-                            <TextBlock Grid.Row="1" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="1" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
                                        Text="{Binding [Studio.Create.FolderFieldNote], Source={x:Static services:I18n.Instance}}"/>
                             <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
                                     BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8"
@@ -769,7 +769,7 @@
 
                             <!-- Line 3: where it lives — inside the team, or a folder of this machine,
                                  exclusive (AnswerInsideTeam / AnswerWithDirectory); its state; « Choose… ». -->
-                            <TextBlock Grid.Row="2" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="2" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
                                        Text="{Binding [Studio.Create.FolderLocation], Source={x:Static services:I18n.Instance}}"/>
                             <DockPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0">
                               <Border DockPanel.Dock="Left" Style="{StaticResource SegmentedGroup}" Height="30" CornerRadius="15"
@@ -839,7 +839,7 @@
 
                             <!-- Line 4 (STUDIO-57, the drop): a folder kept inside the team — its file
                                  count, watched while the engine waits, the explorer on it, its path. -->
-                            <TextBlock Grid.Row="3" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Margin="0,8,0,0"
+                            <TextBlock Grid.Row="3" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,8,0,0"
                                        Text="{Binding [Studio.Create.FolderFieldFiles], Source={x:Static services:I18n.Instance}}"
                                        Visibility="{Binding HasHeld, Converter={StaticResource BooleanToVisibility}}"/>
                             <DockPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0" DataContext="{Binding Held}"
@@ -894,15 +894,15 @@
                 </DockPanel>
               </Border>
               <StackPanel>
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,12" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NotesTabSub], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMultiline}" MinHeight="72"
                          Tag="{Binding [Studio.Create.NotesPlaceholder], Source={x:Static services:I18n.Instance}}"
                          AutomationProperties.Name="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"
                          Text="{Binding ComposeNotes.Consigne, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,8,0,0" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NotesLeaveEmpty], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </DockPanel>
@@ -1008,7 +1008,7 @@
                                 Content="{Binding [Studio.Create.ViewYaml], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </Border>
-                    <TextBlock FontSize="14.5" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}"
+                    <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap"
                                Text="{Binding [Studio.Create.ProposalTitle], Source={x:Static services:I18n.Instance}}"/>
                   </DockPanel>
 
@@ -1017,7 +1017,7 @@
                     <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                                Text="{Binding Rationale}"/>
                     <DockPanel Margin="0,12,0,0" Visibility="{Binding HasTools, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock DockPanel.Dock="Left" Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Top" Margin="0,4,8,0"
+                      <TextBlock DockPanel.Dock="Left" Style="{StaticResource Hint}" VerticalAlignment="Top" Margin="0,4,8,0"
                                  Text="{Binding [Studio.Create.ToolsLabel], Source={x:Static services:I18n.Instance}}"/>
                       <WrapPanel>
                         <ItemsControl ItemsSource="{Binding VisibleTeamTools}">
@@ -1180,9 +1180,9 @@
                 </DockPanel>
               </Border>
               <StackPanel x:Name="MountFoldersBlock">
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.TeamFolders], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,12"
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,12"
                            Text="{Binding [Studio.Create.FoldersHint], Source={x:Static services:I18n.Instance}}"/>
                 <ItemsControl ItemsSource="{Binding MountRows}" ItemTemplate="{StaticResource MountRowTemplate}"/>
                 <WrapPanel Margin="0,4,0,0">
@@ -1228,15 +1228,15 @@
                 </DockPanel>
               </Border>
               <StackPanel>
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,12" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NotesTabSub], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMultiline}" MinHeight="72"
                          Tag="{Binding [Studio.Create.NotesPlaceholder], Source={x:Static services:I18n.Instance}}"
                          AutomationProperties.Name="{Binding [Studio.Create.NotesCompose], Source={x:Static services:I18n.Instance}}"
                          Text="{Binding ComposeNotes.Consigne, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,8,0,0" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.NotesLeaveEmpty], Source={x:Static services:I18n.Instance}}"/>
                 <controls:Alert Tone="Info" Margin="0,12,0,0"
                                 Message="{Binding [Studio.Create.Step2NotesNote], Source={x:Static services:I18n.Instance}}"/>
@@ -1260,9 +1260,9 @@
                 </DockPanel>
               </Border>
               <StackPanel>
-                <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Style="{StaticResource CardTitle}"
                            Text="{Binding [Studio.Create.CompositionTitle], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,12" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" TextWrapping="Wrap"
                            Text="{Binding [Studio.Create.CompositionSub], Source={x:Static services:I18n.Instance}}"/>
                 <controls:PropertyRow Label="{Binding [Studio.Create.FieldState], Source={x:Static services:I18n.Instance}}">
                   <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding CompositionStateText}"/>
