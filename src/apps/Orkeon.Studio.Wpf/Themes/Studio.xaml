@@ -609,16 +609,23 @@
        An editable field says so: the field surface and its franker line, distinct from the
        sunk paper the read-only wells keep (YAML, raw JSON, journal, code) — it is that
        contrast which makes a field readable as one. A read-only TextBox goes back to the
-       well recipe: it is a thing to read, not an invitation to write. -->
+       well recipe: it is a thing to read, not an invitation to write.
+       hrm R10: every single-line field is 40 px high (Height, not MinHeight: a field beside a
+       40 px button never grows to 46), radius 10, horizontal padding 12 for the typed value AND
+       for the watermark. A TextBox applies its Padding itself, inside PART_ContentHost, plus a
+       2 px inset of its text view: the host therefore takes no Margin of its own (the former
+       Margin="{TemplateBinding Padding}" counted the padding twice, value at 22 px against a
+       watermark at 10, C08), only -2 px to cancel the inset, and the watermark takes the Padding
+       once — the two start on the same x. -->
   <Style x:Key="Input" TargetType="TextBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -626,16 +633,16 @@
         <ControlTemplate TargetType="TextBox">
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
             <Grid>
               <!-- WPF has no inset box-shadow: a hairline under the top edge, following the
                    radius, gives the same optical dip as a native entry field. -->
               <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
-                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      CornerRadius="10,10,0,0" BorderThickness="0,1,0,0"
                       BorderBrush="{DynamicResource FieldShadowBrush}"/>
               <!-- The alignment is the control's, not the template's: the multi-line style
                    (T-32) stretches so a paragraph starts on its first line instead of centring. -->
-              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+              <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
               <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, shown while the
                    box is empty — an empty field is not "nothing", it is the value the engine will
@@ -664,6 +671,20 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <!-- A box that wraps or takes Return is a paragraph, not a row: it grows from 40 px with
+         its text instead of being clipped to one line. -->
+    <Style.Triggers>
+      <Trigger Property="TextWrapping" Value="Wrap">
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="12,9"/>
+      </Trigger>
+      <Trigger Property="AcceptsReturn" Value="True">
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="12,9"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
   <Style x:Key="InputMono" TargetType="TextBox" BasedOn="{StaticResource Input}">
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
@@ -674,6 +695,8 @@
        the card — which is also why no view may put a Height on one of these. Stretch puts a
        paragraph on its first line instead of centring it. -->
   <Style x:Key="InputMultiline" TargetType="TextBox" BasedOn="{StaticResource Input}">
+    <Setter Property="Height" Value="Auto"/>
+    <Setter Property="Padding" Value="12,9"/>
     <Setter Property="AcceptsReturn" Value="True"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="MinLines" Value="5"/>
@@ -694,10 +717,10 @@
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -705,12 +728,13 @@
         <ControlTemplate TargetType="PasswordBox">
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
             <Grid>
               <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
-                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      CornerRadius="10,10,0,0" BorderThickness="0,1,0,0"
                       BorderBrush="{DynamicResource FieldShadowBrush}"/>
-              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+              <!-- Same as Input: the PasswordBox applies its Padding itself. -->
+              <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
             </Grid>
           </Border>
@@ -1063,15 +1087,20 @@
   </Style>
 
   <!-- The closed box is a field (T-31): field surface and line; the popup keeps the
-       surface and the ordinary line, it is a list, not a field. -->
+       surface and the ordinary line, it is a list, not a field.
+       hrm R10/R09: 40 px high, the value and the watermark both at 12 px from the left edge,
+       36 px reserved on the right for the chevron (11 + 13 + a 12 px gap), and a long value
+       ends in «…» there instead of sliding under the chevron (B06). The Padding setter states
+       the 12 px for the reader; the presenter's margin is literal because it adds the chevron's
+       reserve to it. Never sized by its value: ComboS / ComboM / ComboL below. -->
   <Style TargetType="ComboBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
     <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
     <Setter Property="Template">
@@ -1084,7 +1113,7 @@
                 <ControlTemplate TargetType="ToggleButton">
                   <Border x:Name="bd" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                           BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                          BorderThickness="1" CornerRadius="9">
+                          BorderThickness="1" CornerRadius="10">
                     <!-- The real Lucide chevron rather than three hand-drawn segments, and
                          on the muted ink the mock uses: a chevron drawn twice drifts twice. -->
                     <controls:LucideIcon Kind="chevron-down" Size="13"
@@ -1107,10 +1136,18 @@
                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                              IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"/>
+                              IsHitTestVisible="False" Margin="12,0,36,0" VerticalAlignment="Center">
+              <!-- The text a string or a DisplayMemberPath item renders through: trimmed, one line. -->
+              <ContentPresenter.Resources>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                  <Setter Property="TextWrapping" Value="NoWrap"/>
+                </Style>
+              </ContentPresenter.Resources>
+            </ContentPresenter>
             <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, while nothing is picked. -->
             <TextBlock x:Name="watermark" Text="{TemplateBinding Tag}" IsHitTestVisible="False"
-                       Margin="10,0,26,0" VerticalAlignment="Center"
+                       Margin="12,0,36,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource InkFaintBrush}" Visibility="Collapsed"/>
             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    StaysOpen="False" PopupAnimation="Fade" VerticalOffset="4">
@@ -1142,6 +1179,19 @@
     </Setter>
   </Style>
 
+  <!-- The three combo widths (R10, C09): S 160, M 320, L the whole column. -->
+  <Style x:Key="ComboS" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="Width" Value="160"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+  </Style>
+  <Style x:Key="ComboM" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="Width" Value="320"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+  </Style>
+  <Style x:Key="ComboL" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+
   <Style TargetType="CheckBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -1155,7 +1205,7 @@
             <!-- The box is a clickable surface, so it wears the field recipe (T-31). -->
             <Border x:Name="box" Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
                     Background="{DynamicResource FieldBrush}"
-                    BorderBrush="{DynamicResource FieldLineBrush}" BorderThickness="1">
+                    BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
               <Path x:Name="tick" Data="M3,8 L6.5,11.5 13,4.5" Stroke="{DynamicResource AccentFgBrush}"
                     StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                     StrokeLineJoin="Round" Visibility="Collapsed" Margin="0"/>
@@ -1189,7 +1239,7 @@
             <!-- The dot is a clickable surface too (T-31); PickRow and NavItem are rows, not fields. -->
             <Ellipse x:Name="dot" Width="15" Height="15" VerticalAlignment="Center"
                      Fill="{DynamicResource FieldBrush}"
-                     Stroke="{DynamicResource FieldLineBrush}" StrokeThickness="1.5"/>
+                     Stroke="{DynamicResource FieldBorderBrush}" StrokeThickness="1.5"/>
             <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
           </StackPanel>
           <ControlTemplate.Triggers>
