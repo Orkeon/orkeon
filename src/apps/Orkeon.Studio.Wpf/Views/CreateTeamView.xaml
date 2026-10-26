@@ -548,16 +548,16 @@
         <controls:StepTabs Margin="0,0,0,16" SelectedIndex="{Binding Step1TabIndex, Mode=TwoWay}">
           <!-- Under the tabs: the step's help in Novice, nothing in Expert. -->
           <controls:StepTabs.SideContent>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
                     CornerRadius="12" Padding="14,12"
                     Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                   <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
-                  <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="8,0,0,0"
+                  <TextBlock Style="{StaticResource Subhead}" Margin="8,0,0,0" VerticalAlignment="Center"
                              Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
-                <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="17.5"
+                <TextBlock Style="{StaticResource MetaText}" Foreground="{DynamicResource InkMutedBrush}"
                            Text="{Binding [Studio.Create.HelpStep1], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Border>
@@ -952,16 +952,16 @@
         <controls:StepTabs Margin="0,0,0,16" SelectedIndex="{Binding Step2TabIndex, Mode=TwoWay}">
           <!-- Under the tabs: the step's help in Novice, nothing in Expert. -->
           <controls:StepTabs.SideContent>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
                     CornerRadius="12" Padding="14,12"
                     Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                   <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
-                  <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="8,0,0,0"
+                  <TextBlock Style="{StaticResource Subhead}" Margin="8,0,0,0" VerticalAlignment="Center"
                              Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
-                <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="17.5"
+                <TextBlock Style="{StaticResource MetaText}" Foreground="{DynamicResource InkMutedBrush}"
                            Text="{Binding [Studio.Create.HelpStep2], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Border>
@@ -1788,8 +1788,8 @@
         <!-- The Novice help column; the assistant panel takes its place while it is open (R3).
              Step 1 holds its help under its tabs (R14). -->
         <Border Grid.Column="1" Width="300" VerticalAlignment="Top" Margin="16,0,0,16"
-                Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                CornerRadius="14" Padding="18,16">
+                Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}" BorderThickness="1"
+                CornerRadius="12" Padding="14,12">
           <Border.Style>
             <Style TargetType="Border">
               <Setter Property="Visibility" Value="Collapsed"/>
@@ -1809,12 +1809,12 @@
           <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <controls:LucideIcon Kind="circle-help" Size="16" Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Center"/>
-              <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="8,0,0,0"
+              <TextBlock Style="{StaticResource Subhead}" Margin="8,0,0,0" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
-            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5">
+            <TextBlock Foreground="{DynamicResource InkMutedBrush}">
               <TextBlock.Style>
-                <Style TargetType="TextBlock">
+                <Style TargetType="TextBlock" BasedOn="{StaticResource MetaText}">
                   <Setter Property="Text" Value="{Binding [Studio.Create.HelpStep1], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsStep2}" Value="True">
