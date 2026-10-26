@@ -260,9 +260,10 @@
                               Command="{Binding DataContext.RenameAccountCommand, RelativeSource={RelativeSource AncestorType=views:DriveView}}"
                               CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="pencil-line"
                               Content="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDanger}"
+                      <!-- R06: the account leaves the list until «Save» writes the file - a neutral ×, not the danger outline -->
+                      <Button Style="{StaticResource BtnSecondary}"
                               Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=views:DriveView}}"
-                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="trash-2"
+                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x"
                               Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Grid>
@@ -613,11 +614,13 @@
                       <DataTemplate>
                         <StackPanel Margin="0,0,0,7">
                           <DockPanel MaxWidth="420" HorizontalAlignment="Left">
-                            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="8,0,0,0"
+                            <!-- R06: a line taken out of the list before «Save» - a neutral × -->
+                            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    controls:ButtonIcon.Kind="x"
+                                    ToolTip="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"
+                                    AutomationProperties.Name="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"
                                     Command="{Binding DataContext.RemoveRecipientCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding}">
-                              <controls:LucideIcon Kind="trash-2" Size="13"/>
-                            </Button>
+                                    CommandParameter="{Binding}"/>
                             <TextBox Style="{StaticResource InputMono}" Width="360"
                                      Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"/>
                           </DockPanel>

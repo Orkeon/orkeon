@@ -686,10 +686,10 @@
   <data name="Studio.Settings.MailAddress" xml:space="preserve"><value>Adresse e-mail</value></data>
   <data name="Studio.Settings.MailAddConfirm" xml:space="preserve"><value>Ajouter le compte</value></data>
   <data name="Studio.Settings.MailRename" xml:space="preserve"><value>Renommer</value></data>
-  <data name="Studio.Settings.MailRemove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Studio.Settings.MailRemove" xml:space="preserve"><value>Retirer</value></data>
   <data name="Studio.Settings.MailRenameLabel" xml:space="preserve"><value>Nouveau nom</value></data>
   <data name="Studio.Settings.MailRenameCost" xml:space="preserve"><value>Un compte connecté par OAuth2 devra se reconnecter sous son nouveau nom : ses jetons sont rangés sous l'ancien. Un mot de passe reste dans sa variable d'environnement, sous le nom de la variable.</value></data>
-  <data name="Studio.Settings.MailRemoveQuestion" xml:space="preserve"><value>Supprimer ce compte ?</value></data>
+  <data name="Studio.Settings.MailRemoveQuestion" xml:space="preserve"><value>Retirer ce compte ?</value></data>
   <data name="Studio.Settings.MailRemoveCost" xml:space="preserve"><value>La variable d'environnement qui garde son mot de passe et ses jetons de connexion restent sur cette machine.</value></data>
   <data name="Studio.Settings.MailProblemsTitle" xml:space="preserve"><value>En l'état, une exécution ne peut pas utiliser ce compte :</value></data>
   <data name="Studio.Settings.MailNumberUnread" xml:space="preserve"><value>Un champ numérique contient autre chose qu'un nombre entier : il n'est pas écrit.</value></data>
