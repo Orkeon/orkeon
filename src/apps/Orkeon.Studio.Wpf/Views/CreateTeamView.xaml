@@ -1835,7 +1835,9 @@
                         Visibility="{Binding NeedsScheduleTime, Converter={StaticResource BooleanToVisibility}}">
               <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"
                          Text="{Binding [Studio.Create.SchedAt], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Width="76" Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}"/>
+              <!-- hrm B01 (R09): 76 px less the 12 px paddings cut « 07:00 » to « 07:0 » (022);
+                   at least 96, mono, and it grows rather than cut a longer value. -->
+              <TextBox Style="{StaticResource InputMono}" MinWidth="96" Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}"/>
               <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Margin="8,0,0,0"
                          Text="{Binding [Studio.Create.SchedLocalTime], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
