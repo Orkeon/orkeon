@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
@@ -10,9 +11,16 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record NodeReplaceRequest
 {
+    [FieldSchema(Description = "Path of the file to edit, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")] public string Path { get; init; } = "";
+
+    [FieldSchema(Description = "Selector of the node to replace, as node_outline lists it: Ns.Type.Member(paramTypes), Section/Sub for Markdown, or @ts:<node-path>.", Example = "Demo.Calc.Add(int)")]
     [JsonPropertyName("selector")] public string Selector { get; init; } = "";
+
+    [FieldSchema(Description = "SHA-256 of the node's current text, as node_read returned it; the replacement is refused when it is stale.")]
     [JsonPropertyName("expected_hash")] public string ExpectedHash { get; init; } = "";
+
+    [FieldSchema(Description = "The replacement text of the whole node, its leading comments and attributes included.")]
     [JsonPropertyName("text")] public string Text { get; init; } = "";
 }
 

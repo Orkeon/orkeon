@@ -25,4 +25,13 @@ public interface ILlmDeltaSink
     /// or flush. Called once per streamed turn, after its last delta.
     /// </summary>
     void OnTurnCompleted();
+
+    /// <summary>
+    /// Opens one streamed turn: the sink the turn's deltas and its <see cref="OnTurnCompleted"/> go to.
+    /// Two turns that stream at once (two acts of concurrent commands, the tasks of a parallel wave)
+    /// each hold their own, so a renderer can keep their output apart (#211). The default is the
+    /// sink itself: a sink that records or counts needs no turn of its own.
+    /// </summary>
+    /// <param name="label">What the turn belongs to as the caller knows it (a task id); null when it knows nothing.</param>
+    ILlmDeltaSink BeginTurn(string? label) => this;
 }

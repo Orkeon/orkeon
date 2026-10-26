@@ -2476,3 +2476,4 @@ static Orkeon.Application.Interfaces.Ports.ScriptAgentMemoryKey.Parse(string! ke
 const Orkeon.Application.Constants.Orchestration.LoggingDefaults.MaxLlmResponseLogLength = 300 -> int
 Orkeon.Application.Agent.AgentWorkingRoot
 static Orkeon.Application.Agent.AgentWorkingRoot.NormalizeMounted(string? root, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts) -> string?
+Orkeon.Application.Interfaces.Ports.ILlmDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!

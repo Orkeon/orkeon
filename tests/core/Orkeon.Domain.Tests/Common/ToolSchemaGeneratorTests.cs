@@ -713,3 +713,86 @@ public class ToolSchemaGeneratorTests
         }
     }
 }
+
+/// <summary>
+/// An array of a tool's own record publishes its items' properties (#210), so the model learns
+/// the shape of each item from the schema; a scalar array and a self-referencing item type do not loop.
+/// </summary>
+public class ToolSchemaGeneratorItemPropertiesTests
+{
+    private sealed record Operation
+    {
+        [FieldSchema(Description = "What to do", Enum = new[] { "replace", "insert" })]
+        public string Kind { get; init; } = "";
+
+        public string Path { get; init; } = "";
+
+        public string? ExpectedHash { get; init; }
+
+        public int? Index { get; init; }
+
+        public List<Operation> Nested { get; init; } = [];
+    }
+
+    private sealed record BatchRequest
+    {
+        [FieldSchema(Description = "The operations")]
+        public IReadOnlyList<Operation> Operations { get; init; } = [];
+
+        [FieldSchema(Description = "Names")]
+        public string[] Names { get; init; } = [];
+    }
+
+    [Fact]
+    public void ShouldDescribeEachItemProperty_WhenTheArrayHoldsARecord()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<BatchRequest>("batch", "d");
+
+        var operations = schema.Parameters["operations"];
+        Assert.Equal("array", operations.Type);
+        Assert.Equal("object", operations.ItemsType);
+        Assert.NotNull(operations.ItemProperties);
+        Assert.Equal(["expected_hash", "index", "kind", "nested", "path"], operations.ItemProperties.Keys.Order().ToArray());
+        Assert.Equal("What to do", operations.ItemProperties["kind"].Description);
+        Assert.Equal(["replace", "insert"], operations.ItemProperties["kind"].Enum);
+        Assert.True(operations.ItemProperties["kind"].Required);
+        Assert.True(operations.ItemProperties["path"].Required);
+        Assert.False(operations.ItemProperties["expected_hash"].Required);
+        Assert.Equal("integer", operations.ItemProperties["index"].Type);
+        Assert.False(operations.ItemProperties["index"].Required);
+    }
+
+    [Fact]
+    public void ShouldStopAtTheItemTypeItDescribes_WhenAnItemReferencesItself()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<BatchRequest>("batch", "d");
+
+        var nested = schema.Parameters["operations"].ItemProperties!["nested"];
+        Assert.Equal("array", nested.Type);
+        Assert.Equal("object", nested.ItemsType);
+        Assert.Null(nested.ItemProperties);
+    }
+
+    [Fact]
+    public void ShouldLeaveItemPropertiesNull_WhenTheArrayHoldsScalars()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<BatchRequest>("batch", "d");
+
+        Assert.Equal("string", schema.Parameters["names"].ItemsType);
+        Assert.Null(schema.Parameters["names"].ItemProperties);
+    }
+
+    [Fact]
+    public void ShouldPublishItemPropertiesAndRequired_WhenTheDocumentIsWritten()
+    {
+        var schema = ToolSchemaGenerator.GenerateSchema<BatchRequest>("batch", "d");
+
+        var items = (Dictionary<string, object>)schema.Parameters["operations"].ToDocument()["items"];
+
+        Assert.Equal("object", items["type"]);
+        var properties = (Dictionary<string, object>)items["properties"];
+        Assert.Contains("kind", properties.Keys);
+        Assert.Contains("path", properties.Keys);
+        Assert.Equal(["kind", "nested", "path"], ((List<string>)items["required"]).Order().ToArray());
+    }
+}

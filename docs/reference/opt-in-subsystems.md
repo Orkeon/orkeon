@@ -66,7 +66,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
-| Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
+| Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console, one whole line at a time, each turn apart | Beta |
 | Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly; `orkeon-repl` calls it when its settings carry a `Plugins` section, no other shipped binary does) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
 | External memory providers (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | A type — `Memory:Provider`, a crew's `memoryProvider:`, `Orkeon:Rag:Provider` — plus that provider's host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), all bound by `AddOrkeonInfrastructure()`; `MemoryProviderFactory` hands out one shared instance per type, which connects on first use. `AddOrkeonRedisMemory(configuration)` makes Redis the application-wide `IMemoryProvider`; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` expose the shared provider by its class (the last two are called by `AddOrkeonInfrastructure(configuration)` when their section exists) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | Beta |
@@ -585,11 +585,17 @@ No attribute carries an id of a crew, task or agent.
   `Orkeon:Cli:ConsoleStreaming:Enabled = true`.
 - **Effect**: registers `ConsoleLlmDeltaSink` as the `ILlmDeltaSink`. When a sink is
   present and the LLM provider streams (`IStreamingLlmProvider`), the scripted
-  `ctx.llm.act` loop switches to the SSE path and every content delta is written
-  incrementally to the host `IConsoleAdapter` — the REPL renders tokens as they
-  arrive without the script passing `onDelta`. Turns that stream no visible content
-  (pure tool calls) emit nothing. The sink composes with a script-side `onDelta`
-  (both receive every delta).
+  `ctx.llm.act` loop switches to the SSE path and every content delta reaches the host
+  `IConsoleAdapter` as it arrives — the REPL renders the answer without the script
+  passing `onDelta`. The sink writes one whole line at a time: each turn
+  (`ILlmDeltaSink.BeginTurn`) holds its own line buffer, a line is written once complete
+  and the turn's end writes what is left, so two acts streaming at once — two background
+  `runAgent` sub-runs, the tasks of a parallel crew wave — never write into one another
+  (#211). A turn that runs under a command instance prefixes its lines with the
+  instance's ticket (`[t2] `), as the completion lines are; a crew task adds its id
+  (`[t2 task-1] `); the foreground command's act writes bare lines. Turns that stream no
+  visible content (pure tool calls) emit nothing. The sink composes with a script-side
+  `onDelta` (both receive every delta).
 - **Backward-compatible default**: flag absent → no sink registered → `act` keeps
   its buffered rendering (byte-identical), scripts can still stream via `onDelta`.
 

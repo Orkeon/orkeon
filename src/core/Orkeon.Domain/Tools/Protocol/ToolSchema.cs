@@ -101,6 +101,14 @@ public record ParameterSchema(
     ParameterSchema? Values = null
 )
 {
+    /// <summary>
+    /// The properties of each item when the parameter is an array of objects (the operations of a batch), by
+    /// name; null for an array of scalars or a parameter that is no array. The formatters publish them as the
+    /// items' <c>properties</c> and <c>required</c>, so the model learns the shape from the schema, not from
+    /// the description alone (#210).
+    /// </summary>
+    public IReadOnlyDictionary<string, ParameterSchema>? ItemProperties { get; init; }
+
     /// <summary>True when this parameter is a dictionary (its values are typed by <see cref="Values"/>).</summary>
     public bool IsMap => Values is not null;
 
@@ -224,6 +232,11 @@ public record ParameterSchema(
         {
             var items = new Dictionary<string, object> { ["type"] = ItemsType };
             if (ItemsFormat != null) items["format"] = ItemsFormat;
+            if (ItemProperties is { Count: > 0 })
+            {
+                items["properties"] = ItemProperties.ToDictionary(p => p.Key, p => (object)p.Value.ToDocument());
+                items["required"] = ItemProperties.Where(p => p.Value.Required).Select(p => p.Key).ToList();
+            }
             doc["items"] = items;
         }
         if (Values != null)

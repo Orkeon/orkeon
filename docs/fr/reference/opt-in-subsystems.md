@@ -66,7 +66,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
-| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
+| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL, une ligne entière à la fois, chaque tour à part | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement ; `orkeon-repl` l'appelle quand ses réglages portent une section `Plugins`, aucun autre binaire livré ne le fait) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
 | Fournisseurs de mémoire externes (Redis, SQLite, ChromaDB, Pinecone, LanceDB) + migration | Un type — `Memory:Provider`, le `memoryProvider:` d'une crew, `Orkeon:Rag:Provider` — plus la section hôte de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), toutes liées par `AddOrkeonInfrastructure()` ; `MemoryProviderFactory` distribue une instance partagée par type, qui se connecte au premier usage. `AddOrkeonRedisMemory(configuration)` fait de Redis l'`IMemoryProvider` de l'application ; `AddOrkeonLanceDb`/`AddOrkeonChromaDb`/`AddOrkeonPinecone(configuration)` exposent le provider partagé par sa classe (les deux dernières sont appelées par `AddOrkeonInfrastructure(configuration)` quand leur section existe) · `AddOrkeonMemoryMigration()` | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | Bêta |
@@ -600,11 +600,19 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé.
 - **Effet** : enregistre `ConsoleLlmDeltaSink` comme `ILlmDeltaSink`. Quand un sink
   est présent et que le provider LLM streame (`IStreamingLlmProvider`), la boucle
-  scriptée `ctx.llm.act` bascule sur le chemin SSE et chaque delta de contenu est
-  écrit incrémentalement vers l'`IConsoleAdapter` de l'hôte — le REPL rend les
-  tokens au fil de leur arrivée sans que le script passe `onDelta`. Les tours qui ne
-  streament aucun contenu visible (appels d'outils purs) n'émettent rien. Le sink
-  compose avec un `onDelta` côté script (les deux reçoivent chaque delta).
+  scriptée `ctx.llm.act` bascule sur le chemin SSE et chaque delta de contenu atteint
+  l'`IConsoleAdapter` de l'hôte au fil de son arrivée — le REPL rend la réponse sans
+  que le script passe `onDelta`. Le sink écrit une ligne entière à la fois : chaque
+  tour (`ILlmDeltaSink.BeginTurn`) tient son propre tampon de ligne, une ligne est
+  écrite une fois complète et la fin du tour écrit ce qui reste, de sorte que deux
+  acts qui streament en même temps — deux sous-exécutions `runAgent` en arrière-plan,
+  les tâches d'une vague parallèle de crew — ne s'écrivent jamais l'un dans l'autre
+  (#211). Un tour qui s'exécute sous une instance de commande préfixe ses lignes du
+  ticket de l'instance (`[t2] `), comme les lignes de complétion ; une tâche de crew
+  ajoute son id (`[t2 task-1] `) ; l'act de la commande de premier plan écrit des lignes
+  nues. Les tours qui ne streament aucun contenu visible (appels d'outils purs)
+  n'émettent rien. Le sink compose avec un `onDelta` côté script (les deux reçoivent
+  chaque delta).
 - **Défaut rétro-compatible** : flag absent → aucun sink enregistré → `act` conserve
   son rendu bufferisé (identique à l'octet près), les scripts peuvent toujours
   streamer via `onDelta`.

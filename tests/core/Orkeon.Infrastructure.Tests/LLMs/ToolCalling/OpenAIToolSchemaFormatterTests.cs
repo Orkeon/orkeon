@@ -137,6 +137,43 @@ public class OpenAIToolSchemaFormatterTests
     }
 
     [Fact]
+    public void PublishesTheItemsShape_WhenAnArrayHoldsObjects()
+    {
+        // #210: the operations of edit_batch carry their properties and the required ones.
+        var schema = new ToolSchema(
+            "edit_batch",
+            "Edit",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["operations"] = new("array", "The operations", Required: true, ItemsType: "object")
+                {
+                    ItemProperties = new Dictionary<string, ParameterSchema>
+                    {
+                        ["kind"] = new("string", "What to do", Required: true, Enum: ["node_replace", "node_insert"]),
+                        ["path"] = new("string", "The file", Required: true),
+                        ["position"] = new("string", "Where", Required: false),
+                    },
+                },
+            });
+
+        var result = _formatter.FormatToolsForPayload([schema]);
+
+        var tools = (List<Dictionary<string, object>>)result["tools"];
+        var function = (Dictionary<string, object>)tools[0]["function"];
+        var parameters = (Dictionary<string, object>)function["parameters"];
+        var properties = (Dictionary<string, object>)parameters["properties"];
+        var operations = (Dictionary<string, object>)properties["operations"];
+        var items = (Dictionary<string, object>)operations["items"];
+        Assert.Equal("object", items["type"]);
+        var itemProperties = (Dictionary<string, object>)items["properties"];
+        Assert.Equal(["kind", "path", "position"], itemProperties.Keys.Order().ToArray());
+        var kind = (Dictionary<string, object>)itemProperties["kind"];
+        Assert.Equal("What to do", kind["description"]);
+        Assert.Equal(["node_replace", "node_insert"], (IReadOnlyList<object>)kind["enum"]);
+        Assert.Equal(["kind", "path"], (List<string>)items["required"]);
+    }
+
+    [Fact]
     public void SetsRequiredList_OnlyForRequiredParams()
     {
         // Arrange

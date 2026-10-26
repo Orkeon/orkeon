@@ -11,6 +11,7 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record NodeReadRequest
 {
+    [FieldSchema(Description = "Path of the file holding the member, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")]
     public string Path { get; init; } = "";
 

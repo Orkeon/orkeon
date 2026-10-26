@@ -7,8 +7,17 @@ namespace Orkeon.ConsoleApp.Replay;
 /// <c>/replay &lt;file&gt;</c>: replays a file in the open session, line after line as if typed, then hands the
 /// keyboard back — always interactive. Refused while a replay runs (a replay file that replays is one).
 /// </summary>
-internal sealed class ReplayCommand(ReplayConsoleAdapter replay, IFileSystemService fileSystem) : IInteractiveCommand
+/// <remarks>
+/// The replay console is taken lazily, at the first execution, never at construction: this command is one of
+/// the universal commands, which the console's completion reads, and the console decorator is the replay's own
+/// (#212: taken at construction, the console that is built resolves the completion, which resolves this command,
+/// which resolves the console being built — the start then hangs with stdin a terminal, where the line editor
+/// or the TUI takes the completion; stdin redirected takes the dumb adapter, which does not).
+/// </remarks>
+internal sealed class ReplayCommand(Func<ReplayConsoleAdapter> replay, IFileSystemService fileSystem) : IInteractiveCommand
 {
+    private readonly Func<ReplayConsoleAdapter> _replay = replay ?? throw new ArgumentNullException(nameof(replay));
+
     /// <inheritdoc />
     public string Name => "replay";
 
@@ -24,6 +33,7 @@ internal sealed class ReplayCommand(ReplayConsoleAdapter replay, IFileSystemServ
         ArgumentNullException.ThrowIfNull(context);
         if (context.Args.Count == 0)
             return CommandResult.Fail("usage: /replay <file>");
+        var replay = _replay();
         if (replay.IsActive)
             return CommandResult.Fail("a replay is already running");
 

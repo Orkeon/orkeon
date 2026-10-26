@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
@@ -10,13 +11,28 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record NodeEnsureRequest
 {
+    [FieldSchema(Description = "The intent operation.", Enum = new[] { "ensure_using", "ensure_import", "ensure_field", "ensure_member", "ensure_section", "insert_under_heading", "replace_mermaid" }, Example = "ensure_using")]
     [JsonPropertyName("op")] public string Op { get; init; } = "";
+
+    [FieldSchema(Description = "Path of the file to edit, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")] public string Path { get; init; } = "";
+
+    [FieldSchema(Description = "Selector of the type (ensure_field, ensure_member) or of the Markdown section (insert_under_heading, replace_mermaid), as node_outline lists it.", Example = "Demo.Calc")]
     [JsonPropertyName("selector")] public string? Selector { get; init; }
+
+    [FieldSchema(Description = "The namespace or module to import (ensure_using, ensure_import), or the heading path to create (ensure_section).", Example = "System.Text")]
     [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [FieldSchema(Description = "The module an import comes from, for TypeScript or JavaScript (ensure_import).", Example = "./calc")]
     [JsonPropertyName("module")] public string? Module { get; init; }
+
+    [FieldSchema(Description = "The member to add (ensure_field, ensure_member), the text to append (insert_under_heading) or the new fence body (replace_mermaid).")]
     [JsonPropertyName("text")] public string? Text { get; init; }
+
+    [FieldSchema(Description = "0-based index of the mermaid fence to replace in the section (replace_mermaid).", Example = 0)]
     [JsonPropertyName("index")] public int? Index { get; init; }
+
+    [FieldSchema(Description = "Heading level of the section to create (ensure_section); the parent's plus one when omitted.", Example = 2)]
     [JsonPropertyName("level")] public int? Level { get; init; }
 }
 

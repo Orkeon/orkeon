@@ -112,6 +112,12 @@ public sealed class AnthropicToolSchemaFormatter : IToolSchemaFormatter
             var items = new Dictionary<string, object> { ["type"] = param.ItemsType };
             if (param.ItemsFormat is not null)
                 items["format"] = param.ItemsFormat;
+            // An array of objects publishes its items' shape (#210): their properties and the required ones.
+            if (param.ItemProperties is { Count: > 0 })
+            {
+                items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameterProperty(p.Value));
+                items["required"] = param.ItemProperties.Where(p => p.Value.Required).Select(p => p.Key).ToList();
+            }
             prop["items"] = items;
         }
 

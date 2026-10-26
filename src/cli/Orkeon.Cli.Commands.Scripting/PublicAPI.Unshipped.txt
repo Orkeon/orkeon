@@ -53,3 +53,4 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.CommandCompletionFailedEventArgs(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance, string! error) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Error.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
+Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!

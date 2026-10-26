@@ -681,6 +681,9 @@ internal sealed class ChatClientAgentLoop
         var agentRole = string.IsNullOrEmpty(call.AgentId) ? null : call.AgentId;
         var updates = new List<ChatResponseUpdate>();
         var sank = false;
+        // The turn's own sink, labelled with the task (#211): the tasks of a parallel wave stream at once,
+        // and the host keeps their output apart.
+        var turn = _deltaSink?.BeginTurn(taskId);
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages, options, cancellationToken).ConfigureAwait(false))
         {
             updates.Add(update);
@@ -695,9 +698,9 @@ internal sealed class ChatClientAgentLoop
                 AgentRole = agentRole,
                 Text = text,
             });
-            if (_deltaSink is not null)
+            if (turn is not null)
             {
-                _deltaSink.OnDelta(text);
+                turn.OnDelta(text);
                 sank = true;
             }
         }
@@ -705,7 +708,7 @@ internal sealed class ChatClientAgentLoop
         // The sink's turn boundary, only after a turn that rendered something: a turn that only
         // called tools leaves the console as it was.
         if (sank)
-            _deltaSink!.OnTurnCompleted();
+            turn!.OnTurnCompleted();
 
         return updates.ToChatResponse();
     }

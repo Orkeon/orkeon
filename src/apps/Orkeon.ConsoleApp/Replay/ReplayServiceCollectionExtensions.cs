@@ -49,7 +49,11 @@ internal static class ReplayServiceCollectionExtensions
         services.AddSingleton<IConsoleAdapter>(sp => sp.GetRequiredService<ReplayConsoleAdapter>());
         services.AddSingleton<ICommandOutcomeObserver>(sp => sp.GetRequiredService<ReplayConsoleAdapter>());
 
-        services.AddSingleton<ReplayCommand>();
+        // The command takes the replay console lazily: the console's completion (the line editor's, the TUI's)
+        // reads the universal commands, and this command is one of them (#212).
+        services.AddSingleton(sp => new ReplayCommand(
+            () => sp.GetRequiredService<ReplayConsoleAdapter>(),
+            sp.GetRequiredService<Orkeon.Domain.FileSystem.IFileSystemService>()));
         services.AddSingleton(sp => new DefaultCommandRegistry(
             sp.GetRequiredService<HelpCommand>(),
             sp.GetRequiredService<ExitCommand>(),

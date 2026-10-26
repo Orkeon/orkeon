@@ -1500,6 +1500,9 @@ public sealed partial class JsLlmFacade
     {
         LlmResponse? final = null;
         var sankDeltas = false;
+        // The turn's own sink (#211): two acts streaming at once each hold one, so the host keeps their
+        // output apart. The act knows no label; the host's sink reads the command it runs under, when any.
+        var turn = _deltaSink?.BeginTurn(null);
         await foreach (var ev in provider.ChatStreamingAsync(messages, cfg, _ct).ConfigureAwait(false))
         {
             if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
@@ -1507,9 +1510,9 @@ public sealed partial class JsLlmFacade
                 // An abandoned run stops mid-stream: leaving the enumeration disposes it, and
                 // with it the provider's HTTP read.
                 session.ThrowIfAborted();
-                if (_deltaSink is not null)
+                if (turn is not null)
                 {
-                    _deltaSink.OnDelta(ev.Delta);
+                    turn.OnDelta(ev.Delta);
                     sankDeltas = true;
                 }
                 session.OfferDelta(ev.Delta);
@@ -1520,7 +1523,7 @@ public sealed partial class JsLlmFacade
             }
         }
         if (sankDeltas)
-            _deltaSink!.OnTurnCompleted();
+            turn!.OnTurnCompleted();
         return final ?? new LlmResponse { Content = "" };
     }
 

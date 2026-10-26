@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
@@ -10,21 +11,43 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record EditBatchOperation
 {
+    [FieldSchema(Description = "The operation: node_replace, node_insert or an intent operation.", Enum = new[] { "node_replace", "node_insert", "ensure_using", "ensure_import", "ensure_field", "ensure_member", "ensure_section", "insert_under_heading", "replace_mermaid" }, Example = "node_replace")]
     [JsonPropertyName("kind")] public string Kind { get; init; } = "";
+
+    [FieldSchema(Description = "Path of the file to edit, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")] public string Path { get; init; } = "";
+
+    [FieldSchema(Description = "Selector of the node (node_replace), of the anchor (node_insert), of the type (ensure_field, ensure_member) or of the Markdown section, as node_outline lists it.", IsRequired = false, Example = "Demo.Calc.Add(int)")]
     [JsonPropertyName("selector")] public string Selector { get; init; } = "";
+
+    [FieldSchema(Description = "SHA-256 of the node's current text, as node_read returned it; required by node_replace.")]
     [JsonPropertyName("expected_hash")] public string? ExpectedHash { get; init; }
+
+    [FieldSchema(Description = "Where the text goes relative to the anchor; required by node_insert.", Enum = new[] { "inside", "before", "after" }, Example = "inside")]
     [JsonPropertyName("position")] public string? Position { get; init; }
+
+    [FieldSchema(Description = "The replacement, the insert, the member to add, the text to append or the new fence body.", IsRequired = false)]
     [JsonPropertyName("text")] public string Text { get; init; } = "";
+
+    [FieldSchema(Description = "The namespace or module to import (ensure_using, ensure_import), or the heading path to create (ensure_section).", Example = "System.Text")]
     [JsonPropertyName("name")] public string? Name { get; init; }
+
+    [FieldSchema(Description = "The module an import comes from, for TypeScript or JavaScript (ensure_import).", Example = "./calc")]
     [JsonPropertyName("module")] public string? Module { get; init; }
+
+    [FieldSchema(Description = "0-based index of the mermaid fence to replace in the section (replace_mermaid).", Example = 0)]
     [JsonPropertyName("index")] public int? Index { get; init; }
+
+    [FieldSchema(Description = "Heading level of the section to create (ensure_section).", Example = 2)]
     [JsonPropertyName("level")] public int? Level { get; init; }
 }
 
 public sealed record EditBatchRequest
 {
+    [FieldSchema(Description = "The operations, applied as one transaction; those on one file apply in order, each on the bytes the previous one produced.")]
     [JsonPropertyName("operations")] public IReadOnlyList<EditBatchOperation> Operations { get; init; } = [];
+
+    [FieldSchema(Description = "What refuses the batch: 'parse' when an operation introduces a parse error, 'build' when dotnet build on the project above the edited files is red too.", IsRequired = false, Default = "parse", Enum = new[] { "parse", "build" }, Example = "parse")]
     [JsonPropertyName("validate")] public string Validate { get; init; } = "parse";
 }
 

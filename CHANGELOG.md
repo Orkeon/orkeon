@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the interactive REPL starts again when stdin is a terminal (#212)
+
+On `main` after the replay (#206), `orkeon-repl` hung after its start lines whenever stdin was a terminal, TUI and
+`--ui plain` alike (a black screen eating Ctrl-C, every thread idle); stdin redirected (`--replay`, a pipe) went on.
+The cause was a cycle in the REPL's services: the console the replay decorates is, on a terminal, the line editor or
+the TUI, which takes the host's completion, which reads the universal commands, `/replay` among them, which took the
+replay console being built. `/replay` now takes the console at its first execution, and a test resolves the terminal
+console over the full chain.
+
+### Fixed — concurrent acts no longer interleave on the console; their lines carry the act's ticket (#211)
+
+With `Orkeon:Cli:ConsoleStreaming:Enabled`, two acts streaming at once (two background `runAgent` sub-runs, the tasks
+of a parallel crew wave) wrote their deltas into one another character by character. `ConsoleLlmDeltaSink` now
+renders one whole line at a time: each turn holds its own line buffer, a line is written once complete, under one
+lock, and the turn's end writes what is left. A turn that runs under a command instance (a background command, a
+`runAgent` sub-run) prefixes its lines with the instance's ticket, `[t2] `, as the completion lines are; a crew task
+adds its id (`[t2 task-1] `); the foreground command's act writes bare lines as before. Token-by-token rendering
+becomes line-by-line.
+
+**API:** `ILlmDeltaSink.BeginTurn(label)` (default: the sink itself) opens one streamed turn; the scripted act loop
+and the crews' chat-client loop stream each turn through the sink it returns, the latter labelled with the task id.
+A sink that records or counts needs no change.
+
+### Fixed — the structural tools publish their parameter schema (#210)
+
+`edit_batch`, `node_ensure`, `node_insert`, `node_outline` and `node_replace` sent the model an empty parameter
+schema (`{"type":"object","properties":{}}`), and `node_read` published its `selector` only: the model learnt the
+arguments from the description alone and guessed (`node_outline {"selector": …}` without `path`, `edit_batch` without
+`operations`). Their request records now carry `[FieldSchema]` on every argument — `path` required on the node tools,
+`op` and `position` with their enums, `operations` required on `edit_batch` with `validate` (`parse` | `build`,
+default `parse`) — and a call missing a required argument is refused before the tool runs, with the argument's name
+(`Required parameter 'path' is missing`).
+
+**API:** `ParameterSchema.ItemProperties` (Orkeon.Domain) describes the items of an array of objects; the schema
+generator fills it from the item record (its `[FieldSchema]` when present, the C# types and nullability otherwise),
+and the OpenAI and Anthropic formatters publish it as the items' `properties` and `required`. Every tool whose request
+holds a list of its own records gains the items' shape in its definition.
+
 ### Added — `orkeon-repl --replay <file>`: replay a session, line after line
 
 `orkeon-repl --replay <file>` feeds the lines of a file to the REPL as if typed (blank and `#` lines skipped, a
