@@ -43,14 +43,13 @@
           <Border Style="{StaticResource Card}" Margin="0,0,0,12">
             <StackPanel>
               <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnDanger}" VerticalAlignment="Top"
+                <!-- C01 (R06): the row leaves the document only at «Save» (MarkDirty), so the
+                     removal is the neutral secondary with ×, like an allowed folder's. -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
+                        controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x"
                         Command="{Binding DataContext.RemoveServerCommand, RelativeSource={RelativeSource AncestorType=views:McpView}}"
-                        CommandParameter="{Binding}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Studio.Settings.McpRemove], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
+                        CommandParameter="{Binding}"
+                        Content="{Binding [Studio.Settings.McpRemove], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel>
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5"
                              Text="{Binding [Studio.Settings.McpId], Source={x:Static services:I18n.Instance}}"/>

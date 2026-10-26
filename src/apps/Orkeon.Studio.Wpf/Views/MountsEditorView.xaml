@@ -50,12 +50,11 @@
               <TextBlock Text="{Binding [Studio.Settings.Add], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Button>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding RemoveMountCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <!-- C01 (R06): a removal from the list holds only until «Save», so it is the neutral
+               secondary with ×, never the danger outline. -->
+          <Button Style="{StaticResource BtnSecondary}" Command="{Binding RemoveMountCommand}"
+                  controls:ButtonIcon.Kind="x"
+                  Content="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 
         <ListBox ItemsSource="{Binding Mounts}" SelectedItem="{Binding SelectedMount}"
@@ -223,9 +222,9 @@
                   <DockPanel Margin="0,0,0,7">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="8,0,0,0"
                             Command="{Binding DataContext.RemoveOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}">
-                      <controls:LucideIcon Kind="trash-2" Size="13"/>
-                    </Button>
+                            CommandParameter="{Binding}" controls:ButtonIcon.Kind="x"
+                            ToolTip="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"
+                            AutomationProperties.Name="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
                     <ComboBox DockPanel.Dock="Right" Width="200" Margin="8,0,0,0"
                               ItemsSource="{Binding RightsChoices}"
                               SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
