@@ -57,3 +57,7 @@ Orkeon.Cli.Abstractions.Runners.ICommandOutcomeObserver
 Orkeon.Cli.Abstractions.Runners.ICommandOutcomeObserver.OnCommandOutcome(Orkeon.Cli.Abstractions.Runners.CommandOutcome! outcome) -> void
 virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnCommandOutcome(Orkeon.Cli.Abstractions.Runners.CommandOutcome! outcome) -> void
 Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.PendingChanged -> System.EventHandler?
+Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput
+const Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.MaxLength = 60 -> int
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(Orkeon.Cli.Abstractions.Runners.PendingToolApproval! approval) -> string!
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(string? arguments) -> string!

@@ -32,3 +32,16 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs.Instance.get -> 
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceRegistered -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceTerminated -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.HasRunning.get -> bool
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Approvals = "approvals" -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApprovals
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApprovals.list() -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval![]!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.ScriptPendingApproval() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.taskId.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.taskId.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.command.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.command.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.init -> void

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Runtime;
+using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 
@@ -33,6 +35,39 @@ public sealed class DefaultScriptServiceWhitelistTests
 
         Assert.True(built.Entries.ContainsKey(ScriptServiceKeys.FileSystem));
         Assert.True(built.Entries.ContainsKey(ScriptServiceKeys.Tools));
+    }
+
+    [Fact]
+    public void Default_whitelist_exposes_approvals_as_an_optional_entry()
+    {
+        var built = DefaultScriptServiceWhitelist.Build().Build();
+
+        Assert.True(built.Entries.ContainsKey(ScriptServiceKeys.Approvals));
+        Assert.Contains(ScriptServiceKeys.Approvals, built.Optional);
+    }
+
+    [Fact]
+    public void Approvals_resolve_to_the_read_only_view_only_when_the_host_watches_them()
+    {
+        using var bare = new ServiceCollection().BuildServiceProvider();
+        var absent = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), bare);
+        Assert.False(absent.has(ScriptServiceKeys.Approvals));
+
+        var watch = new FakeToolApprovalWatch();
+        watch.Pending.Add(new PendingToolApproval("shell_command", "{\"command\":\"npm test\"}", "t1", "dev-batches"));
+        using var watched = new ServiceCollection().AddSingleton<IToolApprovalWatch>(watch).BuildServiceProvider();
+        var present = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), watched);
+
+        Assert.True(present.has(ScriptServiceKeys.Approvals));
+        var approvals = Assert.IsType<ScriptPendingApprovals>(present.get(ScriptServiceKeys.Approvals));
+        var approval = Assert.Single(approvals.list());
+        Assert.Equal("t1", approval.taskId);
+        Assert.Equal("dev-batches", approval.command);
+        Assert.Equal("shell_command", approval.tool);
+        Assert.Equal("{\"command\":\"npm test\"}", approval.input);
+
+        watch.Pending.Clear();
+        Assert.Empty(approvals.list());
     }
 
     [Fact]
