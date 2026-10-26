@@ -85,8 +85,9 @@
          memory: none of them reads the disk again. There as soon as there is a team to find. -->
     <DockPanel Margin="0,-8,0,14"
                Visibility="{Binding IsEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
-      <Button DockPanel.Dock="Right" Margin="10,0,0,0" VerticalAlignment="Center"
-              Command="{Binding ToggleArchivesCommand}"
+      <!-- R10 (C07): the field, the order and Archives share one 40 px line. -->
+      <Button DockPanel.Dock="Right" Margin="8,0,0,0" VerticalAlignment="Center" controls:ButtonSize.Height="40"
+              Command="{Binding ToggleArchivesCommand}" controls:ButtonIcon.Kind="archive" Content="{Binding ArchivesLabel}"
               ToolTip="{Binding [Studio.Teams.ArchivesTip], Source={x:Static services:I18n.Instance}}"
               Visibility="{Binding HasArchives, Converter={StaticResource BooleanToVisibility}}">
         <Button.Style>
@@ -100,13 +101,9 @@
             </Style.Triggers>
           </Style>
         </Button.Style>
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0"
-                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-          <TextBlock Text="{Binding ArchivesLabel}"/>
-        </StackPanel>
       </Button>
-      <Border DockPanel.Dock="Right" Style="{StaticResource SegmentedGroup}" Margin="10,0,0,0"
+      <Border DockPanel.Dock="Right" Style="{StaticResource SegmentedGroup}" Margin="8,0,0,0"
+              Height="40" CornerRadius="14" Padding="2"
               ToolTip="{Binding [Studio.Teams.SortTip], Source={x:Static services:I18n.Instance}}">
         <StackPanel Orientation="Horizontal">
           <Button Command="{Binding SortByActivityCommand}"
@@ -338,7 +335,8 @@
                 </TextBlock>
                 <!-- méta : n agents · programmation · dernière exécution —
                      ONE « · »-joined line, the launcher's recipe (v3 F-02) -->
-                <TextBlock Style="{StaticResource MetaLine}" Margin="0,4,0,0" Text="{Binding MetaLine}"/>
+                <!-- R11 (D06): words in the UI font, meta size and ink — mono is for machine values. -->
+                <TextBlock Style="{StaticResource MetaText}" Margin="0,4,0,0" Text="{Binding MetaLine}"/>
                 <!-- STUDIO-73 (D6): the model the team runs on, and « Change the model » on the card — the
                      editor opens in place, like the rename one: the box « Use the default model (X) »,
                      the list of settings, Save and Cancel. An archived team keeps its model. -->
