@@ -442,8 +442,25 @@
                folders tab carries the amber dot; « Stop » stays alone at the end of the line. -->
           <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Text="{Binding SessionStateLabel}"
                      Visibility="{Binding HasSessionState, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- B08: «Brouillon enregistré à 09:12 · moteur …» — the dot only between two parts shown. -->
+          <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="·">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource MetaText}">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                      <Condition Binding="{Binding HasSessionState}" Value="True"/>
+                      <Condition Binding="{Binding HasEngineVersion}" Value="True"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </MultiDataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
           <!-- The engine build that drives the session: a stale binary must not look like a working one. -->
-          <TextBlock Style="{StaticResource MetaText}" Margin="9,0,0,0" VerticalAlignment="Center"
+          <TextBlock Style="{StaticResource MetaText}" Margin="6,0,0,0" VerticalAlignment="Center"
                      Text="{Binding EngineLabel}"
                      Visibility="{Binding HasEngineVersion, Converter={StaticResource BooleanToVisibility}}"/>
           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="10,0,0,0"
