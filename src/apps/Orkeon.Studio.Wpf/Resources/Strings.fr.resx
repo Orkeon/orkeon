@@ -2167,7 +2167,7 @@
     <value>Commande composée depuis l'équipe et les options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODE</value>
+    <value>Type d'exécution</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Envoyés</value>

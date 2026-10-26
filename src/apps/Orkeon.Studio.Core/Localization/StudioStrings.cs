@@ -2820,7 +2820,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunMountsCount] = "{0} {0:plural:folder|folders} mounted",
         [StudioStringKeys.RunEngineMissing] = "not found",
         [StudioStringKeys.RunCommandFooter] = "Command composed from the team and the options.",
-        [StudioStringKeys.RunModeLabel] = "MODE",
+        [StudioStringKeys.RunModeLabel] = "Run type",
         [StudioStringKeys.RunFigSent] = "Sent",
         [StudioStringKeys.RunFigReceived] = "Received",
         [StudioStringKeys.RunFigResult] = "Result in",

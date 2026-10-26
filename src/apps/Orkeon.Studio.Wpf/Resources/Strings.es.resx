@@ -3853,7 +3853,7 @@
     <value>Comando compuesto a partir del equipo y las opciones.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODO</value>
+    <value>Tipo de ejecución</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Enviados</value>

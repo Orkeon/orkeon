@@ -2167,7 +2167,7 @@
     <value>Command composed from the team and the options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODE</value>
+    <value>Run type</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Sent</value>

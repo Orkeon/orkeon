@@ -3853,7 +3853,7 @@
     <value>Befehl aus dem Team und den Optionen zusammengesetzt.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODUS</value>
+    <value>Ausführungsart</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Gesendet</value>
