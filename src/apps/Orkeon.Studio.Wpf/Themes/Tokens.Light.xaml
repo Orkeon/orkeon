@@ -12,18 +12,22 @@
   <!-- editable fields (T-31): a field must not share the sunk paper of the read-only wells,
        or nothing says «you can type here». The shadow is the inset hairline under the top edge. -->
   <SolidColorBrush x:Key="FieldBrush"       Color="#FFFFFF"/>
-  <SolidColorBrush x:Key="FieldLineBrush"   Color="#9FB1B0"/>
+  <!-- hrm R10: the field border of the palette (#C9D3D2). FieldBorderBrush is the name the
+       harmonised styles use; FieldLineBrush stays as an alias for the views not migrated yet. -->
+  <SolidColorBrush x:Key="FieldBorderBrush" Color="#C9D3D2"/>
+  <SolidColorBrush x:Key="FieldLineBrush"   Color="#C9D3D2"/>
   <SolidColorBrush x:Key="FieldShadowBrush" Color="#1416293B"/>
 
   <!-- text -->
   <SolidColorBrush x:Key="InkBrush"         Color="#16293B"/>
-  <SolidColorBrush x:Key="InkMutedBrush"    Color="#46586A"/>
-  <SolidColorBrush x:Key="InkFaintBrush"    Color="#7A8A98"/>
+  <SolidColorBrush x:Key="InkMutedBrush"    Color="#3E5163"/>
+  <!-- hrm R11: the meta ink of the palette. -->
+  <SolidColorBrush x:Key="InkFaintBrush"    Color="#5B6B78"/>
   <SolidColorBrush x:Key="InkDisabledBrush" Color="#A9B5BF"/>
 
   <!-- lines -->
   <SolidColorBrush x:Key="LineBrush"        Color="#DCE4E3"/>
-  <SolidColorBrush x:Key="LineStrongBrush"  Color="#C6D2D1"/>
+  <SolidColorBrush x:Key="LineStrongBrush"  Color="#C9D3D2"/>
   <SolidColorBrush x:Key="LineFaintBrush"   Color="#E8EDEC"/>
 
   <!-- accent: the charter teal (refonte R1, 2026-10). The former ocean blue stays as
@@ -31,29 +35,41 @@
   <SolidColorBrush x:Key="AccentBrush"       Color="#1E7A82"/>
   <SolidColorBrush x:Key="AccentHoverBrush"  Color="#186670"/>
   <SolidColorBrush x:Key="AccentActiveBrush" Color="#134F58"/>
-  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#E7F1F2"/>
+  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#E6F1F2"/>
+  <!-- hrm R04/R12: the dark ink of the tide tone, text on a sky ground (assistant active, sky badge). -->
+  <SolidColorBrush x:Key="AccentInkBrush"    Color="#186670"/>
   <SolidColorBrush x:Key="AccentFgBrush"     Color="#F2FAFA"/>
   <SolidColorBrush x:Key="SecondaryBrush"    Color="#2A4A66"/>
   <SolidColorBrush x:Key="MarkBrush"         Color="#1E7A82"/>
 
-  <!-- status -->
-  <SolidColorBrush x:Key="SuccessBrush"     Color="#2E8A6F"/>
-  <SolidColorBrush x:Key="SuccessWeakBrush" Color="#E2F0EB"/>
-  <SolidColorBrush x:Key="WarningBrush"     Color="#C68A2A"/>
-  <SolidColorBrush x:Key="WarningWeakBrush" Color="#F8EED5"/>
-  <SolidColorBrush x:Key="DangerBrush"      Color="#C0473B"/>
-  <SolidColorBrush x:Key="DangerFgBrush"   Color="#FFFFFF"/>
-  <SolidColorBrush x:Key="DangerWeakBrush"  Color="#F7E3E0"/>
-  <SolidColorBrush x:Key="InfoBrush"        Color="#2A6E8C"/>
-  <SolidColorBrush x:Key="InfoWeakBrush"    Color="#E1EEF3"/>
-  <!-- Refonte R4: the Assistant form, for the commands that ask the model; blue on purpose, apart from the accent. -->
-  <SolidColorBrush x:Key="AssistantBrush"      Color="#1F5B7A"/>
-  <SolidColorBrush x:Key="AssistantWeakBrush"  Color="#D6E8F5"/>
-  <SolidColorBrush x:Key="AssistantLineBrush"  Color="#9CC3DC"/>
-  <SolidColorBrush x:Key="AssistantHoverBrush" Color="#C8DFF0"/>
-  <SolidColorBrush x:Key="AssistantPressedBrush" Color="#B9D5EA"/>
-  <SolidColorBrush x:Key="SandBrush"        Color="#BB8628"/>
-  <SolidColorBrush x:Key="SandWeakBrush"    Color="#FBF3E2"/>
+  <!-- status (hrm R07/R08/R12/R20). Per tone: Brush = icon and stroke, Weak = tinted ground,
+       Border = the 1 px edge of a banner, a bit darker than the ground, Ink = text on the ground.
+       WarningBrush and SandBrush keep their former value for the views not migrated yet: new
+       code takes WarningIconBrush for an icon and WarningInkBrush for text. -->
+  <SolidColorBrush x:Key="SuccessBrush"       Color="#2E8A6F"/>
+  <SolidColorBrush x:Key="SuccessWeakBrush"   Color="#E2F0EB"/>
+  <SolidColorBrush x:Key="SuccessBorderBrush" Color="#BFDDD1"/>
+  <SolidColorBrush x:Key="SuccessInkBrush"    Color="#1F6B55"/>
+  <SolidColorBrush x:Key="WarningBrush"       Color="#C68A2A"/>
+  <SolidColorBrush x:Key="WarningIconBrush"   Color="#D9A441"/>
+  <SolidColorBrush x:Key="WarningWeakBrush"   Color="#F8EED5"/>
+  <SolidColorBrush x:Key="WarningBorderBrush" Color="#EBD7A3"/>
+  <SolidColorBrush x:Key="WarningInkBrush"    Color="#7A4F0E"/>
+  <SolidColorBrush x:Key="DangerBrush"        Color="#C0473B"/>
+  <SolidColorBrush x:Key="DangerFgBrush"      Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="DangerWeakBrush"    Color="#F7E3E0"/>
+  <SolidColorBrush x:Key="DangerBorderBrush"  Color="#EBC3BD"/>
+  <SolidColorBrush x:Key="DangerInkBrush"     Color="#9E3227"/>
+  <!-- Info is the sky / tide tone (R07): a suggestion, never the sand. -->
+  <SolidColorBrush x:Key="InfoBrush"          Color="#1E7A82"/>
+  <SolidColorBrush x:Key="InfoWeakBrush"      Color="#E6F1F2"/>
+  <SolidColorBrush x:Key="InfoBorderBrush"    Color="#C3DEE1"/>
+  <!-- The 8 px state dot of a progress message (R08), neutral tone. -->
+  <SolidColorBrush x:Key="NeutralDotBrush"    Color="#8A99A5"/>
+  <!-- hrm R04: the former Assistant blue and its family are gone — off the palette.
+       The assistant button is a secondary button; its active state is sky + AccentInk. -->
+  <SolidColorBrush x:Key="SandBrush"          Color="#BB8628"/>
+  <SolidColorBrush x:Key="SandWeakBrush"      Color="#F8EED5"/>
 
   <!-- log console (same in both themes — it is always "deep ocean night") -->
   <SolidColorBrush x:Key="ConsoleBgBrush"    Color="#0B1822"/>
