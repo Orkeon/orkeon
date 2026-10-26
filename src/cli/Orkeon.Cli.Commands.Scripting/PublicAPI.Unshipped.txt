@@ -26,3 +26,9 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Depth.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.CommandDispatchService(Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory! directory, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry! registry, Microsoft.Extensions.Logging.ILogger<Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService!>? logger = null, Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker? progress = null, int maxChainDepth = 8) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
 override Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs.CommandInstanceEventArgs(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceRegistered -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceTerminated -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.HasRunning.get -> bool

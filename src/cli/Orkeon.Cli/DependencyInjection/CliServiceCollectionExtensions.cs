@@ -31,7 +31,12 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<HelpCommand>();
         services.AddSingleton<ExitCommand>();
         services.AddSingleton<ClearCommand>();
-        services.AddSingleton<DefaultCommandRegistry>();
+        // Built with the three universal commands only: the container must not pick the constructor that takes
+        // every IInteractiveCommand it holds. A host adds its built-ins by registering its own factory.
+        services.AddSingleton(sp => new DefaultCommandRegistry(
+            sp.GetRequiredService<HelpCommand>(),
+            sp.GetRequiredService<ExitCommand>(),
+            sp.GetRequiredService<ClearCommand>()));
         return services;
     }
 }

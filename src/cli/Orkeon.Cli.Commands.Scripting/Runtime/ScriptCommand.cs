@@ -100,7 +100,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
             if (!TryBuildArgs(context, out var argsObj, out var argsError))
-                return CommandResult.Continue($"Error: {argsError}");
+                return CommandResult.Fail($"Error: {argsError}");
 
             return _descriptor.Kind == CommandKind.Async
                 ? await ExecuteAsyncCommand(context, argsObj!, cancellationToken).ConfigureAwait(false)
@@ -127,7 +127,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         catch (Jint.Runtime.JavaScriptException jsEx)
         {
             LogSyncCommandThrew(jsEx, _descriptor.Name, _descriptor.SourceVirtualPath);
-            return CommandResult.Continue($"Error: {jsEx.Message}");
+            return CommandResult.Fail($"Error: {jsEx.Message}");
         }
 
         if (result.IsPromise())
@@ -139,7 +139,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogSyncCommandRejected(_descriptor.Name, rejected.RejectedValue);
-                return CommandResult.Continue($"Error: {rejected.RejectedValue}");
+                return CommandResult.Fail($"Error: {rejected.RejectedValue}");
             }
         }
 
@@ -159,7 +159,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             {
                 var msg = $"quota of {_descriptor.MaxConcurrent} instance(s) of '{_descriptor.Name}' reached";
                 _dispatch?.Registry.Register(_descriptor.Name, CommandInstanceKind.Async, "—", "—", Guid.Empty).Reject(msg);
-                return CommandResult.Continue($"Rejected: {msg}.");
+                return CommandResult.Fail($"Rejected: {msg}.");
             }
             gateAcquired = true;
         }
@@ -188,12 +188,12 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.JavaScriptException jsEx)
             {
                 LogAsyncDispatchThrew(jsEx, _descriptor.Name);
-                return CommandResult.Continue($"Error: {jsEx.Message}");
+                return CommandResult.Fail($"Error: {jsEx.Message}");
             }
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogAsyncDispatchRejected(_descriptor.Name, rejected.RejectedValue);
-                return CommandResult.Continue($"Error: {ConciseErrors.Message(rejected)}");
+                return CommandResult.Fail($"Error: {ConciseErrors.Message(rejected)}");
             }
 
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();

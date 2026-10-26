@@ -73,6 +73,11 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     }
 
     /// <inheritdoc />
+    public event EventHandler? PendingChanged;
+
+    private void RaisePendingChanged() => PendingChanged?.Invoke(this, EventArgs.Empty);
+
+    /// <inheritdoc />
     public Task<ToolApprovalDecision> RequestAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -93,6 +98,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         pending.Registration = cancellationToken.Register(() => Withdraw(pending, cancellationToken));
+        RaisePendingChanged();
         return pending.Completion.Task;
     }
 
@@ -148,6 +154,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
         foreach (var pending in answered)
             pending.Settle(decision);
+        RaisePendingChanged();
         return true;
     }
 
@@ -211,6 +218,8 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
         foreach (var pending in waiting)
             pending.Settle(ToolApprovalDecision.Deny);
+        if (waiting.Count > 0)
+            RaisePendingChanged();
     }
 
     private IConsoleAdapter Console => _console();
@@ -230,6 +239,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         pending.Completion.TrySetCanceled(cancellationToken);
+        RaisePendingChanged();
     }
 
     // Called under the lock: the question and its prompt reach the console in one piece.

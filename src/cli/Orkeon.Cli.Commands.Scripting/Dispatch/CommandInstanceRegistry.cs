@@ -38,12 +38,29 @@ public sealed class CommandInstanceRegistry
         {
             // Evict once an instance reaches a terminal state — otherwise the most recently
             // completed entry would never trigger the budget check.
-            TerminalObserver = _ => EvictIfNeeded(),
+            TerminalObserver = settled =>
+            {
+                EvictIfNeeded();
+                InstanceTerminated?.Invoke(this, new CommandInstanceEventArgs(settled));
+            },
         };
         _instances[ticket] = instance;
         EvictIfNeeded();
+        InstanceRegistered?.Invoke(this, new CommandInstanceEventArgs(instance));
         return instance;
     }
+
+    /// <summary>Raised once a new instance is registered, on the registering thread.</summary>
+    public event EventHandler<CommandInstanceEventArgs>? InstanceRegistered;
+
+    /// <summary>
+    /// Raised once an instance reaches a terminal state, on the thread that settled it: a completion signal
+    /// for whoever waits for the background work to end (a replay of the REPL), instead of polling.
+    /// </summary>
+    public event EventHandler<CommandInstanceEventArgs>? InstanceTerminated;
+
+    /// <summary>Whether an instance is still <see cref="CommandInstanceState.Running"/>.</summary>
+    public bool HasRunning => _instances.Values.Any(i => i.State == CommandInstanceState.Running);
 
     /// <summary>Returns the instance for <paramref name="ticket"/>, or <see langword="null"/>.</summary>
     public CommandInstance? Get(string ticket)

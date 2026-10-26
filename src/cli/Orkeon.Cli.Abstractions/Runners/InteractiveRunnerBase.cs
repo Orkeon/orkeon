@@ -230,6 +230,7 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         if (resolved is null)
         {
             await OnUnknownCommandAsync(trimmed, ct).ConfigureAwait(false);
+            ReportOutcome(new CommandOutcome(line, null, CommandOutcomeKind.Unknown, $"unknown command '{trimmed}'"));
             return (IterationAction.Continue, null);
         }
 
@@ -328,12 +329,14 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         {
             LogCommandCancelled(Logger, command.Name);
             Console.WriteLine($"  Command '{command.Name}' cancelled.");
+            ReportOutcome(new CommandOutcome(ctx.RawInput, command.Name, CommandOutcomeKind.Cancelled, $"command '{command.Name}' cancelled"));
             return (IterationAction.Continue, null);
         }
         catch (Exception ex)
         {
             LogCommandFailed(Logger, ex, command.Name);
             Console.WriteLine($"Error: {ex.Message}");
+            ReportOutcome(new CommandOutcome(ctx.RawInput, command.Name, CommandOutcomeKind.Failed, ex.Message));
             return (IterationAction.Continue, null);
         }
         finally
@@ -346,6 +349,12 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         if (!string.IsNullOrEmpty(result.Message))
             Console.WriteLine(result.Message);
 
+        ReportOutcome(new CommandOutcome(
+            ctx.RawInput,
+            command.Name,
+            result.Failed ? CommandOutcomeKind.Failed : CommandOutcomeKind.Succeeded,
+            result.Message));
+
         try
         {
             await OnAfterCommandAsync(command.Name, result, ct).ConfigureAwait(false);
@@ -356,6 +365,36 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         }
 
         return (result.ShouldExit ? IterationAction.Break : IterationAction.Continue, result);
+    }
+
+    /// <summary>
+    /// Called once per line resolved to a command — or to none —, after the command ended: succeeded, failed
+    /// (it threw, or returned <see cref="CommandResult.Fail"/>), cancelled while the loop goes on, or unknown.
+    /// Not called for an empty line, a line an interceptor took, or the end of the loop. The default tells
+    /// every <see cref="ICommandOutcomeObserver"/> of the runner's services (a replay stops at the first error).
+    /// </summary>
+    /// <param name="outcome">The outcome of the line.</param>
+    protected virtual void OnCommandOutcome(CommandOutcome outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        // GetService, not GetServices: a bare provider (a test's) answers null for the enumerable.
+        if (Services.GetService<IEnumerable<ICommandOutcomeObserver>>() is not { } observers)
+            return;
+        foreach (var observer in observers)
+            observer.OnCommandOutcome(outcome);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: an outcome hook that throws is logged and never stops the loop.")]
+    private void ReportOutcome(CommandOutcome outcome)
+    {
+        try
+        {
+            OnCommandOutcome(outcome);
+        }
+        catch (Exception ex)
+        {
+            LogOutcomeObserverFailed(Logger, ex, outcome.CommandName ?? outcome.Input);
+        }
     }
 
     /// <summary>A command resolved from user input, with its parsed arguments and the raw input line.</summary>
@@ -374,4 +413,7 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "OnAfterCommandAsync threw an exception after command '{Command}'")]
     static partial void LogAfterCommandFailed(ILogger logger, Exception ex, string command);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "OnCommandOutcome threw an exception after '{Command}'")]
+    static partial void LogOutcomeObserverFailed(ILogger logger, Exception ex, string command);
 }

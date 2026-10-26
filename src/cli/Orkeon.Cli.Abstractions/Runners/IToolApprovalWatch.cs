@@ -8,6 +8,12 @@ public interface IToolApprovalWatch
 {
     /// <summary>The questions waiting, the one the next answer settles first.</summary>
     IReadOnlyList<PendingToolApproval> Pending { get; }
+
+    /// <summary>
+    /// Raised after a question is asked, answered or withdrawn, outside any lock: a replay of the REPL waits on it
+    /// rather than polling <see cref="Pending"/>.
+    /// </summary>
+    event EventHandler? PendingChanged;
 }
 
 /// <summary>One tool approval waiting for the operator.</summary>

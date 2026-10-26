@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon-repl --replay <file>`: replay a session, line after line
+
+`orkeon-repl --replay <file>` feeds the lines of a file to the REPL as if typed (blank and `#` lines skipped, a
+relative path read against the working directory), waits before each line until no command instance runs — background
+crews included — or a question asks for the line (a tool-call approval, `human_input`), and stops at the first error
+with `replay stopped at line N: <cause>`. Alone it runs the plain console, echoes each line, writes the logs to stderr
+and exits `0` (every line passed), `1` (stopped on an error) or `2` (file missing or unreadable); with `--interactive`
+it hands the keyboard back. `/replay <file>` does the same inside a session. New `--log-level <level>`.
+
+**API:** `CommandResult.Fail(message)` and `CommandResult.Failed` (Orkeon.Cli.Abstractions) mark a command that
+failed; a scripted command's error, rejection or quota refusal now returns it — the message printed is unchanged.
+`InteractiveRunnerBase.OnCommandOutcome` and `ICommandOutcomeObserver` report each command's outcome;
+`IToolApprovalWatch.PendingChanged`, `CommandInstanceRegistry.InstanceRegistered` / `InstanceTerminated` /
+`HasRunning` signal the work in flight; `DefaultCommandRegistry` takes a host's own built-ins.
+
 ### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount (#199, #200)
 
 A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`, `directory_search`,

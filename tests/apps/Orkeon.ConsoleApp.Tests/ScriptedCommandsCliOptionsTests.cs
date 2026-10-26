@@ -50,6 +50,56 @@ public sealed class ScriptedCommandsCliOptionsTests
         Assert.Equal(folder, Path.GetFileName(resolved));
     }
 
+    [Theory]
+    [InlineData(new[] { "--replay", "demo.replay" }, "demo.replay")]
+    [InlineData(new[] { "--replay=demo.replay" }, "demo.replay")]
+    public void Replay_alone_runs_without_the_keyboard(string[] args, string file)
+    {
+        var options = ScriptedCommandsCliOptions.Parse(args);
+
+        Assert.Equal(file, options.ReplayFile);
+        Assert.False(options.ReplayInteractive);
+        Assert.True(options.ReplayNonInteractive);
+        Assert.Null(options.UsageError);
+    }
+
+    [Fact]
+    public void Replay_with_interactive_hands_the_keyboard_back()
+    {
+        var options = ScriptedCommandsCliOptions.Parse(["--replay", "demo.replay", "--interactive"]);
+
+        Assert.Equal("demo.replay", options.ReplayFile);
+        Assert.True(options.ReplayInteractive);
+        Assert.False(options.ReplayNonInteractive);
+        Assert.Null(options.UsageError);
+    }
+
+    [Fact]
+    public void Interactive_without_replay_is_a_usage_error()
+    {
+        var options = ScriptedCommandsCliOptions.Parse(["--interactive"]);
+
+        Assert.Null(options.ReplayFile);
+        Assert.NotNull(options.UsageError);
+        Assert.Contains("--replay", options.UsageError, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Replay_without_a_file_is_a_usage_error()
+        => Assert.NotNull(ScriptedCommandsCliOptions.Parse(["--replay"]).UsageError);
+
+    [Theory]
+    [InlineData("debug", Microsoft.Extensions.Logging.LogLevel.Debug)]
+    [InlineData("Warning", Microsoft.Extensions.Logging.LogLevel.Warning)]
+    public void Log_level_reads_the_level(string value, Microsoft.Extensions.Logging.LogLevel expected)
+        => Assert.Equal(expected, ScriptedCommandsCliOptions.Parse(["--log-level", value]).LogLevel);
+
+    [Theory]
+    [InlineData("loud")]
+    [InlineData("3")]
+    public void Log_level_refuses_an_unknown_level(string value)
+        => Assert.NotNull(ScriptedCommandsCliOptions.Parse(["--log-level", value]).UsageError);
+
     [Fact]
     public void Llm_log_is_off_without_either_flag()
         => Assert.Null(ScriptedCommandsCliOptions.Parse(["--mount", "/a:/workspace:rw"]).ResolvedLlmLogPath);
