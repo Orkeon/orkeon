@@ -334,7 +334,20 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<ValidationMessage> Validate()
     {
-        var messages = _validator.Validate(ToRawEntries(), RequireAtLeastOne);
+        // A row whose folder is not chosen yet has nothing the parser can read: its mount string
+        // carries an empty physical path, which the domain refuses with an exception TryParse
+        // then swallows, once per row and per analysis, at every keystroke. Such a row gets its
+        // own message here and never reaches the parser nor the disk probe.
+        var pending = Mounts.Where(mount => mount.IsParsed && string.IsNullOrWhiteSpace(mount.PhysicalPath)).ToList();
+        var entries = Mounts.Except(pending).Select(mount => mount.MountString).ToList();
+        var messages = new List<ValidationMessage>(_validator.Validate(entries, RequireAtLeastOne && pending.Count == 0));
+        foreach (var mount in pending)
+        {
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.MountPathEmpty,
+                string.Create(CultureInfo.InvariantCulture, $"No folder chosen yet for '{mount.VirtualPath}': pick one on this machine."),
+                mount.MountString));
+        }
 
         ValidationMessages.Clear();
         foreach (var message in messages)

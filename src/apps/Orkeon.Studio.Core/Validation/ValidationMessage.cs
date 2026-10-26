@@ -101,6 +101,13 @@ public static class ValidationCodes
     /// <summary>A mount's physical path does not exist on disk.</summary>
     public const string MountPathMissing = "STUDIO-MOUNT-PATH";
 
+    /// <summary>
+    /// A mount row whose folder is not chosen yet: an empty physical path. Said by the editor
+    /// itself, before the parser, which refuses such a row with an exception the editor would
+    /// otherwise raise and swallow at every keystroke.
+    /// </summary>
+    public const string MountPathEmpty = "STUDIO-MOUNT-PATH-EMPTY";
+
     /// <summary>Two mounts claim the same virtual path.</summary>
     public const string MountVirtualCollision = "STUDIO-MOUNT-COLLISION";
 

@@ -526,6 +526,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>Aucun dossier n'est autorisé pour l'instant : les agents ne voient aucun des vôtres. Une équipe qui ne lit ni n'écrit de fichier n'en a pas besoin.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>Une entrée de dossier est mal formée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>Un dossier autorisé n'existe pas sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve"><value>Ce dossier n'est pas encore choisi : choisissez-en un sur cette machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Deux dossiers partagent le même nom interne.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve"><value>Un identifiant de serveur MCP est inutilisable : lettres, chiffres, '.', '_' et '-' seulement.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve"><value>Un serveur MCP nomme un transport inconnu du moteur.</value></data>

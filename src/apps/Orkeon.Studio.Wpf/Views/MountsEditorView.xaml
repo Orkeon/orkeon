@@ -196,7 +196,9 @@
             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblPhysical], Source={x:Static services:I18n.Instance}}"/>
             <!-- B06 (R09): the path takes the whole column (it was cut at ~290 px beside its two
                  buttons), its full value in the tooltip; the buttons, same order, go under it. -->
-            <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"
+            <!-- Delay: the row is validated, and its folder probed on disk, when the typing pauses
+                 rather than at every character. -->
+            <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged, Delay=250}"
                      ToolTip="{Binding PhysicalPath, Mode=OneWay}" ToolTipService.ShowOnDisabled="True"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"

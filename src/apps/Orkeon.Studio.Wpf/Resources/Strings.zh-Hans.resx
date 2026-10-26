@@ -1443,6 +1443,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve">
     <value>有一个授权文件夹在这台机器上不存在。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve">
+    <value>尚未选择此文件夹：请在本机上选择一个。</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>两个文件夹使用了相同的内部名称。</value>
   </data>

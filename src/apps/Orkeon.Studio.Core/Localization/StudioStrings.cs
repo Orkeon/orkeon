@@ -3029,6 +3029,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
+        ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY"] = "This folder is not chosen yet: pick one on this machine.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION"] = "Two folders share the same internal name.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-ID"] = "An MCP server identifier is unusable: letters, digits, '.', '_' and '-' only.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT"] = "An MCP server names a transport the runtime does not know.",

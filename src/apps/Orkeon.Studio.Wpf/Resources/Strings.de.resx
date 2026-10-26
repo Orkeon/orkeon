@@ -1443,6 +1443,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve">
     <value>Ein erlaubter Ordner existiert auf diesem Rechner nicht.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve">
+    <value>Dieser Ordner ist noch nicht gewählt: Wählen Sie einen auf diesem Rechner.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>Zwei Ordner teilen denselben internen Namen.</value>
   </data>

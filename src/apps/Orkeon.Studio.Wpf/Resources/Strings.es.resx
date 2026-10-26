@@ -1443,6 +1443,9 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve">
     <value>Una carpeta autorizada no existe en esta máquina.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve">
+    <value>Esta carpeta aún no está elegida: elija una en este equipo.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>Dos carpetas comparten el mismo nombre interno.</value>
   </data>
