@@ -116,23 +116,23 @@
                 </controls:MiddleEllipsisText>
                 <!-- Bounded, the full label in the tooltip: the name never shrinks. C13 (R12): the
                      shared rights pill, «Read only» neutral, every writing right sky. -->
-                <Border Margin="6,0,0,0" MaxWidth="160"
-                        HorizontalAlignment="Right" VerticalAlignment="Center"
-                        ToolTip="{Binding RightsLabel, Mode=OneWay}"
-                        Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-                  <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource BadgeSky}">
+                <controls:Badge Margin="6,0,0,0" MaxWidth="160"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                ToolTip="{Binding RightsLabel, Mode=OneWay}"
+                                Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Badge.Style>
+                    <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                      <Setter Property="Tone" Value="Info"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Rights}" Value="ReadOnly">
-                          <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-                          <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                          <Setter Property="Tone" Value="Neutral"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
-                  </Border.Style>
-                  <TextBlock Style="{StaticResource BadgeText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                  </controls:Badge.Style>
+                  <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                              Text="{Binding RightsBadge, Mode=OneWay}"/>
-                </Border>
+                </controls:Badge>
               </DockPanel>
               <!-- Lot 5: the row's own finding, on the faulty line (icon + text). -->
               <DockPanel Margin="0,4,0,0" DataContext="{Binding RowProblem}"
