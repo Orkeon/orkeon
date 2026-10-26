@@ -44,6 +44,7 @@ internal static class CaptureShellBuilder
                 // sign-in panel; no SignInTicker, so the countdown of a device code never moves.
                 BrowserOpener = NullBrowserOpener.Instance,
                 Delay = world.Delay,
+                SuggestionDelay = world.SuggestionDelay,
                 // My teams' undo banner (STUDIO-32) never goes by itself during a campaign: a stop
                 // photographs it, and its teardown answers it. One timer per shell, never shared.
                 UndoDelay = new CaptureUiDelay { Hold = true },

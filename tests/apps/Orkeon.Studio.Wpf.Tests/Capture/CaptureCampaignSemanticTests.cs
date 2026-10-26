@@ -31,12 +31,18 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
+    /// <remarks>
+    /// The English row is the language sweep: only the stops that sweep, in order — the walk in
+    /// which a stop that leans on one the sweep skips is caught (« etape4-adoption » used to stand
+    /// on « etape2-equipe-rouverte » and claimed a step 4 it never reached there).
+    /// </remarks>
     [Theory]
-    [InlineData(UiModeViewModel.Novice)]
-    [InlineData(UiModeViewModel.Expert)]
-    public async Task Every_stop_reaches_the_state_it_claims_when_the_whole_campaign_runs_in_order(string mode)
+    [InlineData("fr", UiModeViewModel.Novice)]
+    [InlineData("fr", UiModeViewModel.Expert)]
+    [InlineData("en", UiModeViewModel.Novice)]
+    public async Task Every_stop_reaches_the_state_it_claims_when_the_whole_campaign_runs_in_order(string language, string mode)
     {
-        var appearance = new CaptureAppearance("fr", IsDark: false, mode);
+        var appearance = new CaptureAppearance(language, IsDark: false, mode);
         var stops = CaptureCatalog.For(appearance, CaptureMatrix.Default);
         var shells = await BuildShellsAsync(appearance);
         var surface = new RecordingCaptureSurface();
@@ -123,6 +129,73 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
         }
 
         Assert.True(offenders.Count == 0, string.Join(" ; ", offenders));
+    }
+
+    /// <summary>
+    /// D11: each of these stops shows a state of its own, not the picture of the stop before. A
+    /// state under the fold that no gesture of the app brings up is scrolled to by the campaign;
+    /// one that a selection reaches is left to the app (R24), so the stop must make that selection.
+    /// </summary>
+    [Theory]
+    [InlineData(UiModeViewModel.Novice)]
+    [InlineData(UiModeViewModel.Expert)]
+    public async Task The_D11_stops_each_bring_their_own_state_on_screen(string mode)
+    {
+        var appearance = new CaptureAppearance("fr", IsDark: false, mode);
+        var shells = await BuildShellsAsync(appearance);
+        var surface = new RecordingCaptureSurface();
+        var shell = shells[CaptureWorldKind.Seeded];
+        var failures = new List<string>();
+        var mailStates = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var stop in CaptureCatalog.For(appearance, CaptureMatrix.Default))
+        {
+            var context = new CaptureContext
+            {
+                Shell = shells[stop.World],
+                World = _worlds.For(stop.World),
+                Surface = surface,
+                Appearance = appearance,
+            };
+            var selectedBefore = shell.Config.Email.SelectedAccount;
+
+            await surface.ShowAsync(stop.Screen);
+            await stop.Arrange(context);
+
+            switch (stop.Name)
+            {
+                case "etape1-renseignee" when shell.CreateTeam.HasCloseUseCases:
+                    failures.Add($"{stop.Name} already offers the close cases of « etape1-cas-proches »");
+                    break;
+                case "etape1-cas-proches" when !shell.CreateTeam.HasCloseUseCases:
+                    failures.Add($"{stop.Name} offers no close case");
+                    break;
+                case "equipes-sessions-en-cours"
+                    when !surface.BroughtIntoView.Contains(shell.Teams.InProgress[^1]):
+                    failures.Add($"{stop.Name} leaves the sessions under the fold");
+                    break;
+                case "reglages-mails-identifiants"
+                    when shell.Config.Email.SelectedAccount is not { } gmail || !surface.BroughtIntoView.Contains(gmail):
+                    failures.Add($"{stop.Name} leaves the form of its account under the fold");
+                    break;
+                case "reglages-mails-serveurs" or "reglages-mails-droits" or "reglages-mails-connexion"
+                    when ReferenceEquals(shell.Config.Email.SelectedAccount, selectedBefore):
+                    failures.Add($"{stop.Name} selects nothing, so nothing brings its form into view");
+                    break;
+            }
+
+            if (stop.Name.StartsWith("reglages-mails-", StringComparison.Ordinal) && shell.Config.Email.SelectedAccount is { } row)
+                mailStates[stop.Name] = $"{row.Name}/{row.ActiveTab}/{shell.Config.Email.IsSigningIn}";
+
+            await stop.Teardown(context);
+            await context.DrainHeldAsync();
+        }
+
+        // No two mail stops stand on the same account, tab and sign-in: four pictures, four states.
+        foreach (var same in mailStates.GroupBy(entry => entry.Value).Where(group => group.Count() > 1))
+            failures.Add("one state for " + string.Join(", ", same.Select(entry => entry.Key)) + ": " + same.Key);
+
+        Assert.True(failures.Count == 0, string.Join(" ; ", failures));
     }
 
     /// <summary>
