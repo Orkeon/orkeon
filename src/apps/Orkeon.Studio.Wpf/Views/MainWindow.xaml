@@ -1096,12 +1096,8 @@
 
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
                         Visibility="{Binding ShowTestRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestConnectionCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestConnectionCommand}" controls:ButtonIcon.Kind="plug-zap"
+                      Content="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
               <!-- STUDIO-43: the button is disabled while the test runs (its command refuses a
                    second run) and the line says « Testing the connection… »; the verdict names
                    the step, the URL, the time waited and the cause, and wraps when long. -->
@@ -1138,12 +1134,8 @@
                  English (raw evidence), on hover. -->
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
                         Visibility="{Binding ShowBalanceRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReadBalanceCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="wallet" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReadBalanceCommand}" controls:ButtonIcon.Kind="wallet"
+                      Content="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="400"
                          Text="{Binding BalanceResult}" ToolTip="{Binding BalanceDetail}"
                          Visibility="{Binding BalanceResult, Converter={StaticResource StringPresentToVisibility}}">
@@ -1159,12 +1151,8 @@
                 </TextBlock.Style>
               </TextBlock>
               <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding OpenBalanceConsoleCommand}"
-                      Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="external-link" Size="12" Margin="0,0,6,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.BalanceConsole], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+                      Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}" controls:ButtonIcon.Kind="external-link"
+                      Content="{Binding [Studio.Settings.BalanceConsole], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </StackPanel>
           </ScrollViewer>
@@ -1172,12 +1160,8 @@
           <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel LastChildFill="False">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="save"
+                      Content="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
@@ -1263,22 +1247,14 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
-                    Command="{Binding AddCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Teams.AddAnother], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding AddCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Teams.AddAnother], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
@@ -1357,19 +1333,16 @@
           <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding SaveLabel}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding SaveLabel}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
-                      Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}">
-                <TextBlock Foreground="{DynamicResource DangerBrush}"
-                           Text="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"/>
-              </Button>
+              <!-- R06: removing the agent from the team is definitive — danger outline with the trash
+                   icon, apart from Cancel and the one primary on the right. -->
+              <Button Style="{StaticResource BtnDanger}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
+                      controls:ButtonIcon.Kind="trash-2"
+                      Content="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -1492,22 +1465,14 @@
 
             <!-- One door, leading to the one screen that declares. -->
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
-                    Command="{Binding DeclareNewCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Settings.Declare], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding DeclareNewCommand}" controls:ButtonIcon.Kind="sliders-horizontal"
+                    Content="{Binding [Studio.Settings.Declare], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
           <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
                   BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
@@ -1556,12 +1521,8 @@
             <DockPanel Margin="0,20,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding About.CloseCommand}"
                       Content="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Click="OnStartTourFromAbout" HorizontalAlignment="Left" controls:ButtonIcon.Kind="circle-help"
+                      Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
           </StackPanel>
         </Grid>
