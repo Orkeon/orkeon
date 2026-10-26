@@ -144,19 +144,22 @@
     </Setter>
   </Style>
 
-  <!-- ══ Buttons (refonte R4): four forms, no more. Primary (accent fill, one per zone: the
-       action that moves things forward), Secondary (surface, line-strong border, ink: every
-       other action, local ones included — no text-only button anywhere), Danger (red border,
-       red text), Assistant (light blue, blue border and text: only a command that asks the
-       model — « Ask the assistant », « Rephrase » —, never a zone's main action, one per zone).
-       The solid red BtnDangerSolid exists only inside a delete confirmation.
-       Heights 28 / 32 / 40 (default) / 48 through controls:ButtonSize.Height, which also sets
-       the radius (6 / 8 / 10 / 10) the template reads. A disabled button still shows its
+  <!-- ══ Buttons (hrm R04, R05, R06). One primary per zone (tide fill: the action that moves
+       things forward), Secondary (outline: every other action, «Ajouter …» included), Ghost (no
+       border, a hover tint: discreet actions, the title bar), Danger (danger outline: delete or
+       remove for good, arms a confirmation), DangerSolid (the confirmation itself only).
+       Assistant is a Secondary kept as a key for the call sites; the title-bar toggle (BtnToggle)
+       is the same Secondary at 32 px, sky + AccentInk while its panel is open.
+       Heights: 40 by default, 32 in cards, lists and compact bars — controls:ButtonSize.Height
+       also sets the radius (10; 6 at 28) and the padding the template reads.
+       Icons: controls:ButtonIcon.Kind="plus" draws a 16 px Lucide icon left of the label in the
+       button's own Foreground; controls:ButtonIcon.Placement="Trailing" puts it right of the
+       label (forward →, only). Never an arrow inside the text. A disabled button still shows its
        tooltip: it must say why and how to unlock it. ══ -->
   <Style x:Key="BtnBase" TargetType="Button">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="13.5"/>
+    <Setter Property="FontSize" Value="14"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Height" Value="40"/>
     <Setter Property="Padding" Value="16,0"/>
@@ -171,9 +174,33 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding controls:ButtonSize.CornerRadius}" Padding="{TemplateBinding Padding}">
-            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- A DockPanel, not a StackPanel: the label keeps the width left by the icons, so a
+                 long one still trims instead of overflowing the border. -->
+            <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" LastChildFill="True">
+              <controls:LucideIcon x:Name="lead" DockPanel.Dock="Left" Size="16" Margin="0,0,8,0"
+                                   VerticalAlignment="Center" Visibility="Collapsed"
+                                   Kind="{TemplateBinding controls:ButtonIcon.Kind}"
+                                   Foreground="{TemplateBinding Foreground}"/>
+              <controls:LucideIcon x:Name="trail" DockPanel.Dock="Right" Size="16" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" Visibility="Collapsed"
+                                   Kind="{TemplateBinding controls:ButtonIcon.Kind}"
+                                   Foreground="{TemplateBinding Foreground}"/>
+              <ContentPresenter x:Name="content" VerticalAlignment="Center"/>
+            </DockPanel>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="controls:ButtonIcon.HasLeading" Value="True">
+              <Setter TargetName="lead" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="controls:ButtonIcon.HasTrailing" Value="True">
+              <Setter TargetName="trail" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <!-- Icon only: no gap, the icon is the whole content. -->
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="lead" Property="Margin" Value="0"/>
+              <Setter TargetName="trail" Property="Margin" Value="0"/>
+              <Setter TargetName="content" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
             </Trigger>
@@ -203,7 +230,7 @@
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
         <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
@@ -211,7 +238,29 @@
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- Danger: red border, red text — arms a confirmation, never deletes by itself. -->
+  <!-- Ghost: no border, the muted ink, a tint on hover — discreet actions, the dépliage
+       «libellé + chevron» (R16), every title-bar button (R04, see BtnTitleBar). -->
+  <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+        <Setter Property="Background" Value="{DynamicResource LineFaintBrush}"/>
+        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+  <!-- The title bar's buttons (R04): ghost, 32 px. -->
+  <Style x:Key="BtnTitleBar" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Setter Property="controls:ButtonSize.Height" Value="32"/>
+  </Style>
+  <!-- Danger (R06): danger outline, trash icon — arms a confirmation, never deletes by itself.
+       Removing from a list before saving is not this: that is a Secondary with the × icon. -->
   <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
@@ -225,21 +274,9 @@
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- Assistant: a round trip with the model, in its own blue rather than the accent. -->
-  <Style x:Key="BtnAssistant" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
-    <Style.Triggers>
-      <Trigger Property="IsMouseOver" Value="True">
-        <Setter Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
-      </Trigger>
-      <Trigger Property="IsPressed" Value="True">
-        <Setter Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
-        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
-      </Trigger>
-    </Style.Triggers>
-  </Style>
+  <!-- Assistant (R04): a round trip with the model is a Secondary like any other action — the
+       former blue was off the palette. Kept as a key so the call sites still read the intent. -->
+  <Style x:Key="BtnAssistant" TargetType="Button" BasedOn="{StaticResource BtnSecondary}"/>
   <!-- Solid danger: the confirm half of an in-place «Supprimer « X » ?» confirmation.
        Reached only from an armed confirmation, never from a resting action row. -->
   <Style x:Key="BtnDangerSolid" TargetType="Button" BasedOn="{StaticResource BtnBase}">
@@ -247,22 +284,33 @@
     <Setter Property="Foreground" Value="{DynamicResource DangerFgBrush}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource DangerInkBrush}"/>
+      </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- 32x32 icon button (title bar: theme, tour; a universal ✕ or copy beside a value).
-       Always with a ToolTip and an AutomationProperties.Name. -->
+  <!-- 32x32 square icon button, radius 6 (a universal ✕ or copy beside a value; the «…» menu
+       of a card, R23). Outline; IconBtnGhost for the title bar (R04). The icon goes through
+       controls:ButtonIcon.Kind with no Content, or a LucideIcon as Content. Always with a
+       ToolTip and an AutomationProperties.Name. -->
   <Style x:Key="IconBtn" TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
     <Setter Property="Padding" Value="0"/>
     <Setter Property="Width" Value="32"/>
     <Setter Property="Height" Value="32"/>
-    <Setter Property="controls:ButtonSize.CornerRadius" Value="8"/>
+    <Setter Property="controls:ButtonSize.CornerRadius" Value="6"/>
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
   </Style>
-  <!-- The Assistant form as a toggle that opens the side panel («Demander à l'assistant»),
-       pressed in while the panel is open. -->
+  <Style x:Key="IconBtnGhost" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Width" Value="32"/>
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="controls:ButtonSize.CornerRadius" Value="6"/>
+  </Style>
+  <!-- The assistant's toggle in the title bar («Demander à l'assistant», R04): a Secondary at
+       32 px; while its panel is open, sky ground and AccentInk text. -->
   <Style x:Key="BtnToggle" TargetType="ToggleButton">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -270,9 +318,9 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Height" Value="32"/>
     <Setter Property="Padding" Value="12,0"/>
-    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -282,17 +330,18 @@
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="8" Padding="{TemplateBinding Padding}">
+                  CornerRadius="10" Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
-              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AssistantBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource SkyBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
