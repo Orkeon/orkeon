@@ -25,20 +25,14 @@
         </Style>
       </controls:PageHeader.Style>
       <StackPanel Orientation="Horizontal" Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-        <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
+                controls:ButtonIcon.Kind="badge-check"
+                Content="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
         <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
              the expert's. -->
-        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}"
+                controls:ButtonIcon.Kind="save"
+                Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
     <!-- Lot 11: the outcomes only; « Loaded: path » is said once, in the File section. -->
@@ -50,12 +44,12 @@
                     Message="{Binding [Studio.Settings.LeaveQuestion], Source={x:Static services:I18n.Instance}}"
                     Visibility="{Binding IsAskingToLeave, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Actions>
-        <StackPanel Orientation="Horizontal">
-          <Button Style="{StaticResource BtnPrimary}" Margin="0,0,7,0" Command="{Binding SaveAndLeaveCommand}"
+        <StackPanel Style="{StaticResource ActionRow}">
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding SaveAndLeaveCommand}"
                   Content="{Binding [Studio.Settings.LeaveSave], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource BtnDanger}" Margin="0,0,7,0" Command="{Binding DiscardAndLeaveCommand}"
+          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding DiscardAndLeaveCommand}"
                   Content="{Binding [Studio.Settings.LeaveDiscard], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding StayCommand}"
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding StayCommand}"
                   Content="{Binding [Studio.Settings.LeaveStay], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </controls:Alert.Actions>
@@ -63,19 +57,19 @@
 
     <!-- lot 5: « N unsaved changes · Cancel · Save », from the first edit until it is saved or dropped -->
     <Border x:Name="PendingBar" Margin="0,14,0,0" Padding="14,8" CornerRadius="10"
-            Background="{DynamicResource WarningWeakBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+            Background="{DynamicResource WarningWeakBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
             Visibility="{Binding Config.HasPendingChanges, Converter={StaticResource BooleanToVisibility}}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,7,0"
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                   Command="{Binding Config.DiscardCommand}"
                   Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
           <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Command="{Binding Config.SaveCommand}"
                   Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <controls:LucideIcon Kind="pencil" Size="14" Margin="0,0,8,0" Foreground="{DynamicResource WarningBrush}"/>
-          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+          <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,8,0" Foreground="{DynamicResource WarningIconBrush}"/>
+          <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource WarningInkBrush}"
                      Text="{Binding Config.PendingChangesText}"/>
         </StackPanel>
       </DockPanel>
@@ -95,7 +89,7 @@
                models: a property row and its list. The tab's subtitle says when it is missing. -->
           <StackPanel Margin="0,0,0,18">
             <controls:PropertyRow Label="{Binding [Studio.Settings.AssistantRow], Source={x:Static services:I18n.Instance}}">
-              <Grid Width="260" HorizontalAlignment="Left">
+              <Grid Width="320" HorizontalAlignment="Left">
                 <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
                           SelectedItem="{Binding Profiles.StudioProfileName}"
                           AutomationProperties.Name="{Binding [Studio.Settings.ModelTitle], Source={x:Static services:I18n.Instance}}"/>
@@ -105,10 +99,10 @@
                            Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
               </Grid>
             </controls:PropertyRow>
-            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource Hint}" Margin="172,4,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Settings.ModelHintNovice], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource Hint}" Margin="172,4,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Settings.ModelHintExpert], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
