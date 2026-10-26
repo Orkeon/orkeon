@@ -17,16 +17,35 @@ namespace Orkeon.Infrastructure.FileSystem;
 /// the configured <see cref="ConfigurationKeys.FileSystemWorkingDirectory"/>, else the workspace,
 /// else <see cref="RunnerVirtualRoots.Output"/> when an agent-facing mount claims it, else none.
 /// </para>
+/// <para>
+/// The write directory (<see cref="FileSystemRegistry.WriteDirectory"/>) is designated the same
+/// way: the configured <see cref="ConfigurationKeys.FileSystemWriteDirectory"/>, else the
+/// registry's own default (<c>/output</c> when a writable agent-facing mount claims it).
+/// </para>
 /// </summary>
-internal static class WorkingDirectoryDesignation
+public static class WorkingDirectoryDesignation
 {
-    /// <summary>Designates the working directory of a registry a runner has just built.</summary>
+    /// <summary>Designates the working and write directories of a registry a runner has just built.</summary>
     /// <param name="registry">The registry.</param>
     /// <param name="configured">The value of <see cref="ConfigurationKeys.FileSystemWorkingDirectory"/>, if any.</param>
-    /// <exception cref="InvalidOperationException">The configured directory is in no agent-facing mount.</exception>
-    public static void Apply(FileSystemRegistry registry, string? configured)
+    /// <param name="configuredWrite">The value of <see cref="ConfigurationKeys.FileSystemWriteDirectory"/>, if any.</param>
+    /// <exception cref="InvalidOperationException">A configured directory is in no agent-facing mount that can hold it.</exception>
+    internal static void Apply(FileSystemRegistry registry, string? configured, string? configuredWrite = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
+
+        if (!string.IsNullOrWhiteSpace(configuredWrite))
+        {
+            try
+            {
+                registry.SetWriteDirectory(configuredWrite);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException(
+                    $"'{ConfigurationKeys.FileSystemWriteDirectory}': {ex.Message}", ex);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(configured))
         {
@@ -51,8 +70,9 @@ internal static class WorkingDirectoryDesignation
     }
 
     /// <summary>
-    /// Carries the boot registry's working directory into a per-execution registry when the
-    /// execution still reaches it, else designates one for the execution's own mounts.
+    /// Carries the boot registry's working and write directories into a per-execution registry
+    /// (a scoped composition, a Forge trial) when the execution still reaches them, else
+    /// designates them for the execution's own mounts.
     /// </summary>
     /// <param name="boot">The process-wide registry.</param>
     /// <param name="execution">The registry composed for one execution.</param>
@@ -60,6 +80,18 @@ internal static class WorkingDirectoryDesignation
     {
         ArgumentNullException.ThrowIfNull(boot);
         ArgumentNullException.ThrowIfNull(execution);
+
+        if (boot.WriteDirectory is { } inheritedWrite)
+        {
+            try
+            {
+                execution.SetWriteDirectory(inheritedWrite);
+            }
+            catch (ArgumentException)
+            {
+                // The execution shadowed or dropped that mount: its own default applies.
+            }
+        }
 
         if (boot.WorkingDirectory is { } inherited)
         {

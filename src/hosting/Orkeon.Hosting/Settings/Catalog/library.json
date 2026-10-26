@@ -1684,6 +1684,12 @@
       "description": "The virtual directory relative paths resolve against and a shell command runs in when it names none (`Orkeon:FileSystem:WorkingDirectory`). Unset, the runner takes `/workspace` when it is mounted, else `/output`, else none."
     },
     {
+      "path": "Orkeon:FileSystem:WriteDirectory",
+      "section": "Orkeon:FileSystem",
+      "type": "string",
+      "description": "The writable virtual directory a writing shell command runs in when it names none, runs under no agent root, and the working directory does not grant it every right (`Orkeon:FileSystem:WriteDirectory`). Unset, `/output` when an agent-facing mount grants Write there, else none."
+    },
+    {
       "path": "Orkeon:Sandbox:CleanupOrphansOlderThan",
       "section": "Orkeon:Sandbox",
       "type": "duration",

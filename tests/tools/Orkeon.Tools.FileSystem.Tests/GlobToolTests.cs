@@ -241,4 +241,31 @@ public sealed class GlobToolTests : IDisposable
         Assert.Empty(res.Paths);
         Assert.False(res.Truncated);
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldGlobRelativePath_AndEchoAbsolutePaths()
+    {
+        var root = Directory.CreateTempSubdirectory("orkeon-relative-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "src"));
+            await File.WriteAllTextAsync(Path.Combine(root, "src", "stats.js"), "sum\nsum\n", TestContext.Current.CancellationToken);
+            var fs = new DiskBackedFileSystemService(root, "/workspace") { WorkingDirectory = "/workspace" };
+            using var tool = new GlobTool(fs, new StubPathValidator().AllowAll());
+
+            var result = await tool.CallAsync(new ToolCallRequest(
+                ToolName: "glob",
+                Parameters: new Dictionary<string, object?> { ["pattern"] = "*.js", ["path"] = "src" }), TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success, result.Error);
+            var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+            var paths = ((System.Collections.IEnumerable)dict["paths"]!).Cast<object>().Select(o => o.ToString()).ToList();
+            Assert.Equal(["/workspace/src/stats.js"], paths);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
 }

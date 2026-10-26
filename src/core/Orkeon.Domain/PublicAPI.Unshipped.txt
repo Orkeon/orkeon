@@ -1396,3 +1396,7 @@ const Orkeon.Domain.FileSystem.FileSystemRegistry.DefaultWorkingDirectory = "/wo
 Orkeon.Domain.FileSystem.FileSystemRegistry.SetWorkingDirectory(string! virtualPath) -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.WorkingDirectory.get -> string?
 Orkeon.Domain.FileSystem.IFileSystemService.WorkingDirectory.get -> string?
+const Orkeon.Domain.FileSystem.FileSystemRegistry.DefaultWriteDirectory = "/output" -> string!
+Orkeon.Domain.FileSystem.FileSystemRegistry.SetWriteDirectory(string! virtualPath) -> void
+Orkeon.Domain.FileSystem.FileSystemRegistry.WriteDirectory.get -> string?
+Orkeon.Domain.FileSystem.IFileSystemService.WriteDirectory.get -> string?

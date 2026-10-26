@@ -34,7 +34,7 @@ public sealed record ShellCommandRequest
     /// </para>
     /// </summary>
     [FieldSchema(
-        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace).",
+        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace); outside an agent root, a writing command that directory does not allow runs in the write directory (/output).",
         IsRequired = false,
         Example = "/workspace")]
     public string WorkingDirectory { get; init; } = "";
@@ -550,8 +550,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (argumentDenial is not null)
             return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
 
+        // The guard judges the directory the command will run in: a relative one is made absolute
+        // first, or '../p2' under the root /workspace/wt/p1 reads as '/p2' and escapes the root.
         if (!string.IsNullOrWhiteSpace(request.WorkingDirectory)
-            && AgentRootGuard.Check(_fileSystem, request.WorkingDirectory) is { } workingDirectoryDenial)
+            && AgentRootGuard.Check(_fileSystem, WorkingDirectoryResolver.Absolutize(request.WorkingDirectory, _fileSystem)) is { } workingDirectoryDenial)
             return $"WorkingDirectory denied: {workingDirectoryDenial.DenialReason}";
 
         // A root whose rights are None grants nothing to bind: the command does not run (RT-06).
@@ -1082,13 +1084,22 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// a read-only command ran there instead of in <c>/workspace</c>. The default before it was
     /// the literal <c>"."</c>, which no registry can resolve (ADR-008).
     /// </para>
+    /// <para>
+    /// A command named no directory, run under no agent root, whose working directory does not
+    /// grant the rights it needs (a writing command in the read-only <c>/workspace</c> of
+    /// <c>orkeon forge</c>) runs in the designated write directory instead
+    /// (<see cref="IFileSystemService.WriteDirectory"/>, <c>/output</c> by default): a choice the
+    /// host makes, never the order of the mounts. Under an agent root the root rules, and with no
+    /// write directory the refusal names the option.
+    /// </para>
     /// </summary>
     private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
         string requested, FileAccessRights rights)
     {
-        var virtualDirectory = string.IsNullOrWhiteSpace(requested)
-            ? WorkingDirectoryResolver.Current(_fileSystem)
-            : WorkingDirectoryResolver.Absolutize(requested, _fileSystem);
+        var named = !string.IsNullOrWhiteSpace(requested);
+        var virtualDirectory = named
+            ? WorkingDirectoryResolver.Absolutize(requested, _fileSystem)
+            : WorkingDirectoryResolver.Current(_fileSystem);
 
         if (string.IsNullOrWhiteSpace(virtualDirectory))
         {
@@ -1100,9 +1111,30 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 + $"that starts with a mount ({string.Join(", ", mounts.Select(m => m.VirtualPath))}).");
         }
 
+        if (AgentRootGuard.Check(_fileSystem, virtualDirectory) is { } outsideRoot)
+            return ("", outsideRoot.DenialReason);
+
         var resolved = _fileSystem.ResolveAndValidate(virtualDirectory, rights);
-        return resolved.IsAllowed ? (resolved.ResolvedPath!, null) : ("", resolved.DenialReason);
+        if (resolved.IsAllowed)
+            return (resolved.ResolvedPath!, null);
+        if (named || AgentRunScope.Current?.Root is not null)
+            return ("", resolved.DenialReason);
+
+        var writeDirectory = _fileSystem.WriteDirectory;
+        if (string.IsNullOrWhiteSpace(writeDirectory)
+            || string.Equals(writeDirectory, virtualDirectory, StringComparison.Ordinal))
+            return ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
+
+        var fallback = _fileSystem.ResolveAndValidate(writeDirectory, rights);
+        return fallback.IsAllowed
+            ? (fallback.ResolvedPath!, null)
+            : ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
     }
+
+    /// <summary>What a refused command without a directory can do: name one, or have the host designate one.</summary>
+    private const string NoWriteDirectoryHint =
+        "No write directory grants it either: name a writable directory in working_directory, "
+        + "or designate one with Orkeon:FileSystem:WriteDirectory.";
 
     /// <summary>
     /// Rewrites mount-prefixed virtual arguments to their physical paths. Returns the

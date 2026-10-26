@@ -691,4 +691,100 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
         var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
         Assert.Equal(Path.Combine(_tempDir, "job", "sub"), invocation.WorkingDirectory);
     }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuseShell_WhenRelativeWorkingDirectoryEscapesRoot()
+    {
+        // The guard used to judge the raw "../other", normalised to "/other" on no mount: allowed,
+        // and the command then ran in /workspace/other, outside the root.
+        var (tool, sandbox) = NewTool();
+        using var _ = tool;
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("echo x", "../other"), Ct);
+
+        Assert.Contains("outside the agent working root", ErrorOf(response), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    /// <summary>
+    /// The mounts of <c>orkeon forge</c>: a read-only <c>/workspace</c> beside a writable
+    /// <c>/output</c>, unless <paramref name="writableWorkspace"/>; <c>/output</c> is left out
+    /// when <paramref name="withOutput"/> is false.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the duration of the test.")]
+    private FileSystemService ForgeLikeFileSystem(bool writableWorkspace = false, bool withOutput = true)
+    {
+        var workspace = Directory.CreateDirectory(Path.Combine(_tempDir, "ws", "job")).Parent!.FullName;
+        var output = Directory.CreateDirectory(Path.Combine(_tempDir, "out")).FullName;
+        List<FileSystemMount> mounts =
+            [new FileSystemMount(workspace, "/workspace", writableWorkspace ? FileAccessRights.ReadWrite : FileAccessRights.ReadOnly)];
+        if (withOutput)
+            mounts.Add(new FileSystemMount(output, "/output", FileAccessRights.ReadWrite));
+        var registry = new FileSystemRegistry(mounts);
+        return new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRunAWritingCommandInTheWriteDirectory_WhenTheWorkspaceIsReadOnly()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "out"), invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldKeepTheWorkspace_WhenItIsWritable()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(writableWorkspace: true), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "ws"), invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRefuseNamingTheOption_WhenNoWriteDirectoryExists()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(withOutput: false), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        Assert.Contains("Orkeon:FileSystem:WriteDirectory", Assert.IsType<string>(result["stderr"]), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldNotFallBackToTheWriteDirectory_UnderAnAgentRoot()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+        if (response.Result is Dictionary<string, object?> result)
+            Assert.False((bool)result["completed"]!);
+        else
+            Assert.False(response.Success);
+    }
 }

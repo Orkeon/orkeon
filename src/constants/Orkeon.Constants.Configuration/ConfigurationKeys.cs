@@ -38,6 +38,13 @@ public static class ConfigurationKeys
     public const string FileSystemWorkingDirectory = "Orkeon:FileSystem:WorkingDirectory";
 
     /// <summary>
+    /// The writable virtual directory a writing shell command runs in when it names none, runs
+    /// under no agent root, and the working directory does not grant it every right. Optional:
+    /// unset, <c>/output</c> when an agent-facing mount grants Write there, else none.
+    /// </summary>
+    public const string FileSystemWriteDirectory = "Orkeon:FileSystem:WriteDirectory";
+
+    /// <summary>
     /// Root of the RAG subsystem's options. Bound by <c>AddOrkeonRag</c>, and read by Studio to
     /// show what a machine has configured.
     /// </summary>

@@ -8,6 +8,7 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Abstractions.Security;
 
 namespace Orkeon.Tools.Analysis;
 
@@ -61,6 +62,12 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         + "captures its text, $$$NAME matches zero or more sibling nodes. Returns path, line, column, text, captures and the "
         + "enclosing symbol of each match.";
     public override ToolAccess Access => ToolAccess.Read;
+
+    protected override string? ValidateTypedRequest(StructuralSearchRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return PathsOutsideRoot(_fs, request.Paths);
+    }
 
     protected override async Task<StructuralSearchResponse> ExecuteTypedAsync(StructuralSearchRequest request, CancellationToken cancellationToken)
     {
@@ -150,10 +157,29 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
         _ => null,
     };
 
+    /// <summary>
+    /// The denial of the first given path outside the agent's root, made absolute against the
+    /// working directory first; <see langword="null"/> when every path may be read.
+    /// </summary>
+    internal static string? PathsOutsideRoot(IFileSystemService fs, ImmutableList<string> paths) =>
+        paths
+            .Select(p => AgentRootGuard.Check(fs, WorkingDirectoryResolver.Absolutize(p, fs))?.DenialReason)
+            .FirstOrDefault(d => d is not null);
+
+    /// <summary>
+    /// The files to scan: the given paths, each made absolute against the working directory (a
+    /// relative path reads as it does for every file tool), else every mount. A given path outside
+    /// the agent's root is refused, and a file the enumeration finds outside it is skipped.
+    /// </summary>
     internal static async IAsyncEnumerable<string> CandidateFilesAsync(
         IFileSystemService fs, ImmutableList<string> paths, string? glob, GrammarInfo grammar, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var roots = paths.Count > 0 ? paths : fs.GetAvailableMounts().Select(m => m.VirtualPath).ToImmutableList();
+        if (PathsOutsideRoot(fs, paths) is { } denial)
+            throw new UnauthorizedAccessException(denial);
+
+        var roots = paths.Count > 0
+            ? paths.Select(p => WorkingDirectoryResolver.Absolutize(p, fs)).ToImmutableList()
+            : fs.GetAvailableMounts().Select(m => m.VirtualPath).ToImmutableList();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var options = new VirtualEnumerationOptions(SearchPattern: glob);
         foreach (var root in roots)
@@ -166,7 +192,8 @@ public sealed class StructuralSearchTool : ToolBase<StructuralSearchRequest, Str
 
             await foreach (var entry in fs.EnumerateFilesAsync(root, options, cancellationToken).ConfigureAwait(false))
             {
-                if (entry.Kind == VirtualEntryKind.File && IsOfLanguage(entry.VirtualPath, grammar) && seen.Add(entry.VirtualPath))
+                if (entry.Kind == VirtualEntryKind.File && IsOfLanguage(entry.VirtualPath, grammar)
+                    && AgentRootGuard.Check(fs, entry.VirtualPath) is null && seen.Add(entry.VirtualPath))
                     yield return entry.VirtualPath;
             }
         }

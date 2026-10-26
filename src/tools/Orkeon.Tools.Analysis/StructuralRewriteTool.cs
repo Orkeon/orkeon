@@ -59,6 +59,12 @@ public sealed class StructuralRewriteTool : FileToolBase<StructuralRewriteReques
     public override string Description => "Applies a rule's fix template to the matching files; dry run by default.";
     public override ToolAccess Access => ToolAccess.Edit;
 
+    protected override string? ValidateTypedRequest(StructuralRewriteRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return StructuralSearchTool.PathsOutsideRoot(_fileSystemService, request.Paths);
+    }
+
     protected override async Task<StructuralRewriteResponse> ExecuteTypedAsync(StructuralRewriteRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

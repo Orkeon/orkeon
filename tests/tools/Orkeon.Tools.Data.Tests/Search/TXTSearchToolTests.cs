@@ -266,4 +266,44 @@ public sealed class TXTSearchToolTests : IDisposable
         try { Directory.Delete(_tempDir, recursive: true); } catch { /* ignore cleanup errors */ }
         _tool.Dispose();
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldSearchRelativePath_AgainstWorkingDirectory()
+    {
+        await File.WriteAllTextAsync(Path.Combine(Directory.CreateDirectory(Path.Combine(_tempDir, "notes")).FullName, "a.txt"), "Machine learning notes.", TestContext.Current.CancellationToken);
+        _mockEmbeddingService.SetEmbeddingFactory(_ => [1.0f, 0.0f, 0.0f]);
+        using var tool = new TxtSearchTool(
+            EphemeralSearchHarness.Create(_mockEmbeddingService),
+            new DiskBackedFileSystemService(_tempDir, "/workspace") { WorkingDirectory = "/workspace" });
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "txt_search",
+            Parameters: new Dictionary<string, object?> { [ParamPath] = "notes", [ParamQuery] = "learning", ["threshold"] = 0.0 }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
+        Assert.Equal(1, Convert.ToInt32(dict["files_processed"]));
+    }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuse_WhenPathIsOutsideAgentRoot()
+    {
+        await File.WriteAllTextAsync(Path.Combine(Directory.CreateDirectory(Path.Combine(_tempDir, "other")).FullName, "a.txt"), "Other notes.", TestContext.Current.CancellationToken);
+        using var tool = new TxtSearchTool(
+            EphemeralSearchHarness.Create(_mockEmbeddingService),
+            new DiskBackedFileSystemService(_tempDir, "/workspace") { WorkingDirectory = "/workspace" });
+
+        ToolCallResponse result;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/job"))
+            result = await tool.CallAsync(new ToolCallRequest(
+                ToolName: "txt_search",
+                Parameters: new Dictionary<string, object?> { [ParamPath] = "/workspace/other", [ParamQuery] = "notes" }),
+                TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("outside the agent working root", result.Error, StringComparison.Ordinal);
+    }
 }

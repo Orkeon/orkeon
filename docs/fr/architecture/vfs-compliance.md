@@ -159,7 +159,9 @@ d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le 
   `/workspace/src/stats.js`, et la réponse renvoie ce chemin absolu. Le chemin devient absolu
   **avant** le contrôle des mounts et la garde de racine : `../p2/x` depuis une racine
   `/workspace/wt/p1` est refusé comme hors de la racine. Sans répertoire de travail, un chemin
-  relatif reste refusé.
+  relatif reste refusé. `structural_search` et `structural_rewrite` (`paths`), `txt_search` et
+  `mdx_search` (`path`) se résolvent de même, et chaque outil de cette liste, `node_outline` et
+  `node_read` compris, refuse un chemin hors de la racine de l'agent avant toute E/S.
 - Un `path` vide est refusé par
   `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`.
 - Un chemin qui ne commence par aucun mount est refusé avec la forme d'une adresse :
@@ -167,7 +169,24 @@ d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le 
 - `shell_command` sans `working_directory` s'exécute dans la racine de l'agent, sinon dans le
   répertoire de travail ; un `working_directory` relatif se résout de même. Il ne se replie plus
   sur le premier mount qui accorde les droits (qui pouvait être `/session-history`) : avec des
-  mounts mais sans répertoire de travail, l'appel est refusé et nomme les mounts.
+  mounts mais sans répertoire de travail, l'appel est refusé et nomme les mounts. Le
+  `working_directory` relatif devient absolu avant la garde de racine : `../p2` depuis une racine
+  `/workspace/wt/p1` est refusé.
+- Un **répertoire d'écriture** (`FileSystemRegistry.WriteDirectory`,
+  `IFileSystemService.WriteDirectory`) reçoit un `shell_command` d'écriture qui ne nomme aucun
+  `working_directory`, hors de toute racine d'agent, quand le répertoire de travail ne lui accorde
+  pas tous les droits (un `/workspace` en lecture seule, comme dans `orkeon forge`). C'est le
+  répertoire désigné par `Orkeon:FileSystem:WriteDirectory` (`SetWriteDirectory`, un chemin absolu
+  dans un mount visible des agents et accessible en écriture, faute de quoi l'hôte refuse de
+  démarrer), sinon `/output` quand un mount visible des agents y accorde l'écriture, sinon aucun. Il
+  ne dépend jamais de l'ordre des mounts. Rien ne change quand le répertoire de travail est
+  accessible en écriture ; sous une racine d'agent, aucun repli ; sans répertoire d'écriture, le
+  refus nomme l'option. Les chemins relatifs des outils de fichiers se résolvent toujours contre le
+  seul répertoire de travail.
+- Un registre d'exécution reporte les répertoires de travail et d'écriture du démarrage
+  (`WorkingDirectoryDesignation.CarryForward`) tant qu'il les monte encore ; l'essai de
+  `orkeon forge` (`ForgeTrialScope.Compose`) passe aussi par là, sinon il prend son propre
+  `/workspace` ou `/output`.
 
 ## Racine de travail d'un agent et mount
 

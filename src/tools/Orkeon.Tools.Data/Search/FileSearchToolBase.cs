@@ -7,6 +7,7 @@ using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Chunking;
 using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Abstractions.Security;
 using Orkeon.Tools.Data.Constants.Search;
 
 namespace Orkeon.Tools.Data.Search;
@@ -86,7 +87,9 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
         if (request.ChunkSize < FileSearchDefaults.MinChunkSize || request.ChunkSize > FileSearchDefaults.MaxChunkSize)
             return $"ChunkSize must be between {FileSearchDefaults.MinChunkSize} and {FileSearchDefaults.MaxChunkSize}";
 
-        return null;
+        // The path the search will read, made absolute against the working directory as every
+        // file tool does, stays inside the agent's root.
+        return AgentRootGuard.Check(_fs, WorkingDirectoryResolver.Absolutize(request.Path, _fs))?.DenialReason;
     }
 
     /// <inheritdoc />
@@ -166,7 +169,7 @@ public abstract partial class FileSearchToolBase<TRequest> : ToolBase<TRequest, 
     // ── Private helpers ──────────────────────────────────────────────
 
     private Task<List<string>> ResolveFilesAsync(string path, CancellationToken cancellationToken)
-        => ResolveSupportedFilesVfsAsync(_fs, path, cancellationToken);
+        => ResolveSupportedFilesVfsAsync(_fs, WorkingDirectoryResolver.Absolutize(path, _fs), cancellationToken);
 
     private async Task<Dictionary<string, string>> ReadContentsAsync(
         List<string> files, CancellationToken cancellationToken)

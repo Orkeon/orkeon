@@ -157,6 +157,9 @@ the boot one while it still mounts it.
   `/workspace/src/stats.js`, and the response echoes that absolute path. The path is made absolute
   **before** the mount check and the root guard, so `../p2/x` from a root `/workspace/wt/p1` is
   refused as outside the root. With no working directory a relative path is refused as before.
+  `structural_search` and `structural_rewrite` (`paths`), `txt_search` and `mdx_search` (`path`)
+  resolve the same way, and every tool of this list, `node_outline` and `node_read` included,
+  refuses a path outside the agent's root before any I/O.
 - An empty `path` is refused with
   `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`.
 - A path that starts with no mount is refused with the shape of an address:
@@ -164,7 +167,21 @@ the boot one while it still mounts it.
 - `shell_command` without `working_directory` runs in the agent's root, else in the working
   directory; a relative `working_directory` resolves the same way. It no longer falls back to the
   first mount that grants the rights (which could be `/session-history`): with mounts but no
-  working directory the call is refused and names the mounts.
+  working directory the call is refused and names the mounts. The relative `working_directory` is
+  made absolute before the root guard, so `../p2` from a root `/workspace/wt/p1` is refused.
+- A **write directory** (`FileSystemRegistry.WriteDirectory`, `IFileSystemService.WriteDirectory`)
+  takes a writing `shell_command` that names no `working_directory`, runs under no agent root, and
+  whose working directory does not grant every right (a read-only `/workspace`, as in
+  `orkeon forge`). It is the directory designated by `Orkeon:FileSystem:WriteDirectory`
+  (`SetWriteDirectory`, an absolute path inside a writable agent-facing mount, else the host refuses
+  to start), else `/output` when an agent-facing mount grants Write there, else none. It never comes
+  from the order of the mounts. Nothing changes when the working directory is writable; under an
+  agent root there is no fallback; with no write directory the refusal names the option. The file
+  tools' relative paths still resolve against the working directory only.
+- A per-execution registry carries the boot working and write directories forward
+  (`WorkingDirectoryDesignation.CarryForward`) while it still mounts them; the `orkeon forge`
+  trial (`ForgeTrialScope.Compose`) goes through it too, else it takes its own `/workspace` or
+  `/output`.
 
 ## Agent working root vs mount
 

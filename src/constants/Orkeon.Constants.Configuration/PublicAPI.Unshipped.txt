@@ -25,3 +25,4 @@ const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionStartScript = "
 const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionPersist = "Orkeon:Cli:Session:Persist" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionSessionsDirectory = "Orkeon:Cli:Session:SessionsDirectory" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemWorkingDirectory = "Orkeon:FileSystem:WorkingDirectory" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemWriteDirectory = "Orkeon:FileSystem:WriteDirectory" -> string!
