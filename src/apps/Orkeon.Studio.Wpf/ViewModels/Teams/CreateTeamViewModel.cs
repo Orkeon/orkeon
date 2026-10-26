@@ -3262,12 +3262,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             // The blueprint speaks for itself: one card per agent, its own goal and tools,
             // and « Modifier » wired to the edit arbitration.
-            foreach (var agent in proposal.Agents)
+            var initials = AvatarInitials([.. proposal.Agents.Select(agent => agent.Role)]);
+            foreach (var (agent, initial) in proposal.Agents.Zip(initials))
             {
                 Agents.Add(new WizardAgentCard(
                     agent.Key,
                     agent.Role,
-                    agent.Role.Length > 0 ? agent.Role[..1].ToUpperInvariant() : "?",
+                    initial,
                     agent.Goal is { Length: > 0 } goal
                         ? goal
                         : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
@@ -3281,13 +3282,15 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         }
 
         var fallback = _strings[StudioStringKeys.WizardAgentFallback];
-        foreach (var group in proposal.Steps.GroupBy(s => s.AgentRole ?? fallback))
+        var groups = proposal.Steps.GroupBy(s => s.AgentRole ?? fallback).ToList();
+        var groupInitials = AvatarInitials([.. groups.Select(group => group.Key)]);
+        foreach (var (group, initial) in groups.Zip(groupInitials))
         {
             var name = group.Key;
             Agents.Add(new WizardAgentCard(
                 key: null,
                 name,
-                name.Length > 0 ? name[..1].ToUpperInvariant() : "?",
+                initial,
                 string.Join(" ", group.Select(s => s.Description)),
                 tools: [],
                 edit: null,
@@ -3671,4 +3674,37 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         WizardFailureKind.PromoteRefused => _strings[StudioStringKeys.WizardFailurePromoteRefused],
         _ => _strings[StudioStringKeys.WizardFailureUnknown],
     };
+
+    // ── Presentation only (harmonisation rc.5, lot L03) ─────────────────────────────────
+    // What the cards draw, never what the team is: nothing here feeds the model or a command.
+
+    /// <summary>
+    /// D08: the avatars' letters of the agents shown together. A name keeps its one capital
+    /// unless another shown name starts with the same one: it then takes two letters — the
+    /// first two words' initials («Data Analyst» → «DA»), else its first two letters
+    /// («Rédacteur» → «Ré», «Relecteur» → «Re»). An empty name stays «?».
+    /// </summary>
+    public static IReadOnlyList<string> AvatarInitials(IReadOnlyList<string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        var single = names.Select(name => name.Length > 0 ? name[..1].ToUpperInvariant() : "?").ToList();
+        var shared = single
+            .Where(initial => initial != "?")
+            .GroupBy(initial => initial, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        return [.. names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index])];
+    }
+
+    private static string TwoLetters(string name, string single)
+    {
+        var words = name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+            return string.Concat(words[0][..1].ToUpperInvariant(), words[1][..1].ToUpperInvariant());
+        var word = words.Length == 1 ? words[0] : name;
+        return word.Length >= 2
+            ? string.Concat(word[..1].ToUpperInvariant(), char.ToLowerInvariant(word[1]).ToString())
+            : single;
+    }
 }
