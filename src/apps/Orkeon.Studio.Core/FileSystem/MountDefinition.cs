@@ -192,6 +192,15 @@ public sealed record MountDefinition
             return false;
         }
 
+        // A row whose folder is not chosen yet serialises with an empty physical path. The domain
+        // refuses it with an ArgumentException, which every caller of this method would raise and
+        // swallow at each analysis, so it is answered here, without the parser.
+        if (HasEmptyPhysicalPath(mountString))
+        {
+            error = "The mount definition has no physical path: choose a folder.";
+            return false;
+        }
+
         try
         {
             definition = Parse(mountString);
@@ -207,6 +216,21 @@ public sealed record MountDefinition
             error = ex.Message;
             return false;
         }
+    }
+
+    /// <summary>
+    /// True when the spec opens on its first separator, or on an empty quoted segment: no physical
+    /// path at all. An id prefix, a bare run of ASCII letters and digits before the first
+    /// <see cref="FileSystemMount.IdSeparator"/>, is stepped over the way the parser does.
+    /// </summary>
+    private static bool HasEmptyPhysicalPath(string mountString)
+    {
+        var spec = mountString;
+        var separator = spec.IndexOf(FileSystemMount.IdSeparator, StringComparison.Ordinal);
+        if (separator > 0 && spec[..separator].All(char.IsAsciiLetterOrDigit))
+            spec = spec[(separator + 1)..];
+
+        return spec.StartsWith(':') || spec.StartsWith("\"\":", StringComparison.Ordinal);
     }
 
     /// <summary>Projects a parsed domain mount back onto the editable shape.</summary>

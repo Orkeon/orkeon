@@ -16,6 +16,31 @@ public sealed class MountDefinitionTests
 
     private static readonly string[] RightsTokens = ["ro", "rw", "rwnd"];
 
+    /// <summary>
+    /// A row whose folder is not chosen yet serialises with no physical path, with or without
+    /// its id. TryParse answers it with its own sentence, before the parser: the domain would
+    /// refuse it with an exception that every validation pass would raise and swallow.
+    /// </summary>
+    [Theory]
+    [InlineData(":/workspace:ro")]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W3|:/workspace:ro")]
+    [InlineData("\"\":/workspace:ro")]
+    public void An_entry_without_a_physical_path_is_refused_before_the_parser(string mountString)
+    {
+        Assert.False(MountDefinition.TryParse(mountString, out var definition, out var error));
+        Assert.Null(definition);
+        Assert.Equal("The mount definition has no physical path: choose a folder.", error);
+    }
+
+    [Fact]
+    public void An_editor_row_without_a_folder_serialises_to_an_entry_the_pre_check_recognises()
+    {
+        var definition = new MountDefinition { PhysicalPath = "", VirtualPath = "/workspace", Rights = MountRights.ReadOnly };
+
+        Assert.False(MountDefinition.TryParse(definition.ToMountString(), out _, out var error));
+        Assert.Equal("The mount definition has no physical path: choose a folder.", error);
+    }
+
     [Fact]
     public void A_read_only_mount_built_from_the_form_is_accepted_by_the_runtime_parser()
     {
