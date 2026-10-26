@@ -368,11 +368,11 @@
                 <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Settings], Source={x:Static services:I18n.Instance}}"/>
                 <!-- the settings file's state: red when it has errors, amber while edits are unsaved -->
-                <Ellipse x:Name="SettingsDot" Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
+                <Ellipse x:Name="SettingsDot" Width="8" Height="8" Margin="8,0,0,0" VerticalAlignment="Center">
                   <Ellipse.Style>
                     <Style TargetType="Ellipse">
                       <Setter Property="Visibility" Value="Collapsed"/>
-                      <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
                       <Setter Property="ToolTip" Value="{Binding Config.PendingChangesText}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
@@ -393,7 +393,7 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="stethoscope" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Diag], Source={x:Static services:I18n.Instance}}"/>
-                <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource WarningIconBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
                          Visibility="{Binding DataContext.Config.Diagnostic.HasIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
             </RadioButton>
@@ -561,14 +561,14 @@
         </Style>
         <!-- The state's dot: accent while it works, warning while it waits on you, then its verdict. -->
         <Style x:Key="StatusDot" TargetType="Ellipse">
-          <Setter Property="Width" Value="7"/>
-          <Setter Property="Height" Value="7"/>
+          <Setter Property="Width" Value="8"/>
+          <Setter Property="Height" Value="8"/>
           <Setter Property="Margin" Value="8,0,5,0"/>
           <Setter Property="VerticalAlignment" Value="Center"/>
           <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
           <Style.Triggers>
             <DataTrigger Binding="{Binding Tone}" Value="waiting">
-              <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+              <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Tone}" Value="ok">
               <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
@@ -586,7 +586,7 @@
           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
           <Style.Triggers>
             <DataTrigger Binding="{Binding IsWaiting}" Value="True">
-              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
               <Setter Property="FontWeight" Value="SemiBold"/>
             </DataTrigger>
           </Style.Triggers>
@@ -750,7 +750,7 @@
                 </Button>
                 <DataTemplate.Triggers>
                   <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                     <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
                   </DataTrigger>
                   <DataTrigger Binding="{Binding IsFaint}" Value="True">
