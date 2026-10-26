@@ -58,7 +58,8 @@
 
               <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                          Text="{Binding [Studio.Settings.McpTransport], Source={x:Static services:I18n.Instance}}"/>
-              <ComboBox MaxWidth="200" HorizontalAlignment="Left"
+              <!-- C09 (R10): «Transport» is the S combo (160 px), the chevron off the value. -->
+              <ComboBox Style="{StaticResource ComboS}"
                         ItemsSource="{x:Static config:McpSectionViewModel.Transports}"
                         SelectedItem="{Binding Transport}"/>
 

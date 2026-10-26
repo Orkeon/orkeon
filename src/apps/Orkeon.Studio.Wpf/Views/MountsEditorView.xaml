@@ -207,7 +207,8 @@
                        Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblRights], Source={x:Static services:I18n.Instance}}"/>
-            <ComboBox HorizontalAlignment="Left" MinWidth="220"
+            <!-- C09 (R10): «Rights» is the L combo, the whole column, whatever option is chosen. -->
+            <ComboBox Style="{StaticResource ComboL}"
                       ItemsSource="{Binding RightsChoices}"
                       SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
 
@@ -222,7 +223,7 @@
                             CommandParameter="{Binding}" controls:ButtonIcon.Kind="x"
                             ToolTip="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"
                             AutomationProperties.Name="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
-                    <ComboBox DockPanel.Dock="Right" Width="200" Margin="8,0,0,0"
+                    <ComboBox DockPanel.Dock="Right" Style="{StaticResource ComboM}" Margin="8,0,0,0"
                               ItemsSource="{Binding RightsChoices}"
                               SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
                     <TextBox Style="{StaticResource InputMono}" Text="{Binding RelativePath, UpdateSourceTrigger=PropertyChanged}"/>
