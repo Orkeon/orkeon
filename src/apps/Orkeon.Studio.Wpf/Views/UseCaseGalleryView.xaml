@@ -195,16 +195,22 @@
                   <ColumnDefinition Width="160"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                  <!-- R09: a label longer than the column (de) ends in «…», the tooltip gives it whole. -->
                   <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch"
                           Command="{Binding ChooseCommand}"
-                          Content="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
+                          ToolTip="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}">
+                    <TextBlock TextTrimming="CharacterEllipsis"
+                               Text="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
                   <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
                        teams, ready to run and to modify; never on a reference-only case. -->
                   <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch" Margin="0,8,0,0"
                           Command="{Binding ImportAsIsCommand}" controls:ButtonIcon.Kind="arrow-down"
-                          Content="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"
                           ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}"/>
+                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock TextTrimming="CharacterEllipsis"
+                               Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
+                  </Button>
                 </StackPanel>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                   <!-- R11: card title 16/600, the problem as body text; both wrap, never cut (R09) -->
