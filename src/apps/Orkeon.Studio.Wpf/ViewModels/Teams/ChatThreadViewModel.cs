@@ -174,9 +174,10 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>
     /// Whether the thread waits on the user, a question or a card: the header says it with a
-    /// badge, never by dimming the panel (A07).
+    /// badge, never by dimming the panel (A07). Not while the assistant works: a badge that says
+    /// it waits on the user beside «Stop» would contradict the status line (R19).
     /// </summary>
-    public bool IsWaitingOnUser => IsAsking || _pendingAction is not null;
+    public bool IsWaitingOnUser => !_isBusy && (IsAsking || _pendingAction is not null);
 
     /// <summary>
     /// The question on screen (R15), with its answers as buttons: the owner's own — an
