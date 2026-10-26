@@ -16,30 +16,6 @@
     <views:VerbosityLabelConverter x:Key="VerbosityLabel"/>
     <views:TeamChoiceTitleConverter x:Key="TeamChoiceTitle"/>
     <views:TeamChoiceMetaConverter x:Key="TeamChoiceMeta"/>
-    <!-- collapsible section header (Expander without the Aero chrome) -->
-    <Style x:Key="FoldToggle" TargetType="ToggleButton">
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="ToggleButton">
-            <Border Background="Transparent" Padding="0,6">
-              <StackPanel Orientation="Horizontal">
-                <Path x:Name="chev" Data="M0,0 L4,4 0,8" Stroke="{DynamicResource InkFaintBrush}"
-                      StrokeThickness="1.6" StrokeLineJoin="Round" StrokeStartLineCap="Round"
-                      StrokeEndLineCap="Round" VerticalAlignment="Center" Margin="1,1,8,0"/>
-                <ContentPresenter VerticalAlignment="Center"/>
-              </StackPanel>
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="chev" Property="Data" Value="M0,0 L4,4 8,0"/>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
     <!-- the footer of a pane: its summary on the left, the next step on the right -->
     <Style x:Key="PaneFooter" TargetType="Border">
       <Setter Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
@@ -384,13 +360,11 @@
                           Content="{Binding [Studio.Run.LlmLog], Source={x:Static services:I18n.Instance}}"/>
               </Grid>
 
-              <!-- advanced options, folded -->
-              <ToggleButton x:Name="AdvancedFold" Style="{StaticResource FoldToggle}">
-                <TextBlock FontSize="13" FontWeight="SemiBold"
-                           Text="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}"/>
-              </ToggleButton>
-              <StackPanel Margin="13,4,0,4"
-                          Visibility="{Binding IsChecked, ElementName=AdvancedFold, Converter={StaticResource BooleanToVisibility}}">
+              <!-- advanced options, folded. C12 (R16): the shared Disclosure, « label + chevron »,
+                   the label stable; closed by default as before. -->
+              <controls:Disclosure x:Name="AdvancedFold"
+                                   Header="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}">
+              <StackPanel Margin="0,0,0,4">
                 <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
                 <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                              IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
@@ -484,13 +458,12 @@
                   </StackPanel>
                 </Button>
               </StackPanel>
+              </controls:Disclosure>
 
               <!-- the allowed folders of this launch, open by default -->
-              <ToggleButton x:Name="MountsFold" Style="{StaticResource FoldToggle}" IsChecked="True">
-                <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding FoldersSectionTitle}"/>
-              </ToggleButton>
-              <StackPanel Margin="13,4,0,4"
-                          Visibility="{Binding IsChecked, ElementName=MountsFold, Converter={StaticResource BooleanToVisibility}}">
+              <!-- C12 (R16): the shared Disclosure; its label is the section's title -->
+              <controls:Disclosure x:Name="MountsFold" IsExpanded="True" Header="{Binding FoldersSectionTitle}">
+              <StackPanel Margin="0,0,0,4">
                 <ItemsControl ItemsSource="{Binding FolderRows}" Focusable="False">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -574,6 +547,7 @@
                   </ScrollViewer>
                 </StackPanel>
               </StackPanel>
+              </controls:Disclosure>
             </StackPanel>
           </StackPanel>
         </DockPanel>
