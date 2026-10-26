@@ -659,25 +659,22 @@
                     </StackPanel>
                   </Button>
                 </controls:ActionBar>
-                <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
-                        BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
+                <!-- R24 (D11): shown, the confirmation is scrolled into view (OnEditorShown). -->
+                <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,6,8,6" IsVisibleChanged="OnEditorShown"
                         Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource DangerBrush}"
+                    <WrapPanel>
+                      <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                 TextWrapping="Wrap" Foreground="{DynamicResource DangerInkBrush}"
                                  Text="{Binding DeleteQuestion}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
-                                               Foreground="{DynamicResource DangerFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
-                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Command="{Binding ConfirmDeleteCommand}"
+                              controls:ButtonIcon.Kind="trash-2"
+                              Content="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
                               Command="{Binding CancelDeleteCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
+                    </WrapPanel>
                     <!-- STUDIO-27 (D-07): the workshop session rule R links to this team goes with
                          it, unless unticked. A copy is linked to none, so it offers none: deleting
                          a copy never touches its original's session. -->
@@ -686,41 +683,37 @@
                               Content="{Binding [Studio.Teams.DeleteSessionToo], Source={x:Static services:I18n.Instance}}"/>
                     <!-- STUDIO-27 (D-06): the schedule is stopped first; when it cannot be, the team
                          stays, and the banner says why and what to run by hand. -->
-                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
-                               MaxWidth="420" HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding DeleteRefusal}"
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,6,0,0"
+                               TextWrapping="Wrap" Text="{Binding DeleteRefusal}"
                                Visibility="{Binding HasDeleteRefusal, Converter={StaticResource BooleanToVisibility}}"/>
-                    <TextBox Style="{StaticResource InputMono}" Margin="0,4,0,2" MaxWidth="420" HorizontalAlignment="Left"
-                             IsReadOnly="True" TextWrapping="Wrap" Text="{Binding DeleteManualCommand, Mode=OneWay}"
-                             Visibility="{Binding HasDeleteManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:TechBlock Margin="0,4,0,2" Text="{Binding DeleteManualCommand, Mode=OneWay}"
+                                        Visibility="{Binding HasDeleteManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
                 <!-- STUDIO-28 (D-07): the rename editor, in place of the action row like the delete
                      banner — no MessageBox. A refusal (the team running, under test or open in the
                      assistant, the name taken, the engine's answer) is said under it, and then
                      nothing moved. -->
-                <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"
-                        BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
+                <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,6,8,6" IsVisibleChanged="OnEditorShown"
                         Visibility="{Binding IsRenaming, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
+                    <!-- R10: one row, every control at 32 px — the field too. -->
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource AccentBrush}"
+                      <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource AccentInkBrush}"
                                  Text="{Binding [Studio.Teams.RenameLabel], Source={x:Static services:I18n.Instance}}"/>
-                      <TextBox Style="{StaticResource Input}" Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
+                      <TextBox Style="{StaticResource Input}" Width="220" Height="32" Margin="8,0,0,0" VerticalAlignment="Center"
                                Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"/>
-                      <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ConfirmRenameCommand}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="pencil-line" Size="12" Margin="0,0,6,0"
-                                               Foreground="{DynamicResource AccentFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
-                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding ConfirmRenameCommand}"
+                              controls:ButtonIcon.Kind="pencil-line"
+                              Content="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
                               Command="{Binding CancelRenameCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
-                               MaxWidth="420" HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding RenameRefusal}"
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,6,0,0"
+                               TextWrapping="Wrap" Text="{Binding RenameRefusal}"
                                Visibility="{Binding HasRenameRefusal, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
