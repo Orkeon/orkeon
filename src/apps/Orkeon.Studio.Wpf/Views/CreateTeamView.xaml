@@ -29,6 +29,28 @@
       <Setter Property="Padding" Value="0,12,0,0"/>
       <Setter Property="Margin" Value="0,16,0,0"/>
     </Style>
+    <!-- R08 (C04): a footer's sentence after its 8 px dot, wrapping. In a pane the dot follows
+         the tab's state (Tag = the StepTabState name): green done, sand expected or to fix,
+         neutral otherwise. A card footer says its section's state, the step footer what is
+         missing to go on — never the same sentence. -->
+    <Style x:Key="PaneFooterState" TargetType="controls:StatusDot" BasedOn="{StaticResource {x:Type controls:StatusDot}}">
+      <Setter Property="Template" Value="{StaticResource StatusDotWrapTemplate}"/>
+      <Setter Property="Margin" Value="0,0,12,0"/>
+      <Style.Triggers>
+        <Trigger Property="Tag" Value="Done">
+          <Setter Property="Tone" Value="Ready"/>
+        </Trigger>
+        <Trigger Property="Tag" Value="Verified">
+          <Setter Property="Tone" Value="Ready"/>
+        </Trigger>
+        <Trigger Property="Tag" Value="Expected">
+          <Setter Property="Tone" Value="Attention"/>
+        </Trigger>
+        <Trigger Property="Tag" Value="Warning">
+          <Setter Property="Tone" Value="Attention"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
     <Style x:Key="WizardActionBar" TargetType="Border">
       <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
       <Setter Property="BorderThickness" Value="0,1,0,0"/>
@@ -592,8 +614,7 @@
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding NeedFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding NeedTabState}" Content="{Binding NeedFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -717,8 +738,7 @@
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding FoldersFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding FoldersTabState}" Content="{Binding FoldersFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -954,8 +974,7 @@
                       <TextBlock Text="{Binding [Studio.Create.BackToFolders], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding NotesFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding NotesTabState}" Content="{Binding NotesFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -991,8 +1010,23 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="0,0,8,0"
                     Command="{Binding Step1BackCommand}"
                     Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                       Margin="0,0,12,0" Text="{Binding Step1Hint}"/>
+            <!-- R08: what is missing to go on, after its dot — sand while it waits on the user,
+                 green once the team can be composed, neutral while the engine works. -->
+            <controls:StatusDot Content="{Binding Step1Hint}">
+              <controls:StatusDot.Style>
+                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
+                  <Setter Property="Tone" Value="Attention"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding CanCompose}" Value="True">
+                      <Setter Property="Tone" Value="Ready"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsSessionWorking}" Value="True">
+                      <Setter Property="Tone" Value="Neutral"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:StatusDot.Style>
+            </controls:StatusDot>
           </DockPanel>
         </Border>
       </StackPanel>
@@ -1035,8 +1069,7 @@
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding TeamFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding TeamTabState}" Content="{Binding TeamFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -1251,8 +1284,7 @@
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding Step2FoldersFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding Step2FoldersTabState}" Content="{Binding Step2FoldersFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel x:Name="MountFoldersBlock">
@@ -1312,8 +1344,7 @@
                       <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding NotesFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding NotesTabState}" Content="{Binding NotesFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -1349,8 +1380,7 @@
                       <TextBlock Text="{Binding [Studio.Create.BackToTeam], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Button>
-                  <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                             Margin="0,0,12,0" Text="{Binding CompositionFooter}"/>
+                  <controls:StatusDot Style="{StaticResource PaneFooterState}" Tag="{Binding CompositionTabState}" Content="{Binding CompositionFooter}"/>
                 </DockPanel>
               </Border>
               <StackPanel>
@@ -1468,21 +1498,20 @@
                 </StackPanel>
               </Button>
             </StackPanel>
-            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center"
-                     Visibility="{Binding HasStep2Hint, Converter={StaticResource BooleanToVisibility}}">
-              <Ellipse.Style>
-                <Style TargetType="Ellipse">
-                  <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+            <!-- R08: the folders left to choose (sand), else that the team can be tried (green). -->
+            <controls:StatusDot Content="{Binding Step2Hint}"
+                                Visibility="{Binding HasStep2Hint, Converter={StaticResource BooleanToVisibility}}">
+              <controls:StatusDot.Style>
+                <Style TargetType="controls:StatusDot" BasedOn="{StaticResource PaneFooterState}">
+                  <Setter Property="Tone" Value="Ready"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsStep2HintWarning}" Value="True">
-                      <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Tone" Value="Attention"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
-              </Ellipse.Style>
-            </Ellipse>
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                       Margin="0,0,12,0" Text="{Binding Step2Hint}"/>
+              </controls:StatusDot.Style>
+            </controls:StatusDot>
           </DockPanel>
         </Border>
       </StackPanel>

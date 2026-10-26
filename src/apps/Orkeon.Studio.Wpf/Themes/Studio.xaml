@@ -1464,6 +1464,37 @@
   <!-- hrm:L02 end -->
 
   <!-- hrm:L03 begin -->
+  <!-- The StatusDot (R08) for a sentence longer than a line (lot L03, Create's footers): the
+       dot on the first line, the text wrapping over the rest of the width. The implicit
+       StatusDot template is a horizontal StackPanel, which never lets its text wrap. -->
+  <ControlTemplate x:Key="StatusDotWrapTemplate" TargetType="controls:StatusDot">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Ellipse x:Name="dot" Width="8" Height="8" Margin="0,5,8,0" VerticalAlignment="Top"
+               Fill="{DynamicResource NeutralDotBrush}"/>
+      <ContentPresenter Grid.Column="1" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}">
+        <ContentPresenter.Resources>
+          <Style TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+          </Style>
+        </ContentPresenter.Resources>
+      </ContentPresenter>
+    </Grid>
+    <ControlTemplate.Triggers>
+      <Trigger Property="Tone" Value="Attention">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Error">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource DangerBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Ready">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+      </Trigger>
+    </ControlTemplate.Triggers>
+  </ControlTemplate>
   <!-- hrm:L03 end -->
 
   <!-- hrm:L04 begin -->

@@ -136,7 +136,11 @@ public sealed partial class CreateTeamViewModel
         }
     }
 
-    /// <summary>The folders pane's footer: what is left to choose, or that every folder has its place.</summary>
+    /// <summary>
+    /// The folders pane's footer — the section's state (R08): « 2 folders · 1 to choose », or that
+    /// every folder has its place. What the trial waits for is the step footer's sentence
+    /// (<see cref="Step2Hint"/>); the card never repeats it (C04).
+    /// </summary>
     public string Step2FoldersFooter
     {
         get
@@ -145,7 +149,7 @@ public sealed partial class CreateTeamViewModel
             if (rows.Count == 0)
                 return _strings[StudioStringKeys.WizardStep2FoldersFooterNone];
             if (FoldersToChooseCount is var toChoose and > 0)
-                return _strings.Format(StudioStringKeys.WizardFoldersToChoose, toChoose);
+                return _strings.Format(StudioStringKeys.WizardTabTeamFoldersToChoose, rows.Count, toChoose);
 
             return _strings.Format(
                 rows.All(row => row.IsInsideTeam)
