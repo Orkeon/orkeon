@@ -676,7 +676,7 @@
   <data name="Studio.Settings.MailTitle" xml:space="preserve"><value>E-mail accounts</value></data>
   <data name="Studio.Settings.MailIntro" xml:space="preserve"><value>The mailboxes your agents may use. Each account says what an agent is allowed to do with it, and mail goes only to the recipients you list.</value></data>
   <data name="Studio.Settings.MailAdd" xml:space="preserve"><value>Add an account</value></data>
-  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>No account declared: the mail tools refuse every call until one is.</value></data>
+  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>The mail tools refuse every call until an account is declared.</value></data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve"><value>Account used when an agent names none</value></data>
   <data name="Studio.Settings.MailDefaultAccountHint" xml:space="preserve"><value>With a single account you can leave it empty: the engine uses that one.</value></data>
   <data name="Studio.Settings.MailNewTitle" xml:space="preserve"><value>A new account</value></data>
@@ -1869,7 +1869,7 @@
   <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve"><value>Type it on the Sign-in tab and save it; the test passes once it is stored.</value></data>
   <data name="Studio.Settings.DriveTitle" xml:space="preserve"><value>Drive accounts</value></data>
   <data name="Studio.Settings.DriveIntro" xml:space="preserve"><value>The Google Drive and OneDrive accounts your agents may use. Each account confines them to a folder you choose, and says what they are allowed to do there.</value></data>
-  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>No account declared: the drive tools refuse every call until one is.</value></data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>The drive tools refuse every call until an account is declared.</value></data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve"><value>Withhold the text of a file the prompt-injection screening rejects</value></data>
   <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve"><value>Off, the agent reads the file with a warning; on, it reads the warning alone.</value></data>
   <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve"><value>Nothing was stored. The drive guide (docs/guides/drive.md) says what each refusal means.</value></data>
@@ -2551,6 +2551,7 @@
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve"><value>No account</value></data>
   <!-- hrm:L12 end -->
 
   <!-- hrm:L13 begin -->

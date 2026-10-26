@@ -676,7 +676,7 @@
   <data name="Studio.Settings.MailTitle" xml:space="preserve"><value>Comptes e-mail</value></data>
   <data name="Studio.Settings.MailIntro" xml:space="preserve"><value>Les boîtes que vos agents peuvent utiliser. Chaque compte dit ce qu'un agent a le droit d'en faire, et rien n'est envoyé hors des destinataires que vous listez.</value></data>
   <data name="Studio.Settings.MailAdd" xml:space="preserve"><value>Ajouter un compte</value></data>
-  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>Aucun compte déclaré : les outils de messagerie refusent tout appel tant qu'il n'y en a pas.</value></data>
+  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>Les outils de messagerie refusent tout appel tant qu'aucun compte n'est déclaré.</value></data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve"><value>Compte utilisé quand un agent n'en nomme aucun</value></data>
   <data name="Studio.Settings.MailDefaultAccountHint" xml:space="preserve"><value>Avec un seul compte, vous pouvez le laisser vide : le moteur prend celui-là.</value></data>
   <data name="Studio.Settings.MailNewTitle" xml:space="preserve"><value>Un nouveau compte</value></data>
@@ -1869,7 +1869,7 @@
   <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve"><value>Saisissez-le dans l'onglet Connexion et enregistrez-le ; le test réussit une fois qu'il est mémorisé.</value></data>
   <data name="Studio.Settings.DriveTitle" xml:space="preserve"><value>Comptes de stockage cloud</value></data>
   <data name="Studio.Settings.DriveIntro" xml:space="preserve"><value>Les comptes Google Drive et OneDrive que vos agents peuvent utiliser. Chaque compte les cantonne au dossier que vous choisissez et dit ce qu'ils ont le droit d'y faire.</value></data>
-  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>Aucun compte déclaré : les outils de stockage cloud refusent tout appel tant qu'il n'y en a pas.</value></data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>Les outils de stockage cloud refusent tout appel tant qu'aucun compte n'est déclaré.</value></data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve"><value>Retenir le texte d'un fichier que le filtrage des injections de prompt rejette</value></data>
   <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve"><value>Désactivé, l'agent lit le fichier avec un avertissement ; activé, il ne lit que l'avertissement.</value></data>
   <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve"><value>Rien n'a été mémorisé. Le guide du stockage cloud (docs/guides/drive.md) explique chaque refus.</value></data>
@@ -2551,6 +2551,7 @@
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve"><value>Aucun compte</value></data>
   <!-- hrm:L12 end -->
 
   <!-- hrm:L13 begin -->

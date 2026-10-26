@@ -1894,7 +1894,7 @@
     <value>Konto hinzufügen</value>
   </data>
   <data name="Studio.Settings.MailEmpty" xml:space="preserve">
-    <value>Kein Konto deklariert: Die E-Mail-Werkzeuge lehnen jeden Aufruf ab, bis eines vorhanden ist.</value>
+    <value>Die E-Mail-Werkzeuge lehnen jeden Aufruf ab, bis ein Konto deklariert ist.</value>
   </data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve">
     <value>Konto, das gilt, wenn ein Agent keines nennt</value>
@@ -3485,7 +3485,7 @@
     <value>Die Google-Drive- und OneDrive-Konten, die Ihre Agenten nutzen dürfen. Jedes Konto beschränkt sie auf einen Ordner Ihrer Wahl und legt fest, was sie dort tun dürfen.</value>
   </data>
   <data name="Studio.Settings.DriveEmpty" xml:space="preserve">
-    <value>Kein Konto deklariert: Die Cloud-Speicher-Werkzeuge lehnen jeden Aufruf ab, bis eines deklariert ist.</value>
+    <value>Die Cloud-Speicher-Werkzeuge lehnen jeden Aufruf ab, bis ein Konto deklariert ist.</value>
   </data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve">
     <value>Den Text einer Datei zurückhalten, die die Prüfung auf Prompt-Injection ablehnt</value>
@@ -4237,6 +4237,9 @@
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve">
+    <value>Kein Konto</value>
+  </data>
   <!-- hrm:L12 end -->
 
   <!-- hrm:L13 begin -->

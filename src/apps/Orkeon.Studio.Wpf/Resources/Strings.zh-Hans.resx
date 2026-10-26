@@ -1894,7 +1894,7 @@
     <value>添加账户</value>
   </data>
   <data name="Studio.Settings.MailEmpty" xml:space="preserve">
-    <value>尚未声明账户：在此之前，邮件工具会拒绝所有调用。</value>
+    <value>在声明账户之前，邮件工具会拒绝所有调用。</value>
   </data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve">
     <value>智能体未指明账户时使用的账户</value>
@@ -3485,7 +3485,7 @@
     <value>您的智能体可以使用的 Google Drive 和 OneDrive 账户。每个账户将它们限制在您选择的文件夹内，并规定它们可以在其中做什么。</value>
   </data>
   <data name="Studio.Settings.DriveEmpty" xml:space="preserve">
-    <value>尚未声明账户：在声明账户之前，云盘工具会拒绝所有调用。</value>
+    <value>在声明账户之前，云盘工具会拒绝所有调用。</value>
   </data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve">
     <value>扣留提示注入筛查拒绝的文件的文本</value>
@@ -4237,6 +4237,9 @@
   <!-- hrm:L11 end -->
 
   <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve">
+    <value>没有账户</value>
+  </data>
   <!-- hrm:L12 end -->
 
   <!-- hrm:L13 begin -->

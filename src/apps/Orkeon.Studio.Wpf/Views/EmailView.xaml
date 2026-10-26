@@ -75,11 +75,13 @@
     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
       <StackPanel>
         <DockPanel Margin="0,0,0,4">
-          <!-- C11: «Add an account» is secondary with its +, the screen's primary is «Save» (R05) -->
+          <!-- C11: «Add an account» is secondary with its +, the screen's primary is «Save» (R05);
+               with no account the empty state below carries it, so it shows once -->
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
                   controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plus"
                   Command="{Binding BeginAddCommand}"
-                  Content="{Binding [Studio.Settings.MailAdd], Source={x:Static services:I18n.Instance}}"/>
+                  Content="{Binding [Studio.Settings.MailAdd], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding HasAccounts, Converter={StaticResource BooleanToVisibility}}"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <controls:LucideIcon Kind="mail" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}"
@@ -90,9 +92,17 @@
                    Text="{Binding [Studio.Settings.MailIntro], Source={x:Static services:I18n.Instance}}"/>
         <!-- D-06: a run reads one settings file, so the tab says which one it writes -->
         <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding SettingsFileLine}"/>
-        <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0" TextWrapping="Wrap"
-                   Text="{Binding [Studio.Settings.MailEmpty], Source={x:Static services:I18n.Instance}}"
-                   Visibility="{Binding HasAccounts, Converter={StaticResource InverseBooleanToVisibility}}"/>
+        <!-- C17: no account yet - the shared empty state, whose one action is the add (R17) -->
+        <controls:EmptyState Icon="mail" Margin="0,16,0,0"
+                             Title="{Binding [Studio.Settings.MailEmptyTitle], Source={x:Static services:I18n.Instance}}"
+                             Text="{Binding [Studio.Settings.MailEmpty], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding HasAccounts, Converter={StaticResource InverseBooleanToVisibility}}">
+          <controls:EmptyState.Actions>
+            <Button Style="{StaticResource BtnPrimary}" controls:ButtonIcon.Kind="plus"
+                    Command="{Binding BeginAddCommand}"
+                    Content="{Binding [Studio.Settings.MailAdd], Source={x:Static services:I18n.Instance}}"/>
+          </controls:EmptyState.Actions>
+        </controls:EmptyState>
 
         <StackPanel Visibility="{Binding HasAccounts, Converter={StaticResource BooleanToVisibility}}">
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
