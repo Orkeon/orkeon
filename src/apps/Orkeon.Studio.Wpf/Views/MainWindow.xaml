@@ -445,36 +445,61 @@
                        Foreground="{DynamicResource InkBrush}" Text="{Binding UndoNotice}"/>
           </DockPanel>
         </Border>
-        <!-- R3: two column widths only - standard 1040 (Create, Teams, Import, History, Diagnostic),
-             wide 1200 (Launch, Settings) - 48 px side margins, the scroll bar gutter always kept. -->
+        <!-- R01, R02 (A01, A02): one page column for every screen - 1040 px at most, 85 px after
+             the nav's edge (x = 297..1337 at 1440 px), whatever the screen's state: the single
+             PageColumn takes its width from the window, never from the content. The scroll area
+             runs down to the status bar; the 24 px top and 32 px end margins live INSIDE the
+             scrolled content (a ScrollViewer's Padding sits outside the viewport and left a dead
+             band above the bar). The right margin only shows below 1440 px. -->
         <Grid Grid.Column="0">
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
-          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1040" DataContext="{Binding CreateTeam}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:CreateTeamView x:Name="CreatePanel" DataContext="{Binding CreateTeam}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
-          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1040" DataContext="{Binding Teams}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:TeamsView x:Name="TeamsPanel" DataContext="{Binding Teams}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
-          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="1040" DataContext="{Binding Import}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:ImportTeamView x:Name="ImportPanel" DataContext="{Binding Import}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
-          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1200" DataContext="{Binding Settings}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:SettingsView x:Name="SettingsPanel" DataContext="{Binding Settings}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
-          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="1040" DataContext="{Binding Config.Diagnostic}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:DiagnosticView x:Name="DiagPanel" DataContext="{Binding Config.Diagnostic}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:RunScreenView x:Name="RunPanel" MaxWidth="1200" DataContext="{Binding Run}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:RunScreenView x:Name="RunPanel" DataContext="{Binding Run}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
-          <views:HistoryView x:Name="HistoryPanel" MaxWidth="1040" DataContext="{Binding Launch.History}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:HistoryView x:Name="HistoryPanel" DataContext="{Binding Launch.History}"/>
+          </Grid>
         </ScrollViewer>
         </Grid>
       </Grid>

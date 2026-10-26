@@ -1450,6 +1450,14 @@
   <!-- hrm:fc end -->
 
   <!-- hrm:L01 begin -->
+  <!-- R01, R02 (L01): the shell's page host - PageContainer's 85 px offset from the nav, but
+       stretched, so the single PageColumn inside it (not the content) sets the 1040 px; 24 px
+       above the title, 32 px after the last block inside the scrolled area, 48 px on the right
+       for a window narrower than 1440 px. -->
+  <Style x:Key="PageHost" TargetType="Grid">
+    <Setter Property="Margin" Value="85,24,48,32"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
   <!-- hrm:L01 end -->
 
   <!-- hrm:L02 begin -->
