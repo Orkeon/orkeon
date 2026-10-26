@@ -138,6 +138,85 @@ public sealed class ReplayIdleGateTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldKeepTheClaim_WhenANewQuestionComes()
+    {
+        StartBackgroundTask();
+        _approvals.Ask("write_file");
+        await _gate.WaitAsync(TestContext.Current.CancellationToken).WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+
+        _approvals.Ask("read_file");
+
+        Assert.Equal(ReplayReader.Loop, _gate.Claim);
+        Assert.False(_gate.WaitForCommandRead(new CancellationToken(canceled: true)));
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheClaim_WhenAnotherQuestionIsWithdrawn()
+    {
+        StartBackgroundTask();
+        _approvals.Ask("write_file");
+        var other = _approvals.Ask("read_file");
+        await _gate.WaitAsync(TestContext.Current.CancellationToken).WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+
+        _approvals.Settle(other);
+
+        Assert.Equal(ReplayReader.Loop, _gate.Claim);
+    }
+
+    [Fact]
+    public async Task ShouldEndTheClaim_WhenTheQuestionClaimedIsWithdrawn()
+    {
+        StartBackgroundTask();
+        var claimed = _approvals.Ask("write_file");
+        _approvals.Ask("read_file");
+        await _gate.WaitAsync(TestContext.Current.CancellationToken).WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+
+        _approvals.Settle(claimed);
+
+        Assert.Null(_gate.Claim);
+    }
+
+    [Fact]
+    public async Task ShouldSeeTheFailure_WhenTheWaitRunsWhileAFailedTaskStillSettles()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var registry = new CommandInstanceRegistry();
+        using var gate = new ReplayIdleGate(() => registry, () => null);
+        Task? waitWhileSettling = null;
+        var openedWhileSettling = false;
+
+        // Subscribed before the gate: runs once the state is Failed, before the gate records the failure.
+        registry.InstanceTerminated += (_, _) =>
+        {
+            waitWhileSettling = gate.WaitAsync(ct);
+            openedWhileSettling = waitWhileSettling.IsCompleted;
+        };
+        gate.Attach();
+        gate.TrackingLine = 1;
+        var task = registry.Register("bgfail", CommandInstanceKind.Async, "dev", "run", Guid.NewGuid());
+
+        task.Fail("no such crew");
+
+        Assert.False(openedWhileSettling);
+        await waitWhileSettling!.WaitAsync(HangGuard, ct);
+        Assert.Equal(1, gate.TakeFailure()?.LineNumber);
+    }
+
+    [Fact]
+    public async Task ShouldWaitForWorkHeld_UntilItEnds()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var drain = _registry.BeginWork();
+
+        var wait = _gate.WaitAsync(ct);
+        Assert.False(wait.IsCompleted);
+        drain.Dispose();
+
+        await wait.WaitAsync(HangGuard, ct);
+        Assert.False(_gate.WorkRunning);
+    }
+
+    [Fact]
     public async Task ShouldKeepTheCommandWaiting_UntilTheLoopReleasesItsClaim()
     {
         var ct = TestContext.Current.CancellationToken;

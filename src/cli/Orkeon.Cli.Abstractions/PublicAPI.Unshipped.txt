@@ -61,3 +61,5 @@ Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput
 const Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.MaxLength = 60 -> int
 static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(Orkeon.Cli.Abstractions.Runners.PendingToolApproval! approval) -> string!
 static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(string? arguments) -> string!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.get -> long
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.init -> void

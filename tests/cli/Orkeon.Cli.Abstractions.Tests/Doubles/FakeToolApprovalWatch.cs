@@ -9,6 +9,8 @@ namespace Orkeon.Cli.Abstractions.Tests.Doubles;
 /// </summary>
 public sealed class FakeToolApprovalWatch : IToolApprovalWatch
 {
+    private long _nextId;
+
     /// <summary>The approvals served as waiting, in order.</summary>
     public List<PendingToolApproval> Pending { get; } = [];
 
@@ -18,9 +20,19 @@ public sealed class FakeToolApprovalWatch : IToolApprovalWatch
     public event EventHandler? PendingChanged;
 
     /// <summary>Adds a question waiting for <paramref name="toolName"/> and raises <see cref="PendingChanged"/>.</summary>
-    public void Ask(string toolName)
+    /// <returns>The question added, with an <see cref="PendingToolApproval.Id"/> of its own.</returns>
+    public PendingToolApproval Ask(string toolName)
     {
-        Pending.Add(new PendingToolApproval(toolName, "{}", Ticket: null, TaskName: null));
+        var question = new PendingToolApproval(toolName, "{}", Ticket: null, TaskName: null) { Id = ++_nextId };
+        Pending.Add(question);
+        NotifyPendingChanged();
+        return question;
+    }
+
+    /// <summary>Removes <paramref name="question"/> (answered or withdrawn) and raises <see cref="PendingChanged"/>.</summary>
+    public void Settle(PendingToolApproval question)
+    {
+        Pending.Remove(question);
         NotifyPendingChanged();
     }
 

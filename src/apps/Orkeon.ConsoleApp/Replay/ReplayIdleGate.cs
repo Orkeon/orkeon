@@ -30,12 +30,16 @@ internal enum ReplayReader
 /// interceptor) and a command that answers its crew's questions itself (<c>runCrew</c>'s
 /// <c>AnswerFromConsole</c>, from a background task too) may both want it. The reader that takes a line for a
 /// pending approval holds a claim on it (<see cref="WaitAsync"/>, <see cref="WaitForCommandRead"/>) until the
-/// approvals change or that reader reads again; the other reader waits meanwhile.
+/// question claimed is answered or withdrawn, or that reader reads again; the other reader waits meanwhile. A new
+/// question, or the withdrawal of another one, leaves the claim in place.
 /// </para>
 /// <para>
-/// The wait wakes on the registry's <see cref="CommandInstanceRegistry.InstanceTerminated"/> and on the
-/// approvals' <see cref="IToolApprovalWatch.PendingChanged"/>. A <c>human_input</c> question raises no
-/// signal: the wait looks again every <see cref="RecheckInterval"/>, a cheap read, cancellable.
+/// The wait wakes on the registry's <see cref="CommandInstanceRegistry.WorkSettled"/> and
+/// <see cref="CommandInstanceRegistry.InstanceTerminated"/>, and on the approvals'
+/// <see cref="IToolApprovalWatch.PendingChanged"/>. The registry counts an instance as running until its terminal
+/// observers - this gate's failure record among them - have run, and a <c>completed()</c> drain until it ended:
+/// the wait that sees no work in flight has seen every failure, without relying on a timer. A <c>human_input</c>
+/// question raises no signal: the wait looks again every <see cref="RecheckInterval"/>, a cheap read, cancellable.
 /// </para>
 /// <para>
 /// It also records the background instances launched while a line is tracked (<see cref="TrackingLine"/>):
@@ -57,6 +61,7 @@ internal sealed class ReplayIdleGate : IDisposable
     private TaskCompletionSource _changed = NewSignal();
     private ReplayFailure? _failure;
     private ReplayReader? _claim;
+    private PendingToolApproval? _claimed;
     private CommandInstanceRegistry? _registry;
     private IToolApprovalWatch? _approvals;
     private bool _attached;
@@ -133,6 +138,7 @@ internal sealed class ReplayIdleGate : IDisposable
         {
             _registry.InstanceRegistered += OnRegistered;
             _registry.InstanceTerminated += OnTerminated;
+            _registry.WorkSettled += OnWorkSettled;
         }
 
         if (_approvals is not null)
@@ -158,11 +164,11 @@ internal sealed class ReplayIdleGate : IDisposable
                 changed = _changed.Task;
                 if (_failure is not null)
                     return;
-                if (ApprovalPending)
+                if (FirstPending() is { } head)
                 {
                     if (_claim is null)
                     {
-                        _claim = ReplayReader.Loop;
+                        Take(ReplayReader.Loop, head);
                         return;
                     }
                 }
@@ -202,11 +208,11 @@ internal sealed class ReplayIdleGate : IDisposable
             lock (_gate)
             {
                 changed = _changed.Task;
-                if (!ApprovalPending)
+                if (FirstPending() is not { } head)
                     return !waited;
                 if (_claim is null)
                 {
-                    _claim = ReplayReader.Command;
+                    Take(ReplayReader.Command, head);
                     return true;
                 }
             }
@@ -236,7 +242,7 @@ internal sealed class ReplayIdleGate : IDisposable
         {
             released = _claim == reader;
             if (released)
-                _claim = null;
+                ClearClaim();
         }
 
         if (released)
@@ -272,7 +278,7 @@ internal sealed class ReplayIdleGate : IDisposable
         lock (_gate)
         {
             _failure = null;
-            _claim = null;
+            ClearClaim();
         }
 
         Signal();
@@ -285,6 +291,7 @@ internal sealed class ReplayIdleGate : IDisposable
         {
             _registry.InstanceRegistered -= OnRegistered;
             _registry.InstanceTerminated -= OnTerminated;
+            _registry.WorkSettled -= OnWorkSettled;
         }
 
         if (_approvals is not null)
@@ -313,13 +320,36 @@ internal sealed class ReplayIdleGate : IDisposable
         Signal();
     }
 
-    // The approvals changed: the line claimed was dealt with (answered), or a new question came; either way the
-    // claim is over, and both readers look again.
+    // The approvals changed: the claim is over only when the question claimed left the queue (answered, a session-wide
+    // answer included, or withdrawn); a new question, or another one withdrawn, keeps it. Both readers look again.
     private void OnPendingChanged(object? sender, EventArgs e)
     {
+        var pending = _approvals?.Pending ?? [];
         lock (_gate)
-            _claim = null;
+        {
+            if (_claimed is { } claimed && !pending.Contains(claimed))
+                ClearClaim();
+        }
+
         Signal();
+    }
+
+    private void OnWorkSettled(object? sender, EventArgs e) => Signal();
+
+    private PendingToolApproval? FirstPending() => _approvals?.Pending is { Count: > 0 } pending ? pending[0] : null;
+
+    // Under _gate.
+    private void Take(ReplayReader reader, PendingToolApproval question)
+    {
+        _claim = reader;
+        _claimed = question;
+    }
+
+    // Under _gate.
+    private void ClearClaim()
+    {
+        _claim = null;
+        _claimed = null;
     }
 
     private void Signal()

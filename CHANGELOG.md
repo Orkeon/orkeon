@@ -14,9 +14,12 @@ relative path read against the working directory), waits before each line until 
 crews included — or a question asks for the line (a tool-call approval, `human_input`), and stops at the first error
 with `replay stopped at line N: <cause>`. Alone it runs the plain console, echoes each line, writes the logs to stderr
 and exits `0` (every line passed), `1` (stopped on an error) or `2` (file missing or unreadable); with `--interactive`
-it hands the keyboard back. `/replay <file>` does the same inside a session. One approval takes exactly one line; a
-question still waiting when the file ends stops the replay (`replay ended with an approval waiting: <tool>`, exit `1`);
-the replay concludes only once the command in flight and its background work have ended. Ctrl-C (Esc Esc in the TUI)
+it hands the keyboard back. `/replay <file>` does the same inside a session. One line answers one approval; a
+session-wide answer (`s`) also settles the queued approvals of the same tool, so the file carries no line for them. A
+question still waiting when the file ends stops the replay (`replay ended with an approval waiting: <tool>`, exit `1`),
+as does a command reading past the end (its read gets the end of the input, under `--interactive` too); a REPL that
+throws under `--replay` alone exits `1` with one line on stderr. The replay concludes only once the command in flight,
+its background work and their `completed()` callbacks have ended. Ctrl-C (Esc Esc in the TUI)
 stops the replay; a second Ctrl-C while it is still stopping ends the process (exit `130`). New `--log-level <level>`,
 also the starting level of the TUI's logs pane; `--replay` and `--log-level` refuse a value that starts with `--`.
 
@@ -24,8 +27,9 @@ also the starting level of the TUI's logs pane; `--replay` and `--log-level` ref
 failed; a scripted command's error, rejection or quota refusal now returns it, as do the usage errors of `inspect`,
 `result`, `cancel` and `help-cmd` and an unknown ticket — the message printed is unchanged.
 `InteractiveRunnerBase.OnCommandOutcome` and `ICommandOutcomeObserver` report each command's outcome;
-`IToolApprovalWatch.PendingChanged`, `CommandInstanceRegistry.InstanceRegistered` / `InstanceTerminated` /
-`HasRunning` signal the work in flight; `DefaultCommandRegistry` takes a host's own built-ins.
+`IToolApprovalWatch.PendingChanged` and `PendingToolApproval.Id`, `CommandInstanceRegistry.InstanceRegistered` /
+`InstanceTerminated` / `WorkSettled` / `HasRunning` / `BeginWork` signal the work in flight (an instance counts until its
+terminal observers have run, a `completed()` drain until it ended); `DefaultCommandRegistry` takes a host's own built-ins.
 
 ### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount **[breaking]** (#199, #200)
 

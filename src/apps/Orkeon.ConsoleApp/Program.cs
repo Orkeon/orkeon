@@ -82,16 +82,31 @@ static class Program
 
         // The host is disposed on every exit path (the unreadable replay file's exit 2, a REPL that threw), so its
         // services clean up after themselves (the sandbox directories among them).
+        // A dispose that throws is reported on stderr and never masks the REPL's own exception, nor turns a
+        // replay's exit code into an unhandled exception.
         try
         {
             await RunHostAsync(host, effectiveUi, scriptedOpts, stderr);
         }
         finally
         {
+            await DisposeHostAsync(host, stderr);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "The host's disposal is the process's last step: its failure is reported, never thrown over the run's outcome.")]
+    static async Task DisposeHostAsync(IHost host, TextWriter stderr)
+    {
+        try
+        {
             if (host is IAsyncDisposable asyncHost)
                 await asyncHost.DisposeAsync();
             else
                 host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            await stderr.WriteLineAsync($"orkeon-repl: disposing the host failed: {ex.Message}");
         }
     }
 
@@ -546,9 +561,9 @@ static class Program
             : host.Services.GetRequiredService<MainMenuRunner>();
         Func<CancellationToken, Task> entry = runner.RunAsync;
 
-        // --replay alone: 0 when every line passed, 1 when it stopped on an error (said on the console); the replay
-        // is concluded even when the REPL throws.
-        if (await ReplayLaunch.RunAsync(replay, scriptedOpts, () => RunReplAsync(host, effectiveUi, scriptedOpts, replay, runner, entry)) is { } replayExitCode)
+        // --replay alone: 0 when every line passed, 1 when it stopped on an error (said on the console) or the REPL
+        // threw (one line on stderr); the replay is concluded even when the REPL throws.
+        if (await ReplayLaunch.RunAsync(replay, scriptedOpts, () => RunReplAsync(host, effectiveUi, scriptedOpts, replay, runner, entry), stderr) is { } replayExitCode)
             Environment.ExitCode = replayExitCode;
     }
 

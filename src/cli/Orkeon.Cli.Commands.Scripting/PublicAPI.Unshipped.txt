@@ -45,3 +45,5 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.BeginWork() -> System.IDisposable!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.WorkSettled -> System.EventHandler?

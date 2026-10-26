@@ -241,7 +241,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 // engine lock. Without this, an async reply (e.g. /assistant) stays invisible
                 // until the user happens to re-run the same command — other commands pump only
                 // their own queue, and built-ins don't pump at all.
-                _ = PushDrainAsync(console);
+                // The drain is work in flight until it ends, so a replay of the REPL waits for it (and for every
+                // launch it makes, registered before the handle is released).
+                _ = PushDrainAsync(console, _dispatch?.Registry.BeginWork());
             });
         }
     }
@@ -255,7 +257,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// dequeue is idempotent, so a completion is never rendered twice).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget push-drain fault barrier: a failure running a JS completion callback off the pool thread is logged and must not crash the detached drain task.")]
-    private async Task PushDrainAsync(IConsoleAdapter console)
+    private async Task PushDrainAsync(IConsoleAdapter console, IDisposable? work)
     {
         try
         {
@@ -266,6 +268,10 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         catch (Exception ex)
         {
             LogPushDrainFailed(ex, _descriptor.Name);
+        }
+        finally
+        {
+            work?.Dispose();
         }
     }
 

@@ -154,6 +154,32 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Push_drain_counts_as_work_in_flight_until_completed_ended()
+    {
+        var service = NewDispatchService();
+        RegisterEchoAgent(service);
+        var held = new HeldService();
+        _disposables.Add(held);
+
+        var registry = LoadFixture("askbg-held.cmd.ts", service, w => w.AddOptional("held", _ => held));
+        var cmd = registry.ScriptCommands.Single(c => c.Name == "askbg-held");
+        var console = new ScriptedTestConsole();
+        await cmd.ExecuteAsync(Ctx("askbg-held hello", "hello", console), CancellationToken.None);
+
+        // completed() runs and holds: the instance is done, the drain is not.
+        Assert.True(held.Entered.Wait(HangGuard, TestContext.Current.CancellationToken));
+        Assert.Equal(CommandInstanceState.Done, service.Registry.All().Single().State);
+        Assert.True(service.Registry.HasRunning);
+
+        var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Registry.WorkSettled += (_, _) => { if (!service.Registry.HasRunning) settled.TrySetResult(); };
+        held.Release.Set();
+
+        await settled.Task.WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+        Assert.Contains("held-done:HELLO", console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Async_admission_quota_rejects_a_second_in_flight_instance()
     {
         var service = NewDispatchService();
@@ -341,6 +367,25 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
     {
         public static readonly EmptyProvider Instance = new();
         public object? GetService(Type serviceType) => null;
+    }
+
+    // A hang guard, never reached when the test passes: no test bounds a duration.
+    private static readonly TimeSpan HangGuard = TimeSpan.FromMinutes(2);
+
+    /// <summary>A service whose <c>Hold</c> signals <see cref="Entered"/>, then blocks until <see cref="Release"/> is set.</summary>
+    private sealed class HeldService : IDisposable
+    {
+        public ManualResetEventSlim Entered { get; } = new();
+
+        public ManualResetEventSlim Release { get; } = new();
+
+        public void Hold()
+        {
+            Entered.Set();
+            Release.Wait(HangGuard);
+        }
+
+        public void Dispose() => Release.Set();
     }
 
     /// <summary>A service whose method returns a genuinely pending Task (never synchronously complete).</summary>
