@@ -557,7 +557,19 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ?? state.CacheHitTokens;
         state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
         state.Cost = TryReadDouble(usage, "cost") ?? state.Cost;
-        state.RawUsage = usage.Clone();
+        state.RawUsage = state.RawUsage is { ValueKind: JsonValueKind.Object } previous && usage.ValueKind == JsonValueKind.Object
+            ? MergeUsage(previous, usage)
+            : usage.Clone();
+    }
+
+    // A vendor may split its usage across chunks: the fields of each chunk are kept, a later value
+    // of the same field replacing the earlier one.
+    private static JsonElement MergeUsage(JsonElement previous, JsonElement usage)
+    {
+        var merged = System.Text.Json.Nodes.JsonObject.Create(previous)!;
+        foreach (var property in usage.EnumerateObject())
+            merged[property.Name] = System.Text.Json.Nodes.JsonNode.Parse(property.Value.GetRawText());
+        return JsonSerializer.SerializeToElement(merged);
     }
 
     private static void AccumulateDelta(

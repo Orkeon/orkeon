@@ -143,5 +143,21 @@ public class LogsPaneViewTests
         Assert.Equal("new", pane.CurrentText);
         Assert.Equal(1, pane.LineCount);
     }
+
+    [Fact]
+    public void The_capacity_counts_entries_when_an_entry_spans_several_lines()
+    {
+        using var pane = CreatePane(capacity: 3);
+
+        pane.Append("one");
+        pane.Append("boom\n  at A()\n  at B()");
+        pane.Append("two");
+        pane.Append("three");
+
+        // Three entries are shown, the multi-line one whole; the oldest entry alone is dropped.
+        Assert.Equal(3, pane.LineCount);
+        Assert.Equal(3, pane.RenderedModel.LineCount);
+        Assert.Equal("boom\n  at A()\n  at B()\ntwo\nthree", pane.CurrentText);
+    }
 }
 #pragma warning restore xUnit1004

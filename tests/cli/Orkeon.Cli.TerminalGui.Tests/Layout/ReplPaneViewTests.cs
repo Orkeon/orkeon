@@ -211,8 +211,9 @@ public class ReplPaneViewTests
 
         for (var i = 0; i < 1_000; i++) pane.AppendOutputLine($"line {i}");
 
+        // Exactly the capacity: the empty line opened by the last newline does not count.
         Assert.Equal(100, pane.Transcript.LineCount);
-        Assert.StartsWith("line 901\n", pane.CurrentHistory, StringComparison.Ordinal);
+        Assert.StartsWith("line 900\n", pane.CurrentHistory, StringComparison.Ordinal);
         Assert.EndsWith("line 999\n", pane.CurrentHistory, StringComparison.Ordinal);
     }
 

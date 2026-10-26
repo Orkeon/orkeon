@@ -244,14 +244,45 @@ public sealed class LlmLoggingStreamingTests
         Assert.Equal(5, usage.GetProperty("completion_tokens").GetInt32());
     }
 
-    /// <summary>Streams one answer whose final chunk carries <paramref name="usageJson"/>; returns the logged usage.</summary>
-    private static async Task<JsonElement> LogStreamedUsageAsync(string usageJson)
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheThreeTotals_WhenTheVendorSplitsItsUsageAcrossChunks()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":1000,"prompt_cache_hit_tokens":896}""",
+            """{"completion_tokens":50,"total_tokens":1050}""",
+            "{}");
+
+        Assert.Equal(1000, usage.GetProperty("prompt_tokens").GetInt32());
+        Assert.Equal(50, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(1050, usage.GetProperty("total_tokens").GetInt32());
+        Assert.Equal(896, usage.GetProperty("prompt_cache_hit_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldFillTheMissingTotals_WhenTheLastUsageLacksThem()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}""",
+            """{"cost":0.00042}""");
+
+        Assert.Equal(10, usage.GetProperty("prompt_tokens").GetInt32());
+        Assert.Equal(5, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
+        Assert.Equal(0.00042, usage.GetProperty("cost").GetDouble(), 10);
+    }
+
+    /// <summary>Streams one answer whose last chunks carry <paramref name="usageJsons"/>, in order; returns the logged usage.</summary>
+    private static async Task<JsonElement> LogStreamedUsageAsync(params string[] usageJsons)
     {
         var cancellation = TestContext.Current.CancellationToken;
         var sse = string.Join("\n\n",
-            """data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}""",
-            "data: {\"choices\":[],\"usage\":" + usageJson + "}",
-            "data: [DONE]") + "\n\n";
+            [
+                """data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}""",
+                .. usageJsons.Select(usageJson => "data: {\"choices\":[],\"usage\":" + usageJson + "}"),
+                "data: [DONE]",
+            ]) + "\n\n";
         var logger = new RecordingExchangeLogger();
         using var inner = new MockHttpMessageHandler();
         inner.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.OK)
@@ -266,7 +297,7 @@ public sealed class LlmLoggingStreamingTests
         factory.SetDefaultClient(client);
         // Any non-empty placeholder takes the streamed path.
 #pragma warning disable CS0618 // LlmConfig.ApiKey
-        var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = nameof(usageJson) };
+        var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = nameof(usageJsons) };
 #pragma warning restore CS0618
         using var provider = new DeepSeekLlmProvider(
             config, factory, Policy.NoOpAsync<HttpResponseMessage>(), NullLogger<DeepSeekLlmProvider>.Instance);

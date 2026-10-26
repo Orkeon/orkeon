@@ -13,7 +13,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// Issue #196: the ring buffer is fed on the caller's thread and costs no UI work while the pane is
 /// hidden. While it is visible, entries are coalesced (<see cref="AppendCoalescer{T}"/>, one UI
 /// dispatch per burst) and appended to a line-based <see cref="TranscriptView"/> that wraps only the
-/// new lines and drops head lines past the capacity. Showing the pane renders the buffer once in full.
+/// new lines and drops head entries past the capacity. The capacity counts entries in both: a
+/// multi-line entry (an exception and its stack) is kept or dropped whole. Showing the pane renders
+/// the buffer once in full and sticks to its tail, applied when the pane is laid out.
 /// </remarks>
 public sealed class LogsPaneView : FrameView
 {
@@ -104,6 +106,9 @@ public sealed class LogsPaneView : FrameView
 
     /// <summary>Test-only accessor for the rendered model (it counts the wrap work).</summary>
     internal TranscriptBuffer RenderedModel => _textView.Buffer;
+
+    /// <summary>Test-only accessor for the transcript view (scroll position, focus).</summary>
+    internal TranscriptView Transcript => _textView;
 
     /// <inheritdoc />
     protected override void OnVisibleChanged()

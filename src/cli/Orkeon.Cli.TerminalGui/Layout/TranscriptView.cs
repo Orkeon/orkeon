@@ -17,7 +17,12 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// <remarks>
 /// Kept from the text view it replaces: display-only soft wrap (copy returns the source text, no injected
 /// line break), vertical and horizontal scrolling with the built-in scrollbars, mouse drag selection in
-/// inverse video with auto-copy on release (<see cref="TuiClipboard"/>), and Ctrl+A / Ctrl+C when focused.
+/// inverse video with auto-copy on release (<see cref="TuiClipboard"/>), Ctrl+A / Ctrl+C and the
+/// navigation keys (arrows, Page Up / Page Down, Home / End) when focused, and tabs expanded to the next
+/// stop of <see cref="TranscriptBuffer.TabWidth"/> columns (a copy keeps the tab). The autoscroll is a
+/// state, not a one-shot scroll: <see cref="MoveEnd"/> sticks the view to its tail, applied again when
+/// rows are added or the view is resized or laid out (a pane shown later), until the user scrolls up.
+/// Not kept: double-click word selection and the auto-scroll while dragging a selection.
 /// Must be touched on the UI thread only.
 /// </remarks>
 internal sealed class TranscriptView : View
@@ -29,6 +34,7 @@ internal sealed class TranscriptView : View
     private TranscriptPosition? _anchor;
     private TranscriptPosition _caret;
     private bool _dragging;
+    private bool _followTail = true;
 
     public TranscriptView(int capacity)
     {
@@ -83,11 +89,21 @@ internal sealed class TranscriptView : View
         ContentChanged();
     }
 
-    /// <summary>Scrolls to the last row.</summary>
+    /// <summary>
+    /// Scrolls to the last row and sticks there: the view keeps showing the tail when rows are added
+    /// or when its size changes (a pane laid out or shown later), until the user scrolls up.
+    /// </summary>
     public void MoveEnd()
     {
+        _followTail = true;
+        FollowTail();
+    }
+
+    // Applies the stick-to-the-end state; a no-op while the view has no height yet.
+    private void FollowTail()
+    {
         var height = Viewport.Height;
-        if (height <= 0) return;
+        if (!_followTail || height <= 0) return;
         var y = Math.Max(0, _buffer.RowCount - height);
         if (Viewport.Y != y) Viewport = Viewport with { Y = y };
     }
@@ -102,8 +118,13 @@ internal sealed class TranscriptView : View
     /// <inheritdoc />
     protected override void OnViewportChanged(DrawEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnViewportChanged(e);
         if (_buffer.Width != Viewport.Width) Relayout();
+        if (e.OldViewport.Size != e.NewViewport.Size) FollowTail();
+        else if (e.OldViewport.Y != e.NewViewport.Y)
+            // A scroll (keys, wheel, scrollbar): the view follows the tail again once back at the end.
+            _followTail = Viewport.Y >= _buffer.RowCount - Viewport.Height;
     }
 
     /// <inheritdoc />
@@ -130,7 +151,8 @@ internal sealed class TranscriptView : View
         var offset = row.Start;
         foreach (var grapheme in GraphemeHelper.GetGraphemes(row.Text[row.Start..row.End]))
         {
-            var w = Math.Max(0, grapheme.GetColumns());
+            // A tab is drawn as the blanks up to the next stop of its row.
+            var w = TranscriptBuffer.ColumnsOf(grapheme, column);
             var at = column - skip;
             column += w;
             var position = new TranscriptPosition(row.Line, offset);
@@ -141,7 +163,7 @@ internal sealed class TranscriptView : View
                 && position.CompareTo(range.From) >= 0 && position.CompareTo(range.To) < 0;
             SetAttribute(selected ? MouseClipboardTextView.SelectionAttribute : normal);
             Move(at, y);
-            AddStr(grapheme);
+            AddStr(grapheme == "\t" ? new string(' ', w) : grapheme);
         }
     }
 
@@ -234,6 +256,7 @@ internal sealed class TranscriptView : View
     {
         var width = _wordWrap ? Math.Max(0, Viewport.Width) : _buffer.MaxColumns;
         SetContentSize(new Size(width, _buffer.RowCount));
+        FollowTail();
         SetNeedsDraw();
     }
 }

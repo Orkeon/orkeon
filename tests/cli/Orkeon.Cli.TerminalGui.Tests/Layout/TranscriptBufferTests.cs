@@ -65,7 +65,8 @@ public class TranscriptBufferTests
         buffer.Append("\n");
 
         Assert.Equal("abcd\nef\n", buffer.Text);
-        Assert.Equal(3, buffer.LineCount);
+        // The empty line opened by the final newline is not a line of the transcript.
+        Assert.Equal(2, buffer.LineCount);
     }
 
     [Fact]
@@ -164,5 +165,118 @@ public class TranscriptBufferTests
         Assert.Equal(0, buffer.LineCount);
         Assert.Equal(0, buffer.RowCount);
         Assert.Equal(string.Empty, buffer.Text);
+    }
+
+    [Fact]
+    public void ShouldKeepCapacityLines_WhenTheStreamEndsWithANewline()
+    {
+        var buffer = new TranscriptBuffer(capacity: 3);
+
+        for (var i = 0; i < 10; i++) buffer.Append($"line {i}\n");
+
+        Assert.Equal(3, buffer.LineCount);
+        Assert.Equal("line 7\nline 8\nline 9\n", buffer.Text);
+    }
+
+    [Fact]
+    public void ShouldCountAnEmptyLine_WhenTheStreamWritesTwoNewlines()
+    {
+        var buffer = new TranscriptBuffer(capacity: 10);
+
+        buffer.Append("a\n");
+        buffer.Append("\n");
+        buffer.Append("b");
+
+        Assert.Equal("a\n\nb", buffer.Text);
+        Assert.Equal(3, buffer.LineCount);
+    }
+
+    [Fact]
+    public void ShouldCountAMultiLineEntryOnce_WhenTheCapacityIsInEntries()
+    {
+        var buffer = new TranscriptBuffer(capacity: 2);
+
+        buffer.AppendLines(["first", "error\n  at A()\n  at B()", "last"]);
+
+        // The capacity counts entries: the three-line entry is kept whole, the first entry dropped.
+        Assert.Equal(2, buffer.LineCount);
+        Assert.Equal("error\n  at A()\n  at B()\nlast", buffer.Text);
+
+        buffer.AppendLines(["next"]);
+
+        // Dropped whole as well: no stray continuation line remains at the head.
+        Assert.Equal("last\nnext", buffer.Text);
+    }
+
+    [Fact]
+    public void ShouldExpandTabsToTheNextStop_WhenALineIsMeasuredAndWrapped()
+    {
+        var buffer = new TranscriptBuffer(capacity: 10);
+        buffer.SetLayout(width: 0, wordWrap: false);
+
+        buffer.AppendLines(["A\tBC\tD"]);
+
+        // A + 3 blanks, BC + 2 blanks, D: tab stops every four columns.
+        Assert.Equal(9, buffer.MaxColumns);
+        Assert.Equal(new TranscriptPosition(buffer.FirstLineId, 2), buffer.HitTest(row: 0, column: 4));
+        Assert.Equal(new TranscriptPosition(buffer.FirstLineId, 1), buffer.HitTest(row: 0, column: 2));
+
+        buffer.SetLayout(width: 6, wordWrap: true);
+
+        // "A\tBC" fills six columns, the second tab hangs at the end of that row and "D" opens the next.
+        Assert.Equal(2, buffer.RowCount);
+        Assert.Equal("A\tBC\tD", buffer.Text);
+    }
+
+    [Fact]
+    public void ShouldWrapOnlyTheLastRow_WhenALongLineIsStreamedInPieces()
+    {
+        foreach (var wrap in new[] { true, false })
+        {
+            var buffer = new TranscriptBuffer(capacity: 10);
+            buffer.SetLayout(width: 20, wordWrap: wrap);
+
+            var work = WorkPerAppend(buffer, 5_000, (b, _) => b.Append("tok "));
+
+            // Each piece re-wraps at most one row plus the piece: N pieces cost O(N), not O(N^2).
+            Assert.All(work, w => Assert.True(w <= 20 + 4, $"wrap={wrap}: {w} characters wrapped"));
+            Assert.Equal(1, buffer.LineCount);
+            Assert.Equal(work.Skip(1_000).Take(1_000).Sum(), work.TakeLast(1_000).Sum());
+        }
+    }
+
+    [Fact]
+    public void ShouldWrapTheStreamedLineAsAWholeLine_WhenItIsExtendedInPieces()
+    {
+        var streamed = new TranscriptBuffer(capacity: 10);
+        var whole = new TranscriptBuffer(capacity: 10);
+        streamed.SetLayout(width: 7, wordWrap: true);
+        whole.SetLayout(width: 7, wordWrap: true);
+        const string text = "alpha beta\tgamma delta epsilonzetaeta theta";
+
+        foreach (var c in text) streamed.Append(c.ToString());
+        whole.Append(text);
+
+        Assert.Equal(whole.RowCount, streamed.RowCount);
+        for (var row = 0; row < whole.RowCount; row++)
+        {
+            var a = whole.GetRow(row)!.Value;
+            var b = streamed.GetRow(row)!.Value;
+            Assert.Equal((a.Start, a.End), (b.Start, b.End));
+        }
+    }
+
+    [Fact]
+    public void ShouldShrinkTheWidestLine_WhenTheWidestLineIsTrimmed()
+    {
+        var buffer = new TranscriptBuffer(capacity: 2);
+        buffer.SetLayout(width: 0, wordWrap: false);
+
+        buffer.AppendLines(["a very very long line", "short"]);
+        Assert.Equal(21, buffer.MaxColumns);
+
+        buffer.AppendLines(["mid line"]);
+
+        Assert.Equal(8, buffer.MaxColumns);
     }
 }

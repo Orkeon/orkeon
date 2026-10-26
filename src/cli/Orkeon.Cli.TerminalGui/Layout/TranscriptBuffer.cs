@@ -15,34 +15,53 @@ internal readonly record struct TranscriptRow(long Line, string Text, int Start,
 
 /// <summary>
 /// Line-based, bounded model of a read-only transcript (issue #196). Appending wraps only the lines
-/// it adds (or the open last line it extends); the head is trimmed past <see cref="Capacity"/> lines
-/// without touching the rest; a full re-wrap happens only when the wrap width or the wrap mode change.
+/// it adds (or the last row of the open line it extends); the head is trimmed past
+/// <see cref="Capacity"/> lines or entries without touching the rest; a full re-wrap happens only when
+/// the wrap width or the wrap mode change.
 /// </summary>
 /// <remarks>
 /// The model is a text stream: <see cref="Append"/> splits on <c>\n</c>, the first fragment extends the
 /// open last line and each further fragment opens a new one, so <see cref="Text"/> round-trips what was
 /// written. Lines carry absolute ids (they keep counting while the head is trimmed) and absolute first
 /// rows, so a row lookup is a binary search and no line's rows move when another is added or dropped.
+/// The capacity counts the lines of <see cref="Append"/> and the entries of <see cref="AppendLines"/>
+/// (an entry with several lines is kept or dropped whole); the empty line opened after a final
+/// <c>\n</c> does not count. A tab advances to the next multiple of <see cref="TabWidth"/> columns of its
+/// row, as the <c>TextView</c> it replaces drew it; positions and copies keep the tab itself.
 /// Not thread-safe: the owning view touches it on the UI thread only.
 /// </remarks>
 internal sealed class TranscriptBuffer
 {
+    /// <summary>Columns between two tab stops (the <c>TextView</c> default).</summary>
+    public const int TabWidth = 4;
+
     private sealed class Entry
     {
         public string Text = string.Empty;
-        public int[] RowStarts = [0];
+        public List<int> RowStarts = [0];
         public long FirstRow;
         public int Columns;
+
+        // Counts against the capacity: the first line of an entry, or a line of the stream. False for
+        // the continuation lines of a multi-line entry and for the empty line opened after a final \n.
+        public bool Unit;
     }
 
     // Lines live in _items[_head.._items.Count); the head is compacted when half the list is dead,
     // so trimming costs amortized O(1) per line.
     private readonly List<Entry> _items = [];
+
+    // Sliding-window maximum of the line widths: ids with decreasing columns, so MaxColumns follows
+    // the trim at amortized O(1) per line.
+    private readonly LinkedList<(long Id, int Columns)> _widest = new();
     private int _head;
     private long _firstLineId;
+    private int _units;
+
+    // The last line is the empty line Append opened after a final \n: not counted until written to.
+    private bool _openTail;
     private int _width;
     private bool _wrap = true;
-    private int _maxColumns;
 
     public TranscriptBuffer(int capacity)
     {
@@ -50,11 +69,17 @@ internal sealed class TranscriptBuffer
         Capacity = capacity;
     }
 
-    /// <summary>Maximum number of lines kept; older lines are dropped from the head.</summary>
+    /// <summary>Maximum number of lines (or entries) kept; older ones are dropped from the head.</summary>
     public int Capacity { get; }
 
-    /// <summary>Lines currently held.</summary>
-    public int LineCount => _items.Count - _head;
+    /// <summary>
+    /// Lines (or entries) counted against the capacity: a stream line, or an entry of
+    /// <see cref="AppendLines"/> whatever its line count; the empty line after a final <c>\n</c> is not one.
+    /// </summary>
+    public int LineCount => _units;
+
+    // Lines physically held, the open empty line and the continuation lines included.
+    private int Held => _items.Count - _head;
 
     /// <summary>Absolute id of the first line held.</summary>
     public long FirstLineId => _firstLineId;
@@ -64,15 +89,15 @@ internal sealed class TranscriptBuffer
     {
         get
         {
-            if (LineCount == 0) return 0;
+            if (Held == 0) return 0;
             var first = _items[_head];
             var last = _items[^1];
-            return (int)(last.FirstRow + last.RowStarts.Length - first.FirstRow);
+            return (int)(last.FirstRow + last.RowStarts.Count - first.FirstRow);
         }
     }
 
     /// <summary>Widest line held, in columns (the content width when the wrap is off).</summary>
-    public int MaxColumns => _maxColumns;
+    public int MaxColumns => _widest.First?.Value.Columns ?? 0;
 
     /// <summary>Work counter: characters wrapped since construction (a line wrapped twice counts twice).</summary>
     public long CharactersWrapped { get; private set; }
@@ -97,6 +122,10 @@ internal sealed class TranscriptBuffer
         }
     }
 
+    /// <summary>Columns a grapheme takes at <paramref name="column"/> of its row: a tab reaches the next stop.</summary>
+    public static int ColumnsOf(string grapheme, int column)
+        => grapheme == "\t" ? TabWidth - (column % TabWidth) : Math.Max(0, grapheme.GetColumns());
+
     /// <summary>Sets the wrap width and mode; re-wraps every line only when either changed.</summary>
     public void SetLayout(int width, bool wordWrap)
     {
@@ -120,44 +149,50 @@ internal sealed class TranscriptBuffer
         {
             var newline = normalized.IndexOf('\n', start);
             var fragment = newline < 0 ? normalized[start..] : normalized[start..newline];
-            if (first && LineCount > 0)
+            if (first && Held > 0)
             {
                 if (fragment.Length > 0) ExtendLast(fragment);
+                // Written to or closed by a newline, the open line is a line of the transcript.
+                if (fragment.Length > 0 || newline >= 0) PromoteOpenTail();
             }
             else
             {
-                AddLine(fragment);
+                AddLine(fragment, unit: true);
             }
             first = false;
             if (newline < 0) break;
             start = newline + 1;
             if (start == normalized.Length)
             {
-                AddLine(string.Empty);
+                AddLine(string.Empty, unit: false);
+                _openTail = true;
                 break;
             }
         }
         Trim();
     }
 
-    /// <summary>Appends each item as its own line (a log entry): never extends the open line.</summary>
+    /// <summary>Appends each item as its own entry (a log entry): never extends the open line.</summary>
     public void AppendLines(IEnumerable<string> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
+        PromoteOpenTail();
         foreach (var line in lines)
         {
             var parts = (line ?? string.Empty).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-            foreach (var part in parts) AddLine(part);
+            for (var i = 0; i < parts.Length; i++) AddLine(parts[i], unit: i == 0);
         }
         Trim();
     }
 
     public void Clear()
     {
-        _firstLineId += LineCount;
+        _firstLineId += Held;
         _items.Clear();
+        _widest.Clear();
         _head = 0;
-        _maxColumns = 0;
+        _units = 0;
+        _openTail = false;
     }
 
     /// <summary>The row at <paramref name="row"/> (0-based in the content), or null past the end.</summary>
@@ -168,14 +203,14 @@ internal sealed class TranscriptBuffer
         var entry = _items[index];
         var local = (int)(_items[_head].FirstRow + row - entry.FirstRow);
         var start = entry.RowStarts[local];
-        var end = local + 1 < entry.RowStarts.Length ? entry.RowStarts[local + 1] : entry.Text.Length;
+        var end = local + 1 < entry.RowStarts.Count ? entry.RowStarts[local + 1] : entry.Text.Length;
         return new TranscriptRow(_firstLineId + index - _head, entry.Text, start, end);
     }
 
     /// <summary>The position under <paramref name="column"/> of <paramref name="row"/>, clamped to the content.</summary>
     public TranscriptPosition HitTest(int row, int column)
     {
-        if (LineCount == 0) return new TranscriptPosition(_firstLineId, 0);
+        if (Held == 0) return new TranscriptPosition(_firstLineId, 0);
         if (row < 0) return new TranscriptPosition(_firstLineId, 0);
         if (row >= RowCount) return End;
         var slice = GetRow(row)!.Value;
@@ -183,7 +218,7 @@ internal sealed class TranscriptBuffer
         var columns = 0;
         foreach (var grapheme in GraphemeHelper.GetGraphemes(slice.Text[slice.Start..slice.End]))
         {
-            var width = Math.Max(0, grapheme.GetColumns());
+            var width = ColumnsOf(grapheme, columns);
             if (columns + width > column) break;
             columns += width;
             offset += grapheme.Length;
@@ -193,9 +228,9 @@ internal sealed class TranscriptBuffer
 
     /// <summary>The end of the content (after the last char of the last line).</summary>
     public TranscriptPosition End
-        => LineCount == 0
+        => Held == 0
             ? new TranscriptPosition(_firstLineId, 0)
-            : new TranscriptPosition(_firstLineId + LineCount - 1, _items[^1].Text.Length);
+            : new TranscriptPosition(_firstLineId + Held - 1, _items[^1].Text.Length);
 
     /// <summary>The start of the content.</summary>
     public TranscriptPosition Start => new(_firstLineId, 0);
@@ -203,7 +238,7 @@ internal sealed class TranscriptBuffer
     /// <summary>Text between two positions (in either order), lines joined by <c>\n</c>.</summary>
     public string GetText(TranscriptPosition a, TranscriptPosition b)
     {
-        if (LineCount == 0) return string.Empty;
+        if (Held == 0) return string.Empty;
         var (from, to) = a.CompareTo(b) <= 0 ? (Clamp(a), Clamp(b)) : (Clamp(b), Clamp(a));
         if (from.CompareTo(to) == 0) return string.Empty;
         var builder = new System.Text.StringBuilder();
@@ -221,7 +256,7 @@ internal sealed class TranscriptBuffer
     private TranscriptPosition Clamp(TranscriptPosition position)
     {
         if (position.Line < _firstLineId) return Start;
-        var last = _firstLineId + LineCount - 1;
+        var last = _firstLineId + Held - 1;
         if (position.Line > last) return End;
         var length = _items[(int)(position.Line - _firstLineId) + _head].Text.Length;
         return position with { Offset = Math.Clamp(position.Offset, 0, length) };
@@ -229,28 +264,58 @@ internal sealed class TranscriptBuffer
 
     private int EffectiveWidth => _wrap && _width > 0 ? _width : 0;
 
-    private void AddLine(string text)
+    private void PromoteOpenTail()
     {
-        var entry = new Entry { Text = text };
-        entry.FirstRow = LineCount == 0 ? 0 : _items[^1].FirstRow + _items[^1].RowStarts.Length;
-        Wrap(entry);
+        if (!_openTail) return;
+        _openTail = false;
+        _items[^1].Unit = true;
+        _units++;
+    }
+
+    private void AddLine(string text, bool unit)
+    {
+        var entry = new Entry { Text = text, Unit = unit };
+        entry.FirstRow = Held == 0 ? 0 : _items[^1].FirstRow + _items[^1].RowStarts.Count;
+        Wrap(entry, resumeFrom: -1);
         _items.Add(entry);
+        _openTail = false;
+        if (unit) _units++;
+        TrackWidth(_firstLineId + Held - 1, entry.Columns);
     }
 
     private void ExtendLast(string fragment)
     {
         var entry = _items[^1];
+        var from = entry.Text.Length;
         entry.Text += fragment;
-        Wrap(entry);
+        Wrap(entry, resumeFrom: from);
+        TrackWidth(_firstLineId + Held - 1, entry.Columns);
+    }
+
+    // The last line's width only grows: drop the narrower lines it now dominates, itself included.
+    private void TrackWidth(long id, int columns)
+    {
+        if (_widest.Last is { } last && last.Value.Id == id) _widest.RemoveLast();
+        while (_widest.Last is { } tail && tail.Value.Columns <= columns) _widest.RemoveLast();
+        _widest.AddLast((id, columns));
     }
 
     private void Trim()
     {
-        var excess = LineCount - Capacity;
-        if (excess <= 0) return;
-        for (var i = 0; i < excess; i++) _items[_head + i] = null!;
-        _head += excess;
-        _firstLineId += excess;
+        while (_units > Capacity)
+        {
+            // Drop the head entry whole: its first line and its continuation lines. Another unit
+            // follows it (the count is still above the capacity), so the loop never empties the list.
+            do
+            {
+                if (_items[_head].Unit) _units--;
+                _items[_head] = null!;
+                _head++;
+                if (_widest.First is { } widest && widest.Value.Id == _firstLineId) _widest.RemoveFirst();
+                _firstLineId++;
+            }
+            while (_head < _items.Count && !_items[_head].Unit);
+        }
         if (_head > 32 && _head * 2 > _items.Count)
         {
             _items.RemoveRange(0, _head);
@@ -260,14 +325,15 @@ internal sealed class TranscriptBuffer
 
     private void RewrapAll()
     {
-        _maxColumns = 0;
-        long row = LineCount == 0 ? 0 : _items[_head].FirstRow;
+        _widest.Clear();
+        long row = Held == 0 ? 0 : _items[_head].FirstRow;
         for (var i = _head; i < _items.Count; i++)
         {
             var entry = _items[i];
             entry.FirstRow = row;
-            Wrap(entry);
-            row += entry.RowStarts.Length;
+            Wrap(entry, resumeFrom: -1);
+            row += entry.RowStarts.Count;
+            TrackWidth(_firstLineId + i - _head, entry.Columns);
         }
     }
 
@@ -284,23 +350,46 @@ internal sealed class TranscriptBuffer
         return lo;
     }
 
+    // Columns of text[from..to) laid from the start of a row.
+    private static int Measure(string text, int from, int to)
+    {
+        var columns = 0;
+        foreach (var grapheme in GraphemeHelper.GetGraphemes(text[from..to])) columns += ColumnsOf(grapheme, columns);
+        return columns;
+    }
+
     // Word wrap of one line: break after the last space that fits, else hard-break at the width.
-    private void Wrap(Entry entry)
+    // resumeFrom >= 0 is the length the line had before an extension: the rows before its last one
+    // cannot change, so only that row and the new text are wrapped again (with the wrap off there is
+    // one row, and only the new text is measured).
+    private void Wrap(Entry entry, int resumeFrom)
     {
         var text = entry.Text;
-        CharactersWrapped += text.Length;
         var width = EffectiveWidth;
-        var starts = new List<int>(1) { 0 };
-        var total = 0;
-        var columns = 0;
-        var breakAt = -1;
-        var columnsAtBreak = 0;
-        var index = 0;
-        foreach (var grapheme in GraphemeHelper.GetGraphemes(text))
+        if (resumeFrom >= 0 && width == 0)
         {
-            var raw = Math.Max(0, grapheme.GetColumns());
-            var w = raw;
-            var isSpace = grapheme == " ";
+            CharactersWrapped += text.Length - resumeFrom;
+            var column = entry.Columns;
+            foreach (var grapheme in GraphemeHelper.GetGraphemes(text[resumeFrom..])) column += ColumnsOf(grapheme, column);
+            entry.Columns = column;
+            return;
+        }
+
+        var starts = entry.RowStarts;
+        if (resumeFrom < 0)
+        {
+            starts.Clear();
+            starts.Add(0);
+        }
+        var index = starts[^1];
+        CharactersWrapped += text.Length - index;
+        var columns = 0;
+        var peak = 0;
+        var breakAt = -1;
+        foreach (var grapheme in GraphemeHelper.GetGraphemes(text[index..]))
+        {
+            var w = ColumnsOf(grapheme, columns);
+            var isSpace = grapheme is " " or "\t";
             var overflows = width > 0 && columns + w > width;
             // A space that overflows hangs at the end of its row (clipped when drawn) instead of
             // opening the next row with a blank.
@@ -310,7 +399,7 @@ internal sealed class TranscriptBuffer
                 if (breakAt > starts[^1])
                 {
                     starts.Add(breakAt);
-                    columns -= columnsAtBreak;
+                    columns = Measure(text, breakAt, index);
                 }
                 else
                 {
@@ -318,18 +407,14 @@ internal sealed class TranscriptBuffer
                     columns = 0;
                 }
                 breakAt = -1;
+                w = ColumnsOf(grapheme, columns);
             }
             columns += w;
-            total += raw;
+            if (columns > peak) peak = columns;
             index += grapheme.Length;
-            if (isSpace)
-            {
-                breakAt = index;
-                columnsAtBreak = columns;
-            }
+            if (isSpace) breakAt = index;
         }
-        entry.RowStarts = [.. starts];
-        entry.Columns = total;
-        if (total > _maxColumns) _maxColumns = total;
+        // The widest row: the line width with the wrap off (one row), at most the width with it on.
+        entry.Columns = resumeFrom >= 0 ? Math.Max(entry.Columns, peak) : peak;
     }
 }

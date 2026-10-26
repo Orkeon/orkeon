@@ -1,6 +1,7 @@
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.App;
+using Terminal.Gui.Input;
 
 namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 
@@ -69,6 +70,101 @@ public class TranscriptViewTests
             Assert.Contains("transcript 499", screen, StringComparison.Ordinal);
             Assert.Contains("log 499", screen, StringComparison.Ordinal);
             Assert.DoesNotContain("transcript 0\n", screen, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Application.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ShouldDrawTheTailOfTheLogs_WhenTheyAreShownAfterStartingHidden()
+    {
+        Application.Init(driverName: "ansi");
+        try
+        {
+            var options = new TerminalGuiOptions { LogsVisibleAtStartup = false };
+            using var top = new SplitPaneToplevel(options, InlineDispatcher.Instance);
+            Application.Begin(top);
+            Application.LayoutAndDraw(true);
+            for (var i = 0; i < 500; i++) top.Logs.Append($"log {i}");
+
+            top.ToggleLogsVisible();
+            Application.LayoutAndDraw(true);
+
+            var screen = Application.Driver!.ToString() ?? string.Empty;
+            Assert.Contains("log 499", screen, StringComparison.Ordinal);
+            Assert.DoesNotMatch(@"\blog 0\b", screen);
+
+            // A second show, after more entries arrived while hidden, also lands on the tail.
+            top.ToggleLogsVisible();
+            Application.LayoutAndDraw(true);
+            for (var i = 0; i < 300; i++) top.Logs.Append($"more {i}");
+            top.ToggleLogsVisible();
+            Application.LayoutAndDraw(true);
+
+            screen = Application.Driver!.ToString() ?? string.Empty;
+            Assert.Contains("more 299", screen, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Application.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ShouldScrollTheLogs_WhenNavigationKeysArePressedInTheFocusedPane()
+    {
+        Application.Init(driverName: "ansi");
+        try
+        {
+            var options = new TerminalGuiOptions { LogsVisibleAtStartup = true };
+            using var top = new SplitPaneToplevel(options, InlineDispatcher.Instance);
+            Application.Begin(top);
+            for (var i = 0; i < 500; i++) top.Logs.Append($"log {i}");
+            Application.LayoutAndDraw(true);
+            var view = top.Logs.Transcript;
+            view.SetFocus();
+            var end = view.Viewport.Y;
+            Assert.True(end > 0);
+
+            Assert.True(Application.RaiseKeyDownEvent(Key.CursorUp));
+            Assert.Equal(end - 1, view.Viewport.Y);
+            Assert.True(Application.RaiseKeyDownEvent(Key.PageUp));
+            Assert.True(view.Viewport.Y < end - 1);
+            Assert.True(Application.RaiseKeyDownEvent(Key.Home));
+            Assert.Equal(0, view.Viewport.Y);
+            Assert.True(Application.RaiseKeyDownEvent(Key.CursorDown));
+            Assert.Equal(1, view.Viewport.Y);
+            Assert.True(Application.RaiseKeyDownEvent(Key.PageDown));
+            Assert.True(view.Viewport.Y > 1);
+            Assert.True(Application.RaiseKeyDownEvent(Key.End));
+            Assert.Equal(end, view.Viewport.Y);
+        }
+        finally
+        {
+            Application.Shutdown();
+        }
+    }
+
+    [Fact]
+    public void ShouldExpandTabsToTheNextStop_WhenARowIsDrawn()
+    {
+        Application.Init(driverName: "ansi");
+        try
+        {
+            using var top = new Terminal.Gui.Views.Window();
+            using var view = new TranscriptView(10) { Width = Terminal.Gui.ViewBase.Dim.Fill(), Height = Terminal.Gui.ViewBase.Dim.Fill() };
+            top.Add(view);
+            Application.Begin(top);
+            view.AppendLines(["A\tBC\tD"]);
+
+            Application.LayoutAndDraw(true);
+
+            var screen = Application.Driver!.ToString() ?? string.Empty;
+            Assert.Contains("A   BC  D", screen, StringComparison.Ordinal);
+            Assert.True(PaneClipboard.SelectAll(view));
+            Assert.Equal("A\tBC\tD", view.SelectedText);
         }
         finally
         {

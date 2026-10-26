@@ -443,7 +443,7 @@ l'utilisateur quitte.
 
 `TerminalGuiOptions` (un record à propriétés `init` — passez une instance construite) :
 `InitialSplitRatio` (0.5), `DefaultMinimumLogLevel` (`Information`), `LogsBufferCapacity`
-(5000), `LogsPaneTitle` (`Logs`), `LogsVisibleAtStartup` (`false`), `ReplWordWrap` (`true`), `ReplTranscriptCapacity` (10000 lignes),
+(5000 entrées, une entrée sur plusieurs lignes comptant pour une), `LogsPaneTitle` (`Logs`), `LogsVisibleAtStartup` (`false`), `ReplWordWrap` (`true`), `ReplTranscriptCapacity` (10000 lignes),
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. Les touches : `Ctrl+G`
 tiroir de logs, `Ctrl+R` volet REPL, `Ctrl+L` / `Ctrl+K` vident les logs / le REPL, `Ctrl+F`
 recherche dans les logs, `Ctrl+↑` / `Ctrl+↓` redimensionnent, `F2` / `Maj+F2` plus / moins de

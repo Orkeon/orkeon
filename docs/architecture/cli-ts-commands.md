@@ -435,7 +435,7 @@ background task while Terminal.Gui owns the main thread, and returns when the RE
 user quits.
 
 `TerminalGuiOptions` (an `init`-only record — pass a built instance): `InitialSplitRatio`
-(0.5), `DefaultMinimumLogLevel` (`Information`), `LogsBufferCapacity` (5000),
+(0.5), `DefaultMinimumLogLevel` (`Information`), `LogsBufferCapacity` (5000 entries, an entry on several lines counting once),
 `LogsPaneTitle` (`Logs`), `LogsVisibleAtStartup` (`false`), `ReplWordWrap` (`true`), `ReplTranscriptCapacity` (10000 lines),
 `BannerEnabled` (`true`), `Banner`, `Glyphs` (`Auto`), `SpinnerVerbs`. The keys: `Ctrl+G` logs
 drawer, `Ctrl+R` REPL pane, `Ctrl+L` / `Ctrl+K` clear the logs / the REPL, `Ctrl+F` find in the logs,
