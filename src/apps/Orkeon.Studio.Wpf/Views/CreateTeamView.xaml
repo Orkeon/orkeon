@@ -1523,7 +1523,7 @@
                                          VerticalAlignment="Top" Margin="0,2,9,0">
                       <controls:LucideIcon.Style>
                         <Style TargetType="controls:LucideIcon">
-                          <Setter Property="Kind" Value="circle-x"/>
+                          <Setter Property="Kind" Value="ban"/>
                           <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding Success}" Value="True">
@@ -1558,30 +1558,19 @@
             <StackPanel Orientation="Horizontal">
               <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.VerdictTitle], Source={x:Static services:I18n.Instance}}"/>
-              <Border Margin="10,0,0,0">
-                <Border.Style>
-                  <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                    <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+              <!-- R12: the shared Badge, its tone from the engine's verdict. -->
+              <controls:Badge Margin="10,0,0,0" VerticalAlignment="Center" Content="{Binding VerdictScore}">
+                <controls:Badge.Style>
+                  <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                    <Setter Property="Tone" Value="Warning"/>
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding VerdictPassing}" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                        <Setter Property="Tone" Value="Success"/>
                       </DataTrigger>
                     </Style.Triggers>
                   </Style>
-                </Border.Style>
-                <TextBlock Text="{Binding VerdictScore}">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding VerdictPassing}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
-                </TextBlock>
-              </Border>
+                </controls:Badge.Style>
+              </controls:Badge>
             </StackPanel>
             <!-- W-08: what the trial itself cost — tokens, cache hit, wall time -->
             <ItemsControl ItemsSource="{Binding VerdictMetricChips}" Margin="0,11,0,0"
