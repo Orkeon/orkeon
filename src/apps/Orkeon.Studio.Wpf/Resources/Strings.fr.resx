@@ -1788,7 +1788,7 @@
     <value>lecture, écriture</value>
   </data>
   <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
-    <value>Lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
     <value>Lecture et écriture</value>
@@ -2018,7 +2018,7 @@
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Rien n'est écrit sur votre machine avant l'adoption.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Retour</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Reprendre</value></data>
-  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lecture</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lecture seule</value></data>
   <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Lecture et écriture</value></data>
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>À choisir</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>À choisir : sans dossier source, l'équipe partira d'un dossier « input » vide.</value></data>
