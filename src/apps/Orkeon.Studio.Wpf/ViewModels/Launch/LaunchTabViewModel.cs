@@ -67,6 +67,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     /// <summary>The outcome sentence of the last run, which the verdict line stands for.</summary>
     private string? _outcomeMessage;
     private string? _statusMessage;
+    private bool _isJournalOpen = true;
     private ProcessRunResult? _lastResult;
     private BinaryLocation? _binaryLocation;
 
@@ -156,6 +157,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         BinaryLocation = _runner.LocateBinary();
 
         InitializeTabs();
+        InitializeRunPresentation();
         RefreshPreview();
     }
 
@@ -245,6 +247,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             // A new command is not the one that was copied: the button reads "copy" again.
             CommandLineCopied = false;
             CopyCommandLineCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(CommandLineSegments));
         }
     }
 
@@ -285,9 +288,13 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     /// <summary>
     /// Whether the status line says something the verdict line does not (#117): the outcome
     /// sentence of the last run is shown as its badge and exit code, never as a second line.
+    /// The announcement of a launch («Running…») is not said either while the run lives: the
+    /// title and the badge already say it, and the progress lines say what is going on (D03).
     /// </summary>
     public bool ShowsStatusMessage =>
-        _statusMessage is { Length: > 0 } && !string.Equals(_statusMessage, _outcomeMessage, StringComparison.Ordinal);
+        _statusMessage is { Length: > 0 }
+        && !string.Equals(_statusMessage, _outcomeMessage, StringComparison.Ordinal)
+        && !(IsRunning && IsLaunchAnnouncement(_statusMessage));
 
     /// <summary>The result of the last run, exit code and interpretation included.</summary>
     public ProcessRunResult? LastResult
@@ -1646,6 +1653,150 @@ public sealed partial class LaunchTabViewModel : ObservableObject
         ForgetLogFolderProbe();
         RefreshOpenLogs();
     }
+
+    // ── hrm:L08 — how the Command and Run tabs show what the launcher already knows ──
+    // (rc.5 harmonisation: B09, B05, D01, D03, D05, B04). Readings only: nothing here reaches the
+    // engine, the history or a command.
+
+    /// <summary>
+    /// The command split at its options (B09): the program and its target first, then one segment
+    /// per <c>--option</c> with its values. The view lays them in a wrapping row, so the command
+    /// goes to the line only between two options — never inside one, never inside a value. A
+    /// space inside double quotes does not split. Empty without a command.
+    /// </summary>
+    public IReadOnlyList<string> CommandLineSegments => SplitAtOptions(CommandLinePreview);
+
+    /// <summary>Whether the technical journal is unfolded (R16): open by default, folded by its own button.</summary>
+    public bool IsJournalOpen
+    {
+        get => _isJournalOpen;
+        set => SetProperty(ref _isJournalOpen, value);
+    }
+
+    /// <summary>
+    /// Whether the run pane says « Run finished · exit code N » under its title (D01, R18): once a
+    /// run ended. The engine's own sentence stays in the journal and in the tooltip.
+    /// </summary>
+    public bool ShowsFinishedSubtitle => HasResult && !IsRunning;
+
+    /// <summary>
+    /// Whether the verdict of the checks shows in the run pane (D03, R19): a «ready to launch» is
+    /// stale once the run was launched, so it goes; errors and warnings stay.
+    /// </summary>
+    public bool ShowsValidationSummary =>
+        !(IsRunning || HasResult)
+        || ValidationMessages.Any(m => m.IsError || m.Severity == ValidationSeverity.Warning);
+
+    /// <summary>
+    /// The agent cards of the run pane (D03, D05): one per agent of <see cref="AgentLanes"/>, two
+    /// lanes that name the same agent but for case and accents (a lowercase, unaccented role in the files,
+    /// its accented name in the run) read as one card that follows the run's state; the card shows a
+    /// display name and, under it, the identifier the files give. Once a run ended, an agent it
+    /// never started reads «not run» (state <c>notrun</c>), never «waiting».
+    /// </summary>
+    public ObservableCollection<RunAgentCard> AgentCards { get; } = [];
+
+    /// <summary>Splits a display command at each <c>" --"</c> outside double quotes.</summary>
+    public static IReadOnlyList<string> SplitAtOptions(string? command)
+    {
+        if (string.IsNullOrWhiteSpace(command))
+            return [];
+
+        var segments = new List<string>();
+        var start = 0;
+        var quoted = false;
+        for (var i = 0; i < command.Length; i++)
+        {
+            if (command[i] == '"')
+                quoted = !quoted;
+            else if (!quoted && command[i] == ' ' && string.CompareOrdinal(command, i + 1, "--", 0, 2) == 0 && i > start)
+            {
+                segments.Add(command[start..i].Trim());
+                start = i + 1;
+            }
+        }
+
+        segments.Add(command[start..].Trim());
+        return segments.Where(segment => segment.Length > 0).ToList();
+    }
+
+    private void InitializeRunPresentation()
+    {
+        AgentLanes.CollectionChanged += (_, _) => RebuildAgentCards();
+        ValidationMessages.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowsValidationSummary));
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(IsRunning) or nameof(HasResult))
+            {
+                RebuildAgentCards();
+                OnPropertiesChanged(nameof(ShowsFinishedSubtitle), nameof(ShowsValidationSummary), nameof(ShowsStatusMessage));
+            }
+        };
+    }
+
+    private bool IsLaunchAnnouncement(string message) =>
+        string.Equals(message, _strings[StudioStringKeys.LaunchRunning], StringComparison.Ordinal)
+        || string.Equals(message, _strings[StudioStringKeys.LaunchValidating], StringComparison.Ordinal);
+
+    private void RebuildAgentCards()
+    {
+        var finished = HasResult && !IsRunning;
+        var cards = new List<RunAgentCard>();
+        foreach (var lane in AgentLanes)
+        {
+            var index = cards.FindIndex(card => SameAgent(card.Identifier, lane.Name));
+            if (index < 0)
+            {
+                cards.Add(CardOf(lane, lane.Name, finished));
+                continue;
+            }
+
+            // The run's spelling names the agent; the files' spelling stays its identifier. The
+            // lane the run reported on carries the state.
+            var first = cards[index];
+            var reported = lane.State == "waiting" && first.State is not ("waiting" or "notrun")
+                ? first with { DisplayName = DisplayNameOf(lane.Name) }
+                : CardOf(lane, first.Identifier, finished) with { DisplayName = DisplayNameOf(lane.Name) };
+            cards[index] = reported;
+        }
+
+        AgentCards.Clear();
+        foreach (var card in cards)
+            AgentCards.Add(card);
+    }
+
+    private static RunAgentCard CardOf(RunAgentLane lane, string identifier, bool finished) => new(
+        DisplayNameOf(lane.Name),
+        identifier,
+        finished && lane.State == "waiting" ? "notrun" : lane.State,
+        lane.StatusText,
+        lane.Detail);
+
+    private static bool SameAgent(string left, string right) =>
+        CultureInfo.InvariantCulture.CompareInfo.Compare(left, right, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) == 0;
+
+    // « redacteur » reads « Redacteur », « veille-web » « Veille web »; a name already written
+    // as a name is kept.
+    private static string DisplayNameOf(string name)
+    {
+        if (name.Length == 0 || !char.IsLower(name[0]))
+            return name;
+
+        var spaced = name.Contains(' ', StringComparison.Ordinal) ? name : name.Replace('-', ' ').Replace('_', ' ');
+        return char.ToUpper(spaced[0], CultureInfo.CurrentCulture) + spaced[1..];
+    }
+}
+
+/// <summary>
+/// One agent card of the run pane (hrm:L08, D05): the <paramref name="DisplayName"/> on the card,
+/// the <paramref name="Identifier"/> the crew's files give in mono under it — shown only when it
+/// differs from the name (<see cref="HasIdentifier"/>) —, and the lane's state:
+/// waiting | running | done | failed | notrun.
+/// </summary>
+public sealed record RunAgentCard(string DisplayName, string Identifier, string State, string StatusText, string Detail)
+{
+    /// <summary>Whether the identifier says something the name does not.</summary>
+    public bool HasIdentifier => !string.Equals(Identifier, DisplayName, StringComparison.Ordinal);
 }
 
 /// <summary>

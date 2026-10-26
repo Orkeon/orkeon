@@ -1520,6 +1520,17 @@
   <!-- hrm:L07 end -->
 
   <!-- hrm:L08 begin -->
+<!-- B09 (Launch › Command): one option of the command line in the wrapping row. Mono, accent,
+     a character's width after it as the space between two options; it wraps inside itself only
+     when it is wider than the whole row (a long path). -->
+<Style x:Key="CommandSegment" TargetType="TextBlock">
+  <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+  <Setter Property="FontSize" Value="13"/>
+  <Setter Property="LineHeight" Value="20"/>
+  <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+  <Setter Property="TextWrapping" Value="Wrap"/>
+  <Setter Property="Margin" Value="0,0,8,0"/>
+</Style>
   <!-- hrm:L08 end -->
 
   <!-- hrm:L09 begin -->
