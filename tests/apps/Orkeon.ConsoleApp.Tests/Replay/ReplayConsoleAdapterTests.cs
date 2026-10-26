@@ -146,6 +146,45 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldStopAtTheLineThatLaunchedIt_WhenItsCompletedCallbackFails()
+    {
+        _replay.TryStart(Lines("/askbg-throws hello"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        Assert.Equal("/askbg-throws hello", await _replay.ReadLineAsync(ct));
+        var task = StartBackgroundTask("askbg-throws");
+
+        // As the runner does: the drain is held from the settle until completed() ended, and reports its failure.
+        var drain = _registry.BeginWork();
+        task.Complete(Done("askbg-throws"));
+        var next = _replay.ReadLineAsync(ct);
+        Assert.False(next.IsCompleted);
+        _registry.ReportCompletionFailure(task, "Error: render broke");
+        drain.Dispose();
+
+        Assert.Null(await next.WaitAsync(HangGuard, ct));
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.ExitCode);
+        Assert.True(_inner.Contains("replay stopped at line 1: [t1] askbg-throws completed() failed: Error: render broke"));
+    }
+
+    [Fact]
+    public async Task ShouldPass_WhenACompletedCallbackOnlyRunsLong()
+    {
+        _replay.TryStart(Lines("/bgslow"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        Assert.Equal("/bgslow", await _replay.ReadLineAsync(ct));
+        var task = StartBackgroundTask("bgslow");
+
+        var drain = _registry.BeginWork();
+        task.Complete(Done("bgslow"));
+        var next = _replay.ReadLineAsync(ct);
+        Assert.False(next.IsCompleted);
+        drain.Dispose();
+
+        Assert.Null(await next.WaitAsync(HangGuard, ct));
+        Assert.Equal(ReplayConsoleAdapter.PassedExitCode, _replay.ExitCode);
+    }
+
+    [Fact]
     public async Task ShouldEndACommandsReadPastTheEnd_BeforeHandingTheKeyboardBackInInteractive()
     {
         _replay.TryStart(Lines("/ask"), closeInputAtEnd: false);

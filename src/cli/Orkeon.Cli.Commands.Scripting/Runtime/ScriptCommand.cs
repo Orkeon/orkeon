@@ -346,11 +346,17 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             {
                 LogCompletedThrew(jsEx, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {jsEx.Message}");
+                _dispatch?.Registry.ReportCompletionFailure(item.Instance, jsEx.Message);
             }
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {ConciseErrors.Message(rejected)}");
+                _dispatch?.Registry.ReportCompletionFailure(item.Instance, ConciseErrors.Message(rejected));
+            }
+            catch (Exception ex) when (ReportEscapingCompletionFailure(item.Instance, ex))
+            {
+                // Never reached: the filter reports an engine limit (memory, statements, time) and lets it escape.
             }
 
             if (scope is { Captured.Count: > 0 })
@@ -363,6 +369,14 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         {
             admission?.Settle();
         }
+    }
+
+    // Reports a failure that escapes completed() (an engine limit) to the registry, then lets it go on: false.
+    private bool ReportEscapingCompletionFailure(CommandInstance instance, Exception ex)
+    {
+        if (ex is not OperationCanceledException)
+            _dispatch?.Registry.ReportCompletionFailure(instance, ex.Message);
+        return false;
     }
 
     // ---- shared helpers -------------------------------------------------------------------
