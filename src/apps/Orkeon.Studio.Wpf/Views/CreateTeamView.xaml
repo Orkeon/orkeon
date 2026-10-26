@@ -739,13 +739,14 @@
                                            Text="{Binding [Studio.Create.FolderDeduced], Source={x:Static services:I18n.Instance}}"/>
                               </StackPanel>
                             </WrapPanel>
-                            <!-- STUDIO-57: the cross takes the fiche off the list. -->
-                            <Button Grid.Column="2" Style="{StaticResource IconBtn}" VerticalAlignment="Top"
+                            <!-- STUDIO-57: « Remove » takes the fiche off the list (C01, C11: the same
+                                 secondary 32 px « × Remove » as the step-2 folder row). -->
+                            <Button Grid.Column="2" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                                    VerticalAlignment="Top" Margin="10,0,0,0"
                                     Command="{Binding RemoveCommand}" Visibility="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource BooleanToVisibility}}"
                                     ToolTip="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
-                                    AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}">
-                              <controls:LucideIcon Kind="x" Size="16" Foreground="{DynamicResource InkMutedBrush}"/>
-                            </Button>
+                                    AutomationProperties.Name="{Binding [Studio.Create.RemoveFolder], Source={x:Static services:I18n.Instance}}"
+                                    Content="{Binding [Studio.Create.RemoveShort], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="x"/>
 
                             <!-- Line 2: the note the assistant follows — what the folder holds and how
                                  the team must use it. The forge's words to start with. -->
