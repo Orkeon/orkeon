@@ -17,18 +17,17 @@
     <!-- header: the title, what choosing does, and the way out -->
     <DockPanel DockPanel.Dock="Top" Margin="24,22,20,0">
       <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Top"
-              Command="{Binding CloseCommand}"
-              ToolTip="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}">
-        <controls:LucideIcon Kind="x" Size="16"/>
-      </Button>
+              Command="{Binding CloseCommand}" controls:ButtonIcon.Kind="x"
+              ToolTip="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}"
+              AutomationProperties.Name="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}"/>
       <StackPanel Margin="0,0,12,0">
         <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="scan-search" Size="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold" Margin="9,0,0,0"
-                     VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}"
+          <controls:LucideIcon Kind="scan-search" Size="20" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <!-- R11: the drawer title is the modal title, 20/600 in the UI font (display is for page titles) -->
+          <TextBlock Style="{StaticResource ModalTitle}" Margin="10,0,0,0" VerticalAlignment="Center"
                      Text="{Binding [Studio.Create.GalleryTitle], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
-        <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+        <TextBlock Style="{StaticResource SubTitle}" LineHeight="21"
                    Margin="0,6,0,0" Text="{Binding [Studio.Create.GallerySub], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </DockPanel>
@@ -75,9 +74,9 @@
       </WrapPanel>
 
       <DockPanel Margin="0,6,0,0">
-        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Command="{Binding ClearFiltersCommand}"
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ClearFiltersCommand}"
                 Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Text="{Binding CountLabel}"/>
+        <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Text="{Binding CountLabel}"/>
       </DockPanel>
     </StackPanel>
 
@@ -208,9 +207,9 @@
                           Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                  <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                             Text="{Binding Title}"/>
-                  <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18"
+                  <!-- R11: card title 16/600, the problem as body text; both wrap, never cut (R09) -->
+                  <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap" Text="{Binding Title}"/>
+                  <TextBlock Style="{StaticResource BodyText}" Foreground="{DynamicResource InkMutedBrush}"
                              Margin="0,4,0,0" Text="{Binding Problem}"
                              Visibility="{Binding HasProblem, Converter={StaticResource BooleanToVisibility}}"/>
                   <!-- D09 (R12, R20): the shared Badge — its tinted ground is kept in the dark
