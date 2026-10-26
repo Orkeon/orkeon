@@ -111,4 +111,64 @@ public sealed class CommandInstanceRegistryTests
         handle.Dispose();
         Assert.Null(directory.Resolve("echo"));
     }
+
+    [Fact]
+    public void Register_raises_InstanceRegistered_with_the_instance()
+    {
+        var registry = new CommandInstanceRegistry();
+        var registered = new List<CommandInstance>();
+        registry.InstanceRegistered += (_, e) => registered.Add(e.Instance);
+
+        var instance = registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
+
+        Assert.Equal([instance], registered);
+    }
+
+    [Theory]
+    [InlineData("complete", CommandInstanceState.Done)]
+    [InlineData("fail", CommandInstanceState.Failed)]
+    [InlineData("cancel", CommandInstanceState.Cancelled)]
+    public void A_terminal_transition_raises_InstanceTerminated_once_in_its_final_state(string transition, CommandInstanceState expected)
+    {
+        var registry = new CommandInstanceRegistry();
+        var states = new List<CommandInstanceState>();
+        registry.InstanceTerminated += (_, e) => states.Add(e.Instance.State);
+        var instance = registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
+
+        Terminate(instance, transition);
+        Terminate(instance, transition);
+
+        Assert.Equal([expected], states);
+    }
+
+    [Fact]
+    public void HasRunning_is_true_until_every_instance_ended()
+    {
+        var registry = new CommandInstanceRegistry();
+        Assert.False(registry.HasRunning);
+        var first = registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
+        var second = registry.Register("ask", CommandInstanceKind.Sync, "echo", "run", Guid.NewGuid());
+
+        first.Fail("broken");
+        Assert.True(registry.HasRunning);
+        second.Complete(new CommandResponse("echo", "run", true, "ok", null));
+
+        Assert.False(registry.HasRunning);
+    }
+
+    private static void Terminate(CommandInstance instance, string transition)
+    {
+        switch (transition)
+        {
+            case "complete":
+                instance.Complete(new CommandResponse("echo", "run", true, "ok", null));
+                break;
+            case "fail":
+                instance.Fail("broken");
+                break;
+            default:
+                instance.Cancel("stopped");
+                break;
+        }
+    }
 }

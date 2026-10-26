@@ -14,10 +14,15 @@ relative path read against the working directory), waits before each line until 
 crews included — or a question asks for the line (a tool-call approval, `human_input`), and stops at the first error
 with `replay stopped at line N: <cause>`. Alone it runs the plain console, echoes each line, writes the logs to stderr
 and exits `0` (every line passed), `1` (stopped on an error) or `2` (file missing or unreadable); with `--interactive`
-it hands the keyboard back. `/replay <file>` does the same inside a session. New `--log-level <level>`.
+it hands the keyboard back. `/replay <file>` does the same inside a session. One approval takes exactly one line; a
+question still waiting when the file ends stops the replay (`replay ended with an approval waiting: <tool>`, exit `1`);
+the replay concludes only once the command in flight and its background work have ended. Ctrl-C (Esc Esc in the TUI)
+stops the replay; a second Ctrl-C while it is still stopping ends the process (exit `130`). New `--log-level <level>`,
+also the starting level of the TUI's logs pane; `--replay` and `--log-level` refuse a value that starts with `--`.
 
 **API:** `CommandResult.Fail(message)` and `CommandResult.Failed` (Orkeon.Cli.Abstractions) mark a command that
-failed; a scripted command's error, rejection or quota refusal now returns it — the message printed is unchanged.
+failed; a scripted command's error, rejection or quota refusal now returns it, as do the usage errors of `inspect`,
+`result`, `cancel` and `help-cmd` and an unknown ticket — the message printed is unchanged.
 `InteractiveRunnerBase.OnCommandOutcome` and `ICommandOutcomeObserver` report each command's outcome;
 `IToolApprovalWatch.PendingChanged`, `CommandInstanceRegistry.InstanceRegistered` / `InstanceTerminated` /
 `HasRunning` signal the work in flight; `DefaultCommandRegistry` takes a host's own built-ins.

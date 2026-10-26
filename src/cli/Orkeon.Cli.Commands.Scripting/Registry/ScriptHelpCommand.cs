@@ -43,8 +43,7 @@ public sealed class ScriptHelpCommand : IInteractiveCommand
 
         if (context.Args.Count == 0)
         {
-            context.Console.WriteLine("usage: help-cmd <command-name>");
-            return Task.FromResult(CommandResult.Continue());
+            return Task.FromResult(CommandResult.Fail("usage: help-cmd <command-name>"));
         }
 
         var target = context.Args[0];
@@ -55,8 +54,7 @@ public sealed class ScriptHelpCommand : IInteractiveCommand
 
         if (match is null)
         {
-            context.Console.WriteLine($"No scripted command found for '{target}'. Type 'help' to list available commands.");
-            return Task.FromResult(CommandResult.Continue());
+            return Task.FromResult(CommandResult.Fail($"No scripted command found for '{target}'. Type 'help' to list available commands."));
         }
 
         var help = ArgsHelpFormatter.Format(match.Name, match.Aliases, match.Description, match.Descriptor.ArgsSchema);

@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\..\src\cli\Orkeon.Cli.Commands.Scripting\Orkeon.Cli.Commands.Scripting.csproj" />
     <ProjectReference Include="..\..\..\src\cli\Orkeon.Cli.Abstractions\Orkeon.Cli.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\src\cli\Orkeon.Cli\Orkeon.Cli.csproj" />
+    <ProjectReference Include="..\Orkeon.Cli.Abstractions.Tests\Orkeon.Cli.Abstractions.Tests.csproj" />
     <ProjectReference Include="..\..\..\src\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" />
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>

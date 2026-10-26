@@ -12,7 +12,7 @@ namespace Orkeon.ConsoleApp;
 ///   <item><description><c>--allow-external-mounts</c> (or <c>=true</c>/<c>=false</c>) — a <c>--mount</c> outside the working directory is readable, as for a runner; <c>ORKEON_ALLOW_EXTERNAL_MOUNTS=1</c> does the same (GAP-49, decision 3). The <c>--commands-dir</c> and <c>--crews-dir</c> folders always are.</description></item>
 ///   <item><description><c>--llm-log</c> and <c>--llm-log-path &lt;dir&gt;</c> — the LLM exchange log, as for <c>orkeon run</c>: JSONL under <c>./llm-logs</c>, or the folder named, which implies <c>--llm-log</c>; a folder outside the working directory needs <c>--allow-external-mounts</c>.</description></item>
 ///   <item><description><c>--replay &lt;file&gt;</c> — replays the file's lines as if typed, then exits (0 passed, 1 stopped on an error, 2 file missing or unreadable); with <c>--interactive</c>, the REPL stays open after it. <c>--interactive</c> alone is a usage error.</description></item>
-///   <item><description><c>--log-level &lt;level&gt;</c> — the minimum level of the plain console's log (<c>Trace</c> … <c>None</c>); on stderr under <c>--replay</c>.</description></item>
+///   <item><description><c>--log-level &lt;level&gt;</c> — the minimum level of the log (<c>Trace</c> … <c>None</c>): the plain console's, on stderr under <c>--replay</c>, or the starting level of the TUI's logs pane. A value that starts with <c>--</c> is a usage error, for <c>--replay</c> too.</description></item>
 ///   <item><description><c>--crews-dir &lt;path&gt;</c> (repeatable) — physical directories holding <c>&lt;name&gt;/crew.ork.ts</c> crews; mounted read-only and registered with the <c>script-host</c> so commands can resolve crews by name (e.g. <c>assistant</c> → <c>main-loop</c>).</description></item>
 /// </list>
 /// </summary>
@@ -102,6 +102,13 @@ internal sealed record ScriptedCommandsCliOptions(
             else if (TryAddValueOption(a, LlmLogPathFlag, args, ref i, llmLogPaths)) { /* captured */ }
             else if (TryAddValueOption(a, ReplayFlag, args, ref i, replayFiles)) { /* captured */ }
             else if (TryAddValueOption(a, LogLevelFlag, args, ref i, logLevels)) { /* captured */ }
+        }
+
+        // A value that starts with "--" is the next flag, not a value: `--replay --interactive` names no file.
+        foreach (var (flag, values) in new[] { (ReplayFlag, replayFiles), (LogLevelFlag, logLevels) })
+        {
+            if (values.FirstOrDefault(v => v.StartsWith("--", StringComparison.Ordinal)) is { } flagLike)
+                usageError ??= $"{flag} needs a value, not the flag '{flagLike}'";
         }
 
         var replayFile = replayFiles.Count > 0 ? replayFiles[^1] : null;

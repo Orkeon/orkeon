@@ -1,6 +1,7 @@
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.ConsoleApp.Replay;
+using Orkeon.Cli.Abstractions.Tests.Doubles;
 using Orkeon.ConsoleApp.Tests.Fakes;
 
 namespace Orkeon.ConsoleApp.Tests.Replay;
@@ -36,6 +37,9 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
 
     private static CommandResponse Done(string name)
         => new(name, name, success: true, payload: "ok", error: null);
+
+    // A read from inside a command (runCrew's AnswerFromConsole): synchronous, as the production code does it.
+    private string? CommandRead() => _replay.ReadLine();
 
     [Fact]
     public async Task ShouldFeedAndEchoEachLine_WhenNothingRuns()
@@ -154,10 +158,193 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
         StartBackgroundTask();
         var next = _replay.ReadLineAsync(ct);
 
-        Assert.True(_replay.Interrupt());
+        Assert.Equal(ReplayInterrupt.Stopping, _replay.Interrupt());
 
         Assert.Null(await next.WaitAsync(HangGuard, ct));
         Assert.True(_inner.Contains("replay stopped at line 1: interrupted"));
-        Assert.False(_replay.Interrupt());
+        Assert.Equal(ReplayInterrupt.NotRunning, _replay.Interrupt());
+    }
+
+    [Fact]
+    public async Task ShouldAnswerAlreadyStopping_WhenInterruptedAgainWhileTheReplayStillRuns()
+    {
+        _replay.TryStart(Lines("/run-crew demo", "/tasks"), closeInputAtEnd: true);
+        await _replay.ReadLineAsync(TestContext.Current.CancellationToken);
+
+        // The command in flight ignores its cancellation: the replay still runs after the first Ctrl-C.
+        Assert.Equal(ReplayInterrupt.Stopping, _replay.Interrupt());
+
+        Assert.Equal(ReplayInterrupt.AlreadyStopping, _replay.Interrupt());
+        Assert.True(_replay.IsActive);
+    }
+
+    [Fact]
+    public async Task ShouldConcludeOnlyAtTheLoopsNextRead_WhenTheFileRunsOutInsideACommandsRead()
+    {
+        _replay.TryStart(Lines("/run-crew demo"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        Assert.Equal("/run-crew demo", await _replay.ReadLineAsync(ct));
+
+        // The command reads a line the file does not have: its input ends, the replay does not conclude yet.
+        Assert.Null(CommandRead());
+        Assert.True(_replay.IsActive);
+        Assert.Null(_replay.ExitCode);
+        _replay.OnCommandOutcome(new CommandOutcome("/run-crew demo", "run-crew", CommandOutcomeKind.Failed, "Error: the crew was denied"));
+
+        Assert.Null(await _replay.ReadLineAsync(ct));
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.ExitCode);
+        Assert.True(_inner.Contains("replay stopped at line 1: replay ended while a command waited for a line"));
+    }
+
+    [Fact]
+    public async Task ShouldFail_WhenTheFileEndsWithAnApprovalWaiting()
+    {
+        _replay.TryStart(Lines("/dev-batches plan.md"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        StartBackgroundTask();
+        _approvals.Ask("write_file");
+
+        Assert.Null(await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.ExitCode);
+        Assert.True(_inner.Contains("replay stopped at line 1: replay ended with an approval waiting: write_file"));
+    }
+
+    [Fact]
+    public async Task ShouldFail_WhenACommandReadsForAnApprovalTheFileDoesNotAnswer()
+    {
+        _replay.TryStart(Lines("/run-crew demo"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        _approvals.Ask("write_file");
+
+        Assert.Null(CommandRead());
+        _approvals.Pending.Clear();
+        _approvals.NotifyPendingChanged();
+
+        Assert.Null(await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.ExitCode);
+        Assert.True(_inner.Contains("replay stopped at line 1: replay ended with an approval waiting: write_file"));
+    }
+
+    [Fact]
+    public async Task ShouldServeOneLinePerApproval_WhenACommandReadsAfterTheLoopTookTheLine()
+    {
+        _replay.TryStart(Lines("/dev-batches plan.md", "y", "/tasks"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        var task = StartBackgroundTask();
+        _approvals.Ask("write_file");
+        // The loop takes the answer first: it holds the claim on the approval.
+        Assert.Equal("y", await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+
+        // runCrew's AnswerFromConsole, in the background task, reads for the same approval.
+        var commandRead = Task.Run(_replay.ReadLine, ct);
+        Assert.True(SpinWait.SpinUntil(() => _gate.CommandReadsWaiting == 1, HangGuard));
+        // The loop's line answers it, as the approval channel's interceptor does.
+        _approvals.Pending.Clear();
+        _approvals.NotifyPendingChanged();
+
+        Assert.Equal(string.Empty, await commandRead.WaitAsync(HangGuard, ct));
+        task.Complete(Done("dev-batches"));
+        Assert.Equal("/tasks", await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheLoopWaiting_WhenACommandTookTheLineForTheApproval()
+    {
+        _replay.TryStart(Lines("/dev-batches plan.md", "y", "/tasks"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        var task = StartBackgroundTask();
+        _approvals.Ask("write_file");
+        // runCrew's AnswerFromConsole takes the answer first: it holds the claim.
+        Assert.Equal("y", CommandRead());
+
+        var next = _replay.ReadLineAsync(ct);
+        Assert.False(next.IsCompleted);
+        _approvals.Pending.Clear();
+        _approvals.NotifyPendingChanged();
+        // The approval answered, the loop still waits for the background task: the next line is not taken.
+        Assert.Null(_gate.Claim);
+        Assert.False(next.IsCompleted);
+        task.Complete(Done("dev-batches"));
+
+        Assert.Equal("/tasks", await next.WaitAsync(HangGuard, ct));
+    }
+
+    [Fact]
+    public async Task ShouldEndACommandsWaitForTheClaim_WhenInterrupted()
+    {
+        _replay.TryStart(Lines("/dev-batches plan.md", "y", "/tasks"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        StartBackgroundTask();
+        _approvals.Ask("write_file");
+        Assert.Equal("y", await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+        var commandRead = Task.Run(_replay.ReadLine, ct);
+        Assert.True(SpinWait.SpinUntil(() => _gate.CommandReadsWaiting == 1, HangGuard));
+
+        Assert.Equal(ReplayInterrupt.Stopping, _replay.Interrupt());
+
+        Assert.Null(await commandRead.WaitAsync(HangGuard, ct));
+        Assert.Null(await _replay.ReadLineAsync(ct).WaitAsync(HangGuard, ct));
+        Assert.True(_inner.Contains("replay stopped at line 2: interrupted"));
+    }
+
+    [Fact]
+    public async Task ShouldWriteTheStopLineOnALineOfItsOwn_AfterThePlainPrompt()
+    {
+        _replay.TryStart(Lines("/bogus"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        _replay.OnCommandOutcome(new CommandOutcome("/bogus", null, CommandOutcomeKind.Unknown, "unknown command '/bogus'"));
+
+        Assert.Null(await _replay.ReadLineAsync(ct));
+
+        var stop = _inner.Lines.FindIndex(l => l.StartsWith("replay stopped at line 1", StringComparison.Ordinal));
+        Assert.True(stop > 0);
+        Assert.Equal(string.Empty, _inner.Lines[stop - 1]);
+    }
+
+    [Fact]
+    public async Task ShouldWriteNoBlankLine_InTheTui()
+    {
+        using var gate = new ReplayIdleGate(() => _registry, () => _approvals);
+        var inner = new FakeConsoleAdapter();
+        var replay = new ReplayConsoleAdapter(inner, gate, "> ");
+        replay.TryStart(Lines("/help"), closeInputAtEnd: false);
+        var ct = TestContext.Current.CancellationToken;
+        inner.ScriptedLines = new Queue<string?>(["typed by hand"]);
+        await replay.ReadLineAsync(ct);
+
+        await replay.ReadLineAsync(ct);
+
+        Assert.Equal(["> /help", "replay finished: 1 line(s)"], inner.Lines);
+    }
+
+    [Fact]
+    public async Task ShouldStopOnTheCrash_WhenTheReplThrew()
+    {
+        _replay.TryStart(Lines("/help", "/tasks"), closeInputAtEnd: true);
+        await _replay.ReadLineAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude("the REPL failed: boom"));
+
+        Assert.True(_inner.Contains("replay stopped at line 1: the REPL failed: boom"));
+        Assert.False(_replay.IsActive);
+    }
+
+    [Fact]
+    public async Task ShouldAnswerNotRunningAndKeepTheInputClosed_AfterTheRunEnded()
+    {
+        _replay.TryStart(Lines("/help"), closeInputAtEnd: true);
+        var ct = TestContext.Current.CancellationToken;
+        await _replay.ReadLineAsync(ct);
+        Assert.Null(await _replay.ReadLineAsync(ct));
+
+        Assert.Equal(ReplayInterrupt.NotRunning, _replay.Interrupt());
+        Assert.Null(CommandRead());
     }
 }

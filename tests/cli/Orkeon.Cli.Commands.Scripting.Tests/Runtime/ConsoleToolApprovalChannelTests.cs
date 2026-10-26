@@ -298,4 +298,68 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.Contains(new string('x', 250) + "…", _console.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(new string('x', 300), _console.Output, StringComparison.Ordinal);
     }
+
+    // -- PendingChanged: what the replay waits on --------------------------
+
+    [Fact]
+    public void ShouldRaisePendingChanged_WhenAQuestionIsAskedAndWhenItIsAnswered()
+    {
+        var raised = new List<int>();
+        _channel.PendingChanged += (_, _) => raised.Add(_channel.Pending.Count);
+
+        _ = _channel.RequestAsync(Request(), Ct);
+        _channel.TryConsume("y");
+
+        Assert.Equal([1, 0], raised);
+    }
+
+    [Fact]
+    public async Task ShouldRaisePendingChanged_WhenAQuestionIsWithdrawn()
+    {
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var cancelled = _channel.RequestAsync(Request(), run.Token);
+        var raised = 0;
+        _channel.PendingChanged += (_, _) => raised++;
+
+        await run.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelled);
+        Assert.Equal(1, raised);
+        Assert.Empty(_channel.Pending);
+    }
+
+    [Fact]
+    public void ShouldRaisePendingChanged_WhenDisposedWithQuestionsWaiting()
+    {
+        _ = _channel.RequestAsync(Request(), Ct);
+        var raised = 0;
+        _channel.PendingChanged += (_, _) => raised++;
+
+        _channel.Dispose();
+
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public void ShouldNotRaisePendingChanged_WhenDisposedWithNothingWaiting()
+    {
+        var raised = 0;
+        _channel.PendingChanged += (_, _) => raised++;
+
+        _channel.Dispose();
+
+        Assert.Equal(0, raised);
+    }
+
+    [Fact]
+    public void ShouldNotRaisePendingChanged_WhenTheLineIsLeftToTheLoop()
+    {
+        _ = _channel.RequestAsync(Request(), Ct);
+        var raised = 0;
+        _channel.PendingChanged += (_, _) => raised++;
+
+        Assert.False(_channel.TryConsume("/tasks"));
+
+        Assert.Equal(0, raised);
+    }
 }

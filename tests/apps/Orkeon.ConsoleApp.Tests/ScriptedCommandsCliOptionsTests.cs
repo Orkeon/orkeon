@@ -89,6 +89,13 @@ public sealed class ScriptedCommandsCliOptionsTests
         => Assert.NotNull(ScriptedCommandsCliOptions.Parse(["--replay"]).UsageError);
 
     [Theory]
+    [InlineData(new[] { "--replay", "--interactive" }, "--replay needs a value, not the flag '--interactive'")]
+    [InlineData(new[] { "--replay=--interactive" }, "--replay needs a value, not the flag '--interactive'")]
+    [InlineData(new[] { "--replay", "demo.replay", "--log-level", "--interactive" }, "--log-level needs a value, not the flag '--interactive'")]
+    public void A_flag_taken_for_a_value_is_a_usage_error(string[] args, string error)
+        => Assert.Equal(error, ScriptedCommandsCliOptions.Parse(args).UsageError);
+
+    [Theory]
     [InlineData("debug", Microsoft.Extensions.Logging.LogLevel.Debug)]
     [InlineData("Warning", Microsoft.Extensions.Logging.LogLevel.Warning)]
     public void Log_level_reads_the_level(string value, Microsoft.Extensions.Logging.LogLevel expected)

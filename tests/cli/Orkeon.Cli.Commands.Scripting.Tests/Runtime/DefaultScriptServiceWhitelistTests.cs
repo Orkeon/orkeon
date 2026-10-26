@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Runtime;
+using Orkeon.Cli.Abstractions.Tests.Doubles;
 using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
