@@ -443,8 +443,9 @@
                         </Button>
                       </StackPanel>
                       <StackPanel>
-                        <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                   Text="{Binding PhysicalPath}" TextTrimming="CharacterEllipsis"/>
+                        <!-- R09: the folder's path is cut in the middle, whole in its tooltip. -->
+                        <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontWeight="SemiBold"
+                                                     Foreground="{DynamicResource InkBrush}" Text="{Binding PhysicalPath}"/>
                         <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0"
                                    Foreground="{DynamicResource InkFaintBrush}">
                           <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
@@ -462,10 +463,10 @@
                             <controls:LucideIcon.Style>
                               <Style TargetType="controls:LucideIcon">
                                 <Setter Property="Kind" Value="triangle-alert"/>
-                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsError}" Value="True">
-                                    <Setter Property="Kind" Value="circle-x"/>
+                                    <Setter Property="Kind" Value="ban"/>
                                     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                                   </DataTrigger>
                                 </Style.Triggers>
@@ -482,12 +483,8 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left"
-                    Command="{Binding Config.Mounts.AllowFolderCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Settings.Allow], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding Config.Mounts.AllowFolderCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Settings.Allow], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
 
           <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
@@ -540,12 +537,21 @@
                                  Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                                  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                  Text="{Binding Label, Mode=OneWay}"/>
-                      <Border Style="{StaticResource BadgeOk}" Margin="8,0,0,0" MaxWidth="160"
-                              HorizontalAlignment="Right" VerticalAlignment="Center"
-                              ToolTip="{Binding RightsLabel, Mode=OneWay}">
-                        <TextBlock Style="{StaticResource BadgeText}" FontSize="13" TextTrimming="CharacterEllipsis"
-                                   Text="{Binding RightsBadge, Mode=OneWay}"/>
-                      </Border>
+                      <!-- R12: the rights pill of every screen — read-only neutral, read-write sky. -->
+                      <controls:Badge Margin="8,0,0,0" MaxWidth="160" HorizontalAlignment="Right"
+                                      ToolTip="{Binding RightsLabel, Mode=OneWay}">
+                        <controls:Badge.Style>
+                          <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                            <Setter Property="Tone" Value="Neutral"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                                <Setter Property="Tone" Value="Info"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </controls:Badge.Style>
+                        <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding RightsBadge, Mode=OneWay}"/>
+                      </controls:Badge>
                     </DockPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
