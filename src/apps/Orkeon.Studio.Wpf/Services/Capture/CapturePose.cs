@@ -44,6 +44,24 @@ internal static class CapturePose
         PoseDots(visuals);
         PoseRunBadge(visuals);
         PoseOpenPopups(visuals);
+        PoseAssistantSlot(visuals);
+    }
+
+    /// <summary>
+    /// The assistant panel's slot-in, a 26 px slide that ends at 0. The shot comes before the
+    /// first tick moves it, so unposed the panel stands 26 px past the window's right edge: an
+    /// open panel is photographed where it comes to rest.
+    /// </summary>
+    private static void PoseAssistantSlot(IEnumerable<DependencyObject> visuals)
+    {
+        foreach (var view in visuals.OfType<Views.ChatThreadView>())
+        {
+            if (view.Content is not Border { RenderTransform: TranslateTransform { IsFrozen: false } slide })
+                continue;
+
+            slide.BeginAnimation(TranslateTransform.XProperty, null);
+            slide.X = 0;
+        }
     }
 
     /// <summary>
