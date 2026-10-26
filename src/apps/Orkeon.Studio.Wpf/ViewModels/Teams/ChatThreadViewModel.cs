@@ -173,6 +173,12 @@ public sealed class ChatThreadViewModel : ObservableObject
     public bool HasPendingAction => _pendingAction is not null;
 
     /// <summary>
+    /// Whether the thread waits on the user, a question or a card: the header says it with a
+    /// badge, never by dimming the panel (A07).
+    /// </summary>
+    public bool IsWaitingOnUser => IsAsking || _pendingAction is not null;
+
+    /// <summary>
     /// The question on screen (R15), with its answers as buttons: the owner's own — an
     /// arbitration, the fill step — else the engine's standing question, its listed options
     /// read from the bubble, then « Skip this question ». Null when nothing is asked.
@@ -300,6 +306,14 @@ public sealed class ChatThreadViewModel : ObservableObject
     public string Brief =>
         _brief?.Invoke() is { Length: > 0 } brief ? brief : _strings[StudioStringKeys.ChatBriefEmpty];
 
+    /// <summary>
+    /// Whether the brief card shows: on the wizard, and — when the owner has no brief yet —
+    /// only while the thread is empty, so «nothing described» never sits above a conversation
+    /// that did describe something (D03).
+    /// </summary>
+    public bool ShowsBriefCard =>
+        ShowsBrief && (IsEmpty || _brief?.Invoke() is { Length: > 0 });
+
     /// <summary>The chips under the brief — the step-1 precisions, as picked.</summary>
     public IReadOnlyList<string> BriefChips => _briefChips?.Invoke() ?? [];
 
@@ -380,7 +394,7 @@ public sealed class ChatThreadViewModel : ObservableObject
             return;
 
         _context = context;
-        OnPropertiesChanged(nameof(Primer), nameof(ShowsBrief));
+        OnPropertiesChanged(nameof(Primer), nameof(ShowsBrief), nameof(ShowsBriefCard));
     }
 
     /// <summary>
@@ -590,7 +604,7 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Notifies the recap and the brief card that their source moved.</summary>
     public void OwnerChanged() =>
-        OnPropertiesChanged(nameof(Facts), nameof(RecapProgress), nameof(Brief), nameof(BriefChips));
+        OnPropertiesChanged(nameof(Facts), nameof(RecapProgress), nameof(Brief), nameof(BriefChips), nameof(ShowsBriefCard));
 
     // ── the session ────────────────────────────────────────────────────────
 
@@ -739,7 +753,8 @@ public sealed class ChatThreadViewModel : ObservableObject
             nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
             nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
             nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
-            nameof(BriefChips), nameof(Primer), nameof(Question), nameof(HasQuestion));
+            nameof(BriefChips), nameof(Primer), nameof(Question), nameof(HasQuestion),
+            nameof(IsWaitingOnUser), nameof(ShowsBriefCard));
         QuestionRevealCommand.RaiseCanExecuteChanged();
         FollowQuestion();
     }

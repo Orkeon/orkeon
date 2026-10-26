@@ -4200,6 +4200,7 @@
   <!-- hrm:L04 end -->
 
   <!-- hrm:L05 begin -->
+  <data name="Studio.Chat.WaitingBadge" xml:space="preserve"><value>Esperando su acción</value></data>
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->

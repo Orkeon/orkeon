@@ -306,6 +306,41 @@ public class ChatThreadViewModelTests
     }
 
     [Fact]
+    public void A_card_waiting_on_the_user_lights_the_header_badge_and_nothing_else_does()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.StartSession();
+        Assert.False(chat.IsWaitingOnUser);
+
+        chat.SetPendingAction(new ChatPendingAction("Confirm them.", "Confirm", new RelayCommand(() => { }), new RelayCommand(() => { }), "Confirm, or ask"));
+        Assert.True(chat.IsWaitingOnUser);
+
+        chat.SetPendingAction(null);
+        Assert.False(chat.IsWaitingOnUser);
+    }
+
+    [Fact]
+    public void The_empty_brief_card_shows_on_an_empty_thread_only()
+    {
+        var chat = new ChatThreadViewModel();
+        var brief = "";
+        chat.Bind(() => [], () => brief, () => [], () => null, _ => false);
+        chat.SetContext(AssistantContext.WizardStep2);
+
+        Assert.True(chat.ShowsBriefCard);
+
+        chat.AddAssistantTurn("D'accord : une note quotidienne.");
+        Assert.False(chat.ShowsBriefCard);
+
+        brief = "une veille documentaire";
+        chat.OwnerChanged();
+        Assert.True(chat.ShowsBriefCard);
+
+        chat.SetContext(AssistantContext.Run);
+        Assert.False(chat.ShowsBriefCard);
+    }
+
+    [Fact]
     public void A_free_question_with_no_keyword_falls_back_to_where_the_user_stands()
     {
         var chat = new ChatThreadViewModel();

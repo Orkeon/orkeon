@@ -2512,6 +2512,7 @@
   <!-- hrm:L04 end -->
 
   <!-- hrm:L05 begin -->
+  <data name="Studio.Chat.WaitingBadge" xml:space="preserve"><value>En attente de vous</value></data>
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
