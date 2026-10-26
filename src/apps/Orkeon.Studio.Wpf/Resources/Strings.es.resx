@@ -3739,7 +3739,7 @@
     <value>Visualización</value>
   </data>
   <data name="Studio.Run.StreamShort" xml:space="preserve">
-    <value>token a token</value>
+    <value>Token a token</value>
   </data>
   <data name="Studio.Run.TabRunIdle" xml:space="preserve">
     <value>En espera · nada que informar</value>

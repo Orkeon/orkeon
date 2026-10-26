@@ -2782,7 +2782,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunDisplayProgress] = "Progress",
         [StudioStringKeys.RunDisplayRaw] = "Raw output",
         [StudioStringKeys.RunLblDisplay] = "Display",
-        [StudioStringKeys.RunStreamShort] = "token by token",
+        [StudioStringKeys.RunStreamShort] = "Token by token",
         [StudioStringKeys.RunTabRunIdle] = "Waiting · nothing to report",
         [StudioStringKeys.RunTabRunRunning] = "Running · {0}",
         [StudioStringKeys.RunTabRunSucceeded] = "Succeeded · {0}",

@@ -2053,7 +2053,7 @@
     <value>Display</value>
   </data>
   <data name="Studio.Run.StreamShort" xml:space="preserve">
-    <value>token by token</value>
+    <value>Token by token</value>
   </data>
   <data name="Studio.Run.TabRunIdle" xml:space="preserve">
     <value>Waiting · nothing to report</value>
