@@ -42,7 +42,7 @@
     <!-- The tabs of an account's form: the settings strip's underline, one size down. -->
     <Style x:Key="DriveTab" TargetType="Button">
       <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontSize" Value="14"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -280,7 +280,7 @@
                              Visibility="{Binding HasState, Converter={StaticResource BooleanToVisibility}}">
                     <Ellipse DockPanel.Dock="Left" Style="{StaticResource DriveStateDot}" VerticalAlignment="Top"
                              Margin="0,5,7,0"/>
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock Style="{StaticResource Subhead}" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkBrush}" Text="{Binding State}"/>
                   </DockPanel>
                   <!-- the engine's own sentence: it names the variable to fill or the sign-in to run -->
@@ -344,7 +344,7 @@
 
                     <!-- the device sign-in (OneDrive): the page, the code in large, the time it has left -->
                     <StackPanel Visibility="{Binding IsDeviceCode, Converter={StaticResource BooleanToVisibility}}">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                      <TextBlock Style="{StaticResource Subhead}" TextWrapping="Wrap"
                                  Foreground="{DynamicResource InkBrush}" Text="{Binding DeviceCodeLine}"/>
                       <!-- a read-only well, so the code can be selected; it is never copied by a button -->
                       <TextBox Style="{StaticResource InputMono}" FontSize="26" FontWeight="SemiBold" IsReadOnly="True"
@@ -354,7 +354,7 @@
                     </StackPanel>
 
                     <!-- the browser sign-in (Google Drive): what to do with the address below -->
-                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                    <TextBlock Style="{StaticResource Subhead}" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkBrush}"
                                Text="{Binding [Studio.Settings.MailAuthorizationUrl], Source={x:Static services:I18n.Instance}}"
                                Visibility="{Binding IsAuthorizationUrl, Converter={StaticResource BooleanToVisibility}}"/>
@@ -433,8 +433,8 @@
                         Visibility="{Binding IsRenaming, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource AccentBrush}"
+                      <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource AccentInkBrush}"
                                  Text="{Binding [Studio.Settings.MailRenameLabel], Source={x:Static services:I18n.Instance}}"/>
                       <TextBox Style="{StaticResource InputMono}" Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
                                Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"/>
