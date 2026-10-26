@@ -30,6 +30,7 @@ public sealed class FakeNormalisingFileSystemService(IFileSystemService inner) :
     public string? ToVirtualPath(string physicalPath) => inner.ToVirtualPath(physicalPath);
 
     public string? WorkingDirectory => inner.WorkingDirectory;
+    public string? WriteDirectory => inner.WriteDirectory;
 
     public IReadOnlyList<MountInfo> GetAvailableMounts() => inner.GetAvailableMounts();
 

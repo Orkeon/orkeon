@@ -43,4 +43,12 @@ public class FileSystemOptions
     /// <c>/workspace</c> when it is mounted, else <c>/output</c>, else none.
     /// </summary>
     public string? WorkingDirectory { get; set; }
+
+    /// <summary>
+    /// The writable virtual directory a writing shell command runs in when it names none, runs
+    /// under no agent root, and the working directory does not grant it every right
+    /// (<c>Orkeon:FileSystem:WriteDirectory</c>). Unset, <c>/output</c> when an agent-facing mount
+    /// grants Write there, else none.
+    /// </summary>
+    public string? WriteDirectory { get; set; }
 }

@@ -59,6 +59,9 @@ public sealed class FakeFileSystemService : IFileSystemService
     /// <summary>The working directory relative paths resolve against; <c>null</c> (none) unless a test sets it.</summary>
     public string? WorkingDirectory { get; set; }
 
+    /// <summary>The write directory a writing shell command falls back to; <c>null</c> (none) unless a test sets it.</summary>
+    public string? WriteDirectory { get; set; }
+
     public IReadOnlyList<MountInfo> GetAvailableMounts() => _mounts.AsReadOnly();
 
     public async IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(

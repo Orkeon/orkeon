@@ -6,6 +6,7 @@ public sealed class FileSystemRegistry : IDisposable
     private readonly List<FileSystemMount> _mounts;
     private readonly ReaderWriterLockSlim _lock = new();
     private string? _workingDirectory;
+    private string? _writeDirectory;
 
     /// <summary>
     /// The virtual root a registry takes as its working directory when nobody designated one and
@@ -13,6 +14,13 @@ public sealed class FileSystemRegistry : IDisposable
     /// which the domain cannot reference (ADR-009); a test pins the two together.
     /// </summary>
     public const string DefaultWorkingDirectory = "/workspace";
+
+    /// <summary>
+    /// The virtual root a registry takes as its write directory when nobody designated one and an
+    /// agent-facing mount claims it with the Write right. Same spelling as
+    /// <c>RunnerVirtualRoots.Output</c>, which the domain cannot reference (ADR-009).
+    /// </summary>
+    public const string DefaultWriteDirectory = "/output";
 
     /// <summary>Initializes the registry with the specified mounts.</summary>
     public FileSystemRegistry(IEnumerable<FileSystemMount> mounts)
@@ -120,6 +128,59 @@ public sealed class FileSystemRegistry : IDisposable
                     $"No agent-facing mount holds the working directory '{virtualPath}'.",
                     nameof(virtualPath));
             _workingDirectory = normalized;
+        }
+        finally { _lock.ExitWriteLock(); }
+    }
+
+    /// <summary>
+    /// The virtual directory a writing shell command runs in when it names no directory, runs
+    /// under no agent root, and the <see cref="WorkingDirectory"/> does not grant it the rights it
+    /// needs (a read-only <c>/workspace</c> beside a writable <c>/output</c>): the directory
+    /// designated by <see cref="SetWriteDirectory"/> while its mount is still registered and
+    /// writable, else <see cref="DefaultWriteDirectory"/> when an agent-facing mount claims it with
+    /// the Write right, else <see langword="null"/>. Never chosen from the order of the mounts.
+    /// </summary>
+    public string? WriteDirectory
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (_writeDirectory is not null && FindWritableAgentFacingMountUnsafe(_writeDirectory) is not null)
+                    return _writeDirectory;
+                return FindWritableAgentFacingMountUnsafe(DefaultWriteDirectory) is { } output
+                       && string.Equals(output.VirtualPath, DefaultWriteDirectory, StringComparison.Ordinal)
+                    ? DefaultWriteDirectory
+                    : null;
+            }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
+
+    /// <summary>
+    /// Designates the write directory (see <see cref="WriteDirectory"/>). A host calls it when the
+    /// writable mount its agents produce in is not <see cref="DefaultWriteDirectory"/>.
+    /// </summary>
+    /// <param name="virtualPath">An absolute virtual path inside an agent-facing mount that grants Write.</param>
+    /// <exception cref="ArgumentException">The path is not absolute, or no writable agent-facing mount holds it.</exception>
+    public void SetWriteDirectory(string virtualPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+        if (!normalized.StartsWith('/'))
+            throw new ArgumentException(
+                $"A write directory is an absolute virtual path, e.g. {DefaultWriteDirectory}; '{virtualPath}' is not.",
+                nameof(virtualPath));
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (FindWritableAgentFacingMountUnsafe(normalized) is null)
+                throw new ArgumentException(
+                    $"No writable agent-facing mount holds the write directory '{virtualPath}'.",
+                    nameof(virtualPath));
+            _writeDirectory = normalized;
         }
         finally { _lock.ExitWriteLock(); }
     }
@@ -400,6 +461,9 @@ public sealed class FileSystemRegistry : IDisposable
 
     private FileSystemMount? FindAgentFacingMountUnsafe(string virtualPath) =>
         FindMountUnsafe(virtualPath) is { Visibility: MountVisibility.AgentFacing } mount ? mount : null;
+
+    private FileSystemMount? FindWritableAgentFacingMountUnsafe(string virtualPath) =>
+        FindAgentFacingMountUnsafe(virtualPath) is { } mount && mount.DefaultRights.HasFlag(FileAccessRights.Write) ? mount : null;
 
     private static string ExtractRelativePath(string virtualPath, string mountVirtualPath)
     {

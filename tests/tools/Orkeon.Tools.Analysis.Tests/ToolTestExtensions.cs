@@ -17,6 +17,18 @@ internal static class ToolTestExtensions
         return (string?)method!.Invoke(tool, [request]);
     }
 
+    /// <summary>The same hook on a file tool, which derives from <c>FileToolBase</c>.</summary>
+    public static string? ValidateTypedForTest<TReq, TRes>(
+        this Orkeon.Tools.Abstractions.Base.FileToolBase<TReq, TRes> tool,
+        TReq request)
+        where TReq : class, new()
+        where TRes : class
+    {
+        var method = tool.GetType().GetMethod(
+            "ValidateTypedRequest", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, [typeof(TReq)]);
+        return (string?)method!.Invoke(tool, [request]);
+    }
+
     public static async Task<TRes> ExecuteTypedForTest<TReq, TRes>(
         this Orkeon.Tools.Abstractions.Base.ToolBase<TReq, TRes> tool,
         TReq request,

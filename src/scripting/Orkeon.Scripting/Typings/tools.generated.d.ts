@@ -1201,7 +1201,7 @@ declare global {
             tail_lines?: number;
             /** Timeout in seconds */
             timeout_seconds?: number;
-            /** Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace). */
+            /** Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace); outside an agent root, a writing command that directory does not allow runs in the write directory (/output). */
             working_directory?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly completed: boolean;

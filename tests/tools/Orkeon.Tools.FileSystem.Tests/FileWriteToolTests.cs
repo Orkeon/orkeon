@@ -491,4 +491,31 @@ public sealed class FileWriteToolTests : IDisposable
             }
         }
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldWriteRelativePath_AndEchoTheAbsolutePath()
+    {
+        var root = Directory.CreateTempSubdirectory("orkeon-relative-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "src"));
+            await File.WriteAllTextAsync(Path.Combine(root, "src", "stats.js"), "sum\nsum\n", TestContext.Current.CancellationToken);
+            var fs = new DiskBackedFileSystemService(root, "/workspace") { WorkingDirectory = "/workspace" };
+            using var tool = new FileWriteTool(fs, new StubPathValidator().AllowAll());
+
+            var result = await tool.CallAsync(new ToolCallRequest(
+                ToolName: "file_write",
+                Parameters: new Dictionary<string, object?> { ["path"] = "src/out.txt", ["content"] = "hello" }), TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success, result.Error);
+            var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+            Assert.Equal("/workspace/src/out.txt", dict["path"]);
+            Assert.Equal("hello", await File.ReadAllTextAsync(Path.Combine(root, "src", "out.txt"), TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch (IOException) { /* best-effort */ }
+        }
+    }
 }

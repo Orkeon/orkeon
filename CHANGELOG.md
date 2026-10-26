@@ -22,7 +22,7 @@ failed; a scripted command's error, rejection or quota refusal now returns it �
 `IToolApprovalWatch.PendingChanged`, `CommandInstanceRegistry.InstanceRegistered` / `InstanceTerminated` /
 `HasRunning` signal the work in flight; `DefaultCommandRegistry` takes a host's own built-ins.
 
-### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount (#199, #200)
+### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount **[breaking]** (#199, #200)
 
 A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`, `directory_search`,
 `count_pattern`, `node_*`, `edit_batch`) resolves a relative `path` against the agent's working root, else the file
@@ -31,13 +31,20 @@ designates with `FileSystemRegistry.SetWorkingDirectory` or `Orkeon:FileSystem:W
 back to `/output`), and echoes the absolute path. The path is made absolute before the mount check and the root guard.
 An empty `path` is refused with `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`, and a
 path in no mount says `a path starts with a mount: /workspace/src/stats.js`. `node_outline`, `node_read` and
-`directory_search` go through the same resolution, and `directory_search` now honours the agent root.
+`directory_search` go through the same resolution, and so do `structural_search`, `structural_rewrite` (`paths`),
+`txt_search` and `mdx_search`; every one of them, `node_outline` and `node_read` included, now refuses a path outside
+the agent root before any I/O.
 
 **Behaviour change:** `shell_command` without `working_directory` ran in the first mount granting the rights — a
 read-only command could land in `/session-history`. It now runs in the agent's root, else the working directory; with
 mounts but no working directory it is refused, naming the mounts. A host without `/workspace` designates its working
-mount (`Orkeon:FileSystem:WorkingDirectory`, or `SetWorkingDirectory`). Where `/workspace` is read-only (`orkeon
-forge`), a writing command without `working_directory` is now refused there instead of moving to a writable mount.
+mount (`Orkeon:FileSystem:WorkingDirectory`, or `SetWorkingDirectory`). A relative `working_directory` is made
+absolute before the root guard, so `../p2` cannot leave the agent root. Where the working directory does not grant a
+writing command its rights (a read-only `/workspace`, as in `orkeon forge`), the command runs outside any agent root in
+the new write directory: `Orkeon:FileSystem:WriteDirectory`, else `/output` when an agent-facing mount grants Write
+there — never the order of the mounts; with none it is refused, naming the option, and under an agent root it never
+moves. The file tools' relative paths still resolve against the working directory only. The `orkeon forge` trial
+carries the host's working and write directories forward while it still mounts them.
 
 ### Added — scripted commands read the pending tool approvals (#198)
 

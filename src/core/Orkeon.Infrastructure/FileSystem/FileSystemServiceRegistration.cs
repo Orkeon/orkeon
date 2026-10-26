@@ -95,7 +95,7 @@ public static class FileSystemServiceRegistration
             mounts.Add(sp.GetRequiredService<SandboxSession>().Mount);
 
             var registry = new FileSystemRegistry(mounts);
-            WorkingDirectoryDesignation.Apply(registry, options.WorkingDirectory);
+            WorkingDirectoryDesignation.Apply(registry, options.WorkingDirectory, options.WriteDirectory);
             return registry;
 
             static FileSystemMount ParseAndCheck(string mountStr, MountVisibility visibility)

@@ -47,11 +47,15 @@ public sealed class NodeOutlineTool : ToolBase<NodeOutlineRequest, NodeOutlineRe
     public override ToolAccess Access => ToolAccess.Read;
 
     // A missing path is named as such: the empty extension used to surface as
-    // "No tree-sitter grammar for extension ''" (#200).
+    // "No tree-sitter grammar for extension ''" (#200). The path the tool will read is judged
+    // against the agent's root once made absolute, as every file tool does: '../p2' under a root
+    // must not reach the sibling worktree.
     protected override string? ValidateTypedRequest(NodeOutlineRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return string.IsNullOrWhiteSpace(request.Path) ? WorkingDirectoryResolver.PathRequiredMessage : null;
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return WorkingDirectoryResolver.PathRequiredMessage;
+        return AgentRootGuard.Check(_fs, WorkingDirectoryResolver.Absolutize(request.Path, _fs))?.DenialReason;
     }
 
     protected override async Task<NodeOutlineResponse> ExecuteTypedAsync(NodeOutlineRequest request, CancellationToken cancellationToken)

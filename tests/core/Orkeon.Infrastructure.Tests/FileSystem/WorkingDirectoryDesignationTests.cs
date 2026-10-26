@@ -131,4 +131,90 @@ public sealed class WorkingDirectoryDesignationTests : IDisposable
 
         Assert.Equal("/output", execution.WorkingDirectory);
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldTakeOutputAsWriteDirectory_WhenItIsWritable()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("ws"), "/workspace", FileAccessRights.ReadOnly),
+            new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        WorkingDirectoryDesignation.Apply(registry, configured: null);
+
+        Assert.Equal(RunnerVirtualRoots.Output, FileSystemRegistry.DefaultWriteDirectory);
+        Assert.Equal("/workspace", registry.WorkingDirectory);
+        Assert.Equal("/output", registry.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldLeaveNoWriteDirectory_WhenOutputIsReadOnlyEvenIfAnotherMountIsWritable()
+    {
+        // Explicit, never the order of the mounts: a writable /data is not taken by itself.
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("data"), "/data", FileAccessRights.ReadWrite),
+            new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadOnly),
+        ]);
+
+        WorkingDirectoryDesignation.Apply(registry, configured: null);
+
+        Assert.Null(registry.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldNameTheSetting_WhenTheConfiguredWriteDirectoryIsReadOnly()
+    {
+        using var registry = new FileSystemRegistry([new FileSystemMount(Dir("docs"), "/docs", FileAccessRights.ReadOnly)]);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => WorkingDirectoryDesignation.Apply(registry, configured: null, configuredWrite: "/docs"));
+
+        Assert.Contains(ConfigurationKeys.FileSystemWriteDirectory, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldHonourTheWriteDirectorySetting_WhenTheRegistryIsBuiltFromConfiguration()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{ConfigurationKeys.FileSystemMounts}:0"] = $"{Dir("ws")}:/workspace:ro",
+                [$"{ConfigurationKeys.FileSystemMounts}:1"] = $"{Dir("scratch")}:/scratch:rw",
+                [ConfigurationKeys.FileSystemWriteDirectory] = "/scratch",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IPathValidator>(new StubPathValidator().AllowAll());
+        services.AddOrkeonFileSystem(config);
+        using var provider = services.BuildServiceProvider();
+
+        var fileSystem = provider.GetRequiredService<IFileSystemService>();
+
+        Assert.Equal("/workspace", fileSystem.WorkingDirectory);
+        Assert.Equal("/scratch", fileSystem.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldCarryTheBootWriteDirectory_WhenTheExecutionStillMountsIt()
+    {
+        using var boot = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("scratch"), "/scratch", FileAccessRights.ReadWrite),
+            new FileSystemMount(Dir("ws"), "/workspace", FileAccessRights.ReadOnly),
+        ]);
+        boot.SetWriteDirectory("/scratch");
+
+        using var execution = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(Dir("crew"), "/crew", FileAccessRights.ReadOnly)]);
+
+        Assert.Equal("/scratch", execution.WriteDirectory);
+    }
 }

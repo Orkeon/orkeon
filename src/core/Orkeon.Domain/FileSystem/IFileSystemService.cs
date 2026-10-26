@@ -36,6 +36,14 @@ public interface IFileSystemService
     string? WorkingDirectory => null;
 
     /// <summary>
+    /// The virtual directory a writing shell command falls back to when the working directory does
+    /// not grant it the rights it needs (<see cref="FileSystemRegistry.WriteDirectory"/>);
+    /// <see langword="null"/> when there is none. Defaults to <see langword="null"/> for an
+    /// implementation without a registry.
+    /// </summary>
+    string? WriteDirectory => null;
+
+    /// <summary>
     /// Enumerates files and directories under <paramref name="virtualRoot"/> lazily.
     /// Patterns in <see cref="VirtualEnumerationOptions.Exclude"/> are applied to the relative
     /// path (relative to <paramref name="virtualRoot"/>, using <c>/</c> as separator).

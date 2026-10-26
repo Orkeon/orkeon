@@ -294,7 +294,13 @@ internal static class ForgeTrialScope
         var claimed = folders.Select(m => m.VirtualPath).ToHashSet(StringComparer.Ordinal);
         var carried = boot.GetMounts()
             .Where(m => !claimed.Contains(m.VirtualPath) && !CanonicalRoots.Contains(m.VirtualPath, StringComparer.Ordinal));
-        return new Orkeon.Domain.FileSystem.FileSystemRegistry([.. folders, .. carried]);
+        var registry = new Orkeon.Domain.FileSystem.FileSystemRegistry([.. folders, .. carried]);
+
+        // The trial keeps the host's working and write directories when it still mounts them,
+        // else takes its own (/workspace, else /output): without them a relative path and a
+        // shell command without working_directory had nowhere to go in a trial.
+        Orkeon.Infrastructure.FileSystem.WorkingDirectoryDesignation.CarryForward(boot, registry);
+        return registry;
     }
 
     /// <summary>

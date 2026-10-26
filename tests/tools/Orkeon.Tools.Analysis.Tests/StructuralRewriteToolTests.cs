@@ -299,4 +299,33 @@ public sealed class StructuralRewriteToolTests : IDisposable
         Assert.Equal(0, file.Applied);
         Assert.Equal(Encoding.UTF8.GetBytes(SrcA), await BytesAsync("A.cs"));
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRewriteRelativePath_AgainstWorkingDirectory()
+    {
+        var fs = await SeedAsync(("A.cs", SrcA));
+        fs.WorkingDirectory = "/workspace";
+        using var tool = new StructuralRewriteTool(fs, _pool, _index);
+
+        var resp = await tool.ExecuteTypedForTest(Request() with { Paths = ImmutableList.Create("src") }, CancellationToken.None);
+
+        Assert.Equal("/workspace/src/A.cs", Assert.Single(resp.Files).Path);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuse_WhenRelativePathEscapesAgentRoot()
+    {
+        var fs = await SeedAsync(("A.cs", SrcA));
+        fs.WorkingDirectory = "/workspace";
+        using var tool = new StructuralRewriteTool(fs, _pool, _index);
+
+        string? error;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/wt/p1"))
+            error = tool.ValidateTypedForTest(Request() with { Paths = ImmutableList.Create("../../src") });
+
+        Assert.NotNull(error);
+        Assert.Contains("outside the agent working root", error, StringComparison.Ordinal);
+    }
 }

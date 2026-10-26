@@ -113,4 +113,22 @@ public sealed class NodeOutlineToolTests : IDisposable
 
         Assert.Contains(resp.Members, e => e.Selector.StartsWith("sum", StringComparison.Ordinal));
     }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuse_WhenRelativePathEscapesAgentRoot()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/wt/p2/src/stats.js", "function sum(xs) {\n  return 0;\n}\n", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeOutlineTool(fs, pool);
+
+        string? error;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/wt/p1"))
+            error = tool.ValidateTypedForTest(new NodeOutlineRequest { Path = "../p2/src/stats.js" });
+
+        Assert.NotNull(error);
+        Assert.Contains("outside the agent working root", error, StringComparison.Ordinal);
+        Assert.Contains("/workspace/wt/p2/src/stats.js", error, StringComparison.Ordinal);
+    }
 }

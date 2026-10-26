@@ -713,6 +713,44 @@ public sealed class ForgeFoldersTests : IDisposable
         var card = File.ReadAllText(Path.Combine(destination, "FORGE.md"));
         Assert.Contains("`inpdf/`", card, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void The_trial_carries_the_hosts_working_directory_when_it_still_mounts_it()
+    {
+        var forge = Directory.CreateDirectory(Path.Combine(_workspace, "forge")).FullName;
+        using var boot = new FileSystemRegistry(
+        [
+            new FileSystemMount(forge, "/forge", FileAccessRights.ReadWrite),
+            new FileSystemMount(Directory.CreateDirectory(Path.Combine(_workspace, "ws")).FullName, "/workspace", FileAccessRights.ReadOnly),
+            new FileSystemMount(Directory.CreateDirectory(Path.Combine(_workspace, "out")).FullName, "/output", FileAccessRights.ReadWrite),
+        ]);
+        boot.SetWorkingDirectory("/forge");
+        boot.SetWriteDirectory("/forge");
+        var inpdf = Directory.CreateDirectory(Path.Combine(_workspace, "inpdf")).FullName;
+
+        using var trial = ForgeTrialScope.Compose(boot, [new ForgeTrialMount(Folder("/inpdf", "input", inpdf), inpdf)]);
+
+        Assert.Equal("/forge", trial.WorkingDirectory);
+        Assert.Equal("/forge", trial.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void The_trial_takes_its_own_output_when_the_hosts_working_directory_is_dropped()
+    {
+        using var boot = new FileSystemRegistry(
+        [
+            new FileSystemMount(Directory.CreateDirectory(Path.Combine(_workspace, "ws")).FullName, "/workspace", FileAccessRights.ReadOnly),
+            new FileSystemMount(Directory.CreateDirectory(Path.Combine(_workspace, "out")).FullName, "/output", FileAccessRights.ReadWrite),
+        ]);
+        var trialOutput = Directory.CreateDirectory(Path.Combine(_workspace, "trial-out")).FullName;
+
+        using var trial = ForgeTrialScope.Compose(boot, [new ForgeTrialMount(Folder("/output", "output"), trialOutput)]);
+
+        Assert.Equal("/output", trial.WorkingDirectory);
+        Assert.Equal("/output", trial.WriteDirectory);
+    }
 }
 
 /// <summary>
