@@ -64,35 +64,17 @@
 
     <!-- The header (title, subtitle, the Essai | Réel switch) is the Lancer screen's: RunScreenView. -->
 
-    <!-- CLI missing (R7): a danger alert with its one way out - never a raw English block (T-07) -->
+    <!-- CLI missing (R7): a danger alert with its one way out - never a raw English block (T-07).
+         C02/C03/D01 (R07, R18): the locator's raw English text lives only in the alert's folded
+         « Détails techniques », in mono; nothing is repeated under the banner. -->
     <controls:Alert Tone="Danger" Margin="0,16,0,0" Message="{Binding CliBanner}" Details="{Binding BinaryStatus}"
                     Visibility="{Binding CliBanner, Converter={StaticResource StringPresentToVisibility}}">
       <controls:Alert.Actions>
-        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnOpenDiagnostic">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="stethoscope" Size="16" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Run.OpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnOpenDiagnostic"
+                controls:ButtonIcon.Kind="stethoscope"
+                Content="{Binding [Studio.Run.OpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
       </controls:Alert.Actions>
     </controls:Alert>
-    <!-- the locator's raw detail stays expert -->
-    <TextBlock Margin="0,6,0,0" Text="{Binding BinaryStatus}">
-      <TextBlock.Style>
-        <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
-          <Setter Property="Visibility" Value="Collapsed"/>
-          <Style.Triggers>
-            <MultiDataTrigger>
-              <MultiDataTrigger.Conditions>
-                <Condition Binding="{Binding IsExpertMode}" Value="True"/>
-                <Condition Binding="{Binding IsBinaryAvailable}" Value="False"/>
-              </MultiDataTrigger.Conditions>
-              <Setter Property="Visibility" Value="Visible"/>
-            </MultiDataTrigger>
-          </Style.Triggers>
-        </Style>
-      </TextBlock.Style>
-    </TextBlock>
 
     <controls:StepTabs Margin="0,16,0,0" SelectedValuePath="Tag" SelectedValue="{Binding ActiveTab}">
 
