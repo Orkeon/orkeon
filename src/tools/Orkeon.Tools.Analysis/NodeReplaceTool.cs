@@ -58,7 +58,7 @@ public sealed class NodeReplaceTool : FileToolBase<NodeReplaceRequest, NodeRepla
             throw new InvalidOperationException(pathValidation.DenialReason ?? "Invalid or unsafe file path");
 
         var operation = new NodeReplaceOperation(NodeSelector.Parse(request.Selector), request.ExpectedHash, request.Text);
-        var virtualPath = _fileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? request.Path;
+        var virtualPath = _fileSystemService.ToVirtualPath(pathValidation.ResolvedPath!) ?? AbsolutizePath(request.Path);
         var outcome = await _engine.ApplyAsync(virtualPath, [operation], cancellationToken).ConfigureAwait(false);
         _indexInvalidation?.MarkDirty(virtualPath);
         return new NodeReplaceResponse

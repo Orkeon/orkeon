@@ -1,0 +1,134 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Constants.Configuration;
+using Orkeon.Constants.FileSystem;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools.Security;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Tests.Shared.Doubles;
+
+namespace Orkeon.Infrastructure.Tests.FileSystem;
+
+public sealed class WorkingDirectoryDesignationTests : IDisposable
+{
+    private readonly string _tempDir = Directory.CreateTempSubdirectory("orkeon-wd-").FullName;
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_tempDir, recursive: true); } catch (IOException) { /* best-effort */ }
+    }
+
+    private string Dir(string name) => Directory.CreateDirectory(Path.Combine(_tempDir, name)).FullName;
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldMatchTheRunnerWorkspaceRoot_WhenTheDomainNamesItsDefault()
+    {
+        Assert.Equal(RunnerVirtualRoots.Workspace, FileSystemRegistry.DefaultWorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldKeepTheWorkspace_WhenItIsMounted()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("history"), "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(Dir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        WorkingDirectoryDesignation.Apply(registry, configured: null);
+
+        Assert.Equal("/workspace", registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldDesignateOutput_WhenNoWorkspaceIsMounted()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("history"), "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        WorkingDirectoryDesignation.Apply(registry, configured: null);
+
+        Assert.Equal("/output", registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldLeaveNone_WhenNeitherWorkspaceNorOutputIsMounted()
+    {
+        using var registry = new FileSystemRegistry([new FileSystemMount(Dir("data"), "/data", FileAccessRights.ReadWrite)]);
+
+        WorkingDirectoryDesignation.Apply(registry, configured: null);
+
+        Assert.Null(registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldNameTheSetting_WhenTheConfiguredDirectoryIsInNoMount()
+    {
+        using var registry = new FileSystemRegistry([new FileSystemMount(Dir("data"), "/data", FileAccessRights.ReadWrite)]);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => WorkingDirectoryDesignation.Apply(registry, "/nowhere"));
+
+        Assert.Contains(ConfigurationKeys.FileSystemWorkingDirectory, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldHonourTheSetting_WhenTheRegistryIsBuiltFromConfiguration()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{ConfigurationKeys.FileSystemMounts}:0"] = $"{Dir("ws")}:/workspace:rw",
+                [$"{ConfigurationKeys.FileSystemMounts}:1"] = $"{Dir("data")}:/data:rw",
+                [ConfigurationKeys.FileSystemWorkingDirectory] = "/data/src",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IPathValidator>(new StubPathValidator().AllowAll());
+        services.AddOrkeonFileSystem(config);
+        using var provider = services.BuildServiceProvider();
+
+        var fileSystem = provider.GetRequiredService<IFileSystemService>();
+
+        Assert.Equal("/data/src", fileSystem.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldCarryTheBootWorkingDirectory_WhenTheExecutionStillMountsIt()
+    {
+        using var boot = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("data"), "/data", FileAccessRights.ReadWrite),
+            new FileSystemMount(Dir("ws"), "/workspace", FileAccessRights.ReadWrite),
+        ]);
+        boot.SetWorkingDirectory("/data");
+
+        using var execution = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite)]);
+
+        Assert.Equal("/data", execution.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldDesignateTheExecutionsOwnOutput_WhenTheBootHasNoWorkingDirectory()
+    {
+        using var boot = new FileSystemRegistry([new FileSystemMount(Dir("crews"), "/crews", FileAccessRights.ReadOnly)]);
+
+        using var execution = ScopedMountComposition.ForExecution(
+            boot, [new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite)]);
+
+        Assert.Equal("/output", execution.WorkingDirectory);
+    }
+}

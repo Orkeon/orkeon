@@ -5,6 +5,14 @@ public sealed class FileSystemRegistry : IDisposable
 {
     private readonly List<FileSystemMount> _mounts;
     private readonly ReaderWriterLockSlim _lock = new();
+    private string? _workingDirectory;
+
+    /// <summary>
+    /// The virtual root a registry takes as its working directory when nobody designated one and
+    /// an agent-facing mount claims it. Same spelling as <c>RunnerVirtualRoots.Workspace</c>,
+    /// which the domain cannot reference (ADR-009); a test pins the two together.
+    /// </summary>
+    public const string DefaultWorkingDirectory = "/workspace";
 
     /// <summary>Initializes the registry with the specified mounts.</summary>
     public FileSystemRegistry(IEnumerable<FileSystemMount> mounts)
@@ -57,6 +65,61 @@ public sealed class FileSystemRegistry : IDisposable
 
             _mounts.Add(mount);
             _mounts.Sort((a, b) => b.VirtualPath.Length.CompareTo(a.VirtualPath.Length));
+        }
+        finally { _lock.ExitWriteLock(); }
+    }
+
+    /// <summary>
+    /// The virtual directory a relative path is resolved against, and the one a shell command
+    /// runs in when it names none: the directory designated by <see cref="SetWorkingDirectory"/>
+    /// while its mount is still registered, else <see cref="DefaultWorkingDirectory"/> when an
+    /// agent-facing mount claims it, else <see langword="null"/> (no working directory: a relative
+    /// path is refused).
+    /// </summary>
+    public string? WorkingDirectory
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (_workingDirectory is not null && FindAgentFacingMountUnsafe(_workingDirectory) is not null)
+                    return _workingDirectory;
+                return FindAgentFacingMountUnsafe(DefaultWorkingDirectory) is { } workspace
+                       && string.Equals(workspace.VirtualPath, DefaultWorkingDirectory, StringComparison.Ordinal)
+                    ? DefaultWorkingDirectory
+                    : null;
+            }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
+
+    /// <summary>
+    /// Designates the working directory (see <see cref="WorkingDirectory"/>). A host calls it when
+    /// the mount its agents work in is not <see cref="DefaultWorkingDirectory"/>.
+    /// </summary>
+    /// <param name="virtualPath">
+    /// An absolute virtual path inside an agent-facing mount: a working directory an agent cannot
+    /// address would hand it relative paths it could never spell back.
+    /// </param>
+    /// <exception cref="ArgumentException">The path is not absolute, or no agent-facing mount holds it.</exception>
+    public void SetWorkingDirectory(string virtualPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+        if (!normalized.StartsWith('/'))
+            throw new ArgumentException(
+                $"A working directory is an absolute virtual path, e.g. {DefaultWorkingDirectory}; '{virtualPath}' is not.",
+                nameof(virtualPath));
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (FindAgentFacingMountUnsafe(normalized) is null)
+                throw new ArgumentException(
+                    $"No agent-facing mount holds the working directory '{virtualPath}'.",
+                    nameof(virtualPath));
+            _workingDirectory = normalized;
         }
         finally { _lock.ExitWriteLock(); }
     }
@@ -114,8 +177,14 @@ public sealed class FileSystemRegistry : IDisposable
                 var described = visible.Select(m => m.DefaultRights.HasFlag(FileAccessRights.Write)
                     ? $"{m.VirtualPath} (writable)"
                     : $"{m.VirtualPath} (read-only)");
+                // The hint shows the shape of an address: a model that wrote a path relative to the
+                // project (src/stats.js) learns how to spell it, not only where it could go.
+                var example = visible.FirstOrDefault(m => m.VirtualPath == DefaultWorkingDirectory)?.VirtualPath
+                              ?? visible.LastOrDefault()?.VirtualPath
+                              ?? DefaultWorkingDirectory;
                 throw new FileAccessDeniedException(
-                    $"No mount found for virtual path '{virtualPath}'. Available mounts: {string.Join(", ", described)}",
+                    $"No mount found for virtual path '{virtualPath}': a path starts with a mount: {example.TrimEnd('/')}/src/stats.js. " +
+                    $"Available mounts: {string.Join(", ", described)}",
                     virtualPath,
                     requiredRight,
                     availableVirtualPaths);
@@ -328,6 +397,9 @@ public sealed class FileSystemRegistry : IDisposable
         }
         return null;
     }
+
+    private FileSystemMount? FindAgentFacingMountUnsafe(string virtualPath) =>
+        FindMountUnsafe(virtualPath) is { Visibility: MountVisibility.AgentFacing } mount ? mount : null;
 
     private static string ExtractRelativePath(string virtualPath, string mountVirtualPath)
     {

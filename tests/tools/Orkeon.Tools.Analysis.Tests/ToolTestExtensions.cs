@@ -2,6 +2,21 @@ namespace Orkeon.Tools.Analysis.Tests;
 
 internal static class ToolTestExtensions
 {
+    /// <summary>
+    /// Runs the tool's <c>ValidateTypedRequest</c> hook, the check <c>CallAsync</c> makes before
+    /// executing: this project configures no component serializer, so <c>CallAsync</c> cannot run.
+    /// </summary>
+    public static string? ValidateTypedForTest<TReq, TRes>(
+        this Orkeon.Tools.Abstractions.Base.ToolBase<TReq, TRes> tool,
+        TReq request)
+        where TReq : class, new()
+        where TRes : class
+    {
+        var method = tool.GetType().GetMethod(
+            "ValidateTypedRequest", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, [typeof(TReq)]);
+        return (string?)method!.Invoke(tool, [request]);
+    }
+
     public static async Task<TRes> ExecuteTypedForTest<TReq, TRes>(
         this Orkeon.Tools.Abstractions.Base.ToolBase<TReq, TRes> tool,
         TReq request,

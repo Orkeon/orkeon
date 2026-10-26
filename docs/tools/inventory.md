@@ -51,7 +51,7 @@ what YAML references.
 | Tool | Class | Registration | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `code_interpreter` | `SecureCodeInterpreterTool` | `AddOrkeonCodeSandbox()` — **concrete type only**, not under `IBaseTool`: the registry cannot resolve it by name; a host injects or registers it explicitly | Execute C# code in an isolated sandbox with static security analysis | `{ "code": "return 2 + 2;", "timeout_seconds": 10 }` |
-| `shell_command` | `ShellCommandTool` | `AddOrkeonCodeTools()` — read-only allowlist by default (git limited to read-only subcommands); `Orkeon:Tools:Shell:ExtraAllowedCommands` adds commands, `Orkeon:Tools:Shell:AllowedCommands` replaces the list, `Orkeon:Tools:Shell:AllowInterpreters` = `true` opens interpreters and mutating git; the process is confined by default (`Orkeon:Tools:Shell:Confinement:Mode` = `Auto`: bubblewrap on Linux, Seatbelt on macOS, AppContainer on Windows, off in a container; `None` turns it off), in one shell session per agent run | Execute shell commands with allowlist/blocklist and timeout; mount-prefixed virtual path arguments are resolved for the process (Read for a read-only command, every right for a command that can write) and physical paths in the output come back virtualized; `action` = `start_job` runs a build or a test suite longer than one call as a detached job (output in `/output/jobs/<id>.log`, at most 16 live jobs per agent run, killed with the run) and returns a `job_id`, `job_status` reports `running` or the `exit_code`, `job_tail` returns the last `tail_lines` lines | `{ "command": "cat /workspace/README.md", "timeout_seconds": 30 }`; `{ "action": "start_job", "command": "dotnet test" }`; `{ "action": "job_tail", "job_id": "<id>", "tail_lines": 40 }` |
+| `shell_command` | `ShellCommandTool` | `AddOrkeonCodeTools()` — read-only allowlist by default (git limited to read-only subcommands); `Orkeon:Tools:Shell:ExtraAllowedCommands` adds commands, `Orkeon:Tools:Shell:AllowedCommands` replaces the list, `Orkeon:Tools:Shell:AllowInterpreters` = `true` opens interpreters and mutating git; the process is confined by default (`Orkeon:Tools:Shell:Confinement:Mode` = `Auto`: bubblewrap on Linux, Seatbelt on macOS, AppContainer on Windows, off in a container; `None` turns it off), in one shell session per agent run | Execute shell commands with allowlist/blocklist and timeout; without `working_directory` the command runs in the agent's root, else the file system's working directory (refused when there is none), and a relative one resolves against it; mount-prefixed virtual path arguments are resolved for the process (Read for a read-only command, every right for a command that can write) and physical paths in the output come back virtualized; `action` = `start_job` runs a build or a test suite longer than one call as a detached job (output in `/output/jobs/<id>.log`, at most 16 live jobs per agent run, killed with the run) and returns a `job_id`, `job_status` reports `running` or the `exit_code`, `job_tail` returns the last `tail_lines` lines | `{ "command": "cat /workspace/README.md", "timeout_seconds": 30 }`; `{ "action": "start_job", "command": "dotnet test" }`; `{ "action": "job_tail", "job_id": "<id>", "tail_lines": 40 }` |
 
 ## Session and memory tools (`Orkeon.Infrastructure`) — `AddOrkeonSessionTools()`
 
@@ -65,6 +65,11 @@ what YAML references.
 | `memory_store` | `MemoryStoreTool` | List/add/delete/get typed memories (user/project/feedback/reference) |
 
 ## File tools (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
+
+A `path` is a virtual path that starts with a mount (`/workspace/src/stats.js`). A relative path
+resolves against the agent's working root, else the file system's working directory (`/workspace`
+by default), and the response echoes the absolute path; an empty `path` is refused
+([Working directory and relative paths](../architecture/vfs-compliance.md#working-directory-and-relative-paths)).
 
 | Tool | Class | Base | Use case | Call example |
 |-------|--------|------|-------------|-----------------|

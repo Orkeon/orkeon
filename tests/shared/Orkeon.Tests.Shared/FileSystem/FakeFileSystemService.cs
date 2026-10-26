@@ -56,6 +56,9 @@ public sealed class FakeFileSystemService : IFileSystemService
         return _entries.ContainsKey(physicalPath) ? physicalPath : null;
     }
 
+    /// <summary>The working directory relative paths resolve against; <c>null</c> (none) unless a test sets it.</summary>
+    public string? WorkingDirectory { get; set; }
+
     public IReadOnlyList<MountInfo> GetAvailableMounts() => _mounts.AsReadOnly();
 
     public async IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(

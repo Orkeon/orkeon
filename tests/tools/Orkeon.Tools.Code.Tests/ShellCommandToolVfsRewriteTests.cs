@@ -158,15 +158,15 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     /// The declared default used to be the literal <c>"."</c>, which no registry can resolve
     /// — a mount's virtual path starts with '/' (ADR-008) — so this call was refused with
     /// "No mount found for virtual path '.'" against every real host. It now runs in the
-    /// first readable mount.
+    /// file system's working directory (#199).
     /// </summary>
     [Fact]
-    public async Task ShouldRunInTheFirstMount_WhenNoWorkingDirectoryIsNamed()
+    public async Task ShouldRunInTheWorkingDirectory_WhenNoWorkingDirectoryIsNamed()
     {
         await File.WriteAllTextAsync(
             Path.Combine(_tempDir, "hello.txt"), "hello", TestContext.Current.CancellationToken);
         using var tool = new ShellCommandTool(
-            new DiskBackedFileSystemService(_tempDir, "/src"),
+            new DiskBackedFileSystemService(_tempDir, "/src") { WorkingDirectory = "/src" },
             allowedCommands: ["ls", "dir"]) { Confinement = TestConfinement.Off() };
 
         var command = s_isWindows ? "dir" : "ls";
@@ -430,10 +430,10 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldRunAWritingCommandInTheFirstWritableMount_WhenNoWorkingDirectoryIsNamed()
+    public async Task ShouldRunAWritingCommandInTheDesignatedWorkingDirectory_WhenNoneIsNamed()
     {
         Assert.SkipWhen(s_isWindows, "env runs a command in the working directory on POSIX only.");
-        using var tool = new ShellCommandTool(BuildMountedService(), extraAllowedCommands: ["env"]) { Confinement = TestConfinement.Off() };
+        using var tool = new ShellCommandTool(BuildMountedService(workingDirectory: "/ws"), extraAllowedCommands: ["env"]) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("env pwd", workingDirectory: ""), TestContext.Current.CancellationToken));
@@ -443,24 +443,39 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldRefuseAWritingCommand_WhenNoMountIsWritable()
+    public async Task ShouldRefuseAWritingCommand_WhenTheDesignatedWorkingDirectoryIsReadOnly()
     {
-        using var tool = new ShellCommandTool(BuildMountedService(writable: false), extraAllowedCommands: ["make"]) { Confinement = TestConfinement.Off() };
+        using var tool = new ShellCommandTool(BuildMountedService(writable: false, workingDirectory: "/ws"), extraAllowedCommands: ["make"]) { Confinement = TestConfinement.Off() };
 
         var dict = Unpack(await tool.CallAsync(
             Request("make --version", workingDirectory: ""), TestContext.Current.CancellationToken));
 
         Assert.False((bool)dict["completed"]!);
-        Assert.Contains("no mount grants every right", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("WorkingDirectory denied", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+        Assert.Contains("'make' can write", dict["stderr"]!.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseACommand_WhenMountsExistButNoWorkingDirectoryIsSet()
+    {
+        // The removed fallback picked the first mount granting the rights (/docs for a read).
+        using var tool = new ShellCommandTool(BuildMountedService(), allowedCommands: ["ls", "dir"]) { Confinement = TestConfinement.Off() };
+
+        var dict = Unpack(await tool.CallAsync(
+            Request(s_isWindows ? "dir" : "ls", workingDirectory: ""), TestContext.Current.CancellationToken));
+
+        Assert.False((bool)dict["completed"]!);
+        Assert.Contains("no working directory is set", dict["stderr"]!.ToString(), StringComparison.Ordinal);
     }
 
     /// <summary>
     /// A real file system over two folders of the temp directory: <c>/docs</c> read-only, listed
     /// first so that it is the default working directory of a read-only command, and <c>/ws</c>
-    /// with every right unless <paramref name="writable"/> is false.
+    /// with every right unless <paramref name="writable"/> is false. Neither is <c>/workspace</c>,
+    /// so the working directory is the one <paramref name="workingDirectory"/> designates, if any.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the duration of the test.")]
-    private FileSystemService BuildMountedService(bool writable = true)
+    private FileSystemService BuildMountedService(bool writable = true, string? workingDirectory = null)
     {
         var docs = Directory.CreateDirectory(Path.Combine(_tempDir, "docs")).FullName;
         var ws = Directory.CreateDirectory(Path.Combine(_tempDir, "ws")).FullName;
@@ -469,6 +484,8 @@ public sealed class ShellCommandToolVfsRewriteTests : IDisposable
             new FileSystemMount(docs, "/docs", FileAccessRights.ReadOnly),
             new FileSystemMount(ws, "/ws", writable ? FileAccessRights.ReadWrite : FileAccessRights.ReadOnly),
         ]);
+        if (workingDirectory is not null)
+            registry.SetWorkingDirectory(workingDirectory);
         return new FileSystemService(
             registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
     }

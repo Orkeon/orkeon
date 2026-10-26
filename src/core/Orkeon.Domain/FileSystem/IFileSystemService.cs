@@ -28,6 +28,14 @@ public interface IFileSystemService
     IReadOnlyList<MountInfo> GetAvailableMounts();
 
     /// <summary>
+    /// The virtual directory a relative path given to a tool is resolved against, and the one a
+    /// shell command runs in when it names none (<see cref="FileSystemRegistry.WorkingDirectory"/>);
+    /// <see langword="null"/> when there is none, in which case a relative path is refused.
+    /// Defaults to <see langword="null"/> for an implementation without a registry.
+    /// </summary>
+    string? WorkingDirectory => null;
+
+    /// <summary>
     /// Enumerates files and directories under <paramref name="virtualRoot"/> lazily.
     /// Patterns in <see cref="VirtualEnumerationOptions.Exclude"/> are applied to the relative
     /// path (relative to <paramref name="virtualRoot"/>, using <c>/</c> as separator).

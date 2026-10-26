@@ -153,7 +153,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
                 throw new InvalidOperationException(pathValidation.DenialReason ?? "Invalid or unsafe file path");
 
             var resolvedPath = pathValidation.ResolvedPath!;
-            var displayPath = (_fileSystemService.ToVirtualPath(resolvedPath) ?? request.Path) ?? resolvedPath;
+            var displayPath = (_fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path)) ?? resolvedPath;
             var virtualPath = displayPath;
 
             var entry = await _fileSystemService.TryGetEntryAsync(virtualPath, cancellationToken).ConfigureAwait(false);

@@ -117,6 +117,9 @@ public sealed partial class FileSystemService : IFileSystemService
     }
 
     /// <inheritdoc />
+    public string? WorkingDirectory => ActiveRegistry.WorkingDirectory;
+
+    /// <inheritdoc />
     public IReadOnlyList<MountInfo> GetAvailableMounts()
     {
         return ActiveRegistry.GetAvailableMounts();

@@ -1201,7 +1201,7 @@ declare global {
             tail_lines?: number;
             /** Timeout in seconds */
             timeout_seconds?: number;
-            /** Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory the command may use: readable for a read-only command, writable for any other. */
+            /** Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace). */
             working_directory?: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly completed: boolean;

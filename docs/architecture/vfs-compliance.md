@@ -141,6 +141,31 @@ states the right it needs and the registry refuses the call when the mount (or t
 override) does not grant it. `MountVisibility` is `AgentFacing` (the default, listed by
 `GetAvailableMounts` and in the agent prompt) or `Internal` (below).
 
+## Working directory and relative paths
+
+The registry holds one **working directory** (`FileSystemRegistry.WorkingDirectory`, exposed as
+`IFileSystemService.WorkingDirectory`): `/workspace` when an agent-facing mount claims it, else the
+directory a host designated with `SetWorkingDirectory(virtualPath)` (an absolute path inside an
+agent-facing mount), else none. The runners designate it from `Orkeon:FileSystem:WorkingDirectory`,
+else take `/workspace`, else `/output`; a per-execution registry (`ScopedMountComposition`) keeps
+the boot one while it still mounts it.
+
+- A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`,
+  `directory_search`, `count_pattern`, the `node_*` tools, `edit_batch`) resolves a **relative path**
+  against the agent's `working_root` when it has one, else against the working directory
+  (`WorkingDirectoryResolver.Absolutize`): `src/./lib/../stats.js` becomes
+  `/workspace/src/stats.js`, and the response echoes that absolute path. The path is made absolute
+  **before** the mount check and the root guard, so `../p2/x` from a root `/workspace/wt/p1` is
+  refused as outside the root. With no working directory a relative path is refused as before.
+- An empty `path` is refused with
+  `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`.
+- A path that starts with no mount is refused with the shape of an address:
+  `No mount found for virtual path 'x': a path starts with a mount: /workspace/src/stats.js. Available mounts: ...`.
+- `shell_command` without `working_directory` runs in the agent's root, else in the working
+  directory; a relative `working_directory` resolves the same way. It no longer falls back to the
+  first mount that grants the rights (which could be `/session-history`): with mounts but no
+  working directory the call is refused and names the mounts.
+
 ## Agent working root vs mount
 
 An agent may declare a `working_root` (YAML; `AgentBuilder.WorkingRoot(string)`; `.workingRoot(path)` on a

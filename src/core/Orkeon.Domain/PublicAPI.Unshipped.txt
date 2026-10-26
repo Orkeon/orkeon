@@ -1392,3 +1392,7 @@ override Orkeon.Domain.Exceptions.LlmRateLimitException.GetObjectData(System.Run
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.ChargedTo.init -> void
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetSnapshot.Charged.get -> Orkeon.Domain.Autonomous.BudgetSnapshot?
 [ORKEXP002]Orkeon.Domain.Autonomous.BudgetSnapshot.Charged.init -> void
+const Orkeon.Domain.FileSystem.FileSystemRegistry.DefaultWorkingDirectory = "/workspace" -> string!
+Orkeon.Domain.FileSystem.FileSystemRegistry.SetWorkingDirectory(string! virtualPath) -> void
+Orkeon.Domain.FileSystem.FileSystemRegistry.WorkingDirectory.get -> string?
+Orkeon.Domain.FileSystem.IFileSystemService.WorkingDirectory.get -> string?

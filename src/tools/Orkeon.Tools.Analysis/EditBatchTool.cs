@@ -86,7 +86,7 @@ public sealed class EditBatchTool : FileToolBase<EditBatchRequest, EditBatchResp
             var validation = ResolveVirtualPath(operation.Path, FileAccessRights.Write);
             if (!validation.IsAllowed)
                 throw new InvalidOperationException(validation.DenialReason ?? "Invalid or unsafe file path");
-            var virtualPath = _fileSystemService.ToVirtualPath(validation.ResolvedPath!) ?? operation.Path;
+            var virtualPath = _fileSystemService.ToVirtualPath(validation.ResolvedPath!) ?? AbsolutizePath(operation.Path);
             if (!physicalPaths.Contains(validation.ResolvedPath!)) physicalPaths.Add(validation.ResolvedPath!);
             virtualPaths.Add(virtualPath);
             transaction.Add(virtualPath, ToOperation(operation));

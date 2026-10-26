@@ -36,4 +36,11 @@ public class FileSystemOptions
     /// </para>
     /// </remarks>
     public Collection<string> InternalMounts { get; } = [];
+
+    /// <summary>
+    /// The virtual directory relative paths resolve against and a shell command runs in when it
+    /// names none (<c>Orkeon:FileSystem:WorkingDirectory</c>). Unset, the runner takes
+    /// <c>/workspace</c> when it is mounted, else <c>/output</c>, else none.
+    /// </summary>
+    public string? WorkingDirectory { get; set; }
 }

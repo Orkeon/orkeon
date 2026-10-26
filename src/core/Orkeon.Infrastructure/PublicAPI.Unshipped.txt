@@ -166,3 +166,6 @@ static Orkeon.Infrastructure.Session.ScriptAgentMemoryOptions.operator ==(Orkeon
 static Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.RequestInputAsync(Orkeon.Domain.HumanInput.ValueObjects.HumanInputRequest! request, System.IO.TextReader! reader, System.IO.TextWriter! writer, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
 *REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.RunStdioAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServer.RunStdioAsync(System.IO.TextReader! reader, System.IO.TextWriter! writer, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Configuration.FileSystemOptions.WorkingDirectory.get -> string?
+Orkeon.Infrastructure.Configuration.FileSystemOptions.WorkingDirectory.set -> void
+Orkeon.Infrastructure.FileSystem.FileSystemService.WorkingDirectory.get -> string?

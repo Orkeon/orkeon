@@ -1678,6 +1678,12 @@
       "description": "Mount definitions in the format \"physical:virtual:rights[;subpath:rights;...]\"."
     },
     {
+      "path": "Orkeon:FileSystem:WorkingDirectory",
+      "section": "Orkeon:FileSystem",
+      "type": "string",
+      "description": "The virtual directory relative paths resolve against and a shell command runs in when it names none (`Orkeon:FileSystem:WorkingDirectory`). Unset, the runner takes `/workspace` when it is mounted, else `/output`, else none."
+    },
+    {
       "path": "Orkeon:Sandbox:CleanupOrphansOlderThan",
       "section": "Orkeon:Sandbox",
       "type": "duration",

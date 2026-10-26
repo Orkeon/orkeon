@@ -29,6 +29,8 @@ public sealed class FakeNormalisingFileSystemService(IFileSystemService inner) :
 
     public string? ToVirtualPath(string physicalPath) => inner.ToVirtualPath(physicalPath);
 
+    public string? WorkingDirectory => inner.WorkingDirectory;
+
     public IReadOnlyList<MountInfo> GetAvailableMounts() => inner.GetAvailableMounts();
 
     public IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(

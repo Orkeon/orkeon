@@ -1,3 +1,4 @@
+using Orkeon.Tools.Abstractions.Security;
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using Orkeon.Analysis.Core.Editing;
@@ -45,10 +46,20 @@ public sealed class NodeOutlineTool : ToolBase<NodeOutlineRequest, NodeOutlineRe
     public override string Description => "Outline of a file's members.";
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A missing path is named as such: the empty extension used to surface as
+    // "No tree-sitter grammar for extension ''" (#200).
+    protected override string? ValidateTypedRequest(NodeOutlineRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return string.IsNullOrWhiteSpace(request.Path) ? WorkingDirectoryResolver.PathRequiredMessage : null;
+    }
+
     protected override async Task<NodeOutlineResponse> ExecuteTypedAsync(NodeOutlineRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var file = await StructuralFile.LoadAsync(_fs, _pool, request.Path).ConfigureAwait(false);
+        // A relative path resolves against the working directory, as for every file tool (#199).
+        var path = WorkingDirectoryResolver.Absolutize(request.Path, _fs);
+        var file = await StructuralFile.LoadAsync(_fs, _pool, path).ConfigureAwait(false);
         return new NodeOutlineResponse
         {
             Members = file.Outline().Select(n => new NodeOutlineEntryDto

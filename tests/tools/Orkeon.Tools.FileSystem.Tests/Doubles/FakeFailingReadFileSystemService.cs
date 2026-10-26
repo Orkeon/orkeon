@@ -34,6 +34,8 @@ public sealed class FakeFailingReadFileSystemService(IFileSystemService inner, p
 
     public string? ToVirtualPath(string physicalPath) => inner.ToVirtualPath(physicalPath);
 
+    public string? WorkingDirectory => inner.WorkingDirectory;
+
     public IReadOnlyList<MountInfo> GetAvailableMounts() => inner.GetAvailableMounts();
 
     public IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(

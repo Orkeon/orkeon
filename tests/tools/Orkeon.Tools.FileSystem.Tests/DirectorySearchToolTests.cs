@@ -372,6 +372,43 @@ public sealed class DirectorySearchToolTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldSearchTheDirectory_WhenPathIsRelativeToWorkingDirectory()
+    {
+        _embeddingService.SetEmbeddingFactory(_ => [1f, 0f, 0f, 0f, 0f, 0f, 0f, 0f]);
+        CreateFile("sub/nested.txt", "Nested content about algorithms.");
+        CreateFile("other/elsewhere.txt", "Other content about algorithms.");
+        var fs = new Orkeon.Tests.Shared.FileSystem.DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" };
+        using var tool = new DirectorySearchTool(fs, EphemeralSearchHarness.Create(_embeddingService));
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "directory_search",
+            Parameters: new Dictionary<string, object?> { [ParamPath] = "sub", [ParamQuery] = "algorithms", ["threshold"] = 0.0 }), TestContext.Current.CancellationToken);
+
+        var dict = ResultDict(result);
+        Assert.Equal(1, (int)dict["files_processed"]!);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRefuse_WhenRelativePathEscapesAgentRoot()
+    {
+        CreateFile("sub/nested.txt", "Nested content.");
+        CreateFile("other/elsewhere.txt", "Other content.");
+        var fs = new Orkeon.Tests.Shared.FileSystem.DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" };
+        using var tool = new DirectorySearchTool(fs, EphemeralSearchHarness.Create(_embeddingService));
+
+        ToolCallResponse result;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/sub"))
+            result = await tool.CallAsync(new ToolCallRequest(
+                ToolName: "directory_search",
+                Parameters: new Dictionary<string, object?> { [ParamPath] = "../other", [ParamQuery] = "content" }), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("outside the agent working root", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShouldHaveCorrectSchemaConfiguration()
     {
         Assert.Equal("directory_search", _tool.Name);

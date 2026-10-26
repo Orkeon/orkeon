@@ -143,6 +143,32 @@ chaque opération déclare le droit qu'elle exige et le registre refuse l'appel 
 (ou la redéfinition du sous-arbre) ne l'accorde pas. `MountVisibility` vaut `AgentFacing` (le
 défaut, listé par `GetAvailableMounts` et dans le prompt des agents) ou `Internal` (ci-dessous).
 
+## Répertoire de travail et chemins relatifs
+
+Le registre tient un **répertoire de travail** (`FileSystemRegistry.WorkingDirectory`, exposé par
+`IFileSystemService.WorkingDirectory`) : `/workspace` quand un mount visible des agents le réclame,
+sinon le répertoire qu'un hôte a désigné par `SetWorkingDirectory(virtualPath)` (un chemin absolu
+dans un mount visible des agents), sinon aucun. Les runners le désignent depuis
+`Orkeon:FileSystem:WorkingDirectory`, sinon prennent `/workspace`, sinon `/output` ; un registre
+d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le monte encore.
+
+- Un outil fichier (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`,
+  `directory_search`, `count_pattern`, les outils `node_*`, `edit_batch`) résout un **chemin
+  relatif** contre la `working_root` de l'agent quand il en a une, sinon contre le répertoire de
+  travail (`WorkingDirectoryResolver.Absolutize`) : `src/./lib/../stats.js` devient
+  `/workspace/src/stats.js`, et la réponse renvoie ce chemin absolu. Le chemin devient absolu
+  **avant** le contrôle des mounts et la garde de racine : `../p2/x` depuis une racine
+  `/workspace/wt/p1` est refusé comme hors de la racine. Sans répertoire de travail, un chemin
+  relatif reste refusé.
+- Un `path` vide est refusé par
+  `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`.
+- Un chemin qui ne commence par aucun mount est refusé avec la forme d'une adresse :
+  `No mount found for virtual path 'x': a path starts with a mount: /workspace/src/stats.js. Available mounts: ...`.
+- `shell_command` sans `working_directory` s'exécute dans la racine de l'agent, sinon dans le
+  répertoire de travail ; un `working_directory` relatif se résout de même. Il ne se replie plus
+  sur le premier mount qui accorde les droits (qui pouvait être `/session-history`) : avec des
+  mounts mais sans répertoire de travail, l'appel est refusé et nomme les mounts.
+
 ## Racine de travail d'un agent et mount
 
 Un agent peut déclarer une `working_root` (YAML ; `AgentBuilder.WorkingRoot(string)` ; `.workingRoot(path)`

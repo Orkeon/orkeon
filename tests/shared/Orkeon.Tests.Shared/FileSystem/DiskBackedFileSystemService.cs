@@ -61,6 +61,9 @@ public sealed class DiskBackedFileSystemService : IFileSystemService
         return null;
     }
 
+    /// <summary>The working directory relative paths resolve against; <c>null</c> (none) unless a test sets it.</summary>
+    public string? WorkingDirectory { get; set; }
+
     public IReadOnlyList<MountInfo> GetAvailableMounts() => [_mountInfo];
 
     public async IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(

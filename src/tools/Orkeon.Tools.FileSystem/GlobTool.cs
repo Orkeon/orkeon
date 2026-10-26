@@ -89,6 +89,8 @@ public sealed class GlobTool : FileToolBase<GlobRequest, GlobResponse>
     protected override async Task<GlobResponse> ExecuteTypedAsync(GlobRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // A relative root resolves against the working directory, as ValidateTypedRequest judged it.
+        request = request with { Path = AbsolutizePath(request.Path) };
         var root = request.Path.TrimEnd('/');
 
         if (!await _fileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false)

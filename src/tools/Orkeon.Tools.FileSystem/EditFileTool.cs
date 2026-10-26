@@ -140,7 +140,7 @@ public sealed class EditFileTool : FileToolBase<EditFileRequest, EditFileRespons
             throw new InvalidOperationException(writeCheck.DenialReason ?? "Invalid or unsafe file path");
 
         var resolvedPath = writeCheck.ResolvedPath!;
-        var virtualPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? request.Path;
+        var virtualPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
         var holderId = Guid.NewGuid().ToString("N");
         var lockedPaths = new[] { virtualPath };

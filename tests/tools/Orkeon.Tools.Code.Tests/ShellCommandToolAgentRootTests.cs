@@ -628,4 +628,67 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
         var bound = Assert.Single(Assert.Single(sandbox.Views).Paths);
         Assert.Equal("/workspace", bound.Destination);
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRunReadInWorkspace_WhenNoRootAndSessionHistoryIsRegistered()
+    {
+        // /session-history (read-only) sorts before /workspace in the registry: the removed
+        // "first mount granting the rights" fallback ran a read-only command there.
+        var history = Path.Combine(_tempDir, "history");
+        var workspace = Path.Combine(_tempDir, "ws");
+        Directory.CreateDirectory(history);
+        Directory.CreateDirectory(workspace);
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(history, "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(workspace, "/workspace", FileAccessRights.ReadWrite),
+        ]);
+        var fileSystem = new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(fileSystem) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("git status", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(workspace, invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRefuseWithHint_WhenMountsButNoWorkingDirectory()
+    {
+        var data = Path.Combine(_tempDir, "data");
+        Directory.CreateDirectory(data);
+        using var registry = new FileSystemRegistry([new FileSystemMount(data, "/data", FileAccessRights.ReadWrite)]);
+        var fileSystem = new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(fileSystem) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("git status", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        var stderr = Assert.IsType<string>(result["stderr"]);
+        Assert.Contains("no working directory is set", stderr, StringComparison.Ordinal);
+        Assert.Contains("/data", stderr, StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldResolveRelativeWorkingDirectory_AgainstRoot()
+    {
+        var (tool, sandbox) = NewTool();
+        using var _ = tool;
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("echo x", "sub"), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "job", "sub"), invocation.WorkingDirectory);
+    }
 }

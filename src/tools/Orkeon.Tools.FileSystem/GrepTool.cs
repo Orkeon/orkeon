@@ -151,6 +151,8 @@ public sealed class GrepTool : FileToolBase<GrepRequest, GrepResponse>
     protected override async Task<GrepResponse> ExecuteTypedAsync(GrepRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // A relative root resolves against the working directory, as ValidateTypedRequest judged it.
+        request = request with { Path = AbsolutizePath(request.Path) };
         Regex regex;
         try
         {

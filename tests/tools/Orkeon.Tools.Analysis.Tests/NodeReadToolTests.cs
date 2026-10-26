@@ -1,3 +1,4 @@
+using Orkeon.Domain.Tools.Protocol;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -164,5 +165,34 @@ public sealed class NodeReadToolTests : IDisposable
 
         Assert.Contains("A/Notes[1]", ex.Message, StringComparison.Ordinal);
         Assert.Contains("A/Notes[2]", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-200")]
+    public void ShouldNameThePathArgument_WhenPathIsMissing()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeReadTool(fs, pool);
+
+        var error = tool.ValidateTypedForTest(new NodeReadRequest { Selector = "sum" });
+
+        Assert.Equal("path is required: the absolute path of the file, e.g. /workspace/src/stats.js", error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadNodeAndEchoResolvedPath_WhenPathIsRelativeToWorkingDirectory()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/Calc.cs", Small, CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeReadTool(fs, pool);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new NodeReadRequest { Path = "./Calc.cs", Selector = "Demo.Calc.Sub(int, int)" }, CancellationToken.None);
+
+        Assert.Equal("/workspace/Calc.cs", resp.Path);
+        Assert.Contains("return a - b;", resp.Text, StringComparison.Ordinal);
     }
 }

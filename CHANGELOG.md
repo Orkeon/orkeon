@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount (#199, #200)
+
+A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`, `directory_search`,
+`count_pattern`, `node_*`, `edit_batch`) resolves a relative `path` against the agent's working root, else the file
+system's new working directory (`IFileSystemService.WorkingDirectory`: `/workspace` when mounted, else the one a host
+designates with `FileSystemRegistry.SetWorkingDirectory` or `Orkeon:FileSystem:WorkingDirectory`; the runners fall
+back to `/output`), and echoes the absolute path. The path is made absolute before the mount check and the root guard.
+An empty `path` is refused with `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`, and a
+path in no mount says `a path starts with a mount: /workspace/src/stats.js`. `node_outline`, `node_read` and
+`directory_search` go through the same resolution, and `directory_search` now honours the agent root.
+
+**Behaviour change:** `shell_command` without `working_directory` ran in the first mount granting the rights — a
+read-only command could land in `/session-history`. It now runs in the agent's root, else the working directory; with
+mounts but no working directory it is refused, naming the mounts. A host without `/workspace` designates its working
+mount (`Orkeon:FileSystem:WorkingDirectory`, or `SetWorkingDirectory`). Where `/workspace` is read-only (`orkeon
+forge`), a writing command without `working_directory` is now refused there instead of moving to a writable mount.
+
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
 
 The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A

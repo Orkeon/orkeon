@@ -1,3 +1,4 @@
+using Orkeon.Domain.Tools.Protocol;
 using System.Text;
 using Orkeon.Analysis.TreeSitter;
 using Orkeon.Tests.Shared.FileSystem;
@@ -82,5 +83,34 @@ public sealed class NodeOutlineToolTests : IDisposable
         Assert.Equal(7, helper.StartLine);
         Assert.Equal(9, helper.EndLine);
         Assert.Equal("function helper() {\n  return 1;\n}", source[helper.StartByte..helper.EndByte]);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-200")]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void ShouldNameThePathArgument_WhenPathIsMissing(string path)
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeOutlineTool(fs, pool);
+
+        var error = tool.ValidateTypedForTest(new NodeOutlineRequest { Path = path });
+
+        Assert.Equal("path is required: the absolute path of the file, e.g. /workspace/src/stats.js", error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldOutlineFile_WhenPathIsRelativeToWorkingDirectory()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/src/stats.js", "function sum(xs) {\n  return 0;\n}\n", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeOutlineTool(fs, pool);
+
+        var resp = await tool.ExecuteTypedForTest(new NodeOutlineRequest { Path = "src/stats.js" }, CancellationToken.None);
+
+        Assert.Contains(resp.Members, e => e.Selector.StartsWith("sum", StringComparison.Ordinal));
     }
 }

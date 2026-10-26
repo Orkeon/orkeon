@@ -21,3 +21,8 @@ Orkeon.Tools.Abstractions.Auth.OAuthFailure.AuthenticationFailed = 1 -> Orkeon.T
 Orkeon.Tools.Abstractions.Auth.OAuthFailure.InvalidConfiguration = 0 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
 Orkeon.Tools.Abstractions.Auth.OAuthFailure.LoginRequired = 2 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
 Orkeon.Tools.Abstractions.Auth.OAuthFailure.ServerError = 3 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver
+const Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.PathRequiredMessage = "path is required: the absolute path of the file, e.g. /workspace/src/stats.js" -> string!
+static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Absolutize(string! path, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string!
+static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Current(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string?
+Orkeon.Tools.Abstractions.Base.FileToolBase.AbsolutizePath(string! path) -> string!
