@@ -227,61 +227,94 @@ public static class ToolSchemaGenerator
             var attr = prop.GetCustomAttribute<FieldSchemaAttribute>();
             if (attr == null) continue;
 
-            var snakeName = ToSnakeCase(prop.Name);
-            var propType = prop.PropertyType;
-            var underlying = Nullable.GetUnderlyingType(propType) ?? propType;
-
-            var schemaType = ResolveFieldType(attr, prop);
-            var format = attr.Format ?? InferSchemaFormat(propType);
-            var required = attr.Required ?? InferRequired(prop);
-
-            // Enum values: from attribute (flat list) or inferred from C# enum type (name→value map)
-            List<object>? enumValues = null;
-            Dictionary<string, int>? enumMap = null;
-            if (attr.Enum is { Length: > 0 })
-            {
-                enumValues = attr.Enum.Cast<object>().ToList();
-            }
-            else if (underlying.IsEnum)
-            {
-                enumMap = GetEnumValues(underlying);
-            }
-
-            // Array items
-            string? itemsType = attr.ItemsType;
-            string? itemsFormat = attr.ItemsFormat;
-            var valueType = GetDictionaryValueType(underlying);
-            ParameterSchema? values = valueType == null ? null : new ParameterSchema(
-                Type: InferSchemaType(valueType),
-                Description: "value",
-                Required: false,
-                Format: InferSchemaFormat(valueType));
-            if (itemsType == null && IsCollectionType(underlying))
-            {
-                var elementType = GetCollectionElementType(underlying);
-                if (elementType != null)
-                {
-                    itemsType = InferSchemaType(elementType);
-                    itemsFormat = attr.ItemsFormat ?? InferSchemaFormat(elementType);
-                }
-            }
-
-            parameters[snakeName] = new ParameterSchema(
-                Type: schemaType,
-                Description: attr.Description ?? prop.Name,
-                Required: required,
-                Default: attr.Default,
-                Enum: enumValues,
-                Format: format,
-                ItemsType: itemsType,
-                ItemsFormat: itemsFormat,
-                EnumMap: enumMap,
-                Example: attr.Example,
-                Values: values
-            );
+            parameters[ToSnakeCase(prop.Name)] = BuildParameter(prop, attr, [requestType]);
         }
 
         return new ToolSchema(name, description, parameters);
+    }
+
+    /// <summary>
+    /// One parameter from a property and its attribute. An array of a tool's own record (the operations of
+    /// <c>edit_batch</c>) also carries the items' properties, so the model reads their shape from the schema
+    /// (#210); <paramref name="ancestors"/> are the types being described, which an item type never re-enters.
+    /// </summary>
+    private static ParameterSchema BuildParameter(PropertyInfo prop, FieldSchemaAttribute attr, HashSet<Type> ancestors)
+    {
+        var propType = prop.PropertyType;
+        var underlying = Nullable.GetUnderlyingType(propType) ?? propType;
+
+        var schemaType = ResolveFieldType(attr, prop);
+        var format = attr.Format ?? InferSchemaFormat(propType);
+        var required = attr.Required ?? InferRequired(prop);
+
+        // Enum values: from attribute (flat list) or inferred from C# enum type (name→value map)
+        List<object>? enumValues = null;
+        Dictionary<string, int>? enumMap = null;
+        if (attr.Enum is { Length: > 0 })
+        {
+            enumValues = attr.Enum.Cast<object>().ToList();
+        }
+        else if (underlying.IsEnum)
+        {
+            enumMap = GetEnumValues(underlying);
+        }
+
+        // Array items
+        string? itemsType = attr.ItemsType;
+        string? itemsFormat = attr.ItemsFormat;
+        IReadOnlyDictionary<string, ParameterSchema>? itemProperties = null;
+        var valueType = GetDictionaryValueType(underlying);
+        ParameterSchema? values = valueType == null ? null : new ParameterSchema(
+            Type: InferSchemaType(valueType),
+            Description: "value",
+            Required: false,
+            Format: InferSchemaFormat(valueType));
+        if (itemsType == null && IsCollectionType(underlying))
+        {
+            var elementType = GetCollectionElementType(underlying);
+            if (elementType != null)
+            {
+                itemsType = InferSchemaType(elementType);
+                itemsFormat = attr.ItemsFormat ?? InferSchemaFormat(elementType);
+                var element = Nullable.GetUnderlyingType(elementType) ?? elementType;
+                if (itemsType == "object" && IsUserDefinedType(element) && ancestors.Add(element))
+                {
+                    itemProperties = BuildItemProperties(element, ancestors);
+                    ancestors.Remove(element);
+                }
+            }
+        }
+
+        return new ParameterSchema(
+            Type: schemaType,
+            Description: attr.Description ?? prop.Name,
+            Required: required,
+            Default: attr.Default,
+            Enum: enumValues,
+            Format: format,
+            ItemsType: itemsType,
+            ItemsFormat: itemsFormat,
+            EnumMap: enumMap,
+            Example: attr.Example,
+            Values: values
+        )
+        { ItemProperties = itemProperties };
+    }
+
+    /// <summary>
+    /// The properties of an item type, every public one: an item type is the tool's own record, whose properties
+    /// are all arguments, described by their <c>[FieldSchema]</c> when they carry one and inferred otherwise.
+    /// </summary>
+    private static Dictionary<string, ParameterSchema> BuildItemProperties(Type itemType, HashSet<Type> ancestors)
+    {
+        var properties = new Dictionary<string, ParameterSchema>();
+        foreach (var prop in itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var attr = prop.GetCustomAttribute<FieldSchemaAttribute>() ?? new FieldSchemaAttribute();
+            properties[ToSnakeCase(prop.Name)] = BuildParameter(prop, attr, ancestors);
+        }
+
+        return properties;
     }
 
     // ── Returns + Types generation ───────────────────────────────────

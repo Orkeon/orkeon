@@ -617,6 +617,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         return PaneClipboard.PasteInto(_input);
     }
 
+    /// <summary>
+    /// Copies the transcript's mouse selection to the clipboard: the transcript takes no focus, so the
+    /// host's copy key falls back to it when the focused view has no selection of its own.
+    /// </summary>
+    /// <returns>True when the transcript had a selection.</returns>
+    internal bool CopyTranscriptSelection() => PaneClipboard.CopySelection(_history);
+
     bool ITaskListNavigator.HandleListKey(Key key)
     {
         ArgumentNullException.ThrowIfNull(key);

@@ -18,7 +18,7 @@ public sealed class ReplayCommandTests : IDisposable
     public ReplayCommandTests()
     {
         _replay = new ReplayConsoleAdapter(_inner, _gate);
-        _command = new ReplayCommand(_replay, _fileSystem);
+        _command = new ReplayCommand(() => _replay, _fileSystem);
         _fileSystem.AddFile("/workspace/demo.replay", "/help\n/tasks\n");
     }
 

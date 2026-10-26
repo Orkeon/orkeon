@@ -1400,3 +1400,6 @@ const Orkeon.Domain.FileSystem.FileSystemRegistry.DefaultWriteDirectory = "/outp
 Orkeon.Domain.FileSystem.FileSystemRegistry.SetWriteDirectory(string! virtualPath) -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.WriteDirectory.get -> string?
 Orkeon.Domain.FileSystem.IFileSystemService.WriteDirectory.get -> string?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
+Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
+Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!

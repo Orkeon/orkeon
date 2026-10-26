@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
+
+Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.
+The drag now scrolls one row per mouse report and every tenth of a second while the mouse stays still past the edge,
+the selection following the edge row; at the transcript's first or last row it reaches its start or end, as before.
+The transcript usually starts on the screen's first row, where no report can come from above: a drag that reaches
+that row from below scrolls up the same way, while a selection started or moved along it scrolls nothing.
+
+### Fixed — the TUI's copy key copies the transcript's mouse selection
+
+`Ctrl+C` looked only at the focused view's selection, and the transcript takes no focus: after a mouse selection in
+the transcript the key printed its hint instead of copying what was visibly selected. The key now falls back to the
+transcript's selection. `Ctrl+Shift+C`, the copy shortcut of GNOME terminals, reaches the same handler while the TUI
+holds the mouse, and the hint names both keys.
+
+### Fixed — pasting a long text into the TUI's input no longer freezes the interface
+
+In the TUI, a right-click or `Ctrl+V` pasted the clipboard through `TextView.InsertText`, one rune at a time, each
+insertion rebuilding the field's model and raising its change event: fifty transcript lines froze the interface for
+twelve seconds, two hundred for minutes. `PaneClipboard.PasteInto` now recomposes the text around the caret and sets
+it once, the caret landing after the pasted text, whatever its size.
+
+### Fixed — the interactive REPL starts again when stdin is a terminal (#212)
+
+On `main` after the replay (#206), `orkeon-repl` hung after its start lines whenever stdin was a terminal, TUI and
+`--ui plain` alike (a black screen eating Ctrl-C, every thread idle); stdin redirected (`--replay`, a pipe) went on.
+The cause was a cycle in the REPL's services: the console the replay decorates is, on a terminal, the line editor or
+the TUI, which takes the host's completion, which reads the universal commands, `/replay` among them, which took the
+replay console being built. `/replay` now takes the console at its first execution, and a test resolves the terminal
+console over the full chain.
+
+### Fixed — concurrent acts no longer interleave on the console; their lines carry the act's ticket (#211)
+
+With `Orkeon:Cli:ConsoleStreaming:Enabled`, two acts streaming at once (two background `runAgent` sub-runs, the tasks
+of a parallel crew wave) wrote their deltas into one another character by character. `ConsoleLlmDeltaSink` now
+streams the foreground act as it arrives, as before, and renders every other turn one whole line at a time: the
+turn holds its own line buffer, a line is written once complete, under one lock, the turn's end writes what is left,
+and a line that arrives while the foreground act is inside a line waits for that line's end. A turn that runs under
+a command instance (a background command, a `runAgent` sub-run) prefixes its lines with the instance's ticket,
+`[t2] `, as the completion lines are; a crew task adds its id (`[t2 task-1] `).
+
+**API:** `ILlmDeltaSink.BeginTurn(label)` (default: the sink itself) opens one streamed turn; the scripted act loop
+and the crews' chat-client loop stream each turn through the sink it returns, the latter labelled with the task id.
+A sink that records or counts needs no change.
+
+### Fixed — the structural tools publish their parameter schema (#210)
+
+`edit_batch`, `node_ensure`, `node_insert`, `node_outline` and `node_replace` sent the model an empty parameter
+schema (`{"type":"object","properties":{}}`), and `node_read` published its `selector` only: the model learnt the
+arguments from the description alone and guessed (`node_outline {"selector": …}` without `path`, `edit_batch` without
+`operations`). Their request records now carry `[FieldSchema]` on every argument — `path` required on the node tools,
+`op` and `position` with their enums, `operations` required on `edit_batch` with `validate` (`parse` | `build`,
+default `parse`) — and a call missing a required argument is refused before the tool runs, with the argument's name
+(`Required parameter 'path' is missing`), the items of `operations` included (`Required parameter
+'operations[0].path' is missing`, `Parameter 'operations[0].kind' must be one of: …`). A value a schema lists as an
+enum is now judged as listed: `position: "Inside"` is refused with the list.
+
+**API:** `ParameterSchema.ItemProperties` (Orkeon.Domain) describes the items of an array of objects; the schema
+generator fills it from the item record (its `[FieldSchema]` when present, the C# types and nullability otherwise),
+the OpenAI and Anthropic formatters publish it as the items' `properties` and `required`, `ToolParameterValidator`
+judges each item by it, and `tools.generated.d.ts` types the item's members by the same `[FieldSchema]` (enum,
+`IsRequired`). Every tool whose request holds a list of its own records gains the items' shape in its definition.
+
 ### Added — `orkeon-repl --replay <file>`: replay a session, line after line
 
 `orkeon-repl --replay <file>` feeds the lines of a file to the REPL as if typed (blank and `#` lines skipped, a

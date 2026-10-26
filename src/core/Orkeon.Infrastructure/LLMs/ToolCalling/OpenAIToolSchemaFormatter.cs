@@ -105,6 +105,13 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
             var items = new Dictionary<string, object> { ["type"] = param.ItemsType };
             if (param.ItemsFormat is not null)
                 items["format"] = param.ItemsFormat;
+            // An array of objects publishes its items' shape (#210): their properties and the required ones.
+            if (param.ItemProperties is { Count: > 0 })
+            {
+                items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameter(p.Value));
+                if (param.RequiredItemProperties() is { Count: > 0 } required)
+                    items["required"] = required;
+            }
             prop["items"] = items;
         }
 

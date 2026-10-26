@@ -1,6 +1,7 @@
 using Orkeon.Tools.Abstractions.Security;
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
 using Orkeon.Domain.FileSystem;
@@ -11,6 +12,7 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record NodeOutlineRequest
 {
+    [FieldSchema(Description = "Path of the file to outline, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")]
     public string Path { get; init; } = "";
 }

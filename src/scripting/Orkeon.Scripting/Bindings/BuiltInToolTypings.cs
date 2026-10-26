@@ -270,8 +270,17 @@ internal static partial class BuiltInToolTypings
                     .ToList();
                 if (members.Count > 0)
                 {
+                    // A member's [FieldSchema] rules as at the top level (#210): its Enum is the literal union,
+                    // its IsRequired the optionality; the schema the model reads and the typings say the same.
                     return "{ " + string.Join(" ", members.Select(m =>
-                        $"readonly {PropertyName(m.Name)}{(ToolSchemaGenerator.InferRequired(m.Property) ? "" : "?")}: {TypeOf(m.Property.PropertyType, expand: true, path)};")) + " }";
+                    {
+                        var schema = m.Property.GetCustomAttribute<FieldSchemaAttribute>();
+                        var required = schema?.Required ?? ToolSchemaGenerator.InferRequired(m.Property);
+                        var memberType = schema?.Enum is { Length: > 0 } choices
+                            ? string.Join(" | ", choices.Select(c => JsonSerializer.Serialize(c)))
+                            : TypeOf(m.Property.PropertyType, expand: true, path);
+                        return $"readonly {PropertyName(m.Name)}{(required ? "" : "?")}: {memberType};";
+                    })) + " }";
                 }
             }
             finally

@@ -35,10 +35,21 @@ internal static class ToolParameterValidator
         Dictionary<string, object?> parameters,
         string paramName,
         ParameterSchema paramSchema)
+        => ValidateParameter(parameters, paramName, paramName, paramSchema);
+
+    /// <param name="parameters">The parameters, or the properties of one item of an array.</param>
+    /// <param name="paramName">The key read.</param>
+    /// <param name="displayName">The name the message carries: the key, or <c>operations[0].path</c> for an item's.</param>
+    /// <param name="paramSchema">The schema of the parameter.</param>
+    private static ValidationResult ValidateParameter(
+        IReadOnlyDictionary<string, object?> parameters,
+        string paramName,
+        string displayName,
+        ParameterSchema paramSchema)
     {
         if (paramSchema.Required && !parameters.ContainsKey(paramName))
         {
-            return ValidationResult.Failed($"Required parameter '{paramName}' is missing");
+            return ValidationResult.Failed($"Required parameter '{displayName}' is missing");
         }
 
         if (!parameters.TryGetValue(paramName, out var value) || value is null)
@@ -48,17 +59,81 @@ internal static class ToolParameterValidator
 
         if (paramSchema.IsMap)
         {
-            return ValidateMap(paramName, paramSchema, value);
+            return ValidateMap(displayName, paramSchema, value);
         }
 
         // Basic type validation
         if (!IsValidType(value, paramSchema.Type))
         {
-            return ValidationResult.Failed($"Parameter '{paramName}' has invalid type. Expected: {paramSchema.Type}");
+            return ValidationResult.Failed($"Parameter '{displayName}' has invalid type. Expected: {paramSchema.Type}");
         }
 
         // Enum validation: check EnumMap (C# enums) or Enum (explicit list)
-        return ValidateEnum(paramName, paramSchema, value);
+        var result = ValidateEnum(displayName, paramSchema, value);
+        return result.IsValid ? ValidateItems(displayName, paramSchema, value) : result;
+    }
+
+    /// <summary>
+    /// The items of an array of objects (#210): each item's properties are judged as the parameters are -
+    /// required, type, enum - and named by their place, <c>operations[0].path</c>. An item that is no object
+    /// is left to the tool.
+    /// </summary>
+    private static ValidationResult ValidateItems(string displayName, ParameterSchema paramSchema, object value)
+    {
+        if (paramSchema.ItemProperties is not { Count: > 0 } properties)
+        {
+            return ValidationResult.Success();
+        }
+
+        var index = 0;
+        foreach (var item in EnumerateItems(value))
+        {
+            if (TryAsParameterMap(item, out var map))
+            {
+                foreach (var (name, schema) in properties)
+                {
+                    var result = ValidateParameter(map, name, $"{displayName}[{index}].{name}", schema);
+                    if (!result.IsValid)
+                    {
+                        return result;
+                    }
+                }
+            }
+
+            index++;
+        }
+
+        return ValidationResult.Success();
+    }
+
+    private static IEnumerable<object?> EnumerateItems(object value) => value switch
+    {
+        JsonElement { ValueKind: JsonValueKind.Array } element => element.EnumerateArray().Cast<object?>(),
+        string => [],
+        System.Collections.IEnumerable items => items.Cast<object?>(),
+        _ => [],
+    };
+
+    /// <summary>An item as its properties: a dictionary as the tool-call parser hands it, or a JSON object.</summary>
+    private static bool TryAsParameterMap(object? item, out IReadOnlyDictionary<string, object?> map)
+    {
+        switch (item)
+        {
+            case IReadOnlyDictionary<string, object?> readOnly:
+                map = readOnly;
+                return true;
+            case IDictionary<string, object?> dictionary:
+                map = new Dictionary<string, object?>(dictionary);
+                return true;
+            case JsonElement { ValueKind: JsonValueKind.Object } element:
+                map = element.EnumerateObject().ToDictionary(
+                    p => p.Name,
+                    p => p.Value.ValueKind == JsonValueKind.Null ? null : (object?)p.Value);
+                return true;
+            default:
+                map = new Dictionary<string, object?>();
+                return false;
+        }
     }
 
     private static ValidationResult ValidateMap(string paramName, ParameterSchema paramSchema, object value)
@@ -126,12 +201,22 @@ internal static class ToolParameterValidator
                 return ValidationResult.Failed($"Parameter '{paramName}' must be one of: {string.Join(", ", paramSchema.EnumMap.Select(kv => $"{kv.Key}({kv.Value})"))}");
             }
         }
-        else if (paramSchema.Enum != null && paramSchema.Enum.Count > 0 && !paramSchema.Enum.Contains(value))
+        else if (paramSchema.Enum != null && paramSchema.Enum.Count > 0 && !IsEnumValue(paramSchema.Enum, value))
         {
             return ValidationResult.Failed($"Parameter '{paramName}' must be one of: {string.Join(", ", paramSchema.Enum)}");
         }
 
         return ValidationResult.Success();
+    }
+
+    /// <summary>
+    /// Whether a value is one of a flat enum list, as listed. A JSON string is read as the string it
+    /// holds, as <see cref="IsValidType"/> reads a <see cref="JsonElement"/> the upstream left wrapped.
+    /// </summary>
+    private static bool IsEnumValue(IReadOnlyList<object> allowed, object value)
+    {
+        var candidate = value is JsonElement { ValueKind: JsonValueKind.String } element ? element.GetString() : value;
+        return candidate is not null && allowed.Contains(candidate);
     }
 
     /// <summary>

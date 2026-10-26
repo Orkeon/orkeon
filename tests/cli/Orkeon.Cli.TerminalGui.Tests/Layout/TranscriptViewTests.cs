@@ -27,6 +27,108 @@ public class TranscriptViewTests
         Assert.Equal("a long line that wraps\nend", view.SelectedText);
     }
 
+    // The view sits ten rows below the screen's top unless a test says otherwise.
+    private static Mouse Drag(int x, int y, bool pressed = true, int screenTop = 10) => new()
+    {
+        Flags = pressed ? MouseFlags.LeftButtonPressed | MouseFlags.PositionReport : MouseFlags.LeftButtonReleased,
+        Position = new System.Drawing.Point(x, y),
+        ScreenPosition = new System.Drawing.Point(x, screenTop + y),
+    };
+
+    [Fact]
+    public void ShouldScrollUp_WhenADragIsHeldOnTheFirstRowOfAViewAtTheScreenTop()
+    {
+        // The REPL pane starts at the screen's first row: no mouse report can come from above the
+        // transcript, so the drag held on its first row scrolls up.
+        using var view = CreateView(height: 5);
+        view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+        view.MoveEnd();
+
+        view.NewMouseEvent(Drag(0, 2, screenTop: 0));
+        view.NewMouseEvent(Drag(0, 0, screenTop: 0));
+
+        Assert.Equal(44, view.Viewport.Y);
+        Assert.Equal("row 44\nrow 45\nrow 46\n", view.SelectedText);
+    }
+
+    [Fact]
+    public void ShouldNotScroll_WhenASelectionStartsOnTheFirstRowOfAViewAtTheScreenTop()
+    {
+        using var view = CreateView(height: 5);
+        view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+        view.MoveEnd();
+
+        view.NewMouseEvent(Drag(0, 0, screenTop: 0));
+        view.NewMouseEvent(Drag(2, 0, screenTop: 0));
+        view.NewMouseEvent(Drag(2, 0, pressed: false, screenTop: 0));
+
+        Assert.Equal(45, view.Viewport.Y);
+        Assert.Equal("ro", view.SelectedText);
+    }
+
+    [Fact]
+    public void ShouldScrollUpAndExtendTheSelection_WhenADragIsHeldAboveTheView()
+    {
+        using var view = CreateView(height: 5);
+        view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+        view.MoveEnd();
+        Assert.Equal(45, view.Viewport.Y);
+
+        view.NewMouseEvent(Drag(0, 2));
+        view.NewMouseEvent(Drag(0, -1));
+
+        // One row up per report; the selection runs from the new top row to the anchor.
+        Assert.Equal(44, view.Viewport.Y);
+        Assert.Equal("row 44\nrow 45\nrow 46\n", view.SelectedText);
+
+        view.NewMouseEvent(Drag(0, -1));
+        Assert.Equal(43, view.Viewport.Y);
+        Assert.Equal("row 43\nrow 44\nrow 45\nrow 46\n", view.SelectedText);
+    }
+
+    [Fact]
+    public void ShouldScrollDownAndExtendTheSelection_WhenADragIsHeldBelowTheView()
+    {
+        using var view = CreateView(height: 5);
+        view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+        view.Viewport = view.Viewport with { Y = 0 };
+
+        view.NewMouseEvent(Drag(0, 1));
+        view.NewMouseEvent(Drag(0, 5));
+
+        Assert.Equal(1, view.Viewport.Y);
+        Assert.Equal("row 1\nrow 2\nrow 3\nrow 4\n", view.SelectedText);
+    }
+
+    [Fact]
+    public void ShouldKeepTheScrolledSelectionAndCopyIt_WhenTheDragIsReleasedPastTheEdge()
+    {
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriter = new StringWriter();
+        try
+        {
+            using var view = CreateView(height: 5);
+            view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+            view.Viewport = view.Viewport with { Y = 1 };
+
+            view.NewMouseEvent(Drag(0, 3));
+            view.NewMouseEvent(Drag(0, -1));
+            // At the buffer's first row the selection reaches its start, as before the scroll existed.
+            view.NewMouseEvent(Drag(0, -1));
+            view.NewMouseEvent(Drag(0, -1, pressed: false));
+
+            Assert.Equal(0, view.Viewport.Y);
+            Assert.Equal("row 0\nrow 1\nrow 2\nrow 3\n", view.SelectedText);
+            Assert.True(TuiClipboard.TryGetText(out var copied));
+            Assert.Equal("row 0\nrow 1\nrow 2\nrow 3\n", copied);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriter = null;
+        }
+    }
+
     [Fact]
     public void ShouldScrollToTheLastRow_WhenMoveEndIsCalled()
     {

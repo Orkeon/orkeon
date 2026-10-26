@@ -106,6 +106,26 @@ public class ChatClientAgentLoopStreamingTests
         public void OnTurnCompleted() => Calls.Add("<turn>");
     }
 
+    /// <summary>A host's sink that gives each turn its own recorder (#211), as the console sink does.</summary>
+    private sealed class TurnOpeningSink : ILlmDeltaSink
+    {
+        public List<string?> Labels { get; } = [];
+        public List<RecordingSink> Turns { get; } = [];
+        public List<string> DirectCalls { get; } = [];
+
+        public ILlmDeltaSink BeginTurn(string? label)
+        {
+            Labels.Add(label);
+            var turn = new RecordingSink();
+            Turns.Add(turn);
+            return turn;
+        }
+
+        public void OnDelta(string delta) => DirectCalls.Add(delta);
+
+        public void OnTurnCompleted() => DirectCalls.Add("<turn>");
+    }
+
     private static DomainTask BuildTask() =>
         DomainTask.Create(TaskDescription.From("Chat loop task"), ExpectedOutput.From("An answer"));
 
@@ -135,6 +155,22 @@ public class ChatClientAgentLoopStreamingTests
         Assert.Equal("Hello.", result.Output);
         Assert.Equal(["Hel", "lo.", "<turn>"], sink.Calls);
         Assert.Equal(1, client.StreamedCalls);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Each_call_streams_through_the_turn_the_host_sink_opens_for_it()
+    {
+        using var client = new StreamingChatClient();
+        client.Enqueue(new ChatResponseUpdate(ChatRole.Assistant, "Hel"), new ChatResponseUpdate(ChatRole.Assistant, "lo."));
+        var sink = new TurnOpeningSink();
+
+        var result = await RunAsync(BuildLoop(client, sink));
+
+        Assert.Equal("Hello.", result.Output);
+        Assert.Empty(sink.DirectCalls);
+        var turn = Assert.Single(sink.Turns);
+        Assert.Equal(["Hel", "lo.", "<turn>"], turn.Calls);
+        Assert.Single(sink.Labels);
     }
 
     [Fact]

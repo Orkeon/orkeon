@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Orkeon.Domain.Attributes;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
@@ -10,9 +11,16 @@ namespace Orkeon.Tools.Analysis;
 
 public sealed record NodeInsertRequest
 {
+    [FieldSchema(Description = "Path of the file to edit, absolute under a mounted root or relative to the working root.", Example = "/workspace/src/Calc.cs")]
     [JsonPropertyName("path")] public string Path { get; init; } = "";
+
+    [FieldSchema(Description = "Selector of the anchor node, as node_outline lists it: Ns.Type.Member(paramTypes), Section/Sub for Markdown, or @ts:<node-path>.", Example = "Demo.Calc")]
     [JsonPropertyName("selector")] public string Selector { get; init; } = "";
+
+    [FieldSchema(Description = "Where the text goes relative to the anchor: inside its body, before it or after it.", Enum = new[] { "inside", "before", "after" }, Example = "inside")]
     [JsonPropertyName("position")] public string Position { get; init; } = "";
+
+    [FieldSchema(Description = "The text to insert; re-indented to the siblings' indentation.")]
     [JsonPropertyName("text")] public string Text { get; init; } = "";
 }
 

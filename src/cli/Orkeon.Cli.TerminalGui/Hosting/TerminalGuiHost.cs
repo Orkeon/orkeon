@@ -176,16 +176,25 @@ public sealed class TerminalGuiHost : IAsyncDisposable
 
         key.Handled = true; // always swallow Ctrl+C in TUI mode
 
-        // Ctrl+C only copies: with an active selection in the focused pane it goes to the OS
-        // clipboard; without one the hint names the key that interrupts the turn.
+        // Ctrl+C only copies (Ctrl+Shift+C lands here too: a terminal whose copy shortcut it is
+        // passes it on while the TUI holds the mouse, so it has no selection of its own). With a
+        // selection in the focused pane it goes to the clipboard; the transcript is not focusable,
+        // so its mouse selection is looked at next; without either the hint names the key that
+        // interrupts the turn.
         if (Layout.PaneClipboard.CopySelection(Application.Navigation?.GetFocused()))
         {
             diag?.Invoke("Ctrl+C → copied focused selection to clipboard");
             return;
         }
 
+        if (repl.CopyTranscriptSelection())
+        {
+            diag?.Invoke("Ctrl+C → copied transcript selection to clipboard");
+            return;
+        }
+
         diag?.Invoke($"Ctrl+C without selection (running={runner.IsCommandRunning})");
-        repl.AppendOutputLine("Ctrl+C copies a selection — esc esc interrupts the turn.");
+        repl.AppendOutputLine("Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.");
     }
 
     private async Task RunRunnerCoreAsync(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner, CancellationToken ct)

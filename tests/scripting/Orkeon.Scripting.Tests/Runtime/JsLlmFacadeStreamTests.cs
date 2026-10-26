@@ -244,6 +244,30 @@ public sealed class JsLlmFacadeStreamTests
     }
 
     [Fact]
+    public async Task Act_streams_each_turn_through_the_sink_the_host_opens_for_it()
+    {
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            turns: [new StreamedTurn(Deltas: ["Hel", "lo"], Final: new LlmResponse { Content = "Hello" })]);
+        var sink = new TurnOpeningSink();
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, tools: null, guards: null,
+            observability: new JsLlmObservability { DeltaSink = sink });
+
+        var result = await facade.ActAsync(engine, "go", null);
+
+        Assert.Equal("Hello", result.Get("output").AsString());
+        Assert.Empty(sink.Direct.Deltas);
+        Assert.Equal(0, sink.Direct.TurnsCompleted);
+        var turn = Assert.Single(sink.Turns);
+        Assert.Equal(["Hel", "lo"], turn.Deltas);
+        Assert.Equal(1, turn.TurnsCompleted);
+        Assert.Equal([null], sink.Labels);
+    }
+
+    [Fact]
     public async Task Act_sink_and_onDelta_both_receive_every_delta()
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
@@ -612,6 +636,25 @@ public sealed class JsLlmFacadeStreamTests
         public int TurnsCompleted { get; private set; }
         public void OnDelta(string delta) => Deltas.Add(delta);
         public void OnTurnCompleted() => TurnsCompleted++;
+    }
+
+    /// <summary>A host's sink that gives each act turn its own recorder (#211), as the console sink does.</summary>
+    private sealed class TurnOpeningSink : ILlmDeltaSink
+    {
+        public List<string?> Labels { get; } = new();
+        public List<RecordingSink> Turns { get; } = new();
+        public RecordingSink Direct { get; } = new();
+
+        public ILlmDeltaSink BeginTurn(string? label)
+        {
+            Labels.Add(label);
+            var turn = new RecordingSink();
+            Turns.Add(turn);
+            return turn;
+        }
+
+        public void OnDelta(string delta) => Direct.OnDelta(delta);
+        public void OnTurnCompleted() => Direct.OnTurnCompleted();
     }
 
     private sealed class PlainProvider : ILlmProvider

@@ -77,6 +77,14 @@ en nommant le DTO et la propriété.
 - **Un modèle peut envoyer un dictionnaire de deux façons** : un objet JSON, ou un tableau de
   `[{"key":…,"value":…}]`. Les deux sont acceptés et lus comme le même dictionnaire ; un `[]`
   vide vaut `{}`, et une clé répétée ou une valeur du mauvais type est refusée.
+- **Un tableau du record propre à l'outil** (`IReadOnlyList<EditBatchOperation>`) est émis avec
+  les `properties` et `required` de ses éléments (`ParameterSchema.ItemProperties`) : chaque
+  propriété publique du record, décrite par son `[FieldSchema]` quand elle en porte un, inférée du
+  type C# et de la nullabilité sinon. Un record qui se référence lui-même est décrit sur un niveau.
+  Le validateur juge les propriétés de chaque élément comme il juge les paramètres — requis, type,
+  enum — avant que l'outil ne s'exécute, en nommant la place (`Required parameter
+  'operations[0].path' is missing`) ; les typings TypeScript de l'élément lisent le même
+  `[FieldSchema]` (enum, `IsRequired`).
 
 Un `ParameterSchema` écrit à la main suit les mêmes règles : `Type` vaut `null` pour un paramètre libre,
 et `Values` porte le schéma des valeurs d'un dictionnaire (`IsMap`).

@@ -246,4 +246,35 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
         var additional = Assert.IsType<IDictionary<string, object>>(Assert.Contains("additionalProperties", map), exactMatch: false);
         Assert.Equal("string", additional["type"]);
     }
+    [Fact]
+    public void FormatTools_ArrayOfObjects_PublishesTheItemsShape()
+    {
+        // #210: the operations of edit_batch carry their properties and the required ones.
+        var schema = new ToolSchema(
+            "edit_batch",
+            "Edit",
+            new Dictionary<string, ParameterSchema>
+            {
+                ["operations"] = new("array", "The operations", Required: true, ItemsType: "object")
+                {
+                    ItemProperties = new Dictionary<string, ParameterSchema>
+                    {
+                        ["kind"] = new("string", "What to do", Required: true),
+                        ["text"] = new("string", "The text", Required: false),
+                    },
+                },
+            });
+
+        var payload = _formatter.FormatToolsForPayload([schema], ToolCallMode.Auto);
+
+        var tools = Assert.IsType<List<Dictionary<string, object>>>(payload["tools"]);
+        var inputSchema = Assert.IsType<Dictionary<string, object>>(tools[0]["input_schema"]);
+        var properties = Assert.IsType<Dictionary<string, object>>(inputSchema["properties"]);
+        var operations = Assert.IsType<Dictionary<string, object>>(properties["operations"]);
+        var items = Assert.IsType<Dictionary<string, object>>(operations["items"]);
+        Assert.Equal("object", items["type"]);
+        var itemProperties = Assert.IsType<Dictionary<string, object>>(items["properties"]);
+        Assert.Equal(["kind", "text"], itemProperties.Keys.Order().ToArray());
+        Assert.Equal(["kind"], Assert.IsType<List<string>>(items["required"]));
+    }
 }
