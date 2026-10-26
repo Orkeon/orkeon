@@ -129,6 +129,16 @@ the caller's thread and a hidden logs pane does no UI work; showing it renders t
 bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines). Word wrap (`F3`), autoscroll, mouse
 selection with auto-copy and `Ctrl+A` / `Ctrl+C` keep working.
 
+### Fixed — `--llm-log` keeps the cache, reasoning and cost counts of a streamed exchange (#197)
+
+The `usage` of a streamed exchange in `llm-exchanges-*.jsonl` was rebuilt from three totals (`total_tokens`,
+`prompt_tokens`, `completion_tokens`), so a run's log could not tell a cache hit from a full-price token. An
+OpenAI-compatible provider now writes the `usage` object of the stream's last usage chunk as the vendor sent it:
+DeepSeek's `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, `prompt_tokens_details.cached_tokens`,
+`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. A field the vendor did not
+return stays absent; a stream that reports only the three totals logs the same three fields as before. Ollama and
+Anthropic streams are unchanged.
+
 ### Fixed — a tool the act does not offer is refused, not put to the operator (#193)
 
 A model's call to a tool `ctx.llm.act` does not offer (`read` when `tools: ["file_read"]`) reached the permission gate
