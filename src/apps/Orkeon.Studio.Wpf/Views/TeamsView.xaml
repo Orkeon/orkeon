@@ -155,31 +155,22 @@
          the system makes without Studio, never one whose activity is unknown. It only proposes:
          nothing is archived without the click, which archives exactly the teams named, and « Not
          now » puts it away for the session. Settings › Studio sets the threshold, or turns it off. -->
-    <Border Background="{DynamicResource SandWeakBrush}" BorderBrush="{DynamicResource SandBrush}"
-            BorderThickness="1" CornerRadius="11" Padding="12,9,9,9" Margin="0,0,0,12"
-            Visibility="{Binding HasArchiveSuggestion, Converter={StaticResource BooleanToVisibility}}">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ArchiveSuggestedCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding DismissSuggestionCommand}"
+    <!-- R07 (C02, C22): a suggestion is the info tone — « Archive » secondary, « Not now » ghost; the
+         icon sits on the first line of text (the shared Alert). -->
+    <controls:Alert Tone="Info" Margin="0,0,0,14" Message="{Binding ArchiveSuggestionLine}"
+                    Visibility="{Binding HasArchiveSuggestion, Converter={StaticResource BooleanToVisibility}}">
+      <TextBlock Style="{StaticResource MetaText}" Text="{Binding ArchiveSuggestionNames}"
+                 Visibility="{Binding ArchiveSuggestionNames, Converter={StaticResource StringPresentToVisibility}}"/>
+      <controls:Alert.Actions>
+        <StackPanel Style="{StaticResource ActionRow}">
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ArchiveSuggestedCommand}"
+                  controls:ButtonIcon.Kind="archive"
+                  Content="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
+          <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding DismissSuggestionCommand}"
                   Content="{Binding [Studio.Teams.SuggestionLater], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
-        <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,1,10,0"
-                             VerticalAlignment="Top" Foreground="{DynamicResource SandBrush}"/>
-        <StackPanel VerticalAlignment="Center">
-          <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}"
-                     Text="{Binding ArchiveSuggestionLine}"/>
-          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                     Text="{Binding ArchiveSuggestionNames}" ToolTip="{Binding ArchiveSuggestionNames}"
-                     Visibility="{Binding ArchiveSuggestionNames, Converter={StaticResource StringPresentToVisibility}}"/>
-        </StackPanel>
-      </DockPanel>
-    </Border>
+      </controls:Alert.Actions>
+    </controls:Alert>
 
     <Border Style="{StaticResource Card}" Padding="30,30,30,30" Margin="0,0,0,10"
             Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}">
@@ -512,37 +503,26 @@
                 <!-- STUDIO-31/32: what an archive or a restore has to say on its card — a refusal (the
                      team busy, the disk), or an offer: « Stop the schedule and archive » (the system
                      would keep running a team nobody sees), « Restore ». Never a refusal in silence. -->
-                <Border Margin="0,10,0,0" Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="12,8,6,8"
-                        Visibility="{Binding HasArchiveNotice, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel>
-                    <DockPanel>
-                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="24" Height="24" VerticalAlignment="Top"
-                              Command="{Binding DismissArchiveNoticeCommand}"
-                              ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
-                        <controls:LucideIcon Kind="x" Size="11"/>
-                      </Button>
-                      <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="13" Margin="0,2,8,0"
-                                           VerticalAlignment="Top" Foreground="{DynamicResource WarningBrush}"/>
-                      <TextBlock FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
-                                 Text="{Binding ArchiveNotice}"/>
-                    </DockPanel>
-                    <WrapPanel>
-                      <Button Style="{StaticResource BtnSecondary}" Margin="21,8,8,0" Command="{Binding StopScheduleAndArchiveCommand}"
-                              Visibility="{Binding OffersScheduleStop, Converter={StaticResource BooleanToVisibility}}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="square" Size="12" Margin="0,0,7,0"/>
-                          <TextBlock Text="{Binding [Studio.Teams.StopScheduleAndArchive], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
-                      <Button Style="{StaticResource BtnSecondary}" Margin="21,8,8,0" Command="{Binding RestoreCommand}"
+                <controls:Alert Tone="Warning" Margin="0,10,0,0" Message="{Binding ArchiveNotice}"
+                                Visibility="{Binding HasArchiveNotice, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:TechBlock Text="{Binding ArchiveManualCommand, Mode=OneWay}"
+                                      Visibility="{Binding HasArchiveManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
+                  <controls:Alert.Actions>
+                    <StackPanel Style="{StaticResource ActionRow}">
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding StopScheduleAndArchiveCommand}"
+                              controls:ButtonIcon.Kind="square"
+                              Content="{Binding [Studio.Teams.StopScheduleAndArchive], Source={x:Static services:I18n.Instance}}"
+                              Visibility="{Binding OffersScheduleStop, Converter={StaticResource BooleanToVisibility}}"/>
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RestoreCommand}"
+                              controls:ButtonIcon.Kind="rotate-ccw"
                               Visibility="{Binding OffersRestore, Converter={StaticResource BooleanToVisibility}}"
                               Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
-                    </WrapPanel>
-                    <TextBox Style="{StaticResource InputMono}" Margin="21,6,8,0" IsReadOnly="True" TextWrapping="Wrap"
-                             Text="{Binding ArchiveManualCommand, Mode=OneWay}"
-                             Visibility="{Binding HasArchiveManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
-                  </StackPanel>
-                </Border>
+                      <Button Style="{StaticResource IconBtnGhost}" Command="{Binding DismissArchiveNoticeCommand}" controls:ButtonIcon.Kind="x"
+                              ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                              AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </controls:Alert.Actions>
+                </controls:Alert>
               </StackPanel>
             </DockPanel>
             <!-- The footer bar (#117). Faces, never two at once: the active team's actions, the
