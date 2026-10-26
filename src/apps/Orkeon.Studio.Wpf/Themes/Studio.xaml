@@ -751,7 +751,10 @@
   <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══
        WPF rule (unlike CSS): CornerRadius is NOT clamped to height/2 — an oversized
        value deforms the corners into ogives. Every pill therefore carries a fixed
-       Height and CornerRadius = Height / 2, exactly. -->
+       Height and CornerRadius = Height / 2, exactly.
+       hrm R12/R20: a tinted ground and the DARK ink of the same tone (SuccessInk, WarningInk,
+       DangerInk, AccentInk); both grounds stay visible in the dark theme. Sky is the
+       «Lecture et écriture» pill, Neutral the «Lecture seule» one. -->
   <Style x:Key="BadgeText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -771,23 +774,23 @@
   </Style>
   <Style x:Key="BadgeSky" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MarkBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
   </Style>
   <Style x:Key="BadgeOk" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
   </Style>
   <Style x:Key="BadgeWarn" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
   </Style>
   <Style x:Key="BadgeFail" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerInkBrush}"/>
   </Style>
   <Style x:Key="BadgeRun" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
   </Style>
 
   <!-- ══ Tool / mount chip — THE one chip recipe (v3 W-03): mono 11.5, paper-sunk,
@@ -1325,11 +1328,11 @@
               <Border.Style>
                 <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
                   <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding HasKey}" Value="True">
                       <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
