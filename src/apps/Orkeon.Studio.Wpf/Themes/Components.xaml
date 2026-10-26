@@ -254,11 +254,11 @@
                       </ControlTemplate>
                     </Button.Template>
                     <StackPanel x:Name="GroupLine" Orientation="Horizontal" TextElement.Foreground="{DynamicResource InkMutedBrush}">
-                      <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Label}"/>
-                      <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="7,0,0,0" VerticalAlignment="Center"
+                      <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center"
                                  Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Count}"/>
-                      <Ellipse x:Name="GroupDot" Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center"
-                               Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+                      <Ellipse x:Name="GroupDot" Width="8" Height="8" Margin="6,0,0,0" VerticalAlignment="Center"
+                               Fill="{DynamicResource WarningIconBrush}" Visibility="Collapsed"/>
                     </StackPanel>
                   </Button>
                   <DataTemplate.Triggers>
