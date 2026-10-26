@@ -49,7 +49,7 @@
   <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>L'environnement, une fois pour toutes</value></data>
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux choses à régler : le modèle d'IA et les dossiers autorisés aux agents. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, chaque écran porte une colonne d'explications à droite. Elle s'efface en mode Expert.</value></data>
+  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, les écrans à étapes (Créer une équipe, Lancer) portent un encadré « Ce que fait cette étape » à gauche, sous la liste des sections. Il s'efface en mode Expert.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>en attente d'une réponse</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} {0:plural:outil|outils} : {1}</value></data>

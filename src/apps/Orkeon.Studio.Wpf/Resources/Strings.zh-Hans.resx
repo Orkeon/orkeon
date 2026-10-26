@@ -111,7 +111,7 @@
     <value>帮助与上下文相关</value>
   </data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
-    <value>在新手模式下，每个界面右侧都有一栏说明。切换到专家模式后它会隐去。</value>
+    <value>在新手模式下，带步骤的界面（创建团队、执行）在左侧分区列表下方有一个“这一步做什么”说明框。切换到专家模式后它会隐去。</value>
   </data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve">

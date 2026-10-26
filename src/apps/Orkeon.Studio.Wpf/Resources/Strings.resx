@@ -49,7 +49,7 @@
   <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>The environment, once and for all</value></data>
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Only two things to set: the AI model, and the folders your agents may see. The diagnostic warns you when something is in the way.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>Help is contextual</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, each screen carries a column of explanations on the right. It steps aside in Expert mode.</value></data>
+  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, the step-by-step screens (Create a team, Run) carry a “What this step does” box on the left, under the list of sections. It steps aside in Expert mode.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>waiting for an answer</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} tool(s): {1}</value></data>
