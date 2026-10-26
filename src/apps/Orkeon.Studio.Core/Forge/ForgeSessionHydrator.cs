@@ -128,6 +128,10 @@ public static class ForgeSessionHydrator
     {
         foreach (var line in ReadLines(path))
         {
+            // A blank line is no turn: skipped, not handed to the parser.
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
             try
             {
                 using var document = JsonDocument.Parse(line);
@@ -191,7 +195,9 @@ public static class ForgeSessionHydrator
     {
         try
         {
-            artifact = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : null;
+            // An empty file is no artifact, said without the parser.
+            var json = File.Exists(path) ? File.ReadAllText(path) : null;
+            artifact = string.IsNullOrWhiteSpace(json) ? null : JsonNode.Parse(json) as JsonObject;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {

@@ -216,7 +216,12 @@ public static class ForgeSessionCatalog
             if (!File.Exists(path))
                 return none;
 
-            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            // An empty file reads as absent, without a trip through the parser.
+            var json = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(json))
+                return none;
+
+            using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
                 return none;
@@ -250,7 +255,12 @@ public static class ForgeSessionCatalog
             if (!File.Exists(path))
                 return TeamLaunchRecord.None;
 
-            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            // An empty file reads as absent, without a trip through the parser.
+            var json = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(json))
+                return TeamLaunchRecord.None;
+
+            using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
                 return TeamLaunchRecord.None;
@@ -373,7 +383,12 @@ public static class ForgeSessionCatalog
 
         try
         {
-            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            // An empty file reads as absent, without a trip through the parser.
+            var json = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(json))
+                return false;
+
+            using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
                 return false;
