@@ -145,7 +145,7 @@
                Text="{Binding [Studio.Teams.ArchivesHint], Source={x:Static services:I18n.Instance}}"
                Visibility="{Binding ShowArchives, Converter={StaticResource BooleanToVisibility}}"/>
 
-    <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,-4,0,10" Text="{Binding StatusMessage}"
+    <TextBlock Style="{StaticResource MetaText}" Margin="0,-4,0,10" Text="{Binding StatusMessage}"
                Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
 
     <!-- STUDIO-32 (D-02): « Archive » asks nothing — its undo is the toast the shell shows at the
@@ -261,42 +261,25 @@
                 <TextBlock Style="{StaticResource ObjectTitle}" FontSize="16" ToolTip="{Binding NameTip}">
                   <Run Text="{Binding Name, Mode=OneWay}"/>
                   <InlineUIContainer BaselineAlignment="Center">
-                    <Border Margin="8,0,0,0">
-                      <Border.Style>
-                        <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                          <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                    <!-- R12: the shared badge — ok success, warn warning, muted neutral, else sky. -->
+                    <controls:Badge Margin="8,0,0,0" Content="{Binding BadgeText}">
+                      <controls:Badge.Style>
+                        <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                          <Setter Property="Tone" Value="Info"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding BadgeTone}" Value="ok">
-                              <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                              <Setter Property="Tone" Value="Success"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
-                              <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                              <Setter Property="Tone" Value="Warning"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding BadgeTone}" Value="muted">
-                              <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                              <Setter Property="Tone" Value="Neutral"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
-                      </Border.Style>
-                      <TextBlock Text="{Binding BadgeText}">
-                        <TextBlock.Style>
-                          <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding BadgeTone}" Value="ok">
-                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                              </DataTrigger>
-                              <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
-                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                              </DataTrigger>
-                              <DataTrigger Binding="{Binding BadgeTone}" Value="muted">
-                                <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </TextBlock.Style>
-                      </TextBlock>
-                    </Border>
+                      </controls:Badge.Style>
+                    </controls:Badge>
                   </InlineUIContainer>
                   <InlineUIContainer BaselineAlignment="Center">
                     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="8,0,0,0"
@@ -330,8 +313,9 @@
                             Visibility="{Binding IsArchived, Converter={StaticResource InverseBooleanToVisibility}}"/>
                   </controls:PropertyRow.Action>
                 </controls:PropertyRow>
-                <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"
-                        BorderThickness="1" CornerRadius="11" Padding="12,8" Margin="0,6,0,0" HorizontalAlignment="Left"
+                <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,8" Margin="0,6,0,0" HorizontalAlignment="Left"
+                        IsVisibleChanged="OnEditorShown"
                         Visibility="{Binding IsChangingLlm, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <CheckBox IsChecked="{Binding EditUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
@@ -341,21 +325,21 @@
                                 Visibility="{Binding EditUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
                       <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
                                  Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
-                      <ComboBox Width="220" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding EditLlmProfile}"/>
+                      <ComboBox Style="{StaticResource ComboM}" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding EditLlmProfile}"/>
                     </StackPanel>
-                    <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding ConfigureModelCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Left" Margin="0,7,0,0" Command="{Binding ConfigureModelCommand}"
                             Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
                             Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                      <Button Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmLlmCommand}"
+                      <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Command="{Binding ConfirmLlmCommand}"
                               Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
                               Command="{Binding CancelLlmCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </StackPanel>
                 </Border>
-                <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
+                <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Margin="0,4,0,0"
                            TextWrapping="Wrap" Text="{Binding CrewLlmWarning}"
                            Visibility="{Binding HasCrewLlmWarning, Converter={StaticResource BooleanToVisibility}}"/>
                 <!-- The need (STUDIO-16, D-02/D-03), folded to two lines (#117), the whole text
@@ -434,11 +418,11 @@
                          saved — an attention icon, its line in the tooltip; the refusals are also the
                          screen's banner. -->
                     <controls:LucideIcon DockPanel.Dock="Right" Kind="triangle-alert" Size="16" Margin="8,0,0,0"
-                                         VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"
+                                         VerticalAlignment="Center" Foreground="{DynamicResource WarningIconBrush}"
                                          Background="Transparent" Focusable="True" ToolTip="{Binding ScheduledRunLine}"
                                          AutomationProperties.Name="{Binding ScheduledRunLine}"
                                          Visibility="{Binding HasScheduledRunLine, Converter={StaticResource BooleanToVisibility}}"/>
-                    <TextBlock FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
+                    <TextBlock FontSize="14" VerticalAlignment="Center" TextWrapping="Wrap"
                                Text="{Binding ScheduleStateLine}"
                                Visibility="{Binding HasScheduleStateLine, Converter={StaticResource BooleanToVisibility}}">
                       <TextBlock.Style>
@@ -446,13 +430,13 @@
                           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding ScheduleState}" Value="Installed">
-                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                              <Setter Property="Foreground" Value="{DynamicResource SuccessInkBrush}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding ScheduleState}" Value="Absent">
-                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                              <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding ScheduleState}" Value="Stale">
-                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                              <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
@@ -470,14 +454,13 @@
                       </StackPanel>
                     </controls:PropertyRow.Action>
                   </controls:PropertyRow>
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" TextWrapping="Wrap"
                              Text="{Binding ScheduleMessage}"
                              Visibility="{Binding HasScheduleMessage, Converter={StaticResource BooleanToVisibility}}"/>
                   <StackPanel Visibility="{Binding HasScheduleManualCommand, Converter={StaticResource BooleanToVisibility}}">
                     <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,2"
                                Text="{Binding [Studio.Teams.ScheduleManual], Source={x:Static services:I18n.Instance}}"/>
-                    <TextBox Style="{StaticResource InputMono}" IsReadOnly="True" TextWrapping="Wrap"
-                             Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
+                    <controls:TechBlock Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
                   </StackPanel>
                 </StackPanel>
                 <!-- STUDIO-31/32: what an archive or a restore has to say on its card — a refusal (the
@@ -697,37 +680,36 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                    CornerRadius="12" Padding="16,12" Margin="0,0,0,8">
+                    CornerRadius="14" Padding="16,12" Margin="0,0,0,8">
               <DockPanel>
                 <Grid DockPanel.Dock="Right">
                   <StackPanel Orientation="Horizontal"
                               Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
-                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding ResumeCommand}"
+                    <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding ResumeCommand}"
                             Content="{Binding [Studio.Teams.Resume], Source={x:Static services:I18n.Instance}}"/>
-                    <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
+                    <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}"
+                            controls:ButtonIcon.Kind="trash-2"
+                            Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
-                  <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
-                          BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
+                  <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBorderBrush}"
+                          BorderThickness="1" CornerRadius="10" Padding="12,6,8,6" IsVisibleChanged="OnEditorShown"
                           Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource DangerBrush}"
+                      <TextBlock FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource DangerInkBrush}"
                                  Text="{Binding [Studio.Teams.SessionDeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}"
+                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}"
+                              controls:ButtonIcon.Kind="trash-2"
                               Content="{Binding [Studio.Teams.SessionDelete], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
                               Command="{Binding CancelDeleteCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                 </Grid>
                 <StackPanel VerticalAlignment="Center">
-                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                             TextTrimming="CharacterEllipsis"/>
                   <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,2,0,0" Text="{Binding State}"
                              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
