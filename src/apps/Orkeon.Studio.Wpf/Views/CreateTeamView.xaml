@@ -467,10 +467,13 @@
                   Content="{Binding [Studio.Create.Modify], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="pencil"/>
           <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                      DockPanel.Dock="Left" Text="{Binding [Studio.Create.NeedSummaryLabel], Source={x:Static services:I18n.Instance}}"/>
+          <!-- D04: an empty need shows the label alone, never a dangling « · ». -->
           <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center" Margin="6,0"
-                     DockPanel.Dock="Left" Text="·"/>
+                     DockPanel.Dock="Left" Text="·"
+                     Visibility="{Binding NeedSummary, Converter={StaticResource StringPresentToVisibility}}"/>
           <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                     TextTrimming="CharacterEllipsis" Text="{Binding NeedSummary}" ToolTip="{Binding Need}"/>
+                     TextTrimming="CharacterEllipsis" Text="{Binding NeedSummary}" ToolTip="{Binding Need}"
+                     Visibility="{Binding NeedSummary, Converter={StaticResource StringPresentToVisibility}}"/>
         </DockPanel>
       </Border>
 
