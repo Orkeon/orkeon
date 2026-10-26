@@ -165,8 +165,50 @@ public partial class CreateTeamWizardTests
         Assert.True(remark.IsRemark);
         Assert.False(remark.IsFailure);
         Assert.True(vm.Checklist[1].Passed);
-        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
+        // hrm D02: the remark draws the triangle, so the sentence does not count it as met.
+        Assert.False(remark.IsMet);
+        Assert.True(vm.Checklist[1].IsMet);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 1, 2), vm.VerdictSummary);
         Assert.True(vm.HasVerdictSummary);
+    }
+
+    [Fact]
+    public async Task The_summary_counts_the_checks_the_list_shows_even_when_the_engine_passes()
+    {
+        // hrm D02 (020): a remark on every criterion read « 2 of 2 criteria met » over two
+        // triangles. The sentence is derived from the lines on screen, never from « passing ».
+        var (vm, processes, _) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefTwoCriteria));
+            processes.Emit(Out(
+                """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.41,"passing":true,"judge":"llm","findings":[{"id":"F1","severity":"minor","acceptance":"A1","statement":"Une source manque"},{"id":"F2","severity":"major","acceptance":"A2","statement":"Trop long"}],"suggestions":[]}"""));
+        };
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.All(vm.Checklist, line => Assert.False(line.IsMet));
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 0, 2), vm.VerdictSummary);
+    }
+
+    [Fact]
+    public async Task The_summary_counts_a_blocking_finding_as_not_met()
+    {
+        var (vm, processes, _) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefTwoCriteria));
+            processes.Emit(Out(
+                """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.3,"passing":false,"judge":"llm","findings":[{"id":"F1","severity":"blocking","acceptance":"A2","statement":"Aucune source"}],"suggestions":[]}"""));
+        };
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        var met = vm.Checklist.Count(line => line.IsMet);
+        Assert.Equal(1, met);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, met, 2), vm.VerdictSummary);
     }
 
     [Fact]

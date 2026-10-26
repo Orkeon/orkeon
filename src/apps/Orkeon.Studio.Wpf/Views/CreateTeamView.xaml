@@ -1623,20 +1623,21 @@
                           <Setter Property="Kind" Value="circle-help"/>
                           <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
                           <Style.Triggers>
-                            <!-- Lot 3: green check for a criterion met, amber for a remark (a
-                                 finding that blocks nothing), red for a failure — never a red
-                                 triangle on a criterion the engine let pass. -->
+                            <!-- Lot 3: green check for a criterion met, sand triangle for a remark
+                                 (a finding that blocks nothing), the barred circle for a failure
+                                 (R12) — never a red triangle. hrm D02: the summary above counts
+                                 the checks only, so it reads what these icons say. -->
                             <DataTrigger Binding="{Binding Passed}" Value="True">
                               <Setter Property="Kind" Value="circle-check"/>
                               <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsFailure}" Value="True">
-                              <Setter Property="Kind" Value="circle-x"/>
+                              <Setter Property="Kind" Value="ban"/>
                               <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsRemark}" Value="True">
                               <Setter Property="Kind" Value="triangle-alert"/>
-                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                              <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>

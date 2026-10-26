@@ -124,6 +124,11 @@ public sealed record WizardChecklistLine(string Statement, bool? Passed, string?
 {
     /// <summary>Whether the line is a failure — a blocking finding: the red icon.</summary>
     public bool IsFailure => Passed == false && !IsRemark;
+
+    // hrm:L04 — presentation only (D02, R19): what the line's icon says, for the summary.
+    /// <summary>Whether the criterion is met as the line shows it: the check, no finding against it.</summary>
+    public bool IsMet => Passed == true && !IsRemark;
+    // hrm:L04 end
 }
 
 /// <summary>
