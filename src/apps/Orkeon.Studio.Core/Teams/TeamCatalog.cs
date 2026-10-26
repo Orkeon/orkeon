@@ -1502,9 +1502,12 @@ public static partial class TeamCatalog
         try
         {
             var path = Path.Combine(teamDirectory, StudioTeamMetadata.FileName);
-            return File.Exists(path)
-                ? JsonSerializer.Deserialize<StudioTeamMetadata>(File.ReadAllText(path))
-                : null;
+            if (!File.Exists(path))
+                return null;
+
+            // An empty sidecar reads as none, without a trip through the serializer.
+            var json = File.ReadAllText(path);
+            return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<StudioTeamMetadata>(json);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {

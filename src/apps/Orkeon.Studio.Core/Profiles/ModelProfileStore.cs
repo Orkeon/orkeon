@@ -133,6 +133,11 @@ public sealed class ModelProfileFileStore : IModelProfileStore
                 return ModelProfileLoadResult.Empty;
 
             var json = await File.ReadAllTextAsync(FilePath, cancellationToken).ConfigureAwait(false);
+            // An empty file is said as such, not handed to the serializer, which would refuse it with
+            // an exception at every start.
+            if (string.IsNullOrWhiteSpace(json))
+                return new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: the file is empty.");
+
             var set = JsonSerializer.Deserialize<ModelProfileSet>(json, ReadOptions);
             if (set is null)
                 return new ModelProfileLoadResult(ModelProfileSet.Empty, $"{FilePath}: the file holds no profile set (its content is 'null').");

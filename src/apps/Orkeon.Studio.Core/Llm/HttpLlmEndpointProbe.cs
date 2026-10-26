@@ -272,6 +272,9 @@ public sealed class HttpLlmEndpointProbe : ILlmEndpointProbe, IDisposable
                         "failure degrades to 'reachable, names unknown'.")]
     private static ImmutableArray<string>? TryReadModelNames(string provider, string body)
     {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
         try
         {
             using var document = JsonDocument.Parse(body);

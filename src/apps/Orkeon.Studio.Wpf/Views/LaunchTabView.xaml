@@ -564,7 +564,7 @@
               <TextBox Text="{Binding CommandLineDisplayText, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
                        Background="Transparent" Padding="0" FontFamily="{StaticResource MonoFont}" FontSize="13"
                        Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" IsReadOnlyCaretVisible="False"
-                       AutomationProperties.Name="{Binding CommandLinePreview, Mode=OneWay}"
+                       AutomationProperties.Name="{Binding CommandLinePreview, Mode=OneWay, TargetNullValue=''}"
                        DataObject.Copying="OnCommandLineCopying"/>
             </Border>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,10,0,0"
