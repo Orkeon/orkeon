@@ -179,7 +179,9 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ══ PropertyRow: label (104 px, tertiary ink) · value · 28 px secondary button ══ -->
+  <!-- ══ PropertyRow (R10): label (160 px, tertiary ink) · 12 px · value · 28 px secondary
+       button. The label wraps rather than trims; a string value wraps too (a TextBlock the view
+       gives keeps its own wrapping). ══ -->
   <Style TargetType="{x:Type controls:PropertyRow}">
     <Setter Property="Focusable" Value="False"/>
     <Setter Property="MinHeight" Value="32"/>
@@ -191,14 +193,21 @@
         <ControlTemplate TargetType="{x:Type controls:PropertyRow}">
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="104"/>
+              <ColumnDefinition Width="160"/>
+              <ColumnDefinition Width="12"/>
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="{TemplateBinding Label}" Foreground="{DynamicResource InkFaintBrush}"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-            <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
-            <ContentPresenter Grid.Column="2" Content="{TemplateBinding Action}" VerticalAlignment="Center"
+                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <ContentPresenter Grid.Column="2" VerticalAlignment="Center">
+              <ContentPresenter.Resources>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextWrapping" Value="Wrap"/>
+                </Style>
+              </ContentPresenter.Resources>
+            </ContentPresenter>
+            <ContentPresenter Grid.Column="3" Content="{TemplateBinding Action}" VerticalAlignment="Center"
                               Margin="12,0,0,0"/>
           </Grid>
         </ControlTemplate>

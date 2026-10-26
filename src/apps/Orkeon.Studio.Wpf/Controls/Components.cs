@@ -111,8 +111,9 @@ public sealed class Badge : ContentControl
 }
 
 /// <summary>
-/// One editable property in a card body (R6): «label · value · button» on one line — the
-/// label in the tertiary ink on a fixed 104 px, the value (the Content), and a 28 px secondary
+/// One editable property in a card body (R10): «label · value · button» — the label in the
+/// tertiary ink on a fixed 160 px column, 12 px, the value (the Content, wrapped rather than
+/// trimmed: a string value wraps by itself), and a 28 px secondary
 /// button on the right (<see cref="Action"/>: Change, Stop, Allow, Schedule). The same
 /// shape whatever the action.
 /// </summary>
