@@ -125,11 +125,10 @@ public sealed partial class CreateTeamViewModel
     /// The verdict's summary sentence — « 2 of 3 criteria met » — read from the checklist; empty
     /// when no criterion was judged one by one (a mechanical verdict says so on its own line).
     /// <para>
-    /// hrm D02 (R19): the sentence counts what the list shows. A criterion is met when its line
-    /// carries the check — no finding against it; a remark (a finding that blocks nothing) draws
-    /// the triangle, so it is not counted. It used to be, after the engine's rule for
-    /// « passing », and the card read « 3 of 3 criteria met » over three triangles. The engine's
-    /// own verdict (passing, score) is untouched: it stays on its badge.
+    /// hrm D02 (R19): the sentence counts what the list shows. A criterion is met after the
+    /// engine's rule for « passing » — no finding, or a remark that blocks nothing — and its line
+    /// carries the check, the remark as a sand note under it. The card used to read « 3 of 3
+    /// criteria met » over three triangles: the icon, not the count, was wrong.
     /// </para>
     /// </summary>
     public string VerdictSummary
@@ -140,7 +139,7 @@ public sealed partial class CreateTeamViewModel
                 return string.Empty;
 
             // The criteria are the checklist's last lines; the findings that name none come first
-            // and are not criteria. Met = the line's check: Passed and nothing remarked.
+            // and are not criteria. Met = the line's check: passed, or a remark only.
             var criteria = Math.Min(_model.Criteria.Count, Checklist.Count);
             if (criteria == 0)
                 return string.Empty;

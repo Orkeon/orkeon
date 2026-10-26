@@ -120,14 +120,21 @@ public sealed class WizardAgentCard : ObservableObject
 }
 
 /// <summary>One line of the trial checklist.</summary>
-public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false)
+/// <param name="IsCriterion">
+/// hrm:L04 (D02): whether the line is one of the brief's criteria; false for a finding that names
+/// none, which keeps its own mark (a remark's triangle, a failure's barred circle).
+/// </param>
+public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false, bool IsCriterion = true)
 {
     /// <summary>Whether the line is a failure — a blocking finding: the red icon.</summary>
     public bool IsFailure => Passed == false && !IsRemark;
 
     // hrm:L04 — presentation only (D02, R19): what the line's icon says, for the summary.
-    /// <summary>Whether the criterion is met as the line shows it: the check, no finding against it.</summary>
-    public bool IsMet => Passed == true && !IsRemark;
+    /// <summary>
+    /// Whether the criterion is met — the engine's rule for « passing »: no finding against it,
+    /// or a finding that blocks nothing (a remark). The line draws the check either way.
+    /// </summary>
+    public bool IsMet => Passed == true || IsRemark;
     // hrm:L04 end
 }
 
@@ -3334,8 +3341,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     private void SyncChecklist()
     {
         Checklist.Clear();
-        foreach (var item in _model.BuildChecklist())
-            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark));
+        var items = _model.BuildChecklist();
+        // hrm:L04 (D02): the criteria are the last lines; the findings that name none come first.
+        var firstCriterion = items.Count - Math.Min(_model.Criteria.Count, items.Count);
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark, index >= firstCriterion));
+        }
     }
 
     private void SyncDecisions()

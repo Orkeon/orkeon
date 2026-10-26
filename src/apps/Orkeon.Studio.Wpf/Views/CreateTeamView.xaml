@@ -1612,10 +1612,10 @@
                           <Setter Property="Kind" Value="circle-help"/>
                           <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
                           <Style.Triggers>
-                            <!-- Lot 3: green check for a criterion met, sand triangle for a remark
-                                 (a finding that blocks nothing), the barred circle for a failure
-                                 (R12) — never a red triangle. hrm D02: the summary above counts
-                                 the checks only, so it reads what these icons say. -->
+                            <!-- Lot 3: green check for a criterion met, the barred circle for a
+                                 failure (R12). hrm D02: a remark (a finding that blocks nothing)
+                                 meets its criterion, so it draws the check too and its text shows
+                                 as a sand note under the line; the summary above counts the checks. -->
                             <DataTrigger Binding="{Binding Passed}" Value="True">
                               <Setter Property="Kind" Value="circle-check"/>
                               <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
@@ -1628,14 +1628,35 @@
                               <Setter Property="Kind" Value="triangle-alert"/>
                               <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                             </DataTrigger>
+                            <!-- A remark on a criterion: met, the check. A finding that names no
+                                 criterion keeps the sand triangle above. -->
+                            <MultiDataTrigger>
+                              <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsRemark}" Value="True"/>
+                                <Condition Binding="{Binding IsCriterion}" Value="True"/>
+                              </MultiDataTrigger.Conditions>
+                              <Setter Property="Kind" Value="circle-check"/>
+                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            </MultiDataTrigger>
                           </Style.Triggers>
                         </Style>
                       </controls:LucideIcon.Style>
                     </controls:LucideIcon>
                     <StackPanel>
                       <TextBlock Style="{StaticResource BodyText}" Text="{Binding Statement}"/>
-                      <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding Detail}"
-                                 Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
+                      <TextBlock Margin="0,2,0,0" Text="{Binding Detail}"
+                                 Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}">
+                        <TextBlock.Style>
+                          <Style TargetType="TextBlock" BasedOn="{StaticResource MetaText}">
+                            <Style.Triggers>
+                              <!-- hrm D02: a remark is a sand note, never a mark on the criterion. -->
+                              <DataTrigger Binding="{Binding IsRemark}" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBlock.Style>
+                      </TextBlock>
                     </StackPanel>
                   </DockPanel>
                 </DataTemplate>
