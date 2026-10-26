@@ -1553,6 +1553,48 @@ public sealed class LaunchTabViewModelTests
         }
     }
 
+    /// <summary>
+    /// The combo of the team tab selects by key (SelectedValuePath), the one thing stable across
+    /// the rebuilds of the list: the key follows the choice, picks it back, ignores an unknown or
+    /// empty one, and is raised after the list whenever the list is replaced.
+    /// </summary>
+    [Fact]
+    public void Should_FollowAndPickTheModelByKey_When_TheComboSelectsByValue()
+    {
+        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
+        try
+        {
+            var (tab, _, _) = BuildForModel(pinned);
+            Assert.Equal("default", tab.SelectedModelKey);
+
+            var raised = new List<string?>();
+            tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+            tab.Target.Select(pinned);
+
+            // The team resolved: the list gained the team's entry, and the selection moved onto it.
+            Assert.Equal("team", tab.SelectedModelKey);
+            Assert.Contains(tab.SelectedModelKey, tab.ModelChoices.Select(choice => choice.Key));
+            var list = raised.IndexOf(nameof(LaunchTabViewModel.ModelChoices));
+            Assert.True(list >= 0 && raised.IndexOf(nameof(LaunchTabViewModel.SelectedModelKey), list) > list,
+                $"SelectedModelKey must follow ModelChoices: {string.Join(", ", raised)}");
+
+            tab.SelectedModelKey = "named:GLM";
+            Assert.Equal("GLM", tab.RunLlmProfile);
+            Assert.Equal("GLM", tab.SelectedModelChoice?.Profile);
+            Assert.True(tab.CanRememberLlmForTeam);
+
+            raised.Clear();
+            tab.SelectedModelKey = null;
+            tab.SelectedModelKey = "named:nobody";
+            Assert.Equal("named:GLM", tab.SelectedModelKey);
+            Assert.Empty(raised);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void Should_PrefillTheRunsModelWithTheTeams_When_ATeamIsSelected()
     {

@@ -30,6 +30,19 @@ public enum RunModelChoiceKind
 /// <param name="Profile">The setting a <see cref="RunModelChoiceKind.Named"/> entry names.</param>
 public sealed record RunModelChoice(string Label, RunModelChoiceKind Kind, string? Profile = null)
 {
+    /// <summary>
+    /// What the combo selects by (SelectedValuePath): stable across the rebuilds of the list and
+    /// the changes of its labels, where the entry itself is not. The list is rebuilt under the
+    /// combo as the team and the settings load, and a selection held by item was cleared with the
+    /// old list; one held by key is re-applied to the new one.
+    /// </summary>
+    public string Key => Kind switch
+    {
+        RunModelChoiceKind.Default => "default",
+        RunModelChoiceKind.Team => "team",
+        _ => "named:" + Profile,
+    };
+
     /// <inheritdoc />
     public override string ToString() => Label;
 }
@@ -253,6 +266,18 @@ public sealed partial class LaunchTabViewModel
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// <see cref="SelectedModelChoice"/> by its <see cref="RunModelChoice.Key"/>: what the combo of the
+    /// team tab binds. A key the list does not hold, or none, picks nothing.
+    /// </summary>
+    public string? SelectedModelKey
+    {
+        get => SelectedModelChoice?.Key;
+        set => SelectedModelChoice = value is null
+            ? null
+            : ModelChoices.FirstOrDefault(choice => string.Equals(choice.Key, value, StringComparison.Ordinal));
     }
 
     // ── The options tab ──
@@ -548,7 +573,7 @@ public sealed partial class LaunchTabViewModel
                 break;
             case nameof(RunLlmChoice):
                 RefreshModelChoices();
-                OnPropertiesChanged(nameof(SelectedModelChoice), nameof(TeamFicheLine));
+                OnPropertiesChanged(nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
                 break;
             case nameof(LlmProfiles):
                 RefreshModelChoices();
@@ -590,7 +615,7 @@ public sealed partial class LaunchTabViewModel
             return;
 
         _modelChoices = fresh;
-        OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(TeamFicheLine));
+        OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
     }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(

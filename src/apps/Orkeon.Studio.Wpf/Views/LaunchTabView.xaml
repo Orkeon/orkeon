@@ -140,8 +140,10 @@
                   <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
                   <StackPanel Orientation="Horizontal">
+                    <!-- Selected by key, not by item: the list is rebuilt under the combo as the team and the
+                         settings load, and a selection held by item left the box empty on arrival. -->
                     <ComboBox Style="{StaticResource ComboM}" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
-                              SelectedItem="{Binding SelectedModelChoice}" DisplayMemberPath="Label"
+                              SelectedValue="{Binding SelectedModelKey}" SelectedValuePath="Key" DisplayMemberPath="Label"
                               ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
                     <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                             VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
