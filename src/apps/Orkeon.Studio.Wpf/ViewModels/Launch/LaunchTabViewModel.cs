@@ -247,7 +247,7 @@ public sealed partial class LaunchTabViewModel : ObservableObject
             // A new command is not the one that was copied: the button reads "copy" again.
             CommandLineCopied = false;
             CopyCommandLineCommand.RaiseCanExecuteChanged();
-            OnPropertyChanged(nameof(CommandLineSegments));
+            OnPropertyChanged(nameof(CommandLineDisplayText));
         }
     }
 
@@ -1659,12 +1659,48 @@ public sealed partial class LaunchTabViewModel : ObservableObject
     // engine, the history or a command.
 
     /// <summary>
-    /// The command split at its options (B09): the program and its target first, then one segment
-    /// per <c>--option</c> with its values. The view lays them in a wrapping row, so the command
-    /// goes to the line only between two options — never inside one, never inside a value. A
-    /// space inside double quotes does not split. Empty without a command.
+    /// The command as the Command tab shows it (B09): one selectable, wrapping text in which the
+    /// line can break only before an option. Inside an option and its values the spaces are
+    /// no-break spaces and a word joiner follows each hyphen and path separator, so neither an
+    /// option nor a value is ever cut; the plain space before each <c>--</c> stays the one break
+    /// opportunity. A copy by selection goes through <see cref="FromNoBreakDisplay"/>, which gives
+    /// back exactly <see cref="CommandLinePreview"/>. Empty without a command.
     /// </summary>
-    public IReadOnlyList<string> CommandLineSegments => SplitAtOptions(CommandLinePreview);
+    public string CommandLineDisplayText => ToNoBreakDisplay(CommandLinePreview);
+
+    /// <summary>The no-break space that holds an option to its value.</summary>
+    public const char NoBreakSpace = '\u00A0';
+
+    /// <summary>The word joiner that forbids a break after a hyphen or a path separator.</summary>
+    public const char WordJoiner = '\u2060';
+
+    /// <summary>The display form of a command: see <see cref="CommandLineDisplayText"/>.</summary>
+    public static string ToNoBreakDisplay(string? command)
+    {
+        var segments = SplitAtOptions(command);
+        var builder = new System.Text.StringBuilder();
+        foreach (var segment in segments)
+        {
+            if (builder.Length > 0)
+                builder.Append(' ');
+
+            foreach (var c in segment)
+            {
+                builder.Append(c == ' ' ? NoBreakSpace : c);
+                if (c is '-' or '/' or '\\')
+                    builder.Append(WordJoiner);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>Gives back the plain command from (a selection of) its display form.</summary>
+    public static string FromNoBreakDisplay(string display)
+    {
+        ArgumentNullException.ThrowIfNull(display);
+        return display.Replace(WordJoiner.ToString(), string.Empty, StringComparison.Ordinal).Replace(NoBreakSpace, ' ');
+    }
 
     /// <summary>Whether the technical journal is unfolded (R16): open by default, folded by its own button.</summary>
     public bool IsJournalOpen

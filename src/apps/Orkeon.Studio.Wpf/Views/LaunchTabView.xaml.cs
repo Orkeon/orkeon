@@ -59,6 +59,20 @@ public partial class LaunchTabView : UserControl
 
     // ── hrm:L08 — the Run tab ──
 
+    /// <summary>
+    /// B09: a copy of the command by selection puts back the plain spaces and drops the word
+    /// joiners the display holds, so the clipboard gets exactly the command a terminal takes.
+    /// </summary>
+    private void OnCommandLineCopying(object sender, DataObjectCopyingEventArgs e)
+    {
+        if (e.DataObject.GetData(DataFormats.UnicodeText) is not string display)
+            return;
+
+        var plain = LaunchTabViewModel.FromNoBreakDisplay(display);
+        e.DataObject.SetData(DataFormats.UnicodeText, plain);
+        e.DataObject.SetData(DataFormats.Text, plain);
+    }
+
     /// <summary>Narrowest an agent card may get (B04, R15), its 8 px gutter included.</summary>
     private const double AgentCardMinWidth = 180 + 8;
 

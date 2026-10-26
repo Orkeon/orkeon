@@ -69,15 +69,30 @@ public sealed class RunPanePresentationTests : IDisposable
     }
 
     [Fact]
-    public void The_segments_follow_the_command_and_lose_nothing_of_it()
+    public void The_shown_command_breaks_only_before_an_option_and_copies_back_verbatim()
     {
         var (tab, _) = Build(new FakeTargetProbe().WithFile("/crews/team.yaml"));
 
         tab.Target.Select("/crews/team.yaml");
 
+        var display = tab.CommandLineDisplayText;
         Assert.NotNull(tab.CommandLinePreview);
-        Assert.Equal(tab.CommandLinePreview, string.Join(" ", tab.CommandLineSegments));
-        Assert.All(tab.CommandLineSegments.Skip(1), segment => Assert.StartsWith("--", segment, StringComparison.Ordinal));
+        Assert.Equal(tab.CommandLinePreview, LaunchTabViewModel.FromNoBreakDisplay(display));
+        // Every plain space left is a break opportunity, and each one stands before an option.
+        var breaks = display.Split(' ');
+        Assert.Equal(LaunchTabViewModel.SplitAtOptions(tab.CommandLinePreview).Count, breaks.Length);
+        Assert.All(breaks.Skip(1), part => Assert.StartsWith("-", part, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Inside_an_option_its_value_never_breaks()
+    {
+        var display = LaunchTabViewModel.ToNoBreakDisplay(@"orkeon run C:\t --mount C:\d:/f:rw --events jsonl");
+
+        Assert.Equal(2, display.Count(c => c == ' '));
+        Assert.Contains("-\u2060-\u2060mount\u00A0C:\\\u2060d:/\u2060f:rw", display, StringComparison.Ordinal);
+        Assert.Equal(@"orkeon run C:\t --mount C:\d:/f:rw --events jsonl", LaunchTabViewModel.FromNoBreakDisplay(display));
+        Assert.Equal(string.Empty, LaunchTabViewModel.ToNoBreakDisplay(null));
     }
 
     [Fact]
