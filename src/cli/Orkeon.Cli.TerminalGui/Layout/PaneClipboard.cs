@@ -48,6 +48,9 @@ internal static class PaneClipboard
             case TextView text:
                 text.SelectAll();
                 return true;
+            case TranscriptView transcript:
+                transcript.SelectAll();
+                return true;
             default:
                 return false;
         }
@@ -69,6 +72,7 @@ internal static class PaneClipboard
         {
             TextField field => field.SelectedText,
             TextView text => text.SelectedText,
+            TranscriptView transcript => transcript.SelectedText,
             _ => null,
         };
         if (string.IsNullOrEmpty(selected))

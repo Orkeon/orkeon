@@ -12,6 +12,7 @@ public class TerminalGuiOptionsTests
         Assert.Equal(0.5, o.InitialSplitRatio);
         Assert.Equal(LogLevel.Information, o.DefaultMinimumLogLevel);
         Assert.Equal(5000, o.LogsBufferCapacity);
+        Assert.Equal(10_000, o.ReplTranscriptCapacity);
         Assert.Equal("Logs", o.LogsPaneTitle);
         // Fidelity defaults (PLAN phase 1): the logs drawer starts hidden — the
         // reference UI has no log pane, ours is the opt-in addition — and the

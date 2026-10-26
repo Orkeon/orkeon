@@ -1,5 +1,6 @@
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
+using Orkeon.Cli.TerminalGui.Tests.Doubles;
 
 namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 
@@ -59,6 +60,88 @@ public class LogsPaneViewTests
                 pane.Append($"t{t}-i{i}");
         });
         Assert.Equal(threads * perThread, pane.LineCount);
+    }
+
+    // ── Issue #196: append cost, coalescing, hidden pane ─────────────────────────────────
+
+    [Fact]
+    public void A_burst_of_appends_costs_one_ui_dispatch()
+    {
+        var dispatcher = new FakeUiDispatcher();
+        using var pane = new LogsPaneView(new TerminalGuiOptions { LogsBufferCapacity = 100 }, dispatcher);
+
+        for (var i = 0; i < 50; i++) pane.Append($"entry {i}");
+
+        Assert.Equal(1, dispatcher.InvokeCount);
+        dispatcher.RunPending();
+        Assert.Equal(string.Join('\n', Enumerable.Range(0, 50).Select(i => $"entry {i}")), pane.CurrentText);
+    }
+
+    [Fact]
+    public void Render_work_per_append_stays_constant_over_ten_thousand_lines()
+    {
+        using var pane = CreatePane(capacity: 5_000);
+        var model = pane.RenderedModel;
+        var work = new long[10_000];
+        for (var i = 0; i < work.Length; i++)
+        {
+            var before = model.CharactersWrapped;
+            pane.Append($"log entry {i:D5}");
+            work[i] = model.CharactersWrapped - before;
+        }
+
+        Assert.All(work, w => Assert.Equal(work[0], w));
+        Assert.Equal(work.Take(1_000).Sum(), work.TakeLast(1_000).Sum());
+        Assert.Equal(5_000, model.LineCount);
+    }
+
+    [Fact]
+    public void A_hidden_pane_does_no_render_work_and_renders_in_full_when_shown()
+    {
+        var dispatcher = new FakeUiDispatcher();
+        using var pane = new LogsPaneView(new TerminalGuiOptions { LogsBufferCapacity = 3 }, dispatcher);
+        pane.Visible = false;
+        var wrapped = pane.RenderedModel.CharactersWrapped;
+
+        for (var i = 0; i < 1_000; i++) pane.Append($"hidden {i}");
+
+        Assert.Equal(0, dispatcher.InvokeCount);
+        Assert.Equal(wrapped, pane.RenderedModel.CharactersWrapped);
+        Assert.Equal(3, pane.LineCount);
+
+        pane.Visible = true;
+
+        Assert.Equal("hidden 997\nhidden 998\nhidden 999", pane.CurrentText);
+    }
+
+    [Fact]
+    public void Appends_queued_before_the_pane_is_shown_are_not_rendered_twice()
+    {
+        var dispatcher = new FakeUiDispatcher();
+        using var pane = new LogsPaneView(new TerminalGuiOptions { LogsBufferCapacity = 10 }, dispatcher);
+        pane.Append("a");
+        pane.Visible = false;
+        pane.Visible = true;
+        pane.Append("b");
+
+        dispatcher.RunPending();
+
+        Assert.Equal("a\nb", pane.CurrentText);
+    }
+
+    [Fact]
+    public void Clear_is_ordered_with_the_appends_around_it()
+    {
+        var dispatcher = new FakeUiDispatcher();
+        using var pane = new LogsPaneView(new TerminalGuiOptions { LogsBufferCapacity = 10 }, dispatcher);
+        pane.Append("old");
+        pane.Clear();
+        pane.Append("new");
+
+        dispatcher.RunPending();
+
+        Assert.Equal("new", pane.CurrentText);
+        Assert.Equal(1, pane.LineCount);
     }
 }
 #pragma warning restore xUnit1004

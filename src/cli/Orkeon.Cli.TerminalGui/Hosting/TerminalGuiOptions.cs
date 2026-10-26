@@ -31,6 +31,12 @@ public sealed record TerminalGuiOptions
     /// </summary>
     public bool ReplWordWrap { get; init; } = true;
 
+    /// <summary>
+    /// Max number of lines kept in the REPL transcript; the oldest lines are dropped past it, as
+    /// <see cref="LogsBufferCapacity"/> bounds the logs pane. Default 10000.
+    /// </summary>
+    public int ReplTranscriptCapacity { get; init; } = 10_000;
+
     /// <summary>Whether the startup banner is written into the transcript. Default true.</summary>
     public bool BannerEnabled { get; init; } = true;
 
