@@ -67,4 +67,27 @@ public sealed class ScriptServiceLocatorTests
         Assert.False(ScriptServiceLocator.Empty.has("anything"));
         Assert.Throws<InvalidOperationException>(() => ScriptServiceLocator.Empty.get("anything"));
     }
+
+    [Fact]
+    public void Approvals_entry_reads_the_watch_at_each_list()
+    {
+        var watch = new Doubles.FakeToolApprovalWatch();
+        var (locator, sp) = Build(
+            // The default whitelist's resolver, served under its key by this locator.
+            wl => wl.AddOptional(
+                ScriptServiceKeys.Approvals,
+                DefaultScriptServiceWhitelist.Build().Build().Entries[ScriptServiceKeys.Approvals]),
+            sc => sc.AddSingleton<Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch>(watch));
+        using var _ = sp;
+
+        var approvals = Assert.IsType<ScriptPendingApprovals>(locator.get(ScriptServiceKeys.Approvals));
+        Assert.Empty(approvals.list());
+
+        watch.Pending.Add(new Orkeon.Cli.Abstractions.Runners.PendingToolApproval("read", new string('x', 80), null, null));
+        var approval = Assert.Single(approvals.list());
+        Assert.Null(approval.taskId);
+        Assert.Null(approval.command);
+        Assert.Equal("read", approval.tool);
+        Assert.Equal(new string('x', 60) + "…", approval.input);
+    }
 }

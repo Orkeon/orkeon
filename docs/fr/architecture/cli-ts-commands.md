@@ -229,8 +229,9 @@ La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `f
 `tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
 plus bas), `script-host` (lancement de crews depuis une commande — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
-(les règles d'appels d'outils de la session, plus bas) ; pour ces trois-là, les typings rendent
-`CommandsFacade`, `ScriptHostFacade` et `PermissionRulesFacade` sans argument de type. `configuration` n'est
+(les règles d'appels d'outils de la session, plus bas) et `approvals` (les approbations d'outils en
+attente, plus bas) ; pour ces quatre-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`,
+`PermissionRulesFacade` et `PendingApprovals` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -572,6 +573,21 @@ peut le dire. Un crew lit le même fait par `ctx.llm.permissionGate.enabled`.
 const permissions = ctx.services.get("permissions");
 permissions.allow("shell_command", "command", "npm test*");
 permissions.deny("shell_command", "command", "git push*");
+```
+
+**Approbations en attente.** Une commande lit les approbations d'outils qui attendent l'opérateur
+par `ctx.services.get("approvals")`, présent quand l'hôte enregistre le canal d'approbation
+(`IToolApprovalWatch`). Il est en lecture seule : `list()` rend les questions en attente à cet
+instant, celle que la prochaine réponse règle en premier, chacune un objet simple
+`{ taskId, command, tool, input }` : le ticket de la tâche de fond qui demande (`t1`) et le nom de sa
+commande, tous deux null hors d'une tâche, le nom de l'outil, et l'entrée de l'appel telle que la
+ligne d'état l'affiche, ses arguments JSON coupés à 60 caractères (`PendingToolApprovalInput`). La
+liste est vide une fois que l'opérateur a répondu : une commande `/tasks` distingue ainsi une tâche
+bloquée sur l'opérateur d'une tâche qui tourne.
+
+```typescript
+const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
+for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
 ```
 
 ## Matrice de support TypeScript (esbuild → Jint)

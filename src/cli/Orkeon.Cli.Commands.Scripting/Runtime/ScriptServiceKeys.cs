@@ -34,4 +34,10 @@ public static class ScriptServiceKeys
     /// The host-side engine the control plane calls for long work.
     /// </summary>
     public const string ScriptHost = "script-host";
+
+    /// <summary>
+    /// Optional: the tool approvals waiting for the operator — <c>ctx.services.get("approvals")</c>
+    /// (<see cref="ScriptPendingApprovals"/>). Read-only; present when the host watches them (the REPL).
+    /// </summary>
+    public const string Approvals = "approvals";
 }

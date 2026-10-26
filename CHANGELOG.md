@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — scripted commands read the pending tool approvals (#198)
+
+A `*.cmd.ts` command reads the tool approvals waiting for the operator through
+`ctx.services.get("approvals")` (`ScriptServiceKeys.Approvals`, an optional entry of the default whitelist,
+present when the host registers `IToolApprovalWatch`, as `AddConsoleToolApproval` does). It is read-only:
+`list()` returns `{ taskId, command, tool, input }` per approval waiting, and an empty list once the operator
+has answered. `input` is the call's input as the TUI status line shows it: the summary moves from
+`StatusLineFormatter.ComposeApproval` to `PendingToolApprovalInput` (`Orkeon.Cli.Abstractions`), which both
+now call. The typings declare `PendingApprovals` and `PendingApproval`, and `get("approvals")` returns the
+former without a type argument.
+
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
 
 The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A

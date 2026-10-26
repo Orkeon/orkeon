@@ -189,7 +189,8 @@ export interface ServiceLocator {
    * - present only when the host wired them (check with `has`): `"llm"` → ILlmProvider,
    *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
-   *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`).
+   *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
+   *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
@@ -197,6 +198,7 @@ export interface ServiceLocator {
   get(name: "commands"): CommandsFacade;
   get(name: "script-host"): ScriptHostFacade;
   get(name: "permissions"): PermissionRulesFacade;
+  get(name: "approvals"): PendingApprovals;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -251,6 +253,27 @@ export interface PermissionRulesFacade {
   clear(): void;
   /** The rules in force, one line each: `allow shell_command command=npm test*`. */
   list(): readonly string[];
+}
+
+/**
+ * The tool approvals waiting for the operator — `ctx.services.get("approvals")`, in `orkeon-repl`.
+ * Read-only: the operator answers them. Each `list()` reads the questions waiting at that moment.
+ */
+export interface PendingApprovals {
+  /** The approvals waiting, the one the next answer settles first; empty when none waits. */
+  list(): readonly PendingApproval[];
+}
+
+/** One tool approval waiting for the operator. */
+export interface PendingApproval {
+  /** The ticket of the background task that asks (`t1`); null outside a task. */
+  readonly taskId: string | null;
+  /** The name of the command that runs that task (`dev-batches`); null outside a task. */
+  readonly command: string | null;
+  /** The tool the call names (`shell_command`). */
+  readonly tool: string;
+  /** The call's input as the status line shows it: its JSON arguments, cut at 60 characters with `…`. */
+  readonly input: string;
 }
 
 /** Result of a crew run launched via {@link ScriptHostFacade}. */

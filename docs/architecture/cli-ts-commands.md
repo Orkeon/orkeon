@@ -228,8 +228,9 @@ The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus
 optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
 (crew launching from a command — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
-session's tool-call rules, below); the typings return `CommandsFacade`, `ScriptHostFacade` and
-`PermissionRulesFacade` for those three without a type argument. `configuration` is deliberately
+session's tool-call rules, below) and `approvals` (the tool approvals waiting, below); the typings
+return `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade` and `PendingApprovals` for those
+four without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -553,6 +554,20 @@ so. A crew reads the same fact as `ctx.llm.permissionGate.enabled`.
 const permissions = ctx.services.get("permissions");
 permissions.allow("shell_command", "command", "npm test*");
 permissions.deny("shell_command", "command", "git push*");
+```
+
+**Pending approvals.** A command reads the tool approvals waiting for the operator through
+`ctx.services.get("approvals")`, present when the host registers the approval channel
+(`IToolApprovalWatch`). It is read-only: `list()` returns the questions waiting at that moment, the
+one the next answer settles first, each a plain object `{ taskId, command, tool, input }`: the
+ticket of the background task that asks (`t1`) and the name of its command, both null outside a
+task, the tool's name, and the call's input as the status line shows it, its JSON arguments cut at
+60 characters (`PendingToolApprovalInput`). The list is empty once the operator has answered, so a
+`/tasks` command can tell a task blocked on the operator from one that runs.
+
+```typescript
+const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
+for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
 ```
 
 ## TypeScript support matrix (esbuild → Jint)

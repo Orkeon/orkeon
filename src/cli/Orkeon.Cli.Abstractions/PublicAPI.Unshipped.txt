@@ -27,3 +27,7 @@ override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(object? obj)
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? other) -> bool
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.<Clone>$() -> Orkeon.Cli.Abstractions.Runners.PendingToolApproval!
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Deconstruct(out string! ToolName, out string! Arguments, out string? Ticket, out string? TaskName) -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput
+const Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.MaxLength = 60 -> int
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(Orkeon.Cli.Abstractions.Runners.PendingToolApproval! approval) -> string!
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(string? arguments) -> string!
