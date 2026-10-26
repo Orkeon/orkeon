@@ -206,18 +206,12 @@
                            Text="{Binding [Studio.Run.Empty], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding IsExpertMode, Converter={StaticResource InverseBooleanToVisibility}}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="brain-circuit" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                      <TextBlock Text="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
-                  <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                      <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
+                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding ChooseTeamCommand}"
+                          controls:ButtonIcon.Kind="brain-circuit"
+                          Content="{Binding [Studio.Run.ChooseTeam], Source={x:Static services:I18n.Instance}}"/>
+                  <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateTeamCommand}"
+                          controls:ButtonIcon.Kind="plus"
+                          Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </StackPanel>
             </StackPanel>
@@ -393,18 +387,14 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                   <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <Button Style="{StaticResource BtnSecondary}" FontSize="13" Margin="0,0,8,0" Command="{Binding Options.AddVariableCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,6,0"/>
-                        <TextBlock Text="{Binding [Studio.Run.Add], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnSecondary}" FontSize="13" Command="{Binding Options.RemoveVariableCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"/>
-                        <TextBlock Text="{Binding [Studio.Run.Remove], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
+                    <!-- R05: « Ajouter » secondary with its +; R06: « Retirer » a row of an unsaved
+                         list, reversible - secondary, the × icon, never the trash -->
+                    <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0" Command="{Binding Options.AddVariableCommand}"
+                            controls:ButtonIcon.Kind="plus"
+                            Content="{Binding [Studio.Run.Add], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding Options.RemoveVariableCommand}"
+                            controls:ButtonIcon.Kind="x"
+                            Content="{Binding [Studio.Run.Remove], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
 
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
@@ -437,24 +427,19 @@
                 </DockPanel>
 
                 <!-- A novice has no command tab: « Copy the command » lives here. -->
-                <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                <Button HorizontalAlignment="Left" Margin="0,12,0,0" controls:ButtonIcon.Kind="copy"
                         Command="{Binding CopyCommandLineCommand}"
                         Visibility="{Binding IsExpertMode, Converter={StaticResource InverseBooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
-                    <TextBlock>
-                      <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                          <Setter Property="Text" Value="{Binding [Studio.Run.CopyCommand], Source={x:Static services:I18n.Instance}}"/>
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding CommandLineCopied}" Value="True">
-                              <Setter Property="Text" Value="{Binding [Studio.Run.CommandCopied], Source={x:Static services:I18n.Instance}}"/>
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </TextBlock.Style>
-                    </TextBlock>
-                  </StackPanel>
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+                      <Setter Property="Content" Value="{Binding [Studio.Run.CopyCommand], Source={x:Static services:I18n.Instance}}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding CommandLineCopied}" Value="True">
+                          <Setter Property="Content" Value="{Binding [Studio.Run.CommandCopied], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
                 </Button>
               </StackPanel>
               </controls:Disclosure>
@@ -496,12 +481,8 @@
                 </ItemsControl>
 
                 <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
-                        Command="{Binding Mounts.LaunchMounts.AddMountCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                    <TextBlock Text="{Binding [Studio.Run.AddLaunchFolder], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
+                        Command="{Binding Mounts.LaunchMounts.AddMountCommand}" controls:ButtonIcon.Kind="plus"
+                        Content="{Binding [Studio.Run.AddLaunchFolder], Source={x:Static services:I18n.Instance}}"/>
                 <!-- the folders added for this launch, editable -->
                 <views:MountsEditorView DataContext="{Binding Mounts.LaunchMounts}" Margin="0,12,0,0"
                                         Visibility="{Binding Mounts.Count, Converter={StaticResource CountToVisibility}}"/>
@@ -1132,33 +1113,21 @@
     <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,16,0,16">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                  Command="{Binding ValidateCommand}"
-                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Run.Validate], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                  Command="{Binding RunCommand}"
+          <!-- R05: the page's one primary, 40 px; the icons are ButtonIcon, stroked in each button's ink -->
+          <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                  Command="{Binding ValidateCommand}" controls:ButtonIcon.Kind="badge-check"
+                  Content="{Binding [Studio.Run.Validate], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}"/>
+          <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0"
+                  Command="{Binding RunCommand}" controls:ButtonIcon.Kind="play"
+                  Content="{Binding RunButtonLabel}"
                   ToolTip="{Binding LaunchBlockedReason}" ToolTipService.ShowOnDisabled="True"
-                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="play" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding RunButtonLabel}"/>
-            </StackPanel>
-          </Button>
+                  Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibility}}"/>
           <!-- in both modes - a novice trial has no other way to stop -->
-          <Button x:Name="StopRun" Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="40" Margin="8,0,0,0"
-                  Command="{Binding CancelCommand}"
-                  Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="square" Size="13" Margin="0,0,7,0"
-                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-              <TextBlock Text="{Binding [Studio.Run.Stop], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <Button x:Name="StopRun" Style="{StaticResource BtnDanger}" Margin="8,0,0,0"
+                  Command="{Binding CancelCommand}" controls:ButtonIcon.Kind="square"
+                  Content="{Binding [Studio.Run.Stop], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibility}}"/>
         </StackPanel>
         <!-- C04 (R08): the page footer says what is missing to launch, behind the shared dot - never
              the card footer's sentence. Ready in green, refused in red, running in the neutral grey. -->
