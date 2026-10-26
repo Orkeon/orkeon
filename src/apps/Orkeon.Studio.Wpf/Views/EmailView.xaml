@@ -108,7 +108,7 @@
         <StackPanel Visibility="{Binding HasAccounts, Converter={StaticResource BooleanToVisibility}}">
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                      Text="{Binding [Studio.Settings.MailDefaultAccount], Source={x:Static services:I18n.Instance}}"/>
-          <ComboBox Width="260" HorizontalAlignment="Left"
+          <ComboBox Style="{StaticResource ComboM}"
                     ItemsSource="{Binding DefaultAccountChoices}"
                     SelectedValue="{Binding DefaultAccount}" SelectedValuePath="Value" DisplayMemberPath="Label"
                     Tag="{Binding DefaultAccountPlaceholder}"/>
@@ -133,7 +133,7 @@
                    Text="{Binding [Studio.Settings.MailNameHint], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
                    Text="{Binding [Studio.Settings.MailProvider], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox MaxWidth="520" HorizontalAlignment="Left"
+        <ComboBox Style="{StaticResource ComboM}"
                   ItemsSource="{Binding ProviderChoices}"
                   SelectedValue="{Binding NewAccountProvider}" SelectedValuePath="Value" DisplayMemberPath="Label"/>
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
@@ -354,7 +354,7 @@
                                  Foreground="{DynamicResource InkBrush}" Text="{Binding DeviceCodeLine}"/>
                       <!-- a read-only well, so the code can be selected; it is never copied by a button -->
                       <TextBox Style="{StaticResource InputMono}" FontSize="26" FontWeight="SemiBold" IsReadOnly="True"
-                               Margin="0,8,0,0" HorizontalAlignment="Left" Text="{Binding UserCode, Mode=OneWay}"/>
+                               Height="Auto" Padding="12,6" Margin="0,8,0,0" HorizontalAlignment="Left" Text="{Binding UserCode, Mode=OneWay}"/>
                       <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="{Binding ExpiresInText}"
                                  Visibility="{Binding HasExpiry, Converter={StaticResource BooleanToVisibility}}"/>
                     </StackPanel>
@@ -531,7 +531,7 @@
                 <StackPanel Visibility="{Binding IsAccountTab, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailProvider], Source={x:Static services:I18n.Instance}}"/>
-                <ComboBox MaxWidth="520" HorizontalAlignment="Left"
+                <ComboBox Style="{StaticResource ComboM}"
                           ItemsSource="{Binding DataContext.ProviderChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                           SelectedValue="{Binding Provider}" SelectedValuePath="Value" DisplayMemberPath="Label"
                           Tag="{Binding [Studio.Settings.MailProviderCustom], Source={x:Static services:I18n.Instance}}"/>
@@ -617,7 +617,7 @@
                 <StackPanel Visibility="{Binding IsAuthTab, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5"
                            Text="{Binding [Studio.Settings.MailAuthMethod], Source={x:Static services:I18n.Instance}}"/>
-                <ComboBox MaxWidth="420" HorizontalAlignment="Left"
+                <ComboBox Style="{StaticResource ComboM}"
                           ItemsSource="{Binding AuthMethodChoices}"
                           SelectedValue="{Binding AuthMethod}" SelectedValuePath="Value" DisplayMemberPath="Label"
                           Tag="{Binding AuthMethodPlaceholder}"/>
@@ -735,7 +735,7 @@
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5" ToolTip="Incoming:Protocol"
                              Text="{Binding [Studio.Settings.MailProtocol], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="260" HorizontalAlignment="Left"
+                  <ComboBox Style="{StaticResource ComboS}"
                             ItemsSource="{Binding DataContext.IncomingProtocolChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                             SelectedValue="{Binding IncomingProtocol}" SelectedValuePath="Value" DisplayMemberPath="Label"
                             Tag="{Binding Effective.IncomingProtocol}"/>
@@ -751,7 +751,7 @@
                            Text="{Binding IncomingPort, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding IncomingPortPlaceholder}"/>
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5" ToolTip="Incoming:Security"
                              Text="{Binding [Studio.Settings.MailSecurity], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="260" HorizontalAlignment="Left"
+                  <ComboBox Style="{StaticResource ComboS}"
                             ItemsSource="{Binding DataContext.SecurityChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                             SelectedValue="{Binding IncomingSecurity}" SelectedValuePath="Value" DisplayMemberPath="Label"
                             Tag="{Binding Effective.IncomingSecurity}"/>
@@ -763,7 +763,7 @@
                 <StackPanel Visibility="{Binding ShowExpertFields, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5" ToolTip="Outgoing:Protocol"
                              Text="{Binding [Studio.Settings.MailProtocol], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="260" HorizontalAlignment="Left"
+                  <ComboBox Style="{StaticResource ComboS}"
                             ItemsSource="{Binding DataContext.OutgoingProtocolChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                             SelectedValue="{Binding OutgoingProtocol}" SelectedValuePath="Value" DisplayMemberPath="Label"
                             Tag="{Binding Effective.OutgoingProtocol}"/>
@@ -781,7 +781,7 @@
                            Text="{Binding OutgoingPort, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding OutgoingPortPlaceholder}"/>
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,5" ToolTip="Outgoing:Security"
                              Text="{Binding [Studio.Settings.MailSecurity], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="260" HorizontalAlignment="Left"
+                  <ComboBox Style="{StaticResource ComboS}"
                             ItemsSource="{Binding DataContext.SecurityChoices, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                             SelectedValue="{Binding OutgoingSecurity}" SelectedValuePath="Value" DisplayMemberPath="Label"
                             Tag="{Binding Effective.OutgoingSecurity}"/>
