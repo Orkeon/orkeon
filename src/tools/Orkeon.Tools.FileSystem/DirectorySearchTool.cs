@@ -9,6 +9,7 @@ using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Chunking;
 using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Abstractions.Security;
 
 namespace Orkeon.Tools.FileSystem;
 
@@ -83,10 +84,17 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
         return null;
     }
 
+    /// <summary>
+    /// Judges the directory the way every file tool does: a relative path made absolute against
+    /// the working directory, then the mounts, then the agent's root.
+    /// </summary>
     private string? ValidatePath(string path)
     {
-        var pathResult = _fileSystemService.ResolveAndValidate(path, FileAccessRights.Read);
-        return pathResult.IsAllowed ? null : pathResult.DenialReason ?? "Invalid or unsafe path";
+        var virtualPath = WorkingDirectoryResolver.Absolutize(path, _fileSystemService);
+        var pathResult = _fileSystemService.ResolveAndValidate(virtualPath, FileAccessRights.Read);
+        if (!pathResult.IsAllowed)
+            return pathResult.DenialReason ?? "Invalid or unsafe path";
+        return AgentRootGuard.Check(_fileSystemService, virtualPath)?.DenialReason;
     }
 
     /// <inheritdoc />
@@ -94,6 +102,7 @@ public partial class DirectorySearchTool : ToolBase<DirectorySearchRequest, Dire
         DirectorySearchRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request = request with { Path = WorkingDirectoryResolver.Absolutize(request.Path, _fileSystemService) };
         return ExecuteTypedCoreAsync();
 
         async Task<DirectorySearchResponse> ExecuteTypedCoreAsync()

@@ -337,4 +337,31 @@ public sealed class EditBatchToolTests : IDisposable
         Assert.Contains("ensure_using", ex.Message, StringComparison.Ordinal);
         await AssertUntouchedAsync();
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldApplyAndEchoResolvedPath_WhenOperationPathIsRelative()
+    {
+        await SeedAsync();
+        _disk.WorkingDirectory = "/workspace";
+        var replace = await ReplaceAsync("A.cs", "A.X", NewX);
+
+        var response = await RunAsync([replace with { Path = "A.cs" }]);
+
+        Assert.Equal("/workspace/A.cs", Assert.Single(response.Operations).Path);
+        Assert.Contains(NewX, await File.ReadAllTextAsync(Physical("A.cs"), TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-200")]
+    public async Task ShouldNameThePathArgument_WhenOperationPathIsEmpty()
+    {
+        await SeedAsync();
+        var replace = await ReplaceAsync("A.cs", "A.X", NewX);
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => RunAsync([replace with { Path = "" }]));
+
+        Assert.Equal("path is required: the absolute path of the file, e.g. /workspace/src/stats.js", ex.Message);
+        await AssertUntouchedAsync();
+    }
 }

@@ -79,7 +79,7 @@ internal sealed partial class AskQuestionCommand : IInteractiveCommand
             catch (Exception ex)
             {
                 LogQuestionFailed(ex);
-                return CommandResult.Continue($"Error: {ex.Message}");
+                return CommandResult.Fail($"Error: {ex.Message}");
             }
         }
     }

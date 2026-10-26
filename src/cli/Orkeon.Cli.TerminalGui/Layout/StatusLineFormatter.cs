@@ -153,7 +153,7 @@ public static class StatusLineFormatter
     }
 
     /// <summary>The longest call the approval line shows before it is cut: the line has one row.</summary>
-    internal const int MaxApprovalArgumentsLength = 60;
+    internal const int MaxApprovalArgumentsLength = Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.MaxLength;
 
     /// <summary>
     /// The approval form of the line, which wins over every other while a question waits:
@@ -166,9 +166,7 @@ public static class StatusLineFormatter
         ArgumentNullException.ThrowIfNull(glyphs);
         ArgumentNullException.ThrowIfNull(first);
         var who = first.Ticket is { } ticket ? $"[{ticket}] {first.TaskName} asks" : "A tool call asks";
-        var call = first.Arguments.Length <= MaxApprovalArgumentsLength
-            ? first.Arguments
-            : string.Concat(first.Arguments.AsSpan(0, MaxApprovalArgumentsLength), "…");
+        var call = Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(first);
         var parts = new List<string>(3) { call, $"answer y once {glyphs.Dot} s session {glyphs.Dot} n no" };
         if (waiting > 1) parts.Add($"+{waiting - 1} more");
         return $"? {who} to run {first.ToolName}… ({string.Join($" {glyphs.Dot} ", parts)})";

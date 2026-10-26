@@ -47,7 +47,9 @@ public static class ScopedMountComposition
 
         // Ordinal, matching FileSystemRegistry's own duplicate check: a path this composition
         // considered distinct but the registry considers equal would throw out of a DI factory.
-        return new FileSystemRegistry(
+        var registry = new FileSystemRegistry(
             [.. scoped, .. boot.GetMounts().Where(m => !claimed.Contains(m.VirtualPath))]);
+        WorkingDirectoryDesignation.CarryForward(boot, registry);
+        return registry;
     }
 }

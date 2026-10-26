@@ -23,7 +23,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </remarks>
 public sealed class ReplPaneView : View, ITaskListNavigator
 {
-    private readonly TextView _history;
+    private readonly TranscriptView _history;
+    private readonly AppendCoalescer<string?> _transcriptWrites;
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
     private readonly MouseClipboardTextView _input;
@@ -84,25 +85,25 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         CanFocus = true;
         SetScheme(SchemeFactory.Pane());
 
-        _history = new MouseClipboardTextView
+        // Line-based, bounded transcript (issue #196): an append wraps only the lines it adds, the
+        // head is trimmed past ReplTranscriptCapacity lines, and writes are coalesced into one UI
+        // dispatch per burst. Display-only soft-wrap when enabled: the model keeps the source lines,
+        // so copy/paste returns the text with no injected line break; the horizontal scrollbar shows
+        // only while the wrap is off.
+        _history = new TranscriptView(options.ReplTranscriptCapacity)
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(1 + BandRows + BelowRows),
-            ReadOnly = true,
-            Multiline = true,
-            // Display-only soft-wrap when enabled: Terminal.Gui keeps the original unwrapped model
-            // (WordWrapManager.Model) and re-maps the selection back to it, so copy/paste returns the
-            // source text with no injected CR. The horizontal scrollbar is auto-hidden while wrapping.
             WordWrap = options.ReplWordWrap,
             // Read-only display only — kept out of the focus cycle so Tab and the initial
             // focus go straight to the prompt input field. Mouse selection still works
             // (Terminal.Gui v2 raises OnMouseEvent on non-focusable views), and auto-copy
-            // hooks via MouseClipboardTextView regardless of focus state.
+            // hooks via TranscriptView regardless of focus state.
             CanFocus = false,
-            ScrollBars = true,
         };
+        _transcriptWrites = new AppendCoalescer<string?>(dispatcher, ApplyTranscriptWrites);
         _history.SetScheme(SchemeFactory.Pane());
 
         // The two bands of the interactive cluster, in the captures' order: status
@@ -227,11 +228,27 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     public void AppendOutput(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _dispatcher.Invoke(() =>
+        _transcriptWrites.Post(text);
+    }
+
+    // UI thread: applies a burst of transcript writes in posting order (null is a clear). The view
+    // follows the tail on its own while it sticks to the end; a user who scrolled up stays put.
+    private void ApplyTranscriptWrites(IReadOnlyList<string?> writes)
+    {
+        var pending = new System.Text.StringBuilder();
+        foreach (var write in writes)
         {
-            _history.Text += text;
-            _history.MoveEnd();
-        });
+            if (write is null)
+            {
+                pending.Clear();
+                _history.Clear();
+            }
+            else
+            {
+                pending.Append(write);
+            }
+        }
+        if (pending.Length > 0) _history.Append(pending.ToString());
     }
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
@@ -312,7 +329,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     public void Clear()
     {
-        _dispatcher.Invoke(() => _history.Text = string.Empty);
+        // Through the coalescer, so a clear stays ordered with the writes posted around it.
+        _transcriptWrites.Post(null);
     }
 
     public void FocusPrompt()
@@ -882,9 +900,13 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     internal string CurrentPlaceholder => _placeholder.Text;
 
     /// <summary>Test-only accessor for the history text.</summary>
-    // Terminal.Gui's TextView normalizes line endings to "\r\n" on the Text round-trip  —
-    // tests assert on the logical content we appended ("\n"), so strip the inserted CRs.
-    internal string CurrentHistory => _history.Text.Replace("\r\n", "\n", StringComparison.Ordinal);
+    internal string CurrentHistory => _history.TranscriptText;
+
+    /// <summary>Test-only accessor for the transcript model (line count, wrap work).</summary>
+    internal TranscriptBuffer Transcript => _history.Buffer;
+
+    /// <summary>Test-only accessor for the transcript view (its viewport and follow state).</summary>
+    internal TranscriptView HistoryView => _history;
 
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);

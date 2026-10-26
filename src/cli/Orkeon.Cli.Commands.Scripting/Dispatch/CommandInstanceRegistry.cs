@@ -17,6 +17,11 @@ public sealed class CommandInstanceRegistry
     private readonly ConcurrentDictionary<string, CommandInstance> _instances = new(StringComparer.Ordinal);
     private long _ticketSeq;
 
+    // Work in flight: each instance from its registration until its terminal observers have run, plus each
+    // piece of work held through BeginWork (a completed() drain). Never read as zero while a completion still
+    // settles, so a waiter that sees no work also sees every terminal event.
+    private int _inFlight;
+
     /// <summary>Maximum number of terminal entries kept before the oldest are evicted.</summary>
     public int RetentionLimit { get; init; } = 200;
 
@@ -32,17 +37,95 @@ public sealed class CommandInstanceRegistry
         Guid correlationId)
     {
         var ticket = "t" + Interlocked.Increment(ref _ticketSeq);
+        Interlocked.Increment(ref _inFlight);
         var instance = new CommandInstance(
             ticket, name ?? string.Empty, kind, targetAgent ?? string.Empty,
             intent ?? string.Empty, correlationId, DateTimeOffset.UtcNow)
         {
             // Evict once an instance reaches a terminal state — otherwise the most recently
             // completed entry would never trigger the budget check.
-            TerminalObserver = _ => EvictIfNeeded(),
+            TerminalObserver = settled =>
+            {
+                try
+                {
+                    EvictIfNeeded();
+                    InstanceTerminated?.Invoke(this, new CommandInstanceEventArgs(settled));
+                }
+                finally
+                {
+                    EndWork();
+                }
+            },
         };
         _instances[ticket] = instance;
         EvictIfNeeded();
+        InstanceRegistered?.Invoke(this, new CommandInstanceEventArgs(instance));
         return instance;
+    }
+
+    /// <summary>Raised once a new instance is registered, on the registering thread.</summary>
+    public event EventHandler<CommandInstanceEventArgs>? InstanceRegistered;
+
+    /// <summary>
+    /// Raised once an instance reaches a terminal state, on the thread that settled it: a completion signal
+    /// for whoever waits for the background work to end (a replay of the REPL), instead of polling.
+    /// </summary>
+    public event EventHandler<CommandInstanceEventArgs>? InstanceTerminated;
+
+    /// <summary>
+    /// Raised, on the thread that ended it, each time a piece of work in flight ended: an instance whose terminal
+    /// observers (<see cref="InstanceTerminated"/> among them) have all run, or a piece of work held through
+    /// <see cref="BeginWork"/>. A waiter for <see cref="HasRunning"/> to turn false waits on it.
+    /// </summary>
+    public event EventHandler? WorkSettled;
+
+    /// <summary>
+    /// Whether work is still in flight: an instance still <see cref="CommandInstanceState.Running"/>, one whose
+    /// terminal transition has not finished settling (its callbacks and <see cref="InstanceTerminated"/> still
+    /// run), or a piece of work held through <see cref="BeginWork"/> (a <c>completed()</c> drain).
+    /// </summary>
+    public bool HasRunning => Volatile.Read(ref _inFlight) > 0;
+
+    /// <summary>
+    /// Holds a piece of work in flight until the handle is disposed: <see cref="HasRunning"/> stays true meanwhile.
+    /// The runner holds one for each <c>completed()</c> drain, from the moment its instance settles until the drain,
+    /// and every launch it made is registered.
+    /// </summary>
+    public IDisposable BeginWork()
+    {
+        Interlocked.Increment(ref _inFlight);
+        return new WorkHandle(this);
+    }
+
+    /// <summary>
+    /// Raised, on the draining thread, when the <c>completed()</c> callback of an instance threw or rejected (an engine
+    /// limit included): an error of the line that launched it for a replay of the REPL. Raised while the drain is
+    /// still work in flight, so a waiter that sees no work has seen it.
+    /// </summary>
+    public event EventHandler<CommandCompletionFailedEventArgs>? CompletionFailed;
+
+    /// <summary>Reports that the <c>completed()</c> callback of <paramref name="instance"/> failed with <paramref name="error"/>.</summary>
+    public void ReportCompletionFailure(CommandInstance instance, string error)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+        CompletionFailed?.Invoke(this, new CommandCompletionFailedEventArgs(instance, error));
+    }
+
+    private void EndWork()
+    {
+        Interlocked.Decrement(ref _inFlight);
+        WorkSettled?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class WorkHandle(CommandInstanceRegistry owner) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                owner.EndWork();
+        }
     }
 
     /// <summary>Returns the instance for <paramref name="ticket"/>, or <see langword="null"/>.</summary>

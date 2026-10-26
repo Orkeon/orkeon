@@ -5,6 +5,22 @@ public sealed class FileSystemRegistry : IDisposable
 {
     private readonly List<FileSystemMount> _mounts;
     private readonly ReaderWriterLockSlim _lock = new();
+    private string? _workingDirectory;
+    private string? _writeDirectory;
+
+    /// <summary>
+    /// The virtual root a registry takes as its working directory when nobody designated one and
+    /// an agent-facing mount claims it. Same spelling as <c>RunnerVirtualRoots.Workspace</c>,
+    /// which the domain cannot reference (ADR-009); a test pins the two together.
+    /// </summary>
+    public const string DefaultWorkingDirectory = "/workspace";
+
+    /// <summary>
+    /// The virtual root a registry takes as its write directory when nobody designated one and an
+    /// agent-facing mount claims it with the Write right. Same spelling as
+    /// <c>RunnerVirtualRoots.Output</c>, which the domain cannot reference (ADR-009).
+    /// </summary>
+    public const string DefaultWriteDirectory = "/output";
 
     /// <summary>Initializes the registry with the specified mounts.</summary>
     public FileSystemRegistry(IEnumerable<FileSystemMount> mounts)
@@ -57,6 +73,107 @@ public sealed class FileSystemRegistry : IDisposable
 
             _mounts.Add(mount);
             _mounts.Sort((a, b) => b.VirtualPath.Length.CompareTo(a.VirtualPath.Length));
+        }
+        finally { _lock.ExitWriteLock(); }
+    }
+
+    /// <summary>
+    /// The virtual directory a relative path is resolved against, and the one a shell command
+    /// runs in when it names none: the directory designated by <see cref="SetWorkingDirectory"/>
+    /// while its mount is still registered, else <see cref="DefaultWorkingDirectory"/> when an
+    /// agent-facing mount claims it, else <see langword="null"/> (no working directory: a relative
+    /// path is refused).
+    /// </summary>
+    public string? WorkingDirectory
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (_workingDirectory is not null && FindAgentFacingMountUnsafe(_workingDirectory) is not null)
+                    return _workingDirectory;
+                return FindAgentFacingMountUnsafe(DefaultWorkingDirectory) is { } workspace
+                       && string.Equals(workspace.VirtualPath, DefaultWorkingDirectory, StringComparison.Ordinal)
+                    ? DefaultWorkingDirectory
+                    : null;
+            }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
+
+    /// <summary>
+    /// Designates the working directory (see <see cref="WorkingDirectory"/>). A host calls it when
+    /// the mount its agents work in is not <see cref="DefaultWorkingDirectory"/>.
+    /// </summary>
+    /// <param name="virtualPath">
+    /// An absolute virtual path inside an agent-facing mount: a working directory an agent cannot
+    /// address would hand it relative paths it could never spell back.
+    /// </param>
+    /// <exception cref="ArgumentException">The path is not absolute, holds a <c>.</c> or <c>..</c> segment, or no agent-facing mount holds it.</exception>
+    public void SetWorkingDirectory(string virtualPath)
+    {
+        var normalized = NormalizeDesignatedDirectory(virtualPath, "working", DefaultWorkingDirectory);
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (FindAgentFacingMountUnsafe(normalized) is null)
+                throw new ArgumentException(
+                    $"No agent-facing mount holds the working directory '{virtualPath}'.",
+                    nameof(virtualPath));
+            _workingDirectory = normalized;
+        }
+        finally { _lock.ExitWriteLock(); }
+    }
+
+    /// <summary>
+    /// The virtual directory a writing shell command runs in when it names no directory, runs
+    /// under no agent root, and the <see cref="WorkingDirectory"/> does not grant it the rights it
+    /// needs (a read-only <c>/workspace</c> beside a writable <c>/output</c>): the directory
+    /// designated by <see cref="SetWriteDirectory"/> while its mount is still registered and
+    /// writable, else <see cref="DefaultWriteDirectory"/> when an agent-facing mount claims it with
+    /// the Write right, else <see langword="null"/>. Never chosen from the order of the mounts.
+    /// </summary>
+    public string? WriteDirectory
+    {
+        get
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                if (_writeDirectory is not null && FindWritableAgentFacingMountUnsafe(_writeDirectory) is not null)
+                    return _writeDirectory;
+                return FindWritableAgentFacingMountUnsafe(DefaultWriteDirectory) is { } output
+                       && string.Equals(output.VirtualPath, DefaultWriteDirectory, StringComparison.Ordinal)
+                    ? DefaultWriteDirectory
+                    : null;
+            }
+            finally { _lock.ExitReadLock(); }
+        }
+    }
+
+    /// <summary>
+    /// Designates the write directory (see <see cref="WriteDirectory"/>). A host calls it when the
+    /// writable mount its agents produce in is not <see cref="DefaultWriteDirectory"/>.
+    /// </summary>
+    /// <param name="virtualPath">
+    /// An absolute virtual path, without a <c>.</c> or <c>..</c> segment, inside an agent-facing
+    /// mount whose effective rights on that path (subtree overrides included) grant Write.
+    /// </param>
+    /// <exception cref="ArgumentException">The path is not absolute, holds a <c>.</c> or <c>..</c> segment, or no agent-facing mount grants Write on it.</exception>
+    public void SetWriteDirectory(string virtualPath)
+    {
+        var normalized = NormalizeDesignatedDirectory(virtualPath, "write", DefaultWriteDirectory);
+
+        _lock.EnterWriteLock();
+        try
+        {
+            if (FindWritableAgentFacingMountUnsafe(normalized) is null)
+                throw new ArgumentException(
+                    $"No agent-facing mount grants Write on the write directory '{virtualPath}'.",
+                    nameof(virtualPath));
+            _writeDirectory = normalized;
         }
         finally { _lock.ExitWriteLock(); }
     }
@@ -114,8 +231,14 @@ public sealed class FileSystemRegistry : IDisposable
                 var described = visible.Select(m => m.DefaultRights.HasFlag(FileAccessRights.Write)
                     ? $"{m.VirtualPath} (writable)"
                     : $"{m.VirtualPath} (read-only)");
+                // The hint shows the shape of an address: a model that wrote a path relative to the
+                // project (src/stats.js) learns how to spell it, not only where it could go.
+                var example = visible.FirstOrDefault(m => m.VirtualPath == DefaultWorkingDirectory)?.VirtualPath
+                              ?? visible.LastOrDefault()?.VirtualPath
+                              ?? DefaultWorkingDirectory;
                 throw new FileAccessDeniedException(
-                    $"No mount found for virtual path '{virtualPath}'. Available mounts: {string.Join(", ", described)}",
+                    $"No mount found for virtual path '{virtualPath}': a path starts with a mount: {example.TrimEnd('/')}/src/stats.js. " +
+                    $"Available mounts: {string.Join(", ", described)}",
                     virtualPath,
                     requiredRight,
                     availableVirtualPaths);
@@ -327,6 +450,41 @@ public sealed class FileSystemRegistry : IDisposable
             }
         }
         return null;
+    }
+
+    private FileSystemMount? FindAgentFacingMountUnsafe(string virtualPath) =>
+        FindMountUnsafe(virtualPath) is { Visibility: MountVisibility.AgentFacing } mount ? mount : null;
+
+    /// <summary>
+    /// The agent-facing mount holding <paramref name="virtualPath"/> when the effective rights of
+    /// that exact path grant Write: a subtree override that removes Write (<c>/output/ro</c>)
+    /// counts, as it does when the path is resolved.
+    /// </summary>
+    private FileSystemMount? FindWritableAgentFacingMountUnsafe(string virtualPath) =>
+        FindAgentFacingMountUnsafe(virtualPath) is { } mount
+        && mount.ResolveRights(ExtractRelativePath(virtualPath, mount.VirtualPath)).HasFlag(FileAccessRights.Write)
+            ? mount
+            : null;
+
+    /// <summary>
+    /// The spelling a designated directory is kept under: absolute, without a trailing slash, and
+    /// without a <c>.</c> or <c>..</c> segment. Such a segment is refused rather than resolved: the
+    /// registry checks a designation against its mounts, and resolution would refuse
+    /// <c>/output/../workspace</c> as a traversal at every command after accepting it here.
+    /// </summary>
+    private static string NormalizeDesignatedDirectory(string virtualPath, string kind, string example)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+        if (!normalized.StartsWith('/'))
+            throw new ArgumentException(
+                $"A {kind} directory is an absolute virtual path, e.g. {example}; '{virtualPath}' is not.",
+                nameof(virtualPath));
+        if (normalized.Replace('\\', '/').Split('/').Any(segment => segment is "." or ".."))
+            throw new ArgumentException(
+                $"A {kind} directory names its directory without '.' or '..' segments, e.g. {example}; '{virtualPath}' does not.",
+                nameof(virtualPath));
+        return normalized;
     }
 
     private static string ExtractRelativePath(string virtualPath, string mountVirtualPath)

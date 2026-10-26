@@ -21,9 +21,11 @@ public sealed record ShellCommandRequest
     public string Command { get; init; } = "";
 
     /// <summary>
-    /// Gets the virtual working directory for command execution. Left empty, a read-only command
-    /// runs in the first mounted directory the agent can read, any other command in the first
-    /// one that grants every right.
+    /// Gets the virtual working directory for command execution. Left empty, the command runs in
+    /// the working directory every file tool resolves a relative path against: the agent's root
+    /// under an agent run, else the file system's working directory (<c>/workspace</c> when it is
+    /// mounted, or the one the host designated). A relative value is resolved against that same
+    /// directory.
     /// <para>
     /// This used to default to <c>"."</c>, which no VFS registry can resolve: since ADR-008 a
     /// virtual path starts with '/', so the lookup found no mount and every call that omitted
@@ -32,7 +34,7 @@ public sealed record ShellCommandRequest
     /// </para>
     /// </summary>
     [FieldSchema(
-        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the first mounted directory the command may use: readable for a read-only command, writable for any other.",
+        Description = "Virtual working directory for command execution, e.g. /workspace. Defaults to the working directory relative file paths resolve against (the agent's root, else /workspace); outside an agent root, a writing command that directory does not allow runs in the write directory (/output).",
         IsRequired = false,
         Example = "/workspace")]
     public string WorkingDirectory { get; init; } = "";
@@ -548,8 +550,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (argumentDenial is not null)
             return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
 
+        // The guard judges the directory the command will run in: a relative one is made absolute
+        // first, or '../p2' under the root /workspace/wt/p1 reads as '/p2' and escapes the root.
         if (!string.IsNullOrWhiteSpace(request.WorkingDirectory)
-            && AgentRootGuard.Check(_fileSystem, request.WorkingDirectory) is { } workingDirectoryDenial)
+            && AgentRootGuard.Check(_fileSystem, WorkingDirectoryResolver.Absolutize(request.WorkingDirectory, _fileSystem)) is { } workingDirectoryDenial)
             return $"WorkingDirectory denied: {workingDirectoryDenial.DenialReason}";
 
         // A root whose rights are None grants nothing to bind: the command does not run (RT-06).
@@ -1063,52 +1067,92 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     // ── VFS path rewriting ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Rewrites mount-prefixed virtual arguments to their physical paths. Returns the
-    /// original array untouched together with the (already redacted) denial reason when
-    /// the file system refuses one of them. No mounts ⇒ exact no-op.
-    /// </summary>
-    /// <summary>
     /// The physical directory the child process starts in, or the denial to report.
     /// <para>
-    /// A named directory is resolved and rights-checked like any other path. Named nothing,
-    /// the command runs in the first agent-facing mount that grants Read — deterministic
-    /// (the registry orders its mounts) and a place the caller was already told about, since
-    /// it comes from the list the tool schema and every denial message are built from. With
-    /// no mounts at all the process inherits its parent's directory, the same "no mounts ⇒
-    /// exact no-op" stance the argument rewriting takes.
+    /// A named directory is made absolute against the working directory when it is relative,
+    /// then resolved and rights-checked like any other path. Named nothing, the command runs in
+    /// <see cref="WorkingDirectoryResolver.Current"/>: the agent's root under an agent run, else the
+    /// file system's working directory, the same directory the file tools resolve a relative
+    /// path against (#199). With no mounts at all the process inherits its parent's directory,
+    /// the same "no mounts means exact no-op" stance the argument rewriting takes. With mounts but
+    /// no working directory the call is refused with a reason that says how to name one: guessing
+    /// one is what the removed fallback did.
     /// </para>
     /// <para>
-    /// The default used to be the literal <c>"."</c>, which no registry can resolve: a mount's
-    /// virtual path starts with '/' (ADR-008), so the lookup found nothing and every call that
-    /// omitted the field — the shape a model writes for an optional field — was refused.
+    /// That fallback took the first agent-facing mount granting the rights asked, in the
+    /// registry's order (longest virtual path first): with <c>/session-history</c> registered,
+    /// a read-only command ran there instead of in <c>/workspace</c>. The default before it was
+    /// the literal <c>"."</c>, which no registry can resolve (ADR-008).
+    /// </para>
+    /// <para>
+    /// A command named no directory, run under no agent root, whose working directory is refused
+    /// for its rights alone (it lacks one of the rights <see cref="RequiredPathRights"/> yields:
+    /// Read for a read-only command, every right - read, write, create, delete - for any other,
+    /// so a writing command in the read-only <c>/workspace</c> of <c>orkeon forge</c>) runs in the
+    /// designated write directory instead (<see cref="IFileSystemService.WriteDirectory"/>,
+    /// <c>/output</c> by default): a choice the host makes, never the order of the mounts. A
+    /// working directory granting every right never falls back. Under an agent root the root
+    /// rules, any other refusal (no mount, a traversal, a reserved path) is reported as is, and
+    /// with no write directory the refusal names the option.
     /// </para>
     /// </summary>
     private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
         string requested, FileAccessRights rights)
     {
-        if (string.IsNullOrWhiteSpace(requested))
-            requested = AgentRunScope.Current?.Root ?? requested;
+        var named = !string.IsNullOrWhiteSpace(requested);
+        var virtualDirectory = named
+            ? WorkingDirectoryResolver.Absolutize(requested, _fileSystem)
+            : WorkingDirectoryResolver.Current(_fileSystem);
 
-        if (!string.IsNullOrWhiteSpace(requested))
+        if (string.IsNullOrWhiteSpace(virtualDirectory))
         {
-            var named = _fileSystem.ResolveAndValidate(requested, rights);
-            return named.IsAllowed ? (named.ResolvedPath!, null) : ("", named.DenialReason);
+            var mounts = _fileSystem.GetAvailableMounts();
+            if (mounts.Count == 0)
+                return ("", null);
+
+            return ("", "no working directory is set: name one in working_directory, an absolute virtual path "
+                + $"that starts with a mount ({string.Join(", ", mounts.Select(m => m.VirtualPath))}).");
         }
 
-        var mounts = _fileSystem.GetAvailableMounts();
-        if (mounts.Count == 0)
-            return ("", null);
+        if (AgentRootGuard.Check(_fileSystem, virtualDirectory) is { } outsideRoot)
+            return ("", outsideRoot.DenialReason);
 
-        var usable = mounts.FirstOrDefault(m => (m.DefaultRights & rights) == rights);
-        if (usable is null)
-            return ("", rights == FileAccessRights.Read
-                ? "no readable mount is available to serve as the working directory."
-                : "no mount grants every right, so none can serve as the working directory.");
+        var resolved = _fileSystem.ResolveAndValidate(virtualDirectory, rights);
+        if (resolved.IsAllowed)
+            return (resolved.ResolvedPath!, null);
+        if (named || AgentRunScope.Current?.Root is not null || !IsRightsDenial(virtualDirectory))
+            return ("", resolved.DenialReason);
 
-        var resolved = _fileSystem.ResolveAndValidate(usable.VirtualPath, rights);
-        return resolved.IsAllowed ? (resolved.ResolvedPath!, null) : ("", resolved.DenialReason);
+        var writeDirectory = _fileSystem.WriteDirectory;
+        if (string.IsNullOrWhiteSpace(writeDirectory)
+            || string.Equals(writeDirectory, virtualDirectory, StringComparison.Ordinal))
+            return ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
+
+        var fallback = _fileSystem.ResolveAndValidate(writeDirectory, rights);
+        return fallback.IsAllowed
+            ? (fallback.ResolvedPath!, null)
+            : ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
     }
 
+    /// <summary>
+    /// Whether the working directory was refused for its rights alone: the same resolution asking
+    /// no right succeeds, so the mount exists, the path stays inside it and the path validator
+    /// accepts it. Any other refusal (no mount, a traversal, a reserved path) is reported as is:
+    /// running elsewhere would hide it.
+    /// </summary>
+    private bool IsRightsDenial(string virtualDirectory)
+        => _fileSystem.ResolveAndValidate(virtualDirectory, FileAccessRights.None).IsAllowed;
+
+    /// <summary>What a refused command without a directory can do: name one, or have the host designate one.</summary>
+    private const string NoWriteDirectoryHint =
+        "No write directory grants it either: name a writable directory in working_directory, "
+        + "or designate one with Orkeon:FileSystem:WriteDirectory.";
+
+    /// <summary>
+    /// Rewrites mount-prefixed virtual arguments to their physical paths. Returns the
+    /// original array untouched together with the (already redacted) denial reason when
+    /// the file system refuses one of them. No mounts ⇒ exact no-op.
+    /// </summary>
     private (string[] Arguments, string? DenialReason) RewriteInboundArguments(
         string[] arguments, FileAccessRights rights)
     {
@@ -1136,7 +1180,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// its read-only restriction holds) reads what it is given, so Read is what it uses. Any
     /// other command (an interpreter, an extra or custom command, <c>git</c> once interpreters
     /// lift its restriction) may write, create or delete there, and nothing tells which, so its
-    /// paths need every right. Asking it for Read alone looked like a guarantee the tool did not
+    /// paths need every right: <see cref="FileAccessRights.ReadWrite"/>, that is read, write,
+    /// create and delete together, not Write alone. Asking it for Read alone looked like a guarantee the tool did not
     /// give: <c>find /docs -delete</c> passed on a read-only <c>/docs</c>.
     /// </para>
     /// </summary>

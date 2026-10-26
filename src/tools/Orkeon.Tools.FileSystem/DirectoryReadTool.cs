@@ -143,9 +143,9 @@ public partial class DirectoryReadTool : FileToolBase<DirectoryReadRequest, Dire
         {
             var pathValidation = ResolveVirtualPath(request.Path, FileAccessRights.Read);
             var resolvedPath = pathValidation.ResolvedPath!;
-            var displayPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? request.Path;
+            var displayPath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
-            var vPath = request.Path;
+            var vPath = AbsolutizePath(request.Path);
 
             await EnsureDirectoryExistsAsync(vPath, displayPath, cancellationToken).ConfigureAwait(false);
 

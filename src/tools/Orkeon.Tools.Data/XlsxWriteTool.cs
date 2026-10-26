@@ -118,12 +118,16 @@ public partial class XlsxWriteTool : FileToolBase<XlsxWriteRequest, XlsxWriteRes
 
         async Task<XlsxWriteResponse> ExecuteTypedCoreAsync()
         {
+            // The absolute virtual path the validation judged: a relative path resolves
+            // against the working directory, and every call below addresses that same file.
+            var path = AbsolutizePath(request.FilePath);
+
             int totalSheetCount;
 
             // Build the workbook in memory, then commit the bytes through the
             // virtual file system so the physical mount location is resolved by the VFS.
             var existingBytes = request.AppendToExisting
-                ? await _fileSystemService.TryReadAllBytesAsync(request.FilePath, cancellationToken).ConfigureAwait(false)
+                ? await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 : null;
 
             byte[] bytes;
@@ -143,14 +147,14 @@ public partial class XlsxWriteTool : FileToolBase<XlsxWriteRequest, XlsxWriteRes
                 bytes = outputStream.ToArray();
             }
 
-            var fileSize = await _fileSystemService.WriteAllBytesAsync(request.FilePath, bytes, cancellationToken).ConfigureAwait(false);
+            var fileSize = await _fileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
 
-            LogWriteXlsx(request.FilePath, totalSheetCount);
+            LogWriteXlsx(path, totalSheetCount);
 
             return new XlsxWriteResponse
             {
                 Success = true,
-                FilePath = request.FilePath,
+                FilePath = path,
                 FileSize = fileSize,
                 SheetCount = totalSheetCount
             };

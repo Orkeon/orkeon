@@ -165,7 +165,7 @@ public partial class CountPatternTool : FileToolBase<CountPatternRequest, CountP
             if (!validation.IsAllowed)
                 throw new InvalidOperationException(validation.DenialReason ?? "Invalid or unsafe file path");
 
-            var virtualPath = _fs.ToVirtualPath(validation.ResolvedPath!) ?? request.Path;
+            var virtualPath = _fs.ToVirtualPath(validation.ResolvedPath!) ?? AbsolutizePath(request.Path);
             if (!await _fs.ExistsAsync(virtualPath, cancellationToken).ConfigureAwait(false))
                 throw new FileNotFoundException($"File not found: {virtualPath}");
 

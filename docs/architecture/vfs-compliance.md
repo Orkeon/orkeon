@@ -141,6 +141,55 @@ states the right it needs and the registry refuses the call when the mount (or t
 override) does not grant it. `MountVisibility` is `AgentFacing` (the default, listed by
 `GetAvailableMounts` and in the agent prompt) or `Internal` (below).
 
+## Working directory and relative paths
+
+The registry holds one **working directory** (`FileSystemRegistry.WorkingDirectory`, exposed as
+`IFileSystemService.WorkingDirectory`): the directory a host designated with
+`SetWorkingDirectory(virtualPath)` (an absolute path inside an agent-facing mount, without `.` or
+`..` segments) while its mount is registered, else `/workspace` when an agent-facing mount claims
+it, else none. The runners designate it from `Orkeon:FileSystem:WorkingDirectory`, else take
+`/workspace`, else `/output`; a per-execution registry (`ScopedMountComposition`) keeps
+the boot one while it still mounts it.
+
+- A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`,
+  `directory_search`, `count_pattern`, the `node_*` tools, `edit_batch`, and the data tools
+  `csv_reader`, `docx_reader`, `docx_writer`, `xlsx_reader`, `xlsx_writer`, `pdf_reader`,
+  `xml_parser`) resolves a **relative path**
+  against the agent's `working_root` when it has one, else against the working directory
+  (`WorkingDirectoryResolver.Absolutize`): `src/./lib/../stats.js` becomes
+  `/workspace/src/stats.js`, every later call addresses that path, and the response echoes it. The path is made absolute
+  **before** the mount check and the root guard, so `../p2/x` from a root `/workspace/wt/p1` is
+  refused as outside the root. With no working directory a relative path is refused as before.
+  `structural_search` and `structural_rewrite` (`paths`), `txt_search` and `mdx_search` (`path`)
+  resolve the same way, and every tool of this list, `node_outline` and `node_read` included,
+  refuses a path outside the agent's root before any I/O.
+- An empty `path` is refused with
+  `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`.
+- A path that starts with no mount is refused with the shape of an address:
+  `No mount found for virtual path 'x': a path starts with a mount: /workspace/src/stats.js. Available mounts: ...`.
+- `shell_command` without `working_directory` runs in the agent's root, else in the working
+  directory; a relative `working_directory` resolves the same way. It no longer falls back to the
+  first mount that grants the rights (which could be `/session-history`): with mounts but no
+  working directory the call is refused and names the mounts. The relative `working_directory` is
+  made absolute before the root guard, so `../p2` from a root `/workspace/wt/p1` is refused.
+- A **write directory** (`FileSystemRegistry.WriteDirectory`, `IFileSystemService.WriteDirectory`)
+  takes a writing `shell_command` that names no `working_directory`, runs under no agent root, and
+  whose working directory is refused for its rights alone. A writing command (any command but the
+  read-only allowlist) needs every right on its working directory: read, write, create and delete;
+  a read-only `/workspace`, as in `orkeon forge`, lacks them. Any other refusal (no mount, a
+  traversal, a path the runtime reserves, the path validator) is reported as is. It is the
+  directory designated by `Orkeon:FileSystem:WriteDirectory` (`SetWriteDirectory`, an absolute path
+  without `.` or `..` segments whose effective rights, subtree overrides included, grant Write in
+  an agent-facing mount, else the host refuses to start), else `/output` when an agent-facing mount
+  grants Write there, else none. It never comes from the order of the mounts. Nothing changes when
+  the working directory grants every right (a `/workspace` mounted read-write); under an agent root
+  there is no fallback; with no write directory the refusal names the option. The file
+  tools' relative paths still resolve against the working directory only.
+- A per-execution registry carries the boot working and write directories forward
+  (`WorkingDirectoryDesignation.CarryForward`) while it still mounts them; the `orkeon forge`
+  trial (`ForgeTrialScope.Compose`) goes through it too, else it takes its own `/workspace` or
+  `/output`.
+
 ## Agent working root vs mount
 
 An agent may declare a `working_root` (YAML; `AgentBuilder.WorkingRoot(string)`; `.workingRoot(path)` on a

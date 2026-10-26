@@ -195,6 +195,157 @@ public sealed class LlmLoggingStreamingTests
     }
 
     [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheCacheCounts_WhenADeepSeekStreamReportsThem()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":1000,"completion_tokens":50,"total_tokens":1050,"prompt_cache_hit_tokens":896,"prompt_cache_miss_tokens":104}""");
+
+        var hit = usage.GetProperty("prompt_cache_hit_tokens").GetInt32();
+        var miss = usage.GetProperty("prompt_cache_miss_tokens").GetInt32();
+        Assert.Equal(896, hit);
+        Assert.Equal(104, miss);
+        Assert.Equal(usage.GetProperty("prompt_tokens").GetInt32(), hit + miss);
+        Assert.Equal(1050, usage.GetProperty("total_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheTokenDetails_WhenAnOpenAiShapedStreamReportsThem()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":800,"completion_tokens":300,"total_tokens":1100,"prompt_tokens_details":{"cached_tokens":640},"completion_tokens_details":{"reasoning_tokens":220}}""");
+
+        Assert.Equal(640, usage.GetProperty("prompt_tokens_details").GetProperty("cached_tokens").GetInt32());
+        Assert.Equal(220, usage.GetProperty("completion_tokens_details").GetProperty("reasoning_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheCost_WhenTheStreamReportsOne()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"cost":0.00042}""");
+
+        Assert.Equal(0.00042, usage.GetProperty("cost").GetDouble(), 10);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogExactlyTheThreeTotals_WhenTheStreamReportsNothingElse()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"total_tokens":15,"prompt_tokens":10,"completion_tokens":5}""");
+
+        var names = usage.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(["completion_tokens", "prompt_tokens", "total_tokens"], names);
+        Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
+        Assert.Equal(10, usage.GetProperty("prompt_tokens").GetInt32());
+        Assert.Equal(5, usage.GetProperty("completion_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheThreeTotals_WhenTheVendorSplitsItsUsageAcrossChunks()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":1000,"prompt_cache_hit_tokens":896}""",
+            """{"completion_tokens":50,"total_tokens":1050}""",
+            "{}");
+
+        Assert.Equal(1000, usage.GetProperty("prompt_tokens").GetInt32());
+        Assert.Equal(50, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(1050, usage.GetProperty("total_tokens").GetInt32());
+        Assert.Equal(896, usage.GetProperty("prompt_cache_hit_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldFillTheMissingTotals_WhenTheLastUsageLacksThem()
+    {
+        // No usage object of the stream carries total_tokens: the logged one is filled.
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":10}""",
+            """{"completion_tokens":5}""",
+            """{"cost":0.00042}""");
+
+        Assert.Equal(10, usage.GetProperty("prompt_tokens").GetInt32());
+        Assert.Equal(5, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
+        Assert.Equal(0.00042, usage.GetProperty("cost").GetDouble(), 10);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheSumAsTheTotal_WhenTheVendorSendsNoTotal()
+    {
+        var usage = await LogStreamedUsageAsync("""{"prompt_tokens":10,"completion_tokens":5}""");
+
+        Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogNoTotal_WhenNothingWasCounted()
+    {
+        var usage = await LogStreamedUsageAsync("""{"cost":0.00042}""");
+
+        Assert.False(usage.TryGetProperty("total_tokens", out _), usage.GetRawText());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldRecomputeTheTotal_WhenALaterChunkChangesACountWithoutATotal()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":10,"completion_tokens":1,"total_tokens":11}""",
+            """{"completion_tokens":50}""");
+
+        Assert.Equal(50, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(60, usage.GetProperty("total_tokens").GetInt32());
+    }
+
+    /// <summary>Streams one answer whose last chunks carry <paramref name="usageJsons"/>, in order; returns the logged usage.</summary>
+    private static async Task<JsonElement> LogStreamedUsageAsync(params string[] usageJsons)
+    {
+        var cancellation = TestContext.Current.CancellationToken;
+        var sse = string.Join("\n\n",
+            [
+                """data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}""",
+                .. usageJsons.Select(usageJson => "data: {\"choices\":[],\"usage\":" + usageJson + "}"),
+                "data: [DONE]",
+            ]) + "\n\n";
+        var logger = new RecordingExchangeLogger();
+        using var inner = new MockHttpMessageHandler();
+        inner.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(sse))),
+        });
+#pragma warning disable CA2000 // Owned by the client, which is disposed.
+        using var client = new HttpClient(
+            new LlmLoggingDelegatingHandler(logger, NullLogger<LlmLoggingDelegatingHandler>.Instance, null) { InnerHandler = inner });
+#pragma warning restore CA2000
+        using var factory = new MockHttpClientFactory();
+        factory.SetDefaultClient(client);
+        // Any non-empty placeholder takes the streamed path.
+#pragma warning disable CS0618 // LlmConfig.ApiKey
+        var config = LlmConfig.Create("deepseek-chat") with { MaxRetries = 0, ApiKey = nameof(usageJsons) };
+#pragma warning restore CS0618
+        using var provider = new DeepSeekLlmProvider(
+            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), NullLogger<DeepSeekLlmProvider>.Instance);
+
+        await foreach (var _ in provider.ChatStreamingAsync([LlmMessage.User("hi")], cancellationToken: cancellation).WithCancellation(cancellation))
+        {
+            // Draining the stream is the act: the log record is written once it ends.
+        }
+
+        await Polling.WaitUntilAsync(() => logger.Records.Count >= 1);
+        var record = Assert.Single(logger.Records);
+        using var doc = JsonDocument.Parse(record.ResponseBody!);
+        return doc.RootElement.GetProperty("usage").Clone();
+    }
+
+    [Fact]
     [Trait("BR", "BR-15")]
     public async Task ShouldLogTheToolCalls_WhenAnAnthropicStreamCallsATool()
     {

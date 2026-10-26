@@ -101,6 +101,8 @@ Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.TreatControlCAsInput.set -> v
 static Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Instance.get -> Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe!
 Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8
 static Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8.IsUtf8(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplTranscriptCapacity.get -> int
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplTranscriptCapacity.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.get -> Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe!
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.init -> void
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool

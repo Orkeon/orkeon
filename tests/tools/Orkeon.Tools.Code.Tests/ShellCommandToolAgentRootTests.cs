@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
@@ -627,5 +628,186 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
 
         var bound = Assert.Single(Assert.Single(sandbox.Views).Paths);
         Assert.Equal("/workspace", bound.Destination);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRunReadInWorkspace_WhenNoRootAndSessionHistoryIsRegistered()
+    {
+        // /session-history (read-only) sorts before /workspace in the registry: the removed
+        // "first mount granting the rights" fallback ran a read-only command there.
+        var history = Path.Combine(_tempDir, "history");
+        var workspace = Path.Combine(_tempDir, "ws");
+        Directory.CreateDirectory(history);
+        Directory.CreateDirectory(workspace);
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(history, "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(workspace, "/workspace", FileAccessRights.ReadWrite),
+        ]);
+        var fileSystem = new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(fileSystem) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("git status", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(workspace, invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRefuseWithHint_WhenMountsButNoWorkingDirectory()
+    {
+        var data = Path.Combine(_tempDir, "data");
+        Directory.CreateDirectory(data);
+        using var registry = new FileSystemRegistry([new FileSystemMount(data, "/data", FileAccessRights.ReadWrite)]);
+        var fileSystem = new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(fileSystem) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("git status", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        var stderr = Assert.IsType<string>(result["stderr"]);
+        Assert.Contains("no working directory is set", stderr, StringComparison.Ordinal);
+        Assert.Contains("/data", stderr, StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldResolveRelativeWorkingDirectory_AgainstRoot()
+    {
+        var (tool, sandbox) = NewTool();
+        using var _ = tool;
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("echo x", "sub"), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "job", "sub"), invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuseShell_WhenRelativeWorkingDirectoryEscapesRoot()
+    {
+        // The guard used to judge the raw "../other", normalised to "/other" on no mount: allowed,
+        // and the command then ran in /workspace/other, outside the root.
+        var (tool, sandbox) = NewTool();
+        using var _ = tool;
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("echo x", "../other"), Ct);
+
+        Assert.Contains("outside the agent working root", ErrorOf(response), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    /// <summary>
+    /// The mounts of <c>orkeon forge</c>: a read-only <c>/workspace</c> beside a writable
+    /// <c>/output</c>, unless <paramref name="writableWorkspace"/>; <c>/output</c> is left out
+    /// when <paramref name="withOutput"/> is false.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the duration of the test.")]
+    private FileSystemService ForgeLikeFileSystem(bool writableWorkspace = false, bool withOutput = true, StubPathValidator? validator = null)
+    {
+        var workspace = Directory.CreateDirectory(Path.Combine(_tempDir, "ws", "job")).Parent!.FullName;
+        var output = Directory.CreateDirectory(Path.Combine(_tempDir, "out")).FullName;
+        List<FileSystemMount> mounts =
+            [new FileSystemMount(workspace, "/workspace", writableWorkspace ? FileAccessRights.ReadWrite : FileAccessRights.ReadOnly)];
+        if (withOutput)
+            mounts.Add(new FileSystemMount(output, "/output", FileAccessRights.ReadWrite));
+        var registry = new FileSystemRegistry(mounts);
+        return new FileSystemService(registry, validator ?? new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldNotFallBackToTheWriteDirectory_WhenTheWorkspaceIsRefusedForAnotherReason()
+    {
+        // The workspace grants every right, but the path validator refuses it: that is no
+        // rights denial, and running in /output instead would hide the refusal.
+        var workspace = Path.Combine(_tempDir, "ws");
+        var validator = new StubPathValidator().RespondWith((p, _) =>
+            string.Equals(p, workspace, StringComparison.Ordinal)
+                ? PathValidationResult.Denied("refused by the path validator")
+                : PathValidationResult.Allowed(p));
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(writableWorkspace: true, validator: validator), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        Assert.Contains("refused by the path validator", Assert.IsType<string>(result["stderr"]), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRunAWritingCommandInTheWriteDirectory_WhenTheWorkspaceIsReadOnly()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "out"), invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldKeepTheWorkspace_WhenItIsWritable()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(writableWorkspace: true), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.True(response.Success, response.Error);
+        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        Assert.Equal(Path.Combine(_tempDir, "ws"), invocation.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldRefuseNamingTheOption_WhenNoWriteDirectoryExists()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(withOutput: false), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        Assert.Contains("Orkeon:FileSystem:WriteDirectory", Assert.IsType<string>(result["stderr"]), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldNotFallBackToTheWriteDirectory_UnderAnAgentRoot()
+    {
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        ToolCallResponse response;
+        await using (AgentRunScope.Begin("agent-1", "dev", Root))
+            response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
+        if (response.Result is Dictionary<string, object?> result)
+            Assert.False((bool)result["completed"]!);
+        else
+            Assert.False(response.Success);
     }
 }

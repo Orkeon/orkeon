@@ -1,3 +1,4 @@
+using Orkeon.Tools.Abstractions.Security;
 using System.Text.Json.Serialization;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.TreeSitter;
@@ -47,14 +48,28 @@ public sealed class NodeReadTool : ToolBase<NodeReadRequest, NodeReadResponse>
     public override string Description => "Reads one member of a file by selector: text, range and SHA-256, uncut.";
     public override ToolAccess Access => ToolAccess.Read;
 
+    // A missing path is named as such: the empty extension used to surface as
+    // "No tree-sitter grammar for extension ''" (#200). The path the tool will read is judged
+    // against the agent's root once made absolute, as every file tool does: '../p2' under a root
+    // must not reach the sibling worktree.
+    protected override string? ValidateTypedRequest(NodeReadRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (string.IsNullOrWhiteSpace(request.Path))
+            return WorkingDirectoryResolver.PathRequiredMessage;
+        return AgentRootGuard.Check(_fs, WorkingDirectoryResolver.Absolutize(request.Path, _fs))?.DenialReason;
+    }
+
     protected override async Task<NodeReadResponse> ExecuteTypedAsync(NodeReadRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var file = await StructuralFile.LoadAsync(_fs, _pool, request.Path).ConfigureAwait(false);
+        // A relative path resolves against the working directory, as for every file tool (#199).
+        var path = WorkingDirectoryResolver.Absolutize(request.Path, _fs);
+        var file = await StructuralFile.LoadAsync(_fs, _pool, path).ConfigureAwait(false);
         var node = file.Resolve(NodeSelector.Parse(request.Selector));
         return new NodeReadResponse
         {
-            Path = request.Path,
+            Path = path,
             Selector = node.Selector,
             Kind = node.Kind,
             Text = node.Text,

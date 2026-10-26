@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon-repl --replay <file>`: replay a session, line after line
+
+`orkeon-repl --replay <file>` feeds the lines of a file to the REPL as if typed (blank and `#` lines skipped, a
+relative path read against the working directory), waits before each line until no command instance runs — background
+crews included — or a question asks for the line (a tool-call approval, `human_input`), and stops at the first error
+with `replay stopped at line N: <cause>`. Alone it runs the plain console, echoes each line, writes the logs to stderr
+and exits `0` (every line passed), `1` (stopped on an error) or `2` (file missing or unreadable); with `--interactive`
+it hands the keyboard back. `/replay <file>` does the same inside a session. One line answers one approval; a
+session-wide answer (`s`) also settles the queued approvals of the same tool, so the file carries no line for them. A
+question still waiting when the file ends stops the replay (`replay ended with an approval waiting: <tool>`, exit `1`),
+as does a command reading past the end (its read gets the end of the input, under `--interactive` too); a REPL that
+throws under `--replay` alone exits `1` with one line on stderr. The replay concludes only once the command in flight,
+its background work and their `completed()` callbacks have ended; a `completed()` that throws stops the replay at
+the line that launched it (`[t1] <command> completed() failed: <error>`), one that only runs long is waited for. Ctrl-C (Esc Esc in the TUI)
+stops the replay; a second Ctrl-C while it is still stopping ends the process (exit `130`). New `--log-level <level>`,
+also the starting level of the TUI's logs pane; `--replay` and `--log-level` refuse a value that starts with `--`.
+
+**API:** `CommandResult.Fail(message)` and `CommandResult.Failed` (Orkeon.Cli.Abstractions) mark a command that
+failed; a scripted command's error, rejection or quota refusal now returns it, as do the usage errors of `inspect`,
+`result`, `cancel` and `help-cmd` and an unknown ticket — the message printed is unchanged.
+`InteractiveRunnerBase.OnCommandOutcome` and `ICommandOutcomeObserver` report each command's outcome;
+`IToolApprovalWatch.PendingChanged` and `PendingToolApproval.Id`, `CommandInstanceRegistry.InstanceRegistered` /
+`InstanceTerminated` / `WorkSettled` / `CompletionFailed` / `HasRunning` / `BeginWork` signal the work in flight (an instance counts until its
+terminal observers have run, a `completed()` drain until it ended); `DefaultCommandRegistry` takes a host's own built-ins.
+
+### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount **[breaking]** (#199, #200)
+
+A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`, `directory_search`,
+`count_pattern`, `node_*`, `edit_batch`, and the data tools `csv_reader`, `docx_reader`, `docx_writer`,
+`xlsx_reader`, `xlsx_writer`, `pdf_reader`, `xml_parser`) resolves a relative `path` against the agent's working root,
+else the file system's new working directory (`IFileSystemService.WorkingDirectory`: the one a host designates with
+`Orkeon:FileSystem:WorkingDirectory` or `FileSystemRegistry.SetWorkingDirectory`, else `/workspace` when mounted; the
+runners fall back to `/output`), and echoes the absolute path. The path is made absolute before the mount check and the root guard.
+An empty `path` is refused with `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`, and a
+path in no mount says `a path starts with a mount: /workspace/src/stats.js`. `node_outline`, `node_read` and
+`directory_search` go through the same resolution, and so do `structural_search`, `structural_rewrite` (`paths`),
+`txt_search` and `mdx_search`; every one of them, `node_outline` and `node_read` included, now refuses a path outside
+the agent root before any I/O.
+
+**Behaviour change:** `shell_command` without `working_directory` ran in the first mount granting the rights — a
+read-only command could land in `/session-history`. It now runs in the agent's root, else the working directory; with
+mounts but no working directory it is refused, naming the mounts. A host without `/workspace` designates its working
+mount (`Orkeon:FileSystem:WorkingDirectory`, or `SetWorkingDirectory`). A relative `working_directory` is made
+absolute before the root guard, so `../p2` cannot leave the agent root. Where the working directory is refused for
+its rights alone (a writing command needs every right on it: read, write, create, delete; a read-only `/workspace`, as
+in `orkeon forge`), the command runs outside any agent root in the new write directory:
+`Orkeon:FileSystem:WriteDirectory` (an absolute path without `.` or `..` segments whose effective rights, subtree
+overrides included, grant Write), else `/output` when an agent-facing mount grants Write there — never the order of the
+mounts; any other refusal of the working directory is reported as is; with none it is refused, naming the option, and under an agent root it never
+moves. The file tools' relative paths still resolve against the working directory only. The `orkeon forge` trial
+carries the host's working and write directories forward while it still mounts them.
+
+### Added — scripted commands read the pending tool approvals (#198)
+
+A `*.cmd.ts` command reads the tool approvals waiting for the operator through
+`ctx.services.get("approvals")` (`ScriptServiceKeys.Approvals`, an optional entry of the default whitelist,
+present when the host registers `IToolApprovalWatch`, as `AddConsoleToolApproval` does). It is read-only:
+`list()` returns `{ taskId, command, tool, input }` per approval waiting, and an empty list once the operator
+has answered. `input` is the call's input as the TUI status line shows it: the summary moves from
+`StatusLineFormatter.ComposeApproval` to `PendingToolApprovalInput` (`Orkeon.Cli.Abstractions`), which both
+now call. The typings declare `PendingApprovals` and `PendingApproval`, and `get("approvals")` returns the
+former without a type argument.
+
+### Fixed — the TUI no longer rebuilds a whole pane for each appended line (#196)
+
+While a background crew ran, the Terminal.Gui loop thread spent most of its time rebuilding text: every line written
+to the REPL transcript (`_history.Text += text`) or to the logs pane (a join of the whole ring buffer, then
+`TextView.Text`) re-parsed and re-wrapped the whole pane, even with the logs pane hidden, so typing lagged and the
+spinner slowed. Both panes now draw from a line-based, bounded model (`TranscriptView`, `TranscriptBuffer`) that wraps
+only the lines added and drops head lines past the capacity; `TextView.InsertText` was not usable for this (it refuses a
+read-only view, records undo history and re-wraps the whole text on every character with word wrap on). Writes are
+coalesced (`AppendCoalescer`): a burst costs one `Application.Invoke`, not one per line. The logs ring buffer is fed on
+the caller's thread and a hidden logs pane does no UI work; showing it renders the buffer once. The transcript is
+bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines; the empty line after the last newline
+does not count); `LogsBufferCapacity` still counts log entries, an entry on several lines (an exception and its stack)
+being kept or dropped whole. Word wrap (`F3`), tabs (expanded to the next stop of four columns; with the wrap on, a
+tab whose stop lies past the row end is cut at that end and the text after it opens the next row), mouse selection
+with auto-copy, the navigation keys and `Ctrl+A` / `Ctrl+C` keep working. Autoscroll is a state: a pane follows its
+tail while its view is at the end; scrolling up stops it, so new output or log entries leave a reader where they are,
+and it resumes once the view is back on the last row (a scroll, `End`, or a taller pane). A pane shown after entries
+arrived while it was hidden, or cleared, lands on its tail. Double-click word selection and the auto-scroll while dragging a
+selection are not kept.
+
+### Fixed — `--llm-log` keeps the cache, reasoning and cost counts of a streamed exchange (#197)
+
+The `usage` of a streamed exchange in `llm-exchanges-*.jsonl` was rebuilt from three totals (`total_tokens`,
+`prompt_tokens`, `completion_tokens`), so a run's log could not tell a cache hit from a full-price token. An
+OpenAI-compatible provider now writes the fields of the stream's usage chunks as the vendor sent them (merged when a
+vendor splits its usage across chunks, a later value of a field replacing an earlier one): DeepSeek's
+`prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, `prompt_tokens_details.cached_tokens`,
+`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. A `total_tokens` the vendor
+did not send is written as `prompt_tokens + completion_tokens` when both are known, and left absent when they are not
+(no `0`); a chunk that changes `prompt_tokens` or `completion_tokens` without a total of its own drops the total of an
+earlier chunk, which is recomputed the same way (so is the response's `TokensUsed`, `0` when nothing was counted). Any other field the
+vendor did not return stays absent, and a stream that reports only the three totals logs the same three fields as
+before. Ollama and Anthropic streams are unchanged.
+
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
 
 The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A

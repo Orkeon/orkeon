@@ -86,6 +86,7 @@ public sealed class ScriptCommandCompletedAdmissionTests : IDisposable
         var second = await _cmd.ExecuteAsync(ChainHarness.Ctx("slot-chain b", "b", _console), CancellationToken.None);
 
         Assert.Equal(Quota, second.Message);
+        Assert.True(second.Failed);
     }
 
     [Fact]

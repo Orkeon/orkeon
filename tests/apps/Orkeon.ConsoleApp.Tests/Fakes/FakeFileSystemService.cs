@@ -34,8 +34,13 @@ public sealed class FakeFileSystemService : IFileSystemService
         return Task.FromResult(System.Text.Encoding.UTF8.GetByteCount(content));
     }
 
+    /// <summary>When set, thrown by <see cref="TryReadAllTextAsync"/> (a read the VFS refuses or fails).</summary>
+    public Exception? ReadError { get; set; }
+
     public Task<string?> TryReadAllTextAsync(string virtualPath, CancellationToken ct)
-        => Task.FromResult(_files.TryGetValue(virtualPath, out var c) ? c : null);
+        => ReadError is { } error
+            ? Task.FromException<string?>(error)
+            : Task.FromResult(_files.TryGetValue(virtualPath, out var c) ? c : null);
 
     // ─── unused stubs ───
     public PathValidationResult ResolveAndValidate(string virtualPath, FileAccessRights requiredRight) => throw new NotImplementedException();

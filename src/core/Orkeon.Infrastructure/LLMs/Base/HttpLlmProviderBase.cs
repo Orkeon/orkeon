@@ -668,7 +668,14 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </summary>
     /// <param name="response">The streamed response, still undisposed.</param>
     /// <param name="rebuilt">The folded final answer.</param>
-    internal void RecordRebuiltExchange(HttpResponseMessage? response, LlmResponse rebuilt)
+    /// <param name="rawUsage">
+    /// The <c>usage</c> object the vendor streamed, written with every field it holds, so every count it
+    /// returned (cache hits and misses, cached and reasoning token details, cost) keeps its own name;
+    /// a <c>prompt_tokens</c> or <c>completion_tokens</c> it lacks is taken from <paramref name="rebuilt"/>,
+    /// and a <c>total_tokens</c> it lacks is their sum when both are known, else left absent. Null writes
+    /// the three totals of <paramref name="rebuilt"/>.
+    /// </param>
+    internal void RecordRebuiltExchange(HttpResponseMessage? response, LlmResponse rebuilt, JsonElement? rawUsage = null)
     {
         if (response?.RequestMessage?.Options.TryGetValue(Logging.LlmExchangeOptions.Rebuilt, out var holder) != true)
             return;
@@ -679,13 +686,46 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             tool_calls = ToolCallsOf(rebuilt.RawResponseBody),
             error = rebuilt.Error,
             model = rebuilt.Model,
-            usage = new
-            {
-                total_tokens = rebuilt.TokensUsed,
-                prompt_tokens = rebuilt.PromptTokens,
-                completion_tokens = rebuilt.CompletionTokens,
-            },
+            usage = rawUsage is { ValueKind: JsonValueKind.Object } raw
+                ? (object)UsageWithTotals(raw, rebuilt)
+                : new
+                {
+                    total_tokens = rebuilt.TokensUsed,
+                    prompt_tokens = rebuilt.PromptTokens,
+                    completion_tokens = rebuilt.CompletionTokens,
+                },
         });
+    }
+
+    // The vendor's usage object with every field it sent, completed with the counts the stream
+    // accumulated when the object lacks them, and with total_tokens = prompt + completion when the
+    // vendor sent no total (or a later chunk made it stale) and both counts are known.
+    private static System.Text.Json.Nodes.JsonObject UsageWithTotals(JsonElement raw, LlmResponse rebuilt)
+    {
+        var usage = System.Text.Json.Nodes.JsonObject.Create(raw)!;
+        FillMissing(usage, "prompt_tokens", rebuilt.PromptTokens);
+        FillMissing(usage, "completion_tokens", rebuilt.CompletionTokens);
+        // A missing total is the sum of the two counts, written only when both are known: a vendor
+        // that counted nothing gets no total, not a zero.
+        if (!usage.ContainsKey("total_tokens")
+            && ReadCount(usage, "prompt_tokens") is { } prompt
+            && ReadCount(usage, "completion_tokens") is { } completion)
+            usage["total_tokens"] = prompt + completion;
+        return usage;
+    }
+
+    private static int? ReadCount(System.Text.Json.Nodes.JsonObject usage, string name)
+        => usage.TryGetPropertyValue(name, out var node)
+           && node is System.Text.Json.Nodes.JsonValue value
+           && value.TryGetValue<int>(out var count)
+            ? count
+            : null;
+
+    private static void FillMissing(System.Text.Json.Nodes.JsonObject usage, string name, int? value)
+    {
+        if (value is not { } count) return;
+        if (usage.TryGetPropertyValue(name, out var present) && present is not null) return;
+        usage[name] = count;
     }
 
     /// <summary>

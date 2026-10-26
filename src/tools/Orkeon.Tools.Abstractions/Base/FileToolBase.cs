@@ -45,20 +45,38 @@ public abstract partial class FileToolBase : ToolBase
     }
 
     /// <summary>
+    /// The absolute virtual spelling of a path a caller wrote: a relative path joined to the
+    /// working directory (<see cref="WorkingDirectoryResolver.Absolutize"/>), an absolute one
+    /// unchanged. A tool addresses the file system and echoes the path with this spelling.
+    /// </summary>
+    /// <param name="path">The path as written in the request.</param>
+    protected string AbsolutizePath(string path) => WorkingDirectoryResolver.Absolutize(path, _fileSystemService);
+
+    /// <summary>
     /// Resolves a virtual path to a physical path and validates access rights via the virtual file system.
     /// </summary>
-    /// <param name="path">The virtual path to resolve (e.g., "/workspace/src/file.cs").</param>
+    /// <param name="path">
+    /// The path to resolve: absolute (e.g. "/workspace/src/file.cs"), or relative to the working
+    /// directory (e.g. "src/file.cs", resolved by <see cref="AbsolutizePath"/>).
+    /// </param>
     /// <param name="requiredRight">The minimum access right required for the operation.</param>
     /// <returns>A <see cref="PathValidationResult"/> containing the resolved physical path or a denial reason.</returns>
     /// <remarks>
-    /// The VFS performs the authoritative mount + rights validation. When an optional
+    /// An empty path is refused with a message naming the argument
+    /// (<see cref="WorkingDirectoryResolver.PathRequiredMessage"/>). A relative path is made
+    /// absolute first, so the VFS and <see cref="AgentRootGuard"/> both judge the path the tool
+    /// will touch. The VFS performs the authoritative mount + rights validation. When an optional
     /// <see cref="IPathValidator"/> was supplied it is additionally applied to the resolved
     /// physical path as defense in depth (traversal/SSRF).
     /// </remarks>
     protected PathValidationResult ResolveVirtualPath(string path, FileAccessRights requiredRight)
     {
-        var result = _fileSystemService.ResolveAndValidate(path, requiredRight);
-        if (result.IsAllowed && AgentRootGuard.Check(_fileSystemService, path) is { } outsideRoot)
+        if (string.IsNullOrWhiteSpace(path))
+            return PathValidationResult.Denied(WorkingDirectoryResolver.PathRequiredMessage);
+
+        var virtualPath = AbsolutizePath(path);
+        var result = _fileSystemService.ResolveAndValidate(virtualPath, requiredRight);
+        if (result.IsAllowed && AgentRootGuard.Check(_fileSystemService, virtualPath) is { } outsideRoot)
             return outsideRoot;
         if (result.IsAllowed && _pathValidator is not null && result.ResolvedPath is not null)
         {

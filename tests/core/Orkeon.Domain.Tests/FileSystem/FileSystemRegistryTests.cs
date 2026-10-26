@@ -368,4 +368,139 @@ public sealed class FileSystemRegistryTests : IDisposable
         Assert.ThrowsAny<ArgumentException>(() =>
             registry.ResolveAndCheckRights(null!, FileAccessRights.Read));
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldDefaultToWorkspace_WhenAnAgentFacingWorkspaceIsMounted()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("history"), "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+        ]);
+
+        Assert.Equal("/workspace", registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldHaveNoWorkingDirectory_WhenNoWorkspaceIsMounted()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("history"), "/session-history", FileAccessRights.ReadOnly),
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite, visibility: MountVisibility.Internal),
+        ]);
+
+        Assert.Null(registry.WorkingDirectory);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/data/src/", "/data/src")]
+    [InlineData("/data", "/data")]
+    public void ShouldDesignateTheWorkingDirectory_WhenItIsInsideAnAgentFacingMount(string requested, string expected)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("data"), "/data", FileAccessRights.ReadOnly),
+        ]);
+
+        registry.SetWorkingDirectory(requested);
+
+        Assert.Equal(expected, registry.WorkingDirectory);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("data")]
+    [InlineData("/nowhere")]
+    [InlineData("/logs")]
+    public void ShouldRefuseTheWorkingDirectory_WhenItIsRelativeUnmountedOrInternal(string requested)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("data"), "/data", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("logs"), "/logs", FileAccessRights.ReadWrite, visibility: MountVisibility.Internal),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWorkingDirectory(requested));
+        Assert.Null(registry.WorkingDirectory);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/output/../workspace")]
+    [InlineData("/output/./sub")]
+    [InlineData("/output/..")]
+    public void ShouldRefuseTheWriteDirectory_WhenItHoldsADotSegment(string requested)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWriteDirectory(requested));
+        Assert.Equal(FileSystemRegistry.DefaultWriteDirectory, registry.WriteDirectory);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/workspace/../output")]
+    [InlineData("/workspace/./src")]
+    public void ShouldRefuseTheWorkingDirectory_WhenItHoldsADotSegment(string requested)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWorkingDirectory(requested));
+        Assert.Equal(FileSystemRegistry.DefaultWorkingDirectory, registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldRefuseTheWriteDirectory_WhenASubtreeOverrideRemovesWrite()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite,
+                [new SubPathOverride("ro", FileAccessRights.ReadOnly)]),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWriteDirectory("/output/ro"));
+        Assert.Equal(FileSystemRegistry.DefaultWriteDirectory, registry.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldAcceptTheWriteDirectory_WhenASubtreeOverrideGrantsWriteOnAReadOnlyMount()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("docs"), "/docs", FileAccessRights.ReadOnly,
+                [new SubPathOverride("drafts", FileAccessRights.ReadWrite)]),
+        ]);
+
+        registry.SetWriteDirectory("/docs/drafts");
+
+        Assert.Equal("/docs/drafts", registry.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldShowTheShapeOfAnAddress_WhenNoMountMatches()
+    {
+        using var registry = new FileSystemRegistry(
+            [new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite)]);
+
+        var ex = Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("src/stats.js", FileAccessRights.Read));
+
+        Assert.Contains("a path starts with a mount: /workspace/src/stats.js", ex.Message, StringComparison.Ordinal);
+    }
 }

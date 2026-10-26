@@ -158,4 +158,44 @@ public sealed class StructuralSearchToolTests : IDisposable
         Assert.Equal("/workspace/src/A.cs", hit.Path);
         Assert.Equal("Log.Write(\"hi\")", hit.Text);
     }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldSearchRelativePath_AgainstWorkingDirectory()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/src/A.cs", "class Svc { void Run() { Log.Write(\"hi\"); } }", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new StructuralSearchTool(fs, pool);
+
+        var resp = await tool.ExecuteTypedForTest(new StructuralSearchRequest
+        {
+            Pattern = "Log.Write($A)",
+            Language = "csharp",
+            Paths = ImmutableList.Create("src"),
+        }, CancellationToken.None);
+
+        Assert.Equal("/workspace/src/A.cs", Assert.Single(resp.Matches).Path);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuse_WhenRelativePathEscapesAgentRoot()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/wt/p2/A.cs", "class Svc { void Run() { Log.Write(1); } }", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new StructuralSearchTool(fs, pool);
+        var request = new StructuralSearchRequest { Pattern = "Log.Write($A)", Language = "csharp", Paths = ImmutableList.Create("../p2") };
+
+        string? error;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/wt/p1"))
+        {
+            error = tool.ValidateTypedForTest(request);
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => tool.ExecuteTypedForTest(request, CancellationToken.None));
+        }
+
+        Assert.NotNull(error);
+        Assert.Contains("outside the agent working root", error, StringComparison.Ordinal);
+    }
 }

@@ -32,6 +32,19 @@ public static class ConfigurationKeys
     public const string FileSystemInternalMounts = "Orkeon:FileSystem:InternalMounts";
 
     /// <summary>
+    /// The virtual directory a relative path resolves against and a shell command runs in when it
+    /// names none. Optional: unset, the runner designates <c>/workspace</c>, else <c>/output</c>.
+    /// </summary>
+    public const string FileSystemWorkingDirectory = "Orkeon:FileSystem:WorkingDirectory";
+
+    /// <summary>
+    /// The writable virtual directory a writing shell command runs in when it names none, runs
+    /// under no agent root, and the working directory does not grant it every right. Optional:
+    /// unset, <c>/output</c> when an agent-facing mount grants Write there, else none.
+    /// </summary>
+    public const string FileSystemWriteDirectory = "Orkeon:FileSystem:WriteDirectory";
+
+    /// <summary>
     /// Root of the RAG subsystem's options. Bound by <c>AddOrkeonRag</c>, and read by Studio to
     /// show what a machine has configured.
     /// </summary>

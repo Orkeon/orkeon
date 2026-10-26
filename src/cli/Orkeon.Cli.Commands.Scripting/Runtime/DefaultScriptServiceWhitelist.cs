@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
@@ -42,7 +43,12 @@ public static class DefaultScriptServiceWhitelist
                 ? new PermissionRulesFacade(rules, gateEnabled: sp.GetService<IPermissionGate>() is not null)
                 : null)
             // Optional: the crew-launching facade — present when AddScriptCommands ran.
-            .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>());
+            .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>())
+            // Optional, read-only: the tool approvals waiting for the operator — present when the host watches
+            // them (AddConsoleToolApproval registers IToolApprovalWatch).
+            .AddOptional(ScriptServiceKeys.Approvals, sp => sp.GetService<IToolApprovalWatch>() is { } watch
+                ? new ScriptPendingApprovals(watch)
+                : null);
     }
 
     /// <summary>

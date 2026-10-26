@@ -11,7 +11,11 @@ public sealed record TerminalGuiOptions
     /// <summary>Minimum log level surfaced in the logs pane (UI filter, runtime-tweakable). Default Information.</summary>
     public LogLevel DefaultMinimumLogLevel { get; init; } = LogLevel.Information;
 
-    /// <summary>Max number of log entries kept in the in-memory ring buffer. Default 5000.</summary>
+    /// <summary>
+    /// Max number of log entries kept in the in-memory ring buffer and shown by the logs pane. Default
+    /// 5000. It counts entries, not lines: an entry written on several lines (an exception and its stack)
+    /// counts once and is kept or dropped whole.
+    /// </summary>
     public int LogsBufferCapacity { get; init; } = 5000;
 
     /// <summary>Title shown in the logs drawer frame (the one pane that keeps a frame).</summary>
@@ -30,6 +34,13 @@ public sealed record TerminalGuiOptions
     /// injected carriage return. When false, the horizontal scrollbar reappears (lines are not wrapped).
     /// </summary>
     public bool ReplWordWrap { get; init; } = true;
+
+    /// <summary>
+    /// Max number of lines kept in the REPL transcript; the oldest lines are dropped past it, as
+    /// <see cref="LogsBufferCapacity"/> bounds the logs pane. Default 10000. The empty line opened by the
+    /// last newline written does not count.
+    /// </summary>
+    public int ReplTranscriptCapacity { get; init; } = 10_000;
 
     /// <summary>Whether the startup banner is written into the transcript. Default true.</summary>
     public bool BannerEnabled { get; init; } = true;

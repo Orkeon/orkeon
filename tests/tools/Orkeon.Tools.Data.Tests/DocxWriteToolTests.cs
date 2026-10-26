@@ -240,6 +240,26 @@ public sealed class DocxWriteToolTests : IDisposable
         Assert.False(_tool.Schema.Parameters["bullet_items"].Required);
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldWriteRelativePath_AgainstTheWorkingDirectory_AndEchoTheAbsolutePath()
+    {
+        using var tool = new DocxWriteTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "docx_writer",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["file_path"] = "report.docx",
+                ["paragraphs"] = new List<object> { "Hello" }
+            }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+        Assert.Equal("/workspace/report.docx", dict["file_path"]?.ToString());
+        Assert.True(File.Exists(Path.Combine(_testDir, "report.docx")));
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

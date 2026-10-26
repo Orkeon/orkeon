@@ -159,6 +159,27 @@ public sealed class XmlParserToolTests : IDisposable
         Assert.Contains(deniedValidator.Calls, c => c.Path.EndsWith("shadow.xml", StringComparison.Ordinal));
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldParseRelativePath_AgainstTheWorkingDirectory()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_testDir, "relative.xml"), "<config><a/></config>", TestContext.Current.CancellationToken);
+        using var tool = new XmlParserTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "xml_parser",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["input"] = "relative.xml",
+                ["operation"] = "parse"
+            }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+        Assert.Equal("config", dict["root_element"]);
+        Assert.Equal("file", dict["source"]);
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

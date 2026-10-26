@@ -1,3 +1,4 @@
+using Orkeon.Domain.Tools.Protocol;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -164,5 +165,52 @@ public sealed class NodeReadToolTests : IDisposable
 
         Assert.Contains("A/Notes[1]", ex.Message, StringComparison.Ordinal);
         Assert.Contains("A/Notes[2]", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-200")]
+    public void ShouldNameThePathArgument_WhenPathIsMissing()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeReadTool(fs, pool);
+
+        var error = tool.ValidateTypedForTest(new NodeReadRequest { Selector = "sum" });
+
+        Assert.Equal("path is required: the absolute path of the file, e.g. /workspace/src/stats.js", error);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadNodeAndEchoResolvedPath_WhenPathIsRelativeToWorkingDirectory()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/Calc.cs", Small, CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeReadTool(fs, pool);
+
+        var resp = await tool.ExecuteTypedForTest(
+            new NodeReadRequest { Path = "./Calc.cs", Selector = "Demo.Calc.Sub(int, int)" }, CancellationToken.None);
+
+        Assert.Equal("/workspace/Calc.cs", resp.Path);
+        Assert.Contains("return a - b;", resp.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "RT-06")]
+    public async Task ShouldRefuse_WhenRelativePathEscapesAgentRoot()
+    {
+        var fs = new DiskBackedFileSystemService(_dir, "/workspace") { WorkingDirectory = "/workspace" };
+        await fs.WriteAllTextAsync("/workspace/wt/p2/src/stats.js", "function sum(xs) {\n  return 0;\n}\n", CancellationToken.None);
+        using var pool = new TreeSitterParserPool();
+        using var tool = new NodeReadTool(fs, pool);
+
+        string? error;
+        await using (Orkeon.Domain.Execution.AgentRunScope.Begin("agent-1", "dev", "/workspace/wt/p1"))
+            error = tool.ValidateTypedForTest(new NodeReadRequest { Path = "../p2/src/stats.js", Selector = "sum" });
+
+        Assert.NotNull(error);
+        Assert.Contains("outside the agent working root", error, StringComparison.Ordinal);
+        Assert.Contains("/workspace/wt/p2/src/stats.js", error, StringComparison.Ordinal);
     }
 }

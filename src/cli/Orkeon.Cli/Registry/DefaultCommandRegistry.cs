@@ -13,8 +13,21 @@ public sealed class DefaultCommandRegistry : IInteractiveCommandRegistry
     private readonly IReadOnlyList<IInteractiveCommand> _commands;
 
     public DefaultCommandRegistry(HelpCommand help, ExitCommand exit, ClearCommand clear)
+        : this(help, exit, clear, Array.Empty<IInteractiveCommand>())
     {
-        _commands = new IInteractiveCommand[] { help, exit, clear };
+    }
+
+    /// <summary>
+    /// The universal commands, then the host's own built-ins (the REPL's <c>replay</c>), offered by every runner.
+    /// </summary>
+    /// <param name="help">The <c>help</c> command.</param>
+    /// <param name="exit">The <c>exit</c> command.</param>
+    /// <param name="clear">The <c>clear</c> command.</param>
+    /// <param name="additional">The host's built-ins, after the three.</param>
+    public DefaultCommandRegistry(HelpCommand help, ExitCommand exit, ClearCommand clear, IEnumerable<IInteractiveCommand> additional)
+    {
+        ArgumentNullException.ThrowIfNull(additional);
+        _commands = [help, exit, clear, .. additional];
     }
 
     public IEnumerable<IInteractiveCommand> Commands => _commands;

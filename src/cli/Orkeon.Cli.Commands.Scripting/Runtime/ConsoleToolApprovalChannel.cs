@@ -29,6 +29,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     private readonly LinkedList<PendingApproval> _queue = new();
     private readonly HashSet<string> _allowedForSession = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+    private long _questionSeq;
 
     // Whether the head question's prompt is on the console. The read loop writes its own prompt from
     // PromptOverride; AnswerFromConsole, which has no loop, writes it when the question came in without one.
@@ -68,9 +69,14 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         get
         {
             lock (_gate)
-                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name))];
+                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id })];
         }
     }
+
+    /// <inheritdoc />
+    public event EventHandler? PendingChanged;
+
+    private void RaisePendingChanged() => PendingChanged?.Invoke(this, EventArgs.Empty);
 
     /// <inheritdoc />
     public Task<ToolApprovalDecision> RequestAsync(ToolApprovalRequest request, CancellationToken cancellationToken = default)
@@ -79,7 +85,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled<ToolApprovalDecision>(cancellationToken);
 
-        var pending = new PendingApproval(request, _origin());
+        var pending = new PendingApproval(request, _origin()) { Id = Interlocked.Increment(ref _questionSeq) };
         lock (_gate)
         {
             if (_disposed)
@@ -93,6 +99,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         pending.Registration = cancellationToken.Register(() => Withdraw(pending, cancellationToken));
+        RaisePendingChanged();
         return pending.Completion.Task;
     }
 
@@ -148,6 +155,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
         foreach (var pending in answered)
             pending.Settle(decision);
+        RaisePendingChanged();
         return true;
     }
 
@@ -211,6 +219,8 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
         foreach (var pending in waiting)
             pending.Settle(ToolApprovalDecision.Deny);
+        if (waiting.Count > 0)
+            RaisePendingChanged();
     }
 
     private IConsoleAdapter Console => _console();
@@ -230,6 +240,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         pending.Completion.TrySetCanceled(cancellationToken);
+        RaisePendingChanged();
     }
 
     // Called under the lock: the question and its prompt reach the console in one piece.
@@ -290,6 +301,9 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         public ToolApprovalRequest Request { get; }
+
+        /// <summary>The question's identity, served as <see cref="PendingToolApproval.Id"/>.</summary>
+        public long Id { get; init; }
 
         public (string Ticket, string Name)? Origin { get; }
 

@@ -158,7 +158,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
 
             var resolvedPath = pathValidation.ResolvedPath!;
             var encoding = GetEncoding(request.Encoding);
-            var virtualFilePath = _fileSystemService.ToVirtualPath(resolvedPath) ?? request.Path;
+            var virtualFilePath = _fileSystemService.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
             await EnsureDirectoryExistsAsync(virtualFilePath, cancellationToken).ConfigureAwait(false);
 
             var backupVirtualPath = await CreateBackupIfRequestedAsync(request, virtualFilePath, cancellationToken).ConfigureAwait(false);
@@ -272,7 +272,7 @@ public partial class FileWriteTool : FileToolBase<FileWriteRequest, FileWriteRes
         FileWriteRequest request, string resolvedPath, Encoding encoding, string? backupVirtualPath)
     {
         var bytesWritten = encoding.GetByteCount(request.Content);
-        var displayPath = _fileSystemService?.ToVirtualPath(resolvedPath) ?? request.Path;
+        var displayPath = _fileSystemService?.ToVirtualPath(resolvedPath) ?? AbsolutizePath(request.Path);
 
         LogWroteFile(displayPath, bytesWritten, request.Append);
 

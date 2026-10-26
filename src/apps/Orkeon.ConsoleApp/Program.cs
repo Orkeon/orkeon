@@ -14,6 +14,7 @@ using Orkeon.ConsoleApp.Commands.Qa;
 using Orkeon.ConsoleApp.Commands.Task;
 using Orkeon.ConsoleApp.DependencyInjection;
 using Orkeon.ConsoleApp.Registries;
+using Orkeon.ConsoleApp.Replay;
 using Orkeon.ConsoleApp.Runners;
 using Orkeon.ConsoleApp.Services;
 using static Orkeon.Application.Configuration.SettingsDeclarationExtensions;
@@ -42,8 +43,21 @@ static class Program
     static async Task Main(string[] args)
     {
         var stderr = Console.Error;
+
+        // --replay / --interactive / --log-level: a usage error exits 2, as an invalid --ui does.
+        if (ScriptedCommandsCliOptions.Parse(args).UsageError is { } usage)
+        {
+            await stderr.WriteLineAsync($"orkeon-repl: {usage}");
+            Environment.ExitCode = 2;
+            return;
+        }
+
         if (!TryResolveUiMode(args, stderr, out var effectiveUi))
             return;
+
+        // --replay alone is a plain shell command: no TUI, no line editor, whatever --ui says.
+        if (ScriptedCommandsCliOptions.Parse(args).ReplayNonInteractive)
+            effectiveUi = UiMode.Plain;
 
         if (!TryResolveReplWrap(args, stderr, out var replWordWrap))
             return;
@@ -66,7 +80,58 @@ static class Program
             host.Services.GetRequiredService<IConfiguration>(),
             host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.ConsoleApp"));
 
-        await RunHostAsync(host, effectiveUi, scriptedOpts);
+        // The host is disposed on every exit path (the unreadable replay file's exit 2, a REPL that threw), so its
+        // services clean up after themselves (the sandbox directories among them).
+        // A dispose that throws is reported on stderr and never masks the REPL's own exception, nor turns a
+        // replay's exit code into an unhandled exception.
+        try
+        {
+            await RunHostAsync(host, effectiveUi, scriptedOpts, stderr);
+        }
+        finally
+        {
+            await DisposeHostAsync(host, stderr);
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "The host's disposal is the process's last step: its failure is reported, never thrown over the run's outcome.")]
+    static async Task DisposeHostAsync(IHost host, TextWriter stderr)
+    {
+        try
+        {
+            if (host is IAsyncDisposable asyncHost)
+                await asyncHost.DisposeAsync();
+            else
+                host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            await stderr.WriteLineAsync($"orkeon-repl: disposing the host failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Ctrl-C while a replay runs, in the plain console: the first press cancels the command in flight and stops the
+    /// replay at its line, instead of the process being killed (<see cref="ReplayLaunch.OnCancelKey"/>). A second
+    /// press while the replay still runs, or a press without a replay, keeps the key's effect: the process ends. The
+    /// TUI's interrupt key stops a replay through <see cref="ReplayLaunch.WireTuiInterrupt"/>.
+    /// </summary>
+    [Orkeon.Compliance.Vfs.SuppressConsoleCompliance("CONSOLE-SINK: orkeon-repl's entry point owns the process's Ctrl-C while a replay runs in the plain console.")]
+    static CancelKeyRegistration HandleReplayInterrupt(ReplayConsoleAdapter replay, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner)
+    {
+        ConsoleCancelEventHandler handler = (_, e) =>
+        {
+            if (ReplayLaunch.OnCancelKey(replay, runner.RequestCommandCancellation))
+                e.Cancel = true;
+        };
+        Console.CancelKeyPress += handler;
+        return new CancelKeyRegistration(handler);
+    }
+
+    private sealed class CancelKeyRegistration(ConsoleCancelEventHandler handler) : IDisposable
+    {
+        [Orkeon.Compliance.Vfs.SuppressConsoleCompliance("CONSOLE-SINK: removes the Ctrl-C handler HandleReplayInterrupt added.")]
+        public void Dispose() => Console.CancelKeyPress -= handler;
     }
 
     /// <summary>
@@ -238,7 +303,7 @@ static class Program
         ScriptedCommandsCliOptions scriptedOpts,
         bool replWordWrap)
     {
-        ConfigureLogging(services, effectiveUi);
+        ConfigureLogging(services, effectiveUi, scriptedOpts);
 
         services.AddOrkeonApplication();
         // Register the real LLM provider from the `Llm` config section BEFORE the infrastructure
@@ -320,7 +385,8 @@ static class Program
         // In plain mode on a real TTY we use the raw-mode line editor, which adds history,
         // Tab completion and @-path completion. For redirected/CI input we keep the dumb
         // adapter instead, so pipes and tests stay byte-exact.
-        if (effectiveUi == UiMode.Plain && TtyDetector.IsInteractiveTty())
+        // A --replay without --interactive is a plain shell command: the dumb adapter, never the line editor.
+        if (effectiveUi == UiMode.Plain && TtyDetector.IsInteractiveTty() && !scriptedOpts.ReplayNonInteractive)
             services.AddSingleton<IConsoleAdapter, LineEditingConsoleAdapter>();
         else
             services.AddSingleton<IConsoleAdapter, SystemConsoleAdapter>();
@@ -362,6 +428,9 @@ static class Program
             services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
             {
                 ReplWordWrap = replWordWrap,
+                // --log-level sets the logs pane's starting level (F2 / Shift+F2 still change it), as it sets the
+                // plain console's.
+                DefaultMinimumLogLevel = scriptedOpts.LogLevel ?? LogLevel.Information,
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
@@ -372,6 +441,10 @@ static class Program
                     .Select(v => v!).ToArray() is { Length: > 0 } verbs ? verbs : null,
             });
         }
+
+        // Last, over the console chosen above (the TUI's included): --replay and /replay feed it their lines.
+        // The plain prompt is on the line already; the TUI's is a label, so its echo carries a marker.
+        services.AddReplReplay(effectiveUi == UiMode.Tui ? "> " : string.Empty);
     }
 
     /// <summary>The section of the Terminal.Gui console's own settings.</summary>
@@ -388,7 +461,7 @@ static class Program
         public List<string>? SpinnerVerbs { get; set; }
     }
 
-    static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi)
+    static void ConfigureLogging(IServiceCollection services, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)
     {
         // The Logging section, which the generic host builds this console's logger from and the
         // start judges first: read, so the settings catalogue lists it for this binary too.
@@ -409,8 +482,13 @@ static class Program
             }
             else
             {
-                builder.AddConsole(); // NOSONAR — standard console logger for development/CLI use
-                builder.SetMinimumLevel(LogLevel.Information); // NOSONAR — intentional minimum log level
+                // Under --replay alone, every log line goes to stderr: stdout carries the replayed session only.
+                if (scriptedOpts.ReplayNonInteractive)
+                    builder.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace); // NOSONAR — standard console logger, on stderr
+                else
+                    builder.AddConsole(); // NOSONAR — standard console logger for development/CLI use
+                // --log-level, else Information. The Logging section's rules still win, as for every host.
+                builder.SetMinimumLevel(scriptedOpts.LogLevel ?? LogLevel.Information); // NOSONAR — intentional minimum log level
             }
         });
     }
@@ -448,8 +526,21 @@ static class Program
         }
     }
 
-    static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts)
+    static async Task RunHostAsync(IHost host, UiMode effectiveUi, ScriptedCommandsCliOptions scriptedOpts, TextWriter stderr)
     {
+        // --replay: the file is read before anything runs; missing or unreadable, exit 2 and the REPL never opens.
+        var replay = host.Services.GetRequiredService<ReplayConsoleAdapter>();
+        if (await ReplayLaunch.StartAsync(
+                replay,
+                host.Services.GetRequiredService<Orkeon.Domain.FileSystem.IFileSystemService>(),
+                scriptedOpts,
+                stderr,
+                CancellationToken.None) is { } unreadable)
+        {
+            Environment.ExitCode = unreadable;
+            return;
+        }
+
         // The durable session loads for the project (the workspace root), then the start script runs once,
         // and the runner saves the session when the REPL ends. A hook that was not registered (a bare host) is skipped.
         if (host.Services.GetService<Orkeon.Application.Interfaces.Ports.ISessionBufferService>() is Orkeon.Infrastructure.Session.FileSessionBufferService durable)
@@ -465,16 +556,33 @@ static class Program
 
         // Boot into the scripted-commands REPL directly when the flag is set,
         // otherwise fall back to the main menu.
-        Func<CancellationToken, Task> entry = scriptedOpts.BootIntoScriptedRunner
-            ? host.Services.GetRequiredService<ScriptedCommandsRunner>().RunAsync
-            : host.Services.GetRequiredService<MainMenuRunner>().RunAsync;
+        Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner = scriptedOpts.BootIntoScriptedRunner
+            ? host.Services.GetRequiredService<ScriptedCommandsRunner>()
+            : host.Services.GetRequiredService<MainMenuRunner>();
+        Func<CancellationToken, Task> entry = runner.RunAsync;
 
+        // --replay alone: 0 when every line passed, 1 when it stopped on an error (said on the console) or the REPL
+        // threw (one line on stderr); the replay is concluded even when the REPL throws.
+        if (await ReplayLaunch.RunAsync(replay, scriptedOpts, () => RunReplAsync(host, effectiveUi, scriptedOpts, replay, runner, entry), stderr) is { } replayExitCode)
+            Environment.ExitCode = replayExitCode;
+    }
+
+    static async Task RunReplAsync(
+        IHost host,
+        UiMode effectiveUi,
+        ScriptedCommandsCliOptions scriptedOpts,
+        ReplayConsoleAdapter replay,
+        Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner,
+        Func<CancellationToken, Task> entry)
+    {
         if (effectiveUi == UiMode.Tui)
         {
             await using var tuiHost = host.Services.GetRequiredService<TerminalGuiHost>();
             // Close the fidelity delegates over the built provider (session state bag,
             // cost tracker, command registry) — see TuiFidelityWiring.
             Orkeon.ConsoleApp.Services.TuiFidelityWiring.Wire(host.Services);
+            // Esc-Esc stops a replay too, also while it waits for the background work (no command running).
+            ReplayLaunch.WireTuiInterrupt(host.Services.GetRequiredService<TuiIntegration>(), replay);
             // Prefer the runner overload: it binds the status line / hint bar / agents
             // views to the command lifecycle. The Func path never could (it has no
             // IInteractiveRunner), which is why the old tasks bandeau stayed idle in
@@ -486,6 +594,7 @@ static class Program
         }
         else
         {
+            using var interrupt = HandleReplayInterrupt(replay, runner);
             await entry(CancellationToken.None);
         }
     }

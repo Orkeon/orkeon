@@ -12,6 +12,12 @@ public sealed record CommandResult
     /// <summary>Optional message displayed by the runner after the command executes.</summary>
     public string? Message { get; init; }
 
+    /// <summary>
+    /// True when the command failed: the runner still continues its loop and displays
+    /// <see cref="Message"/>, and a replay stops on it (<c>orkeon-repl --replay</c>).
+    /// </summary>
+    public bool Failed { get; init; }
+
     /// <summary>Continue the loop without displaying any message.</summary>
     public static CommandResult Continue() => new() { ShouldExit = false };
 
@@ -23,4 +29,7 @@ public sealed record CommandResult
 
     /// <summary>Terminate the loop and display the given farewell message.</summary>
     public static CommandResult Exit(string farewell) => new() { ShouldExit = true, Message = farewell };
+
+    /// <summary>Continue the loop, display the given error message and mark the command as failed.</summary>
+    public static CommandResult Fail(string message) => new() { ShouldExit = false, Failed = true, Message = message };
 }

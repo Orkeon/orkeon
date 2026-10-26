@@ -94,7 +94,9 @@ public static class FileSystemServiceRegistration
             // itself so the directory exists before the registry validates it.
             mounts.Add(sp.GetRequiredService<SandboxSession>().Mount);
 
-            return new FileSystemRegistry(mounts);
+            var registry = new FileSystemRegistry(mounts);
+            WorkingDirectoryDesignation.Apply(registry, options.WorkingDirectory, options.WriteDirectory);
+            return registry;
 
             static FileSystemMount ParseAndCheck(string mountStr, MountVisibility visibility)
             {

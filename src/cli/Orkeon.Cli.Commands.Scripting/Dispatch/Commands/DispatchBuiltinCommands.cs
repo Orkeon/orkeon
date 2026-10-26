@@ -93,11 +93,11 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
     {
         var ticket = DispatchBuiltinCommands.ReadOption(context.Args, "ticket");
         if (string.IsNullOrWhiteSpace(ticket))
-            return Task.FromResult(CommandResult.Continue("Usage: inspect --ticket=<ticket>"));
+            return Task.FromResult(CommandResult.Fail("Usage: inspect --ticket=<ticket>"));
 
         var view = registry.Get(ticket)?.Snapshot();
         if (view is null)
-            return Task.FromResult(CommandResult.Continue($"Unknown ticket '{ticket}'."));
+            return Task.FromResult(CommandResult.Fail($"Unknown ticket '{ticket}'."));
 
         var c = context.Console;
         c.WriteLine($"ticket    : {view.ticket}");
@@ -126,11 +126,11 @@ internal sealed class ResultCommand(CommandInstanceRegistry registry) : IInterac
     {
         var ticket = DispatchBuiltinCommands.ReadOption(context.Args, "ticket");
         if (string.IsNullOrWhiteSpace(ticket))
-            return Task.FromResult(CommandResult.Continue("Usage: result --ticket=<ticket>"));
+            return Task.FromResult(CommandResult.Fail("Usage: result --ticket=<ticket>"));
 
         var view = registry.Get(ticket)?.Snapshot();
         if (view is null)
-            return Task.FromResult(CommandResult.Continue($"Unknown ticket '{ticket}'."));
+            return Task.FromResult(CommandResult.Fail($"Unknown ticket '{ticket}'."));
 
         return Task.FromResult(view.state switch
         {
@@ -152,10 +152,14 @@ internal sealed class CancelCommand(CommandDispatchService dispatch) : IInteract
     {
         var ticket = DispatchBuiltinCommands.ReadOption(context.Args, "ticket");
         if (string.IsNullOrWhiteSpace(ticket))
-            return Task.FromResult(CommandResult.Continue("Usage: cancel --ticket=<ticket>"));
+            return Task.FromResult(CommandResult.Fail("Usage: cancel --ticket=<ticket>"));
+
+        // An unknown ticket fails (a replay stops on it); one already terminal is reported, not an error.
+        var notCancellable = $"[{ticket}] not cancellable (unknown or already terminal).";
+        if (dispatch.Registry.Get(ticket) is null)
+            return Task.FromResult(CommandResult.Fail(notCancellable));
 
         var ok = dispatch.cancel(ticket);
-        return Task.FromResult(CommandResult.Continue(
-            ok ? $"[{ticket}] cancellation requested." : $"[{ticket}] not cancellable (unknown or already terminal)."));
+        return Task.FromResult(CommandResult.Continue(ok ? $"[{ticket}] cancellation requested." : notCancellable));
     }
 }

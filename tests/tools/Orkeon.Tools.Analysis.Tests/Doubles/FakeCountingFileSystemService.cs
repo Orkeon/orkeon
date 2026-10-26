@@ -48,6 +48,9 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
 
     public IReadOnlyList<MountInfo> GetAvailableMounts() => _inner.GetAvailableMounts();
 
+    public string? WorkingDirectory => _inner.WorkingDirectory;
+    public string? WriteDirectory => _inner.WriteDirectory;
+
     public IAsyncEnumerable<VirtualFileEntry> EnumerateFilesAsync(
         string virtualRoot, VirtualEnumerationOptions? options, CancellationToken ct)
         => _inner.EnumerateFilesAsync(virtualRoot, options, ct);

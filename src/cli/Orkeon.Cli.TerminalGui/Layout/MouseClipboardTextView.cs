@@ -34,7 +34,7 @@ public sealed class MouseClipboardTextView : TextView
 {
     private static readonly Color SelectionFg = new(ColorName16.Black);
     private static readonly Color SelectionBg = new(ColorName16.White);
-    private static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
+    internal static readonly Attribute SelectionAttribute = new(in SelectionFg, in SelectionBg);
 
     /// <summary>Raised when this view consumed a key itself, so <c>KeyDown</c> subscribers never see it.</summary>
     internal event EventHandler? KeyConsumed;

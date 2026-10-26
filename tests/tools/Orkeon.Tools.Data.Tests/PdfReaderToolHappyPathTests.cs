@@ -240,6 +240,21 @@ public sealed class PdfReaderToolHappyPathTests : IDisposable
         Assert.Equal(2, Convert.ToInt32(dict["pages_read"]));
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadRelativePath_AgainstTheWorkingDirectory()
+    {
+        CreatePdf(Path.Combine(_tempDir, "relative.pdf"), "Relative page.");
+        using var tool = new PdfReaderTool(new DiskBackedFileSystemService(_tempDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "pdf_reader",
+            Parameters: new Dictionary<string, object?> { [ParamPath] = "relative.pdf" }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Contains("Relative page.", GetResultDict(result)["content"]?.ToString(), StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         _tool.Dispose();

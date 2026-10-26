@@ -1,12 +1,15 @@
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Cli.Abstractions.Commands;
 using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands;
 using Orkeon.Cli.Registry;
 using Orkeon.Cli.Commands.Scripting.Loading;
 using Orkeon.Cli.Commands.Scripting.Registry;
+using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 using Orkeon.Scripting;
 using Orkeon.Scripting.Toolchain;
@@ -112,6 +115,51 @@ public sealed class RichContextIntegrationTests : IDisposable
         await runTask;
 
         Assert.Contains("cancelled-from-script", console.Output);
+    }
+
+    [Fact]
+    public async Task ShouldListThePendingApprovalWithItsTaskAndTool_ThenNothingOnceItIsAnswered()
+    {
+        CopyFixture("pending-approvals.cmd.ts");
+        var ct = TestContext.Current.CancellationToken;
+        using var channel = new ConsoleToolApprovalChannel(() => new ScriptedTestConsole(), () => ("t1", "dev-batches"));
+        using var services = new ServiceCollection()
+            .AddSingleton<IToolApprovalWatch>(channel)
+            .BuildServiceProvider();
+        var loader = new ScriptCommandLoader(
+            new DiskBackedFileSystemService(_tempDir, virtualRoot: "/cmd"),
+            PassThroughTranspiler.Instance,
+            new JsEngineFactory(),
+            Microsoft.Extensions.Options.Options.Create(new ScriptCommandLoaderOptions { Directories = ["/cmd"], EsbuildTranspile = false }),
+            new ScriptCommandLoaderDependencies
+            {
+                Services = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), services),
+            });
+        var (registry, _) = await loader.LoadAndRegisterAsync(ct);
+        var command = registry.ScriptCommands.Single(c => c.Name == "pending");
+
+        var decision = channel.RequestAsync(new ToolApprovalRequest
+        {
+            ToolName = "shell_command",
+            Arguments = ImmutableDictionary.CreateRange([KeyValuePair.Create<string, object?>("command", "npm test")]),
+            Mode = "default",
+            Reason = "tool 'shell_command' requires approval (mode 'default').",
+        }, ct);
+        var waiting = new ScriptedTestConsole();
+        await command.ExecuteAsync(new CommandContext { RawInput = "/pending", Args = [], Console = waiting, Scope = services }, ct);
+
+        Assert.Contains("approvals:1", waiting.Output, StringComparison.Ordinal);
+        Assert.Contains("[t1] dev-batches waits on shell_command {\"command\":\"npm test\"}", waiting.Output, StringComparison.Ordinal);
+        Assert.Contains("\"taskId\":\"t1\"", waiting.Output, StringComparison.Ordinal);
+        Assert.Contains("\"tool\":\"shell_command\"", waiting.Output, StringComparison.Ordinal);
+
+        Assert.True(channel.TryConsume("y"));
+        Assert.Equal(ToolApprovalDecision.AllowOnce, await decision);
+        var answered = new ScriptedTestConsole();
+        await command.ExecuteAsync(new CommandContext { RawInput = "/pending", Args = [], Console = answered, Scope = services }, ct);
+
+        Assert.Contains("approvals:0", answered.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("waits on", answered.Output, StringComparison.Ordinal);
     }
 
     private sealed class TestRunner : InteractiveRunnerBase

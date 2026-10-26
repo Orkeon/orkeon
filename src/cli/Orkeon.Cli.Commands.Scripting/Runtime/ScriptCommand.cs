@@ -100,7 +100,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
             if (!TryBuildArgs(context, out var argsObj, out var argsError))
-                return CommandResult.Continue($"Error: {argsError}");
+                return CommandResult.Fail($"Error: {argsError}");
 
             return _descriptor.Kind == CommandKind.Async
                 ? await ExecuteAsyncCommand(context, argsObj!, cancellationToken).ConfigureAwait(false)
@@ -127,7 +127,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         catch (Jint.Runtime.JavaScriptException jsEx)
         {
             LogSyncCommandThrew(jsEx, _descriptor.Name, _descriptor.SourceVirtualPath);
-            return CommandResult.Continue($"Error: {jsEx.Message}");
+            return CommandResult.Fail($"Error: {jsEx.Message}");
         }
 
         if (result.IsPromise())
@@ -139,7 +139,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogSyncCommandRejected(_descriptor.Name, rejected.RejectedValue);
-                return CommandResult.Continue($"Error: {rejected.RejectedValue}");
+                return CommandResult.Fail($"Error: {rejected.RejectedValue}");
             }
         }
 
@@ -159,7 +159,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             {
                 var msg = $"quota of {_descriptor.MaxConcurrent} instance(s) of '{_descriptor.Name}' reached";
                 _dispatch?.Registry.Register(_descriptor.Name, CommandInstanceKind.Async, "—", "—", Guid.Empty).Reject(msg);
-                return CommandResult.Continue($"Rejected: {msg}.");
+                return CommandResult.Fail($"Rejected: {msg}.");
             }
             gateAcquired = true;
         }
@@ -188,12 +188,12 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             catch (Jint.Runtime.JavaScriptException jsEx)
             {
                 LogAsyncDispatchThrew(jsEx, _descriptor.Name);
-                return CommandResult.Continue($"Error: {jsEx.Message}");
+                return CommandResult.Fail($"Error: {jsEx.Message}");
             }
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogAsyncDispatchRejected(_descriptor.Name, rejected.RejectedValue);
-                return CommandResult.Continue($"Error: {ConciseErrors.Message(rejected)}");
+                return CommandResult.Fail($"Error: {ConciseErrors.Message(rejected)}");
             }
 
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();
@@ -241,7 +241,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
                 // engine lock. Without this, an async reply (e.g. /assistant) stays invisible
                 // until the user happens to re-run the same command — other commands pump only
                 // their own queue, and built-ins don't pump at all.
-                _ = PushDrainAsync(console);
+                // The drain is work in flight until it ends, so a replay of the REPL waits for it (and for every
+                // launch it makes, registered before the handle is released).
+                _ = PushDrainAsync(console, _dispatch?.Registry.BeginWork());
             });
         }
     }
@@ -255,7 +257,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// dequeue is idempotent, so a completion is never rendered twice).
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget push-drain fault barrier: a failure running a JS completion callback off the pool thread is logged and must not crash the detached drain task.")]
-    private async Task PushDrainAsync(IConsoleAdapter console)
+    private async Task PushDrainAsync(IConsoleAdapter console, IDisposable? work)
     {
         try
         {
@@ -266,6 +268,10 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         catch (Exception ex)
         {
             LogPushDrainFailed(ex, _descriptor.Name);
+        }
+        finally
+        {
+            work?.Dispose();
         }
     }
 
@@ -340,11 +346,17 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             {
                 LogCompletedThrew(jsEx, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {jsEx.Message}");
+                _dispatch?.Registry.ReportCompletionFailure(item.Instance, jsEx.Message);
             }
             catch (Jint.Runtime.PromiseRejectedException rejected)
             {
                 LogCompletedThrew(rejected, item.Instance.Name, item.Instance.Ticket);
                 console.WriteLine($"Error in completed('{item.Instance.Name}'): {ConciseErrors.Message(rejected)}");
+                _dispatch?.Registry.ReportCompletionFailure(item.Instance, ConciseErrors.Message(rejected));
+            }
+            catch (Exception ex) when (ReportEscapingCompletionFailure(item.Instance, ex))
+            {
+                // Never reached: the filter reports an engine limit (memory, statements, time) and lets it escape.
             }
 
             if (scope is { Captured.Count: > 0 })
@@ -357,6 +369,14 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         {
             admission?.Settle();
         }
+    }
+
+    // Reports a failure that escapes completed() (an engine limit) to the registry, then lets it go on: false.
+    private bool ReportEscapingCompletionFailure(CommandInstance instance, Exception ex)
+    {
+        if (ex is not OperationCanceledException)
+            _dispatch?.Registry.ReportCompletionFailure(instance, ex.Message);
+        return false;
     }
 
     // ---- shared helpers -------------------------------------------------------------------

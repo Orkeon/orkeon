@@ -115,14 +115,18 @@ public partial class PdfReaderTool : FileToolBase<PdfReaderRequest, PdfReaderRes
 
         async Task<PdfReaderResponse> ExecuteTypedCoreAsync()
         {
+            // The absolute virtual path the validation judged: a relative path resolves
+            // against the working directory, and every call below addresses that same file.
+            var path = AbsolutizePath(request.Path);
+
             // Read the bytes through the virtual file system, which resolves the
             // virtual path (e.g. /data/x.pdf) to its physical mount location.
-            var vfsResult = ResolveVirtualPath(request.Path, FileAccessRights.Read);
+            var vfsResult = ResolveVirtualPath(path, FileAccessRights.Read);
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(request.Path, cancellationToken).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"File not found: {request.Path}");
+            var bytes = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+                ?? throw new FileNotFoundException($"File not found: {path}");
 
             using (var document = PdfDocument.Open(bytes))
             {
@@ -151,7 +155,7 @@ public partial class PdfReaderTool : FileToolBase<PdfReaderRequest, PdfReaderRes
                     allText.AppendLine(pageText);
                 }
 
-                LogReadPdf(request.Path, pages.Count, totalPages);
+                LogReadPdf(path, pages.Count, totalPages);
 
                 return new PdfReaderResponse
                 {
