@@ -1727,29 +1727,29 @@
             <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
                  field, with a free name and the way to the team that holds this one; the
                  engine's own refusal never reaches the screen. -->
+            <!-- hrm R07: the two answers ride the alert's Actions slot (right of the text when
+                 the alert is wide, below it otherwise). -->
             <controls:Alert Tone="Warning" Margin="0,8,0,0" Message="{Binding AdoptConflict}"
                             Visibility="{Binding HasAdoptConflict, Converter={StaticResource BooleanToVisibility}}">
-              <WrapPanel>
-                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
-                        Command="{Binding UseFreeTeamNameCommand}" Content="{Binding UseFreeTeamNameLabel}"/>
-                <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
-                        Command="{Binding OpenConflictingTeamCommand}"
-                        Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
-                        Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
-              </WrapPanel>
+              <controls:Alert.Actions>
+                <StackPanel Style="{StaticResource ActionRow}">
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
+                          Command="{Binding UseFreeTeamNameCommand}" Content="{Binding UseFreeTeamNameLabel}"/>
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                          Command="{Binding OpenConflictingTeamCommand}"
+                          Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
+                          Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </controls:Alert.Actions>
             </controls:Alert>
 
             <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
                  it read as a fourth choice among the profiles rather than as the way out
                  to the screen that manages them. -->
             <DockPanel Margin="0,16,0,7">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
-                      VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="sliders-horizontal" Size="16" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                      VerticalAlignment="Center" Command="{Binding OpenSettingsCommand}" controls:ButtonIcon.Kind="sliders-horizontal"
+                      Content="{Binding [Studio.Create.ManageSettings], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0"
                          Text="{Binding [Studio.Create.AdoptProfile], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
@@ -1768,7 +1768,7 @@
               <DockPanel>
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="sparkles" Size="16"
                                      Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,11,0"/>
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                         VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
                         Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
