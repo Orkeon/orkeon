@@ -108,14 +108,34 @@ internal static class SettingsStops
 
         new()
         {
+            Name = "reglages-cles-outils",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsToolKeys,
+            Because = "The Tool keys section of the Access group (STUDIO-21): the three tool keys, "
+                    + "none remembered on the seeded machine.",
+            Covers = ["Settings.Tools.HasSecrets"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
             Name = "reglages-outils",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsTools,
-            Because = "The Tools tab (STUDIO-21): the three tool keys, none remembered on the seeded "
-                    + "machine, and the catalogue by family with what web_search, brave_search, "
-                    + "image_generation and the database tools need said next to their names.",
-            Covers = ["Settings.Tools.HasSecrets"],
+            Because = "The Tool catalogue section (STUDIO-21): the catalogue by family with what "
+                    + "web_search, brave_search, image_generation and the database tools need said "
+                    + "next to their names.",
             SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-shell",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsShell,
+            Modes = CaptureModes.Expert,
+            Because = "The Shell commands section (expert, STUDIO-21): the interpreters switch and "
+                    + "the two command lists, as the seeded file leaves them.",
         },
 
         new()

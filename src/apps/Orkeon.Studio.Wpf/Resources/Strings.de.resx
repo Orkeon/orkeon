@@ -1038,9 +1038,6 @@
   <data name="Studio.Shell.Json" xml:space="preserve">
     <value>Datei</value>
   </data>
-  <data name="Studio.Shell.Tools" xml:space="preserve">
-    <value>Werkzeuge</value>
-  </data>
   <data name="Studio.Shell.Mcp" xml:space="preserve">
     <value>MCP</value>
   </data>
@@ -3628,6 +3625,15 @@
   </data>
   <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
     <value>{0} {0:plural:Werkzeug|Werkzeuge}</value>
+  </data>
+  <data name="Studio.Settings.TabShellDefault" xml:space="preserve">
+    <value>Standardliste</value>
+  </data>
+  <data name="Studio.Settings.TabShellReplaced" xml:space="preserve">
+    <value>Ersetzte Liste</value>
+  </data>
+  <data name="Studio.Settings.TabShellExtra" xml:space="preserve">
+    <value>{0} {0:plural:Befehl hinzugefügt|Befehle hinzugefügt}</value>
   </data>
   <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
     <value>{0} {0:plural:Konto|Konten}</value>

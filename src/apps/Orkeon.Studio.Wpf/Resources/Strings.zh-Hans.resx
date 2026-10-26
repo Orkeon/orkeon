@@ -1038,9 +1038,6 @@
   <data name="Studio.Shell.Json" xml:space="preserve">
     <value>文件</value>
   </data>
-  <data name="Studio.Shell.Tools" xml:space="preserve">
-    <value>工具</value>
-  </data>
   <data name="Studio.Shell.Mcp" xml:space="preserve">
     <value>MCP</value>
   </data>
@@ -3628,6 +3625,15 @@
   </data>
   <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
     <value>{0} 个工具</value>
+  </data>
+  <data name="Studio.Settings.TabShellDefault" xml:space="preserve">
+    <value>默认列表</value>
+  </data>
+  <data name="Studio.Settings.TabShellReplaced" xml:space="preserve">
+    <value>已替换的列表</value>
+  </data>
+  <data name="Studio.Settings.TabShellExtra" xml:space="preserve">
+    <value>已添加 {0} 条命令</value>
   </data>
   <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
     <value>{0} 个账户</value>

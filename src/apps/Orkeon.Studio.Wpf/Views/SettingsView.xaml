@@ -560,10 +560,22 @@
           </Border>
         </StackPanel>
       </controls:StepTab>
-      <controls:StepTab Tag="tools" Header="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"
+      <controls:StepTab Tag="toolkeys" Header="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ToolKeysTabSubtitle}" State="{Binding ToolKeysTabState}"
+                      Visibility="{Binding Tools.HasSecrets, Converter={StaticResource BooleanToVisibility}}">
+        <!-- ══ CLES DES OUTILS (STUDIO-21): the keys the tools need, a section of the Access group ══ -->
+        <views:ToolKeysView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="tools" Header="{Binding [Studio.Settings.ToolsTitle], Source={x:Static services:I18n.Instance}}"
                       Subtitle="{Binding ToolsTabSubtitle}">
-        <!-- ══ OUTILS (STUDIO-21): the tool keys, the catalogue, the shell allow-list ══ -->
+        <!-- ══ CATALOGUE DES OUTILS (STUDIO-21): every tool a run exposes, by family ══ -->
         <views:ToolsView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="shell" Header="{Binding [Studio.Settings.ShellTitle], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ShellTabSubtitle}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+        <!-- ══ COMMANDES SHELL (expert, STUDIO-21): the shell allow-list ══ -->
+        <views:ShellToolsView/>
       </controls:StepTab>
       <controls:StepTab Tag="mails" Header="{Binding [Studio.Shell.Mails], Source={x:Static services:I18n.Instance}}"
                       Subtitle="{Binding MailsTabSubtitle}" State="{Binding MailsTabState}"

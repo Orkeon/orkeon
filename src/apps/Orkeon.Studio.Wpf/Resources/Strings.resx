@@ -387,7 +387,6 @@
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limits &amp; index</value></data>
 <data name="Studio.Shell.Json" xml:space="preserve"><value>File</value></data>
-<data name="Studio.Shell.Tools" xml:space="preserve"><value>Tools</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>E-mail</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Studio's assistant model</value></data>
@@ -1947,6 +1946,15 @@
   </data>
   <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
     <value>{0} {0:plural:tool|tools}</value>
+  </data>
+  <data name="Studio.Settings.TabShellDefault" xml:space="preserve">
+    <value>Default list</value>
+  </data>
+  <data name="Studio.Settings.TabShellReplaced" xml:space="preserve">
+    <value>Replaced list</value>
+  </data>
+  <data name="Studio.Settings.TabShellExtra" xml:space="preserve">
+    <value>{0} {0:plural:command|commands} added</value>
   </data>
   <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
     <value>{0} {0:plural:account|accounts}</value>

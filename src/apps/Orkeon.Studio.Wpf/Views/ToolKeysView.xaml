@@ -1,0 +1,25 @@
+<!-- The "Tool keys" section of Settings › Access: one row per key a tool needs, on the same rows
+     and the same store as the API keys of the model section. The section's tab shows only while
+     the catalogue names a key at all (Tools.HasSecrets).
+     DataContext: SettingsScreenViewModel (inherited from SettingsView). -->
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.ToolKeysView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <StackPanel>
+
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="key" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
+                   Text="{Binding [Studio.Settings.ToolKeysIntro], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding Tools.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
+      </StackPanel>
+    </Border>
+
+  </StackPanel>
+</UserControl>

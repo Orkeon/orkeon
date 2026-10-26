@@ -71,6 +71,28 @@ public sealed partial class SettingsScreenViewModel
     /// <summary>« 119 tools ».</summary>
     public string ToolsTabSubtitle => _strings.Format(StudioStringKeys.SettingsTabToolsCount, Tools.ToolCount);
 
+    private int StoredToolKeyCount => Tools.Secrets.Count(secret => secret.HasKey);
+
+    /// <summary>The tool keys section, read like the API keys one: how many are remembered.</summary>
+    public string ToolKeysTabSubtitle =>
+        !Tools.HasSecrets
+            ? _strings[StudioStringKeys.SettingsTabKeysNone]
+            : StoredToolKeyCount is > 0 and var stored
+                ? _strings.Format(StudioStringKeys.SettingsTabKeysCount, stored)
+                : _strings.Format(StudioStringKeys.SettingsTabKeysNoneStored, Tools.Secrets.Count);
+
+    /// <summary>Verified once every tool key is remembered, expected while one is not.</summary>
+    public string ToolKeysTabState =>
+        !Tools.HasSecrets ? EmptyState : StoredToolKeyCount == Tools.Secrets.Count ? VerifiedState : ExpectedState;
+
+    /// <summary>The shell commands section: the default list, a replaced one, or how many were added.</summary>
+    public string ShellTabSubtitle =>
+        Config.ShellTools.ReplacesDefaults
+            ? _strings[StudioStringKeys.SettingsTabShellReplaced]
+            : Config.ShellTools.ExtraCommandCount is > 0 and var extra
+                ? _strings.Format(StudioStringKeys.SettingsTabShellExtra, extra)
+                : _strings[StudioStringKeys.SettingsTabShellDefault];
+
     /// <summary>« 2 accounts », or none.</summary>
     public string MailsTabSubtitle => AccountsSubtitle(Config.Email.Accounts.Count);
 
@@ -130,6 +152,10 @@ public sealed partial class SettingsScreenViewModel
         };
         foreach (var row in Profiles.Secrets)
             row.Stored += keyStored;
+        // The tool keys are a fixed list: each row is followed from the start.
+        foreach (var row in Tools.Secrets)
+            row.Stored += keyStored;
+        Config.ShellTools.PropertyChanged += (_, _) => RefreshTabStates();
         Config.Mounts.Mounts.CollectionChanged += collectionChanged;
         Config.ValidationMessages.CollectionChanged += collectionChanged;
         Config.Mounts.ValidationMessages.CollectionChanged += collectionChanged;
@@ -155,7 +181,7 @@ public sealed partial class SettingsScreenViewModel
             nameof(RagTabSubtitle), nameof(RagTabState),
             nameof(KeysTabSubtitle), nameof(KeysTabState),
             nameof(FoldersTabSubtitle), nameof(FoldersTabState),
-            nameof(ToolsTabSubtitle),
+            nameof(ToolsTabSubtitle), nameof(ToolKeysTabSubtitle), nameof(ToolKeysTabState), nameof(ShellTabSubtitle),
             nameof(MailsTabSubtitle), nameof(MailsTabState),
             nameof(DriveTabSubtitle), nameof(DriveTabState),
             nameof(McpTabSubtitle), nameof(McpTabState),

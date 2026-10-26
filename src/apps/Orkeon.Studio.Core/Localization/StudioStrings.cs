@@ -2152,6 +2152,9 @@ public static class StudioStringKeys
     public const string SettingsTabFoldersEmpty = "Studio.Settings.TabFoldersEmpty";
     public const string SettingsTabFoldersProblems = "Studio.Settings.TabFoldersProblems";
     public const string SettingsTabToolsCount = "Studio.Settings.TabToolsCount";
+    public const string SettingsTabShellDefault = "Studio.Settings.TabShellDefault";
+    public const string SettingsTabShellReplaced = "Studio.Settings.TabShellReplaced";
+    public const string SettingsTabShellExtra = "Studio.Settings.TabShellExtra";
     public const string SettingsTabAccountsCount = "Studio.Settings.TabAccountsCount";
     public const string SettingsTabAccountsEmpty = "Studio.Settings.TabAccountsEmpty";
     public const string SettingsTabMcpCount = "Studio.Settings.TabMcpCount";
@@ -3622,6 +3625,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.SettingsTabFoldersEmpty] = "No folder allowed",
         [StudioStringKeys.SettingsTabFoldersProblems] = "{0} {0:plural:folder|folders} to fix",
         [StudioStringKeys.SettingsTabToolsCount] = "{0} {0:plural:tool|tools}",
+        [StudioStringKeys.SettingsTabShellDefault] = "Default list",
+        [StudioStringKeys.SettingsTabShellReplaced] = "Replaced list",
+        [StudioStringKeys.SettingsTabShellExtra] = "{0} {0:plural:command|commands} added",
         [StudioStringKeys.SettingsTabAccountsCount] = "{0} {0:plural:account|accounts}",
         [StudioStringKeys.SettingsTabAccountsEmpty] = "No account",
         [StudioStringKeys.SettingsTabMcpCount] = "{0} {0:plural:server|servers}",

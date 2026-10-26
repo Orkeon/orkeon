@@ -45,6 +45,8 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
             case CaptureScreen.SettingsLimits: ShowSettings(shell.Settings.ShowLimitsCommand); break;
             case CaptureScreen.SettingsJson: ShowSettings(shell.Settings.ShowJsonCommand); break;
             case CaptureScreen.SettingsTools: ShowSettings(shell.Settings.ShowToolsCommand); break;
+            case CaptureScreen.SettingsToolKeys: ShowSettings(shell.Settings.ShowToolKeysCommand); break;
+            case CaptureScreen.SettingsShell: ShowSettings(shell.Settings.ShowShellCommand); break;
             case CaptureScreen.SettingsEmail: ShowSettings(shell.Settings.ShowMailsCommand); break;
             case CaptureScreen.SettingsDrive: ShowSettings(shell.Settings.ShowDriveCommand); break;
             case CaptureScreen.SettingsMcp: ShowSettings(shell.Settings.ShowMcpCommand); break;
