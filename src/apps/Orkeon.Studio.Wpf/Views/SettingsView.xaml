@@ -496,7 +496,9 @@
           <Border Style="{StaticResource Well}" Margin="0,14,0,0" Padding="13,10"
                   Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="MOUNT STRINGS" Margin="0,0,0,5"/>
+              <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
+              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
+                         Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
                        Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
