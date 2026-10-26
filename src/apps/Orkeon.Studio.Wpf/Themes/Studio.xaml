@@ -979,12 +979,14 @@
           <Border x:Name="bd" Background="{DynamicResource SurfaceBrush}"
                   BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                   CornerRadius="10" Padding="13,11">
-            <StackPanel Orientation="Horizontal">
-              <Ellipse x:Name="dot" Width="15" Height="15" StrokeThickness="1.5"
+            <!-- B06 (R09): a DockPanel, so the content gets the row's width - a path in it cuts
+                 with its «…» and a right-docked tag reaches the edge, instead of overflowing. -->
+            <DockPanel LastChildFill="True">
+              <Ellipse x:Name="dot" DockPanel.Dock="Left" Width="15" Height="15" StrokeThickness="1.5"
                        Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
                        VerticalAlignment="Center" Margin="0,0,11,0"/>
               <ContentPresenter VerticalAlignment="Center"/>
-            </StackPanel>
+            </DockPanel>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsChecked" Value="True">
