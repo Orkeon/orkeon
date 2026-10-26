@@ -3972,7 +3972,7 @@
     <value>Descrito, {0} {0:plural:pregunta resuelta|preguntas resueltas}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Por describir</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describa el trabajo para continuar.</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Necesidad aún no descrita.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Necesidad descrita.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Necesidad descrita, {0} {0:plural:pregunta resuelta|preguntas resueltas} con el asistente</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:carpeta por confirmar|carpetas por confirmar}</value></data>

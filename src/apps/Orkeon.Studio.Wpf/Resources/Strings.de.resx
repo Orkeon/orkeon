@@ -3972,7 +3972,7 @@
     <value>Beschrieben, {0} {0:plural:Frage|Fragen} geklärt</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>Zu beschreiben</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Beschreiben Sie die Arbeit, um fortzufahren.</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Bedarf noch nicht beschrieben.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Bedarf beschrieben.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Bedarf beschrieben, {0} {0:plural:Frage|Fragen} mit dem Assistenten geklärt</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:Ordner zu bestätigen|Ordner zu bestätigen}</value></data>

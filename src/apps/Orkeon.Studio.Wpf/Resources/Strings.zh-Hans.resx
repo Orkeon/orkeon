@@ -3972,7 +3972,7 @@
     <value>已描述，已解决 {0} 个问题</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>待描述</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>描述工作以继续。</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>需求尚未描述。</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>需求已描述。</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>需求已描述，已与助手解决 {0} 个问题</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} 个文件夹待确认</value></data>
