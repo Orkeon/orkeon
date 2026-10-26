@@ -46,6 +46,19 @@ public sealed class DispatchBuiltinCommandsTests
     {
         Assert.Equal("Unknown ticket 't9'.", Failed(await Run(new InspectCommand(_registry), "--ticket=t9")));
         Assert.Equal("Unknown ticket 't9'.", Failed(await Run(new ResultCommand(_registry), "--ticket=t9")));
+        Assert.Equal("[t9] not cancellable (unknown or already terminal).", Failed(await Run(Cancel(), "--ticket=t9")));
+    }
+
+    [Fact]
+    public async Task ShouldNotFail_WhenCancelNamesATicketAlreadyTerminal()
+    {
+        var instance = _registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
+        instance.Fail("broken");
+
+        var result = await Run(Cancel(), "--ticket=" + instance.Ticket);
+
+        Assert.False(result.Failed);
+        Assert.Equal($"[{instance.Ticket}] not cancellable (unknown or already terminal).", result.Message);
     }
 
     [Fact]

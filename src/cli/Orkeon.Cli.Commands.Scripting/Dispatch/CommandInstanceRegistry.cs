@@ -17,6 +17,11 @@ public sealed class CommandInstanceRegistry
     private readonly ConcurrentDictionary<string, CommandInstance> _instances = new(StringComparer.Ordinal);
     private long _ticketSeq;
 
+    // Work in flight: each instance from its registration until its terminal observers have run, plus each
+    // piece of work held through BeginWork (a completed() drain). Never read as zero while a completion still
+    // settles, so a waiter that sees no work also sees every terminal event.
+    private int _inFlight;
+
     /// <summary>Maximum number of terminal entries kept before the oldest are evicted.</summary>
     public int RetentionLimit { get; init; } = 200;
 
@@ -32,6 +37,7 @@ public sealed class CommandInstanceRegistry
         Guid correlationId)
     {
         var ticket = "t" + Interlocked.Increment(ref _ticketSeq);
+        Interlocked.Increment(ref _inFlight);
         var instance = new CommandInstance(
             ticket, name ?? string.Empty, kind, targetAgent ?? string.Empty,
             intent ?? string.Empty, correlationId, DateTimeOffset.UtcNow)
@@ -40,8 +46,15 @@ public sealed class CommandInstanceRegistry
             // completed entry would never trigger the budget check.
             TerminalObserver = settled =>
             {
-                EvictIfNeeded();
-                InstanceTerminated?.Invoke(this, new CommandInstanceEventArgs(settled));
+                try
+                {
+                    EvictIfNeeded();
+                    InstanceTerminated?.Invoke(this, new CommandInstanceEventArgs(settled));
+                }
+                finally
+                {
+                    EndWork();
+                }
             },
         };
         _instances[ticket] = instance;
@@ -59,8 +72,47 @@ public sealed class CommandInstanceRegistry
     /// </summary>
     public event EventHandler<CommandInstanceEventArgs>? InstanceTerminated;
 
-    /// <summary>Whether an instance is still <see cref="CommandInstanceState.Running"/>.</summary>
-    public bool HasRunning => _instances.Values.Any(i => i.State == CommandInstanceState.Running);
+    /// <summary>
+    /// Raised, on the thread that ended it, each time a piece of work in flight ended: an instance whose terminal
+    /// observers (<see cref="InstanceTerminated"/> among them) have all run, or a piece of work held through
+    /// <see cref="BeginWork"/>. A waiter for <see cref="HasRunning"/> to turn false waits on it.
+    /// </summary>
+    public event EventHandler? WorkSettled;
+
+    /// <summary>
+    /// Whether work is still in flight: an instance still <see cref="CommandInstanceState.Running"/>, one whose
+    /// terminal transition has not finished settling (its callbacks and <see cref="InstanceTerminated"/> still
+    /// run), or a piece of work held through <see cref="BeginWork"/> (a <c>completed()</c> drain).
+    /// </summary>
+    public bool HasRunning => Volatile.Read(ref _inFlight) > 0;
+
+    /// <summary>
+    /// Holds a piece of work in flight until the handle is disposed: <see cref="HasRunning"/> stays true meanwhile.
+    /// The runner holds one for each <c>completed()</c> drain, from the moment its instance settles until the drain,
+    /// and every launch it made is registered.
+    /// </summary>
+    public IDisposable BeginWork()
+    {
+        Interlocked.Increment(ref _inFlight);
+        return new WorkHandle(this);
+    }
+
+    private void EndWork()
+    {
+        Interlocked.Decrement(ref _inFlight);
+        WorkSettled?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class WorkHandle(CommandInstanceRegistry owner) : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                owner.EndWork();
+        }
+    }
 
     /// <summary>Returns the instance for <paramref name="ticket"/>, or <see langword="null"/>.</summary>
     public CommandInstance? Get(string ticket)

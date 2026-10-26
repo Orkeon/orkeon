@@ -46,33 +46,43 @@ internal static class ReplayLaunch
 
     /// <summary>
     /// Runs the REPL and concludes the replay once it ended, even by throwing (the replay then stops on
-    /// <c>the REPL failed: &lt;message&gt;</c> and the exception goes on). Returns the process exit code under
-    /// <c>--replay</c> alone (0 every line passed, 1 stopped on an error), null otherwise.
+    /// <c>the REPL failed: &lt;message&gt;</c>). Returns the process exit code under <c>--replay</c> alone (0 every
+    /// line passed, 1 stopped on an error, the REPL's own failure included: one line on <paramref name="stderr"/>,
+    /// the exception not rethrown), null otherwise; there the REPL's exception goes on.
     /// </summary>
     /// <param name="replay">The replay's console.</param>
     /// <param name="options">The command line.</param>
     /// <param name="repl">The REPL's run.</param>
-    public static async Task<int?> RunAsync(ReplayConsoleAdapter replay, ScriptedCommandsCliOptions options, Func<Task> repl)
+    /// <param name="stderr">Where a REPL that threw under <c>--replay</c> alone is reported; null for nowhere.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Under --replay alone every failure of the REPL becomes exit code 1, reported on stderr.")]
+    public static async Task<int?> RunAsync(
+        ReplayConsoleAdapter replay,
+        ScriptedCommandsCliOptions options,
+        Func<Task> repl,
+        TextWriter? stderr = null)
     {
         ArgumentNullException.ThrowIfNull(replay);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(repl);
-        string? crash = null;
-        int exitCode;
         try
         {
             await repl().ConfigureAwait(false);
         }
+        catch (Exception ex) when (options.ReplayNonInteractive)
+        {
+            var crash = $"the REPL failed: {ex.Message}";
+            replay.Conclude(crash);
+            if (stderr is not null)
+                await stderr.WriteLineAsync($"orkeon-repl: {crash}").ConfigureAwait(false);
+            return ReplayConsoleAdapter.FailedExitCode;
+        }
         catch (Exception ex)
         {
-            crash = $"the REPL failed: {ex.Message}";
+            replay.Conclude($"the REPL failed: {ex.Message}");
             throw;
         }
-        finally
-        {
-            exitCode = replay.Conclude(crash);
-        }
 
+        var exitCode = replay.Conclude();
         return options.ReplayNonInteractive ? exitCode : null;
     }
 

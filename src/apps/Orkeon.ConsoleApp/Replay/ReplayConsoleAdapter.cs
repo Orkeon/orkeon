@@ -184,8 +184,10 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
     /// line is served at once - the command holds the loop, a question is what reads it - unless the read loop
     /// already took the line for the approval waiting, in which case the read waits and, once that approval is
     /// answered, returns an empty line without taking one. When the file has run out, or the replay stopped, the
-    /// read ends the input (or reads the real console under <c>--interactive</c>); the replay itself ends at the
-    /// loop's next read, once the outcome of the command is known.
+    /// read gets the end of the input (null), under <c>--interactive</c> too: the keyboard is never handed to a
+    /// command before the stop line is written. The replay itself ends at the loop's next read, once the outcome
+    /// of the command is known; it then writes the stop line and, under <c>--interactive</c>, hands the keyboard
+    /// back to the loop.
     /// </summary>
     public string? ReadLine()
     {
@@ -215,7 +217,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
         }
 
         if (run.HasFailed || next is null)
-            return run.CloseInputAtEnd ? null : _inner.ReadLine();
+            return null;
 
         Echo(next.Text);
         return next.Text;

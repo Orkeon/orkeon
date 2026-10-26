@@ -127,6 +127,39 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldExitOne_WhenTheLastLinesTaskFailsWhileTheLoopReadsAgain()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Task<string?>? readWhileSettling = null;
+
+        // Subscribed before the replay's gate: the loop reads again once the state is Failed, before the gate saw it.
+        _registry.InstanceTerminated += (_, _) => readWhileSettling = _replay.ReadLineAsync(ct);
+        _replay.TryStart(Lines("/bgfail"), closeInputAtEnd: true);
+        Assert.Equal("/bgfail", await _replay.ReadLineAsync(ct));
+        var task = StartBackgroundTask("bgfail");
+
+        task.Fail("no such crew");
+
+        Assert.Null(await readWhileSettling!.WaitAsync(HangGuard, ct));
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.ExitCode);
+        Assert.True(_inner.Contains("replay stopped at line 1: [t1] bgfail failed: no such crew"));
+    }
+
+    [Fact]
+    public async Task ShouldEndACommandsReadPastTheEnd_BeforeHandingTheKeyboardBackInInteractive()
+    {
+        _replay.TryStart(Lines("/ask"), closeInputAtEnd: false);
+        var ct = TestContext.Current.CancellationToken;
+        _inner.ScriptedLines = new Queue<string?>(["typed by hand"]);
+        Assert.Equal("/ask", await _replay.ReadLineAsync(ct));
+
+        Assert.Null(CommandRead());
+
+        Assert.Equal("typed by hand", await _replay.ReadLineAsync(ct));
+        Assert.True(_inner.Contains("replay stopped at line 1: replay ended while a command waited for a line"));
+    }
+
+    [Fact]
     public async Task ShouldStopAtTheFedLine_WhenItsCommandFails()
     {
         _replay.TryStart(Lines("/help", "/bogus", "/tasks"), closeInputAtEnd: true);

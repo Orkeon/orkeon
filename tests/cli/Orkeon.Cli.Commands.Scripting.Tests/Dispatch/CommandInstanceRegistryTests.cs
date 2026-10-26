@@ -156,6 +156,36 @@ public sealed class CommandInstanceRegistryTests
         Assert.False(registry.HasRunning);
     }
 
+    [Fact]
+    public void HasRunning_stays_true_while_work_is_held_and_WorkSettled_fires_when_it_ends()
+    {
+        var registry = new CommandInstanceRegistry();
+        var settled = 0;
+        registry.WorkSettled += (_, _) => settled++;
+
+        var drain = registry.BeginWork();
+        Assert.True(registry.HasRunning);
+        drain.Dispose();
+        drain.Dispose();
+
+        Assert.False(registry.HasRunning);
+        Assert.Equal(1, settled);
+    }
+
+    [Fact]
+    public void HasRunning_stays_true_until_the_terminal_observers_have_run()
+    {
+        var registry = new CommandInstanceRegistry();
+        var instance = registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
+        bool? runningWhileSettling = null;
+        registry.InstanceTerminated += (_, _) => runningWhileSettling = registry.HasRunning;
+
+        instance.Fail("broken");
+
+        Assert.True(runningWhileSettling);
+        Assert.False(registry.HasRunning);
+    }
+
     private static void Terminate(CommandInstance instance, string transition)
     {
         switch (transition)

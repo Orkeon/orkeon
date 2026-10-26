@@ -173,8 +173,16 @@ public sealed class CommandInstance
                 _terminalCallback = null;
             }
         }
-        callback?.Invoke(this);
-        TerminalObserver?.Invoke(this);
+        // The runner's callback first (it holds the completed() drain as work in flight), then the registry's
+        // observer, which ends this instance's own work in flight: a waiter never sees a gap between the two.
+        try
+        {
+            callback?.Invoke(this);
+        }
+        finally
+        {
+            TerminalObserver?.Invoke(this);
+        }
     }
 
     /// <summary>Produces an immutable JS-facing snapshot.</summary>

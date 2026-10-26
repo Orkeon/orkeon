@@ -29,6 +29,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     private readonly LinkedList<PendingApproval> _queue = new();
     private readonly HashSet<string> _allowedForSession = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
+    private long _questionSeq;
 
     // Whether the head question's prompt is on the console. The read loop writes its own prompt from
     // PromptOverride; AnswerFromConsole, which has no loop, writes it when the question came in without one.
@@ -68,7 +69,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         get
         {
             lock (_gate)
-                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name))];
+                return [.. _queue.Select(p => new PendingToolApproval(p.Request.ToolName, FormatArguments(p.Request), p.Origin?.Ticket, p.Origin?.Name) { Id = p.Id })];
         }
     }
 
@@ -84,7 +85,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled<ToolApprovalDecision>(cancellationToken);
 
-        var pending = new PendingApproval(request, _origin());
+        var pending = new PendingApproval(request, _origin()) { Id = Interlocked.Increment(ref _questionSeq) };
         lock (_gate)
         {
             if (_disposed)
@@ -300,6 +301,9 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
         }
 
         public ToolApprovalRequest Request { get; }
+
+        /// <summary>The question's identity, served as <see cref="PendingToolApproval.Id"/>.</summary>
+        public long Id { get; init; }
 
         public (string Ticket, string Name)? Origin { get; }
 

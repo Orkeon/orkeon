@@ -154,8 +154,12 @@ internal sealed class CancelCommand(CommandDispatchService dispatch) : IInteract
         if (string.IsNullOrWhiteSpace(ticket))
             return Task.FromResult(CommandResult.Fail("Usage: cancel --ticket=<ticket>"));
 
+        // An unknown ticket fails (a replay stops on it); one already terminal is reported, not an error.
+        var notCancellable = $"[{ticket}] not cancellable (unknown or already terminal).";
+        if (dispatch.Registry.Get(ticket) is null)
+            return Task.FromResult(CommandResult.Fail(notCancellable));
+
         var ok = dispatch.cancel(ticket);
-        return Task.FromResult(CommandResult.Continue(
-            ok ? $"[{ticket}] cancellation requested." : $"[{ticket}] not cancellable (unknown or already terminal)."));
+        return Task.FromResult(CommandResult.Continue(ok ? $"[{ticket}] cancellation requested." : notCancellable));
     }
 }

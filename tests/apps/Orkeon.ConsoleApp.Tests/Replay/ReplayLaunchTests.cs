@@ -104,9 +104,27 @@ public sealed class ReplayLaunchTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldConcludeTheReplayAndRethrow_WhenTheReplThrows()
+    public async Task ShouldExitOneWithOneLineOnStderr_WhenTheReplThrowsUnderReplayAlone()
     {
         var options = Options("--replay", "/workspace/demo.replay");
+        await Start(options);
+
+        var exitCode = await ReplayLaunch.RunAsync(_replay, options, async () =>
+        {
+            await _replay.ReadLineAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException("boom");
+        }, _stderr);
+
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, exitCode);
+        Assert.Equal("orkeon-repl: the REPL failed: boom" + Environment.NewLine, _stderr.ToString());
+        Assert.False(_replay.IsActive);
+        Assert.True(_inner.Contains("replay stopped at line 1: the REPL failed: boom"));
+    }
+
+    [Fact]
+    public async Task ShouldConcludeTheReplayAndRethrow_WhenTheReplThrowsUnderInteractive()
+    {
+        var options = Options("--replay", "/workspace/demo.replay", "--interactive");
         await Start(options);
 
         var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => ReplayLaunch.RunAsync(_replay, options, async () =>
