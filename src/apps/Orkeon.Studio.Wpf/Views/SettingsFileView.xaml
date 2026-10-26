@@ -43,7 +43,7 @@
             <!-- B06 (R09): the path on one line, cut in the middle, whole in its tooltip. -->
             <controls:MiddleEllipsisText Style="{StaticResource PathText}" Margin="0,3,0,0" HorizontalAlignment="Stretch"
                                          Text="{Binding Location.GlobalPath}"/>
-            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,3,0,0"
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,3,0,0"
                        Text="{Binding Location.GlobalPathError}"
                        Visibility="{Binding Location.GlobalPathError, Converter={StaticResource StringPresentToVisibility}}"/>
           </StackPanel>
