@@ -99,6 +99,22 @@
 
         <!-- right cluster -->
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+          <!-- R12: the way into the assistant's side panel, pressed while it is open; the
+               accent dot says the assistant spoke while it was closed. -->
+          <ToggleButton Style="{StaticResource BtnToggle}" Margin="0,0,14,0" VerticalAlignment="Center"
+                        IsChecked="{Binding Chat.IsOpen, Mode=OneWay}" Command="{Binding Chat.ToggleCommand}"
+                        AutomationProperties.AutomationId="AskAssistant"
+                        AutomationProperties.Name="{Binding [Studio.Shell.AskAssistant], Source={x:Static services:I18n.Instance}}"
+                        ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="message-circle" Size="16" Margin="0,0,7,0"/>
+              <TextBlock Text="{Binding [Studio.Shell.AskAssistant], Source={x:Static services:I18n.Instance}}" VerticalAlignment="Center"/>
+              <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
+                       Fill="{DynamicResource MarkBrush}"
+                       Visibility="{Binding Chat.HasUnread, Converter={StaticResource BooleanToVisibility}}"/>
+            </StackPanel>
+          </ToggleButton>
           <!-- global mode switch: the single control that changes how much the app shows -->
           <StackPanel x:Name="ModeSwitch" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0">
             <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,9,0"
@@ -180,7 +196,7 @@
                       BorderThickness="1" CornerRadius="12" Padding="6" MinWidth="186"
                       Margin="10,0,10,14" Effect="{DynamicResource ShadowMd}">
                 <StackPanel>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Padding="8,5,8,6"
+                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Padding="8,5,8,6"
                              Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Language.MenuHeader}"/>
                   <ItemsControl ItemsSource="{Binding Language.Others}">
                     <ItemsControl.ItemTemplate>
@@ -192,9 +208,9 @@
                         <Button Style="{StaticResource LangRow}" CommandParameter="{Binding Code}"
                                 Command="{Binding DataContext.Language.PickCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                           <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" FontWeight="SemiBold" Width="20"
+                            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold" Width="20"
                                        Foreground="{DynamicResource AccentBrush}" Text="{Binding Display}"/>
-                            <TextBlock FontSize="12.5" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
+                            <TextBlock FontSize="13" Margin="9,0,0,0" Foreground="{DynamicResource InkBrush}"
                                        Text="{Binding Name}"/>
                           </StackPanel>
                         </Button>
@@ -245,38 +261,17 @@
             <StackPanel>
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="circle-help" Size="13" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0"
                            Text="{Binding [Studio.Shell.HelpTitle], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,6,0,8"
                          Text="{Binding [Studio.Shell.HelpBody], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Stretch" Click="OnStartTour"
+              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Stretch" Click="OnStartTour"
                       Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Border>
-          <Border x:Name="SettingsCard" DockPanel.Dock="Bottom" Background="{DynamicResource SurfaceBrush}"
-                  BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="11" Padding="11,10"
-                  Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="{Binding [Studio.Settings.SettingsFileTitle], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,6,0,0"
-                         Text="{Binding [Studio.Settings.SettingsFileGlobal], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="9.5" Margin="0,4,0,7"
-                         Text="{Binding Config.Location.GlobalPath}"/>
-              <StackPanel Orientation="Horizontal">
-                <Border Style="{StaticResource BadgeOk}" HorizontalAlignment="Left"
-                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource InverseBooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
-                             Text="{Binding [Studio.Common.Valid], Source={x:Static services:I18n.Instance}}"/>
-                </Border>
-                <Border Style="{StaticResource BadgeFail}" HorizontalAlignment="Left"
-                        Visibility="{Binding Config.HasBlockingErrors, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="10"
-                             Text="{Binding [Studio.Common.Invalid], Source={x:Static services:I18n.Instance}}"/>
-                </Border>
-              </StackPanel>
-            </StackPanel>
-          </Border>
+          <!-- Lot 5: the former « Settings file » card is the dot on the Settings entry and a line
+               of the Diagnostic; the file's path shows once, in Settings > File. -->
 
           <StackPanel>
             <!-- "Résoudre" leads: the new user's door (SPEC-ORKEON-FORGE §12.1, UX study §5) -->
@@ -292,7 +287,7 @@
                 <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
                             Visibility="{Binding DataContext.CreateTeam.HasDraft, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" VerticalAlignment="Center"
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" VerticalAlignment="Center"
                              Foreground="{DynamicResource InkFaintBrush}"
                              Text="{Binding DataContext.CreateTeam.DraftStepShort, RelativeSource={RelativeSource AncestorType=Window}}"/>
                   <Ellipse Width="6" Height="6" Margin="7,0,0,0" VerticalAlignment="Center"
@@ -306,10 +301,10 @@
                  On the Créer screen itself it would only repeat what is on screen. -->
             <Button x:Name="DraftNote" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
               <StackPanel>
-                <TextBlock FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                            Foreground="{DynamicResource AccentBrush}"
                            Text="{Binding DataContext.CreateTeam.DraftTitle, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                <TextBlock FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"
+                <TextBlock FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"
                            Text="{Binding DataContext.CreateTeam.DraftLine, RelativeSource={RelativeSource AncestorType=Window}}">
                   <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -339,7 +334,7 @@
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.NavTeams], Source={x:Static services:I18n.Instance}}"/>
-                <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="13"
                            Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                            Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}"/>
               </DockPanel>
@@ -355,13 +350,6 @@
             <StackPanel x:Name="NavGroupWork">
             <TextBlock Style="{StaticResource Eyebrow}" Margin="11,16,0,7"
                        Text="{Binding [Studio.Shell.Work], Source={x:Static services:I18n.Instance}}"/>
-            <RadioButton x:Name="NavTest" GroupName="Nav" Style="{StaticResource NavItem}"
-                         Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="badge-check" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
-                <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </RadioButton>
             <RadioButton x:Name="NavRun" GroupName="Nav" Style="{StaticResource NavItem}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="play" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
@@ -383,6 +371,26 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Settings], Source={x:Static services:I18n.Instance}}"/>
+                <!-- the settings file's state: red when it has errors, amber while edits are unsaved -->
+                <Ellipse x:Name="SettingsDot" Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
+                  <Ellipse.Style>
+                    <Style TargetType="Ellipse">
+                      <Setter Property="Visibility" Value="Collapsed"/>
+                      <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="ToolTip" Value="{Binding Config.PendingChangesText}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
+                          <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Config.HasBlockingErrors}" Value="True">
+                          <Setter Property="Visibility" Value="Visible"/>
+                          <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                          <Setter Property="ToolTip" Value="{Binding [Studio.Diagnostics.SettingsFileInvalid], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Ellipse.Style>
+                </Ellipse>
               </StackPanel>
             </RadioButton>
             <RadioButton x:Name="NavDiag" GroupName="Nav" Style="{StaticResource NavItem}">
@@ -398,41 +406,77 @@
         </DockPanel>
       </Border>
 
-      <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons -->
+      <!-- CONTENT: one panel per nav item, visibility driven by the RadioButtons; the
+           assistant's side panel (420 px) on the right while it is open (refonte R10). -->
       <Grid Grid.Column="1">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="420"
+                              AutomationProperties.AutomationId="AssistantPanel"
+                              DataContext="{Binding Chat}"
+                              Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
+        <!-- STUDIO-32 (D-02), refonte lot 2: « Archive » asks nothing; its undo is this toast at the
+             bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen. -->
+        <Border x:Name="ArchiveUndoToast" Grid.Column="0" Panel.ZIndex="10" DataContext="{Binding Teams}"
+                AutomationProperties.AutomationId="ArchiveUndoToast"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,20" MaxWidth="440"
+                Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                BorderThickness="1" CornerRadius="10" Padding="14,8,6,8"
+                Effect="{DynamicResource ShadowMd}"
+                Visibility="{Binding HasUndo, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" VerticalAlignment="Center"
+                    Command="{Binding DismissUndoCommand}"
+                    ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
+              <controls:LucideIcon Kind="x" Size="16"/>
+            </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="12,0,4,0"
+                    VerticalAlignment="Center" Command="{Binding UndoCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="rotate-ccw" Size="16" Margin="0,0,6,0"/>
+                <TextBlock Text="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+            </Button>
+            <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="16" Margin="0,0,10,0"
+                                 VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+            <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Foreground="{DynamicResource InkBrush}" Text="{Binding UndoNotice}"/>
+          </DockPanel>
+        </Border>
+        <!-- R3: two column widths only - standard 1040 (Create, Teams, Import, History, Diagnostic),
+             wide 1200 (Launch, Settings) - 48 px side margins, the scroll bar gutter always kept. -->
+        <Grid Grid.Column="0">
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
-          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1000" DataContext="{Binding CreateTeam}"/>
+          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1040" DataContext="{Binding CreateTeam}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
-          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1000" DataContext="{Binding Teams}"/>
+          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1040" DataContext="{Binding Teams}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
-          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="880" DataContext="{Binding Import}"/>
+          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="1040" DataContext="{Binding Import}"/>
         </ScrollViewer>
-        <!-- Tester is a two-column layout with a full-height console (audit 13): its host is
-             a Grid, not a ScrollViewer — an infinite vertical measure would collapse the console. -->
-        <Grid Visibility="{Binding IsChecked, ElementName=NavTest, Converter={StaticResource BooleanToVisibility}}">
-          <views:TestTeamView x:Name="TestPanel" MaxWidth="1080" Margin="30,24,30,32" DataContext="{Binding Test}"/>
-        </Grid>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
-          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1000" DataContext="{Binding Settings}"/>
+          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1200" DataContext="{Binding Settings}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
-          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="880" DataContext="{Binding Config.Diagnostic}"/>
+          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="1040" DataContext="{Binding Config.Diagnostic}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:LaunchTabView x:Name="RunPanel" DataContext="{Binding Launch}"/>
+          <views:RunScreenView x:Name="RunPanel" MaxWidth="1200" DataContext="{Binding Run}"/>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="30,24,30,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
-          <views:HistoryView x:Name="HistoryPanel" MaxWidth="880" DataContext="{Binding Launch.History}"/>
+          <views:HistoryView x:Name="HistoryPanel" MaxWidth="1040" DataContext="{Binding Launch.History}"/>
         </ScrollViewer>
+        </Grid>
       </Grid>
     </Grid>
 
@@ -483,13 +527,13 @@
           <Setter Property="ToolTip" Value="{x:Null}"/>
         </Style>
         <Style x:Key="StatusGroupLabel" TargetType="TextBlock">
-          <Setter Property="FontSize" Value="11.5"/>
+          <Setter Property="FontSize" Value="13"/>
           <Setter Property="FontWeight" Value="SemiBold"/>
           <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
           <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="StatusFigure" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
-          <Setter Property="FontSize" Value="10.5"/>
+          <Setter Property="FontSize" Value="13"/>
           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
           <Setter Property="TextWrapping" Value="NoWrap"/>
           <Setter Property="VerticalAlignment" Value="Center"/>
@@ -515,7 +559,7 @@
         </Style>
         <!-- The state in words; waiting on you is the one state that must catch the eye. -->
         <Style x:Key="StatusState" TargetType="TextBlock">
-          <Setter Property="FontSize" Value="11.5"/>
+          <Setter Property="FontSize" Value="13"/>
           <Setter Property="VerticalAlignment" Value="Center"/>
           <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
@@ -566,12 +610,8 @@
       </Border.Resources>
 
       <DockPanel Margin="10,0">
-        <!-- The token scope (BR-14): the figures of the execution shown, or of the whole session. -->
-        <ComboBox DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="90"
-                  SelectedValuePath="Tag" SelectedValue="{Binding TokenScope, Mode=TwoWay}">
-          <ComboBoxItem Tag="execution" Content="{Binding [Studio.Shell.StatusScopeExecution], Source={x:Static services:I18n.Instance}}"/>
-          <ComboBoxItem Tag="session" Content="{Binding [Studio.Shell.StatusScopeSession], Source={x:Static services:I18n.Instance}}"/>
-        </ComboBox>
+        <!-- Three zones (refonte R11): the default model on the left, what runs in the middle,
+             the balances on the right. The token scope (BR-14) is chosen in Réglages › Studio. -->
         <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
              entry per account, in both modes. A click on an entry reads the balances again — or,
              for a provider whose balance only its console shows, opens that console (D-01). An
@@ -614,6 +654,8 @@
           </ItemsControl>
         </StackPanel>
 
+        <Rectangle DockPanel.Dock="Right" Width="1" Margin="12,7,0,7" Fill="{DynamicResource LineBrush}"
+                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}"/>
         <!-- At rest, to the expert: provider · model of the default profile. -->
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
                     ToolTip="{Binding ProfileTip}"
@@ -622,6 +664,8 @@
                                Foreground="{DynamicResource InkFaintBrush}"/>
           <TextBlock Style="{StaticResource StatusFigure}" Margin="6,0,0,0" Text="{Binding Profile}"/>
         </StackPanel>
+        <Rectangle DockPanel.Dock="Left" Width="1" Margin="12,7,12,7" Fill="{DynamicResource LineBrush}"
+                   Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}"/>
 
         <!-- The active groups share the width, so a narrow window trims their expert line and
              never pushes a group off the bar. -->
@@ -638,7 +682,7 @@
                   Visibility="{Binding Test.IsActive, Converter={StaticResource BooleanToVisibility}}">
             <DockPanel>
               <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
-                         Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
+                         Text="{Binding [Studio.Run.ModeTrial], Source={x:Static services:I18n.Instance}}"/>
               <ContentPresenter Content="{Binding Test}" ContentTemplate="{StaticResource RunGroupBody}"/>
             </DockPanel>
           </Button>
@@ -704,9 +748,9 @@
                         BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
-                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
-                    <TextBlock FontSize="10.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
+                    <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
                                TextTrimming="CharacterEllipsis" Text="{Binding Description}"/>
                   </StackPanel>
                 </Border>
@@ -741,7 +785,7 @@
                 </Style>
               </TextBlock.Style>
             </TextBlock>
-            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding [Studio.Settings.EditSub], Source={x:Static services:I18n.Instance}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
@@ -774,7 +818,7 @@
 
             <!-- Provider cards, grouped as the v3 rev.2 design: local (keyless), cloud
                  (key required), then the catch-all and the echo fallback. -->
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,0,6"
                        Text="{Binding [Studio.Settings.GroupLocal], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding LocalProviders}" ItemTemplate="{StaticResource ProviderCard}">
@@ -783,7 +827,7 @@
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10" FontWeight="Medium"
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,12,0,6"
                        Text="{Binding [Studio.Settings.GroupCloud], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding CloudProviders}" ItemTemplate="{StaticResource ProviderCard}">
@@ -821,7 +865,7 @@
                 </StackPanel.Style>
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Common.BaseUrl], Source={x:Static services:I18n.Instance}}"/>
                 <TextBox Style="{StaticResource InputMono}" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap" Margin="0,5,0,0"
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap" Margin="0,5,0,0"
                            Text="{Binding EndpointReadingLine}"
                            Visibility="{Binding EndpointReadingLine, Converter={StaticResource StringPresentToVisibility}}"/>
               </StackPanel>
@@ -923,7 +967,7 @@
                 <DockPanel LastChildFill="False">
                   <controls:LucideIcon Kind="key" Size="14" Foreground="{DynamicResource AccentBrush}"
                                        VerticalAlignment="Center"/>
-                  <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                  <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                              Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding KeyBlockTitle}"/>
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <StackPanel.Style>
@@ -950,10 +994,10 @@
                         </Style>
                       </controls:LucideIcon.Style>
                     </controls:LucideIcon>
-                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding KeyStatusText}"/>
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding KeyStatusText}"/>
                   </StackPanel>
                 </DockPanel>
-                <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap"
                            Margin="0,7,0,9" Text="{Binding [Studio.Settings.KeyExplainer], Source={x:Static services:I18n.Instance}}"/>
                 <DockPanel>
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="7,0,0,0"
@@ -966,13 +1010,13 @@
                 </DockPanel>
                 <!-- STUDIO-44: the key is in place for the session even when the user scope refused
                      it; the line says so, and why, instead of a click that seems to do nothing. -->
-                <TextBlock FontSize="11.5" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                <TextBlock FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
                            Margin="0,7,0,0" Text="{Binding KeyStoreError}"
                            Visibility="{Binding KeyStoreError, Converter={StaticResource StringPresentToVisibility}}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                  <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
+                  <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                              Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
+                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13"
                              Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0"
                              Text="{Binding KeyConsoleUrl}"/>
                 </StackPanel>
@@ -980,11 +1024,11 @@
                         BorderThickness="1" CornerRadius="8" Padding="10,7" Margin="0,9,0,0"
                         Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
-                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap"
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap"
                                Foreground="{DynamicResource InkFaintBrush}"
                                Text="{Binding [Studio.Settings.KeyExpertHint], Source={x:Static services:I18n.Instance}}"/>
                     <!-- STUDIO-48: the variable a terminal orkeon run reads this host profile's key from. -->
-                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5" TextWrapping="Wrap" Margin="0,5,0,0"
+                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" TextWrapping="Wrap" Margin="0,5,0,0"
                                Foreground="{DynamicResource InkFaintBrush}" Text="{Binding HostKeyHint}"
                                Visibility="{Binding HostKeyHint, Converter={StaticResource StringPresentToVisibility}}"/>
                   </StackPanel>
@@ -995,19 +1039,19 @@
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
                         Visibility="{Binding ShowLocalNote, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="circle-check" Size="13" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
-              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
+              <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
                          Text="{Binding [Studio.Settings.LocalNote], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
                         Visibility="{Binding ShowNoneNote, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="info" Size="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
-              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
+              <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"
                          Text="{Binding [Studio.Settings.NoneNote], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
                         Visibility="{Binding ShowTestRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnGhost}" Command="{Binding TestConnectionCommand}">
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestConnectionCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
                   <TextBlock Text="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
@@ -1032,7 +1076,7 @@
                        ScrollViewer.VerticalScrollBarVisibility="Auto">
                 <ListBox.ItemTemplate>
                   <DataTemplate>
-                    <Button Style="{StaticResource BtnGhost}" HorizontalContentAlignment="Left"
+                    <Button Style="{StaticResource BtnSecondary}" HorizontalContentAlignment="Left"
                             Content="{Binding}" CommandParameter="{Binding}"
                             Command="{Binding DataContext.PickModelCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
                   </DataTemplate>
@@ -1049,7 +1093,7 @@
                  English (raw evidence), on hover. -->
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
                         Visibility="{Binding ShowBalanceRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnGhost}" Command="{Binding ReadBalanceCommand}">
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReadBalanceCommand}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="wallet" Size="13" Margin="0,0,7,0"/>
                   <TextBlock Text="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
@@ -1069,7 +1113,7 @@
                   </Style>
                 </TextBlock.Style>
               </TextBlock>
-              <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding OpenBalanceConsoleCommand}"
+              <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding OpenBalanceConsoleCommand}"
                       Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="external-link" Size="12" Margin="0,0,6,0"/>
@@ -1089,7 +1133,7 @@
                   <TextBlock Text="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
           </Border>
@@ -1107,7 +1151,7 @@
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
-            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
               <ItemsControl.ItemTemplate>
@@ -1154,11 +1198,11 @@
                             <StackPanel>
                               <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
                                    rows are told apart here, not by squinting at a truncated path. -->
-                              <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}">
+                              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
                                 <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
                               </TextBlock>
                               <!-- The real folder, whole: wrapped rather than trimmed. -->
-                              <TextBlock x:Name="Disk" FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                              <TextBlock x:Name="Disk" FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
                                          TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
                             </StackPanel>
                           </DockPanel>
@@ -1183,7 +1227,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,4,0,0"
+            <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
                     Command="{Binding AddCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
@@ -1200,9 +1244,9 @@
                   <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
+              <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}"/>
             </DockPanel>
           </Border>
@@ -1220,7 +1264,7 @@
           <StackPanel Margin="22,20,22,0">
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
-            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                        Text="{Binding [Studio.Create.Name], Source={x:Static services:I18n.Instance}}"/>
@@ -1245,7 +1289,7 @@
                         <Border x:Name="Chip" Style="{StaticResource ToolChip}"
                                 Background="{DynamicResource SurfaceBrush}"
                                 BorderBrush="{DynamicResource LineBrush}">
-                          <TextBlock x:Name="Label" FontSize="11.5"
+                          <TextBlock x:Name="Label" FontSize="13"
                                      Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                                      FontFamily="{StaticResource MonoFont}" Text="{Binding Tool}"/>
                         </Border>
@@ -1266,13 +1310,13 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <DockPanel Margin="0,10,0,0">
-              <TextBlock DockPanel.Dock="Left" FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}"
+              <TextBlock DockPanel.Dock="Left" FontSize="13" Foreground="{DynamicResource InkMutedBrush}"
                          MinWidth="132" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.Scope], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" VerticalAlignment="Center"
+              <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}"/>
             </DockPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Foreground="{DynamicResource InkFaintBrush}"
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                        Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}"
                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
@@ -1285,9 +1329,9 @@
                   <TextBlock Text="{Binding SaveLabel}"/>
                 </StackPanel>
               </Button>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
+              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
                       Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}">
                 <TextBlock Foreground="{DynamicResource DangerBrush}"
                            Text="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"/>
@@ -1326,7 +1370,7 @@
             <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}"
                        Text="{Binding Title}"/>
-            <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- État vide : les Réglages ne déclarent encore rien. -->
@@ -1385,18 +1429,18 @@
                               <StackPanel>
                                 <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
                                      /output rows are told apart here, not by squinting at a truncated path. -->
-                                <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}">
+                                <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}">
                                   <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
                                 </TextBlock>
                                 <!-- The real folder, whole: wrapped rather than trimmed. -->
-                                <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
+                                <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
                                            TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
                                 <!-- Why the row cannot be picked, or that its root is shared: under the path, where
                                      a sentence has room, not beside the pill where it squeezed the path. -->
-                                <TextBlock FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"
+                                <TextBlock FontSize="13" Margin="0,3,0,0" TextWrapping="Wrap"
                                            Foreground="{DynamicResource InkFaintBrush}" Text="{Binding UnavailableNote}"
                                            Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
-                                <TextBlock FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"
+                                <TextBlock FontSize="13" Margin="0,3,0,0" TextWrapping="Wrap"
                                            Foreground="{DynamicResource InkFaintBrush}" Text="{Binding SharedRootNote}"
                                            Visibility="{Binding HasSharedRootNote, Converter={StaticResource BooleanToVisibility}}"/>
                               </StackPanel>
@@ -1424,7 +1468,7 @@
             </ScrollViewer>
 
             <!-- One door, leading to the one screen that declares. -->
-            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="0,12,0,0"
+            <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
                     Command="{Binding DeclareNewCommand}">
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
@@ -1441,7 +1485,7 @@
                   <TextBlock Text="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
                 </StackPanel>
               </Button>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                          Text="{Binding Summary}"/>
@@ -1474,7 +1518,7 @@
                        Text="{Binding [Studio.Shell.Eyebrow], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Text="Orkeon Studio" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
                        Foreground="{DynamicResource InkBrush}" Margin="0,8,0,0"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="11" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,8,0,0" Text="{Binding About.VersionLine}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="21" Margin="0,16,0,0"
                        Text="{Binding [Studio.Shell.Line], Source={x:Static services:I18n.Instance}}"/>
             <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -1482,14 +1526,14 @@
               <DockPanel>
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="info" Size="15" Foreground="{DynamicResource MarkBrush}"
                                      VerticalAlignment="Top" Margin="0,1,11,0"/>
-                <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
+                <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                            Text="{Binding [Studio.Shell.Kama], Source={x:Static services:I18n.Instance}}"/>
               </DockPanel>
             </Border>
             <DockPanel Margin="0,20,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding About.CloseCommand}"
                       Content="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnGhost}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
+              <Button Style="{StaticResource BtnSecondary}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
                   <TextBlock Text="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
@@ -1518,7 +1562,7 @@
 
               <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="30" FontWeight="SemiBold"
                      Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center"/>
-          <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="12" Margin="11,10,0,0" VerticalAlignment="Center"/>
+          <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="13" Margin="11,10,0,0" VerticalAlignment="Center"/>
         </StackPanel>
         <Border Width="220" Height="3" CornerRadius="1.5" Background="{DynamicResource LineBrush}" Margin="0,24,0,0">
           <Rectangle x:Name="SplashProgress" Height="3" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" RadiusX="1.5" RadiusY="1.5" Width="0">
@@ -1533,7 +1577,7 @@
             </Rectangle.Triggers>
           </Rectangle>
         </Border>
-        <TextBlock FontSize="12" Foreground="{DynamicResource InkFaintBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
+        <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" HorizontalAlignment="Center" Margin="0,14,0,0"
                    Text="{Binding About.VersionLine}"/>
       </StackPanel>
     </Border>

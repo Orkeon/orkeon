@@ -35,7 +35,8 @@ public partial class CreateTeamWizardTests
         string? workspace = null,
         IApiKeyStore? keyStore = null,
         string? assistantKeyEnvName = null,
-        Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null)
+        Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null,
+        FakeFolderWatch? folderWatch = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { });
@@ -72,6 +73,7 @@ public partial class CreateTeamWizardTests
                 ShellOpener = shellOpener,
                 Dispatcher = dispatcher,
                 DiskEntries = diskEntries,
+                FolderWatch = folderWatch ?? new FakeFolderWatch(),
             });
         return (vm, processes, profiles);
     }
@@ -613,6 +615,13 @@ public partial class CreateTeamWizardTests
         Assert.Equal("score 0.40", vm.VerdictScore.Replace(',', '.'));
         Assert.Equal(["accept", "refine", "abort"], vm.Decisions.Select(d => d.Value));
         Assert.Equal("Fix and retry", vm.Decisions[1].Label);
+
+        // R15: the arbitration is asked in the panel, « Looks good to me » first and recommended.
+        var question = vm.Chat.Question!;
+        Assert.Equal("The trial is judged. What do we do next?", question.Text);
+        Assert.Equal(["Looks good to me", "Fix and retry", "Abandon"], question.Replies.Select(r => r.Label));
+        Assert.True(question.Replies[0].IsRecommended);
+        Assert.Same(vm.Decisions[2].DecideCommand, question.Replies[2].Command);
 
         // The child is gone by now, so nothing can be written — but the mapping is pinned:
         // refine's command exists and the title prefilled from the brief's goal.
@@ -1693,7 +1702,7 @@ public partial class CreateTeamWizardTests
             Assert.Equal(["read", "read, write"], wizard.FolderRows.Select(r => r.RoleLabel));
             Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
             Assert.True(wizard.FolderRows[0].IsUnanswered);
-            Assert.Equal("no folder chosen yet", wizard.FolderRows[0].FolderLabel);
+            Assert.Equal("To choose: the team must read documents that already exist.", wizard.FolderRows[0].FolderLabel);
             Assert.True(wizard.FolderRows[1].IsInsideTeam);
             Assert.Equal("inside the team: outmd", wizard.FolderRows[1].FolderLabel);
             Assert.False(wizard.HasFoldersProblem);
@@ -1702,6 +1711,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.False(vm.IsFoldersStep);
         Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
@@ -1782,7 +1793,7 @@ public partial class CreateTeamWizardTests
             input.IsInsideTeam = false;
             Assert.False(input.IsInsideTeam);
             Assert.True(input.IsUnanswered);
-            Assert.Equal("no folder chosen yet", input.FolderLabel);
+            Assert.Equal("To choose: the team must read documents that already exist.", input.FolderLabel);
 
             output.IsInsideTeam = false;
             Assert.True(output.IsInsideTeam);
@@ -1806,15 +1817,21 @@ public partial class CreateTeamWizardTests
 
     /// <summary>
     /// STUDIO-57. Once the folders are confirmed, the engine names the ones it holds for the
-    /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » shows
-    /// « Open » behind each — the file explorer on the session directory the engine created —
-    /// and « Continue » below; « No » lets the construction go on. The engine composes meanwhile.
+    /// team, and the wizard asks whether to put files or sub-folders in them. « Yes » makes the
+    /// folders tab the wait point: each fiche of a held folder gains « Files » — its count,
+    /// watched, and « Open the folder » —, the footer offers « Continue » and the assistant's
+    /// bubble runs the same command. The engine waits on the answer: the step and the trial are
+    /// held until it comes.
     /// </summary>
     [Fact]
     public async Task The_fill_step_asks_once_the_folders_are_confirmed_and_opens_each_held_folder()
     {
         var opener = new RecordingShellOpener();
-        var (vm, processes, _) = Build(shellOpener: opener);
+        var watch = new FakeFolderWatch();
+        const string inpdf = "/ws/.orkeon/forge/veille/folders/inpdf";
+        const string outmd = "/ws/.orkeon/forge/veille/folders/outmd";
+        watch.Counts[outmd] = 3;
+        var (vm, processes, _) = Build(shellOpener: opener, folderWatch: watch);
         FillStepOne(vm);
         ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
         {
@@ -1824,28 +1841,78 @@ public partial class CreateTeamWizardTests
 
         await Compose(vm);
 
-        // The plan came and the wizard moved on; the question waits above it.
-        Assert.Equal(2, vm.Step);
+        // The plan came, yet the wizard waits on the answer: the step stays, the trial is held.
+        Assert.Equal(1, vm.Step);
+        Assert.False(vm.CanTryTeam);
+        Assert.False(vm.TryTeamCommand.CanExecute(null));
+        Assert.Equal(WizardWaitPoint.AnswerAssistant, vm.WaitPoint);
+        Assert.Equal("Answer the assistant to continue.", vm.Step1Hint);
         Assert.True(vm.IsFillFoldersStep);
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.False(vm.IsFillingFolders);
         Assert.Equal(["/inpdf", "/outmd"], vm.HeldFolderRows.Select(r => r.VirtualPath));
         Assert.Equal(["read", "read, write"], vm.HeldFolderRows.Select(r => r.RoleLabel));
-        Assert.Equal("/ws/.orkeon/forge/veille/folders/inpdf", vm.HeldFolderRows[0].Directory);
+        Assert.Equal(inpdf, vm.HeldFolderRows[0].Directory);
         Assert.True(vm.FillFoldersYesCommand.CanExecute(null));
         Assert.False(vm.FillFoldersContinueCommand.CanExecute(null));
+        Assert.All(vm.FolderRows, row => Assert.False(row.HasHeld));
 
-        vm.FillFoldersYesCommand.Execute(null);
+        // R15: the question is the assistant's, in the panel — « Yes » first, and recommended.
+        var question = vm.Chat.Question!;
+        Assert.Equal("Do you want to put files or sub-folders in the folders you set up?", question.Text);
+        Assert.Equal(["Yes", "No"], question.Replies.Select(r => r.Label));
+        Assert.True(question.Replies[0].IsRecommended);
+        Assert.True(question.OffersChoices);
+
+        question.Replies[0].ReplyCommand.Execute(null);
         Assert.True(vm.IsFillingFolders);
         Assert.False(vm.IsFillFoldersQuestion);
-        Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
-        vm.HeldFolderRows[0].OpenCommand.Execute(null);
-        vm.HeldFolderRows[1].OpenCommand.Execute(null);
-        Assert.Equal(["/ws/.orkeon/forge/veille/folders/inpdf", "/ws/.orkeon/forge/veille/folders/outmd"], opener.Opened);
+        Assert.Null(vm.Chat.Question);
 
-        vm.FillFoldersContinueCommand.Execute(null);
+        // The folders tab is the wait point: amber dot, « dropping files », the footer's « Continue ».
+        Assert.Equal(WizardWaitPoint.FillFolders, vm.WaitPoint);
+        Assert.Equal("Waiting for you: drop your files", vm.WaitPointLabel);
+        Assert.Equal("Waiting for you: drop your files", vm.Progress.WaitPhrase);
+        Assert.Equal(CreateTeamViewModel.Step1FoldersTab, vm.Step1TabIndex);
+        Assert.Equal("Expected", vm.FoldersTabState);
+        Assert.Equal("2 folders · dropping files", vm.FoldersTabSubtitle);
+        Assert.Equal(
+            "Drop your files in the folders of your choice, then continue: the assistant will take them into account.",
+            vm.FoldersFooter);
+        Assert.Equal(1, vm.Step);
+        Assert.False(vm.CanTryTeam);
+
+        // The bubble runs the footer's command; « Show the card » brings the tab back.
+        var pending = vm.Chat.PendingAction!;
+        Assert.Equal("The folders are ready. Drop your files in them, then tell me when you're done.", pending.Text);
+        Assert.Equal("Done, continue", pending.ActionLabel);
+        Assert.Same(vm.FillFoldersContinueCommand, pending.Action);
+        Assert.Equal("Drop your files then continue, or ask a question", vm.Chat.Placeholder);
+
+        // Each fiche of a held folder gains its « Files » line, the count watched.
+        Assert.All(vm.FolderRows, row => Assert.True(row.HasHeld));
+        Assert.Equal("No file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.Equal("3 files", vm.FolderRows[1].Held!.FilesLabel);
+        Assert.Equal([inpdf, outmd], watch.Watched.Order(StringComparer.Ordinal));
+        watch.Drop(inpdf, 1);
+        Assert.Equal("1 file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.All(vm.HeldFolderRows, row => Assert.True(row.CanOpen));
+        vm.FolderRows[0].Held!.OpenCommand.Execute(null);
+        vm.FolderRows[1].Held!.OpenCommand.Execute(null);
+        Assert.Equal([inpdf, outmd], opener.Opened);
+
+        vm.Chat.PendingActionCommand.Execute(null);
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.IsFillingFolders);
+        Assert.Null(vm.Chat.Question);
+        // The watch stops; the « Files » line stays, with the count it last read.
+        Assert.Empty(watch.Watched);
+        Assert.Equal("1 file", vm.FolderRows[0].Held!.FilesLabel);
+        Assert.Equal("2 folders confirmed", vm.FoldersTabSubtitle);
+        Assert.Equal("Folders confirmed: the composition goes on in the panel.", vm.FoldersFooter);
+        // The answer releases the composition: the step it reached comes, the trial can start.
+        Assert.Equal(2, vm.Step);
+        Assert.True(vm.CanTryTeam);
     }
 
     /// <summary>
@@ -2013,9 +2080,15 @@ public partial class CreateTeamWizardTests
 
         Assert.True(vm.IsFillFoldersQuestion);
         Assert.All(vm.HeldFolderRows, row => Assert.False(row.CanOpen));
+        Assert.Equal(1, vm.Step);
         vm.FillFoldersNoCommand.Execute(null);
         Assert.False(vm.IsFillFoldersStep);
         Assert.False(vm.FillFoldersNoCommand.CanExecute(null));
+        Assert.Equal(2, vm.Step);
+        // The pause allows the trial; « Try the team » itself waits for the folder still to
+        // choose (refonte lot 10).
+        Assert.True(vm.CanTryTeam);
+        Assert.Equal(vm.HasFoldersToChoose, !vm.TryTeamCommand.CanExecute(null));
 
         vm.RestartCommand.Execute(null);
         Assert.Empty(vm.HeldFolderRows);
@@ -2077,6 +2150,8 @@ public partial class CreateTeamWizardTests
         ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal(["./outmd:/outmd:rw"], vm.TeamMounts);
         var input = vm.MountRows.Single(r => r.VirtualPath == "/inpdf");
@@ -2260,6 +2335,8 @@ public partial class CreateTeamWizardTests
                 wizard.ConfirmFoldersCommand.Execute(null);
             }, PdfBlueprint(), Paused);
             await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
             Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
             Assert.True(vm.TrialReadsInsideTeam);
@@ -2386,6 +2463,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint(), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal("/data/notes", Confirmed(processes)[0].Dir);
         var compose = processes.Requests[0].Arguments.ToList();
@@ -2469,6 +2548,8 @@ public partial class CreateTeamWizardTests
         }, PdfBlueprint("/rapports"), Paused);
 
         await Compose(vm);
+        // STUDIO-57: the wizard waits on the fill question; nothing to drop here.
+        vm.FillFoldersNoCommand.Execute(null);
 
         Assert.Equal(2, vm.Step);
         Assert.Equal(["/data/factures:/factures:ro", "./archives:/archives:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
@@ -3215,8 +3296,10 @@ public partial class CreateTeamWizardTests
         Assert.False(vm.HasFailure);
         Assert.Null(vm.Failure);
         Assert.Equal("", vm.BuildFailureReport());
-        // A success status is never hidden behind a stale card (D-05).
-        Assert.Equal("Stopped — you can pick it up again from My solutions.", vm.StatusMessage);
+        // A success state is never hidden behind a stale card (D-05): the paused session now
+        // reads at the end of the stepper line as a saved draft, not as a status sentence.
+        Assert.True(vm.IsDraftSaved);
+        Assert.True(vm.HasSessionState);
     }
 
     [Fact]

@@ -59,8 +59,13 @@ public sealed class WizardChoice : ObservableObject
 }
 
 /// <summary>One agent card of the "Composer" step — a blueprint agent, or a step-group fallback.</summary>
-public sealed class WizardAgentCard
+public sealed class WizardAgentCard : ObservableObject
 {
+    /// <summary>The « Can: » pills shown before « + N » folds the rest (refonte lot 10).</summary>
+    public const int FoldedToolCount = 5;
+
+    private bool _showAllTools;
+
     internal WizardAgentCard(string? key, string name, string initial, string role, IReadOnlyList<WizardToolChip> tools, Action<string?>? edit, Func<bool> canEdit)
     {
         Key = key;
@@ -69,7 +74,25 @@ public sealed class WizardAgentCard
         Role = role;
         Tools = tools;
         EditCommand = new RelayCommand(() => edit?.Invoke(key), () => edit is not null && key is not null && canEdit());
+        ShowAllToolsCommand = new RelayCommand(() =>
+        {
+            _showAllTools = true;
+            OnPropertiesChanged(nameof(VisibleTools), nameof(HasHiddenTools), nameof(MoreToolsLabel));
+        });
     }
+
+    /// <summary>The pills on screen: the first five until « + N » is clicked, then all of them.</summary>
+    public IReadOnlyList<WizardToolChip> VisibleTools =>
+        _showAllTools || Tools.Count <= FoldedToolCount ? Tools : [.. Tools.Take(FoldedToolCount)];
+
+    /// <summary>Whether pills are folded behind « + N ».</summary>
+    public bool HasHiddenTools => VisibleTools.Count < Tools.Count;
+
+    /// <summary>« + 3 »: the folded pills' count.</summary>
+    public string MoreToolsLabel => HasHiddenTools ? $"+ {Tools.Count - VisibleTools.Count}" : string.Empty;
+
+    /// <summary>The « + N » pill: unfolds the rest.</summary>
+    public RelayCommand ShowAllToolsCommand { get; }
 
     /// <summary>The blueprint key — expert mono; null for a step-group fallback card.</summary>
     public string? Key { get; }
@@ -97,7 +120,11 @@ public sealed class WizardAgentCard
 }
 
 /// <summary>One line of the trial checklist.</summary>
-public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail);
+public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false)
+{
+    /// <summary>Whether the line is a failure — a blocking finding: the red icon.</summary>
+    public bool IsFailure => Passed == false && !IsRemark;
+}
 
 /// <summary>
 /// One line of the trial's activity list.
@@ -192,6 +219,7 @@ public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : E
 /// </param>
 /// <param name="ShortId">The last six characters of the settings declaration the row names (VFS-90); empty otherwise.</param>
 /// <param name="IsUnknownId">Whether the row names a declaration this machine does not have (D-06).</param>
+/// <param name="Note">The confirmed folder's note — what it holds for the team (lot 6); empty when none was given.</param>
 public sealed record MountRow(
     string VirtualPath,
     bool IsReadWrite,
@@ -203,8 +231,12 @@ public sealed record MountRow(
     bool IsInsideTeam = false,
     string Title = "",
     string ShortId = "",
-    bool IsUnknownId = false)
+    bool IsUnknownId = false,
+    string Note = "")
 {
+    /// <summary>Whether the row carries the note its step-1 fiche gave it (lot 6).</summary>
+    public bool HasNote => Note.Length > 0;
+
     /// <summary>Whether the row names a settings declaration by id (VFS-90); the last six characters are shown.</summary>
     public bool HasId => ShortId.Length > 0;
 
@@ -235,6 +267,15 @@ public sealed record MountRow(
     /// folder to choose — unanswered, and readable.
     /// </summary>
     public bool CanCreateInsideTeam => !HasFolder && !IsUnreadable;
+
+    /// <summary>
+    /// Whether the row is a read root still to choose: its state says what happens without a
+    /// source folder — the team starts from an empty «input» folder (lot 3).
+    /// </summary>
+    public bool IsReadToChoose => CanChooseFolder && !IsReadWrite;
+
+    /// <summary>Whether the row is a written root still to choose: its state reads « To choose ».</summary>
+    public bool IsWriteToChoose => CanChooseFolder && IsReadWrite;
 
     /// <summary>
     /// Whether the row's ✕ drops an agent-implied root: a bare row of the Composer step. A
@@ -334,6 +375,12 @@ public sealed record CreateTeamDependencies
     public IDiskEntryProbe? DiskEntries { get; init; }
 
     /// <summary>
+    /// Counts and watches the files dropped in the folders the session holds, while the engine
+    /// waits on them (refonte, « drop files »); the real disk when null.
+    /// </summary>
+    public IFolderWatch? FolderWatch { get; init; }
+
+    /// <summary>
     /// What an adopted team's launchers are written against (STUDIO-50): the model settings, the
     /// settings' folders and the settings file. When null, the wizard's own settings and the
     /// declared folders, and no settings file — the run then resolves its own.
@@ -370,6 +417,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// <summary>Agent-addressed roots the user dropped; nothing will be bound to them at save.</summary>
     private readonly HashSet<string> _droppedDerivedRoots = new(StringComparer.Ordinal);
     private readonly IUiDispatcher _dispatcher;
+    private readonly IFolderWatch _folderWatch;
     private readonly IStudioStrings _strings;
     private readonly IShellOpener? _shellOpener;
     private readonly string _workspace;
@@ -435,6 +483,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _suggestionDelay = wired.SuggestionDelay ?? ImmediateUiDelay.Instance;
         _uiLanguage = wired.UiLanguage ?? (() => UseCaseLanguages.English);
         _diskEntries = wired.DiskEntries ?? PhysicalDiskEntryProbe.Instance;
+        _folderWatch = wired.FolderWatch ?? PhysicalFolderWatch.Instance;
 
         // The conversation is the window's, not this screen's: it has to survive a tab
         // change, and losing it on the first one is precisely the defect being fixed. A
@@ -497,7 +546,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The gesture IS the engine. The questions belong to the model, asked during its
         // brief stage; a local questionnaire played first only interviewed the user twice.
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
-        TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
+        TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeamNow);
         AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(
@@ -510,9 +559,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             () => MaxStep > 1 || IsEngineRunning || !Chat.IsEmpty);
         StopCommand = new RelayCommand(() => _client.RequestCancellation(), () => IsEngineRunning);
         GoStep1Command = new RelayCommand(() => GoStep(1));
-        GoStep2Command = new RelayCommand(() => GoStep(2));
-        GoStep3Command = new RelayCommand(() => GoStep(3));
-        GoStep4Command = new RelayCommand(() => GoStep(4));
+        GoStep2Command = new RelayCommand(() => GoStep(2), () => MaxStep >= 2);
+        GoStep3Command = new RelayCommand(() => GoStep(3), () => MaxStep >= 3);
+        GoStep4Command = new RelayCommand(() => GoStep(4), () => MaxStep >= 4);
+        InitializeStepper(wired.Clock);
+        InitializeWaitPoint();
+        InitializeStep1Tabs();
+        InitializeStep2Tabs();
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
         OpenConflictingTeamCommand = new RelayCommand(OpenConflictingTeam, () => CanOpenConflictingTeam);
@@ -543,6 +596,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
         Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
         _strings.CultureChanged += (_, _) => OnAdoptProfileLanguageChanged();
+        _strings.CultureChanged += (_, _) => OnWaitPointLanguageChanged();
+
+        // The first reading: a Studio with no model waits on one from the start.
+        SyncWaitPoint();
     }
 
     // ── what the constructor wired ──────────────────────────────────────────
@@ -732,6 +789,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.RefreshMessageCount();
         TryNotes.RefreshMessageCount();
         AdoptNotes.RefreshMessageCount();
+        OnPropertiesChanged(nameof(NeedFooter), nameof(NeedTabSubtitle));
     }
 
     private void OnChatPropertyChanged(string? propertyName)
@@ -752,7 +810,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         // The brief interview is an engine blocked on stdin: while a question stands,
         // the top-of-screen spinner must stop claiming the engine is working.
         if (propertyName is nameof(ChatThreadViewModel.IsAsking))
+        {
             OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
+            RaiseSessionStateChanged();
+            SyncWaitPoint();
+        }
     }
 
     private void OnProfilesPropertyChanged(string? propertyName)
@@ -766,6 +828,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint),
             nameof(AdoptProfileName), nameof(AdoptProfileSummary), nameof(AdoptUseDefaultLlmLabel));
         ComposeCommand.RaiseCanExecuteChanged();
+        // A model elected (or the last one removed) opens or closes the « choose a model » wait.
+        SyncWaitPoint();
     }
 
     /// <summary>
@@ -854,8 +918,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             if (!SetProperty(ref _step, value))
                 return;
 
-            OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4));
+            // The ring of a wait point reads the step on screen, even when the wait point stays.
+            OnPropertiesChanged(nameof(IsStep1), nameof(IsStep2), nameof(IsStep3), nameof(IsStep4),
+                nameof(IsWaitOnChooseFolder), nameof(IsWaitOnAdopt));
             RaiseDraftChanged();
+            GoBackCommand?.RaiseCanExecuteChanged();
+            SyncWaitPoint();
         }
     }
 
@@ -865,8 +933,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         get => _maxStep;
         private set
         {
-            if (SetProperty(ref _maxStep, value))
-                RestartCommand?.RaiseCanExecuteChanged();
+            if (!SetProperty(ref _maxStep, value))
+                return;
+
+            RestartCommand?.RaiseCanExecuteChanged();
+            RaiseStepperChanged();
+            SyncWaitPoint();
         }
     }
 
@@ -974,7 +1046,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             if (SetProperty(ref _need, value))
             {
-                OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
+                OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint), nameof(NeedSummary));
+                RefreshStep1Tabs();
+                // The pinned « Your brief » card and the recap read the need as typed.
+                Chat.OwnerChanged();
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
                 RefreshRephrase();
@@ -1010,9 +1085,19 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 return _strings[StudioStringKeys.WizardHintDescribe];
 
             // A greyed button under «Everything is there — I can compose the team» is a lie:
-            // the engine is already composing, and what it wants is an answer in the thread.
-            if (IsEngineRunning)
-                return _strings[StudioStringKeys.WizardHintComposing];
+            // the engine is already composing. While it waits on the user, the sentence names
+            // the wait point (R13); otherwise it says the composition is under way.
+            if (IsEngineRunning || IsFillFoldersStep)
+            {
+                return _strings[_waitPoint switch
+                {
+                    WizardWaitPoint.ConfirmFolders => StudioStringKeys.WizardHintConfirmFolders,
+                    WizardWaitPoint.AnswerAssistant => StudioStringKeys.WizardHintAnswer,
+                    WizardWaitPoint.FillFolders => StudioStringKeys.WizardHintFillFolders,
+                    WizardWaitPoint.Decide => StudioStringKeys.WizardHintDecide,
+                    _ => StudioStringKeys.WizardHintComposing,
+                }];
+            }
 
             // With the need typed and no engine running, only the assistant's model is missing.
             if (!CanCompose)
@@ -1260,12 +1345,18 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             if (!SetProperty(ref _isEngineRunning, value))
                 return;
 
+            // A new run: whatever the previous one ended on no longer speaks for the session.
+            if (value)
+                ForgetRunOutcome();
+            else
+                RaiseSessionStateChanged();
+
             // CanTryTeam gates BOTH answers to the dry pause, and it reads IsEngineRunning:
             // the engine dying is the moment those two buttons become offerable, and it is
             // silent on the event stream — nothing else would raise them.
             OnPropertiesChanged(
                 nameof(CanCompose), nameof(CanSaveTeam), nameof(IsEngineWorking),
-                nameof(TrialInProgress), nameof(CanTryTeam));
+                nameof(TrialInProgress), nameof(CanTryTeam), nameof(ComposeTip));
             RefreshRephrase();
             // The card's first and last readings come from here: the engine starting and
             // the engine dying are both silent on the event stream, and both change what
@@ -1278,6 +1369,9 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             SaveTeamCommand.RaiseCanExecuteChanged();
             TryTeamCommand.RaiseCanExecuteChanged();
             AdoptWithoutTrialCommand.RaiseCanExecuteChanged();
+            // The engine starting or dying moves the wait point too: a wait it held ends with
+            // it, and the adoption becomes the one expected once the session reached its end.
+            SyncWaitPoint();
         }
     }
 
@@ -1288,7 +1382,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// the <c>edit</c> option, so an edit-only arbitration would read as «not waiting».
     /// </para>
     /// </summary>
-    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking || _model.FoldersPending;
+    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking || _model.FoldersPending || _model.FillPending;
 
     /// <summary>
     /// Whether the trial is genuinely under way.
@@ -1451,7 +1545,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 rows.Add(new MountRow(
                     derived.VirtualPath,
                     derived.IsReadWrite,
-                    Agents: string.Join(", ", derived.Agents ?? [])));
+                    Agents: string.Join(", ", derived.Agents ?? []),
+                    Note: NoteOf(derived.VirtualPath)));
             }
 
             return rows;
@@ -1488,8 +1583,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             IsInsideTeam: insideTeam,
             Title: title,
             ShortId: insideTeam ? "" : (declaredEntry?.ShortId ?? mount.ShortId ?? ""),
-            IsUnknownId: unknownId);
+            IsUnknownId: unknownId,
+            Note: NoteOf(mount.VirtualPath));
     }
+
+    /// <summary>The note the step-1 fiche gave the folder of that name, as confirmed (lot 6).</summary>
+    private string NoteOf(string virtualPath) =>
+        _model.Folders.FirstOrDefault(folder => string.Equals(folder.Path, virtualPath, StringComparison.Ordinal))?.Purpose?.Trim() ?? "";
 
     /// <summary>
     /// The folder name a team-relative entry names (<c>output</c> for <c>./output:/output:rw</c>);
@@ -1736,12 +1836,16 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(MountRows),
             nameof(HasMountRows),
             nameof(NeedsInputFolder),
+            nameof(FoldersToChooseCount), nameof(HasFoldersToChoose),
+            nameof(Step2Hint),
             nameof(TrialReadsInsideTeam),
             nameof(HasUndeclaredTeamMounts),
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
             nameof(HasDroppedDerivedRoots),
             nameof(DroppedDerivedWarning));
+        RefreshStep2Tabs();
+        SyncWaitPoint();
     }
 
     /// <summary>Adds the picker's choice to the team's future mounts.</summary>
@@ -2490,10 +2594,11 @@ public sealed partial class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// The trial can start when the session sits at the --dry pause: composed, rendered,
-    /// validated, nothing run yet.
+    /// validated, nothing run yet — and the fill question answered, the files in place.
     /// </summary>
     public bool CanTryTeam =>
         !IsEngineRunning
+        && !IsFillFoldersStep
         && _model.Slug is not null
         && string.Equals(_model.FinishedStatus, "paused", StringComparison.OrdinalIgnoreCase);
 
@@ -2796,6 +2901,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         ComposeNotes.Consigne = "";
         TryNotes.Consigne = "";
         AdoptNotes.Consigne = "";
+        ResetStep2Tabs();
 
         SyncFromModel();
     }
@@ -2822,11 +2928,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model = new ForgeSessionModel { Meter = _client.Meter?.Begin(Orkeon.Studio.Core.Run.ExecutionKind.Forge) };
         _saveError = null;
         Failure = null;
+        ForgetSessionState();
         RawLog.Clear();
         Activity.Clear();
         Checklist.Clear();
         Agents.Clear();
         Decisions.Clear();
+        _decisionQuestion = null;
+        SyncQuestion();
         TeamName = "";
         // A taken name and the proposal that answered it belonged to that creation (D-07).
         _adoptionFolder = null;
@@ -2998,8 +3107,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         if (result.ExitCode != 0 && _lastStderr is { } stderr)
             StatusMessage = stderr;
 
-        // "Stop" is the user's own gesture, not a failure: the stopped sentence keeps it.
-        if (result.WasCancelled || result.Outcome == RunOutcome.Cancelled)
+        // "Stop" is the user's own gesture, not a failure: the stepper says « Paused · Resume ».
+        var cancelled = result.WasCancelled || result.Outcome == RunOutcome.Cancelled;
+        NoteRunEnded(cancelled);
+        if (cancelled)
             return;
 
         // STUDIO-13: a non-zero exit — with or without stderr — and a session that reported
@@ -3050,7 +3161,8 @@ public sealed partial class CreateTeamViewModel : ObservableObject
                 FailWith(WizardFailureKind.ConfigRefused, ConfigRefusedDetail(), EngineCommandLine, exitCode: null);
         }
 
-        // The milestone drives the stepper; the user may look back, never skip ahead.
+        // The milestone drives the stepper; the user may look back, never skip ahead. The fill
+        // question holds it: the step moves on once the user answered (STUDIO-57, R15).
         var reached = _model.Milestone switch
         {
             ForgeMilestone.Describe => 1,
@@ -3058,7 +3170,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             ForgeMilestone.Try => 3,
             _ => 4,
         };
-        if (reached > MaxStep)
+        if (reached > MaxStep && !IsFillFoldersStep)
         {
             MaxStep = reached;
             Step = reached;
@@ -3089,7 +3201,6 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             "ready" => _strings[StudioStringKeys.ForgeStatusReady],
             "failed" when _model.LastError is null && _lastStderr is null
                 => _strings[StudioStringKeys.ForgeStatusFailed],
-            "abandoned" or "paused" => _strings[StudioStringKeys.ForgeStatusStopped],
             _ => StatusMessage,
         };
 
@@ -3117,7 +3228,12 @@ public sealed partial class CreateTeamViewModel : ObservableObject
             nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
-            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam));
+            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam),
+            nameof(VerdictSummary), nameof(HasVerdictSummary), nameof(Step2Hint));
+        RaiseSessionStateChanged();
+        RefreshStep1Tabs();
+        RefreshStep2Tabs();
+        SyncWaitPoint();
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();
@@ -3184,7 +3300,10 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _model.PromptTokens,
         _model.CompletionTokens,
         _model.TokensAreEstimated,
-        _model.TokensRemaining));
+        _model.TokensRemaining,
+        // A model to choose is not a session's wait: the gate's alert names it, and the status
+        // bar stays at rest until a creation is under way.
+        HasWaitPoint && _waitPoint != WizardWaitPoint.ChooseModel ? WaitPointLabel : null));
 
     private void SyncActivity()
     {
@@ -3211,19 +3330,32 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     {
         Checklist.Clear();
         foreach (var item in _model.BuildChecklist())
-            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail));
+            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark));
     }
 
     private void SyncDecisions()
     {
-        Decisions.Clear();
-        foreach (var option in _model.DecisionOptions)
-        {
-            // "edit" is not a button: the agent editor's Save is its whole UI — it sends
-            // the decision and the amended blueprint itself.
-            if (string.Equals(option, "edit", StringComparison.Ordinal))
-                continue;
+        // Every forge event syncs: the same options keep the same question, so the panel a user
+        // closed stays closed and the focus stays where it is.
+        if (DecisionValues().SequenceEqual(Decisions.Select(decision => decision.Value), StringComparer.Ordinal))
+            return;
 
+        RebuildDecisions();
+        _decisionQuestion = null;
+        SyncQuestion();
+    }
+
+    // "edit" is not a button: the agent editor's Save is its whole UI — it sends the decision
+    // and the amended blueprint itself.
+    private IEnumerable<string> DecisionValues() =>
+        _model.DecisionOptions.Where(option => !string.Equals(option, "edit", StringComparison.Ordinal));
+
+    /// <summary>Builds the arbitration buttons in the current language.</summary>
+    private void RebuildDecisions()
+    {
+        Decisions.Clear();
+        foreach (var option in DecisionValues())
+        {
             var label = option switch
             {
                 "accept" => _strings[StudioStringKeys.WizardDecisionAccept],

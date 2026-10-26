@@ -103,6 +103,27 @@ public sealed class ConfigTabViewModelTests
     }
 
     [Fact]
+    public async Task Should_LeaveTheFileOutcomeToTheFileSection_When_TheLoadAndTheSaveWentThrough()
+    {
+        // Refonte lot 11: « Loaded: path » is said once, in the File section, not under the header.
+        const string path = "/crews/appsettings.json";
+        var store = new FakeAppSettingsStore();
+        store.Files[path] = """{ "Orkeon": { "FileSystem": { "Mounts": ["/data:/workspace:ro"] } } }""";
+        var tab = Build(store, new FakeDirectoryProbe("/data"));
+
+        Assert.True(await tab.LoadAsync(path, TestContext.Current.CancellationToken));
+        Assert.Contains(path, tab.StatusMessage!, StringComparison.Ordinal);
+        Assert.Null(tab.HeaderStatusMessage);
+
+        tab.Rag.Profile = "turbo";
+        Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));
+
+        // A refused save is the header's again.
+        Assert.NotNull(tab.HeaderStatusMessage);
+        Assert.Equal(tab.StatusMessage, tab.HeaderStatusMessage);
+    }
+
+    [Fact]
     public async Task Should_PreserveUnknownKeys_When_TheFileIsLoadedEditedAndSaved()
     {
         // The lossless round-trip of §4.1: Studio must never drop configuration it does not model.

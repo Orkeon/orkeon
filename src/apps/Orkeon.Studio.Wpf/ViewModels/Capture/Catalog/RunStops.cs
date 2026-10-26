@@ -1,5 +1,6 @@
 using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
+using Orkeon.Studio.Wpf.ViewModels.Launch;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
@@ -35,6 +36,38 @@ internal static class RunStops
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c =>
                 c.Shell.Launch.Target.Select(c.World.TeamDirectory(StudioFixture.PastedReadmeTeamSlug))),
+        },
+
+        new()
+        {
+            Name = "executer-options",
+            Category = CaptureCategory.Run,
+            Screen = CaptureScreen.Run,
+            Because = "The Options tab of the launcher's classeur (refonte lot 12): the two-column "
+                    + "grid, the Progression | Raw output segment with « token by token », the "
+                    + "advanced options fold and the allowed folders of this launch.",
+            Covers = ["Launch.HasTeamCard"],
+            Arrange = CaptureAction.Sync(static c =>
+            {
+                c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
+                c.Shell.Launch.ActiveTab = LaunchTabViewModel.OptionsTab;
+            }),
+        },
+
+        new()
+        {
+            Name = "executer-commande",
+            Category = CaptureCategory.Run,
+            Screen = CaptureScreen.Run,
+            Modes = CaptureModes.Expert,
+            Because = "The Command tab, expert only (refonte lot 12): the command line in its mono "
+                    + "block with Copy, and the Engine / Type / Folders / Mode rows under it.",
+            Covers = ["Launch.HasTeamCard", "Launch.IsExpertMode"],
+            Arrange = CaptureAction.Sync(static c =>
+            {
+                c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
+                c.Shell.Launch.ActiveTab = LaunchTabViewModel.CommandTab;
+            }),
         },
 
         new()

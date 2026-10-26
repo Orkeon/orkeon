@@ -76,7 +76,7 @@ public sealed class DiagnosticVerdictTests
         Assert.Equal(1, diagnostic.WarningCount);
         Assert.Equal(0, diagnostic.FailureCount);
         Assert.True(diagnostic.HasIssues);
-        Assert.Equal("One point to fix before launching a team.", diagnostic.VerdictHeadline);
+        Assert.Equal("1 point to fix before launching a team.", diagnostic.VerdictHeadline);
         Assert.Contains("2", diagnostic.VerdictDetail, StringComparison.Ordinal);
     }
 

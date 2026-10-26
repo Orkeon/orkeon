@@ -122,6 +122,12 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// <summary>The findings of the last <see cref="Validate"/>.</summary>
     public ObservableCollection<ValidationMessageViewModel> ValidationMessages { get; } = [];
 
+    /// <summary>
+    /// The findings no single row carries (a duplicated id, a shared folder, an empty list): the
+    /// ones shown under the list. A row's own finding is on <see cref="MountEditorViewModel.RowProblem"/>.
+    /// </summary>
+    public ObservableCollection<ValidationMessageViewModel> GeneralMessages { get; } = [];
+
     /// <summary>Adds an empty mount row and selects it.</summary>
     public RelayCommand AddMountCommand { get; }
 
@@ -333,6 +339,24 @@ public sealed class MountsEditorViewModel : ObservableObject
         ValidationMessages.Clear();
         foreach (var message in messages)
             ValidationMessages.Add(new ValidationMessageViewModel(message, _strings));
+
+        // A message names its entry by the mount string; the first one on a row, errors first,
+        // goes on that row, and whatever names no row stays under the list.
+        var attached = new HashSet<ValidationMessageViewModel>();
+        foreach (var mount in Mounts)
+        {
+            var problem = ValidationMessages
+                .Where(m => m.Path is { } path && string.Equals(path, mount.MountString, StringComparison.Ordinal))
+                .OrderByDescending(m => m.Severity)
+                .FirstOrDefault();
+            mount.SetRowProblem(problem);
+            if (problem is not null)
+                attached.UnionWith(ValidationMessages.Where(m => string.Equals(m.Path, mount.MountString, StringComparison.Ordinal)));
+        }
+
+        GeneralMessages.Clear();
+        foreach (var message in ValidationMessages.Where(m => !attached.Contains(m)))
+            GeneralMessages.Add(message);
 
         OnPropertiesChanged(nameof(HasErrors), nameof(Summary));
         return messages;

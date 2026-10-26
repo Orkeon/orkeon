@@ -26,12 +26,14 @@
   <SolidColorBrush x:Key="LineStrongBrush"  Color="#C6D2D1"/>
   <SolidColorBrush x:Key="LineFaintBrush"   Color="#E8EDEC"/>
 
-  <!-- accent: ocean blue (deep family), NOT the marketing teal -->
-  <SolidColorBrush x:Key="AccentBrush"       Color="#245A7C"/>
-  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#1C4763"/>
-  <SolidColorBrush x:Key="AccentActiveBrush" Color="#163A52"/>
-  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#E7F0F7"/>
+  <!-- accent: the charter teal (refonte R1, 2026-10). The former ocean blue stays as
+       SecondaryBrush, for charts and secondary surfaces only. -->
+  <SolidColorBrush x:Key="AccentBrush"       Color="#1E7A82"/>
+  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#186670"/>
+  <SolidColorBrush x:Key="AccentActiveBrush" Color="#134F58"/>
+  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#E7F1F2"/>
   <SolidColorBrush x:Key="AccentFgBrush"     Color="#F2FAFA"/>
+  <SolidColorBrush x:Key="SecondaryBrush"    Color="#2A4A66"/>
   <SolidColorBrush x:Key="MarkBrush"         Color="#1E7A82"/>
 
   <!-- status -->
@@ -42,6 +44,14 @@
   <SolidColorBrush x:Key="DangerBrush"      Color="#C0473B"/>
   <SolidColorBrush x:Key="DangerFgBrush"   Color="#FFFFFF"/>
   <SolidColorBrush x:Key="DangerWeakBrush"  Color="#F7E3E0"/>
+  <SolidColorBrush x:Key="InfoBrush"        Color="#2A6E8C"/>
+  <SolidColorBrush x:Key="InfoWeakBrush"    Color="#E1EEF3"/>
+  <!-- Refonte R4: the Assistant form, for the commands that ask the model; blue on purpose, apart from the accent. -->
+  <SolidColorBrush x:Key="AssistantBrush"      Color="#1F5B7A"/>
+  <SolidColorBrush x:Key="AssistantWeakBrush"  Color="#D6E8F5"/>
+  <SolidColorBrush x:Key="AssistantLineBrush"  Color="#9CC3DC"/>
+  <SolidColorBrush x:Key="AssistantHoverBrush" Color="#C8DFF0"/>
+  <SolidColorBrush x:Key="AssistantPressedBrush" Color="#B9D5EA"/>
   <SolidColorBrush x:Key="SandBrush"        Color="#BB8628"/>
   <SolidColorBrush x:Key="SandWeakBrush"    Color="#FBF3E2"/>
 
@@ -68,6 +78,8 @@
        CSS → WPF: `0 Ypx Bpx rgba(r,g,b,a)` becomes Direction=270 (straight down),
        ShadowDepth=Y, BlurRadius=B, Opacity=a. They live with the tokens rather than in
        Studio.xaml because a shadow names a colour, and the colour differs by theme. ══ -->
+  <DropShadowEffect x:Key="ShadowXs" Color="#10293B" Direction="270" ShadowDepth="1"
+                    BlurRadius="3" Opacity="0.10" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowMd" Color="#10293B" Direction="270" ShadowDepth="8"
                     BlurRadius="34" Opacity="0.16" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowLg" Color="#000000" Direction="270" ShadowDepth="14"

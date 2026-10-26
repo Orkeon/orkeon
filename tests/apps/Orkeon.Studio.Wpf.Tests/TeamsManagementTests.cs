@@ -106,6 +106,7 @@ public sealed class TeamsManagementTests
             card.AskDeleteCommand.Execute(null);
             Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.TeamsDeleteAskArchive], card.DeleteQuestion);
             Assert.True(card.CanDeleteSessionToo);
+            card.DeleteSessionToo = true;
             await card.ConfirmDeleteCommand.ExecuteAsync();
 
             var archive = Path.Combine(workspace, "archive", "veille");

@@ -121,6 +121,13 @@ function stableHeader() {
       var folder = folders[f];
       lines.push("- " + folder.path + " — " + (folder.role === "input" ? "read-only input" : "writable output")
         + (folder.purpose ? ": " + folder.purpose : ""));
+      // STUDIO-57: what the user put in a folder kept inside the team, read after the fill step.
+      if (folder.contents && folder.contents.length > 0)
+        lines.push("  The user put in it: " + folder.contents.join(", "));
+    }
+    if (folders.some(function (f) { return f.contents && f.contents.length > 0; })) {
+      lines.push("The files and sub-folders listed are already there: design the tasks for them,");
+      lines.push("by these names (a name ending with '/' is a sub-folder).");
     }
     var output = firstOutput(folders);
     if (output) {

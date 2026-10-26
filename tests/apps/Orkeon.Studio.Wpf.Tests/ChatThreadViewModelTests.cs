@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -276,6 +277,35 @@ public class ChatThreadViewModelTests
     }
 
     [Fact]
+    public void A_card_waiting_on_the_user_stops_the_indicator_and_holds_enter_back()
+    {
+        var chat = new ChatThreadViewModel();
+        chat.StartSession();
+        var ran = 0;
+        var action = new RelayCommand(() => ran++);
+        var reveal = new RelayCommand(() => { });
+
+        chat.SetPendingAction(new ChatPendingAction("Confirm them.", "Confirm the folders", action, reveal, "Confirm, or ask"));
+
+        Assert.False(chat.IsBusy);
+        Assert.Equal("Confirm, or ask", chat.Placeholder);
+        Assert.False(chat.EnterSends);
+        var before = chat.Turns.Count;
+        chat.Draft = "why these folders?";
+        chat.EnterCommand.Execute(null);
+        Assert.Equal(before, chat.Turns.Count);
+        Assert.Equal("why these folders?", chat.Draft);
+
+        chat.PendingActionCommand.Execute(null);
+        Assert.Equal(1, ran);
+
+        chat.SetPendingAction(null);
+
+        Assert.True(chat.IsBusy);
+        Assert.True(chat.EnterSends);
+    }
+
+    [Fact]
     public void A_free_question_with_no_keyword_falls_back_to_where_the_user_stands()
     {
         var chat = new ChatThreadViewModel();
@@ -322,7 +352,7 @@ public class ChatThreadViewModelTests
         // The Run and Test screens run over SEPARATE launchers — the trial is a rehearsal with no
         // history of its own — and neither owns a conversation: they reach the window's one
         // through the ancestor, so there is nothing here for a second copy to hide in.
-        Assert.NotSame(shell.Launch, shell.Test.Launcher);
+        Assert.NotSame(shell.Launch, shell.Run.Trial);
         Assert.Null(typeof(Orkeon.Studio.Wpf.ViewModels.Launch.LaunchTabViewModel).GetProperty("Chat"));
 
         // And it is genuinely shared state: what one screen says, the other screen holds.
@@ -481,6 +511,25 @@ public sealed class ChatThreadEdgeTests
         delay.Elapse();
 
         Assert.False(chat.IsOpen);
+    }
+
+    /// <summary>
+    /// The fill question comes with <c>brief.ready</c>: the closing pause used to close the
+    /// panel under it, and the user had to reopen the assistant to answer.
+    /// </summary>
+    [Fact]
+    public void The_closing_pause_leaves_the_panel_open_on_a_question_asked_with_the_brief()
+    {
+        var delay = new ManualDelay();
+        var chat = Thread(delay);
+
+        chat.StartSession();
+        chat.AddAssistantTurn("Which folder?");
+        chat.BriefAccepted();
+        chat.SetQuestion(new ChatQuestion(null, "Put files in the folders?", []));
+        delay.Elapse();
+
+        Assert.True(chat.IsOpen);
     }
 
     [Fact]

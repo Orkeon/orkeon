@@ -82,6 +82,63 @@ public sealed partial class DesignTokenConformityTests
         Assert.True(offenders.Count == 0, "Bound Run without Mode=OneWay: " + string.Join(", ", offenders));
     }
 
+    /// <summary>
+    /// A key declared twice in one resource dictionary compiles on every platform, and WPF only
+    /// throws when it loads the dictionary: Studio did not start (a second « Lucide.gauge » in
+    /// Icons.xaml). Siblings under one element - a dictionary's entries - each hold their key once.
+    /// </summary>
+    [Fact]
+    public void Should_Declare_Each_Key_Once_When_Reading_A_Resource_Dictionary()
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var offenders = XamlFiles()
+            .SelectMany(file => XDocument.Load(file).Descendants()
+                .Select(parent => parent.Elements()
+                    .Select(e => (string?)e.Attribute(x + "Key"))
+                    .Where(k => k is not null)
+                    .GroupBy(k => k!)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => $"{Path.GetFileName(file)}: {g.Key}"))
+                .SelectMany(keys => keys))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Key declared twice in one dictionary: " + string.Join(", ", offenders));
+    }
+
+    [Fact]
+    public void Should_Name_Its_Radio_Groups_Per_Instance_When_A_View_Is_Shown_Twice_In_The_Window()
+    {
+        // The Launch screen holds two LaunchTabView (real, trial): WPF groups radios by name across
+        // the whole window, so a literal GroupName made the two launchers uncheck each other.
+        var view = XDocument.Load(Path.Combine(WpfSourceRoot(), "Views", "LaunchTabView.xaml"));
+        var literal = view.Descendants()
+            .Select(e => (string?)e.Attribute("GroupName"))
+            .Where(name => name is not null && !name.StartsWith("{Binding", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(literal.Count == 0, "Literal GroupName in LaunchTabView: " + string.Join(", ", literal));
+    }
+
+    [Fact]
+    public void Should_Base_A_Local_Style_On_The_Theme_When_It_Targets_A_Studio_Component()
+    {
+        // Alert, Badge, PropertyRow and PageHeader get their template from an implicit style of
+        // Themes/Components.xaml: a local Style without BasedOn replaces it, and the control
+        // renders with no template at all - invisible to every Linux test, plain on Windows.
+        var components = new[] { "Alert", "Badge", "PropertyRow", "PageHeader" };
+        var offenders = XamlFiles()
+            .Where(file => !file.Contains(Path.DirectorySeparatorChar + "Themes" + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            .SelectMany(file => XDocument.Load(file).Descendants()
+                .Where(e => e.Name.LocalName == "Style"
+                    && components.Any(c => ((string?)e.Attribute("TargetType"))?.EndsWith(":" + c, StringComparison.Ordinal) == true
+                        || ((string?)e.Attribute("TargetType"))?.EndsWith(":" + c + "}", StringComparison.Ordinal) == true)
+                    && e.Attribute("BasedOn") is null)
+                .Select(e => $"{Path.GetFileName(file)}: {(string?)e.Attribute("TargetType")}"))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Style without BasedOn on a Studio component: " + string.Join(", ", offenders));
+    }
+
     private static string Theme(string fileName) =>
         Path.Combine(WpfSourceRoot(), "Themes", fileName);
 

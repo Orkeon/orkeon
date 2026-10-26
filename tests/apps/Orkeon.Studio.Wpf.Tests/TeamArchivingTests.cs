@@ -337,20 +337,20 @@ public sealed class TeamArchivingTests : IDisposable
         Assert.False(TeamCatalog.Describe(veille).IsArchived);
         Assert.Null(window.Launch.RunningTarget);
         Assert.NotNull(TeamCatalog.Describe(veille).LastRunAt);
-        Assert.Equal(["synthese", "veille"], window.Test.TeamChoices.Select(team => team.Slug));
+        Assert.Equal(["synthese", "veille"], window.Run.TeamChoices.Select(team => team.Slug));
 
         processes.WhileRunning = null;
         await window.Teams.Teams.Single(c => c.Slug == "veille").ArchiveCommand.ExecuteAsync();
 
         Assert.True(TeamCatalog.Describe(veille).IsArchived);
-        Assert.Equal(["synthese"], window.Test.TeamChoices.Select(team => team.Slug));
+        Assert.Equal(["synthese"], window.Run.TeamChoices.Select(team => team.Slug));
         Assert.True(window.Launch.IsTargetArchived);
         Assert.False(window.Launch.RunCommand.CanExecute(null));
 
         window.Launch.RestoreTargetCommand.Execute(null);
 
         Assert.False(TeamCatalog.Describe(veille).IsArchived);
-        Assert.Equal(["synthese", "veille"], window.Test.TeamChoices.Select(team => team.Slug));
+        Assert.Equal(["synthese", "veille"], window.Run.TeamChoices.Select(team => team.Slug));
         Assert.Equal(["synthese", "veille"], window.Teams.Teams.Select(card => card.Slug));
         Assert.True(window.Launch.RunCommand.CanExecute(null));
     }

@@ -101,8 +101,15 @@ public sealed class CapturePlannerTests
         // Sign-in tabs of an account's form, both modes, both themes) = +8 shots.
         // Drive tab: +1 stop (reglages-drive-vide, the Drive tab of the pristine machine, both modes,
         // both themes, language sweep) = +8 shots.
-        Assert.Equal(70, CaptureCatalog.All.Count);
-        Assert.Equal(390, plan.Count);
+        // Refonte lot 10: +1 stop (etape2-composition, the read-only « Composition » tab of step 2,
+        // both modes, both themes) = +4 shots.
+        // Refonte lot 11: +2 stops (reglages-rag, the RAG's section, expert only, both themes = +2;
+        // reglages-cles, the API-keys section, both modes, both themes = +4) = +6 shots.
+        // Refonte lot 12: +2 stops (executer-options, the Options tab of the launcher's classeur,
+        // both modes, both themes = +4; executer-commande, the Command tab, expert only, both
+        // themes = +2) = +6 shots.
+        Assert.Equal(75, CaptureCatalog.All.Count);
+        Assert.Equal(406, plan.Count);
     }
 
     [Fact]

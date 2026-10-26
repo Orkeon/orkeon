@@ -34,6 +34,16 @@ internal sealed record ForgeFolder
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Directory { get; init; }
 
+    /// <summary>
+    /// What the user put in a folder kept inside the team, read when the fill step is answered
+    /// (<c>folders.filled</c>): the files and sub-folders relative to the folder, a sub-folder
+    /// ending with <c>/</c>, at most <see cref="ForgeFolders.MaxContents"/> of them. Set by the
+    /// engine only; the plan prompt names them, so the tasks are designed for what is there.
+    /// </summary>
+    [JsonPropertyName("contents")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? Contents { get; init; }
+
     /// <summary>Whether the team only reads this folder.</summary>
     [JsonIgnore]
     public bool IsInput => string.Equals(Role, ForgeFolders.InputRole, StringComparison.Ordinal);
@@ -49,6 +59,13 @@ internal sealed record ForgeFolderList
     /// <summary>The folders, in the order the user confirmed them.</summary>
     [JsonPropertyName("folders")]
     public IReadOnlyList<ForgeFolder> Folders { get; init; } = [];
+
+    /// <summary>
+    /// Whether the fill step is settled: no folder is kept inside the team, or the user said
+    /// <c>folders.filled</c>. False keeps a session stopped at that wait asking it on resume.
+    /// </summary>
+    [JsonPropertyName("filled")]
+    public bool Filled { get; init; }
 }
 
 /// <summary>Where one folder lands during the trial: the physical directory behind its root.</summary>
@@ -244,10 +261,54 @@ internal static class ForgeFolders
     }
 
     /// <summary>The confirmed list of <paramref name="session"/>, or null before the confirmation.</summary>
-    public static IReadOnlyList<ForgeFolder>? Confirmed(ForgeSession session)
+    public static IReadOnlyList<ForgeFolder>? Confirmed(ForgeSession session) => ListOf(session)?.Folders;
+
+    /// <summary>The kept list of <paramref name="session"/>, fill step included, or null before the confirmation.</summary>
+    public static ForgeFolderList? ListOf(ForgeSession session)
     {
         ArgumentNullException.ThrowIfNull(session);
-        return session.TryLoadArtifact<ForgeFolderList>(FileName)?.Folders;
+        return session.TryLoadArtifact<ForgeFolderList>(FileName);
+    }
+
+    /// <summary>The most entries <see cref="Inventory"/> names; the rest is counted.</summary>
+    public const int MaxContents = 40;
+
+    /// <summary>
+    /// What a held folder holds (<see cref="ForgeFolder.Contents"/>): every file and sub-folder
+    /// under <paramref name="directory"/>, relative and with <c>/</c> separators, a sub-folder
+    /// ending with <c>/</c>, in ordinal order; past <see cref="MaxContents"/> entries the last
+    /// one says how many more there are. Empty when the folder is empty or gone.
+    /// </summary>
+    public static IReadOnlyList<string> Inventory(string directory)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(directory);
+        if (!System.IO.Directory.Exists(directory))
+            return [];
+
+        // A tree the user dropped may hold what this process cannot read: it is skipped, never a
+        // failure of the forge, and a folder removed while it is listed lists what was read.
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+        var entries = new List<string>();
+        try
+        {
+            foreach (var entry in System.IO.Directory.EnumerateFileSystemEntries(directory, "*", options))
+            {
+                var relative = System.IO.Path.GetRelativePath(directory, entry).Replace('\\', '/');
+                entries.Add(System.IO.Directory.Exists(entry) ? relative + "/" : relative);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // what was read so far stands
+        }
+
+        entries.Sort(StringComparer.Ordinal);
+        if (entries.Count <= MaxContents)
+            return entries;
+
+        var kept = entries.Take(MaxContents - 1).ToList();
+        kept.Add($"... and {entries.Count - kept.Count} more");
+        return kept;
     }
 
     /// <summary>

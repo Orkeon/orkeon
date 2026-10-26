@@ -153,16 +153,6 @@ public sealed class MainWindowViewModel : ObservableObject
             RememberLlmChoice = RememberLlmChoice,
         });
 
-        // The technical journal opens by default in expert mode and stays closed in novice mode; the
-        // view's toggle then decides. A view trigger used to force it open in expert mode, so the
-        // toggle only changed its own label.
-        Launch.IsJournalOpen = Mode.IsExpert;
-        Mode.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(UiModeViewModel.IsExpert))
-                Launch.IsJournalOpen = Mode.IsExpert;
-        };
-
         // VFS-90: each settings row says which teams name it by id, and removing one asks
         // first — the composition root supplies the question, the view model the facts. Every
         // team counts, archived ones too (STUDIO-31, D-08): removing a folder an archived team
@@ -195,7 +185,8 @@ public sealed class MainWindowViewModel : ObservableObject
             // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge. STUDIO-61:
             // its « Teams folder » card says the root in force and writes the preference through the
             // same merge, the folder picked in the window's dialog.
-            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings, TeamsRoot, picker));
+            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings, TeamsRoot, picker),
+            strings);
 
         // STUDIO-50: what a team's launchers are written against — the run the operating system
         // schedules is the run Studio launches: the model settings, the folders the settings
@@ -278,11 +269,13 @@ public sealed class MainWindowViewModel : ObservableObject
         });
 
 
-        // The expert trial screen runs over its own launcher, with NO history store: a
-        // trial is a rehearsal, not a run to replay from the history.
-        Test = new TestTeamViewModel(
+        // The trial mode of the Launch screen runs over its own launcher, with NO history store:
+        // a trial is a rehearsal, not a run to replay from the history.
+        Run = new RunScreenViewModel(
+            Launch,
             new LaunchTabViewModel(new LaunchTabDependencies
             {
+                IsTrial = true,
                 ProcessRunner = runner,
                 TargetProbe = targetProbe,
                 Directories = directories,
@@ -306,13 +299,26 @@ public sealed class MainWindowViewModel : ObservableObject
             }),
             teamsHome);
 
+        // The command tab of the launcher is the expert's (refonte lot 12): both launchers follow
+        // the window's mode, a novice on the command tab lands on the options.
+        Launch.IsExpertMode = Mode.IsExpert;
+        Run.Trial.IsExpertMode = Mode.IsExpert;
+        Mode.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(UiModeViewModel.IsExpert))
+            {
+                Launch.IsExpertMode = Mode.IsExpert;
+                Run.Trial.IsExpertMode = Mode.IsExpert;
+            }
+        };
+
         // STUDIO-34: the bar at the foot of the window watches the three activities that can run
         // at once — each with its own engine — and gives each a group while it runs (DD-2).
         StatusBar = new StatusBarViewModel(new StatusBarSources
         {
             TokenMeter = tokenMeter,
             Launch = Launch,
-            Test = Test.Launcher,
+            Test = Run.Trial,
             Atelier = CreateTeam.Progress,
             Profiles = Settings.Profiles,
             Mode = Mode,
@@ -389,7 +395,7 @@ public sealed class MainWindowViewModel : ObservableObject
                     _ = SaveFolderIdsGuarded(e.Card.Summary.Path);
                 });
         Launch.RunRecorded += (_, _) => _ = Teams.LoadLastRunsAsync();
-        Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
+        Teams.TestRequested += (_, e) => { Run.ShowTrial(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
         Teams.ExportDestinationPicker = () =>
             picker?.PickFolder(effectiveStrings[Orkeon.Studio.Core.Localization.StudioStringKeys.DialogExportDestination]);
         TeamMounts.AddRequested += (_, _) =>
@@ -424,15 +430,16 @@ public sealed class MainWindowViewModel : ObservableObject
         // over an engine that just failed. The window brings the screen forward itself.
         CreateTeam.OpenDiagnosticRequested += (_, _) => Config.Diagnostic.RunCommand.Execute(null);
         Launch.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
-        Test.Launcher.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        Teams.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        Run.Trial.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
         // STUDIO-73: « Configure a model » on a machine without one lands on the model tab.
         Launch.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
-        Test.Launcher.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
+        Run.Trial.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
         Teams.ConfigureModelRequested += (_, _) => Settings.ShowModelCommand.Execute(null);
 
         // An adopted team is an ordinary folder: the Launch action hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
-        Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
+        Teams.LaunchRequested += (_, e) => Run.ShowReal(e.Path);
         Teams.ResumeRequested += (sender, e) => _ = ResumeGuarded(e.Session);
         Teams.ModifyRequested += (sender, e) => _ = ModifyGuarded(e);
         // A draft discarded from My teams is gone from the disk: the wizard it was open on
@@ -444,28 +451,28 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             _ = Launch.History.LoadAsync();
             Launch.FollowRenamedTeam(e.From, e.Path);
-            Test.Launcher.FollowRenamedTeam(e.From, e.Path);
-            Test.RefreshTeams();
+            Run.Trial.FollowRenamedTeam(e.From, e.Path);
+            Run.RefreshTeams();
         };
         // An adoption or an import may bring a schedule: its card asks the engine where it stands
         // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
         CreateTeam.TeamAdopted += (sender, e) =>
         {
             Teams.Refresh();
-            Test.RefreshTeams();
+            Run.RefreshTeams();
             _ = Teams.CheckScheduleAsync(e.Path);
             // STUDIO-73: « Used by » lists the team under the setting it runs on.
             Settings.Profiles.RefreshTeamUsage();
             // STUDIO-52: the folder ids the adopted team names are saved when the file lacks them.
             _ = SaveFolderIdsGuarded(e.Path);
         };
-        // STUDIO-31 (D-08): an archive or a restore changes what the Test picker offers, and what
+        // STUDIO-31 (D-08): an archive or a restore changes what the Lancer picker offers, and what
         // the two launchers may run — a target archived under them is refused from then on.
         Teams.ArchiveChanged += (_, _) =>
         {
-            Test.RefreshTeams();
+            Run.RefreshTeams();
             Launch.RefreshTeamDescription();
-            Test.Launcher.RefreshTeamDescription();
+            Run.Trial.RefreshTeamDescription();
         };
         CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
         // STUDIO-32 (DB-1): the archive suggestion follows Settings › Studio at once — turned off, it
@@ -481,11 +488,11 @@ public sealed class MainWindowViewModel : ObservableObject
             // and folders: they are written for this one at once — never at startup.
             TeamLaunchers.Regenerate(e.Path, launcherContext());
             Teams.Refresh();
-            Test.RefreshTeams();
+            Run.RefreshTeams();
             _ = Teams.CheckScheduleAsync(e.Path);
         };
         // A use case imported as it is from the gallery (STUDIO-41) has no schedule to ask about.
-        CreateTeam.Gallery.Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
+        CreateTeam.Gallery.Import.TeamImported += (_, _) => { Teams.Refresh(); Run.RefreshTeams(); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
         // team list. Every change to the teams on disk — an adoption, an import, a deletion or
         // a duplication from a card, a save of the folders modal — ends in Teams.Refresh(),
@@ -512,7 +519,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             Teams.Refresh();
             Launch.RefreshTeamDescription();
-            Test.Launcher.RefreshTeamDescription();
+            Run.Trial.RefreshTeamDescription();
         };
         // STUDIO-52: what a scheduled team's run cannot follow is read against the settings file as
         // saved — read again after each save or load —, and against the model settings Studio shows.
@@ -556,8 +563,8 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The My teams screen — the adopted team folders and the sessions underway.</summary>
     public TeamsViewModel Teams { get; }
 
-    /// <summary>The expert Test screen — a trial launcher that never touches the history.</summary>
-    public TestTeamViewModel Test { get; }
+    /// <summary>The Launch screen: the real launcher (<see cref="Launch"/>) and the trial one behind one switch.</summary>
+    public RunScreenViewModel Run { get; }
 
     /// <summary>The bar at the foot of the window (STUDIO-34): one group per activity while it runs.</summary>
     public StatusBarViewModel StatusBar { get; }
@@ -578,7 +585,7 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The folders-of-team-X modal (remediation v2, F-03).</summary>
     public TeamMountsDialogViewModel TeamMounts { get; }
 
-    /// <summary>Raised when a team card asks for the trial screen — the shell switches tabs.</summary>
+    /// <summary>Raised when a team card asks for a trial — the shell brings the Launch screen forward, in trial mode.</summary>
     public event EventHandler? TestRequested;
 
     /// <summary>The window-wide Novice/Expert switch (design v3).</summary>
@@ -676,7 +683,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
             await Task.WhenAll(
                 Launch.InitializeAsync(cancellationToken),
-                Test.Launcher.InitializeAsync(cancellationToken),
+                Run.Trial.InitializeAsync(cancellationToken),
                 LoadProfilesThenReadBalanceAsync(cancellationToken),
                 // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
                 // are honest from the first frame, without the user pressing anything.
@@ -847,11 +854,11 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// What Studio is doing with a team folder (STUDIO-28, D-02; STUDIO-31, D-09): the run in
-    /// flight of either launcher, and the team the wizard reopened. The Test screen is built after
+    /// flight of either launcher, and the team the wizard reopened. The trial launcher is built after
     /// My teams, so the launchers are read when a gesture asks, never captured at construction.
     /// </summary>
     private TeamActivity TeamActivityOf(string teamPath) =>
-        TeamActivities.Of(teamPath, Launch.RunningTarget, Test.Launcher.RunningTarget, CreateTeam.ReopenedTeamPath);
+        TeamActivities.Of(teamPath, Launch.RunningTarget, Run.Trial.RunningTarget, CreateTeam.ReopenedTeamPath);
 
     /// <summary>
     /// The launchers' « Restore » on an archived target (STUDIO-31, D-07): through « My teams », so
@@ -869,7 +876,7 @@ public sealed class MainWindowViewModel : ObservableObject
         TeamCatalog.RenameSetting(_teamsHome, from, to);
         CreateTeam.FollowRenamedSetting(from, to);
         Teams.Refresh();
-        Test.RefreshTeams();
+        Run.RefreshTeams();
     }
 
     /// <summary>The model settings as Studio shows them (STUDIO-52) — read when a screen asks, never captured.</summary>
@@ -881,9 +888,9 @@ public sealed class MainWindowViewModel : ObservableObject
         Teams.RefreshSettings();
         CreateTeam.ScheduleOffer.RefreshNotice();
         Launch.RefreshTeamDescription();
-        Test.Launcher.RefreshTeamDescription();
+        Run.Trial.RefreshTeamDescription();
         Launch.RefreshLlmSettings();
-        Test.Launcher.RefreshLlmSettings();
+        Run.Trial.RefreshLlmSettings();
     }
 
     /// <summary>What the schedule offer says under its question for <paramref name="teamPath"/> (STUDIO-52); null when the scheduled run takes what Studio shows.</summary>
@@ -995,7 +1002,7 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Before a launch of the Run or Test screen (STUDIO-52, decision 4): the runner looks every
+    /// Before a real run or a trial (STUDIO-52, decision 4): the runner looks every
     /// <c>--mount-id</c> up in the settings file as saved. One the file lacks and the screen's document
     /// has is saved first; null to launch, the reason the save was refused otherwise. A launch that
     /// pins another settings file saves nothing.
@@ -1047,9 +1054,9 @@ public sealed class MainWindowViewModel : ObservableObject
         TeamCatalog.SaveLlmChoice(teamPath, choice);
         TeamLaunchers.Regenerate(teamPath, _launcherContext());
         Teams.Refresh();
-        Test.RefreshTeams();
+        Run.RefreshTeams();
         Launch.RefreshTeamDescription();
-        Test.Launcher.RefreshTeamDescription();
+        Run.Trial.RefreshTeamDescription();
         Settings.Profiles.RefreshTeamUsage();
         return null;
     }

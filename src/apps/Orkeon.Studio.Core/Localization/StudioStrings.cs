@@ -17,6 +17,12 @@ public interface IStudioStrings
 
     /// <summary>Raised when the culture changes, so ViewModels can re-emit their bindings.</summary>
     event EventHandler? CultureChanged;
+
+    /// <summary>
+    /// The two-letter code of the language the strings are read in; it picks the plural rule
+    /// of <see cref="StudioStringsFormatting"/>. English unless the front says otherwise.
+    /// </summary>
+    string Language => "en";
 }
 
 /// <summary>
@@ -29,8 +35,16 @@ public interface IStudioStrings
 /// such call (CodeQL's <c>cs/invalid-string-formatting</c>, a false positive per call).
 /// A guard test keeps the direct form out of Core and the WPF front.
 /// </summary>
-public static class StudioStringsFormatting
+public static partial class StudioStringsFormatting
 {
+    /// <summary>
+    /// A plural choice inside a pattern: <c>{0:plural:dossier|dossiers}</c> reads the count of
+    /// placeholder 0 and keeps one of the two forms; the count itself is written apart, as a
+    /// plain <c>{0}</c> (<c>"{0} {0:plural:dossier|dossiers}"</c>). No form holds a brace.
+    /// </summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+):plural:([^|{}]*)\|([^{}]*)\}")]
+    private static partial System.Text.RegularExpressions.Regex PluralPattern();
+
     /// <summary>Formats the string of <paramref name="key"/> in the current culture.</summary>
     /// <param name="strings">The localization port.</param>
     /// <param name="key">The key of the pattern (rendered as itself when unknown, like the indexer).</param>
@@ -47,8 +61,49 @@ public static class StudioStringsFormatting
     {
         ArgumentNullException.ThrowIfNull(strings);
 
-        return string.Format(provider, strings[key], arguments);
+        if (!strings[key].Contains(":plural:", StringComparison.Ordinal))
+        {
+            return string.Format(provider, strings[key], arguments);
+        }
+
+        var chosen = ChoosePlurals(strings[key], strings.Language, arguments);
+        return string.Format(provider, chosen, arguments);
     }
+
+    /// <summary>
+    /// Replaces each plural choice of <paramref name="pattern"/> by the form its count asks for
+    /// in <paramref name="language"/>: French keeps the singular for 0 and 1, Chinese and
+    /// Japanese have a single form (the second), every other language keeps the singular for 1
+    /// alone. A choice whose placeholder is missing or not a number keeps the plural form.
+    /// </summary>
+    private static string ChoosePlurals(string pattern, string language, object?[] arguments) =>
+        PluralPattern().Replace(pattern, match =>
+        {
+            var index = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            var count = index < arguments.Length ? AsCount(arguments[index]) : null;
+            return count is { } n && IsSingular(n, language) ? match.Groups[2].Value : match.Groups[3].Value;
+        });
+
+    private static decimal? AsCount(object? value) => value switch
+    {
+        int i => i,
+        long l => l,
+        short s => s,
+        byte b => b,
+        uint u => u,
+        ulong ul => ul,
+        decimal d => d,
+        double d when !double.IsNaN(d) && !double.IsInfinity(d) => (decimal)d,
+        float f when !float.IsNaN(f) && !float.IsInfinity(f) => (decimal)f,
+        _ => null,
+    };
+
+    private static bool IsSingular(decimal count, string language) => language switch
+    {
+        "fr" => Math.Abs(count) < 2,
+        "zh" or "ja" => false,
+        _ => count == 1,
+    };
 }
 
 /// <summary>
@@ -175,8 +230,6 @@ public static class StudioStringKeys
     public const string ChatPlaceholderAnswer = "Studio.Chat.PlaceholderAnswer";
     /// <summary>"Ask a question"</summary>
     public const string ChatAsk = "Studio.Chat.Ask";
-    /// <summary>"Question"</summary>
-    public const string ChatAskShort = "Studio.Chat.AskShort";
     /// <summary>"Ask the assistant a question"</summary>
     public const string ChatAskTip = "Studio.Chat.AskTip";
     /// <summary>"See the conversation"</summary>
@@ -370,11 +423,36 @@ public static class StudioStringKeys
     /// <summary>"Everything is in place."</summary>
     public const string DiagAllGood = "Studio.Diagnostics.AllGood";
 
-    /// <summary>"One point to fix before launching a team."</summary>
+    /// <summary>"{0} point(s) to fix before launching a team." - the points counted (lot 5).</summary>
     public const string DiagFixNeeded = "Studio.Diagnostics.FixNeeded";
 
-    /// <summary>"{0} checks passed, {1} warning(s), {2} failure(s)."</summary>
+    /// <summary>"{0} checks passed, {1} warnings, {2} failures."</summary>
     public const string DiagCounts = "Studio.Diagnostics.Counts";
+
+    /// <summary>A check's action (lot 5): "Open Models".</summary>
+    public const string DiagOpenModels = "Studio.Diagnostics.OpenModels";
+    public const string DiagOpenKeys = "Studio.Diagnostics.OpenKeys";
+
+    /// <summary>A check's action: "Open Allowed folders".</summary>
+    public const string DiagOpenFolders = "Studio.Diagnostics.OpenFolders";
+
+    /// <summary>A check's action: "Open the settings file".</summary>
+    public const string DiagOpenFile = "Studio.Diagnostics.OpenFile";
+
+    /// <summary>A check's action: "Test the connection".</summary>
+    public const string DiagTestConnection = "Studio.Diagnostics.TestConnection";
+
+    /// <summary>A check's action when Studio has no fix of its own: "Check again".</summary>
+    public const string DiagCheckAgain = "Studio.Diagnostics.CheckAgain";
+
+    /// <summary>The settings-file line of the checks (lot 5, the former sidebar card): "Settings file".</summary>
+    public const string DiagSettingsFile = "Studio.Diagnostics.SettingsFile";
+
+    /// <summary>"The settings file is valid."</summary>
+    public const string DiagSettingsFileOk = "Studio.Diagnostics.SettingsFileOk";
+
+    /// <summary>"The settings file has errors: Studio cannot save it."</summary>
+    public const string DiagSettingsFileInvalid = "Studio.Diagnostics.SettingsFileInvalid";
 
     // ---- History cards (Launch/LaunchHistoryViewModel, audit 06/15) ------
 
@@ -389,6 +467,33 @@ public static class StudioStringKeys
 
     /// <summary>"Never started."</summary>
     public const string HistOutcomeNotStarted = "Studio.History.OutcomeNotStarted";
+
+    /// <summary>"Today" - the day group of the history table.</summary>
+    public const string HistToday = "Studio.History.Today";
+
+    /// <summary>"Yesterday".</summary>
+    public const string HistYesterday = "Studio.History.Yesterday";
+
+    /// <summary>"All teams" - the team filter's first option.</summary>
+    public const string HistAllTeams = "Studio.History.AllTeams";
+
+    /// <summary>"All statuses" - the status filter's first option.</summary>
+    public const string HistAllStatuses = "Studio.History.AllStatuses";
+
+    /// <summary>"No run matches these filters."</summary>
+    public const string HistNoMatch = "Studio.History.NoMatch";
+
+    /// <summary>"Succeeded" - the status badge and filter option.</summary>
+    public const string HistStatusSucceeded = "Studio.Run.OutcomeSucceeded";
+
+    /// <summary>"Failed".</summary>
+    public const string HistStatusFailed = "Studio.Run.OutcomeFailed";
+
+    /// <summary>"Cancelled".</summary>
+    public const string HistStatusCancelled = "Studio.Run.OutcomeCancelled";
+
+    /// <summary>"Not started".</summary>
+    public const string HistStatusNotStarted = "Studio.History.OutcomeBadgeNotStarted";
 
     // ---- RAG web-fallback status (Config/RagSectionViewModel, T-08) ------
 
@@ -489,6 +594,82 @@ public static class StudioStringKeys
 
     /// <summary>"Copy the command" — the Launch screen's button under the COMMANDE well.</summary>
     public const string RunCopyCommand = "Studio.Run.CopyCommand";
+    public const string RunVerbNormal = "Studio.Run.VerbNormal";
+    public const string RunVerbDetailed = "Studio.Run.VerbDetailed";
+    public const string RunVerbDiagnostic = "Studio.Run.VerbDiagnostic";
+    public const string RunTabTeam = "Studio.Run.TabTeam";
+    public const string RunTabOptions = "Studio.Run.TabOptions";
+    public const string RunTabCommand = "Studio.Run.TabCommand";
+    public const string RunTabRun = "Studio.Run.TabRun";
+    public const string RunTabTeamToChoose = "Studio.Run.TabTeamToChoose";
+    public const string RunTabTeamBlocked = "Studio.Run.TabTeamBlocked";
+    public const string RunDisplayProgress = "Studio.Run.DisplayProgress";
+    public const string RunDisplayRaw = "Studio.Run.DisplayRaw";
+    public const string RunLblDisplay = "Studio.Run.LblDisplay";
+    public const string RunStreamShort = "Studio.Run.StreamShort";
+    public const string RunTabRunIdle = "Studio.Run.TabRunIdle";
+    public const string RunTabRunRunning = "Studio.Run.TabRunRunning";
+    public const string RunTabRunSucceeded = "Studio.Run.TabRunSucceeded";
+    public const string RunTabRunFailed = "Studio.Run.TabRunFailed";
+    public const string RunPaneIdle = "Studio.Run.PaneIdle";
+    public const string RunPaneRunning = "Studio.Run.PaneRunning";
+    public const string RunPaneSucceeded = "Studio.Run.PaneSucceeded";
+    public const string RunPaneDone = "Studio.Run.PaneDone";
+    public const string RunPaneIdleContext = "Studio.Run.PaneIdleContext";
+    public const string RunTeamReady = "Studio.Run.TeamReady";
+    public const string RunTeamReadyCounts = "Studio.Run.TeamReadyCounts";
+    public const string RunTeamNotChosen = "Studio.Run.TeamNotChosen";
+    public const string RunSeeOptions = "Studio.Run.SeeOptions";
+    public const string RunSeeCommand = "Studio.Run.SeeCommand";
+    public const string RunSeeRun = "Studio.Run.SeeRun";
+    public const string RunBackToTeam = "Studio.Run.BackToTeam";
+    public const string RunOrAPath = "Studio.Run.OrAPath";
+    public const string RunLblModel = "Studio.Run.LblModel";
+    public const string RunModelDefault = "Studio.Run.ModelDefault";
+    public const string RunModelDefaultNone = "Studio.Run.ModelDefaultNone";
+    public const string RunModelTeam = "Studio.Run.ModelTeam";
+    public const string RunTeamLastRun = "Studio.Run.TeamLastRun";
+    public const string RunTeamNeverRun = "Studio.Run.TeamNeverRun";
+    public const string RunOptionsFooter = "Studio.Run.OptionsFooter";
+    public const string RunFoldersSection = "Studio.Run.FoldersSection";
+    public const string RunFoldersAddedNone = "Studio.Run.FoldersAddedNone";
+    public const string RunFoldersAdded = "Studio.Run.FoldersAdded";
+    public const string RunAddLaunchFolder = "Studio.Run.AddLaunchFolder";
+    public const string RunRightsRead = "Studio.Run.RightsRead";
+    public const string RunRightsReadWrite = "Studio.Run.RightsReadWrite";
+    public const string RunRowEngine = "Studio.Run.RowEngine";
+    public const string RunRowTeamType = "Studio.Run.RowTeamType";
+    public const string RunRowMounts = "Studio.Run.RowMounts";
+    public const string RunRowMode = "Studio.Run.RowMode";
+    public const string RunMountsCount = "Studio.Run.MountsCount";
+    public const string RunEngineMissing = "Studio.Run.EngineMissing";
+    public const string RunCommandFooter = "Studio.Run.CommandFooter";
+    public const string RunModeLabel = "Studio.Run.ModeLabel";
+    public const string RunModeTrial = "Studio.Run.ModeTrial";
+    public const string RunModeReal = "Studio.Run.ModeReal";
+    public const string RunFigSent = "Studio.Run.FigSent";
+    public const string RunFigReceived = "Studio.Run.FigReceived";
+    public const string RunFigResult = "Studio.Run.FigResult";
+    public const string RunJournalCount = "Studio.Run.JournalCount";
+    public const string RunJournalEnlarge = "Studio.Run.JournalEnlarge";
+    public const string RunJournalReduce = "Studio.Run.JournalReduce";
+    public const string RunNoRunFooter = "Studio.Run.NoRunFooter";
+    public const string RunRunningFooter = "Studio.Run.RunningFooter";
+    public const string RunRunningSince = "Studio.Run.RunningSince";
+    public const string RunDoneFooter = "Studio.Run.DoneFooter";
+    public const string RunLockedDuringRun = "Studio.Run.LockedDuringRun";
+    public const string RunReadyReal = "Studio.Run.ReadyReal";
+    public const string RunReadyTrial = "Studio.Run.ReadyTrial";
+    public const string RunReadyResult = "Studio.Run.ReadyResult";
+    public const string RunBlockedNoCli = "Studio.Run.BlockedNoCli";
+    public const string RunBlockedNoTeam = "Studio.Run.BlockedNoTeam";
+    public const string RunBlockedFolders = "Studio.Run.BlockedFolders";
+    public const string RunBlockedArchived = "Studio.Run.BlockedArchived";
+    public const string RunRunningLine = "Studio.Run.RunningLine";
+    public const string RunLaneWaiting = "Studio.Run.LaneWaiting";
+    public const string RunLaneRunning = "Studio.Run.LaneRunning";
+    public const string RunLaneDone = "Studio.Run.LaneDone";
+    public const string RunLaneFailed = "Studio.Run.LaneFailed";
 
     /// <summary>"Command copied" — the same button, right after a copy.</summary>
     public const string RunCommandCopied = "Studio.Run.CommandCopied";
@@ -838,6 +1019,9 @@ public static class StudioStringKeys
     /// <summary>"Saved to {0}."</summary>
     public const string ConfigSaved = "Studio.Settings.Saved";
 
+    /// <summary>The unsaved bar (lot 5): "{0} unsaved change(s)".</summary>
+    public const string ConfigPendingChanges = "Studio.Settings.PendingChanges";
+
     /// <summary>"Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider."</summary>
     public const string ConfigSavedLlmWarning = "Studio.Settings.SavedLlmWarning";
 
@@ -964,6 +1148,9 @@ public static class StudioStringKeys
 
     /// <summary>"Relaunch"</summary>
     public const string RunButtonRelaunch = "Studio.Run.BtnRelaunch";
+
+    /// <summary>"Launch the trial" - the primary button of the Launch screen in trial mode.</summary>
+    public const string RunButtonTrial = "Studio.Trial.Run";
 
     /// <summary>"The Orkeon engine was not found — run the Diagnostic."</summary>
     public const string RunCliMissing = "Studio.Run.CliMissing";
@@ -1570,6 +1757,160 @@ public static class StudioStringKeys
     /// <summary>The line under the compose button while the engine interviews.</summary>
     public const string WizardHintComposing = "Studio.Create.HintComposing";
 
+    /// <summary>"waiting for you" — the chat status while a card of the step waits on the user.</summary>
+    public const string ChatStatusWaitingCard = "Studio.Chat.StatusWaitingCard";
+
+    /// <summary>"Composition under way" — the tooltip of the disabled compose button.</summary>
+    public const string WizardComposeBusyTip = "Studio.Create.ComposeBusyTip";
+
+    /// <summary>"Confirm the folders" — the folders card's main button.</summary>
+    public const string WizardFoldersConfirm = "Studio.Create.FoldersConfirm";
+
+    /// <summary>"Save to my teams" — the adoption button of step 4.</summary>
+    public const string WizardSave = "Studio.Create.Save";
+
+    /// <summary>"To choose: the team must read documents that already exist." — an input folder nothing answers yet.</summary>
+    public const string WizardFolderToChooseRead = "Studio.Create.FolderToChooseRead";
+
+    /// <summary>"Answer the assistant to continue."</summary>
+    public const string WizardHintAnswer = "Studio.Create.HintAnswer";
+
+    /// <summary>"Confirm the folders to move on to the composition."</summary>
+    public const string WizardHintConfirmFolders = "Studio.Create.HintConfirmFolders";
+
+    /// <summary>"Settle the choice in the conversation to continue."</summary>
+    public const string WizardHintDecide = "Studio.Create.HintDecide";
+
+    /// <summary>"Described" — the need tab's subtitle once typed.</summary>
+    public const string WizardTabNeedDone = "Studio.Create.TabNeedDone";
+
+    /// <summary>"Described, {0} questions settled" — the need tab's subtitle once the assistant asked.</summary>
+    public const string WizardTabNeedDoneAnswers = "Studio.Create.TabNeedDoneAnswers";
+
+    /// <summary>"To describe" — the need tab's subtitle before.</summary>
+    public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
+
+    /// <summary>"Describe the work to continue." — the need pane's footer before.</summary>
+    public const string WizardTabNeedEmptyFooter = "Studio.Create.TabNeedEmptyFooter";
+
+    /// <summary>"Need described."</summary>
+    public const string WizardTabNeedFooter = "Studio.Create.TabNeedFooter";
+
+    /// <summary>"Need described, {0} questions settled with the assistant".</summary>
+    public const string WizardTabNeedFooterAnswers = "Studio.Create.TabNeedFooterAnswers";
+
+    /// <summary>"{0} folders to confirm" — the folders tab's subtitle while they wait.</summary>
+    public const string WizardTabFoldersPending = "Studio.Create.TabFoldersPending";
+
+    /// <summary>"{0} folders · {1} to choose" — the folders tab while some wait for a place.</summary>
+    public const string WizardTabFoldersPendingToChoose = "Studio.Create.TabFoldersPendingToChoose";
+
+    /// <summary>"{0} folders confirmed".</summary>
+    public const string WizardTabFoldersConfirmed = "Studio.Create.TabFoldersConfirmed";
+    public const string WizardTabFoldersFilling = "Studio.Create.TabFoldersFilling";
+
+    /// <summary>"Proposed after the composition" — the folders tab before the engine proposes them.</summary>
+    public const string WizardTabFoldersEmpty = "Studio.Create.TabFoldersEmpty";
+
+    /// <summary>"Folders confirmed: the composition goes on."</summary>
+    public const string WizardTabFoldersConfirmedFooter = "Studio.Create.TabFoldersConfirmedFooter";
+    public const string WizardTabFoldersFillingFooter = "Studio.Create.TabFoldersFillingFooter";
+
+    /// <summary>"Every folder has its place. Confirm to continue."</summary>
+    public const string WizardTabFoldersReadyFooter = "Studio.Create.TabFoldersReadyFooter";
+
+    /// <summary>"1 folder to choose. You can confirm now…" — {0} the folder's name.</summary>
+    public const string WizardTabFoldersOneToChoose = "Studio.Create.TabFoldersOneToChoose";
+
+    /// <summary>"{0} folders to choose. You can confirm now…".</summary>
+    public const string WizardTabFoldersManyToChoose = "Studio.Create.TabFoldersManyToChoose";
+
+    /// <summary>"Written" — the instruction tab once written.</summary>
+    public const string WizardTabNotesDone = "Studio.Create.TabNotesDone";
+
+    /// <summary>"Optional, empty" — the instruction tab before.</summary>
+    public const string WizardTabNotesEmpty = "Studio.Create.TabNotesEmpty";
+    public const string WizardTabTeam = "Studio.Create.TabTeam";
+    public const string WizardTabTeamProposed = "Studio.Create.TabTeamProposed";
+    public const string WizardTabTeamComposing = "Studio.Create.TabTeamComposing";
+    public const string WizardTabTeamEmpty = "Studio.Create.TabTeamEmpty";
+    public const string WizardTabTeamFoldersInside = "Studio.Create.TabTeamFoldersInside";
+    public const string WizardTabTeamFoldersSet = "Studio.Create.TabTeamFoldersSet";
+    public const string WizardTabTeamFoldersToChoose = "Studio.Create.TabTeamFoldersToChoose";
+    public const string WizardTabTeamFoldersNone = "Studio.Create.TabTeamFoldersNone";
+    public const string WizardTabComposition = "Studio.Create.TabComposition";
+    public const string WizardTabCompositionStopped = "Studio.Create.TabCompositionStopped";
+    public const string WizardTabCompositionRunning = "Studio.Create.TabCompositionRunning";
+    public const string WizardTabCompositionNone = "Studio.Create.TabCompositionNone";
+    public const string WizardTeamFooterStopped = "Studio.Create.TeamFooterStopped";
+    public const string WizardTeamFooterComposing = "Studio.Create.TeamFooterComposing";
+    public const string WizardStep2FoldersFooterInside = "Studio.Create.Step2FoldersFooterInside";
+    public const string WizardStep2FoldersFooterSet = "Studio.Create.Step2FoldersFooterSet";
+    public const string WizardStep2FoldersFooterNone = "Studio.Create.Step2FoldersFooterNone";
+    public const string WizardCompositionStateRunning = "Studio.Create.CompositionStateRunning";
+    public const string WizardCompositionStateValid = "Studio.Create.CompositionStateValid";
+    public const string WizardCompositionStateInvalid = "Studio.Create.CompositionStateInvalid";
+    public const string WizardCompositionStateStopped = "Studio.Create.CompositionStateStopped";
+    public const string WizardCompositionFiles = "Studio.Create.CompositionFiles";
+    public const string WizardCompositionDraftSaved = "Studio.Create.CompositionDraftSaved";
+    public const string WizardCompositionDraftNotSaved = "Studio.Create.CompositionDraftNotSaved";
+    public const string WizardCompositionFooterDone = "Studio.Create.CompositionFooterDone";
+    public const string WizardCompositionFooterRunning = "Studio.Create.CompositionFooterRunning";
+    public const string WizardMoreTools = "Studio.Create.MoreTools";
+
+    /// <summary>"No instruction yet."</summary>
+    public const string WizardTabNotesFooterEmpty = "Studio.Create.TabNotesFooterEmpty";
+
+    /// <summary>"Instruction taken as written."</summary>
+    public const string WizardTabNotesFooterTaken = "Studio.Create.Taken";
+
+    /// <summary>"Waiting for you: {0}" — the single wait point (R13).</summary>
+    public const string WizardWaitingFor = "Studio.Create.WaitingFor";
+
+    /// <summary>"confirm the folders".</summary>
+    public const string WizardWaitActionFolders = "Studio.Create.WaitActionFolders";
+
+    /// <summary>"answer the assistant".</summary>
+    public const string WizardWaitActionAnswer = "Studio.Create.WaitActionAnswer";
+
+    /// <summary>"choose a model".</summary>
+    public const string WizardWaitActionModel = "Studio.Create.WaitActionModel";
+
+    /// <summary>"settle a choice".</summary>
+    public const string WizardWaitActionDecide = "Studio.Create.WaitActionDecide";
+
+    /// <summary>"choose a folder".</summary>
+    public const string WizardWaitActionChooseFolder = "Studio.Create.WaitActionChooseFolder";
+    public const string WizardWaitActionFillFolders = "Studio.Create.WaitActionFillFolders";
+    public const string WizardHintFillFolders = "Studio.Create.HintFillFolders";
+
+    /// <summary>"adopt the team".</summary>
+    public const string WizardWaitActionAdopt = "Studio.Create.WaitActionAdopt";
+
+    /// <summary>The assistant's bubble while the folders wait for the confirm.</summary>
+    public const string WizardWaitBubbleFolders = "Studio.Create.WaitBubbleFolders";
+    public const string WizardWaitBubbleFillFolders = "Studio.Create.WaitBubbleFillFolders";
+    public const string WizardWaitActionLabelFillFolders = "Studio.Create.WaitActionLabelFillFolders";
+
+    /// <summary>The assistant's bubble while a folder is still to choose.</summary>
+    public const string WizardWaitBubbleChooseFolder = "Studio.Create.WaitBubbleChooseFolder";
+
+    /// <summary>The assistant's bubble while the team waits to be adopted.</summary>
+    public const string WizardWaitBubbleAdopt = "Studio.Create.WaitBubbleAdopt";
+
+    /// <summary>The composer's placeholder while the folders wait.</summary>
+    public const string WizardWaitPlaceholderFolders = "Studio.Create.WaitPlaceholderFolders";
+    public const string WizardWaitPlaceholderFillFolders = "Studio.Create.WaitPlaceholderFillFolders";
+
+    /// <summary>The composer's placeholder while a folder is to choose.</summary>
+    public const string WizardWaitPlaceholderChooseFolder = "Studio.Create.WaitPlaceholderChooseFolder";
+
+    /// <summary>The composer's placeholder while the team waits to be adopted.</summary>
+    public const string WizardWaitPlaceholderAdopt = "Studio.Create.WaitPlaceholderAdopt";
+
+    /// <summary>"Show the folder" — the bubble's button on a folder to choose.</summary>
+    public const string WizardWaitShowCard = "Studio.Create.WaitShowCard";
+
     /// <summary>Header over what the engine suggests changing.</summary>
     public const string WizardSuggestions = "Studio.Create.Suggestions";
 
@@ -1614,9 +1955,6 @@ public static class StudioStringKeys
     /// <summary>"Stopped."</summary>
     public const string ComposeStageIdle = "Studio.Create.StageIdle";
 
-    /// <summary>"I am waiting for your answer."</summary>
-    public const string ComposeWaitingOnYou = "Studio.Create.WaitingOnYou";
-
     /// <summary>Accessible name of the ascending token chip.</summary>
     public const string ComposeTokensUp = "Studio.Create.TokensUp";
 
@@ -1634,9 +1972,6 @@ public static class StudioStringKeys
 
     /// <summary>What adopting without a trial gives up, said before the click.</summary>
     public const string ComposeAdoptWithoutTrialTip = "Studio.Create.AdoptWithoutTrialTip";
-
-    /// <summary>That a reading team gets an empty folder unless one is chosen or filled.</summary>
-    public const string ComposeFillInputFolder = "Studio.Create.FillInputFolder";
 
     /// <summary>"{0} file(s) written"</summary>
     public const string ComposeFilesWritten = "Studio.Create.FilesWritten";
@@ -1661,6 +1996,27 @@ public static class StudioStringKeys
 
     /// <summary>"Abandon"</summary>
     public const string WizardDecisionAbort = "Studio.Create.DecisionAbort";
+
+    /// <summary>"The trial is judged. What do we do next?" (refonte R15: the arbitration, asked in the panel)</summary>
+    public const string WizardDecisionQuestion = "Studio.Create.DecisionQuestion";
+
+    /// <summary>"Do you want to put files or sub-folders in the folders you set up?"</summary>
+    public const string WizardFillFoldersQuestion = "Studio.Create.FillFoldersQuestion";
+
+    /// <summary>"These folders are kept inside the team. ..."</summary>
+    public const string WizardFillFoldersHint = "Studio.Create.FillFoldersHint";
+
+    /// <summary>"Yes"</summary>
+    public const string WizardFillFoldersYes = "Studio.Create.FillFoldersYes";
+
+    /// <summary>"No"</summary>
+    public const string WizardFillFoldersNo = "Studio.Create.FillFoldersNo";
+
+    /// <summary>"Continue"</summary>
+    public const string WizardFillFoldersContinue = "Studio.Create.FillFoldersContinue";
+    public const string WizardFolderFilesNone = "Studio.Create.FolderFilesNone";
+    public const string WizardFolderFilesCount = "Studio.Create.FolderFilesCount";
+
 
 
     /// <summary>"On demand"</summary>
@@ -1786,6 +2142,24 @@ public static class StudioStringKeys
 
     /// <summary>"{0} team(s), {1} by default" - the elected setting's teams, those that follow the default counted (STUDIO-73).</summary>
     public const string SettingsUsedByDefault = "Studio.Settings.UsedByDefault";
+    public const string SettingsTabModelCount = "Studio.Settings.TabModelCount";
+    public const string SettingsTabModelNoAssistant = "Studio.Settings.TabModelNoAssistant";
+    public const string SettingsTabModelEmpty = "Studio.Settings.TabModelEmpty";
+    public const string SettingsTabKeysCount = "Studio.Settings.TabKeysCount";
+    public const string SettingsTabKeysNone = "Studio.Settings.TabKeysNone";
+    public const string SettingsTabKeysNoneStored = "Studio.Settings.TabKeysNoneStored";
+    public const string SettingsTabFoldersCount = "Studio.Settings.TabFoldersCount";
+    public const string SettingsTabFoldersEmpty = "Studio.Settings.TabFoldersEmpty";
+    public const string SettingsTabFoldersProblems = "Studio.Settings.TabFoldersProblems";
+    public const string SettingsTabToolsCount = "Studio.Settings.TabToolsCount";
+    public const string SettingsTabAccountsCount = "Studio.Settings.TabAccountsCount";
+    public const string SettingsTabAccountsEmpty = "Studio.Settings.TabAccountsEmpty";
+    public const string SettingsTabMcpCount = "Studio.Settings.TabMcpCount";
+    public const string SettingsTabMcpEmpty = "Studio.Settings.TabMcpEmpty";
+    public const string SettingsTabStudioSub = "Studio.Settings.TabStudioSub";
+    public const string SettingsTabLimitsSub = "Studio.Settings.TabLimitsSub";
+    public const string SettingsTabFileValid = "Studio.Settings.TabFileValid";
+    public const string SettingsTabFileErrors = "Studio.Settings.TabFileErrors";
 
     /// <summary>"Default model setting: {0}. The teams that follow the default run on it." - the idle segment's tooltip (STUDIO-34, STUDIO-73).</summary>
     public const string StatusBarProfileTipTeams = "Studio.Shell.StatusProfileTipTeams";
@@ -1914,6 +2288,8 @@ public static class StudioStringKeys
 
     /// <summary>"{0} teams archived." — the undo banner after the archive suggestion was accepted; {0} counts the teams, two or more (STUDIO-32, DB-1).</summary>
     public const string TeamsArchivedManyUndo = "Studio.Teams.ArchivedManyUndo";
+    public const string TeamsRefusedRuns = "Studio.Teams.RefusedRuns";
+    public const string TeamsLaunchNeedsFolder = "Studio.Teams.LaunchNeedsFolder";
 
     /// <summary>"“{0}” has not been launched for {1} days — archive it?" — the suggestion of one team; {0} its name, {1} the threshold in days (STUDIO-32, DB-1).</summary>
     public const string TeamsSuggestionOne = "Studio.Teams.SuggestionOne";
@@ -2062,8 +2438,29 @@ public static class StudioStringKeys
     /// <summary>"Something went wrong — the detail is in the card below."</summary>
     public const string ForgeStatusFailed = "Studio.Create.StatusFailed";
 
-    /// <summary>"Stopped — you can pick it up again from My solutions."</summary>
-    public const string ForgeStatusStopped = "Studio.Create.StatusStopped";
+    /// <summary>"Running" — the stepper's session indicator while the engine works.</summary>
+    public const string WizardSessionRunning = "Studio.Create.SessionRunning";
+
+    /// <summary>"Waiting for you" — the engine lives and waits for an answer.</summary>
+    public const string WizardSessionWaiting = "Studio.Create.SessionWaiting";
+
+    /// <summary>"Paused" — the user stopped the session; « Resume » follows.</summary>
+    public const string WizardSessionPaused = "Studio.Create.SessionPaused";
+
+    /// <summary>"Draft saved at {0}" — {0} the local time, HH:mm.</summary>
+    public const string WizardDraftSavedAt = "Studio.Create.DraftSavedAt";
+
+    /// <summary>"This session can no longer be resumed here: ..." — « Resume » found no resumable session.</summary>
+    public const string WizardResumeUnavailable = "Studio.Create.ResumeUnavailable";
+
+    /// <summary>"{0} folder(s) to choose before the trial." — the step-2 action bar.</summary>
+    public const string WizardFoldersToChoose = "Studio.Create.FoldersToChoose";
+
+    /// <summary>"Composed and validated — nothing has run yet." — the step-2 action bar at the pause.</summary>
+    public const string WizardPausedHint = "Studio.Create.PausedHint";
+
+    /// <summary>"{0} of {1} criteria met" — the verdict's summary sentence.</summary>
+    public const string WizardVerdictSummary = "Studio.Create.VerdictSummary";
 
     /// <summary>"Attempt {0}"</summary>
     public const string ForgeAttempt = "Studio.Create.Attempt";
@@ -2197,9 +2594,6 @@ public static class StudioStringKeys
 
     /// <summary>"read, write" — the role of an output folder on the Folders step.</summary>
     public const string WizardFolderRoleOutput = "Studio.Create.FolderRoleOutput";
-
-    /// <summary>"no folder chosen yet" — an input folder nothing answers yet.</summary>
-    public const string WizardFolderNotChosen = "Studio.Create.FolderNotChosen";
 
     /// <summary>"« {0} » is not a folder name…" — a renamed folder the engine would refuse.</summary>
     public const string WizardFolderInvalidName = "Studio.Create.FolderInvalidName";
@@ -2376,6 +2770,80 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunOpenLogsLoggingOff] = "LLM exchange logging is off for this launch.",
         [StudioStringKeys.RunOpenResults] = "Open the {0} result folders",
         [StudioStringKeys.RunCopyCommand] = "Copy the command",
+        [StudioStringKeys.RunVerbNormal] = "normal",
+        [StudioStringKeys.RunVerbDetailed] = "detailed",
+        [StudioStringKeys.RunVerbDiagnostic] = "diagnostic",
+        [StudioStringKeys.RunTabTeam] = "Team",
+        [StudioStringKeys.RunTabOptions] = "Options",
+        [StudioStringKeys.RunTabCommand] = "Command",
+        [StudioStringKeys.RunTabRun] = "Run",
+        [StudioStringKeys.RunTabTeamToChoose] = "To choose",
+        [StudioStringKeys.RunTabTeamBlocked] = "{0} · cannot be launched",
+        [StudioStringKeys.RunDisplayProgress] = "Progress",
+        [StudioStringKeys.RunDisplayRaw] = "Raw output",
+        [StudioStringKeys.RunLblDisplay] = "Display",
+        [StudioStringKeys.RunStreamShort] = "token by token",
+        [StudioStringKeys.RunTabRunIdle] = "Waiting · nothing to report",
+        [StudioStringKeys.RunTabRunRunning] = "Running · {0}",
+        [StudioStringKeys.RunTabRunSucceeded] = "Succeeded · {0}",
+        [StudioStringKeys.RunTabRunFailed] = "Failed",
+        [StudioStringKeys.RunPaneIdle] = "Waiting",
+        [StudioStringKeys.RunPaneRunning] = "Running",
+        [StudioStringKeys.RunPaneSucceeded] = "Succeeded",
+        [StudioStringKeys.RunPaneDone] = "Finished",
+        [StudioStringKeys.RunPaneIdleContext] = "Nothing has been launched yet: each agent of the team gets its column here.",
+        [StudioStringKeys.RunTeamReady] = "Team ready: {0}",
+        [StudioStringKeys.RunTeamReadyCounts] = "Team ready: {0} {0:plural:agent|agents}, {1} {1:plural:declared folder|declared folders}.",
+        [StudioStringKeys.RunTeamNotChosen] = "No team chosen.",
+        [StudioStringKeys.RunSeeOptions] = "See the options →",
+        [StudioStringKeys.RunSeeCommand] = "See the command →",
+        [StudioStringKeys.RunSeeRun] = "See the run →",
+        [StudioStringKeys.RunBackToTeam] = "← Back to the team",
+        [StudioStringKeys.RunOrAPath] = "or a path",
+        [StudioStringKeys.RunLblModel] = "Model",
+        [StudioStringKeys.RunModelDefault] = "Default ({0})",
+        [StudioStringKeys.RunModelDefaultNone] = "Default",
+        [StudioStringKeys.RunModelTeam] = "The team's ({0})",
+        [StudioStringKeys.RunTeamLastRun] = "launched on {0}",
+        [StudioStringKeys.RunTeamNeverRun] = "never launched",
+        [StudioStringKeys.RunOptionsFooter] = "{0} · {1} · {2} {2:plural:folder|folders}",
+        [StudioStringKeys.RunFoldersSection] = "Allowed folders — {0} {0:plural:folder|folders} of the team, {1}",
+        [StudioStringKeys.RunFoldersAddedNone] = "nothing added",
+        [StudioStringKeys.RunFoldersAdded] = "{0} added",
+        [StudioStringKeys.RunAddLaunchFolder] = "Add a folder for this launch",
+        [StudioStringKeys.RunRightsRead] = "Read",
+        [StudioStringKeys.RunRightsReadWrite] = "Read and write",
+        [StudioStringKeys.RunRowEngine] = "Engine",
+        [StudioStringKeys.RunRowTeamType] = "Team type",
+        [StudioStringKeys.RunRowMounts] = "Allowed folders",
+        [StudioStringKeys.RunRowMode] = "Mode",
+        [StudioStringKeys.RunMountsCount] = "{0} {0:plural:folder|folders} mounted",
+        [StudioStringKeys.RunEngineMissing] = "not found",
+        [StudioStringKeys.RunCommandFooter] = "Command composed from the team and the options.",
+        [StudioStringKeys.RunModeLabel] = "MODE",
+        [StudioStringKeys.RunFigSent] = "Sent",
+        [StudioStringKeys.RunFigReceived] = "Received",
+        [StudioStringKeys.RunFigResult] = "Result in",
+        [StudioStringKeys.RunJournalCount] = "Technical journal · {0} {0:plural:line|lines}",
+        [StudioStringKeys.RunJournalEnlarge] = "Enlarge",
+        [StudioStringKeys.RunJournalReduce] = "Reduce",
+        [StudioStringKeys.RunNoRunFooter] = "No run in progress.",
+        [StudioStringKeys.RunRunningFooter] = "The run goes on: « Stop » interrupts it.",
+        [StudioStringKeys.RunRunningSince] = "Running for {0}.",
+        [StudioStringKeys.RunDoneFooter] = "Run finished.",
+        [StudioStringKeys.RunLockedDuringRun] = "Can be changed after the run",
+        [StudioStringKeys.RunReadyReal] = "Ready to launch in Real mode.",
+        [StudioStringKeys.RunReadyTrial] = "Ready to launch in Trial mode.",
+        [StudioStringKeys.RunReadyResult] = "The result will go to {0}.",
+        [StudioStringKeys.RunBlockedNoCli] = "The Orkeon engine is not found: the launch waits for the diagnostic.",
+        [StudioStringKeys.RunBlockedNoTeam] = "Choose a team first.",
+        [StudioStringKeys.RunBlockedFolders] = "A folder of the team is not allowed on this machine.",
+        [StudioStringKeys.RunBlockedArchived] = "This team is archived: restore it to launch it.",
+        [StudioStringKeys.RunRunningLine] = "{0} · running · {1}",
+        [StudioStringKeys.RunLaneWaiting] = "Waiting",
+        [StudioStringKeys.RunLaneRunning] = "At work",
+        [StudioStringKeys.RunLaneDone] = "Done",
+        [StudioStringKeys.RunLaneFailed] = "Failed",
         [StudioStringKeys.RunCommandCopied] = "Command copied",
         [StudioStringKeys.MountsOriginSelectedById] = "{0} (selected by id among {1})",
         [StudioStringKeys.MountsOriginNotSelected] = "{0} (not mounted for this run)",
@@ -2408,12 +2876,30 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunMetaReads] = "reads {0}",
         [StudioStringKeys.RunMetaWrites] = "writes to {0}",
         [StudioStringKeys.HistOutcomeSuccess] = "Finished without errors.",
+        [StudioStringKeys.HistToday] = "Today",
+        [StudioStringKeys.HistYesterday] = "Yesterday",
+        [StudioStringKeys.HistAllTeams] = "All teams",
+        [StudioStringKeys.HistAllStatuses] = "All statuses",
+        [StudioStringKeys.HistNoMatch] = "No run matches these filters.",
+        [StudioStringKeys.HistStatusSucceeded] = "Succeeded",
+        [StudioStringKeys.HistStatusFailed] = "Failed",
+        [StudioStringKeys.HistStatusCancelled] = "Cancelled",
+        [StudioStringKeys.HistStatusNotStarted] = "Not started",
         [StudioStringKeys.HistOutcomeFailed] = "Failed (code {0}).",
         [StudioStringKeys.HistOutcomeCancelled] = "Interrupted before the end.",
         [StudioStringKeys.HistOutcomeNotStarted] = "Never started.",
         [StudioStringKeys.DiagAllGood] = "Everything is in place.",
-        [StudioStringKeys.DiagFixNeeded] = "One point to fix before launching a team.",
-        [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
+        [StudioStringKeys.DiagFixNeeded] = "{0} {0:plural:point|points} to fix before launching a team.",
+        [StudioStringKeys.DiagCounts] = "{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.",
+        [StudioStringKeys.DiagOpenModels] = "Open Models",
+        [StudioStringKeys.DiagOpenKeys] = "Open API keys",
+        [StudioStringKeys.DiagOpenFolders] = "Open Allowed folders",
+        [StudioStringKeys.DiagOpenFile] = "Open the settings file",
+        [StudioStringKeys.DiagTestConnection] = "Test the connection",
+        [StudioStringKeys.DiagCheckAgain] = "Check again",
+        [StudioStringKeys.DiagSettingsFile] = "Settings file",
+        [StudioStringKeys.DiagSettingsFileOk] = "The settings file is valid.",
+        [StudioStringKeys.DiagSettingsFileInvalid] = "The settings file has errors: Studio cannot save it.",
         [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
         [StudioStringKeys.WizardRephrasing] = "Rewriting your request…",
         [StudioStringKeys.WizardRephrased] = "Request rewritten — « Back to my words » restores what you typed.",
@@ -2447,12 +2933,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatStop] = "Stop",
         [StudioStringKeys.ChatSend] = "Send",
         [StudioStringKeys.ChatReply] = "Reply",
-        [StudioStringKeys.ChatSkip] = "Skip this question",
+        [StudioStringKeys.ChatSkip] = "I don't know",
         [StudioStringKeys.ChatSkipAnswer] = "I don't know — do your best.",
         [StudioStringKeys.ChatKeyHint] = "Enter to send · Shift+Enter for a new line",
         [StudioStringKeys.ChatPlaceholder] = "Ask the assistant a question…",
         [StudioStringKeys.ChatAsk] = "Ask a question",
-        [StudioStringKeys.ChatAskShort] = "Question",
         [StudioStringKeys.ChatAskTip] = "Ask the assistant a question",
         [StudioStringKeys.ChatSeeConversation] = "See the conversation",
         [StudioStringKeys.ChatClose] = "Close the conversation",
@@ -2517,6 +3002,17 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Check.onnx-reranker"] = "The ONNX reranker",
         ["Studio.Diagnostics.Check.tree-sitter"] = "The code parser (tree-sitter)",
         ["Studio.Diagnostics.Check.workspace-write"] = "Write access to the workspace",
+        ["Studio.Diagnostics.Problem.appsettings"] = "Studio cannot read the settings file.",
+        ["Studio.Diagnostics.Problem.dotnet-runtime"] = "The .NET runtime the engine needs is not found.",
+        ["Studio.Diagnostics.Problem.esbuild"] = "The script compiler is missing on this machine.",
+        ["Studio.Diagnostics.Problem.llm-config"] = "No model is set up for the teams.",
+        ["Studio.Diagnostics.Problem.llm-profile-key"] = "A model has no key, or its key is not found.",
+        ["Studio.Diagnostics.Problem.llm-profiles"] = "A model is incomplete in the settings.",
+        ["Studio.Diagnostics.Problem.llm-reachability"] = "The model does not answer: check its address and its key.",
+        ["Studio.Diagnostics.Problem.local-embeddings"] = "Local embeddings are not available on this machine.",
+        ["Studio.Diagnostics.Problem.onnx-reranker"] = "The ONNX reranker is not available on this machine.",
+        ["Studio.Diagnostics.Problem.tree-sitter"] = "The code parser is not available on this machine.",
+        ["Studio.Diagnostics.Problem.workspace-write"] = "The engine cannot write to its working folder.",
         [StudioStringKeys.ImportRecognizedAgents] = "{0} — {1} agent(s)",
         [StudioStringKeys.ImportSecretsClean] = "No secret in the files",
         [StudioStringKeys.ImportSecretsCleanDetail] = "API keys travel through the environment, and these files carry none.",
@@ -2602,7 +3098,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunButtonLaunch] = "Launch now",
         [StudioStringKeys.RunButtonRunning] = "Running…",
         [StudioStringKeys.RunButtonRelaunch] = "Relaunch",
-        [StudioStringKeys.RunCliMissing] = "The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.",
+        [StudioStringKeys.RunButtonTrial] = "Launch the trial",
+        [StudioStringKeys.RunCliMissing] = "The Orkeon engine cannot be found on this machine. Nothing can be launched until it is installed.",
         [StudioStringKeys.RunMetaAgents] = "{0} agents",
         [StudioStringKeys.RunMetaProfile] = "setting {0}",
 
@@ -2727,6 +3224,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ConfigNotSavedErrors] = "Not saved: {0} error(s) must be fixed first.",
         [StudioStringKeys.ConfigNotSavedNoDestination] = "Not saved: no destination selected.",
         [StudioStringKeys.ConfigSaved] = "Saved to {0}.",
+        [StudioStringKeys.ConfigPendingChanges] = "{0} {0:plural:unsaved change|unsaved changes}",
         [StudioStringKeys.ConfigSavedLlmWarning] =
             "Saved to {0}. Warning {1}: no Llm section, so runs will use the echo provider.",
         [StudioStringKeys.ConfigNoProblem] = "No problem found.",
@@ -2967,14 +3465,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ComposeStagePromote] = "I am saving the team…",
         [StudioStringKeys.ComposeStageWorking] = "Working…",
         [StudioStringKeys.ComposeStageIdle] = "Stopped.",
-        [StudioStringKeys.ComposeWaitingOnYou] = "I am waiting for your answer.",
         [StudioStringKeys.ComposeTokensUp] = "Tokens sent to the model",
         [StudioStringKeys.ComposeTokensDown] = "Tokens received from the model",
         [StudioStringKeys.ComposeTokensEstimated] = "Estimate: this provider does not report token counts.",
         [StudioStringKeys.ComposeEngineVersion] = "engine {0}",
         [StudioStringKeys.ComposeAdoptWithoutTrial] = "Adopt without trying",
         [StudioStringKeys.ComposeAdoptWithoutTrialTip] = "The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.",
-        [StudioStringKeys.ComposeFillInputFolder] = "This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.",
         [StudioStringKeys.ComposeFilesWritten] = "{0} file(s) written",
         [StudioStringKeys.ComposeDefinitionValid] = "definition checked",
         [StudioStringKeys.ComposeDefinitionInvalid] = "definition refused",
@@ -2983,7 +3479,81 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
         [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
-        [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
+        [StudioStringKeys.WizardHintComposing] = "Composition under way: the assistant prepares the team.",
+        [StudioStringKeys.ChatStatusWaitingCard] = "waiting for you",
+        [StudioStringKeys.WizardComposeBusyTip] = "Composition under way",
+        [StudioStringKeys.WizardFoldersConfirm] = "Confirm the folders",
+        [StudioStringKeys.WizardSave] = "Save to my teams",
+        [StudioStringKeys.WizardFolderToChooseRead] = "To choose: the team must read documents that already exist.",
+        [StudioStringKeys.WizardHintAnswer] = "Answer the assistant to continue.",
+        [StudioStringKeys.WizardHintConfirmFolders] = "Confirm the folders to move on to the composition.",
+        [StudioStringKeys.WizardHintDecide] = "Settle the choice in the conversation to continue.",
+        [StudioStringKeys.WizardTabNeedDone] = "Described",
+        [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
+        [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
+        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Describe the work to continue.",
+        [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
+        [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
+        [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
+        [StudioStringKeys.WizardTabFoldersPendingToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
+        [StudioStringKeys.WizardTabFoldersConfirmed] = "{0} {0:plural:folder confirmed|folders confirmed}",
+        [StudioStringKeys.WizardTabFoldersFilling] = "{0} {0:plural:folder|folders} · dropping files",
+        [StudioStringKeys.WizardTabFoldersEmpty] = "Proposed after the composition",
+        [StudioStringKeys.WizardTabFoldersConfirmedFooter] = "Folders confirmed: the composition goes on in the panel.",
+        [StudioStringKeys.WizardTabFoldersFillingFooter] = "Drop your files in the folders of your choice, then continue: the assistant will take them into account.",
+        [StudioStringKeys.WizardTabFoldersReadyFooter] = "Every folder has its place. Confirm to continue.",
+        [StudioStringKeys.WizardTabFoldersOneToChoose] = "1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.",
+        [StudioStringKeys.WizardTabFoldersManyToChoose] = "{0} folders to choose. You can confirm now: the team will get them empty at adoption.",
+        [StudioStringKeys.WizardTabNotesDone] = "Written",
+        [StudioStringKeys.WizardTabNotesEmpty] = "Optional, empty",
+        [StudioStringKeys.WizardTabTeam] = "Team",
+        [StudioStringKeys.WizardTabTeamProposed] = "{0} {0:plural:agent|agents} · proposed",
+        [StudioStringKeys.WizardTabTeamComposing] = "Being composed",
+        [StudioStringKeys.WizardTabTeamEmpty] = "Not proposed yet",
+        [StudioStringKeys.WizardTabTeamFoldersInside] = "{0} {0:plural:folder|folders} · inside the team",
+        [StudioStringKeys.WizardTabTeamFoldersSet] = "{0} {0:plural:folder|folders} · set",
+        [StudioStringKeys.WizardTabTeamFoldersToChoose] = "{0} {0:plural:folder|folders} · {1} to choose",
+        [StudioStringKeys.WizardTabTeamFoldersNone] = "No folder",
+        [StudioStringKeys.WizardTabComposition] = "Composition",
+        [StudioStringKeys.WizardTabCompositionStopped] = "Stopped · {0} {0:plural:file|files} written",
+        [StudioStringKeys.WizardTabCompositionRunning] = "Under way",
+        [StudioStringKeys.WizardTabCompositionNone] = "Not started",
+        [StudioStringKeys.WizardTeamFooterStopped] = "{0} {0:plural:agent|agents}, composition stopped.",
+        [StudioStringKeys.WizardTeamFooterComposing] = "The engine is composing the team…",
+        [StudioStringKeys.WizardStep2FoldersFooterInside] = "{0} {0:plural:folder, inside the team|folders, all inside the team}.",
+        [StudioStringKeys.WizardStep2FoldersFooterSet] = "{0} {0:plural:folder, set|folders, all set}.",
+        [StudioStringKeys.WizardStep2FoldersFooterNone] = "This team uses no folder.",
+        [StudioStringKeys.WizardCompositionStateRunning] = "Under way",
+        [StudioStringKeys.WizardCompositionStateValid] = "Stopped — definition checked",
+        [StudioStringKeys.WizardCompositionStateInvalid] = "Stopped — definition to fix",
+        [StudioStringKeys.WizardCompositionStateStopped] = "Stopped",
+        [StudioStringKeys.WizardCompositionFiles] = "{0} {0:plural:file|files} in the team's draft",
+        [StudioStringKeys.WizardCompositionDraftSaved] = "saved at {0}",
+        [StudioStringKeys.WizardCompositionDraftNotSaved] = "not saved yet",
+        [StudioStringKeys.WizardCompositionFooterDone] = "Composition finished.",
+        [StudioStringKeys.WizardCompositionFooterRunning] = "Composition under way.",
+        [StudioStringKeys.WizardMoreTools] = "+ {0}",
+        [StudioStringKeys.WizardTabNotesFooterEmpty] = "No instruction yet.",
+        [StudioStringKeys.WizardTabNotesFooterTaken] = "Instruction taken as written.",
+        [StudioStringKeys.WizardWaitingFor] = "Waiting for you: {0}",
+        [StudioStringKeys.WizardWaitActionFolders] = "confirm the folders",
+        [StudioStringKeys.WizardWaitActionAnswer] = "answer the assistant",
+        [StudioStringKeys.WizardWaitActionModel] = "choose a model",
+        [StudioStringKeys.WizardWaitActionDecide] = "settle a choice",
+        [StudioStringKeys.WizardWaitActionChooseFolder] = "choose a folder",
+        [StudioStringKeys.WizardWaitActionFillFolders] = "drop your files",
+        [StudioStringKeys.WizardHintFillFolders] = "Drop your files in the folders, then continue.",
+        [StudioStringKeys.WizardWaitActionAdopt] = "adopt the team",
+        [StudioStringKeys.WizardWaitBubbleFolders] = "I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.",
+        [StudioStringKeys.WizardWaitBubbleFillFolders] = "The folders are ready. Drop your files in them, then tell me when you're done.",
+        [StudioStringKeys.WizardWaitActionLabelFillFolders] = "Done, continue",
+        [StudioStringKeys.WizardWaitBubbleChooseFolder] = "A folder of the team is still to choose before the trial.",
+        [StudioStringKeys.WizardWaitBubbleAdopt] = "The team is ready. Adopt it to find it in your teams.",
+        [StudioStringKeys.WizardWaitPlaceholderFolders] = "Confirm the folders to continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderFillFolders] = "Drop your files then continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderChooseFolder] = "Choose the folder to continue, or ask a question",
+        [StudioStringKeys.WizardWaitPlaceholderAdopt] = "Adopt the team to finish, or ask a question",
+        [StudioStringKeys.WizardWaitShowCard] = "Show the folder",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",
         [StudioStringKeys.WizardJudgeMechanical] = "No judge was available, so the criteria below were not checked one by one — read them yourself.",
         [StudioStringKeys.WizardMailActionsLabel] = "Simulated mail — nothing was sent",
@@ -2992,6 +3562,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDecisionRetry] = "Run the trial again",
         [StudioStringKeys.WizardDecisionRefine] = "Fix and retry",
         [StudioStringKeys.WizardDecisionAbort] = "Abandon",
+        [StudioStringKeys.WizardDecisionQuestion] = "The trial is judged. What do we do next?",
+        [StudioStringKeys.WizardFillFoldersQuestion] = "Do you want to put files or sub-folders in the folders you set up?",
+        [StudioStringKeys.WizardFillFoldersHint] = "These folders are kept inside the team. What you drop there now is what the trial reads, and it moves into the team when you adopt it.",
+        [StudioStringKeys.WizardFillFoldersYes] = "Yes",
+        [StudioStringKeys.WizardFillFoldersNo] = "No",
+        [StudioStringKeys.WizardFillFoldersContinue] = "Continue",
+        [StudioStringKeys.WizardFolderFilesNone] = "No file",
+        [StudioStringKeys.WizardFolderFilesCount] = "{0} {0:plural:file|files}",
 
         [StudioStringKeys.TeamsOnDemand] = "On demand",
         [StudioStringKeys.TeamsDaily] = "Every day at {0}",
@@ -3033,6 +3611,24 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunLlmForThisRun] = "This run: {0}",
         [StudioStringKeys.RunRememberLlmForTeam] = "Remember for this team",
         [StudioStringKeys.SettingsUsedByDefault] = "{0} team(s), {1} by default",
+        [StudioStringKeys.SettingsTabModelCount] = "{0} {0:plural:model|models} · {1} by default",
+        [StudioStringKeys.SettingsTabModelNoAssistant] = "Choose the assistant's model",
+        [StudioStringKeys.SettingsTabModelEmpty] = "No model yet",
+        [StudioStringKeys.SettingsTabKeysCount] = "{0} {0:plural:key|keys} remembered",
+        [StudioStringKeys.SettingsTabKeysNone] = "No key to provide",
+        [StudioStringKeys.SettingsTabKeysNoneStored] = "{0} {0:plural:key|keys}, none remembered",
+        [StudioStringKeys.SettingsTabFoldersCount] = "{0} {0:plural:folder|folders} allowed",
+        [StudioStringKeys.SettingsTabFoldersEmpty] = "No folder allowed",
+        [StudioStringKeys.SettingsTabFoldersProblems] = "{0} {0:plural:folder|folders} to fix",
+        [StudioStringKeys.SettingsTabToolsCount] = "{0} {0:plural:tool|tools}",
+        [StudioStringKeys.SettingsTabAccountsCount] = "{0} {0:plural:account|accounts}",
+        [StudioStringKeys.SettingsTabAccountsEmpty] = "No account",
+        [StudioStringKeys.SettingsTabMcpCount] = "{0} {0:plural:server|servers}",
+        [StudioStringKeys.SettingsTabMcpEmpty] = "No server",
+        [StudioStringKeys.SettingsTabStudioSub] = "How Studio behaves",
+        [StudioStringKeys.SettingsTabLimitsSub] = "Rates, index, logs",
+        [StudioStringKeys.SettingsTabFileValid] = "Valid file",
+        [StudioStringKeys.SettingsTabFileErrors] = "{0} {0:plural:error|errors} to fix",
         [StudioStringKeys.StatusBarProfileTipTeams] = "Default model setting: {0}. The teams that follow the default run on it.",
         [StudioStringKeys.TeamsScheduledRunOnDefault] = "Scheduled, this team runs on the default setting, not on “{0}”. {1}",
         [StudioStringKeys.TeamsScheduledRunNoModel] = "“{0}” has no model: from Studio, the team answers as an echo.",
@@ -3064,8 +3660,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagOrphanFolder] = "Its team folder is gone: {0}",
         [StudioStringKeys.DiagOrphanCleanFailed] = "The session could not be deleted — one of its files may be open.",
 
-        [StudioStringKeys.TeamsRenameBusyRunning] = "Not renamed: the team is running on the Run screen — wait for the run to end.",
-        [StudioStringKeys.TeamsRenameBusyTesting] = "Not renamed: the team is running on the Test screen — wait for the trial to end.",
+        [StudioStringKeys.TeamsRenameBusyRunning] = "Not renamed: a run of the team is in flight on the Run screen — wait for it to end.",
+        [StudioStringKeys.TeamsRenameBusyTesting] = "Not renamed: a trial of the team is running on the Run screen — wait for it to end.",
         [StudioStringKeys.TeamsRenameBusyWizard] = "Not renamed: the team is open in the assistant — save it to My teams or start over there first.",
         [StudioStringKeys.TeamsRenameFailed] = "The rename did not go through: {0}",
         [StudioStringKeys.TeamsRenamed] = "Team renamed “{0}” — its folder is now {1}.",
@@ -3077,6 +3673,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
         [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
         [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
+        [StudioStringKeys.TeamsLaunchNeedsFolder] = "Allow the folder {0} first.",
+        [StudioStringKeys.TeamsRefusedRuns] = "{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.",
         [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
         [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",
         [StudioStringKeys.TeamsArchivedBadge] = "Archived",
@@ -3126,7 +3724,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ForgeStatusJudging] = "Checking the result against what you asked…",
         [StudioStringKeys.ForgeStatusReady] = "Your solution is ready.",
         [StudioStringKeys.ForgeStatusFailed] = "Something went wrong — the detail is in the card below.",
-        [StudioStringKeys.ForgeStatusStopped] = "Stopped — you can pick it up again from My solutions.",
+        [StudioStringKeys.WizardSessionRunning] = "Running",
+        [StudioStringKeys.WizardSessionWaiting] = "Waiting for you",
+        [StudioStringKeys.WizardSessionPaused] = "Paused",
+        [StudioStringKeys.WizardDraftSavedAt] = "Draft saved at {0}",
+        [StudioStringKeys.WizardResumeUnavailable] = "This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.",
+        [StudioStringKeys.WizardFoldersToChoose] = "{0} {0:plural:folder|folders} to choose before the trial.",
+        [StudioStringKeys.WizardPausedHint] = "Team composed — you can try it.",
+        [StudioStringKeys.WizardVerdictSummary] = "{0} of {1} {1:plural:criterion|criteria} met",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
         [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",
@@ -3170,7 +3775,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         // STUDIO-14 wizard: where a team's folders live; STUDIO-46: the Folders step
         [StudioStringKeys.WizardFolderRoleInput] = "read",
         [StudioStringKeys.WizardFolderRoleOutput] = "read, write",
-        [StudioStringKeys.WizardFolderNotChosen] = "no folder chosen yet",
         [StudioStringKeys.WizardFolderInvalidName] = "« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
         [StudioStringKeys.WizardFolderTwice] = "{0} is listed twice.",
         [StudioStringKeys.WizardInsideTeamFolder] = "inside the team: {0}",

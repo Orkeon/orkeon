@@ -29,6 +29,9 @@ public sealed class I18nStudioStrings : IStudioStrings, IDisposable
     public string this[string key] => I18n.Instance[key];
 
     /// <inheritdoc />
+    public string Language => I18n.Instance.Language;
+
+    /// <inheritdoc />
     public event EventHandler? CultureChanged;
 
     private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e)

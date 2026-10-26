@@ -128,7 +128,16 @@ public sealed class ImportAndTestScreensTests
             Picker = new FakePathPicker(),
             SettingsStore = new FakeAppSettingsStore(),
         });
-        var vm = new TestTeamViewModel(
+        var vm = new RunScreenViewModel(
+            new LaunchTabViewModel(new LaunchTabDependencies
+            {
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                TargetProbe = probe,
+                Directories = new FakeDirectoryProbe(),
+                Picker = new FakePathPicker(),
+                SettingsStore = new FakeAppSettingsStore(),
+            }),
             launcher,
             teamsRoot: "/teams",
             loadTeams: () =>
@@ -136,9 +145,11 @@ public sealed class ImportAndTestScreensTests
                 new TeamSummary { Name = "Veille", Slug = "veille", Path = "/teams/veille" },
             ]);
 
+        vm.IsTrial = true;
         vm.SelectedTeam = vm.TeamChoices[0];
 
         Assert.Equal("/teams/veille", launcher.Target.SelectedPath);
+        Assert.Equal("", vm.Real.Target.SelectedPath);
     }
 }
 

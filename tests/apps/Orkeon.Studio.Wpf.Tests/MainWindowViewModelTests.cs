@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
+using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -81,7 +82,7 @@ public sealed class MainWindowViewModelTests
         Assert.Equal(TeamsRootSource.Environment, window.TeamsRoot.Source);
         Assert.Equal(WorkshopTeams, window.CreateTeam.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Import.TeamsRoot);
-        Assert.Equal(WorkshopTeams, window.Test.TeamsRoot);
+        Assert.Equal(WorkshopTeams, window.Run.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Teams.TeamsRoot);
         Assert.Equal(WorkshopTeams, window.Launch.TeamsRoot);
         // The card says what is in force, and the preference cannot change it while the variable holds.
@@ -146,13 +147,13 @@ public sealed class MainWindowViewModelTests
             teamsRoot: teams);
 
         window.Launch.Target.Select(crew);
-        window.Test.Launcher.Target.Select(crew);
+        window.Run.Trial.Target.Select(crew);
 
         Assert.Equal(settingsFile, window.Launch.TeamSettingsPath);
-        Assert.Equal(settingsFile, window.Test.Launcher.TeamSettingsPath);
-        Assert.Contains("--settings=" + settingsFile, window.Test.Launcher.BuildArguments());
+        Assert.Equal(settingsFile, window.Run.Trial.TeamSettingsPath);
+        Assert.Contains("--settings=" + settingsFile, window.Run.Trial.BuildArguments());
         // Still no teams root for the stamp: a trial is a rehearsal.
-        Assert.Null(window.Test.Launcher.TeamsRoot);
+        Assert.Null(window.Run.Trial.TeamsRoot);
     }
 
     [Fact]
@@ -391,7 +392,7 @@ public sealed class MainWindowViewModelTests
             },
             globalPathOverride: GlobalPath);
         window.Launch.Target.Select("/crews/veille.yaml");
-        window.Test.Launcher.Target.Select("/crews/veille.yaml");
+        window.Run.Trial.Target.Select("/crews/veille.yaml");
 
         // One process double serves both launchers, which share the window's runner: the first
         // spawn is the Run screen's, the second — started while the first is alive — the trial's.
@@ -401,7 +402,7 @@ public sealed class MainWindowViewModelTests
         processes.WhileRunning = () =>
         {
             if (++spawns == 1)
-                trial = window.Test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+                trial = window.Run.Trial.RunAsync(TestContext.Current.CancellationToken);
             else
                 both = (window.StatusBar.Launch.IsActive, window.StatusBar.Test.IsActive, window.StatusBar.IsAtRest);
         };
@@ -451,22 +452,20 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public void The_technical_journal_opens_in_expert_mode_and_its_toggle_still_closes_it()
+    public void The_command_tab_of_both_launchers_follows_the_window_mode()
     {
         var window = Build();
-        window.Mode.SetNoviceCommand.Execute(null);
-
-        Assert.False(window.Launch.IsJournalOpen);
-
         window.Mode.SetExpertCommand.Execute(null);
-        Assert.True(window.Launch.IsJournalOpen);
+        window.Launch.ActiveTab = LaunchTabViewModel.CommandTab;
 
-        // The toggle of the view writes the property: in expert mode it closes the journal.
-        window.Launch.IsJournalOpen = false;
-        Assert.False(window.Launch.IsJournalOpen);
+        Assert.True(window.Launch.IsExpertMode);
+        Assert.True(window.Run.Trial.IsExpertMode);
+        Assert.Equal(LaunchTabViewModel.CommandTab, window.Launch.ActiveTab);
 
+        // A novice has no command tab: the launcher falls back on the options.
         window.Mode.SetNoviceCommand.Execute(null);
-        Assert.False(window.Launch.IsJournalOpen);
+        Assert.False(window.Run.Trial.IsExpertMode);
+        Assert.Equal(LaunchTabViewModel.OptionsTab, window.Launch.ActiveTab);
     }
 
     [Fact]

@@ -142,7 +142,7 @@ public sealed class TeamCardViewModel : ObservableObject
     private string _scheduleMessage = "";
     private string? _scheduleManualCommand;
     private ForgeSolutionSummary? _linkedSession;
-    private bool _deleteSessionToo = true;
+    private bool _deleteSessionToo;
     private string _deleteRefusal = "";
     private string? _deleteManualCommand;
     private string _archiveNotice = "";
@@ -183,7 +183,14 @@ public sealed class TeamCardViewModel : ObservableObject
         };
         // STUDIO-32 (D-02): an archived card offers « Restore » and « Delete », nothing else — it is
         // neither launched, modified, renamed nor copied, and its folders are not changed.
-        LaunchCommand = new RelayCommand(() => owner.RequestLaunch(summary.Path), () => !IsArchived);
+        // Refonte lot 2: a folder nothing vouches for holds « Launch » back, its reason in the tooltip,
+        // and the folders row offers « Allow » in place of « Change ».
+        UndeclaredFolder = summary.Mounts
+            .Where(mountString => !DeclaredMounts.IsVouchedFor(mountString, declaredMounts, summary.Path))
+            .Select(mountString => MountDefinition.TryParse(mountString, out var mount, out _) ? mount?.VirtualPath : null)
+            .FirstOrDefault(path => path is not null);
+        LaunchCommand = new RelayCommand(() => owner.RequestLaunch(summary.Path), () => !IsArchived && UndeclaredFolder is null);
+        AllowFolderCommand = new RelayCommand(owner.RequestAllowedFolders);
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(summary.Path), () => !IsArchived);
         // Delete is a two-step gesture, and BOTH entry points (the labelled Novice button
         // and the Expert trash icon) arm the same confirmation: no path removes a team on
@@ -566,6 +573,9 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether the card says what its scheduled run cannot follow.</summary>
     public bool HasScheduledRunLine => _scheduledRun is not null;
 
+    /// <summary>What the card's scheduled run cannot follow, for the screen's one banner of refusals.</summary>
+    internal ScheduledRunNotice? ScheduledRun => _scheduledRun;
+
     /// <summary>
     /// The model settings or the settings file changed (STUDIO-52): the card names its setting again —
     /// absent from this machine, or not — and says again what its scheduled run cannot follow.
@@ -573,7 +583,7 @@ public sealed class TeamCardViewModel : ObservableObject
     internal void RefreshSetting()
     {
         _scheduledRun = ReadScheduledRun();
-        OnPropertiesChanged(nameof(ProfileDisplay), nameof(HasProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine),
+        OnPropertiesChanged(nameof(ProfileDisplay), nameof(ProfileLabel), nameof(HasProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine),
             nameof(HasScheduledRunLine), nameof(UseDefaultLlmLabel), nameof(LlmProfiles), nameof(HasLlmProfiles));
     }
 
@@ -630,7 +640,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// </summary>
     public bool CanDeleteSessionToo => _linkedSession is not null;
 
-    /// <summary>The box « Also delete the workshop session », ticked by default.</summary>
+    /// <summary>The box « Also delete the workshop session », unticked by default (studio refonte, lot 2).</summary>
     public bool DeleteSessionToo
     {
         get => _deleteSessionToo;
@@ -689,7 +699,7 @@ public sealed class TeamCardViewModel : ObservableObject
         _archivesInWorkshop = archivesInWorkshop;
         OnPropertyChanged(nameof(CanDeleteSessionToo));
         OnPropertyChanged(nameof(DeleteQuestion));
-        DeleteSessionToo = true;
+        DeleteSessionToo = false;
         RefuseDelete("", null);
     }
 
@@ -822,6 +832,19 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>The mount chips, virtual path + rights in words.</summary>
     public IReadOnlyList<TeamMountChip> MountChips { get; }
 
+    /// <summary>The virtual path of the first folder the team names that nothing vouches for (STUDIO-14); null when none.</summary>
+    public string? UndeclaredFolder { get; }
+
+    /// <summary>Whether a folder of the team waits to be allowed: the row offers « Allow », « Launch » waits.</summary>
+    public bool HasUndeclaredFolder => UndeclaredFolder is not null;
+
+    /// <summary>Why « Launch » is held back — « Allow the folder /x first »; null when it is not.</summary>
+    public string? LaunchBlockedReason =>
+        UndeclaredFolder is { } folder ? _strings.Format(StudioStringKeys.TeamsLaunchNeedsFolder, folder) : null;
+
+    /// <summary>« Allow »: the settings' allowed folders come forward.</summary>
+    public RelayCommand AllowFolderCommand { get; }
+
     /// <summary>
     /// The card badge (mock: scheduled = green, to be tested = amber, on demand = accent).
     /// A team that never ran and is not scheduled still has to earn its first run.
@@ -908,6 +931,9 @@ public sealed class TeamCardViewModel : ObservableObject
 
     /// <summary>Whether the model line shows.</summary>
     public bool HasProfileDisplay => ProfileDisplay is not null;
+
+    /// <summary>The model alone, the value of the card's «Model» row (refonte R6).</summary>
+    public string? ProfileLabel => _owner.LlmLabelOf(Summary);
 
     /// <summary>
     /// The card's one meta line, « · »-joined like the launcher's (v3 F-02):
@@ -1100,7 +1126,7 @@ public sealed record TeamsDependencies
 public sealed class TeamsViewModel : ObservableObject
 {
     /// <summary>How long the undo banner stays (D-02): a few seconds, long enough to read one line and click.</summary>
-    private static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(10);
 
     private readonly Func<IReadOnlyList<TeamSummary>> _loadTeams;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
@@ -1184,6 +1210,7 @@ public sealed class TeamsViewModel : ObservableObject
         SortByActivityCommand = new RelayCommand(() => SortOrder = TeamSortOrder.LastActivity);
         SortByNameCommand = new RelayCommand(() => SortOrder = TeamSortOrder.Name);
         ToggleArchivesCommand = new RelayCommand(() => ShowArchives = !ShowArchives);
+        SaveSettingsCommand = new RelayCommand(() => SaveSettingsRequested?.Invoke(this, EventArgs.Empty));
         UndoCommand = new RelayCommand(Undo, () => _undo is not null);
         DismissUndoCommand = new RelayCommand(DropUndo);
         ArchiveSuggestedCommand = new RelayCommand(ArchiveSuggested, () => _suggested.Count > 0);
@@ -1214,6 +1241,9 @@ public sealed class TeamsViewModel : ObservableObject
     /// forward. An empty My-teams offers both doors, not just the one.
     /// </summary>
     public event EventHandler? ImportRequested;
+
+    /// <summary>Raised by the refusals banner's « Save the settings » — the shell saves the settings file.</summary>
+    public event EventHandler? SaveSettingsRequested;
 
     /// <summary>Raised by "Change the folders" — the shell opens the team-mounts modal.</summary>
     public event EventHandler<TeamMountsRequestedEventArgs>? MountsRequested;
@@ -1326,6 +1356,36 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Opens the import screen.</summary>
     public RelayCommand ImportCommand { get; }
+
+    /// <summary>The banner's « Save the settings »: what the scheduled runs lack is written to the file.</summary>
+    public RelayCommand SaveSettingsCommand { get; }
+
+    /// <summary>
+    /// The one banner over the cards (refonte, lot 2): how many active teams' scheduled runs the
+    /// settings file as saved refuses, and the settings and folders it lacks for them — in place of
+    /// the same line repeated on every card. Empty when none is refused.
+    /// </summary>
+    public string RefusedRunsLine { get; private set; } = "";
+
+    /// <summary>Whether the banner of refusals shows.</summary>
+    public bool HasRefusedRuns => RefusedRunsLine.Length > 0;
+
+    /// <summary>Reads the refusals of the active cards again, for the banner.</summary>
+    private void RefreshRefusedRuns()
+    {
+        var refused = Teams
+            .Select(card => card.ScheduledRun)
+            .OfType<ScheduledRunNotice>()
+            .Where(notice => notice.Issue is ScheduledRunIssue.SettingRefused or ScheduledRunIssue.FolderRefused)
+            .ToList();
+        RefusedRunsLine = refused.Count == 0
+            ? ""
+            : _strings.Format(
+                StudioStringKeys.TeamsRefusedRuns,
+                refused.Count,
+                string.Join(", ", refused.Select(notice => notice.Subject).Distinct(StringComparer.Ordinal)));
+        OnPropertiesChanged(nameof(RefusedRunsLine), nameof(HasRefusedRuns));
+    }
 
     // ── the view (D-01) ──
 
@@ -1494,6 +1554,7 @@ public sealed class TeamsViewModel : ObservableObject
 
         RebuildView();
         RefreshArchiveSuggestion();
+        RefreshRefusedRuns();
         OnPropertiesChanged(
             nameof(ActiveCount), nameof(IsEmpty), nameof(IsAllArchived), nameof(HasInProgress),
             nameof(ArchivedCount), nameof(HasArchives), nameof(ArchivesLabel));
@@ -1626,6 +1687,7 @@ public sealed class TeamsViewModel : ObservableObject
     {
         foreach (var card in AllCards)
             card.RefreshSetting();
+        RefreshRefusedRuns();
     }
 
     /// <summary>
@@ -1723,6 +1785,7 @@ public sealed class TeamsViewModel : ObservableObject
 
         RecordScheduleState(card.Summary.Path, report.State);
         card.RefreshSetting();
+        RefreshRefusedRuns();
     }
 
     /// <summary>
@@ -1815,6 +1878,11 @@ public sealed class TeamsViewModel : ObservableObject
     private static string NormalizePath(string path) => TeamCatalog.NormalizePath(path);
 
     internal void RequestLaunch(string path) => LaunchRequested?.Invoke(this, new TeamActionEventArgs(path));
+
+    /// <summary>Raised by a card's « Allow »: the shell opens Settings › Allowed folders.</summary>
+    public event EventHandler? OpenAllowedFoldersRequested;
+
+    internal void RequestAllowedFolders() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty);
 
     internal void RequestResume(ForgeSolutionSummary summary) =>
         ResumeRequested?.Invoke(this, new SessionResumeEventArgs(summary));
@@ -2408,7 +2476,7 @@ public sealed class TeamsViewModel : ObservableObject
     internal async Task DeleteAsync(TeamCardViewModel card)
     {
         var team = card.Summary;
-        // Only a session the banner offered: the box is ticked by default, but never for a session
+        // Only a session the banner offered: the box starts unticked, and never counts for a session
         // the user was not shown.
         var session = card.CanDeleteSessionToo && card.DeleteSessionToo ? LinkedSessionOf(team) : null;
 

@@ -131,8 +131,8 @@ public sealed class TeamActivityTests : IDisposable
 
         TeamActivity? duringTheTest = null;
         processes.WhileRunning = () => duringTheTest = window.Teams.ActivityOf(team);
-        window.Test.Launcher.Target.Select(team);
-        await window.Test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+        window.Run.Trial.Target.Select(team);
+        await window.Run.Trial.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(TeamActivity.Running, duringTheLaunch);
         Assert.Equal(TeamActivity.Testing, duringTheTest);

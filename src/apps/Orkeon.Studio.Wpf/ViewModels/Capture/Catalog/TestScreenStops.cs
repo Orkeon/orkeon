@@ -1,6 +1,6 @@
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>The expert trial screen.</summary>
+/// <summary>The Launch screen in trial mode (the former Tester screen, merged in refonte lot 4).</summary>
 internal static class TestScreenStops
 {
     /// <summary>The stops.</summary>
@@ -12,8 +12,8 @@ internal static class TestScreenStops
             Category = CaptureCategory.TestScreen,
             Screen = CaptureScreen.Test,
             Modes = CaptureModes.Expert,
-            Because = "The two-column trial layout with its full-height console empty — the state "
-                    + "that shows whether the console keeps its height when it has nothing in it.",
+            Because = "The Lancer screen switched to Essai with no team picked: the switch, the trial "
+                    + "notice and the team picker of the empty state.",
         },
     ];
 }

@@ -34,6 +34,13 @@ internal interface IForgeUserChannel
     /// </summary>
     Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
         IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Waits for the user to settle the fill step after a <c>brief.ready</c> that named folders
+    /// kept inside the team (STUDIO-57): the files are in <paramref name="held"/>, or there is
+    /// nothing to put there. False means the channel closed.
+    /// </summary>
+    Task<bool> ReadFolderFillAsync(IReadOnlyList<ForgeFolder> held, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -198,6 +205,40 @@ internal sealed class JsonLinesUserChannel : IForgeUserChannel
         }
     }
 
+    /// <inheritdoc />
+    public async Task<bool> ReadFolderFillAsync(IReadOnlyList<ForgeFolder> held, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var line = await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (line is null)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("kind", out var kind)
+                    && kind.ValueKind == JsonValueKind.String
+                    && string.Equals(kind.GetString(), "folders.filled", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            catch (JsonException)
+            {
+                // Same tolerance as messages: skip and keep reading.
+            }
+        }
+    }
+
     private static readonly JsonSerializerOptions FolderOptions = new() { PropertyNameCaseInsensitive = true };
 }
 
@@ -275,5 +316,15 @@ internal sealed class TerminalUserChannel : IForgeUserChannel
             .ConfigureAwait(false);
         await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
         return proposed;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ReadFolderFillAsync(IReadOnlyList<ForgeFolder> held, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(held);
+        await _output.WriteLineAsync("  drop your files in the folders above, then press Enter to continue.")
+            .ConfigureAwait(false);
+        await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+        return await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false) is not null;
     }
 }

@@ -189,6 +189,24 @@ public sealed class MountsEditorViewModelTests
     }
 
     [Fact]
+    public void Should_PutTheFindingOnTheFaultyRow_AndKeepTheListLevelOnesUnderTheList()
+    {
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/data"), requireAtLeastOne: true);
+
+        editor.Load(["/data:/workspace:ro", "/absent:/output:rw"]);
+
+        Assert.False(editor.Mounts[0].HasRowProblem);
+        Assert.Equal(ValidationCodes.MountPathMissing, editor.Mounts[1].RowProblem!.Code);
+        Assert.True(editor.Mounts[1].RowProblem!.IsError);
+        Assert.DoesNotContain(editor.GeneralMessages, m => m.Code == ValidationCodes.MountPathMissing);
+
+        editor.Load([]);
+        editor.Validate();
+
+        Assert.Contains(editor.GeneralMessages, m => m.Code == ValidationCodes.MountsEmpty);
+    }
+
+    [Fact]
     public void Should_ClearTheError_When_TheFolderIsCreated()
     {
         var probe = new FakeDirectoryProbe();

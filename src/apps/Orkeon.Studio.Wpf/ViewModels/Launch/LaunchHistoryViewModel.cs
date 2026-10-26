@@ -37,13 +37,15 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
         Action<LaunchHistoryEntry>? onReplay = null,
         IShellOpener? shellOpener = null,
         Func<IReadOnlyList<string>>? declaredMounts = null,
-        Action<LaunchHistoryEntry>? onRestore = null)
+        Action<LaunchHistoryEntry>? onRestore = null,
+        Func<string, string?>? teamNameOf = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
         Entry = entry;
         _strings = strings ?? EnglishStudioStrings.Instance;
         _declaredMounts = declaredMounts;
+        _teamNameOf = teamNameOf;
         ReplayCommand = new RelayCommand(() => onReplay?.Invoke(Entry), () => onReplay is not null);
         OpenResultCommand = new RelayCommand(
             () => { foreach (var folder in ResultFolders()) shellOpener?.Open(folder); },
@@ -59,6 +61,7 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
     }
 
     private readonly Func<IReadOnlyList<string>>? _declaredMounts;
+    private readonly Func<string, string?>? _teamNameOf;
 
     /// <summary>Replays this launch (per-card button — the mock has no global action row).</summary>
     public RelayCommand ReplayCommand { get; }
@@ -122,6 +125,10 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
     {
         get
         {
+            // The team's own name while its folder still says it (lot 5: the name, not the slug).
+            if (_teamNameOf?.Invoke(Target) is { Length: > 0 } named)
+                return Orkeon.Studio.Core.Teams.TeamCatalog.NormalizeName(named);
+
             var trimmed = Target.TrimEnd('/', '\\');
             var name = System.IO.Path.GetFileNameWithoutExtension(trimmed);
             var display = name is { Length: > 0 } ? name : Target;
@@ -145,6 +152,29 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
             return chips.Count > 0 ? $"{line} · {string.Join(" · ", chips)}" : line;
         }
     }
+
+    /// <summary>The start time, "09:41" - the day is the group's header.</summary>
+    public string TimeText => StartedAt.ToLocalTime().ToString("t", CultureInfo.CurrentCulture);
+
+    /// <summary>"2 min 05 s", "&lt; 1 s"; empty when the run measured none.</summary>
+    public string DurationText => Entry.Duration is { } d ? FormatDuration(d) : string.Empty;
+
+    /// <summary>The usage chips (tokens, cache) joined; empty when the run measured none.</summary>
+    public string UsageText => string.Join(" · ", Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(
+        Entry.Tokens, Entry.CacheHitTokens, Entry.CacheMissTokens, durationMs: null,
+        _strings, CultureInfo.CurrentCulture));
+
+    /// <summary>The status badge's word: Succeeded, Failed, Cancelled, Not started.</summary>
+    public string StatusText => _strings[LaunchHistoryViewModel.StatusKeyOf(Outcome)];
+
+    /// <summary>The badge's tone, by name (Success, Danger, Warning, Neutral): the view's Tone enum.</summary>
+    public string BadgeTone => Outcome switch
+    {
+        RunOutcome.Success => "Success",
+        RunOutcome.Cancelled => "Warning",
+        RunOutcome.NotStarted => "Neutral",
+        _ => "Danger",
+    };
 
     /// <summary>The plain-language reading of how the run ended (no raw enum on screen).</summary>
     public string OutcomeSentence => Outcome switch
@@ -240,7 +270,10 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
         if (duration.TotalMinutes >= 1)
             return string.Create(CultureInfo.CurrentCulture, $"{(int)duration.TotalMinutes} min {duration.Seconds:00} s");
 
-        return string.Create(CultureInfo.CurrentCulture, $"{duration.Seconds} s");
+        // Under a second reads « < 1 s », never « 0 s ».
+        return duration.TotalSeconds < 1
+            ? "< 1 s"
+            : string.Create(CultureInfo.CurrentCulture, $"{duration.Seconds} s");
     }
 
     /// <inheritdoc />
@@ -260,20 +293,35 @@ public sealed class LaunchHistoryViewModel : ObservableObject
     private readonly IStudioStrings? _strings;
     private readonly IShellOpener? _shellOpener;
     private readonly Func<IReadOnlyList<string>>? _declaredMounts;
+    private readonly Func<string, string?>? _teamNameOf;
+    private readonly Func<DateTimeOffset> _now;
+    private LaunchHistoryFilterOption? _teamFilter;
+    private LaunchHistoryFilterOption? _statusFilter;
 
     /// <summary>Builds the panel over a history store; a null store keeps the history in memory only.</summary>
+    /// <param name="store">The history file; null keeps the history in memory only.</param>
+    /// <param name="dispatcher">The UI thread; immediate when null.</param>
+    /// <param name="strings">The texts; English when null.</param>
+    /// <param name="shellOpener">Opens a result folder.</param>
+    /// <param name="declaredMounts">The folders the settings authorize, read when a result is located.</param>
+    /// <param name="teamNameOf">The team's own name for a target folder; the folder name when null.</param>
+    /// <param name="now">Clock seam for tests: what « Today » and « Yesterday » are read against.</param>
     public LaunchHistoryViewModel(
         ILaunchHistoryStore? store = null,
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
         IShellOpener? shellOpener = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        Func<string, string?>? teamNameOf = null,
+        Func<DateTimeOffset>? now = null)
     {
         _store = store;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings;
         _shellOpener = shellOpener;
         _declaredMounts = declaredMounts;
+        _teamNameOf = teamNameOf;
+        _now = now ?? (() => DateTimeOffset.Now);
 
         ReplayCommand = new RelayCommand(Replay, () => SelectedEntry is not null);
         ReloadCommand = new AsyncRelayCommand(() => LoadAsync());
@@ -293,6 +341,49 @@ public sealed class LaunchHistoryViewModel : ObservableObject
 
     /// <summary>Whether the empty-state phrase shows (T-12).</summary>
     public bool IsEmpty => Entries.Count == 0;
+
+    /// <summary>The entries the filters keep, grouped by day, most recent first (lot 5).</summary>
+    public ObservableCollection<LaunchHistoryDayGroup> Groups { get; } = [];
+
+    /// <summary>« All teams » then one option per team the history ran.</summary>
+    public ObservableCollection<LaunchHistoryFilterOption> TeamFilters { get; } = [];
+
+    /// <summary>« All statuses » then Succeeded, Failed, Cancelled, Not started.</summary>
+    public ObservableCollection<LaunchHistoryFilterOption> StatusFilters { get; } = [];
+
+    /// <summary>True when the history holds runs but none passes the filters.</summary>
+    public bool HasNoMatch => Entries.Count > 0 && Groups.Count == 0;
+
+    /// <summary>The picked team filter; « All teams » keeps every run.</summary>
+    public LaunchHistoryFilterOption? TeamFilter
+    {
+        get => _teamFilter;
+        set
+        {
+            if (SetProperty(ref _teamFilter, value))
+                Regroup();
+        }
+    }
+
+    /// <summary>The picked status filter; « All statuses » keeps every run.</summary>
+    public LaunchHistoryFilterOption? StatusFilter
+    {
+        get => _statusFilter;
+        set
+        {
+            if (SetProperty(ref _statusFilter, value))
+                Regroup();
+        }
+    }
+
+    /// <summary>The resource key of a status badge's word.</summary>
+    public static string StatusKeyOf(RunOutcome outcome) => outcome switch
+    {
+        RunOutcome.Success => StudioStringKeys.HistStatusSucceeded,
+        RunOutcome.Cancelled => StudioStringKeys.HistStatusCancelled,
+        RunOutcome.NotStarted => StudioStringKeys.HistStatusNotStarted,
+        _ => StudioStringKeys.HistStatusFailed,
+    };
 
     /// <summary>Raises <see cref="ReplayRequested"/> for the selected entry.</summary>
     public RelayCommand ReplayCommand { get; }
@@ -337,14 +428,83 @@ public sealed class LaunchHistoryViewModel : ObservableObject
     private void PublishCore(LaunchHistory history)
     {
         Entries.Clear();
+        // One lookup per target and publish: the name reads the team's folder (up to 50 entries).
+        var names = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        Func<string, string?>? teamNameOf = _teamNameOf is null ? null : target =>
+        {
+            if (!names.TryGetValue(target, out var name))
+                names[target] = name = _teamNameOf(target);
+            return name;
+        };
         foreach (var entry in history.Entries)
             Entries.Add(new LaunchHistoryEntryViewModel(
                 entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener, _declaredMounts,
-                e => RestoreRequested?.Invoke(this, new LaunchReplayEventArgs(e))));
+                e => RestoreRequested?.Invoke(this, new LaunchReplayEventArgs(e)), teamNameOf));
 
         SelectedEntry = Entries.Count > 0 ? Entries[0] : null;
+        RebuildFilters();
+        Regroup();
         OnPropertyChanged(nameof(IsEmpty));
     }
+
+    // The filter lists follow the history: a team appears once it ran. A picked filter survives a
+    // republish while its team is still listed, so a new run does not reset what the user chose.
+    private void RebuildFilters()
+    {
+        var strings = _strings ?? EnglishStudioStrings.Instance;
+        var keptTeam = _teamFilter?.Team;
+        var keptTone = _statusFilter?.Tone;
+
+        TeamFilters.Clear();
+        TeamFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistAllTeams]));
+        foreach (var team in Entries
+                     .GroupBy(row => TeamKey(row.Target), StringComparer.OrdinalIgnoreCase)
+                     .Select(group => (Key: group.Key, Name: group.First().TeamName))
+                     .OrderBy(team => team.Name, StringComparer.CurrentCultureIgnoreCase))
+            TeamFilters.Add(new LaunchHistoryFilterOption(team.Name, Team: team.Key));
+
+        if (StatusFilters.Count == 0)
+        {
+            StatusFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistAllStatuses]));
+            StatusFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistStatusSucceeded], Tone: "ok"));
+            StatusFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistStatusFailed], Tone: "fail"));
+            StatusFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistStatusCancelled], Tone: "warn"));
+            StatusFilters.Add(new LaunchHistoryFilterOption(strings[StudioStringKeys.HistStatusNotStarted], Tone: "idle"));
+        }
+
+        _teamFilter = TeamFilters.FirstOrDefault(option =>
+            string.Equals(option.Team, keptTeam, StringComparison.OrdinalIgnoreCase)) ?? TeamFilters[0];
+        _statusFilter = StatusFilters.FirstOrDefault(option => option.Tone == keptTone) ?? StatusFilters[0];
+        OnPropertyChanged(nameof(TeamFilter));
+        OnPropertyChanged(nameof(StatusFilter));
+    }
+
+    // Groups the kept entries by local day: « Today », « Yesterday », then the long date.
+    private void Regroup()
+    {
+        var strings = _strings ?? EnglishStudioStrings.Instance;
+        var today = _now().ToLocalTime().Date;
+
+        Groups.Clear();
+        foreach (var day in Entries
+                     .Where(Keeps)
+                     .GroupBy(row => row.StartedAt.ToLocalTime().Date)
+                     .OrderByDescending(group => group.Key))
+        {
+            var header = day.Key == today ? strings[StudioStringKeys.HistToday]
+                : day.Key == today.AddDays(-1) ? strings[StudioStringKeys.HistYesterday]
+                : day.Key.ToString("D", CultureInfo.CurrentCulture);
+            Groups.Add(new LaunchHistoryDayGroup(header, [.. day.OrderByDescending(row => row.StartedAt)]));
+        }
+
+        OnPropertyChanged(nameof(HasNoMatch));
+    }
+
+    private bool Keeps(LaunchHistoryEntryViewModel row) =>
+        (_teamFilter?.Team is not { } team || string.Equals(TeamKey(row.Target), team, StringComparison.OrdinalIgnoreCase))
+        && (_statusFilter?.Tone is not { } tone || row.OutcomeTone == tone);
+
+    private static string TeamKey(string target) => Orkeon.Studio.Core.Teams.TeamCatalog.NormalizePath(target);
 
     /// <summary>
     /// Opens « Archived team — restore it? » on the card of <paramref name="entry"/> — the replay

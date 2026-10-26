@@ -463,15 +463,112 @@ public sealed class SettingsScreenTests
 
     // ── the tab gating ──
 
-    private static SettingsScreenViewModel Screen(UiModeViewModel mode)
+    private static SettingsScreenViewModel Screen(UiModeViewModel mode) => Screen(mode, new FakeApiKeyStore());
+
+    private static SettingsScreenViewModel Screen(UiModeViewModel mode, IApiKeyStore keyStore)
     {
-        var (profiles, _, _, _) = Build();
+        var (profiles, _, _, _) = Build(keyStore, new FakeLlmEndpointProbe());
         var config = new ConfigTabViewModel(new StudioServices
         {
             SettingsStore = new FakeAppSettingsStore(),
             Directories = new FakeDirectoryProbe(),
         });
         return new SettingsScreenViewModel(config, profiles, mode);
+    }
+
+    // ── refonte lot 9: the classeur tabs say their state ──
+
+    [Fact]
+    public void The_model_tab_warns_until_the_assistant_has_a_model_then_counts_them()
+    {
+        var screen = Screen(new UiModeViewModel());
+        var raised = new List<string?>();
+        screen.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        Assert.Equal("Warning", screen.ModelTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabModelEmpty], screen.ModelTabSubtitle);
+
+        screen.Profiles.CommitEdit(Ollama("Local"), previousName: null);
+
+        Assert.Equal("Warning", screen.ModelTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabModelNoAssistant], screen.ModelTabSubtitle);
+
+        screen.Profiles.StudioProfileName = "Local";
+
+        Assert.Equal("Done", screen.ModelTabState);
+        Assert.Equal(
+            EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabModelCount, 1, "Local"),
+            screen.ModelTabSubtitle);
+        Assert.Contains(nameof(SettingsScreenViewModel.ModelTabSubtitle), raised);
+        Assert.Contains(nameof(SettingsScreenViewModel.ModelTabState), raised);
+    }
+
+    // ── refonte lot 11: the Models group in three sections ──
+
+    [Fact]
+    public async Task The_keys_tab_counts_the_keys_remembered_and_dots_a_missing_one()
+    {
+        var screen = Screen(new UiModeViewModel(), new FakeApiKeyStore());
+        var raised = new List<string?>();
+        screen.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        Assert.Equal("Empty", screen.KeysTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabKeysNone], screen.KeysTabSubtitle);
+
+        screen.Profiles.CommitEdit(Zai(thinking: null), previousName: null);
+
+        Assert.Equal("Expected", screen.KeysTabState);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabKeysNoneStored, 1), screen.KeysTabSubtitle);
+
+        raised.Clear();
+        var row = Assert.Single(screen.Profiles.Secrets);
+        row.KeyInput = "sk-zai";
+        await row.StoreAsync();
+
+        Assert.Equal("Verified", screen.KeysTabState);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabKeysCount, 1), screen.KeysTabSubtitle);
+        Assert.Contains(nameof(SettingsScreenViewModel.KeysTabState), raised);
+    }
+
+    [Fact]
+    public void The_keys_tab_is_open_to_both_modes_and_the_rag_tab_is_the_experts()
+    {
+        var novice = Screen(new UiModeViewModel());
+        novice.ShowKeysCommand.Execute(null);
+        Assert.True(novice.IsKeysTab);
+        novice.ShowRagCommand.Execute(null);
+        Assert.True(novice.IsModelTab);
+
+        var mode = new UiModeViewModel("expert");
+        var expert = Screen(mode);
+        expert.ShowRagCommand.Execute(null);
+        Assert.True(expert.IsRagTab);
+        // The picker offers nothing before a model exists; then the default is its choice.
+        Assert.Equal("Empty", expert.RagTabState);
+        expert.Profiles.CommitEdit(Ollama("Local"), previousName: null);
+        Assert.Equal("Done", expert.RagTabState);
+        Assert.False(string.IsNullOrEmpty(expert.RagTabSubtitle));
+
+        mode.SetNoviceCommand.Execute(null);
+
+        Assert.True(expert.IsModelTab);
+    }
+
+    [Fact]
+    public void Empty_sections_say_so_and_a_clean_settings_file_carries_the_green_dot()
+    {
+        var screen = Screen(new UiModeViewModel("expert"));
+
+        Assert.Equal("Empty", screen.FoldersTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabFoldersEmpty], screen.FoldersTabSubtitle);
+        Assert.Equal("Empty", screen.MailsTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabAccountsEmpty], screen.MailsTabSubtitle);
+        Assert.Equal("Empty", screen.DriveTabState);
+        Assert.Equal("Empty", screen.McpTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabMcpEmpty], screen.McpTabSubtitle);
+        Assert.Equal("Verified", screen.FileTabState);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabFileValid], screen.FileTabSubtitle);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabStudioSub], screen.StudioTabSubtitle);
     }
 
     [Fact]

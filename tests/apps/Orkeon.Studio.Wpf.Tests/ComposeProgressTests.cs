@@ -121,7 +121,8 @@ public sealed class ComposeProgressTests
 
         Assert.False(working);
         Assert.True(waiting);
-        Assert.Equal("I am waiting for your answer.", title);
+        // R13: the wait point is named — the decision the engine waits on.
+        Assert.Equal("Waiting for you: settle a choice", title);
     }
 
     [Fact]

@@ -9,10 +9,6 @@
   <data name="Studio.Shell.Run" xml:space="preserve"><value>Run</value></data>
   <data name="Studio.Shell.History" xml:space="preserve"><value>History</value></data>
 
-  <data name="Studio.Settings.SettingsFileTitle" xml:space="preserve"><value>SETTINGS FILE</value></data>
-  <data name="Studio.Settings.SettingsFileGlobal" xml:space="preserve"><value>Global per-user file</value></data>
-  <data name="Studio.Common.Valid" xml:space="preserve"><value>valid</value></data>
-<data name="Studio.Common.Invalid" xml:space="preserve"><value>invalid</value></data>
 
     
   <data name="Studio.Common.New" xml:space="preserve"><value>New</value></data>
@@ -137,15 +133,11 @@
   <data name="Studio.Diagnostics.CopyReport" xml:space="preserve"><value>Copy the report</value></data>
   <data name="Studio.Diagnostics.ChecksTitle" xml:space="preserve"><value>Checks</value></data>
 
-  <data name="Studio.Run.Title" xml:space="preserve"><value>Run</value></data>
-  <data name="Studio.Run.SubNovice" xml:space="preserve"><value>One team, one button. The technical detail stays available when you need it.</value></data>
-  <data name="Studio.Run.SubExpert" xml:space="preserve"><value>Target, options, the exact command and the streamed journal. The dry run validates with no side effects.</value></data>
-  <data name="Studio.Run.TargetTitle" xml:space="preserve"><value>Crew to run</value></data>
+  <data name="Studio.Run.Title" xml:space="preserve"><value>Launch a team</value></data>
   <data name="Studio.Run.Detect" xml:space="preserve"><value>Detect</value></data>
   <data name="Studio.Run.File" xml:space="preserve"><value>File…</value></data>
   <data name="Studio.Run.Folder" xml:space="preserve"><value>Folder…</value></data>
   <data name="Studio.Run.UseCandidate" xml:space="preserve"><value>Use this file</value></data>
-  <data name="Studio.Run.TabMounts" xml:space="preserve"><value>Mounts</value></data>
   <data name="Studio.Run.SettingsAuto" xml:space="preserve"><value>Automatic (let the runtime resolve it)</value></data>
   <data name="Studio.Run.SettingsExplicit" xml:space="preserve"><value>Explicit path</value></data>
   <data name="Studio.Run.VarsTitle" xml:space="preserve"><value>Variables (-V KEY=VALUE)</value></data>
@@ -159,7 +151,6 @@
   <data name="Studio.Run.LlmLog" xml:space="preserve"><value>Log LLM exchanges (--llm-log)</value></data>
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Mounts already in the selected appsettings</value></data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Allow mounts outside the working directory (--allow-external-mounts)</value></data>
-  <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMAND</value></data>
   <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copy the command</value></data>
   <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Command copied</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Ready to work</value></data>
@@ -172,26 +163,29 @@
   <data name="Studio.Run.BtnLaunch" xml:space="preserve"><value>Launch now</value></data>
   <data name="Studio.Run.BtnRunning" xml:space="preserve"><value>Running…</value></data>
   <data name="Studio.Run.BtnRelaunch" xml:space="preserve"><value>Relaunch</value></data>
-  <data name="Studio.Run.CliMissing" xml:space="preserve"><value>The orkeon executable was not located on this machine — launching is disabled. Run the Diagnostic.</value></data>
+  <data name="Studio.Run.CliMissing" xml:space="preserve">
+    <value>The Orkeon engine cannot be found on this machine. Nothing can be launched until it is installed.</value>
+  </data>
   <data name="Studio.Run.MetaAgents" xml:space="preserve"><value>{0} agents</value></data>
   <data name="Studio.Run.MetaProfile" xml:space="preserve"><value>setting {0}</value></data>
   <data name="Studio.Run.ChangeTeam" xml:space="preserve"><value>Change team</value></data>
-  <data name="Studio.Run.JournalTitle" xml:space="preserve"><value>Technical journal</value></data>
-  <data name="Studio.Run.JournalShow" xml:space="preserve"><value>Show</value></data>
-  <data name="Studio.Run.JournalHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Run.OpenResult" xml:space="preserve"><value>Open the result</value></data>
   <data name="Studio.Run.OpenLogs" xml:space="preserve"><value>Open logs folder</value></data>
   <data name="Studio.Run.OpenLogsNotYet" xml:space="preserve"><value>The logs folder does not exist yet: it is created at the first logged call.</value></data>
   <data name="Studio.Run.OpenLogsLoggingOff" xml:space="preserve"><value>LLM exchange logging is off for this launch.</value></data>
   <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Open the {0} result folders</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve"><value>Advanced options</value></data>
-  <data name="Studio.Run.VerbNormal" xml:space="preserve"><value>normal</value></data>
-  <data name="Studio.Run.VerbDetailed" xml:space="preserve"><value>detailed</value></data>
-  <data name="Studio.Run.VerbDiagnostic" xml:space="preserve"><value>diagnostic</value></data>
+  <data name="Studio.Run.VerbNormal" xml:space="preserve">
+    <value>normal</value>
+  </data>
+  <data name="Studio.Run.VerbDetailed" xml:space="preserve">
+    <value>detailed</value>
+  </data>
+  <data name="Studio.Run.VerbDiagnostic" xml:space="preserve">
+    <value>diagnostic</value>
+  </data>
   <data name="Studio.Run.Empty" xml:space="preserve"><value>Pick a team in “My teams” — its Launch button lands here.</value></data>
-  <data name="Studio.Run.RunLines" xml:space="preserve"><value>lines</value></data>
   <data name="Studio.Run.Validate" xml:space="preserve"><value>Validate (dry-run)</value></data>
-  <data name="Studio.Run.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Studio.Run.ClearLog" xml:space="preserve"><value>Clear log</value></data>
 
   <data name="Studio.History.Title" xml:space="preserve"><value>History</value></data>
@@ -366,7 +360,6 @@
   <data name="Studio.Create.StatusJudging" xml:space="preserve"><value>Checking the result against what you asked…</value></data>
   <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Your solution is ready.</value></data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Something went wrong — the detail is in the card below.</value></data>
-  <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Stopped — you can pick it up again from My solutions.</value></data>
   <data name="Studio.Create.Attempt" xml:space="preserve"><value>Attempt {0}</value></data>
   <data name="Studio.Create.CheckUnverified" xml:space="preserve"><value>I could not check this automatically — judge for yourself.</value></data>
   <data name="Studio.Create.ResultScore" xml:space="preserve"><value>The try is done (score {0}).</value></data>
@@ -393,14 +386,16 @@
 <data name="Studio.Shell.Model" xml:space="preserve"><value>AI model</value></data>
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limits &amp; index</value></data>
-<data name="Studio.Shell.Json" xml:space="preserve"><value>Raw JSON</value></data>
+<data name="Studio.Shell.Json" xml:space="preserve"><value>File</value></data>
 <data name="Studio.Shell.Tools" xml:space="preserve"><value>Tools</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>E-mail</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Studio's assistant model</value></data>
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>It composes your teams and writes the trial verdicts.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Used by the creation assistant, the verdicts and the answers to questions — independent from the teams' models.</value></data>
-<data name="Studio.Settings.ProfileTitle" xml:space="preserve"><value>Which AI model your agents use</value></data>
+  <data name="Studio.Settings.ProfileTitle" xml:space="preserve">
+    <value>Teams' models</value>
+  </data>
 <data name="Studio.Settings.HintNovice" xml:space="preserve"><value>A setting is an AI model and its address. Create as many as you want and assign one to each team.</value></data>
 <data name="Studio.Settings.HintExpert" xml:space="preserve"><value>Named, reusable LLM profiles. The one marked default applies to new teams and is mirrored into the Llm section; the API key stays read from the environment.</value></data>
 <data name="Studio.Settings.New" xml:space="preserve"><value>New setting</value></data>
@@ -440,14 +435,11 @@
 <data name="Studio.Shell.Create" xml:space="preserve"><value>Create a team</value></data>
 <data name="Studio.Shell.NavTeams" xml:space="preserve"><value>My teams</value></data>
 <data name="Studio.Create.Title" xml:space="preserve"><value>Create an agent team</value></data>
-<data name="Studio.Create.SubNovice" xml:space="preserve"><value>Four steps: describe the need, review the composition, try it, adopt it. Nothing is written before the last one.</value></data>
-<data name="Studio.Create.SubExpert" xml:space="preserve"><value>Composition assistant. The YAML definition is editable from step 2; the trial runs as a dry-run.</value></data>
 <data name="Studio.Teams.ScreenTitle" xml:space="preserve"><value>My agent teams</value></data>
 <data name="Studio.Teams.ScreenSub" xml:space="preserve"><value>Each team is an autonomous folder on this machine — copiable, shareable, deletable.</value></data>
 <data name="Studio.Create.Restart" xml:space="preserve"><value>Start over</value></data>
 <data name="Studio.Create.Stop" xml:space="preserve"><value>Stop</value></data>
 <data name="Studio.Create.AssistantBy" xml:space="preserve"><value>Assistant powered by</value></data>
-<data name="Studio.Create.AssistantMissing" xml:space="preserve"><value>Assistant not configured — pick its model below.</value></data>
 <data name="Studio.Create.GateTitle" xml:space="preserve"><value>The assistant needs an AI model</value></data>
 <data name="Studio.Create.GateBody" xml:space="preserve"><value>It is the one that will compose your team and write the trial verdicts. Pick a setting — creation opens right after, and you can change it any time in Settings.</value></data>
 <data name="Studio.Create.ManageSettings" xml:space="preserve"><value>Manage settings</value></data>
@@ -519,19 +511,14 @@
 <data name="Studio.Teams.Daily" xml:space="preserve"><value>Every day at {0}</value></data>
 <data name="Studio.Teams.Hourly" xml:space="preserve"><value>Every hour</value></data>
 <data name="Studio.Shell.Import" xml:space="preserve"><value>Import</value></data>
-<data name="Studio.Shell.Test" xml:space="preserve"><value>Test</value></data>
 <data name="Studio.Import.Title" xml:space="preserve"><value>Import a team</value></data>
 <data name="Studio.Import.SubNovice" xml:space="preserve"><value>Someone shared a team with you? Point at its folder: Studio checks it is complete and safe before adding it.</value></data>
 <data name="Studio.Import.SubExpert" xml:space="preserve"><value>A YAML definition, an .ork.ts script, or a whole team folder. Nothing is copied before you confirm.</value></data>
 <data name="Studio.Import.SecretsTitle" xml:space="preserve"><value>An API key travels inside this definition</value></data>
 <data name="Studio.Import.SecretsBody" xml:space="preserve"><value>These files look like they carry a pasted secret. Keys belong in the environment, never inside a shared folder — clean them up before importing.</value></data>
 <data name="Studio.Import.Add" xml:space="preserve"><value>Add to my teams</value></data>
-<data name="Studio.Trial.Title" xml:space="preserve"><value>Test a team</value></data>
-<data name="Studio.Trial.Sub" xml:space="preserve"><value>Blank-run validation, then a real trial on a sample set. No side effects outside the trial folder.</value></data>
-<data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
-<data name="Studio.Trial.Validate" xml:space="preserve"><value>Validate (blank run)</value></data>
-<data name="Studio.Trial.Run" xml:space="preserve"><value>Run the trial</value></data>
-<data name="Studio.Trial.Findings" xml:space="preserve"><value>VALIDATION FINDINGS</value></data>
+  <data name="Studio.Trial.TeamLabel" xml:space="preserve"><value>Team</value></data>
+  <data name="Studio.Trial.Run" xml:space="preserve"><value>Launch the trial</value></data>
   <data name="Studio.Diagnostics.Code.WIN-01" xml:space="preserve"><value>No Llm section: the engine will start on its built-in defaults (Ollama, local).</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-JSON" xml:space="preserve"><value>The settings file is not valid JSON.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-TYPE" xml:space="preserve"><value>A settings field has the wrong type.</value></data>
@@ -604,16 +591,13 @@
   <data name="Studio.Diagnostics.Check.tree-sitter" xml:space="preserve"><value>The code parser (tree-sitter)</value></data>
   <data name="Studio.Diagnostics.Check.workspace-write" xml:space="preserve"><value>Write access to the workspace</value></data>
   <data name="Studio.Diagnostics.AllGood" xml:space="preserve"><value>Everything is in place.</value></data>
-  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>One point to fix before launching a team.</value></data>
-  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} checks passed, {1} warning(s), {2} failure(s).</value></data>
-  <data name="Studio.Diagnostics.Fix" xml:space="preserve"><value>Fix in Settings</value></data>
+  <data name="Studio.Diagnostics.FixNeeded" xml:space="preserve"><value>{0} {0:plural:point|points} to fix before launching a team.</value></data>
+  <data name="Studio.Diagnostics.Counts" xml:space="preserve"><value>{0} {0:plural:check passed|checks passed}, {1} {1:plural:warning|warnings}, {2} {2:plural:failure|failures}.</value></data>
   <data name="Studio.Settings.NoviceTitle" xml:space="preserve"><value>Folders the agents can see</value></data>
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Everything else on your machine is invisible to them. A read-only folder can never be modified.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>seen as</value></data>
   <data name="Studio.Settings.Allow" xml:space="preserve"><value>Allow a folder…</value></data>
   <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Click to switch between read-only and read-and-write</value></data>
-  <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Sample inputs (JSON)</value></data>
-  <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Passed to the trial as --inputs; the real launches keep their own inputs.</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
   <data name="Studio.Import.SecretsClean" xml:space="preserve"><value>No secret in the files</value></data>
   <data name="Studio.Import.SecretsCleanDetail" xml:space="preserve"><value>API keys travel through the environment, and these files carry none.</value></data>
@@ -629,7 +613,6 @@
   <data name="Studio.Settings.ModelPlaceholder" xml:space="preserve"><value>— to configure —</value></data>
   <data name="Studio.Settings.DefaultsApply" xml:space="preserve"><value>Section absent from the file: the engine applies its built-in defaults.</value></data>
   <data name="Studio.History.Empty" xml:space="preserve"><value>No run yet. The first launch of a team will appear here.</value></data>
-  <data name="Studio.Trial.Empty" xml:space="preserve"><value>Pick a team to prepare a trial.</value></data>
   <data name="Studio.Teams.Open" xml:space="preserve"><value>Open the folder</value></data>
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>API keys</value></data>
@@ -858,7 +841,6 @@
   <data name="Studio.Create.AllowFolder" xml:space="preserve"><value>Allow a folder</value></data>
   <data name="Studio.Create.ChooseFolder" xml:space="preserve"><value>Choose the folder…</value></data>
   <data name="Studio.Create.FoldersHint" xml:space="preserve"><value>These folders are recorded with the team at adoption — the trial itself runs in its own sandbox.</value></data>
-  <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
   <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files</value></data>
@@ -875,15 +857,12 @@
   <data name="Studio.Teams.RunOk" xml:space="preserve"><value>succeeded</value></data>
   <data name="Studio.Teams.RunFail" xml:space="preserve"><value>failed</value></data>
   <data name="Studio.Teams.NeverRan" xml:space="preserve"><value>Never ran</value></data>
-  <data name="Studio.Teams.MountsLabel" xml:space="preserve"><value>Folders:</value></data>
-  <data name="Studio.Teams.NoMounts" xml:space="preserve"><value>No folder associated —</value></data>
   <data name="Studio.Teams.ChangeMounts" xml:space="preserve"><value>Change the folders</value></data>
   <data name="Studio.Teams.Export" xml:space="preserve"><value>Export</value></data>
   <data name="Studio.Teams.Test" xml:space="preserve"><value>Try out</value></data>
   <data name="Studio.Run.MetaReads" xml:space="preserve"><value>reads {0}</value></data>
   <data name="Studio.Run.MetaWrites" xml:space="preserve"><value>writes to {0}</value></data>
   <data name="Studio.Run.ValidateFirst" xml:space="preserve"><value>Dry-run validation first</value></data>
-  <data name="Studio.Trial.ConsoleEmpty" xml:space="preserve"><value>Waiting for a trial…</value></data>
   <data name="Studio.Import.MountsDeclared" xml:space="preserve"><value>Declared folders</value></data>
   <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} folder(s): {1}</value></data>
   <data name="Studio.Import.MountsNone" xml:space="preserve"><value>No declared folder</value></data>
@@ -901,7 +880,9 @@
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Team exported to {0}</value></data>
   <data name="Studio.Teams.ExportFailed" xml:space="preserve"><value>Export refused — the destination already exists, or the disk said no.</value></data>
   <data name="Studio.Create.TryTeam" xml:space="preserve"><value>Try the team</value></data>
-  <data name="Studio.Create.PausedHint" xml:space="preserve"><value>Composed and validated — nothing has run yet.</value></data>
+  <data name="Studio.Create.PausedHint" xml:space="preserve">
+    <value>Team composed — you can try it.</value>
+  </data>
   <data name="Studio.Teams.DeleteConfirm" xml:space="preserve">
     <value>Delete this team?</value>
   </data>
@@ -954,7 +935,7 @@
     <value>Reply</value>
   </data>
   <data name="Studio.Chat.Skip" xml:space="preserve">
-    <value>Skip this question</value>
+    <value>I don't know</value>
   </data>
   <data name="Studio.Chat.SkipAnswer" xml:space="preserve">
     <value>I don't know — do your best.</value>
@@ -967,9 +948,6 @@
   </data>
   <data name="Studio.Chat.Ask" xml:space="preserve">
     <value>Ask a question</value>
-  </data>
-  <data name="Studio.Chat.AskShort" xml:space="preserve">
-    <value>Question</value>
   </data>
   <data name="Studio.Chat.AskTip" xml:space="preserve">
     <value>Ask the assistant a question</value>
@@ -1008,7 +986,7 @@
     <value>The assistant stopped before the brief was finished. Start again when you are ready.</value>
   </data>
   <data name="Studio.Create.HintComposing" xml:space="preserve">
-    <value>The assistant is composing — answer it in the conversation.</value>
+    <value>Composition under way: the assistant prepares the team.</value>
   </data>
   <data name="Studio.Create.JudgeMechanical" xml:space="preserve">
     <value>No judge was available, so the criteria below were not checked one by one — read them yourself.</value>
@@ -1046,9 +1024,6 @@
   <data name="Studio.Create.StageIdle" xml:space="preserve">
     <value>Stopped.</value>
   </data>
-  <data name="Studio.Create.WaitingOnYou" xml:space="preserve">
-    <value>I am waiting for your answer.</value>
-  </data>
   <data name="Studio.Create.TokensUp" xml:space="preserve">
     <value>Tokens sent to the model</value>
   </data>
@@ -1066,9 +1041,6 @@
   </data>
   <data name="Studio.Create.AdoptWithoutTrialTip" xml:space="preserve">
     <value>The team is generated and checked. Trying it produces a report on how it behaves; adopting now skips that report, nothing else.</value>
-  </data>
-  <data name="Studio.Create.FillInputFolder" xml:space="preserve">
-    <value>This team reads. Choose the folder it should read, or it will be given its own empty «input» folder at adoption — and nothing copies your documents into it.</value>
   </data>
   <data name="Studio.Create.FilesWritten" xml:space="preserve">
     <value>{0} file(s) written</value>
@@ -1355,10 +1327,10 @@
     <value>New name</value>
   </data>
   <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
-    <value>Not renamed: the team is running on the Run screen — wait for the run to end.</value>
+    <value>Not renamed: a run of the team is in flight on the Run screen — wait for it to end.</value>
   </data>
   <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
-    <value>Not renamed: the team is running on the Test screen — wait for the trial to end.</value>
+    <value>Not renamed: a trial of the team is running on the Run screen — wait for it to end.</value>
   </data>
   <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
     <value>Not renamed: the team is open in the assistant — save it to My teams or start over there first.</value>
@@ -1416,7 +1388,7 @@
     <value>Archives ({0})</value>
   </data>
   <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
-    <value>Archived teams are out of the list, the Test picker and the balance; their folders, sessions and history stay where they are. « Restore » puts a team back among the others.</value>
+    <value>Archived teams are out of the list, the Run screen's picker and the balance; their folders, sessions and history stay where they are. « Restore » puts a team back among the others.</value>
   </data>
   <data name="Studio.Teams.Archive" xml:space="preserve">
     <value>Archive</value>
@@ -1775,7 +1747,7 @@
     <value>Where the team writes its results.</value>
   </data>
   <data name="Studio.Create.FolderInsideTeamTip" xml:space="preserve">
-    <value>Checked: the folder is the team's own and travels with it. Uncheck it to choose a folder on the disk instead.</value>
+    <value>Creates an empty folder inside the team; you will drop the files in it after the adoption</value>
   </data>
   <data name="Studio.Create.FillFoldersQuestion" xml:space="preserve">
     <value>Do you want to put files or sub-folders in the folders you set up?</value>
@@ -1790,7 +1762,19 @@
     <value>Yes</value>
   </data>
   <data name="Studio.Create.FillFoldersOpen" xml:space="preserve">
-    <value>Open</value>
+    <value>Open the folder</value>
+  </data>
+  <data name="Studio.Create.FolderFilesNone" xml:space="preserve">
+    <value>No file</value>
+  </data>
+  <data name="Studio.Create.FolderFilesCount" xml:space="preserve">
+    <value>{0} {0:plural:file|files}</value>
+  </data>
+  <data name="Studio.Create.FolderFieldFiles" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="Studio.Create.FolderChange" xml:space="preserve">
+    <value>Change…</value>
   </data>
   <data name="Studio.Create.FillFoldersOpenTip" xml:space="preserve">
     <value>Opens the folder in the file explorer.</value>
@@ -1804,8 +1788,11 @@
   <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
     <value>read, write</value>
   </data>
-  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
-    <value>no folder chosen yet</value>
+  <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
+    <value>Read and write</value>
   </data>
   <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
     <value>« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.</value>
@@ -1851,6 +1838,9 @@
   </data>
   <data name="Studio.Settings.RagLlmHint" xml:space="preserve">
     <value>The profile the RAG answers, judges and rewrites queries with — Orkeon:Rag:LlmProfile in the settings file; the default setting unless you pick another.</value>
+  </data>
+  <data name="Studio.Settings.RagTab" xml:space="preserve">
+    <value>Document search (RAG)</value>
   </data>
   <data name="Studio.Diagnostics.Code.STUDIO-RAG-LLM-PROFILE" xml:space="preserve">
     <value>The document search names a model profile this file does not define.</value>
@@ -1930,5 +1920,573 @@
   <data name="Studio.Run.LlmForThisRun" xml:space="preserve"><value>This run: {0}</value></data>
   <data name="Studio.Run.RememberLlmForTeam" xml:space="preserve"><value>Remember for this team</value></data>
   <data name="Studio.Settings.UsedByDefault" xml:space="preserve"><value>{0} team(s), {1} by default</value></data>
+  <data name="Studio.Settings.TabModelCount" xml:space="preserve">
+    <value>{0} {0:plural:model|models} · {1} by default</value>
+  </data>
+  <data name="Studio.Settings.TabModelNoAssistant" xml:space="preserve">
+    <value>Choose the assistant's model</value>
+  </data>
+  <data name="Studio.Settings.TabModelEmpty" xml:space="preserve">
+    <value>No model yet</value>
+  </data>
+  <data name="Studio.Settings.TabKeysCount" xml:space="preserve">
+    <value>{0} {0:plural:key|keys} remembered</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNone" xml:space="preserve">
+    <value>No key to provide</value>
+  </data>
+  <data name="Studio.Settings.TabKeysNoneStored" xml:space="preserve">
+    <value>{0} {0:plural:key|keys}, none remembered</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersCount" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} allowed</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersEmpty" xml:space="preserve">
+    <value>No folder allowed</value>
+  </data>
+  <data name="Studio.Settings.TabFoldersProblems" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} to fix</value>
+  </data>
+  <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
+    <value>{0} {0:plural:tool|tools}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
+    <value>{0} {0:plural:account|accounts}</value>
+  </data>
+  <data name="Studio.Settings.TabAccountsEmpty" xml:space="preserve">
+    <value>No account</value>
+  </data>
+  <data name="Studio.Settings.TabMcpCount" xml:space="preserve">
+    <value>{0} {0:plural:server|servers}</value>
+  </data>
+  <data name="Studio.Settings.TabMcpEmpty" xml:space="preserve">
+    <value>No server</value>
+  </data>
+  <data name="Studio.Settings.TabStudioSub" xml:space="preserve">
+    <value>How Studio behaves</value>
+  </data>
+  <data name="Studio.Settings.TabLimitsSub" xml:space="preserve">
+    <value>Rates, index, logs</value>
+  </data>
+  <data name="Studio.Settings.TabFileValid" xml:space="preserve">
+    <value>Valid file</value>
+  </data>
+  <data name="Studio.Settings.TabFileErrors" xml:space="preserve">
+    <value>{0} {0:plural:error|errors} to fix</value>
+  </data>
+  <data name="Studio.Settings.AssistantRow" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="Studio.Settings.FieldProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="Studio.Settings.FieldEndpoint" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="Studio.Settings.FieldInFile" xml:space="preserve">
+    <value>In a file</value>
+  </data>
+  <data name="Studio.Settings.EndpointDefault" xml:space="preserve">
+    <value>The provider's own</value>
+  </data>
+  <data name="Studio.Settings.UsedByNone" xml:space="preserve">
+    <value>No team</value>
+  </data>
   <data name="Studio.Shell.StatusProfileTipTeams" xml:space="preserve"><value>Default model setting: {0}. The teams that follow the default run on it.</value></data>
+  <data name="Studio.Common.TechnicalDetails" xml:space="preserve"><value>Technical details</value></data>
+  <data name="Studio.Shell.MoreActions" xml:space="preserve"><value>More actions</value></data>
+  <data name="Studio.Shell.AskAssistant" xml:space="preserve"><value>Ask the assistant</value></data>
+  <data name="Studio.Settings.StatusScopeTitle" xml:space="preserve"><value>Status bar counters</value></data>
+  <data name="Studio.Settings.StatusScopeHint" xml:space="preserve"><value>The tokens the status bar shows: those of the execution on screen, or of the whole Studio session.</value></data>
+  <data name="Studio.Teams.RowModel" xml:space="preserve"><value>Model</value></data>
+  <data name="Studio.Teams.RowFolders" xml:space="preserve"><value>Folders</value></data>
+  <data name="Studio.Teams.RowSchedule" xml:space="preserve"><value>Schedule</value></data>
+  <data name="Studio.Teams.ChangeShort" xml:space="preserve"><value>Change</value></data>
+  <data name="Studio.Teams.NoMountsValue" xml:space="preserve"><value>No folder</value></data>
+  <data name="Studio.Teams.RefusedRuns" xml:space="preserve"><value>{0} {0:plural:scheduled run|scheduled runs} will be refused on the next pass: the saved settings file does not hold {1} yet.</value></data>
+  <data name="Studio.Teams.SaveSettings" xml:space="preserve"><value>Save the settings</value></data>
+  <data name="Studio.Teams.ImportShort" xml:space="preserve"><value>Import</value></data>
+  <data name="Studio.Teams.ScheduleManualValue" xml:space="preserve"><value>Manual</value></data>
+  <data name="Studio.Teams.LaunchNeedsFolder" xml:space="preserve"><value>Allow the folder {0} first.</value></data>
+  <data name="Studio.Teams.AllowFolder" xml:space="preserve"><value>Allow</value></data>
+  <data name="Studio.Create.SessionRunning" xml:space="preserve"><value>Running</value></data>
+  <data name="Studio.Create.SessionWaiting" xml:space="preserve"><value>Waiting for you</value></data>
+  <data name="Studio.Create.SessionPaused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Studio.Create.DraftSavedAt" xml:space="preserve"><value>Draft saved at {0}</value></data>
+  <data name="Studio.Create.ResumeUnavailable" xml:space="preserve"><value>This session can no longer be resumed here: start over, or look for it under Sessions underway in My teams.</value></data>
+  <data name="Studio.Create.FoldersToChoose" xml:space="preserve"><value>{0} {0:plural:folder|folders} to choose before the trial.</value></data>
+  <data name="Studio.Create.VerdictSummary" xml:space="preserve"><value>{0} of {1} {1:plural:criterion|criteria} met</value></data>
+  <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Nothing is written on your machine before adoption.</value></data>
+  <data name="Studio.Create.Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Studio.Create.Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Read</value></data>
+  <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Read and write</value></data>
+  <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>To choose</value></data>
+  <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>To choose: without a source folder, the team will start from an empty «input» folder.</value></data>
+  <data name="Studio.Create.NeedSummaryLabel" xml:space="preserve"><value>Need</value></data>
+  <data name="Studio.Run.ScreenSub" xml:space="preserve"><value>A trial runs like a real run but stays out of the history; a real run is recorded there.</value></data>
+  <data name="Studio.Run.TabTeam" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="Studio.Run.TabOptions" xml:space="preserve">
+    <value>Options</value>
+  </data>
+  <data name="Studio.Run.TabCommand" xml:space="preserve">
+    <value>Command</value>
+  </data>
+  <data name="Studio.Run.TabRun" xml:space="preserve">
+    <value>Run</value>
+  </data>
+  <data name="Studio.Run.TabTeamToChoose" xml:space="preserve">
+    <value>To choose</value>
+  </data>
+  <data name="Studio.Run.TabTeamBlocked" xml:space="preserve">
+    <value>{0} · cannot be launched</value>
+  </data>
+  <data name="Studio.Run.DisplayProgress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="Studio.Run.DisplayRaw" xml:space="preserve">
+    <value>Raw output</value>
+  </data>
+  <data name="Studio.Run.LblDisplay" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Studio.Run.StreamShort" xml:space="preserve">
+    <value>token by token</value>
+  </data>
+  <data name="Studio.Run.TabRunIdle" xml:space="preserve">
+    <value>Waiting · nothing to report</value>
+  </data>
+  <data name="Studio.Run.TabRunRunning" xml:space="preserve">
+    <value>Running · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunSucceeded" xml:space="preserve">
+    <value>Succeeded · {0}</value>
+  </data>
+  <data name="Studio.Run.TabRunFailed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Studio.Run.PaneIdle" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Studio.Run.PaneRunning" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Studio.Run.PaneSucceeded" xml:space="preserve">
+    <value>Succeeded</value>
+  </data>
+  <data name="Studio.Run.PaneDone" xml:space="preserve">
+    <value>Finished</value>
+  </data>
+  <data name="Studio.Run.PaneIdleContext" xml:space="preserve">
+    <value>Nothing has been launched yet: each agent of the team gets its column here.</value>
+  </data>
+  <data name="Studio.Run.TeamReady" xml:space="preserve">
+    <value>Team ready: {0}</value>
+  </data>
+  <data name="Studio.Run.TeamReadyCounts" xml:space="preserve">
+    <value>Team ready: {0} {0:plural:agent|agents}, {1} {1:plural:declared folder|declared folders}.</value>
+  </data>
+  <data name="Studio.Run.TeamNotChosen" xml:space="preserve">
+    <value>No team chosen.</value>
+  </data>
+  <data name="Studio.Run.SeeOptions" xml:space="preserve">
+    <value>See the options →</value>
+  </data>
+  <data name="Studio.Run.SeeCommand" xml:space="preserve">
+    <value>See the command →</value>
+  </data>
+  <data name="Studio.Run.SeeRun" xml:space="preserve">
+    <value>See the run →</value>
+  </data>
+  <data name="Studio.Run.BackToTeam" xml:space="preserve">
+    <value>← Back to the team</value>
+  </data>
+  <data name="Studio.Run.OrAPath" xml:space="preserve">
+    <value>or a path</value>
+  </data>
+  <data name="Studio.Run.LblModel" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Studio.Run.ModelDefault" xml:space="preserve">
+    <value>Default ({0})</value>
+  </data>
+  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="Studio.Run.ModelTeam" xml:space="preserve">
+    <value>The team's ({0})</value>
+  </data>
+  <data name="Studio.Run.TeamLastRun" xml:space="preserve">
+    <value>launched on {0}</value>
+  </data>
+  <data name="Studio.Run.TeamNeverRun" xml:space="preserve">
+    <value>never launched</value>
+  </data>
+  <data name="Studio.Run.OptionsFooter" xml:space="preserve">
+    <value>{0} · {1} · {2} {2:plural:folder|folders}</value>
+  </data>
+  <data name="Studio.Run.FoldersSection" xml:space="preserve">
+    <value>Allowed folders — {0} {0:plural:folder|folders} of the team, {1}</value>
+  </data>
+  <data name="Studio.Run.FoldersAddedNone" xml:space="preserve">
+    <value>nothing added</value>
+  </data>
+  <data name="Studio.Run.FoldersAdded" xml:space="preserve">
+    <value>{0} added</value>
+  </data>
+  <data name="Studio.Run.AddLaunchFolder" xml:space="preserve">
+    <value>Add a folder for this launch</value>
+  </data>
+  <data name="Studio.Run.RightsRead" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
+    <value>Read and write</value>
+  </data>
+  <data name="Studio.Run.RowEngine" xml:space="preserve">
+    <value>Engine</value>
+  </data>
+  <data name="Studio.Run.RowTeamType" xml:space="preserve">
+    <value>Team type</value>
+  </data>
+  <data name="Studio.Run.RowMounts" xml:space="preserve">
+    <value>Allowed folders</value>
+  </data>
+  <data name="Studio.Run.RowMode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="Studio.Run.MountsCount" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} mounted</value>
+  </data>
+  <data name="Studio.Run.EngineMissing" xml:space="preserve">
+    <value>not found</value>
+  </data>
+  <data name="Studio.Run.CommandFooter" xml:space="preserve">
+    <value>Command composed from the team and the options.</value>
+  </data>
+  <data name="Studio.Run.ModeLabel" xml:space="preserve">
+    <value>MODE</value>
+  </data>
+  <data name="Studio.Run.FigSent" xml:space="preserve">
+    <value>Sent</value>
+  </data>
+  <data name="Studio.Run.FigReceived" xml:space="preserve">
+    <value>Received</value>
+  </data>
+  <data name="Studio.Run.FigResult" xml:space="preserve">
+    <value>Result in</value>
+  </data>
+  <data name="Studio.Run.JournalCount" xml:space="preserve">
+    <value>Technical journal · {0} {0:plural:line|lines}</value>
+  </data>
+  <data name="Studio.Run.JournalEnlarge" xml:space="preserve">
+    <value>Enlarge</value>
+  </data>
+  <data name="Studio.Run.JournalReduce" xml:space="preserve">
+    <value>Reduce</value>
+  </data>
+  <data name="Studio.Run.NoRunFooter" xml:space="preserve">
+    <value>No run in progress.</value>
+  </data>
+  <data name="Studio.Run.RunningFooter" xml:space="preserve">
+    <value>The run goes on: « Stop » interrupts it.</value>
+  </data>
+  <data name="Studio.Run.RunningSince" xml:space="preserve">
+    <value>Running for {0}.</value>
+  </data>
+  <data name="Studio.Run.DoneFooter" xml:space="preserve">
+    <value>Run finished.</value>
+  </data>
+  <data name="Studio.Run.LockedDuringRun" xml:space="preserve">
+    <value>Can be changed after the run</value>
+  </data>
+  <data name="Studio.Run.ReadyReal" xml:space="preserve">
+    <value>Ready to launch in Real mode.</value>
+  </data>
+  <data name="Studio.Run.ReadyTrial" xml:space="preserve">
+    <value>Ready to launch in Trial mode.</value>
+  </data>
+  <data name="Studio.Run.ReadyResult" xml:space="preserve">
+    <value>The result will go to {0}.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoCli" xml:space="preserve">
+    <value>The Orkeon engine is not found: the launch waits for the diagnostic.</value>
+  </data>
+  <data name="Studio.Run.BlockedNoTeam" xml:space="preserve">
+    <value>Choose a team first.</value>
+  </data>
+  <data name="Studio.Run.BlockedFolders" xml:space="preserve">
+    <value>A folder of the team is not allowed on this machine.</value>
+  </data>
+  <data name="Studio.Run.BlockedArchived" xml:space="preserve">
+    <value>This team is archived: restore it to launch it.</value>
+  </data>
+  <data name="Studio.Run.RunningLine" xml:space="preserve">
+    <value>{0} · running · {1}</value>
+  </data>
+  <data name="Studio.Run.LaneWaiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Studio.Run.LaneRunning" xml:space="preserve">
+    <value>At work</value>
+  </data>
+  <data name="Studio.Run.LaneDone" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Studio.Run.LaneFailed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Studio.Run.ModeTrial" xml:space="preserve"><value>Trial</value></data>
+  <data name="Studio.Run.ModeReal" xml:space="preserve"><value>Real</value></data>
+  <data name="Studio.Run.ModeHint" xml:space="preserve"><value>Trial or real run</value></data>
+  <data name="Studio.Run.OpenDiagnostic" xml:space="preserve"><value>Open the diagnostic</value></data>
+  <data name="Studio.Run.Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="Studio.Chat.Subtitle" xml:space="preserve"><value>Changes nothing without your consent</value></data>
+  <data name="Studio.Chat.YourQuestion" xml:space="preserve"><value>Your question</value></data>
+  <data name="Studio.Run.StreamNeedsWatch" xml:space="preserve"><value>Token-by-token text is only shown with the progress: tick « Show progress instead of raw output ».</value></data>
+  <data name="Studio.History.Today" xml:space="preserve"><value>Today</value></data>
+  <data name="Studio.History.Yesterday" xml:space="preserve"><value>Yesterday</value></data>
+  <data name="Studio.History.AllTeams" xml:space="preserve"><value>All teams</value></data>
+  <data name="Studio.History.AllStatuses" xml:space="preserve"><value>All statuses</value></data>
+  <data name="Studio.History.NoMatch" xml:space="preserve"><value>No run matches these filters.</value></data>
+  <data name="Studio.Settings.PendingChanges" xml:space="preserve"><value>{0} {0:plural:unsaved change|unsaved changes}</value></data>
+  <data name="Studio.Settings.LeaveQuestion" xml:space="preserve"><value>Your changes are not saved. Save them before leaving?</value></data>
+  <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Save and leave</value></data>
+  <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Leave without saving</value></data>
+  <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Stay</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODELS</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCESS</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNECTIONS</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ADVANCED</value></data>
+  <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
+  <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
+    <value>Open API keys</value>
+  </data>
+  <data name="Studio.Diagnostics.OpenFolders" xml:space="preserve"><value>Open Allowed folders</value></data>
+  <data name="Studio.Diagnostics.OpenFile" xml:space="preserve"><value>Open the settings file</value></data>
+  <data name="Studio.Diagnostics.TestConnection" xml:space="preserve"><value>Test the connection</value></data>
+  <data name="Studio.Diagnostics.CheckAgain" xml:space="preserve"><value>Check again</value></data>
+  <data name="Studio.Diagnostics.SettingsFile" xml:space="preserve"><value>Settings file</value></data>
+  <data name="Studio.Diagnostics.SettingsFileOk" xml:space="preserve"><value>The settings file is valid.</value></data>
+  <data name="Studio.Diagnostics.SettingsFileInvalid" xml:space="preserve"><value>The settings file has errors: Studio cannot save it.</value></data>
+  <data name="Studio.Diagnostics.Problem.appsettings" xml:space="preserve"><value>Studio cannot read the settings file.</value></data>
+  <data name="Studio.Diagnostics.Problem.dotnet-runtime" xml:space="preserve"><value>The .NET runtime the engine needs is not found.</value></data>
+  <data name="Studio.Diagnostics.Problem.esbuild" xml:space="preserve"><value>The script compiler is missing on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-config" xml:space="preserve"><value>No model is set up for the teams.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profile-key" xml:space="preserve"><value>A model has no key, or its key is not found.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-profiles" xml:space="preserve"><value>A model is incomplete in the settings.</value></data>
+  <data name="Studio.Diagnostics.Problem.llm-reachability" xml:space="preserve"><value>The model does not answer: check its address and its key.</value></data>
+  <data name="Studio.Diagnostics.Problem.local-embeddings" xml:space="preserve"><value>Local embeddings are not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.onnx-reranker" xml:space="preserve"><value>The ONNX reranker is not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.tree-sitter" xml:space="preserve"><value>The code parser is not available on this machine.</value></data>
+  <data name="Studio.Diagnostics.Problem.workspace-write" xml:space="preserve"><value>The engine cannot write to its working folder.</value></data>
+  <data name="Studio.Chat.StatusWaitingCard" xml:space="preserve"><value>waiting for you</value></data>
+  <data name="Studio.Create.ComposeBusyTip" xml:space="preserve"><value>Composition under way</value></data>
+  <data name="Studio.Create.FolderToChooseRead" xml:space="preserve"><value>To choose: the team must read documents that already exist.</value></data>
+  <data name="Studio.Create.HintAnswer" xml:space="preserve"><value>Answer the assistant to continue.</value></data>
+  <data name="Studio.Create.HintConfirmFolders" xml:space="preserve"><value>Confirm the folders to move on to the composition.</value></data>
+  <data name="Studio.Create.HintDecide" xml:space="preserve"><value>Settle the choice in the conversation to continue.</value></data>
+  <data name="Studio.Create.TabNeedDone" xml:space="preserve"><value>Described</value></data>
+  <data name="Studio.Create.TabNeedDoneAnswers" xml:space="preserve">
+    <value>Described, {0} {0:plural:question settled|questions settled}</value>
+  </data>
+  <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>To describe</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describe the work to continue.</value></data>
+  <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Need described.</value></data>
+  <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Need described, {0} {0:plural:question settled|questions settled} with the assistant</value></data>
+  <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:folder to confirm|folders to confirm}</value></data>
+  <data name="Studio.Create.TabFoldersPendingToChoose" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} · {1} to choose</value>
+  </data>
+  <data name="Studio.Create.TabFoldersConfirmed" xml:space="preserve"><value>{0} {0:plural:folder confirmed|folders confirmed}</value></data>
+  <data name="Studio.Create.TabFoldersFilling" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} · dropping files</value>
+  </data>
+  <data name="Studio.Create.TabFoldersEmpty" xml:space="preserve"><value>Proposed after the composition</value></data>
+  <data name="Studio.Create.TabFoldersConfirmedFooter" xml:space="preserve">
+    <value>Folders confirmed: the composition goes on in the panel.</value>
+  </data>
+  <data name="Studio.Create.TabFoldersFillingFooter" xml:space="preserve">
+    <value>Drop your files in the folders of your choice, then continue: the assistant will take them into account.</value>
+  </data>
+  <data name="Studio.Create.TabFoldersReadyFooter" xml:space="preserve"><value>Every folder has its place. Confirm to continue.</value></data>
+  <data name="Studio.Create.TabFoldersOneToChoose" xml:space="preserve"><value>1 folder to choose. You can confirm now: the team will get an empty « {0} » folder at adoption.</value></data>
+  <data name="Studio.Create.TabFoldersManyToChoose" xml:space="preserve"><value>{0} folders to choose. You can confirm now: the team will get them empty at adoption.</value></data>
+  <data name="Studio.Create.TabNotesDone" xml:space="preserve"><value>Written</value></data>
+  <data name="Studio.Create.TabNotesEmpty" xml:space="preserve"><value>Optional, empty</value></data>
+  <data name="Studio.Create.TabTeam" xml:space="preserve">
+    <value>Team</value>
+  </data>
+  <data name="Studio.Create.TabTeamProposed" xml:space="preserve">
+    <value>{0} {0:plural:agent|agents} · proposed</value>
+  </data>
+  <data name="Studio.Create.TabTeamComposing" xml:space="preserve">
+    <value>Being composed</value>
+  </data>
+  <data name="Studio.Create.TabTeamEmpty" xml:space="preserve">
+    <value>Not proposed yet</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersInside" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} · inside the team</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersSet" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} · set</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersToChoose" xml:space="preserve">
+    <value>{0} {0:plural:folder|folders} · {1} to choose</value>
+  </data>
+  <data name="Studio.Create.TabTeamFoldersNone" xml:space="preserve">
+    <value>No folder</value>
+  </data>
+  <data name="Studio.Create.TabComposition" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="Studio.Create.TabCompositionStopped" xml:space="preserve">
+    <value>Stopped · {0} {0:plural:file|files} written</value>
+  </data>
+  <data name="Studio.Create.TabCompositionRunning" xml:space="preserve">
+    <value>Under way</value>
+  </data>
+  <data name="Studio.Create.TabCompositionNone" xml:space="preserve">
+    <value>Not started</value>
+  </data>
+  <data name="Studio.Create.TeamFooterStopped" xml:space="preserve">
+    <value>{0} {0:plural:agent|agents}, composition stopped.</value>
+  </data>
+  <data name="Studio.Create.TeamFooterComposing" xml:space="preserve">
+    <value>The engine is composing the team…</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterInside" xml:space="preserve">
+    <value>{0} {0:plural:folder, inside the team|folders, all inside the team}.</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterSet" xml:space="preserve">
+    <value>{0} {0:plural:folder, set|folders, all set}.</value>
+  </data>
+  <data name="Studio.Create.Step2FoldersFooterNone" xml:space="preserve">
+    <value>This team uses no folder.</value>
+  </data>
+  <data name="Studio.Create.CompositionStateRunning" xml:space="preserve">
+    <value>Under way</value>
+  </data>
+  <data name="Studio.Create.CompositionStateValid" xml:space="preserve">
+    <value>Stopped — definition checked</value>
+  </data>
+  <data name="Studio.Create.CompositionStateInvalid" xml:space="preserve">
+    <value>Stopped — definition to fix</value>
+  </data>
+  <data name="Studio.Create.CompositionStateStopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Studio.Create.CompositionFiles" xml:space="preserve">
+    <value>{0} {0:plural:file|files} in the team's draft</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftSaved" xml:space="preserve">
+    <value>saved at {0}</value>
+  </data>
+  <data name="Studio.Create.CompositionDraftNotSaved" xml:space="preserve">
+    <value>not saved yet</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterDone" xml:space="preserve">
+    <value>Composition finished.</value>
+  </data>
+  <data name="Studio.Create.CompositionFooterRunning" xml:space="preserve">
+    <value>Composition under way.</value>
+  </data>
+  <data name="Studio.Create.MoreTools" xml:space="preserve">
+    <value>+ {0}</value>
+  </data>
+  <data name="Studio.Create.TabNotesFooterEmpty" xml:space="preserve"><value>No instruction yet.</value></data>
+  <data name="Studio.Create.WaitingFor" xml:space="preserve"><value>Waiting for you: {0}</value></data>
+  <data name="Studio.Create.WaitActionFolders" xml:space="preserve"><value>confirm the folders</value></data>
+  <data name="Studio.Create.WaitActionAnswer" xml:space="preserve"><value>answer the assistant</value></data>
+  <data name="Studio.Create.WaitActionFillFolders" xml:space="preserve">
+    <value>drop your files</value>
+  </data>
+  <data name="Studio.Create.HintFillFolders" xml:space="preserve">
+    <value>Drop your files in the folders, then continue.</value>
+  </data>
+  <data name="Studio.Create.WaitActionModel" xml:space="preserve"><value>choose a model</value></data>
+  <data name="Studio.Create.WaitActionDecide" xml:space="preserve"><value>settle a choice</value></data>
+  <data name="Studio.Create.WaitActionChooseFolder" xml:space="preserve"><value>choose a folder</value></data>
+  <data name="Studio.Create.WaitActionAdopt" xml:space="preserve"><value>adopt the team</value></data>
+  <data name="Studio.Create.WaitBubbleFolders" xml:space="preserve"><value>I deduced the team's folders from your request. Check them, then confirm them so I can compose the team.</value></data>
+  <data name="Studio.Create.WaitBubbleFillFolders" xml:space="preserve">
+    <value>The folders are ready. Drop your files in them, then tell me when you're done.</value>
+  </data>
+  <data name="Studio.Create.WaitActionLabelFillFolders" xml:space="preserve">
+    <value>Done, continue</value>
+  </data>
+  <data name="Studio.Create.WaitBubbleChooseFolder" xml:space="preserve"><value>A folder of the team is still to choose before the trial.</value></data>
+  <data name="Studio.Create.WaitBubbleAdopt" xml:space="preserve"><value>The team is ready. Adopt it to find it in your teams.</value></data>
+  <data name="Studio.Create.WaitPlaceholderFolders" xml:space="preserve"><value>Confirm the folders to continue, or ask a question</value></data>
+  <data name="Studio.Create.WaitPlaceholderFillFolders" xml:space="preserve">
+    <value>Drop your files then continue, or ask a question</value>
+  </data>
+  <data name="Studio.Create.WaitPlaceholderChooseFolder" xml:space="preserve"><value>Choose the folder to continue, or ask a question</value></data>
+  <data name="Studio.Create.WaitPlaceholderAdopt" xml:space="preserve"><value>Adopt the team to finish, or ask a question</value></data>
+  <data name="Studio.Create.WaitShowCard" xml:space="preserve"><value>Show the folder</value></data>
+  <data name="Studio.Create.TabNeed" xml:space="preserve"><value>Need</value></data>
+  <data name="Studio.Create.TabFolders" xml:space="preserve"><value>The team's folders</value></data>
+  <data name="Studio.Create.FoldersTabEmptyBody" xml:space="preserve"><value>The assistant proposes the team's folders once it has read your need, during the composition. They will appear here.</value></data>
+  <data name="Studio.Create.FolderFieldName" xml:space="preserve"><value>Name in the team</value></data>
+  <data name="Studio.Create.FolderFieldNote" xml:space="preserve"><value>Note</value></data>
+  <data name="Studio.Create.FolderNotePlaceholder" xml:space="preserve"><value>What is this folder for, for the team?</value></data>
+  <data name="Studio.Create.FolderDeduced" xml:space="preserve"><value>Deduced from your request</value></data>
+  <data name="Studio.Create.SeeFolders" xml:space="preserve">
+    <value>See the folders</value>
+  </data>
+  <data name="Studio.Create.SeeNotes" xml:space="preserve">
+    <value>See the instruction</value>
+  </data>
+  <data name="Studio.Create.SeeComposition" xml:space="preserve">
+    <value>See the composition</value>
+  </data>
+  <data name="Studio.Create.BackToTeam" xml:space="preserve">
+    <value>Back to the team</value>
+  </data>
+  <data name="Studio.Create.Step2NotesNote" xml:space="preserve">
+    <value>The instruction goes with the next composition: changing it here does not recompose the team on its own — go back to step 1 and compose again.</value>
+  </data>
+  <data name="Studio.Create.CompositionTitle" xml:space="preserve">
+    <value>Composition by the engine</value>
+  </data>
+  <data name="Studio.Create.CompositionSub" xml:space="preserve">
+    <value>What the engine did to produce this proposal. Read only; the full detail is in the technical journal.</value>
+  </data>
+  <data name="Studio.Create.FieldState" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Studio.Create.FieldFilesWritten" xml:space="preserve">
+    <value>Files written</value>
+  </data>
+  <data name="Studio.Create.FieldLastExchange" xml:space="preserve">
+    <value>Last exchange</value>
+  </data>
+  <data name="Studio.Create.FieldEngine" xml:space="preserve">
+    <value>Engine</value>
+  </data>
+  <data name="Studio.Create.FieldDraft" xml:space="preserve">
+    <value>Draft</value>
+  </data>
+  <data name="Studio.Create.OpenDraft" xml:space="preserve">
+    <value>Open the draft</value>
+  </data>
+  <data name="Studio.Create.ViewProposal" xml:space="preserve">
+    <value>Proposal</value>
+  </data>
+  <data name="Studio.Create.ViewYaml" xml:space="preserve">
+    <value>YAML</value>
+  </data>
+  <data name="Studio.Create.RemoveShort" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Studio.Create.BackToFolders" xml:space="preserve"><value>Back to the folders</value></data>
+  <data name="Studio.Create.NotesTabSub" xml:space="preserve"><value>Optional. An instruction applies to every agent, travels with the team, and becomes a point to check at trial time.</value></data>
+  <data name="Studio.Create.NotesPlaceholder" xml:space="preserve"><value>For example: write every answer in French, and quote the source document.</value></data>
+  <data name="Studio.Create.NotesLeaveEmpty" xml:space="preserve"><value>Leave it empty if you have nothing to impose: the assistant will propose its own rules at the Compose step.</value></data>
+  <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter to send · Shift+Enter for a new line</value></data>
+  <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Show the card</value></data>
+  <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>The trial is judged. What do we do next?</value></data>
 </root>

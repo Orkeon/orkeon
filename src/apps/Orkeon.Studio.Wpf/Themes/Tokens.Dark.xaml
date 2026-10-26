@@ -25,12 +25,14 @@
   <SolidColorBrush x:Key="LineStrongBrush"  Color="#324D60"/>
   <SolidColorBrush x:Key="LineFaintBrush"   Color="#1B303F"/>
 
-  <!-- accent: brightened ocean blue for dark (Crew Console dark) -->
-  <SolidColorBrush x:Key="AccentBrush"       Color="#5FA9D4"/>
-  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#7FBCDF"/>
-  <SolidColorBrush x:Key="AccentActiveBrush" Color="#3E86B4"/>
-  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#122B3C"/>
+  <!-- accent: the charter teal (refonte R1, 2026-10). The former ocean blue stays as
+       SecondaryBrush, for charts and secondary surfaces only. -->
+  <SolidColorBrush x:Key="AccentBrush"       Color="#3DA0AC"/>
+  <SolidColorBrush x:Key="AccentHoverBrush"  Color="#54B4BF"/>
+  <SolidColorBrush x:Key="AccentActiveBrush" Color="#2E8A95"/>
+  <SolidColorBrush x:Key="AccentWeakBrush"   Color="#133038"/>
   <SolidColorBrush x:Key="AccentFgBrush"     Color="#07171C"/>
+  <SolidColorBrush x:Key="SecondaryBrush"    Color="#5FA9D4"/>
   <SolidColorBrush x:Key="MarkBrush"         Color="#3DA0AC"/>
 
   <!-- status -->
@@ -41,6 +43,14 @@
   <SolidColorBrush x:Key="DangerBrush"      Color="#DD6B5C"/>
   <SolidColorBrush x:Key="DangerFgBrush"   Color="#07171C"/>
   <SolidColorBrush x:Key="DangerWeakBrush"  Color="#2C1815"/>
+  <SolidColorBrush x:Key="InfoBrush"        Color="#5FA0BE"/>
+  <SolidColorBrush x:Key="InfoWeakBrush"    Color="#122530"/>
+  <!-- Refonte R4: the Assistant form, for the commands that ask the model; blue on purpose, apart from the accent. -->
+  <SolidColorBrush x:Key="AssistantBrush"      Color="#5FA0BE"/>
+  <SolidColorBrush x:Key="AssistantWeakBrush"  Color="#122530"/>
+  <SolidColorBrush x:Key="AssistantLineBrush"  Color="#5FA0BE"/>
+  <SolidColorBrush x:Key="AssistantHoverBrush" Color="#17303D"/>
+  <SolidColorBrush x:Key="AssistantPressedBrush" Color="#1C3A4A"/>
   <SolidColorBrush x:Key="SandBrush"        Color="#E6C079"/>
   <SolidColorBrush x:Key="SandWeakBrush"    Color="#2A2415"/>
 
@@ -65,6 +75,8 @@
 
   <!-- ══ Elevation (see Tokens.Light.xaml). On a dark ground the navy tint reads as a
        smudge and the light recipe disappears: pure black, carried deeper. ══ -->
+  <DropShadowEffect x:Key="ShadowXs" Color="#000000" Direction="270" ShadowDepth="1"
+                    BlurRadius="3" Opacity="0.30" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowMd" Color="#000000" Direction="270" ShadowDepth="8"
                     BlurRadius="34" Opacity="0.34" RenderingBias="Quality"/>
   <DropShadowEffect x:Key="ShadowLg" Color="#000000" Direction="270" ShadowDepth="14"

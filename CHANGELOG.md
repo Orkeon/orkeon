@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
+
+The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A
+Trial | Real switch picks the launcher on show. Each mode keeps its own launcher, so what the engine receives does not
+change: a trial records no history and stamps no last run, and both launchers can run at once. The team picker, Check
+and Launch share the action line of the team card. The trial can now be reached in Novice mode, from the switch, from
+the « Try out » button of a team card, from « Test it first » after an import, and from the Test group of the status bar.
+`TestTeamViewModel`, `TestTeamView` and the Test entry of the sidebar are removed; `MainWindowViewModel.Test` becomes
+`MainWindowViewModel.Run` (`Run.Real`, `Run.Trial`).
+
+The screens share new controls (`Alert`, `Badge`, `PropertyRow`, `PageHeader`, `ActionBar`) and button styles (`BtnPrimary`,
+`BtnSecondary`, `BtnDanger`, with a `ButtonSize`, and `BtnAssistant`, a light blue reserved for « Ask the assistant » and « Rephrase », the commands that ask the model). The accent colour is now teal. The assistant moves from the three
+screens that each embedded it into one side panel, opened with « Ask the assistant » in the title bar. My teams gets
+card action bars, one banner for refused scheduled runs and an Undo toast after an archive. Create a team shows one step
+per screen behind a stepper; its Compose step becomes a binder of four tabs (Team, Team folders, Composition instruction,
+Composition), and « Try the team » waits until no folder is left to choose. Launch becomes a binder of four tabs (Team, Options, Command in Expert, Run) above an action bar that says whether the launch is ready; a launch opens the Run tab, which shows one column per agent, and locks the others until it ends. The French wording follows one lexicon (Équipe, Modèle, Essai, Vérifier, Lancer, real plurals).
+A guard test refuses a resource dictionary that declares the same key twice: a duplicated icon key stopped Studio at startup.
+
+History becomes a table grouped by day with team and status filters, the team's own name and « < 1 s » under a second. Settings become
+a tab binder in four groups, drawn as a horizontal bar over the active group's sections, each tab saying its state (an amber
+dot for something to fix, a green one for a checked file); Models splits into AI model, Document search (RAG, Expert) and
+API keys, where the Diagnostic's missing-key problem now leads,
+one card per model with its provider, endpoint, file name, teams and an action bar, and an unsaved-changes bar that guards leaving the screen; the sidebar's settings-file card becomes
+a dot on the Settings entry and a line of the Diagnostic. The Diagnostic counts the points to fix exactly and gives each problem its
+own action. An allowed folder's error shows on its own row.
+
+Step 1 of Create a team becomes three vertical tabs (need, team folders, composition instruction). A card the engine waits on is
+now the one named wait point: the assistant stops its indicator and offers the card's own button, Enter no longer sends, the
+focus goes to the card and the stepper and the status bar say « Waiting for you: … ». A read folder the definition already
+places is no longer shown as « no folder chosen », and the « Your brief » card follows every edit of the need.
+
+The assistant's questions move into the side panel: each is a bubble with its answers as buttons, the recommended one first
+and focused — the options the engine lists under its question, then « I don't know ». The trial's arbitration and « Do you
+want to put files in the folders? » leave the main column for the panel, which opens itself on a new question.
+That question now waits for its answer, in the engine too: with folders kept inside the team, `orkeon forge` waits after
+`brief.ready` for `folders.filled` on stdin (Enter in the terminal; `--auto` does not wait), then adds what each folder
+holds to the brief (`contents`), so the plan is designed for the files the user dropped. Studio sends it on « No » or
+« Continue », keeps its step and « Try the team » off until then (« Waiting for you: fill the folders »).
+
 ### Added — RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby and Bash; every portable grammar is loaded
 
 Seven built-in language adapters join TypeScript, Python, C#, Go and Rust (`LanguageAdapterFactory`, registered by

@@ -42,6 +42,10 @@ public partial class CreateTeamWizardTests
             Assert.Equal(["/data/pdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.SidecarMounts());
             Assert.DoesNotContain(vm.MountRows, r => r.VirtualPath is "/workspace" or "/output");
 
+            // The output folder is still to choose: the trial waits for it (refonte lot 10).
+            Assert.False(vm.TryTeamCommand.CanExecute(null));
+            vm.CreateAllInsideTeamCommand.Execute(null);
+
             // The engine keeps the folder in folders.json: the trial needs no --read for it.
             processes.OutputToEmit.Add(Out(Paused));
             await vm.TryTeamCommand.ExecuteAsync();

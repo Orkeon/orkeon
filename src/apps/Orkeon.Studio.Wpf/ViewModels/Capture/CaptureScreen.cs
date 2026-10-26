@@ -27,6 +27,12 @@ internal enum CaptureScreen
     /// <summary>Settings, on the model tab.</summary>
     SettingsModel,
 
+    /// <summary>Settings, on the RAG-model tab — expert only (refonte lot 11).</summary>
+    SettingsRag,
+
+    /// <summary>Settings, on the API-keys tab (refonte lot 11).</summary>
+    SettingsKeys,
+
     /// <summary>Settings, on the authorized-folders tab.</summary>
     SettingsFolders,
 
@@ -137,6 +143,6 @@ internal static class CaptureReachability
 {
     /// <summary>True when <paramref name="screen"/> can be reached in <paramref name="mode"/>.</summary>
     public static bool IsReachableIn(CaptureScreen screen, CaptureModes mode) =>
-        screen is not (CaptureScreen.Test or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson or CaptureScreen.SettingsMcp)
+        screen is not (CaptureScreen.Test or CaptureScreen.SettingsRag or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson or CaptureScreen.SettingsMcp)
         || mode == CaptureModes.Expert;
 }

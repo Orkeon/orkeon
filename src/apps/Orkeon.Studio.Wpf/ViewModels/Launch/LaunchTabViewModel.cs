@@ -27,7 +27,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 /// it, and the behaviour is identical to the CLI by construction rather than by re-implementation.
 /// </para>
 /// </summary>
-public sealed class LaunchTabViewModel : ObservableObject
+public sealed partial class LaunchTabViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly RunSession _session;
@@ -52,7 +52,6 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly Func<IReadOnlyList<string>, string?, Task<string?>>? _prepareLaunch;
     private bool _isRunning;
     private string? _runningTarget;
-    private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
     /// <summary>The model this run takes (STUDIO-73): the default, or the setting <see cref="_runLlmProfile"/>.</summary>
@@ -89,10 +88,11 @@ public sealed class LaunchTabViewModel : ObservableObject
         _runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
         // launcher runs over the very same class, which is what keeps the two in step. The teams
-        // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the Test screen's
+        // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the trial
         // launcher is built without one.
         _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
         TeamsRoot = seams.TeamsRoot;
+        IsTrial = seams.IsTrial;
         _teamSettingsRoot = seams.TeamSettingsRoot ?? seams.TeamsRoot;
         _restoreTeam = seams.RestoreTeam;
         _modelSettings = seams.ModelSettings;
@@ -115,7 +115,9 @@ public sealed class LaunchTabViewModel : ObservableObject
         Mounts = new LaunchMountsViewModel(seams.Directories, seams.Picker, _strings);
         Log = new RunLogViewModel(_strings);
         Progress = new RunProgressViewModel(_strings, seams.Clock);
-        History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts);
+        History = new LaunchHistoryViewModel(
+            seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts,
+            teamNameOf: target => TeamCatalog.DescribeTarget(target).Name);
 
         Target.TargetChanged += OnTargetChanged;
         Options.Changed += OnInputsChanged;
@@ -153,6 +155,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         // is open, and the Diagnostic screen re-runs it.
         BinaryLocation = _runner.LocateBinary();
 
+        InitializeTabs();
         RefreshPreview();
     }
 
@@ -847,6 +850,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         RunningTarget = request.TargetPath;
         ForgetLogFolderProbe();
         IsRunning = true;
+        ActiveTab = RunTab;
 
         Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
         StatusMessage = dryRun
@@ -1351,6 +1355,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Running,
         Succeeded,
         Failed,
+        Cancelled,
     }
 
     // Title, badge, tone and button label are four readings of one and the same state, so they
@@ -1366,7 +1371,13 @@ public sealed class LaunchTabViewModel : ObservableObject
             if (!HasResult)
                 return RunCardState.Idle;
 
-            return Outcome == RunOutcome.Success ? RunCardState.Succeeded : RunCardState.Failed;
+            return Outcome switch
+            {
+                RunOutcome.Success => RunCardState.Succeeded,
+                // A Stop is the user's own gesture, not a failure of the team.
+                RunOutcome.Cancelled => RunCardState.Cancelled,
+                _ => RunCardState.Failed,
+            };
         }
     }
 
@@ -1386,36 +1397,37 @@ public sealed class LaunchTabViewModel : ObservableObject
             RunCardState.Running => StudioStringKeys.RunBadgeRunning,
             RunCardState.Idle => StudioStringKeys.RunBadgeIdle,
             RunCardState.Succeeded => StudioStringKeys.RunBadgeDone,
+            RunCardState.Cancelled => StudioStringKeys.HistStatusCancelled,
             _ => StudioStringKeys.RunBadgeFailed,
         }];
 
-    /// <summary>Tone key the view maps to colours: idle | running | ok | fail.</summary>
+    /// <summary>Tone key the view maps to colours: idle | running | ok | warn | fail.</summary>
     public string RunBadgeTone => CardState switch
     {
         RunCardState.Running => "running",
         RunCardState.Idle => "idle",
         RunCardState.Succeeded => "ok",
+        RunCardState.Cancelled => "warn",
         _ => "fail",
     };
+
+    /// <summary>
+    /// True for the trial launcher of the Launch screen (refonte, lot 4): built without a history
+    /// store, it only changes what its primary button says.
+    /// </summary>
+    public bool IsTrial { get; }
 
     /// <summary>Launch now / Running… / Relaunch — the mock's single primary button.</summary>
     public string RunButtonLabel =>
         _strings[CardState switch
         {
             RunCardState.Running => StudioStringKeys.RunButtonRunning,
-            RunCardState.Idle => StudioStringKeys.RunButtonLaunch,
+            RunCardState.Idle => IsTrial ? StudioStringKeys.RunButtonTrial : StudioStringKeys.RunButtonLaunch,
             _ => StudioStringKeys.RunButtonRelaunch,
         }];
 
     /// <summary>Localized banner when the CLI is missing; the raw locator detail stays expert.</summary>
     public string? CliBanner => IsBinaryAvailable ? null : _strings[StudioStringKeys.RunCliMissing];
-
-    /// <summary>Whether the technical journal is unfolded (novice folds it by default).</summary>
-    public bool IsJournalOpen
-    {
-        get => _isJournalOpen;
-        set => SetProperty(ref _isJournalOpen, value);
-    }
 
     /// <summary>Opens the result — one Explorer window per folder the run could write to.</summary>
     public RelayCommand OpenResultCommand { get; }
@@ -1659,6 +1671,9 @@ public sealed record LaunchTabDependencies
 
     /// <summary>Persists the replayable run history; null keeps the run out of any history.</summary>
     public ILaunchHistoryStore? HistoryStore { get; init; }
+
+    /// <summary>True for the trial launcher of the Launch screen: its primary button says « Launch the trial ».</summary>
+    public bool IsTrial { get; init; }
 
     /// <summary>Reads the appsettings the launch points at; defaults to the physical store.</summary>
     public IAppSettingsStore? SettingsStore { get; init; }

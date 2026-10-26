@@ -45,7 +45,7 @@
               <StackPanel Margin="0,0,0,8">
                 <DockPanel>
                   <TextBlock DockPanel.Dock="Left" Width="130" VerticalAlignment="Center"
-                             FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                             FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                              Text="{Binding Title}"/>
                   <TextBox DockPanel.Dock="Left" Style="{StaticResource InputMono}" Width="110"
                            Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}"/>
@@ -60,6 +60,27 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- The token scope of the status bar (BR-14): the figures of the execution shown, or of the
+         whole Studio session. It left the status bar for this page (refonte R11). -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="gauge" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}"
+                     Text="{Binding [Studio.Settings.StatusScopeTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="{Binding [Studio.Settings.StatusScopeHint], Source={x:Static services:I18n.Instance}}"/>
+        <ComboBox Width="260" HorizontalAlignment="Left" Margin="0,12,0,0"
+                  AutomationProperties.AutomationId="TokenScope"
+                  SelectedValuePath="Tag"
+                  SelectedValue="{Binding DataContext.StatusBar.TokenScope, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
+          <ComboBoxItem Tag="execution" Content="{Binding [Studio.Shell.StatusScopeExecution], Source={x:Static services:I18n.Instance}}"/>
+          <ComboBoxItem Tag="session" Content="{Binding [Studio.Shell.StatusScopeSession], Source={x:Static services:I18n.Instance}}"/>
+        </ComboBox>
       </StackPanel>
     </Border>
 
@@ -107,11 +128,11 @@
                    Text="{Binding [Studio.Settings.TeamsRootHint], Source={x:Static services:I18n.Instance}}"/>
 
         <DockPanel Margin="0,16,0,0">
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" VerticalAlignment="Center" Margin="12,0,0,0"
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center" Margin="12,0,0,0"
                   Command="{Binding Studio.ChangeTeamsRootCommand}"
                   Content="{Binding [Studio.Settings.TeamsRootChange], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
             <!-- which of the four sources holds the root -->
             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Studio.TeamsRootSourceText}"/>
           </StackPanel>

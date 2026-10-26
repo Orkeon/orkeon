@@ -59,11 +59,14 @@ internal sealed class BriefStage : IForgeStageRunner
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
         // A resumed session that already interviewed does not re-interview — but a brief whose
-        // folders were never confirmed (the run stopped at the question) asks that one again.
+        // folders were never confirmed (the run stopped at the question) asks that one again,
+        // and so does one stopped while the user filled the folders kept inside the team.
         if (session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName) is { } saved)
         {
-            if (ForgeFolders.Confirmed(session) is null)
+            if (ForgeFolders.ListOf(session) is not { } list)
                 await ConfirmFoldersAsync(session, events, saved, cancellationToken).ConfigureAwait(false);
+            else if (!list.Filled)
+                await ResumeFillAsync(session, events, saved, list, cancellationToken).ConfigureAwait(false);
             return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted };
         }
 
@@ -210,17 +213,76 @@ internal sealed class BriefStage : IForgeStageRunner
                 continue;
             }
 
-            session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = answer });
             var confirmed = brief with { Folders = [.. answer.Select(ForgeFolders.WithoutDirectory)] };
             session.SaveArtifact(ForgeSession.BriefFileName, confirmed);
             var held = ForgeFolders.Hold(session, answer);
-            events.Emit("brief.ready", new
-            {
-                brief = confirmed,
-                heldFolders = held.Select(f => new { path = f.Path, role = f.Role, dir = f.Directory }),
-            });
+            var list = new ForgeFolderList { Folders = answer, Filled = held.Count == 0 || _autoConfirmFolders };
+            session.SaveArtifact(ForgeFolders.FileName, list);
+            EmitBriefReady(events, confirmed, held);
+            if (!list.Filled)
+                await FillFoldersAsync(session, events, confirmed, list, held, cancellationToken).ConfigureAwait(false);
             return;
         }
+    }
+
+    private static void EmitBriefReady(ForgeEventWriter events, ForgeBrief brief, IReadOnlyList<ForgeFolder> held) =>
+        events.Emit("brief.ready", new
+        {
+            brief,
+            heldFolders = held.Select(f => new { path = f.Path, role = f.Role, dir = f.Directory }),
+        });
+
+    /// <summary>A session stopped at the fill step: the folders are announced again, and the wait resumes.</summary>
+    private async Task ResumeFillAsync(
+        ForgeSession session, ForgeEventWriter events, ForgeBrief brief, ForgeFolderList list, CancellationToken cancellationToken)
+    {
+        var held = ForgeFolders.Hold(session, list.Folders);
+        if (held.Count == 0 || _autoConfirmFolders)
+        {
+            session.SaveArtifact(ForgeFolders.FileName, list with { Filled = true });
+            return;
+        }
+
+        EmitBriefReady(events, brief, held);
+        await FillFoldersAsync(session, events, brief, list, held, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The fill step (STUDIO-57): once <c>brief.ready</c> named folders kept inside the team,
+    /// the engine waits for <c>folders.filled</c> — the user dropped files or sub-folders in
+    /// them, or there is nothing to drop — and only then designs the team. What each folder
+    /// holds then goes into the brief (<see cref="ForgeFolder.Contents"/>, names relative to the
+    /// folder, never a physical path), so the plan is made for the files that are there;
+    /// <c>folders.filled</c> on the stream says how many entries each folder holds.
+    /// </summary>
+    private async Task FillFoldersAsync(
+        ForgeSession session,
+        ForgeEventWriter events,
+        ForgeBrief brief,
+        ForgeFolderList list,
+        IReadOnlyList<ForgeFolder> held,
+        CancellationToken cancellationToken)
+    {
+        if (!await _channel.ReadFolderFillAsync(held, cancellationToken).ConfigureAwait(false))
+            throw new OperationCanceledException("The user channel closed at the fill step.");
+
+        var contents = held.ToDictionary(
+            folder => folder.Path!,
+            folder => ForgeFolders.Inventory(folder.Directory!),
+            StringComparer.Ordinal);
+        var filled = brief with
+        {
+            Folders = [.. (brief.Folders ?? []).Select(folder =>
+                folder.Path is { } path && contents.TryGetValue(path, out var entries) && entries.Count > 0
+                    ? folder with { Contents = entries }
+                    : folder with { Contents = null })],
+        };
+        session.SaveArtifact(ForgeSession.BriefFileName, filled);
+        session.SaveArtifact(ForgeFolders.FileName, list with { Filled = true });
+        events.Emit("folders.filled", new
+        {
+            folders = held.Select(folder => new { path = folder.Path, entries = contents[folder.Path!].Count }),
+        });
     }
 
     /// <summary>

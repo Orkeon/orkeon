@@ -56,10 +56,22 @@
   <Geometry x:Key="Lucide.file-json-2">M14 22h4a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v6 M14 2v5a1 1 0 0 0 1 1h5 M5 14a1 1 0 0 0-1 1v2a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2a1 1 0 0 0 1 1 M9 22a1 1 0 0 0 1-1v-2a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-2a1 1 0 0 0-1-1</Geometry>
   <Geometry x:Key="Lucide.chevron-down">m6 9 6 6 6-6</Geometry>
   <Geometry x:Key="Lucide.chevron-up">m18 15-6-6-6 6</Geometry>
+  <Geometry x:Key="Lucide.chevron-right">m9 18 6-6-6-6</Geometry>
   <Geometry x:Key="Lucide.key">m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4 M21 2l-9.6 9.6 M15.5 7.5 6 17a5.07 5.07 0 1 0 1 1l9.5-9.5</Geometry>
   <!-- STUDIO-35: the provider balance, and the vendor console it opens where only the console shows it. -->
   <Geometry x:Key="Lucide.wallet">M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1 M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4</Geometry>
   <Geometry x:Key="Lucide.external-link">M15 3h6v6 M10 14 21 3 M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6</Geometry>
   <Geometry x:Key="Lucide.archive">M3,3 h18 a1,1 0 0 1 1,1 v3 a1,1 0 0 1 -1,1 h-18 a1,1 0 0 1 -1,-1 v-3 a1,1 0 0 1 1,-1 Z M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8 M10 12h4</Geometry>
   <Geometry x:Key="Lucide.mail">M4,4 h16 a2,2 0 0 1 2,2 v12 a2,2 0 0 1 -2,2 h-16 a2,2 0 0 1 -2,-2 v-12 a2,2 0 0 1 2,-2 Z M22 7 l-8.97 5.7 a1.94 1.94 0 0 1-2.06 0 L2 7</Geometry>
+  <!-- Added by the refonte (2026-10), same Lucide v1 geometry. -->
+  <Geometry x:Key="Lucide.ellipsis">M11,12 a1,1 0 1 0 2,0 a1,1 0 1 0 -2,0 M18,12 a1,1 0 1 0 2,0 a1,1 0 1 0 -2,0 M4,12 a1,1 0 1 0 2,0 a1,1 0 1 0 -2,0</Geometry>
+  <Geometry x:Key="Lucide.message-circle">M7.9 20A9 9 0 1 0 4 16.1L2 22Z</Geometry>
+  <Geometry x:Key="Lucide.maximize-2">M15 3h6v6 M9 21H3v-6 M21 3 l-7 7 M3 21 l7-7</Geometry>
+  <Geometry x:Key="Lucide.upload">M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8 l-5-5-5 5 M12 3v12</Geometry>
+  <Geometry x:Key="Lucide.download">M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10 l5 5 5-5 M12 15V3</Geometry>
+  <Geometry x:Key="Lucide.send">M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z M21.854 2.147 l-10.94 10.939</Geometry>
+  <Geometry x:Key="Lucide.clock">M2,12 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 M12 6v6 l4 2</Geometry>
+  <Geometry x:Key="Lucide.search">M21 21 l-4.34-4.34 M3,11 a8,8 0 1 0 16,0 a8,8 0 1 0 -16,0</Geometry>
+  <Geometry x:Key="Lucide.flask-conical">M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2 M6.453 15h11.094 M8.5 2h7</Geometry>
+  <Geometry x:Key="Lucide.panel-right">M5,3 h14 a2,2 0 0 1 2,2 v14 a2,2 0 0 1 -2,2 h-14 a2,2 0 0 1 -2,-2 v-14 a2,2 0 0 1 2,-2 Z M15 3v18</Geometry>
 </ResourceDictionary>

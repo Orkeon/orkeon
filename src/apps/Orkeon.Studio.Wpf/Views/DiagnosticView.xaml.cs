@@ -10,13 +10,66 @@ public partial class DiagnosticView : UserControl
     /// <summary>Loads the XAML.</summary>
     public DiagnosticView() => InitializeComponent();
 
-    /// <summary>Copies the last report to the clipboard — presentation-only, no ViewModel involvement.</summary>
-    private void OnFixInSettings(object sender, RoutedEventArgs e)
+    // Lot 5: each problem opens the section that fixes it - Models, API keys, Allowed folders, the File -, or
+    // tests the model's connection there, or runs the checks again when the fix is not Studio's.
+    private void OnFixCheck(object sender, RoutedEventArgs e)
     {
-        if (Window.GetWindow(this) is MainWindow window)
-            window.NavSettings.IsChecked = true;
+        if (sender is not FrameworkElement { DataContext: DoctorCheckViewModel check })
+            return;
+
+        switch (check.FixKind)
+        {
+            case DoctorCheckViewModel.FixModels:
+                OpenSettings(SettingsScreenViewModel.ModelTab);
+                break;
+            case DoctorCheckViewModel.FixKeys:
+                OpenSettings(SettingsScreenViewModel.KeysTab);
+                break;
+            case DoctorCheckViewModel.FixFolders:
+                OpenSettings(SettingsScreenViewModel.FoldersTab);
+                break;
+            case DoctorCheckViewModel.FixFile:
+                OpenSettings(SettingsScreenViewModel.JsonTab);
+                break;
+            case DoctorCheckViewModel.FixTest:
+                if (OpenSettings(SettingsScreenViewModel.ModelTab) is { } settings)
+                    TestDefaultModel(settings.Profiles);
+                break;
+            default:
+                if (DataContext is DiagnosticViewModel diagnostic && diagnostic.RunCommand.CanExecute(null))
+                    diagnostic.RunCommand.Execute(null);
+                break;
+        }
     }
 
+    // Opens the default model's editor (the first one when none is marked default) and tests it.
+    private static void TestDefaultModel(ViewModels.Config.ModelProfilesViewModel profiles)
+    {
+        if (profiles.Editor is null)
+        {
+            var item = profiles.Profiles.FirstOrDefault(p => p.IsDefault) ?? profiles.Profiles.FirstOrDefault();
+            if (item is null)
+                return;
+            item.EditCommand.Execute(null);
+        }
+
+        if (profiles.Editor?.TestConnectionCommand is { } test && test.CanExecute(null))
+            test.Execute(null);
+    }
+
+    private void OnOpenSettingsFile(object sender, RoutedEventArgs e) => OpenSettings(SettingsScreenViewModel.JsonTab);
+
+    private SettingsScreenViewModel? OpenSettings(string tab)
+    {
+        if (Window.GetWindow(this) is not MainWindow { DataContext: ViewModels.Shell.MainWindowViewModel shell } window)
+            return null;
+
+        shell.Settings.ShowSection(tab);
+        window.NavSettings.IsChecked = true;
+        return shell.Settings;
+    }
+
+    /// <summary>Copies the last report to the clipboard — presentation-only, no ViewModel involvement.</summary>
     private void OnCopyReport(object sender, RoutedEventArgs e)
     {
         if (DataContext is DiagnosticViewModel { CanCopyReport: true } diagnostic)

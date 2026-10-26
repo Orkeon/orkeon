@@ -344,11 +344,12 @@ public sealed class ScheduleManagementTests : IDisposable
     }
 
     /// <summary>
-    /// D-07: the banner offers « Also delete the workshop session », ticked by default, for the
-    /// session rule R links to the team; the deletion takes it, and says so for the wizard.
+    /// D-07: the banner offers « Also delete the workshop session », unticked by default (studio
+    /// refonte, lot 2), for the session rule R links to the team; ticked, the deletion takes it, and
+    /// says so for the wizard.
     /// </summary>
     [Fact]
-    public async Task Deleting_a_team_takes_its_linked_session_by_default()
+    public async Task Deleting_a_team_takes_its_linked_session_when_the_box_is_ticked()
     {
         var team = Team("veille", schedule: null, id: OriginalId);
         var session = Session("veille", OriginalId, team);
@@ -360,7 +361,8 @@ public sealed class ScheduleManagementTests : IDisposable
 
         card.AskDeleteCommand.Execute(null);
         Assert.True(card.CanDeleteSessionToo);
-        Assert.True(card.DeleteSessionToo);
+        Assert.False(card.DeleteSessionToo);
+        card.DeleteSessionToo = true;
         await card.ConfirmDeleteCommand.ExecuteAsync();
 
         Assert.False(Directory.Exists(team));
@@ -370,9 +372,9 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Empty(processes.Requests);
     }
 
-    /// <summary>Unticked, the box keeps the session.</summary>
+    /// <summary>Left unticked, the box keeps the session.</summary>
     [Fact]
-    public async Task Unticking_the_box_keeps_the_session()
+    public async Task Leaving_the_box_unticked_keeps_the_session()
     {
         var team = Team("veille", schedule: null, id: OriginalId);
         var session = Session("veille", OriginalId, team);
@@ -380,7 +382,6 @@ public sealed class ScheduleManagementTests : IDisposable
         var card = Assert.Single(teams.Teams);
 
         card.AskDeleteCommand.Execute(null);
-        card.DeleteSessionToo = false;
         await card.ConfirmDeleteCommand.ExecuteAsync();
 
         Assert.False(Directory.Exists(team));
@@ -565,5 +566,70 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Equal(1, vm.ScheduleChoice);
         Assert.True(vm.SaveTeamCommand.CanExecute(null));
         return (vm, processes, teamDir);
+    }
+
+    // ── the one banner of refusals (refonte, lot 2) ──
+
+    /// <summary>
+    /// The scheduled runs the settings file as saved refuses are said once, over the cards — how
+    /// many, and what the file lacks, each name once —; a run that only takes the default is not a
+    /// refusal, and the banner stays quiet without any.
+    /// </summary>
+    [Fact]
+    public void The_refused_scheduled_runs_are_said_once_over_the_cards()
+    {
+        Team("veille");
+        Team("revue");
+        Team("rapport");
+        Team("manuelle", schedule: null);
+        var teams = new TeamsViewModel(new TeamsDependencies
+        {
+            TeamsRoot = TeamsRoot,
+            WorkspaceDirectory = _root,
+            ScheduledRun = team => team.Name switch
+            {
+                "veille" or "revue" => new ScheduledRunNotice(ScheduledRunIssue.SettingRefused, "Local"),
+                "rapport" => new ScheduledRunNotice(ScheduledRunIssue.OnDefault, "Local"),
+                _ => new ScheduledRunNotice(ScheduledRunIssue.FolderRefused, "/factures"),
+            },
+        });
+
+        Assert.True(teams.HasRefusedRuns);
+        Assert.Equal(
+            "2 scheduled runs will be refused on the next pass: the saved settings file does not hold Local yet.",
+            teams.RefusedRunsLine);
+
+        var quiet = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root });
+        Assert.False(quiet.HasRefusedRuns);
+        Assert.Equal("", quiet.RefusedRunsLine);
+    }
+
+    /// <summary>
+    /// A folder nothing allows holds « Launch » back with its reason, and « Allow » asks the shell
+    /// for Settings › Allowed folders; once declared, the card launches again.
+    /// </summary>
+    [Fact]
+    public void A_folder_nothing_allows_holds_launch_back_and_allow_opens_the_settings()
+    {
+        var team = Team("veille", schedule: null);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "veille", Profile = "Local", Mounts = ["/srv/factures:/factures:ro"] });
+        IReadOnlyList<string> declared = [];
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = TeamsRoot, WorkspaceDirectory = _root, DeclaredMounts = () => declared });
+        var opened = 0;
+        teams.OpenAllowedFoldersRequested += (_, _) => opened++;
+        var card = Assert.Single(teams.Teams);
+
+        Assert.Equal("/factures", card.UndeclaredFolder);
+        Assert.False(card.LaunchCommand.CanExecute(null));
+        Assert.Equal("Allow the folder /factures first.", card.LaunchBlockedReason);
+        card.AllowFolderCommand.Execute(null);
+        Assert.Equal(1, opened);
+
+        declared = ["/srv/factures:/factures:ro"];
+        teams.Refresh();
+        card = Assert.Single(teams.Teams);
+        Assert.False(card.HasUndeclaredFolder);
+        Assert.Null(card.LaunchBlockedReason);
+        Assert.True(card.LaunchCommand.CanExecute(null));
     }
 }

@@ -1,21 +1,29 @@
 using System.ComponentModel;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// The unified Settings screen (design v3): one nav entry, eight inner tabs. Novice sees the
-/// five that matter — the AI model, the authorized folders, the tools (their keys and what
-/// each one needs, STUDIO-21), the e-mail accounts (STUDIO-67) and Studio itself (STUDIO-35);
-/// the limits-and-logs tab, the MCP servers and the raw-JSON tab are expert-only, and a switch
-/// back to novice while one of them is showing falls back to the model tab rather than leaving
-/// a blank screen.
+/// The unified Settings screen (design v3): one nav entry, eleven inner tabs in four groups
+/// (refonte lot 11). Novice sees the ones that matter — the AI model, the API keys, the
+/// authorized folders, the tools (their keys and what each one needs, STUDIO-21), the e-mail
+/// and Drive accounts (STUDIO-67) and Studio itself (STUDIO-35); the RAG's model, the
+/// limits-and-logs tab, the MCP servers and the raw-JSON tab are expert-only, and a switch back
+/// to novice while one of them is showing falls back to the model tab rather than leaving a
+/// blank screen.
 /// </summary>
-public sealed class SettingsScreenViewModel : ObservableObject
+public sealed partial class SettingsScreenViewModel : ObservableObject
 {
     /// <summary>Tab names, as stored in <see cref="ActiveTab"/>.</summary>
     public const string ModelTab = "model";
+
+    /// <summary>The model the document search calls, Orkeon:Rag:LlmProfile (expert, refonte lot 11).</summary>
+    public const string RagTab = "rag";
+
+    /// <summary>The API keys the model settings resolve, kept in the user environment (refonte lot 11).</summary>
+    public const string KeysTab = "keys";
 
     /// <summary>The mounts tab.</summary>
     public const string FoldersTab = "folders";
@@ -43,6 +51,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
+    private Action? _pendingLeave;
 
     /// <summary>
     /// Builds the screen over the settings editor and the profile tab. <paramref name="teamFolders"/>
@@ -58,7 +67,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         UiModeViewModel mode,
         TeamFoldersViewModel? teamFolders = null,
         ToolsSettingsViewModel? tools = null,
-        StudioSettingsViewModel? studio = null)
+        StudioSettingsViewModel? studio = null,
+        IStudioStrings? strings = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -71,6 +81,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         Studio = studio ?? new StudioSettingsViewModel();
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+        InitializeTabStates();
         // The E-mail form is in both modes and shows more to the expert (STUDIO-67).
         Config.Email.IsExpert = _mode.IsExpert;
         Config.Drive.IsExpert = _mode.IsExpert;
@@ -98,12 +110,17 @@ public sealed class SettingsScreenViewModel : ObservableObject
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
-        // The folders tab re-reads the teams' own folders on arrival: the section is a view
-        // over the sidecars, and a team adopted or deleted since the last visit must show.
+        ShowRagCommand = new RelayCommand(() => ActiveTab = RagTab);
+        ShowKeysCommand = new RelayCommand(() => ActiveTab = KeysTab);
+        // The folders tab re-reads the teams' own folders on arrival (ActiveTab): the section is
+        // a view over the sidecars, and a team adopted or deleted since the last visit must show.
+        // Asked again while it shows, it reads them again.
         ShowFoldersCommand = new RelayCommand(() =>
         {
-            TeamFolders.Refresh();
-            ActiveTab = FoldersTab;
+            if (IsFoldersTab)
+                TeamFolders.Refresh();
+            else
+                ActiveTab = FoldersTab;
         });
         ShowLimitsCommand = new RelayCommand(() => ActiveTab = LimitsTab);
         ShowJsonCommand = new RelayCommand(() => ActiveTab = JsonTab);
@@ -112,6 +129,75 @@ public sealed class SettingsScreenViewModel : ObservableObject
         ShowStudioCommand = new RelayCommand(() => ActiveTab = StudioTab);
         ShowMailsCommand = new RelayCommand(() => ActiveTab = MailsTab);
         ShowDriveCommand = new RelayCommand(() => ActiveTab = DriveTab);
+
+        // Lot 5: leaving with unsaved edits asks first; the three answers end the question.
+        SaveAndLeaveCommand = new AsyncRelayCommand(async () =>
+        {
+            if (await Config.SaveAsync())
+                ProceedLeave();
+        });
+        DiscardAndLeaveCommand = new RelayCommand(() =>
+        {
+            Config.Discard();
+            ProceedLeave();
+        });
+        StayCommand = new RelayCommand(() => SetPendingLeave(null));
+        // Saved or cancelled from the bar while the question is open: nothing is left to ask.
+        Config.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConfigTabViewModel.HasPendingChanges) && !Config.HasPendingChanges && _pendingLeave is not null)
+                ProceedLeave();
+        };
+    }
+
+    /// <summary>True while the screen asks what to do with the unsaved edits before leaving.</summary>
+    public bool IsAskingToLeave => _pendingLeave is not null;
+
+    /// <summary>« Save and leave »: saves, then goes where the user was heading; a refused save stays.</summary>
+    public AsyncRelayCommand SaveAndLeaveCommand { get; }
+
+    /// <summary>« Leave without saving »: drops the edits, then goes on.</summary>
+    public RelayCommand DiscardAndLeaveCommand { get; }
+
+    /// <summary>« Stay »: closes the question and keeps the edits on screen.</summary>
+    public RelayCommand StayCommand { get; }
+
+    /// <summary>
+    /// Asks to leave the screen (lot 5): true when nothing is pending, so the caller goes on; false
+    /// when the edits are not saved - the screen asks, and <paramref name="proceed"/> runs once the
+    /// user saved or dropped them.
+    /// </summary>
+    public bool TryLeave(Action proceed)
+    {
+        ArgumentNullException.ThrowIfNull(proceed);
+
+        if (!Config.HasPendingChanges)
+            return true;
+
+        SetPendingLeave(proceed);
+        return false;
+    }
+
+    /// <summary>Shows one section, the way its entry in the side navigation does (the Diagnostic's actions).</summary>
+    public void ShowSection(string tab)
+    {
+        if (tab == FoldersTab)
+            ShowFoldersCommand.Execute(null);
+        else
+            ActiveTab = tab;
+    }
+
+    private void ProceedLeave()
+    {
+        var proceed = _pendingLeave;
+        SetPendingLeave(null);
+        proceed?.Invoke();
+    }
+
+    private void SetPendingLeave(Action? proceed)
+    {
+        _pendingLeave = proceed;
+        OnPropertyChanged(nameof(IsAskingToLeave));
     }
 
     /// <summary>The settings-document editor the tabs render.</summary>
@@ -142,8 +228,8 @@ public sealed class SettingsScreenViewModel : ObservableObject
         get => _activeTab;
         set
         {
-            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab or DriveTab ? value : ModelTab;
-            if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
+            var requested = value is RagTab or KeysTab or FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab or MailsTab or DriveTab ? value : ModelTab;
+            if (_mode.IsNovice && requested is RagTab or LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
             var wasMails = IsMailsTab;
@@ -151,8 +237,11 @@ public sealed class SettingsScreenViewModel : ObservableObject
             if (SetProperty(ref _activeTab, requested))
             {
                 OnPropertiesChanged(
-                    nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
+                    nameof(IsModelTab), nameof(IsRagTab), nameof(IsKeysTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
                     nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab), nameof(IsMailsTab), nameof(IsDriveTab));
+                // The classeur selects a tab through ActiveTab itself, not through its command.
+                if (IsFoldersTab)
+                    TeamFolders.Refresh();
 
                 // The e-mail tab asks the engine about its accounts on arrival, and stops what it
                 // was running when it is left: a connection test never outlives its tab (STUDIO-69).
@@ -172,6 +261,12 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>True while the AI-model tab shows.</summary>
     public bool IsModelTab => _activeTab == ModelTab;
+
+    /// <summary>True while the expert RAG-model tab shows.</summary>
+    public bool IsRagTab => _activeTab == RagTab;
+
+    /// <summary>True while the API-keys tab shows.</summary>
+    public bool IsKeysTab => _activeTab == KeysTab;
 
     /// <summary>True while the allowed-folders tab shows.</summary>
     public bool IsFoldersTab => _activeTab == FoldersTab;
@@ -199,6 +294,12 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>Shows the model tab.</summary>
     public RelayCommand ShowModelCommand { get; }
+
+    /// <summary>Shows the RAG-model tab.</summary>
+    public RelayCommand ShowRagCommand { get; }
+
+    /// <summary>Shows the API-keys tab.</summary>
+    public RelayCommand ShowKeysCommand { get; }
 
     /// <summary>Shows the folders tab.</summary>
     public RelayCommand ShowFoldersCommand { get; }
@@ -253,7 +354,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
         Config.Email.IsExpert = _mode.IsExpert;
         Config.Drive.IsExpert = _mode.IsExpert;
-        if (_mode.IsNovice && (IsLimitsTab || IsJsonTab || IsMcpTab))
+        if (_mode.IsNovice && (IsRagTab || IsLimitsTab || IsJsonTab || IsMcpTab))
             ActiveTab = ModelTab;
     }
 }

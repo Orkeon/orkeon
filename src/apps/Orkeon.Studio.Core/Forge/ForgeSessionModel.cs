@@ -133,8 +133,12 @@ public sealed record ForgeVerdictView(
 /// One line of the ✔/✘ checklist: a criterion's statement, whether it held — null when the
 /// judge was unavailable and honesty demands "judge for yourself" — and the finding's
 /// wording when it did not.
+/// <para>
+/// <see cref="IsRemark"/> sets a finding the engine does not block on (major, minor) apart from
+/// a failure: the criterion carries a remark, drawn amber, never the red of a blocking finding.
+/// </para>
 /// </summary>
-public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? Detail);
+public sealed record ForgeChecklistItem(string Statement, bool? Passed, string? Detail, bool IsRemark = false);
 
 /// <summary>What a promotion produced.</summary>
 public sealed record ForgePromotion(string Path, string Launcher, string? Install);
@@ -280,6 +284,16 @@ public sealed class ForgeSessionModel
     /// settles the list, and again when a new session starts.
     /// </summary>
     public IReadOnlyList<ForgeFolder> HeldFolders { get; private set; } = [];
+
+    /// <summary>
+    /// Whether the engine waits on the fill step (STUDIO-57): a <c>brief.ready</c> named held
+    /// folders, and no <c>folders.filled</c> settled them yet — the engine designs nothing
+    /// until then, so that the plan is made for the files the user put there.
+    /// </summary>
+    public bool FillPending { get; private set; }
+
+    /// <summary>Clears the fill wait once the client sent its <c>folders.filled</c>.</summary>
+    public void AcknowledgeFill() => FillPending = false;
 
     /// <summary>
     /// The confirmed folders, as the brief carries them (<c>brief.ready</c>): the list every
@@ -459,6 +473,7 @@ public sealed class ForgeSessionModel
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
                 HeldFolders = [];
+                FillPending = false;
                 FoldersConfirmed = false;
                 ProposedFoldersAreDefaults = false;
                 ReferenceUseCaseId = ReadReferenceId(orkeonEvent);
@@ -473,6 +488,7 @@ public sealed class ForgeSessionModel
                 if (ForgeMilestones.FromStage(Stage) is { } milestone)
                     Milestone = milestone;
                 _decisionOptions.Clear();
+                FillPending = false;
                 break;
 
             // A closed question is the assistant taking its turn: it must reach the
@@ -493,7 +509,12 @@ public sealed class ForgeSessionModel
             case ForgeEventKinds.BriefReady:
                 ReadBrief(orkeonEvent);
                 HeldFolders = ReadFolders(orkeonEvent.Root, "heldFolders");
+                FillPending = HeldFolders.Count > 0;
                 FoldersPending = false;
+                break;
+
+            case ForgeEventKinds.FoldersFilled:
+                FillPending = false;
                 break;
 
             case ForgeEventKinds.BlueprintReady:
@@ -576,6 +597,7 @@ public sealed class ForgeSessionModel
                 FinishedStatus = orkeonEvent.GetString("status");
                 _decisionOptions.Clear();
                 FoldersPending = false;
+                FillPending = false;
                 // Ready is the engine's ordinary stop — no runner, no stage.entered — and
                 // for the user it IS the Adopt milestone: the crew waits to be taken.
                 if (string.Equals(FinishedStatus, "ready", StringComparison.Ordinal))
@@ -663,7 +685,7 @@ public sealed class ForgeSessionModel
             var orphaned = string.IsNullOrWhiteSpace(finding.Acceptance)
                 || !_criteria.Any(c => string.Equals(c.Id, finding.Acceptance, StringComparison.OrdinalIgnoreCase));
             if (orphaned)
-                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence));
+                items.Add(new ForgeChecklistItem(finding.Statement, false, finding.Evidence, IsRemark: !finding.IsBlocking));
         }
 
         foreach (var criterion in _criteria)
@@ -696,7 +718,9 @@ public sealed class ForgeSessionModel
         var detail = finding.Evidence is { Length: > 0 } evidence
             ? $"{finding.Statement} — {evidence}"
             : finding.Statement;
-        return new ForgeChecklistItem(criterion.Statement, false, detail);
+        // Only a blocking finding fails the criterion, the engine's own rule for « passing »;
+        // a major or minor one is a remark on it.
+        return new ForgeChecklistItem(criterion.Statement, false, detail, IsRemark: !finding.IsBlocking);
     }
 
     /// <summary>The <c>id</c> of the event's <c>reference</c> object; null when there is none.</summary>

@@ -12,6 +12,7 @@
         <ResourceDictionary Source="/Themes/Tokens.Light.xaml" />
         <ResourceDictionary Source="/Themes/Icons.xaml" />
         <ResourceDictionary Source="/Themes/Studio.xaml" />
+        <ResourceDictionary Source="/Themes/Components.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />

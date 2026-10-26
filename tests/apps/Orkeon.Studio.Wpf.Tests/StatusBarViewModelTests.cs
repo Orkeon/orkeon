@@ -71,6 +71,23 @@ public sealed class StatusBarViewModelTests
             Estimated: false, TokensRemaining: tokensRemaining);
 
     [Fact]
+    public void A_wait_point_with_the_engine_paused_keeps_the_assistant_group_on_the_bar()
+    {
+        var card = new ComposeProgressViewModel();
+        var bar = new StatusBarViewModel(new StatusBarSources { Atelier = card, Mode = Expert() });
+
+        card.Update(Composing(engineRunning: false) with { WaitPhrase = "Waiting for you: choose a folder" });
+
+        Assert.True(bar.Atelier.IsActive);
+        Assert.True(bar.Atelier.IsWaiting);
+        Assert.Equal("Waiting for you: choose a folder", bar.Atelier.Stage);
+
+        card.Update(Composing(engineRunning: false));
+
+        Assert.False(bar.Atelier.IsActive);
+    }
+
+    [Fact]
     public void Nothing_runs_so_the_bar_holds_no_group()
     {
         var (launch, _) = Launcher();
@@ -496,7 +513,7 @@ public sealed class StatusBarViewModelTests
         card.Update(Composing(waitingOnUser: true));
 
         Assert.True(bar.Atelier.IsWaiting);
-        Assert.Equal("I am waiting for your answer.", bar.Atelier.Stage);
+        Assert.Equal("Waiting for you", bar.Atelier.Stage);
 
         card.Update(Composing(engineRunning: false));
 
@@ -523,7 +540,7 @@ public sealed class StatusBarViewModelTests
         Assert.False(bar.Atelier.ShowsBudgetLeft);
     }
 
-    /// <summary>D-04: a click on a group opens its activity's screen; the Test screen is the expert's.</summary>
+    /// <summary>D-04: a click on a group opens its activity's screen, in either mode since the Launch merge.</summary>
     [Fact]
     public void A_click_on_a_group_asks_for_the_screen_of_its_activity()
     {
@@ -538,14 +555,10 @@ public sealed class StatusBarViewModelTests
 
         Assert.Equal([StatusBarActivity.Launch, StatusBarActivity.Test, StatusBarActivity.Atelier], asked);
 
-        var requeried = false;
-        bar.Test.OpenCommand.CanExecuteChanged += (_, _) => requeried = true;
         mode.SetNoviceCommand.Execute(null);
 
-        // The novice has no Test screen to land on: the group stays on the bar, and says so by
-        // not answering the click rather than by a gesture that goes nowhere.
-        Assert.True(requeried);
-        Assert.False(bar.Test.OpenCommand.CanExecute(null));
+        // A trial is the Launch screen in trial mode, which the novice reaches too.
+        Assert.True(bar.Test.OpenCommand.CanExecute(null));
         Assert.True(bar.Launch.OpenCommand.CanExecute(null));
         Assert.True(bar.Atelier.OpenCommand.CanExecute(null));
     }

@@ -282,6 +282,29 @@ public class ForgeSessionModelTests
         Assert.True(checklist[1].Passed);
     }
 
+    /// <summary>
+    /// Lot 3: a finding the engine does not block on (major, minor) is a remark, not a
+    /// failure — the screen marks it amber, never with the red of a criterion that failed.
+    /// </summary>
+    [Fact]
+    public void A_finding_that_blocks_nothing_is_a_remark_and_a_blocking_one_is_a_failure()
+    {
+        var model = FullCycle();
+
+        var remarked = model.BuildChecklist();
+
+        Assert.True(remarked[0].IsRemark);
+        Assert.False(remarked[1].IsRemark);
+
+        model.Feed(Event(
+            """{"v":2,"seq":21,"ts":"t","kind":"verdict.ready","score":0.4,"passing":false,"findings":[{"id":"F1","severity":"blocking","acceptance":"A1","statement":"Les sources ne sont pas citées"}],"suggestions":[],"judge":"llm"}"""));
+
+        var blocked = model.BuildChecklist();
+
+        Assert.False(blocked[0].Passed);
+        Assert.False(blocked[0].IsRemark);
+    }
+
     [Fact]
     public void A_deterministic_verdict_says_judge_for_yourself_instead_of_a_fake_check()
     {

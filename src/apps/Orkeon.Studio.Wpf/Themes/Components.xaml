@@ -1,0 +1,419 @@
+<!-- Orkeon Studio — the shared components of the refonte (2026-10): Alert (R7), Badge (R8),
+     PropertyRow (R6), PageHeader (R3). Their code is in Controls/Components.cs; ActionBar (R5)
+     draws itself. Merged after Studio.xaml, whose fonts and button styles it uses.
+     Every brush is DynamicResource so the theme can be swapped at runtime. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+                    xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
+                    xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
+
+  <!-- A converter used INSIDE a theme template is declared by the theme: the theme cannot
+       reach the converters App.xaml declares (DesignTokenConformityTests, STUDIO-21). -->
+  <views:StringPresentToVisibilityConverter x:Key="AlertDetailsVisibility"/>
+  <BooleanToVisibilityConverter x:Key="AlertBoolVisibility"/>
+
+  <!-- ══ Alert: icon · message (+ content, + folded technical details) · actions ══ -->
+  <Style TargetType="{x:Type controls:Alert}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Background" Value="{DynamicResource InfoWeakBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Tag" Value="info"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:Alert}">
+          <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="1" CornerRadius="10" Padding="14,12" SnapsToDevicePixels="True">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <controls:LucideIcon x:Name="icon" Kind="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Size="16"
+                                   Foreground="{TemplateBinding BorderBrush}" VerticalAlignment="Top" Margin="0,1,10,0"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{TemplateBinding Message}" TextWrapping="Wrap" LineHeight="19"
+                           Foreground="{TemplateBinding Foreground}"/>
+                <ContentPresenter Margin="0,6,0,0" x:Name="body"/>
+                <StackPanel x:Name="details" Margin="0,6,0,0"
+                            Visibility="{Binding Details, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource AlertDetailsVisibility}}">
+                  <ToggleButton x:Name="detailsToggle" HorizontalAlignment="Left" Cursor="Hand" Focusable="True"
+                                Foreground="{DynamicResource InkMutedBrush}">
+                    <ToggleButton.Template>
+                      <ControlTemplate TargetType="ToggleButton">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                          <controls:LucideIcon x:Name="chev" Kind="chevron-down" Size="14" Foreground="{TemplateBinding Foreground}"
+                                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}"
+                                     Text="{Binding [Studio.Common.TechnicalDetails], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="chev" Property="Kind" Value="chevron-up"/>
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </ToggleButton.Template>
+                  </ToggleButton>
+                  <Border Style="{StaticResource Well}" Margin="0,6,0,0"
+                          Visibility="{Binding IsChecked, ElementName=detailsToggle, Converter={StaticResource AlertBoolVisibility}}">
+                    <TextBox Text="{Binding Details, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                             Style="{StaticResource InputMultilineMono}" IsReadOnly="True" BorderThickness="0"
+                             Background="Transparent" MinLines="1"/>
+                  </Border>
+                </StackPanel>
+              </StackPanel>
+              <ContentPresenter Grid.Column="2" Content="{TemplateBinding Actions}" VerticalAlignment="Center"
+                                Margin="12,0,0,0"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="body" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="IsBanner" Value="True">
+              <Setter TargetName="bd" Property="Padding" Value="16,12"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tone" Value="Success">
+        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="Tag" Value="circle-check"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Warning">
+        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+        <Setter Property="Tag" Value="triangle-alert"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Danger">
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="Tag" Value="circle-x"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Info">
+        <Setter Property="Tag" Value="info"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Neutral">
+        <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+        <Setter Property="Tag" Value="info"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ══ Badge: a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase). ══ -->
+  <Style TargetType="{x:Type controls:Badge}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Height" Value="22"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:Badge}">
+          <Border Background="{TemplateBinding Background}" CornerRadius="11" Padding="10,0" SnapsToDevicePixels="True">
+            <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="Tone" Value="Info">
+        <Setter Property="Background" Value="{DynamicResource InfoWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InfoBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Success">
+        <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Warning">
+        <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Danger">
+        <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!-- ══ PropertyRow: label (104 px, tertiary ink) · value · 28 px secondary button ══ -->
+  <Style TargetType="{x:Type controls:PropertyRow}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:PropertyRow}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="104"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{TemplateBinding Label}" Foreground="{DynamicResource InkFaintBrush}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+            <ContentPresenter Grid.Column="2" Content="{TemplateBinding Action}" VerticalAlignment="Center"
+                              Margin="12,0,0,0"/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ══ PageHeader: title + one-line subtitle on the left, page actions on the right ══ -->
+  <Style TargetType="{x:Type controls:PageHeader}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Margin" Value="0,0,0,20"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:PageHeader}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource H1}" TextWrapping="Wrap"/>
+              <TextBlock Text="{TemplateBinding Subtitle}" Style="{StaticResource SubTitle}" Margin="0,4,0,0"
+                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                         ToolTip="{TemplateBinding Subtitle}"/>
+            </StackPanel>
+            <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The row of buttons of a page header, an alert or a form footer: 8 px apart. -->
+  <Style x:Key="ActionRow" TargetType="StackPanel">
+    <Setter Property="Orientation" Value="Horizontal"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <!-- ══ StepTabs (R14): the vertical classeur of a step with sections. 232 px of tabs on the
+       left, the pane on the right; the active tab takes the pane's background, its border runs
+       into the pane's (it covers the pane's left border by 1 px) and only its left corners are
+       rounded, so the pane loses its top-left radius. No ring, no shadow on the pane.
+       Grouped (lot 11): the groups as a horizontal bar above — capitals, the count of sections in
+       mono, the amber dot of a group waiting; the active group in the accent over a 2 px rule.
+       The column then lists the active group's tabs only (StepTab.IsOutsideActiveGroup). ══ -->
+  <Style TargetType="{x:Type controls:StepTabs}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:StepTabs}">
+          <DockPanel>
+          <Border x:Name="GroupBar" DockPanel.Dock="Top" Margin="0,0,0,16" BorderThickness="0,0,0,1"
+                  BorderBrush="{DynamicResource LineBrush}" Visibility="Collapsed">
+            <ItemsControl x:Name="PART_GroupBar" Focusable="False" KeyboardNavigation.TabNavigation="Once"
+                          KeyboardNavigation.DirectionalNavigation="None"
+                          ItemsSource="{Binding Groups, RelativeSource={RelativeSource TemplatedParent}}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type controls:StepTabGroup}">
+                  <Button x:Name="GroupButton" Margin="0,0,24,-1" Height="40" Cursor="Hand"
+                          FocusVisualStyle="{StaticResource FocusRing}"
+                          Command="{Binding SelectGroupCommand, RelativeSource={RelativeSource AncestorType=controls:StepTabs}}"
+                          CommandParameter="{Binding}">
+                    <Button.Template>
+                      <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                          <ContentPresenter VerticalAlignment="Center"/>
+                          <Rectangle x:Name="Underline" Height="2" VerticalAlignment="Bottom" Fill="{DynamicResource AccentBrush}"
+                                     Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                          <DataTrigger Binding="{Binding IsActive}" Value="True">
+                            <Setter TargetName="Underline" Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Button.Template>
+                    <StackPanel x:Name="GroupLine" Orientation="Horizontal" TextElement.Foreground="{DynamicResource InkMutedBrush}">
+                      <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="7,0,0,0" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Count}"/>
+                      <Ellipse x:Name="GroupDot" Width="7" Height="7" Margin="6,0,0,0" VerticalAlignment="Center"
+                               Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+                    </StackPanel>
+                  </Button>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                      <Setter TargetName="GroupLine" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                    </DataTrigger>
+                    <Trigger SourceName="GroupButton" Property="IsMouseOver" Value="True">
+                      <Setter TargetName="GroupLine" Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                    </Trigger>
+                    <DataTrigger Binding="{Binding HasDot}" Value="True">
+                      <Setter TargetName="GroupDot" Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                    <!-- A group whose sections all hide (the expert-only ones in Novice) leaves the bar. -->
+                    <DataTrigger Binding="{Binding Count}" Value="0">
+                      <Setter TargetName="GroupButton" Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="232"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <!-- Above the pane, so the active tab's 1 px overlap hides the pane's border. -->
+            <StackPanel Grid.Column="0" Panel.ZIndex="1">
+              <StackPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1"/>
+              <!-- Empty in Expert; the Novice help card « What this step does » otherwise. -->
+              <ContentPresenter Content="{TemplateBinding SideContent}" Margin="0,10,16,0"/>
+            </StackPanel>
+            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1" CornerRadius="0,14,14,14" Padding="20,18" KeyboardNavigation.TabIndex="2">
+              <ContentPresenter ContentSource="SelectedContent"/>
+            </Border>
+          </Grid>
+          </DockPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="HasGroups" Value="True">
+              <Setter TargetName="GroupBar" Property="Visibility" Value="Visible"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ══ StepTab: state mark · title · 12 px state subtitle, 44 px at the least. Inactive: the
+       surface-2 background, a faint border, secondary ink, 12 px short of the pane; hovered, it
+       turns white, takes the line border and the xs shadow and slides 3 px toward the pane in
+       150 ms. The keyboard focus draws the accent ring. ══ -->
+  <Style TargetType="{x:Type controls:StepTab}">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:StepTab}">
+          <!-- The grouped variant (lot 11): the group's title is in the classeur's bar, not over the tab. -->
+          <StackPanel x:Name="TabRoot">
+          <Border x:Name="Chrome" MinHeight="44" Margin="0,0,12,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
+                  Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="1" SnapsToDevicePixels="True">
+            <Border.RenderTransform>
+              <TranslateTransform x:Name="Slide"/>
+            </Border.RenderTransform>
+            <DockPanel>
+              <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top">
+                <Ellipse x:Name="EmptyMark" Stroke="{DynamicResource LineStrongBrush}" StrokeThickness="1.5"/>
+                <Ellipse x:Name="ExpectedMark" Width="10" Height="10" Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+                <controls:LucideIcon x:Name="DoneMark" Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}"
+                                     Visibility="Collapsed"/>
+                <Ellipse x:Name="VerifiedMark" Width="10" Height="10" Fill="{DynamicResource SuccessBrush}" Visibility="Collapsed"/>
+                <controls:LucideIcon x:Name="WorkingMark" Kind="loader-circle" Size="16" Foreground="{DynamicResource AccentBrush}"
+                                     RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
+                  <controls:LucideIcon.RenderTransform>
+                    <RotateTransform/>
+                  </controls:LucideIcon.RenderTransform>
+                  <controls:LucideIcon.Triggers>
+                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                      <BeginStoryboard>
+                        <Storyboard RepeatBehavior="Forever">
+                          <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                           From="0" To="360" Duration="0:0:1"/>
+                        </Storyboard>
+                      </BeginStoryboard>
+                    </EventTrigger>
+                  </controls:LucideIcon.Triggers>
+                </controls:LucideIcon>
+              </Grid>
+              <StackPanel VerticalAlignment="Center">
+                <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="13.5"
+                                  TextElement.FontWeight="SemiBold" TextElement.Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock x:Name="Sub" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource InkFaintBrush}"
+                           Text="{TemplateBinding Subtitle}"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsOutsideActiveGroup" Value="True">
+              <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="State" Value="Warning">
+              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+            </Trigger>
+            <Trigger Property="State" Value="Verified">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="VerifiedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Done">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="DoneMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Working">
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="WorkingMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="State" Value="Expected">
+              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsMouseOver" Value="True"/>
+                <Condition Property="IsSelected" Value="False"/>
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+              <Setter TargetName="Chrome" Property="Effect" Value="{DynamicResource ShadowXs}"/>
+              <MultiTrigger.EnterActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="3" Duration="0:0:0.15"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </MultiTrigger.EnterActions>
+              <MultiTrigger.ExitActions>
+                <BeginStoryboard>
+                  <Storyboard>
+                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.15"/>
+                  </Storyboard>
+                </BeginStoryboard>
+              </MultiTrigger.ExitActions>
+            </MultiTrigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter Property="Panel.ZIndex" Value="1"/>
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+              <Setter TargetName="Chrome" Property="BorderThickness" Value="1,1,0,1"/>
+              <Setter TargetName="Chrome" Property="Margin" Value="0,0,-1,6"/>
+              <Setter TargetName="Title" Property="TextElement.Foreground" Value="{DynamicResource InkBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

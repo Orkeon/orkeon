@@ -64,7 +64,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="11" Foreground="{DynamicResource InkBrush}"
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}"
                                    VerticalAlignment="Center" Text="{Binding Name}"/>
                         <TextBlock Style="{StaticResource Hint}" Margin="8,0,0,0" VerticalAlignment="Center"
                                    TextWrapping="Wrap" Text="{Binding Text}"/>

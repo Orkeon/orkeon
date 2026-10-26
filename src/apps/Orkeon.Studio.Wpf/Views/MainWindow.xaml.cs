@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private const double SplashProgressWidth = 220;
 
     private bool _splashDismissed;
+    private bool _returningToSettings;
 
     public MainWindow()
     {
@@ -41,20 +42,50 @@ public partial class MainWindow : Window
         shell.CreateTeam.OpenTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.AllowedFolders.OpenSettingsRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Launch.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Teams.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
         shell.Launch.ChooseTeamRequested += (_, _) => NavTeams.IsChecked = true;
         shell.Launch.CreateTeamRequested += (_, _) => NavCreate.IsChecked = true;
-        shell.Test.Launcher.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Run.Trial.OpenAllowedFoldersRequested += (_, _) => NavSettings.IsChecked = true;
+        shell.Run.Trial.ChooseTeamRequested += (_, _) => NavTeams.IsChecked = true;
+        shell.Run.Trial.CreateTeamRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.CreateRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Teams.ImportRequested += (_, _) => NavImport.IsChecked = true;
-        shell.TestRequested += (_, _) => NavTest.IsChecked = true;
+        // The refusals banner's « Save the settings »: saved in place when the file can be; else the
+        // settings screen comes forward, where the reason it cannot be is shown.
+        shell.Teams.SaveSettingsRequested += (_, _) =>
+        {
+            var save = shell.Settings.Config.SaveCommand;
+            if (save.CanExecute(null))
+                save.Execute(null);
+            else
+                NavSettings.IsChecked = true;
+        };
+        shell.TestRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
         // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.
-        shell.StatusBar.OpenRequested += (_, e) => NavFor(e.Activity).IsChecked = true;
+        shell.StatusBar.OpenRequested += (_, e) =>
+        {
+            // The trial's group opens the Launch screen in trial mode, the run.s in real mode.
+            if (e.Activity == ViewModels.Shell.StatusBarActivity.Test)
+                shell.Run.IsTrial = true;
+            else if (e.Activity == ViewModels.Shell.StatusBarActivity.Launch)
+                shell.Run.IsTrial = false;
+            // Refonte lot 12: the launcher's group lands on its « Run » tab.
+            if (e.Activity is ViewModels.Shell.StatusBarActivity.Test or ViewModels.Shell.StatusBarActivity.Launch)
+                shell.Run.Active.ActiveTab = ViewModels.Launch.LaunchTabViewModel.RunTab;
+            NavFor(e.Activity).IsChecked = true;
+            // R13: the assistant's group names a wait point — the click lands on it.
+            if (e.Activity == ViewModels.Shell.StatusBarActivity.Atelier
+                && shell.CreateTeam.GoToWaitPointCommand.CanExecute(null))
+            {
+                shell.CreateTeam.GoToWaitPointCommand.Execute(null);
+            }
+        };
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
-        NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
+        NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Run.RefreshTeams(); };
 
         // Escape closes the language menu; StaysOpen=False already answers the click
         // elsewhere. Handled on the window because the popup is not in its visual tree.
@@ -85,8 +116,34 @@ public partial class MainWindow : Window
         // on this thread, which closes its standard input before returning - the verb reads that
         // as Studio leaving and stops by itself, whether or not the launcher, which kills it on a
         // pool thread, gets to run before the process ends.
-        NavSettings.Checked += (_, _) => shell.Settings.Enter();
-        NavSettings.Unchecked += (_, _) => shell.Settings.Leave();
+        // Lot 5: unsaved settings keep the screen until the user saves or drops them. The entry
+        // chosen is already checked when this one unchecks; the screen comes back, asking, and
+        // that entry is checked again once the question is answered.
+        NavSettings.Checked += (_, _) =>
+        {
+            if (!_returningToSettings)
+                shell.Settings.Enter();
+        };
+        NavSettings.Unchecked += (_, _) =>
+        {
+            if (_returningToSettings)
+                return;
+
+            var target = new[] { NavCreate, NavTeams, NavImport, NavRun, NavHistory, NavDiag }
+                .FirstOrDefault(nav => nav.IsChecked == true);
+            if (target is not null && !shell.Settings.TryLeave(() => target.IsChecked = true))
+            {
+                _returningToSettings = true;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    NavSettings.IsChecked = true;
+                    _returningToSettings = false;
+                });
+                return;
+            }
+
+            shell.Settings.Leave();
+        };
         Closed += (_, _) => shell.Settings.Leave();
 
         // The conversation follows the screen it is mounted on: what a free question with
@@ -100,24 +157,12 @@ public partial class MainWindow : Window
             if (e.PropertyName == nameof(ViewModels.Teams.CreateTeamViewModel.Step) && NavCreate.IsChecked == true)
                 shell.Chat.SetContext(WizardContext(shell));
         };
-
-        shell.Mode.PropertyChanged += (_, e) =>
-        {
-            // The Tester entry is expert-only: a switch back to novice while it shows would
-            // leave a blank content area behind the hidden radio.
-            if (e.PropertyName == nameof(ViewModels.Shell.UiModeViewModel.IsNovice)
-                && shell.Mode.IsNovice && NavTest.IsChecked == true)
-            {
-                NavRun.IsChecked = true;
-            }
-        };
     }
 
     /// <summary>The sidebar entry of the screen an activity of the status bar runs on.</summary>
     private System.Windows.Controls.RadioButton NavFor(ViewModels.Shell.StatusBarActivity activity) =>
         activity switch
         {
-            ViewModels.Shell.StatusBarActivity.Test => NavTest,
             ViewModels.Shell.StatusBarActivity.Atelier => NavCreate,
             _ => NavRun,
         };

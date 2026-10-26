@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows.Input;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -47,6 +48,12 @@ public sealed class ChatThreadViewModel : ObservableObject
     private int _unreadCount;
     private int _tick;
     private string _draft = "";
+    private ChatPendingAction? _pendingAction;
+    private ChatQuestion? _ownerQuestion;
+    private ChatQuestion? _askedQuestion;
+    private ChatTurnViewModel? _askedTurn;
+    private ChatQuestion? _shownQuestion;
+    private bool _busyBeforeAction;
     private AssistantContext _context = AssistantContext.WizardStep1;
 
     /// <summary>Builds the thread over its seams; both default to the inline implementations.</summary>
@@ -63,6 +70,17 @@ public sealed class ChatThreadViewModel : ObservableObject
         ToggleRecapCommand = new RelayCommand(() => IsRecapExpanded = !_isRecapExpanded);
         StopCommand = new RelayCommand(Stop, () => _isBusy);
         SendCommand = new RelayCommand(() => Send(_draft), () => _draft.Trim().Length > 0 && !_isBusy);
+        // R13: while the screen waits on a card, Enter in the composer no longer sends — a
+        // question then goes with Ctrl+Enter or the button, never by reflex.
+        PendingActionCommand = new RelayCommand(
+            () => _pendingAction?.Action.Execute(null), () => _pendingAction?.Action.CanExecute(null) == true);
+        PendingRevealCommand = new RelayCommand(() => _pendingAction?.Reveal.Execute(null), () => _pendingAction is not null);
+        QuestionRevealCommand = new RelayCommand(() => Question?.Reveal?.Execute(null), () => Question?.Reveal is not null);
+        EnterCommand = new RelayCommand(() =>
+        {
+            if (EnterSends && SendCommand.CanExecute(null))
+                Send(_draft);
+        });
         // Not a predetermined answer to a predetermined question: « I don't know — do your
         // best » answers ANY question the model can ask, and it is the only way out for
         // someone stuck on one.
@@ -72,6 +90,12 @@ public sealed class ChatThreadViewModel : ObservableObject
 
     /// <summary>Raised when Stop is pressed — the owner cancels whatever it started.</summary>
     public event EventHandler? StopRequested;
+
+    /// <summary>Raised when the keyboard focus must go into « Your question » (R13: the answer goes to the assistant).</summary>
+    public event EventHandler? FocusInputRequested;
+
+    /// <summary>Raised when the keyboard focus must go to the recommended answer of the question on screen (R15).</summary>
+    public event EventHandler? FocusRepliesRequested;
 
     // ── state ──────────────────────────────────────────────────────────────
 
@@ -137,7 +161,32 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// </para>
     /// </summary>
     public bool IsAsking =>
-        _isStarted && !_isBusy && !_isDone && Turns.Count > 0 && Turns[^1].IsBot;
+        _isStarted && !_isBusy && !_isDone && _pendingAction is null && Turns.Count > 0 && Turns[^1].IsBot;
+
+    /// <summary>
+    /// What the screen waits on, when it is a card of the main column (R13): the bubble that
+    /// names the action, its button and its link. Null while nothing waits on a card.
+    /// </summary>
+    public ChatPendingAction? PendingAction => _pendingAction;
+
+    /// <summary>Whether the bubble of a pending action shows.</summary>
+    public bool HasPendingAction => _pendingAction is not null;
+
+    /// <summary>
+    /// The question on screen (R15), with its answers as buttons: the owner's own — an
+    /// arbitration, the fill step — else the engine's standing question, its listed options
+    /// read from the bubble, then « Skip this question ». Null when nothing is asked.
+    /// </summary>
+    public ChatQuestion? Question => _ownerQuestion ?? AskedQuestion();
+
+    /// <summary>Whether a question's answers show under the bubbles.</summary>
+    public bool HasQuestion => Question is not null;
+
+    /// <summary>The question's link: the work its answer leads to, on screen (R13, R15).</summary>
+    public RelayCommand QuestionRevealCommand { get; }
+
+    /// <summary>Whether Enter in the composer sends: not while a card waits on the user (R13).</summary>
+    public bool EnterSends => _pendingAction is null;
 
     /// <summary>How many assistant turns arrived while the thread was closed.</summary>
     public int UnreadCount
@@ -185,7 +234,7 @@ public sealed class ChatThreadViewModel : ObservableObject
     public string Primer => _answers.Primer(_context);
 
     /// <summary>What the input suggests — answering a standing question, else the invitation.</summary>
-    public string Placeholder => _strings[
+    public string Placeholder => _pendingAction?.Placeholder ?? _strings[
         IsAsking ? StudioStringKeys.ChatPlaceholderAnswer : StudioStringKeys.ChatPlaceholder];
 
     /// <summary>The reply label while a question stands, the send label otherwise.</summary>
@@ -210,6 +259,10 @@ public sealed class ChatThreadViewModel : ObservableObject
                     ? Format(StudioStringKeys.ChatProfileSuffixPattern, beat, profile)
                     : beat;
             }
+
+            // R13: a card waits on the user — the line says it, and nothing claims to work.
+            if (_pendingAction is not null)
+                return _strings[StudioStringKeys.ChatStatusWaitingCard];
 
             // No «n of 3» any more: only the model knows how many questions it will ask.
             if (IsAsking)
@@ -241,7 +294,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         _strings[IsAsking ? StudioStringKeys.ChatReply : StudioStringKeys.ChatSeeConversation];
 
     /// <summary>Whether the strip belongs on screen: work in flight, or an unanswered question.</summary>
-    public bool IsLive => _isStarted && !_isDone && !_isOpen;
+    public bool IsLive => _isStarted && !_isDone && !_isOpen && !IsAsking;
 
     /// <summary>The pinned brief card — what the user described, verbatim.</summary>
     public string Brief =>
@@ -288,6 +341,15 @@ public sealed class ChatThreadViewModel : ObservableObject
     /// <summary>Sends what is in the input.</summary>
     public RelayCommand SendCommand { get; }
 
+    /// <summary>The pending bubble's button: the card's own command, run as is (R13).</summary>
+    public RelayCommand PendingActionCommand { get; }
+
+    /// <summary>The pending bubble's link: the card on screen, focused (R13).</summary>
+    public RelayCommand PendingRevealCommand { get; }
+
+    /// <summary>Enter in the composer: sends, unless a card waits on the user (R13).</summary>
+    public RelayCommand EnterCommand { get; }
+
     /// <summary>Answers the question with «do your best» and moves on.</summary>
     public RelayCommand SkipCommand { get; }
 
@@ -331,6 +393,11 @@ public sealed class ChatThreadViewModel : ObservableObject
         foreach (var turn in Turns)
             turn.Retranslate();
 
+        // The standing question is read again in the new language, as the same question: the
+        // panel does not open, nor the focus move, for a language switch.
+        _askedQuestion = null;
+        _askedTurn = null;
+        _shownQuestion = Question;
         RaiseDerived();
     }
 
@@ -382,7 +449,143 @@ public sealed class ChatThreadViewModel : ObservableObject
         IsDone = true;
         Push(new ChatTurnViewModel(_strings, isBot: true, "", isClosing: true));
         RaiseDerived();
-        _delay.After(ClosingPause, Close);
+        _delay.After(ClosingPause, CloseAfterBrief);
+    }
+
+    /// <summary>
+    /// The end of the closing pause: the panel closes unless something now waits in it. The
+    /// fill question (STUDIO-57) arrives with the same <c>brief.ready</c> and opens the panel;
+    /// closing it under that question hid the answers the engine waits on.
+    /// </summary>
+    private void CloseAfterBrief()
+    {
+        if (_ownerQuestion is not null || _pendingAction is not null)
+            return;
+
+        Close();
+    }
+
+    /// <summary>
+    /// The screen waits on a card of the main column (R13), or no longer does. While it waits,
+    /// the activity indicator stops — « I am sketching… » never shows while the engine is
+    /// blocked on the user — and the thread holds a bubble naming the action. When the wait
+    /// ends, a thread that was working before goes back to its beats.
+    /// </summary>
+    public void SetPendingAction(ChatPendingAction? action)
+    {
+        if (ReferenceEquals(action, _pendingAction) || (action is not null && action.Equals(_pendingAction)))
+            return;
+
+        var wasPending = _pendingAction is not null;
+        if (!wasPending && action is not null)
+            _busyBeforeAction = _isBusy;
+
+        if (_pendingAction is not null)
+            _pendingAction.Action.CanExecuteChanged -= OnPendingActionCanExecuteChanged;
+        _pendingAction = action;
+        if (action is not null)
+            action.Action.CanExecuteChanged += OnPendingActionCanExecuteChanged;
+        PendingActionCommand.RaiseCanExecuteChanged();
+        PendingRevealCommand.RaiseCanExecuteChanged();
+        if (action is not null)
+        {
+            IsBusy = false;
+        }
+        else if (wasPending && _busyBeforeAction && _isStarted && !_isDone)
+        {
+            _busyBeforeAction = false;
+            IsBusy = true;
+            StartBeats();
+        }
+
+        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(EnterSends));
+        RaiseDerived();
+    }
+
+    private void OnPendingActionCanExecuteChanged(object? sender, EventArgs e) =>
+        PendingActionCommand.RaiseCanExecuteChanged();
+
+    /// <summary>Asks the view for the keyboard focus in « Your question », the panel open (R13).</summary>
+    public void RequestInputFocus()
+    {
+        Open();
+        FocusInputRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The answer goes to the assistant (R13, R15): the panel opens, and the focus goes to the
+    /// recommended answer when the question offers choices, into « Your question » otherwise.
+    /// </summary>
+    public void RequestAnswerFocus()
+    {
+        if (Question is { OffersChoices: true })
+        {
+            Open();
+            FocusRepliesRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        RequestInputFocus();
+    }
+
+    /// <summary>
+    /// The owner asks a question of its own (R15) — an arbitration, the fill step — or no
+    /// longer does. It wins over the engine's standing question. <paramref name="announce"/>
+    /// false re-words the same question (a language switch): the panel and the focus stay.
+    /// </summary>
+    public void SetQuestion(ChatQuestion? question, bool announce = true)
+    {
+        if (ReferenceEquals(question, _ownerQuestion))
+            return;
+
+        _ownerQuestion = question;
+        if (!announce)
+            _shownQuestion = Question;
+        RaiseDerived();
+    }
+
+    /// <summary>
+    /// The engine's standing question, read once per bubble so that its buttons keep their
+    /// identity — and the focus — while the screen re-reads it.
+    /// </summary>
+    private ChatQuestion? AskedQuestion()
+    {
+        if (!IsAsking)
+            return null;
+
+        var turn = Turns[^1];
+        if (ReferenceEquals(turn, _askedTurn) && _askedQuestion is not null)
+            return _askedQuestion;
+
+        var replies = ChatReplyReader.Read(turn.Body)
+            .Select(option => new ChatReply(
+                option.Label, new RelayCommand(() => Send(option.Label)), option.IsRecommended))
+            .ToList();
+        var offersChoices = replies.Count > 0;
+        replies.Add(new ChatReply(_strings[StudioStringKeys.ChatSkip], SkipCommand));
+        _askedTurn = turn;
+        _askedQuestion = new ChatQuestion(null, "", replies) { OffersChoices = offersChoices };
+        return _askedQuestion;
+    }
+
+    /// <summary>
+    /// A new question came on screen (R15): the panel opens — the main column no longer shows
+    /// it — and, when it offers choices, the focus goes to the recommended answer.
+    /// </summary>
+    private void FollowQuestion()
+    {
+        var question = Question;
+        if (ReferenceEquals(question, _shownQuestion))
+            return;
+
+        _shownQuestion = question;
+        if (question is null)
+            return;
+
+        if (!_isOpen)
+            Open();
+        if (question.OffersChoices)
+            FocusRepliesRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Notifies the recap and the brief card that their source moved.</summary>
@@ -424,6 +627,13 @@ public sealed class ChatThreadViewModel : ObservableObject
         IsBusy = false;
         IsOpen = false;
         UnreadCount = 0;
+        _pendingAction = null;
+        _busyBeforeAction = false;
+        _ownerQuestion = null;
+        _askedQuestion = null;
+        _askedTurn = null;
+        _shownQuestion = null;
+        OnPropertiesChanged(nameof(PendingAction), nameof(HasPendingAction), nameof(EnterSends));
         OnPropertyChanged(nameof(IsEmpty));
         RaiseDerived();
     }
@@ -523,9 +733,26 @@ public sealed class ChatThreadViewModel : ObservableObject
     private string Format(string key, params object[] arguments) =>
         _strings.Format(key, arguments);
 
-    private void RaiseDerived() => OnPropertiesChanged(
-        nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
-        nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
-        nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
-        nameof(BriefChips), nameof(Primer));
+    private void RaiseDerived()
+    {
+        OnPropertiesChanged(
+            nameof(IsAsking), nameof(Placeholder), nameof(SendLabel),
+            nameof(Status), nameof(Thinking), nameof(StripTitle), nameof(StripAction),
+            nameof(IsLive), nameof(Facts), nameof(RecapProgress), nameof(Brief),
+            nameof(BriefChips), nameof(Primer), nameof(Question), nameof(HasQuestion));
+        QuestionRevealCommand.RaiseCanExecuteChanged();
+        FollowQuestion();
+    }
 }
+
+/// <summary>
+/// The assistant's bubble while the screen waits on a card of the main column (refonte R13):
+/// what it says, the button that runs the card's own command, the link that brings the card on
+/// screen, and the composer's placeholder meanwhile.
+/// </summary>
+/// <param name="Text">The bubble's sentence, naming the action.</param>
+/// <param name="ActionLabel">The button's label — the card's own (« Confirm the folders »).</param>
+/// <param name="Action">The card's command, run as is.</param>
+/// <param name="Reveal">The link: the card on screen, focused.</param>
+/// <param name="Placeholder">« Confirm the folders to continue, or ask a question ».</param>
+public sealed record ChatPendingAction(string Text, string ActionLabel, ICommand Action, ICommand Reveal, string Placeholder);

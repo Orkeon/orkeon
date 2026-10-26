@@ -31,12 +31,15 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
             case CaptureScreen.Create: Window.NavCreate.IsChecked = true; break;
             case CaptureScreen.Teams: Window.NavTeams.IsChecked = true; break;
             case CaptureScreen.Import: Window.NavImport.IsChecked = true; break;
-            case CaptureScreen.Test: Window.NavTest.IsChecked = true; break;
-            case CaptureScreen.Run: Window.NavRun.IsChecked = true; break;
+            // Since the merge (refonte, lot 4) the trial is the Launch screen in trial mode.
+            case CaptureScreen.Test: shell.Run.IsTrial = true; Window.NavRun.IsChecked = true; break;
+            case CaptureScreen.Run: shell.Run.IsTrial = false; Window.NavRun.IsChecked = true; break;
             case CaptureScreen.History: Window.NavHistory.IsChecked = true; break;
             case CaptureScreen.Diagnostic: Window.NavDiag.IsChecked = true; break;
 
             case CaptureScreen.SettingsModel: ShowSettings(shell.Settings.ShowModelCommand); break;
+            case CaptureScreen.SettingsRag: ShowSettings(shell.Settings.ShowRagCommand); break;
+            case CaptureScreen.SettingsKeys: ShowSettings(shell.Settings.ShowKeysCommand); break;
             case CaptureScreen.SettingsFolders: ShowSettings(shell.Settings.ShowFoldersCommand); break;
             case CaptureScreen.SettingsLimits: ShowSettings(shell.Settings.ShowLimitsCommand); break;
             case CaptureScreen.SettingsJson: ShowSettings(shell.Settings.ShowJsonCommand); break;
@@ -58,8 +61,7 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
         CaptureScreen.Create => Window.CreatePanel,
         CaptureScreen.Teams => Window.TeamsPanel,
         CaptureScreen.Import => Window.ImportPanel,
-        CaptureScreen.Test => Window.TestPanel,
-        CaptureScreen.Run => Window.RunPanel,
+        CaptureScreen.Run or CaptureScreen.Test => Window.RunPanel,
         CaptureScreen.History => Window.HistoryPanel,
         CaptureScreen.Diagnostic => Window.DiagPanel,
         _ => Window.SettingsPanel,
