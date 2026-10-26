@@ -4207,6 +4207,8 @@
   <!-- hrm:L07 end -->
 
   <!-- hrm:L08 begin -->
+  <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Nicht ausgeführt</value></data>
+  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Ausführung beendet</value></data>
   <!-- hrm:L08 end -->
 
   <!-- hrm:L09 begin -->

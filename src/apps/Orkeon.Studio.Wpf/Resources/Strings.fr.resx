@@ -2525,6 +2525,8 @@
   <!-- hrm:L07 end -->
 
   <!-- hrm:L08 begin -->
+  <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Non exécuté</value></data>
+  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Exécution terminée</value></data>
   <!-- hrm:L08 end -->
 
   <!-- hrm:L09 begin -->

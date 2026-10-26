@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
@@ -54,6 +55,30 @@ public partial class LaunchTabView : UserControl
     {
         if (Window.GetWindow(this) is MainWindow window)
             window.NavTeams.IsChecked = true;
+    }
+
+    // ── hrm:L08 — the Run tab ──
+
+    /// <summary>Narrowest an agent card may get (B04, R15), its 8 px gutter included.</summary>
+    private const double AgentCardMinWidth = 180 + 8;
+
+    /// <summary>At most this many agent cards on one row (B04, R15).</summary>
+    private const int AgentCardsPerRow = 4;
+
+    /// <summary>
+    /// The agent cards wrap (B04, R15): as many columns as 180 px cards fit in the width offered,
+    /// four at most, one at least — a five-agent team takes two rows, a narrow pane (the assistant
+    /// open) two cards a row rather than five squeezed ones. Layout only.
+    /// </summary>
+    private void OnAgentCardsSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is not UniformGrid grid || !e.WidthChanged)
+            return;
+
+        var fit = (int)Math.Floor(e.NewSize.Width / AgentCardMinWidth);
+        var columns = Math.Clamp(fit, 1, AgentCardsPerRow);
+        if (grid.Columns != columns)
+            grid.Columns = columns;
     }
 
     /// <summary>The CLI-missing banner's escape hatch: open the Diagnostic screen.</summary>
