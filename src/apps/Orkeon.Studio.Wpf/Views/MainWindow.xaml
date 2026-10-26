@@ -1218,30 +1218,18 @@
                             </Border>
                             <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
                                  label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
-                            <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
-                              <Border.Style>
-                                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                                  <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                            <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                            <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                              <controls:Badge.Style>
+                                <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                   <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                      <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                      <Setter Property="Tone" Value="Info"/>
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
-                              </Border.Style>
-                              <TextBlock Text="{Binding RightsBadge}">
-                                <TextBlock.Style>
-                                  <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </TextBlock.Style>
-                              </TextBlock>
-                            </Border>
+                              </controls:Badge.Style>
+                            </controls:Badge>
                             <StackPanel>
                               <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
                                    rows are told apart here, not by squinting at a truncated path. -->
@@ -1449,30 +1437,18 @@
                               <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. One word in
                                    the pill, the full label as its tooltip (STUDIO-16): the full label ate the
                                    width and the disk path read as «C:\Users\…\orkeon\…». -->
-                              <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
-                                <Border.Style>
-                                  <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                                    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                              <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                              <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                                <controls:Badge.Style>
+                                  <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                     <Style.Triggers>
                                       <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                        <Setter Property="Tone" Value="Info"/>
                                       </DataTrigger>
                                     </Style.Triggers>
                                   </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding RightsBadge}">
-                                  <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                                      <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                        </DataTrigger>
-                                      </Style.Triggers>
-                                    </Style>
-                                  </TextBlock.Style>
-                                </TextBlock>
-                              </Border>
+                                </controls:Badge.Style>
+                              </controls:Badge>
                               <StackPanel>
                                 <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
                                      /output rows are told apart here, not by squinting at a truncated path. -->

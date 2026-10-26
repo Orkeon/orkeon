@@ -1538,13 +1538,13 @@
     <value>La session n'a pas pu être supprimée — un de ses fichiers est peut-être ouvert.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
-    <value>lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRw" xml:space="preserve">
-    <value>écriture</value>
+    <value>Lecture et écriture</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
-    <value>écriture, sans suppression</value>
+    <value>Lecture et écriture, sans suppression</value>
   </data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
