@@ -64,7 +64,8 @@
       </Setter>
     </Style>
   </UserControl.Resources>
-  <StackPanel>
+  <!-- A02: the last card's 16 px and this 16 px end the tab 32 px above the end of the scroll (R02) -->
+  <StackPanel Margin="0,0,0,16">
 
     <!-- ══ the head: what the tab is, the file it writes, the default account ══ -->
     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
