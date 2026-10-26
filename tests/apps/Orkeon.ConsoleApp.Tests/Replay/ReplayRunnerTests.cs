@@ -24,6 +24,8 @@ public sealed class ReplayRunnerTests : IDisposable
     private readonly ReplayConsoleAdapter _replay;
     private readonly StubCommand _ok = new("ok", CommandResult.Continue("fine"));
     private readonly StubCommand _broken = new("broken", CommandResult.Fail("Error: the script threw"));
+    private readonly StubCommand _cancelled = new("stopped", new OperationCanceledException());
+    private readonly StubCommand _thrown = new("crash", new InvalidOperationException("the disk is gone"));
 
     public ReplayRunnerTests() => _replay = new ReplayConsoleAdapter(_inner, _gate);
 
@@ -36,7 +38,7 @@ public sealed class ReplayRunnerTests : IDisposable
             .BuildServiceProvider();
         return new ReplayTestRunner(
             new DefaultCommandRegistry(new HelpCommand(), new ExitCommand(), new ClearCommand()),
-            new StubCommandRegistry(_ok, _broken),
+            new StubCommandRegistry(_ok, _broken, _cancelled, _thrown),
             _replay,
             NullLogger.Instance,
             services);
@@ -82,6 +84,30 @@ public sealed class ReplayRunnerTests : IDisposable
         Assert.False(_inner.Contains("replay stopped"));
     }
 
+    [Fact]
+    public async Task ShouldStop_WhenALinesCommandIsCancelled()
+    {
+        _replay.TryStart(Lines("ok", "stopped", "ok"), closeInputAtEnd: true);
+
+        await Build().RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _ok.Calls);
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude());
+        Assert.True(_inner.Contains("replay stopped at line 2: command 'stopped' cancelled"));
+    }
+
+    [Fact]
+    public async Task ShouldStop_WhenALinesCommandThrows()
+    {
+        _replay.TryStart(Lines("crash", "ok"), closeInputAtEnd: true);
+
+        await Build().RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, _ok.Calls);
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude());
+        Assert.True(_inner.Contains("replay stopped at line 1: the disk is gone"));
+    }
+
     private sealed class ReplayTestRunner(
         IInteractiveCommandRegistry defaults,
         IInteractiveCommandRegistry specific,
@@ -101,8 +127,13 @@ public sealed class ReplayRunnerTests : IDisposable
         public IInteractiveCommand? Fallback => null;
     }
 
-    private sealed class StubCommand(string name, CommandResult result) : IInteractiveCommand
+    private sealed class StubCommand(string name, CommandResult? result, Exception? thrown = null) : IInteractiveCommand
     {
+        public StubCommand(string name, Exception thrown)
+            : this(name, null, thrown)
+        {
+        }
+
         public int Calls { get; private set; }
 
         public string Name => name;
@@ -114,7 +145,7 @@ public sealed class ReplayRunnerTests : IDisposable
         public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
         {
             Calls++;
-            return Task.FromResult(result);
+            return thrown is null ? Task.FromResult(result!) : Task.FromException<CommandResult>(thrown);
         }
     }
 }

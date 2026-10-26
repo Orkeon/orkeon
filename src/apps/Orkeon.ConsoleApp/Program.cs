@@ -80,23 +80,34 @@ static class Program
             host.Services.GetRequiredService<IConfiguration>(),
             host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.ConsoleApp"));
 
-        await RunHostAsync(host, effectiveUi, scriptedOpts, stderr);
+        // The host is disposed on every exit path (the unreadable replay file's exit 2, a REPL that threw), so its
+        // services clean up after themselves (the sandbox directories among them).
+        try
+        {
+            await RunHostAsync(host, effectiveUi, scriptedOpts, stderr);
+        }
+        finally
+        {
+            if (host is IAsyncDisposable asyncHost)
+                await asyncHost.DisposeAsync();
+            else
+                host.Dispose();
+        }
     }
 
     /// <summary>
-    /// Ctrl-C while a replay runs, in the plain console: the command in flight is cancelled and the replay stops
-    /// at its line, instead of the process being killed. Without a replay running the key keeps its effect. The
-    /// TUI handles the key itself: there, cancelling the command stops the replay.
+    /// Ctrl-C while a replay runs, in the plain console: the first press cancels the command in flight and stops the
+    /// replay at its line, instead of the process being killed (<see cref="ReplayLaunch.OnCancelKey"/>). A second
+    /// press while the replay still runs, or a press without a replay, keeps the key's effect: the process ends. The
+    /// TUI's interrupt key stops a replay through <see cref="ReplayLaunch.WireTuiInterrupt"/>.
     /// </summary>
     [Orkeon.Compliance.Vfs.SuppressConsoleCompliance("CONSOLE-SINK: orkeon-repl's entry point owns the process's Ctrl-C while a replay runs in the plain console.")]
     static CancelKeyRegistration HandleReplayInterrupt(ReplayConsoleAdapter replay, Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner)
     {
         ConsoleCancelEventHandler handler = (_, e) =>
         {
-            if (!replay.Interrupt())
-                return;
-            e.Cancel = true;
-            runner.RequestCommandCancellation();
+            if (ReplayLaunch.OnCancelKey(replay, runner.RequestCommandCancellation))
+                e.Cancel = true;
         };
         Console.CancelKeyPress += handler;
         return new CancelKeyRegistration(handler);
@@ -402,6 +413,9 @@ static class Program
             services.AddOrkeonCliTerminalGui(new TerminalGuiOptions
             {
                 ReplWordWrap = replWordWrap,
+                // --log-level sets the logs pane's starting level (F2 / Shift+F2 still change it), as it sets the
+                // plain console's.
+                DefaultMinimumLogLevel = scriptedOpts.LogLevel ?? LogLevel.Information,
                 // Banner content comes from the configuration this host actually loaded —
                 // the TUI layer cannot (and must not) probe the LLM section itself.
                 Banner = Orkeon.ConsoleApp.Services.TuiFidelityWiring.BuildBannerInfo(context.Configuration),
@@ -501,18 +515,15 @@ static class Program
     {
         // --replay: the file is read before anything runs; missing or unreadable, exit 2 and the REPL never opens.
         var replay = host.Services.GetRequiredService<ReplayConsoleAdapter>();
-        if (scriptedOpts.ReplayFile is { } replayFile)
+        if (await ReplayLaunch.StartAsync(
+                replay,
+                host.Services.GetRequiredService<Orkeon.Domain.FileSystem.IFileSystemService>(),
+                scriptedOpts,
+                stderr,
+                CancellationToken.None) is { } unreadable)
         {
-            var load = await ReplayFile.LoadAsync(
-                host.Services.GetRequiredService<Orkeon.Domain.FileSystem.IFileSystemService>(), replayFile, CancellationToken.None);
-            if (load.Lines is not { } lines)
-            {
-                await stderr.WriteLineAsync($"orkeon-repl: {load.Error}");
-                Environment.ExitCode = ReplayConsoleAdapter.UnreadableExitCode;
-                return;
-            }
-
-            replay.TryStart(lines, closeInputAtEnd: !scriptedOpts.ReplayInteractive);
+            Environment.ExitCode = unreadable;
+            return;
         }
 
         // The durable session loads for the project (the workspace root), then the start script runs once,
@@ -535,12 +546,28 @@ static class Program
             : host.Services.GetRequiredService<MainMenuRunner>();
         Func<CancellationToken, Task> entry = runner.RunAsync;
 
+        // --replay alone: 0 when every line passed, 1 when it stopped on an error (said on the console); the replay
+        // is concluded even when the REPL throws.
+        if (await ReplayLaunch.RunAsync(replay, scriptedOpts, () => RunReplAsync(host, effectiveUi, scriptedOpts, replay, runner, entry)) is { } replayExitCode)
+            Environment.ExitCode = replayExitCode;
+    }
+
+    static async Task RunReplAsync(
+        IHost host,
+        UiMode effectiveUi,
+        ScriptedCommandsCliOptions scriptedOpts,
+        ReplayConsoleAdapter replay,
+        Orkeon.Cli.Abstractions.Runners.IInteractiveRunner runner,
+        Func<CancellationToken, Task> entry)
+    {
         if (effectiveUi == UiMode.Tui)
         {
             await using var tuiHost = host.Services.GetRequiredService<TerminalGuiHost>();
             // Close the fidelity delegates over the built provider (session state bag,
             // cost tracker, command registry) — see TuiFidelityWiring.
             Orkeon.ConsoleApp.Services.TuiFidelityWiring.Wire(host.Services);
+            // Esc-Esc stops a replay too, also while it waits for the background work (no command running).
+            ReplayLaunch.WireTuiInterrupt(host.Services.GetRequiredService<TuiIntegration>(), replay);
             // Prefer the runner overload: it binds the status line / hint bar / agents
             // views to the command lifecycle. The Func path never could (it has no
             // IInteractiveRunner), which is why the old tasks bandeau stayed idle in
@@ -555,10 +582,5 @@ static class Program
             using var interrupt = HandleReplayInterrupt(replay, runner);
             await entry(CancellationToken.None);
         }
-
-        // --replay alone: 0 when every line passed, 1 when it stopped on an error (said on the console).
-        var replayExitCode = replay.Conclude();
-        if (scriptedOpts.ReplayNonInteractive)
-            Environment.ExitCode = replayExitCode;
     }
 }

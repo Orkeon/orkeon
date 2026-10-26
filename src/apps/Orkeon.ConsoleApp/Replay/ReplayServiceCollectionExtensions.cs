@@ -39,8 +39,9 @@ internal static class ReplayServiceCollectionExtensions
         services.AddSingleton(sp => new ReplayIdleGate(
             () => sp.GetService<CommandDispatchService>()?.Registry,
             () => sp.GetService<IToolApprovalWatch>(),
-            // A human_input question raises no signal: the interceptor's prompt says one waits.
-            () => sp.GetService<IReplLineInterceptor>()?.PromptOverride is not null));
+            // A human_input question raises no signal: its provider's prompt says one waits. Not the composite
+            // interceptor's prompt, which an approval sets too: the approvals have their own signal and claim.
+            () => sp.GetService<Orkeon.ConsoleApp.Services.ReplHumanInputProvider>()?.PromptOverride is not null));
         services.AddSingleton(sp => new ReplayConsoleAdapter(
             sp.GetRequiredKeyedService<IConsoleAdapter>(InnerConsoleKey),
             sp.GetRequiredService<ReplayIdleGate>(),

@@ -3,16 +3,30 @@ using Orkeon.Cli.Abstractions.Runners;
 
 namespace Orkeon.ConsoleApp.Replay;
 
+/// <summary>What a Ctrl-C (or the TUI's interrupt key) did to the replay.</summary>
+internal enum ReplayInterrupt
+{
+    /// <summary>No replay runs: the key keeps its usual effect.</summary>
+    NotRunning,
+
+    /// <summary>The first interrupt of this replay: it stops at the line in flight.</summary>
+    Stopping,
+
+    /// <summary>The replay was already told to stop and still runs: the key keeps its usual effect (it kills the process).</summary>
+    AlreadyStopping,
+}
+
 /// <summary>
 /// The REPL's console while a replay runs (<c>orkeon-repl --replay</c>, <c>/replay</c>): a decorator of the
 /// real <see cref="IConsoleAdapter"/> that answers the reads with the lines of the replay file, as if typed.
 /// The read loop, the tool approval channel (its interceptor, and <c>runCrew</c>'s
-/// <c>AnswerFromConsole</c>) and <c>human_input</c> all read through it, so a line answers whatever asks.
+/// <c>AnswerFromConsole</c>) and <c>human_input</c> all read through it, so a line answers whatever asks; one
+/// tool approval consumes exactly one line, whoever reads it (<see cref="ReplayIdleGate"/>).
 /// <list type="bullet">
 ///   <item><description>Before each line the loop reads, the <see cref="ReplayIdleGate"/> waits for the background work to end, or for a question the line answers.</description></item>
 ///   <item><description>Each line is echoed (<c>/cmd args</c> after the prompt, <c>&gt; /cmd args</c> in the TUI).</description></item>
-///   <item><description>At the first error — a command that failed, was cancelled or is unknown, a background task launched by the replay that failed, Ctrl-C — it writes <c>replay stopped at line N: &lt;cause&gt;</c>.</description></item>
-///   <item><description>At the end or on an error, it closes the input (the REPL exits, <see cref="ExitCode"/> set) or hands the keyboard back to the real console.</description></item>
+///   <item><description>At the first error - a command that failed, was cancelled or is unknown, a background task launched by the replay that failed, a question left unanswered when the file ends, Ctrl-C - it writes <c>replay stopped at line N: &lt;cause&gt;</c> on a line of its own.</description></item>
+///   <item><description>The replay ends at the loop's next read only - never inside a command's read - so the outcome of the command in flight and of the background work is known first. It then closes the input (the REPL exits, <see cref="ExitCode"/> set) or hands the keyboard back to the real console.</description></item>
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
@@ -83,19 +97,28 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
     }
 
     /// <summary>
-    /// Ctrl-C: stops the replay at the line in flight; the caller cancels the running command. False when no
-    /// replay runs, the key then keeping its usual effect.
+    /// Ctrl-C, or the TUI's interrupt key: stops the replay at the line in flight; the caller cancels the running
+    /// command. The first call of a replay answers <see cref="ReplayInterrupt.Stopping"/>; a later one, while the
+    /// replay still runs (a command that ignores its cancellation), <see cref="ReplayInterrupt.AlreadyStopping"/>:
+    /// the key then keeps its usual effect.
     /// </summary>
-    public bool Interrupt()
+    public ReplayInterrupt Interrupt()
     {
+        ReplayRun run;
         lock (_lock)
         {
-            if (_run is not { } run)
-                return false;
+            if (_run is null)
+                return ReplayInterrupt.NotRunning;
+            run = _run;
+            if (run.Interrupted)
+                return ReplayInterrupt.AlreadyStopping;
+            run.Interrupted = true;
             run.Fail(run.Current?.Number ?? FirstLineNumber(run), "interrupted");
-            run.Interrupt.Cancel();
-            return true;
         }
+
+        // Outside the lock: the cancellation runs the continuations of the waits, which take the lock.
+        run.Interrupt.Cancel();
+        return ReplayInterrupt.Stopping;
     }
 
     /// <inheritdoc />
@@ -132,11 +155,22 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
             }
         }
 
-        if (_gate.TakeFailure() is { } background)
-            lock (_lock) run.Fail(background.LineNumber, background.Cause);
+        TakeBackgroundFailure(run);
+        ReplayLine? next = null;
+        if (!run.HasFailed)
+        {
+            if (run.TryNext(out var taken))
+                next = taken;
+            else
+                FailOnQuestionLeft(run); // The file ran out: a question still waiting is one the replay left unanswered.
+        }
 
-        if (run.HasFailed || !run.TryNext(out var next))
-            return EndRun(run) ? null : await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+        if (run.HasFailed || next is null)
+            return EndRun(run, afterPrompt: true) ? null : await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+
+        // A command line is never an approval's answer (the channel leaves it to the loop): the claim is over.
+        if (next.Text.TrimStart().StartsWith('/'))
+            _gate.Release(ReplayReader.Loop);
 
         lock (_lock)
             run.Current = next;
@@ -147,18 +181,41 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
 
     /// <summary>
     /// A read from inside a command (the approval answered by <c>runCrew</c>, a prompt of a menu command): the next
-    /// line is served at once — the command holds the loop, a question is what reads it.
+    /// line is served at once - the command holds the loop, a question is what reads it - unless the read loop
+    /// already took the line for the approval waiting, in which case the read waits and, once that approval is
+    /// answered, returns an empty line without taking one. When the file has run out, or the replay stopped, the
+    /// read ends the input (or reads the real console under <c>--interactive</c>); the replay itself ends at the
+    /// loop's next read, once the outcome of the command is known.
     /// </summary>
     public string? ReadLine()
     {
         if (CurrentRun() is not { } run)
             return _inputClosed ? null : _inner.ReadLine();
 
-        if (_gate.TakeFailure() is { } background)
-            lock (_lock) run.Fail(background.LineNumber, background.Cause);
+        if (!run.HasFailed && !_gate.WaitForCommandRead(run.Interrupt.Token) && !run.HasFailed)
+            return string.Empty;
 
-        if (run.HasFailed || !run.TryNext(out var next))
-            return EndRun(run) ? null : _inner.ReadLine();
+        TakeBackgroundFailure(run);
+        ReplayLine? next = null;
+        if (!run.HasFailed)
+        {
+            if (run.TryNext(out var taken))
+            {
+                next = taken;
+            }
+            else
+            {
+                // A command asked for a line the file does not have.
+                var cause = _gate.PendingApprovalTool is { } tool
+                    ? $"replay ended with an approval waiting: {tool}"
+                    : "replay ended while a command waited for a line";
+                lock (_lock)
+                    run.Fail(run.LastServedNumber, cause);
+            }
+        }
+
+        if (run.HasFailed || next is null)
+            return run.CloseInputAtEnd ? null : _inner.ReadLine();
 
         Echo(next.Text);
         return next.Text;
@@ -181,16 +238,19 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
     public void Clear() => _inner.Clear();
 
     /// <summary>
-    /// The REPL ended (the input closed, or <c>/exit</c> before the last line): ends a replay still running,
-    /// saying why when a line failed, and returns the exit code of <c>--replay</c>.
+    /// The REPL ended (the input closed, <c>/exit</c> before the last line, or the loop threw): ends a replay still
+    /// running, saying why when a line failed, and returns the exit code of <c>--replay</c>.
     /// </summary>
-    public int Conclude()
+    /// <param name="crash">Why the REPL loop ended by throwing; null when it ended normally.</param>
+    public int Conclude(string? crash = null)
     {
         if (CurrentRun() is { } run)
         {
-            if (_gate.TakeFailure() is { } background)
-                lock (_lock) run.Fail(background.LineNumber, background.Cause);
-            EndRun(run);
+            TakeBackgroundFailure(run);
+            if (crash is not null)
+                lock (_lock)
+                    run.Fail(run.Current?.Number ?? run.LastServedNumber, crash);
+            EndRun(run, afterPrompt: false);
         }
 
         return ExitCode ?? PassedExitCode;
@@ -202,10 +262,32 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
             return _run;
     }
 
+    private void TakeBackgroundFailure(ReplayRun run)
+    {
+        if (_gate.TakeFailure() is { } background)
+            lock (_lock)
+                run.Fail(background.LineNumber, background.Cause);
+    }
+
+    private void FailOnQuestionLeft(ReplayRun run)
+    {
+        string? cause = null;
+        if (_gate.PendingApprovalTool is { } tool)
+            cause = $"replay ended with an approval waiting: {tool}";
+        else if (_gate.OtherQuestionPending)
+            cause = "replay ended with a question waiting";
+        if (cause is not null)
+            lock (_lock)
+                run.Fail(run.LastServedNumber, cause);
+    }
+
     private void Echo(string text) => _inner.WriteLine(_echoPrefix + text);
 
-    /// <summary>Ends the run, says why when it failed; true when the input is now closed.</summary>
-    private bool EndRun(ReplayRun run)
+    /// <summary>
+    /// Ends the run, says why when it failed; true when the input is now closed. After a plain prompt, the message
+    /// starts on a new line. The run's interrupt source is never disposed: a read may still look at its token.
+    /// </summary>
+    private bool EndRun(ReplayRun run, bool afterPrompt)
     {
         lock (_lock)
         {
@@ -218,11 +300,19 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
         }
 
         _gate.Reset();
-        run.Interrupt.Dispose();
+        string? message = null;
         if (run.Failure is { } failure)
-            _inner.WriteLine($"replay stopped at line {failure.LineNumber}: {failure.Cause}");
+            message = $"replay stopped at line {failure.LineNumber}: {failure.Cause}";
         else if (!run.CloseInputAtEnd)
-            _inner.WriteLine($"replay finished: {run.Count} line(s)");
+            message = $"replay finished: {run.Count} line(s)";
+        if (message is not null)
+        {
+            // The plain prompt waits on its line; the TUI's prompt is a label, its transcript needs no break.
+            if (afterPrompt && _echoPrefix.Length == 0)
+                _inner.WriteLine(string.Empty);
+            _inner.WriteLine(message);
+        }
+
         return run.CloseInputAtEnd;
     }
 
@@ -242,7 +332,11 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
 
         public bool CloseInputAtEnd { get; } = closeInputAtEnd;
 
+        /// <summary>Cancelled by Ctrl-C; never disposed (no timer), so its token can be read at any time.</summary>
         public CancellationTokenSource Interrupt { get; } = new();
+
+        /// <summary>Whether Ctrl-C was already pressed for this replay.</summary>
+        public bool Interrupted { get; set; }
 
         /// <summary>The last line the read loop was fed: the outcomes are charged to it.</summary>
         public ReplayLine? Current { get; set; }
@@ -254,6 +348,16 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, ICommandOutcomeObs
         public int Count => lines.Count;
 
         public ReplayLine First => lines[0];
+
+        /// <summary>The number of the last line served, by the loop or a command; the first line's before any.</summary>
+        public int LastServedNumber
+        {
+            get
+            {
+                var served = Math.Min(Volatile.Read(ref _next), lines.Count);
+                return served > 0 ? lines[served - 1].Number : FirstLineNumber(this);
+            }
+        }
 
         /// <summary>Records the first failure; the later ones are ignored.</summary>
         public void Fail(int lineNumber, string cause) => Failure ??= new ReplayFailure(lineNumber, cause);

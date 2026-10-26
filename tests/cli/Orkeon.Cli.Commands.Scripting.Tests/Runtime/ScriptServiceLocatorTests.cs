@@ -71,7 +71,7 @@ public sealed class ScriptServiceLocatorTests
     [Fact]
     public void Approvals_entry_reads_the_watch_at_each_list()
     {
-        var watch = new Doubles.FakeToolApprovalWatch();
+        var watch = new Orkeon.Cli.Abstractions.Tests.Doubles.FakeToolApprovalWatch();
         var (locator, sp) = Build(
             // The default whitelist's resolver, served under its key by this locator.
             wl => wl.AddOptional(
