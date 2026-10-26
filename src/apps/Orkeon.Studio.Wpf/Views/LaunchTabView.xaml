@@ -167,23 +167,29 @@
               <StackPanel Margin="0,6,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
                            Text="{Binding [Studio.Run.OrAPath], Source={x:Static services:I18n.Instance}}"/>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
-                          Command="{Binding Target.BrowseFolderCommand}"
-                          Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
-                          Command="{Binding Target.BrowseFileCommand}"
-                          Content="{Binding [Studio.Run.File], Source={x:Static services:I18n.Instance}}"/>
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="36" Margin="8,0,0,0"
-                          Command="{Binding Target.DetectCommand}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="scan-search" Size="13" Margin="0,0,7,0"/>
-                      <TextBlock Text="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
-                  <TextBox Style="{StaticResource InputMono}" Height="36" VerticalContentAlignment="Center"
+                <!-- B03 (R09, R10): the path field takes the room left by its three buttons and never
+                     less than half the column; field and buttons share one 40 px row, the field's
+                     height and 12 px padding are the theme's (no local height: the mono text was
+                     clipped at 36 px). -->
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="390"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox Style="{StaticResource InputMono}"
                            Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
-                </DockPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                            Command="{Binding Target.DetectCommand}" controls:ButtonIcon.Kind="scan-search"
+                            Content="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                            Command="{Binding Target.BrowseFileCommand}"
+                            Content="{Binding [Studio.Run.File], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                            Command="{Binding Target.BrowseFolderCommand}"
+                            Content="{Binding [Studio.Run.Folder], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Grid>
                 <!-- the team-type note, once: what a multi-file folder asks of « orkeon run », else the shape -->
                 <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding TargetTypeNote}"/>
 
