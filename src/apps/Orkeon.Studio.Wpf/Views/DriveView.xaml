@@ -29,13 +29,13 @@
       <Setter Property="Fill" Value="{DynamicResource InkMutedBrush}"/>
       <Style.Triggers>
         <DataTrigger Binding="{Binding StateKind}" Value="Ready">
-          <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+          <Setter Property="Fill" Value="{DynamicResource SuccessInkBrush}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding StateKind}" Value="NotReady">
-          <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+          <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding StateKind}" Value="SetAside">
-          <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+          <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
         </DataTrigger>
       </Style.Triggers>
     </Style>
@@ -182,7 +182,7 @@
                          VerticalAlignment="Center" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
               <!-- an account the run will set aside says so before it is opened -->
               <controls:LucideIcon DockPanel.Dock="Right" Kind="triangle-alert" Size="13" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource WarningBrush}"
+                                   Foreground="{DynamicResource WarningIconBrush}"
                                    Visibility="{Binding HasProblems, Converter={StaticResource BooleanToVisibility}}"/>
               <!-- the drive, then the folder the agents are confined to -->
               <!-- B06: the folder is a path - cut in the middle, whole in the tooltip (R09) -->
@@ -580,7 +580,7 @@
                             <TextBox Style="{StaticResource InputMono}" Width="360"
                                      Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"/>
                           </DockPanel>
-                          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,3,0,0"
+                          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,3,0,0"
                                      Text="{Binding [Studio.Settings.MailRecipientInvalid], Source={x:Static services:I18n.Instance}}"
                                      Visibility="{Binding IsInvalid, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
@@ -629,10 +629,10 @@
                   <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding ClientSecretStatus}">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
-                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                         <Style.Triggers>
                           <DataTrigger Binding="{Binding ClientSecretStored}" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SuccessInkBrush}"/>
                           </DataTrigger>
                         </Style.Triggers>
                       </Style>
