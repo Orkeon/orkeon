@@ -1480,7 +1480,8 @@
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
             <StackPanel Orientation="Horizontal">
-              <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+              <!-- hrm D07 (R11): every card of the step opens on a CardTitle, 16/600. -->
+              <TextBlock Style="{StaticResource CardTitle}" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.TryTitle], Source={x:Static services:I18n.Instance}}"/>
               <!-- Animated, like the one on the stepper. A motionless three-quarter arc says
                    nothing — it reads as decoration, which is exactly how it read when the
@@ -1503,7 +1504,7 @@
                 </controls:LucideIcon.Triggers>
               </controls:LucideIcon>
             </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,5,0,0"
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,5,0,0"
                        Text="{Binding [Studio.Create.TrySub], Source={x:Static services:I18n.Instance}}"/>
             <!-- STUDIO-14 (§10): under «Created inside the team» the read root is a folder that
                  does not exist before the adoption, so the trial reads the engine's default —
@@ -1534,8 +1535,7 @@
                       </controls:LucideIcon.Style>
                     </controls:LucideIcon>
                     <StackPanel>
-                      <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                                 Text="{Binding Text}"/>
+                      <TextBlock Style="{StaticResource BodyText}" Text="{Binding Text}"/>
                       <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1,0,0"
                                  Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Detail}"
                                  Visibility="{Binding HasDetail, Converter={StaticResource BooleanToVisibility}}"/>
@@ -1552,11 +1552,11 @@
                 Visibility="{Binding HasVerdict, Converter={StaticResource BooleanToVisibility}}">
           <StackPanel>
             <!-- Lot 3: the summary sentence first — « 3 of 3 criteria met ». -->
-            <TextBlock FontSize="16" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,8"
+            <TextBlock Style="{StaticResource CardTitle}" Margin="0,0,0,8"
                        TextWrapping="Wrap" Text="{Binding VerdictSummary}"
                        Visibility="{Binding HasVerdictSummary, Converter={StaticResource BooleanToVisibility}}"/>
             <StackPanel Orientation="Horizontal">
-              <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+              <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.VerdictTitle], Source={x:Static services:I18n.Instance}}"/>
               <Border Margin="10,0,0,0">
                 <Border.Style>
@@ -1602,7 +1602,7 @@
                           Visibility="{Binding HasMailActions, Converter={StaticResource BooleanToVisibility}}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,2" Text="{Binding}"/>
+                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2" Text="{Binding}"/>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -1610,7 +1610,7 @@
                        Text="{Binding [Studio.Create.ChecklistLabel], Source={x:Static services:I18n.Instance}}"/>
             <!-- Without an LLM judge there is no per-criterion verdict, so every line below
                  reads «?». Honest, and completely opaque unless the card says why. -->
-            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,0,0,8"
                        Visibility="{Binding VerdictIsMechanical, Converter={StaticResource BooleanToVisibility}}"
                        Text="{Binding [Studio.Create.JudgeMechanical], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Checklist}">
@@ -1644,8 +1644,8 @@
                       </controls:LucideIcon.Style>
                     </controls:LucideIcon>
                     <StackPanel>
-                      <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding Statement}"/>
-                      <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,2,0,0" Text="{Binding Detail}"
+                      <TextBlock Style="{StaticResource BodyText}" Text="{Binding Statement}"/>
+                      <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding Detail}"
                                  Visibility="{Binding Detail, Converter={StaticResource StringPresentToVisibility}}"/>
                     </StackPanel>
                   </DockPanel>
@@ -1665,8 +1665,7 @@
                       <controls:LucideIcon DockPanel.Dock="Left" Kind="wand-2" Size="16"
                                            Foreground="{DynamicResource MarkBrush}"
                                            VerticalAlignment="Top" Margin="0,2,9,0"/>
-                      <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}"
-                                 TextWrapping="Wrap" Text="{Binding}"/>
+                      <TextBlock Style="{StaticResource BodyText}" Text="{Binding}"/>
                     </DockPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -1726,7 +1725,8 @@
             </Style>
           </Border.Style>
           <StackPanel>
-            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+            <!-- hrm D07 (R11): the card's title, 16/600. -->
+            <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap"
                        Text="{Binding [Studio.Create.AdoptTitle], Source={x:Static services:I18n.Instance}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
@@ -1735,7 +1735,7 @@
             <!-- STUDIO-28 (D-06): on a team « Modify » reopened, the name is its title and the
                  re-adoption writes back into the same folder; the folder is renamed from My teams,
                  whose « Rename » carries the session and the schedule along. -->
-            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource MetaText}" Margin="0,6,0,0"
                        Text="{Binding [Studio.Create.RenameHint], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsModifyingTeam, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
@@ -1786,9 +1786,8 @@
                         VerticalAlignment="Center" Command="{Binding ToggleAdoptProfilePickerCommand}"
                         Content="{Binding [Studio.Create.AdoptChange], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                             Text="{Binding AdoptProfileName}"/>
-                  <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding AdoptProfileSummary}"
+                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding AdoptProfileName}"/>
+                  <TextBlock Style="{StaticResource MetaText}" Margin="0,2,0,0" Text="{Binding AdoptProfileSummary}"
                              Visibility="{Binding AdoptProfileSummary, Converter={StaticResource StringPresentToVisibility}}"/>
                 </StackPanel>
               </DockPanel>
@@ -1848,7 +1847,7 @@
               <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"
                          Text="{Binding [Studio.Create.SchedAt], Source={x:Static services:I18n.Instance}}"/>
               <TextBox Style="{StaticResource InputMono}" Width="76" Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}"/>
-              <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="8,0,0,0"
+              <TextBlock Style="{StaticResource MetaText}" VerticalAlignment="Center" Margin="8,0,0,0"
                          Text="{Binding [Studio.Create.SchedLocalTime], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </StackPanel>
