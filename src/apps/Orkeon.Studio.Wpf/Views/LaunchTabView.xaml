@@ -151,7 +151,7 @@
                   </StackPanel>
                 </StackPanel>
               </WrapPanel>
-              <TextBlock Margin="0,0,0,6" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+              <TextBlock Margin="0,0,0,6" FontSize="13" Foreground="{DynamicResource WarningInkBrush}" TextWrapping="Wrap"
                          Text="{Binding CrewLlmWarning}"
                          Visibility="{Binding CrewLlmWarning, Converter={StaticResource StringPresentToVisibility}}"/>
 
@@ -186,7 +186,7 @@
                 <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding TargetTypeNote}"/>
 
                 <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
                   <ComboBox Style="{StaticResource ComboM}" ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
                             SelectedItem="{Binding Target.PreferredDirectoryKind}" Margin="0,6,0,0"/>
                 </StackPanel>
@@ -358,7 +358,7 @@
               <controls:Disclosure x:Name="AdvancedFold"
                                    Header="{Binding [Studio.Run.Advanced], Source={x:Static services:I18n.Instance}}">
               <StackPanel Margin="0,0,0,4">
-                <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Text="appsettings.json"/>
+                <TextBlock Style="{StaticResource Subhead}" Text="appsettings.json"/>
                 <RadioButton Margin="0,8,0,0" GroupName="{Binding IsTrial, StringFormat=RunSettings-{0}}" Checked="OnSettingsAutomaticChecked"
                              IsChecked="{Binding Options.IsSettingsAutomatic, Mode=OneWay}"
                              Content="{Binding [Studio.Run.SettingsAuto], Source={x:Static services:I18n.Instance}}"/>
@@ -373,7 +373,7 @@
                 </DockPanel>
 
                 <StackPanel Visibility="{Binding Options.AreVariablesAvailable, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
+                  <TextBlock Style="{StaticResource Subhead}" Margin="0,16,0,7"
                              Text="{Binding [Studio.Run.VarsTitle], Source={x:Static services:I18n.Instance}}"/>
                   <ItemsControl ItemsSource="{Binding Options.Variables}">
                     <ItemsControl.ItemTemplate>
@@ -404,7 +404,7 @@
                 </StackPanel>
 
                 <StackPanel Visibility="{Binding Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,0"
+                  <TextBlock Style="{StaticResource Subhead}" Margin="0,16,0,0"
                              Text="{Binding [Studio.Run.InputsTitle], Source={x:Static services:I18n.Instance}}"/>
                   <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Run.LblInputsJson], Source={x:Static services:I18n.Instance}}"/>
                   <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"
@@ -471,8 +471,9 @@
                               </controls:Badge.Style>
                             </controls:Badge>
                           </StackPanel>
-                          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
-                                     Text="{Binding PhysicalPath}" ToolTip="{Binding PhysicalPath}"
+                          <!-- R09: a path is cut in the middle, the whole of it in the tooltip once cut -->
+                          <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontSize="12.5" Margin="0,2,0,0"
+                                     HorizontalAlignment="Left" Text="{Binding PhysicalPath}"
                                      Visibility="{Binding PhysicalPath, Converter={StaticResource StringPresentToVisibility}}"/>
                         </StackPanel>
                       </DockPanel>
@@ -489,7 +490,7 @@
 
                 <!-- Expert: what the settings declare, the external switch and the effective mounts -->
                 <StackPanel Margin="0,14,0,0" Visibility="{Binding IsExpertMode, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource CardTitle}" FontSize="13"
+                  <TextBlock Style="{StaticResource Subhead}"
                              Text="{Binding [Studio.Run.SettingsMountsTitle], Source={x:Static services:I18n.Instance}}"/>
                   <ItemsControl ItemsSource="{Binding Mounts.SettingsMounts}" Margin="0,7,0,0">
                     <ItemsControl.ItemTemplate>
@@ -502,7 +503,7 @@
                   <CheckBox Margin="0,12,0,0"
                             IsChecked="{Binding Mounts.AllowExternalMounts}"
                             Content="{Binding [Studio.Run.AllowExternal], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}"
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}"
                              Text="{Binding Mounts.ExternalMountsWarning, Mode=OneWay}"/>
 
                   <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" Text="{Binding Mounts.OverrideExplanation, Mode=OneWay}"/>
