@@ -668,7 +668,12 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </summary>
     /// <param name="response">The streamed response, still undisposed.</param>
     /// <param name="rebuilt">The folded final answer.</param>
-    internal void RecordRebuiltExchange(HttpResponseMessage? response, LlmResponse rebuilt)
+    /// <param name="rawUsage">
+    /// The <c>usage</c> object the vendor streamed, written verbatim when present, so every count it
+    /// returned (cache hits and misses, cached and reasoning token details, cost) keeps its own name;
+    /// null writes the three totals of <paramref name="rebuilt"/>.
+    /// </param>
+    internal void RecordRebuiltExchange(HttpResponseMessage? response, LlmResponse rebuilt, JsonElement? rawUsage = null)
     {
         if (response?.RequestMessage?.Options.TryGetValue(Logging.LlmExchangeOptions.Rebuilt, out var holder) != true)
             return;
@@ -679,12 +684,14 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             tool_calls = ToolCallsOf(rebuilt.RawResponseBody),
             error = rebuilt.Error,
             model = rebuilt.Model,
-            usage = new
-            {
-                total_tokens = rebuilt.TokensUsed,
-                prompt_tokens = rebuilt.PromptTokens,
-                completion_tokens = rebuilt.CompletionTokens,
-            },
+            usage = rawUsage is { } raw
+                ? (object)raw
+                : new
+                {
+                    total_tokens = rebuilt.TokensUsed,
+                    prompt_tokens = rebuilt.PromptTokens,
+                    completion_tokens = rebuilt.CompletionTokens,
+                },
         });
     }
 

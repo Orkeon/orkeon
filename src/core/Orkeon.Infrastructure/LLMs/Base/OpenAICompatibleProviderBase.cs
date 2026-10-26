@@ -435,7 +435,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
             // Folded while the response is still open: disposing it is what logs the exchange.
             final = BuildStreamedResponse(state, effectiveConfig, budget);
-            RecordRebuiltExchange(response, final);
+            RecordRebuiltExchange(response, final, state.RawUsage);
         }
         finally
         {
@@ -463,6 +463,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public int? CacheMissTokens { get; set; }
         /// <summary>Vendor-reported cost of the call, from <c>usage.cost</c> (OpenRouter bills in it).</summary>
         public double? Cost { get; set; }
+        /// <summary>
+        /// The <c>usage</c> object of the last chunk that carried one, cloned as the vendor wrote it:
+        /// the exchange log writes it verbatim, so the cache, reasoning and cost counts survive (#197).
+        /// </summary>
+        public JsonElement? RawUsage { get; set; }
         /// <summary>The root-level <c>error</c> a chunk carried, when the stream failed after the 200.</summary>
         public StreamError? Error { get; set; }
     }
@@ -552,6 +557,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ?? state.CacheHitTokens;
         state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
         state.Cost = TryReadDouble(usage, "cost") ?? state.Cost;
+        state.RawUsage = usage.Clone();
     }
 
     private static void AccumulateDelta(
