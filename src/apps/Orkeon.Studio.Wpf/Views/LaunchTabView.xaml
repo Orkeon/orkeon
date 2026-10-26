@@ -56,7 +56,10 @@
     </Style>
   </UserControl.Resources>
 
-  <StackPanel MaxWidth="1080" HorizontalAlignment="Left">
+  <!-- A01 (R01): the launcher takes the whole width of the page column in every state - never
+       left-aligned under a cap of its own, which sized the classeur by its content (928 px without
+       a team, 1340 px with one). -->
+  <StackPanel>
 
     <!-- The header (title, subtitle, the Essai | Réel switch) is the Lancer screen's: RunScreenView. -->
 
