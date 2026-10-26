@@ -188,12 +188,16 @@ public sealed class ActionBar : Panel
             var item = new MenuItem
             {
                 Header = LabelOf(button),
-                IsEnabled = button.IsEnabled,
                 ToolTip = button.ToolTip,
             };
-            if (FirstIcon(button) is { } icon)
+            // The item follows the button while the menu is open: a command whose CanExecute
+            // changes greys the item as it would the button.
+            item.SetBinding(IsEnabledProperty, new System.Windows.Data.Binding(nameof(IsEnabled)) { Source = button });
+            // The icon: a LucideIcon in the button's content, else the one ButtonIcon.Kind draws.
+            var kind = FirstIcon(button)?.Kind ?? ButtonIcon.GetKind(button);
+            if (!string.IsNullOrEmpty(kind))
             {
-                item.Icon = new LucideIcon { Kind = icon.Kind, Size = 16 };
+                item.Icon = new LucideIcon { Kind = kind, Size = 16 };
             }
 
             // A destructive action keeps its colour in the menu, after a rule (R06, R23).
