@@ -140,10 +140,13 @@
       </controls:Alert>
     </StackPanel>
 
-    <!-- reading the catalogue: a line, no spinner — the read takes a moment, not a wait -->
-    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" FontSize="13" Margin="24,16,24,0"
-               Text="{Binding [Studio.Create.GalleryLoading], Source={x:Static services:I18n.Instance}}"
-               Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibility}}"/>
+    <!-- reading the catalogue: a line, no spinner — the read takes a moment, not a wait.
+         R17: the line, then the shared grey skeleton, never a coloured block. -->
+    <StackPanel DockPanel.Dock="Top" Margin="24,16,24,0"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibility}}">
+      <TextBlock Style="{StaticResource MetaText}" Text="{Binding [Studio.Create.GalleryLoading], Source={x:Static services:I18n.Instance}}"/>
+      <controls:SkeletonLines Margin="0,12,0,0"/>
+    </StackPanel>
 
     <!-- D-05: no catalogue, no fallback — a danger alert (R7, lot 3): the novice sentence
          (« The Orkeon engine cannot be found on this machine »), the CLI's own words folded
@@ -165,15 +168,16 @@
       </controls:Alert.Actions>
     </controls:Alert>
 
-    <!-- nothing kept: say so, and the way back -->
-    <StackPanel DockPanel.Dock="Top" Margin="24,18,24,0"
-                Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
-      <TextBlock Style="{StaticResource Hint}" FontSize="13"
-                 Text="{Binding [Studio.Create.GalleryEmpty], Source={x:Static services:I18n.Instance}}"/>
-      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" HorizontalAlignment="Left" Margin="0,8,0,0"
-              Command="{Binding ClearFiltersCommand}"
-              Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
-    </StackPanel>
+    <!-- nothing kept: say so, and the way back (R17: the shared empty state) -->
+    <controls:EmptyState DockPanel.Dock="Top" Margin="24,18,24,0" Icon="search"
+                         Title="{Binding [Studio.Create.GalleryEmpty], Source={x:Static services:I18n.Instance}}"
+                         Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
+      <controls:EmptyState.Actions>
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                Command="{Binding ClearFiltersCommand}"
+                Content="{Binding [Studio.Create.GalleryClearFilters], Source={x:Static services:I18n.Instance}}"/>
+      </controls:EmptyState.Actions>
+    </controls:EmptyState>
 
     <!-- the cards -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0" Padding="24,0,24,20"
