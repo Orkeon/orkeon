@@ -176,24 +176,28 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,10">
-              <DockPanel>
-                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0">
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28"
+              <!-- C21 (R15): the actions sit in a fixed 160 px column on the right, so both
+                   buttons have the same width on every card whatever their label or the text
+                   beside them. R05: «Start from this case» is the card's one primary — the
+                   action every mode offers; «Import as is» is its secondary. -->
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="160"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                  <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch"
                           Command="{Binding ChooseCommand}"
                           Content="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
                   <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
                        teams, ready to run and to modify; never on a reference-only case. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Margin="0,6,0,0"
-                          Command="{Binding ImportAsIsCommand}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" HorizontalAlignment="Stretch" Margin="0,8,0,0"
+                          Command="{Binding ImportAsIsCommand}" controls:ButtonIcon.Kind="arrow-down"
+                          Content="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"
                           ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="arrow-down" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                      <TextBlock Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
+                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
-                <StackPanel>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
                   <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                              Text="{Binding Title}"/>
                   <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18"
@@ -219,7 +223,7 @@
                     </TextBlock>
                   </WrapPanel>
                 </StackPanel>
-              </DockPanel>
+              </Grid>
             </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
