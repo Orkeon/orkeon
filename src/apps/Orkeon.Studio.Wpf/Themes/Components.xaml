@@ -377,6 +377,38 @@
     </Setter>
   </Style>
 
+  <!-- ══ StatusDot (R08): an 8 px dot, 8 px, one line of text. Neutral / attention (sand) /
+       error / ready. Not a badge: no pill, no background. ══ -->
+  <Style TargetType="{x:Type controls:StatusDot}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:StatusDot}">
+          <StackPanel Orientation="Horizontal">
+            <Ellipse x:Name="dot" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                     Fill="{DynamicResource NeutralDotBrush}"/>
+            <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Tone" Value="Attention">
+              <Setter TargetName="dot" Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
+            </Trigger>
+            <Trigger Property="Tone" Value="Error">
+              <Setter TargetName="dot" Property="Fill" Value="{DynamicResource DangerBrush}"/>
+            </Trigger>
+            <Trigger Property="Tone" Value="Ready">
+              <Setter TargetName="dot" Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ══ PageHeader: title + one-line subtitle on the left, page actions on the right ══ -->
   <Style TargetType="{x:Type controls:PageHeader}">
     <Setter Property="Focusable" Value="False"/>
