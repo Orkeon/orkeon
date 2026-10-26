@@ -57,9 +57,9 @@
       <Setter Property="Padding" Value="0,14,0,0"/>
       <Setter Property="Margin" Value="0,16,0,16"/>
     </Style>
-    <!-- One fiche of the team's folders (F-01, lot 3; STUDIO-14; refonte lot 10): line 1, the
-         rights' icon, the name the agents address (mono), its rights, who addresses it, where
-         the folder lies and « Remove »; line 2, the note; a folder still to choose, in the
+    <!-- One fiche of the team's folders (F-01, lot 3; STUDIO-14; refonte lot 10; C18): line 1, the
+         rights' icon, the name the agents address (mono), its rights, who addresses it and
+         « Remove »; under it, where the folder lies; then the note; a folder still to choose, in the
          warning's weak tint, gets a line 3 with the two answers. -->
     <DataTemplate x:Key="MountRowTemplate">
       <Border Margin="0,0,0,8" Padding="14,10" CornerRadius="10" BorderThickness="1">
@@ -80,14 +80,19 @@
           </Style>
         </Border.Style>
         <StackPanel>
+          <!-- C18: three fluid columns — the rights' icon, the row's words, « Remove » — and
+               no fixed width: the name, its badge and who addresses it wrap on a narrow pane,
+               where the folder lies takes the second line. -->
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto" MaxWidth="380"/>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <!-- Foreground is a Setter, not a local value: a local value beats every style
                  trigger, so the red below would be unreachable. -->
             <controls:LucideIcon Size="16" VerticalAlignment="Center" Margin="0,0,8,0">
@@ -109,16 +114,21 @@
               </controls:LucideIcon.Style>
             </controls:LucideIcon>
             <!-- A plain-words title («Your documents») when the row has one, then the name the
-                 agents use. Who addresses it is provenance, not permission: the runtime mounts
-                 one flat list. -->
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                       ToolTip="{Binding Agents}">
-              <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"/>
-              <Run Text="{Binding VirtualPath, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13"
-                   Foreground="{DynamicResource InkBrush}"/>
-            </TextBlock>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-              <controls:Badge>
+                 agents use; cut, the tooltip gives it whole. Who addresses it is provenance, not
+                 permission: the runtime mounts one flat list. -->
+            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+              <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0">
+                <TextBlock.ToolTip>
+                  <TextBlock>
+                    <Run Text="{Binding Title, Mode=OneWay}"/>
+                    <Run Text="{Binding VirtualPath, Mode=OneWay}"/>
+                  </TextBlock>
+                </TextBlock.ToolTip>
+                <Run Text="{Binding Title, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"/>
+                <Run Text="{Binding VirtualPath, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                     Foreground="{DynamicResource InkBrush}"/>
+              </TextBlock>
+              <controls:Badge VerticalAlignment="Center">
                 <controls:Badge.Style>
                   <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                     <Setter Property="Content" Value="{Binding [Studio.Create.RightsRead], Source={x:Static services:I18n.Instance}}"/>
@@ -132,32 +142,32 @@
                 </controls:Badge.Style>
               </controls:Badge>
               <TextBlock FontSize="13" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
-                         TextTrimming="CharacterEllipsis" Text="{Binding Agents}"
+                         TextTrimming="CharacterEllipsis" Text="{Binding Agents}" ToolTip="{Binding Agents}"
                          Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
-            </StackPanel>
-            <!-- Where the folder lies, on the right: a disk path (mono, cut in the middle),
-                 «inside the team: output» in the accent colour, or «to choose». -->
-            <controls:MiddleEllipsisText Grid.Column="3" Style="{StaticResource PathText}" Margin="12,0,0,0"
-                                         HorizontalAlignment="Right" Text="{Binding Folder}"
+            </WrapPanel>
+            <!-- Where the folder lies, on the second line under the name (C18): a disk path (mono,
+                 cut in the middle), «inside the team: output» in the accent colour, or «to choose». -->
+            <controls:MiddleEllipsisText Grid.Row="1" Grid.Column="1" Style="{StaticResource PathText}" Margin="0,4,0,0"
+                                         HorizontalAlignment="Left" Text="{Binding Folder}"
                                          Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}"/>
-            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,4,0,0"
                         Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
               <controls:LucideIcon Kind="folder" Size="16" Margin="0,0,6,0" VerticalAlignment="Center"
                                    Foreground="{DynamicResource AccentBrush}"/>
               <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
                          Foreground="{DynamicResource AccentBrush}" Text="{Binding Folder}"/>
             </StackPanel>
-            <controls:Badge Grid.Column="3" Tone="Warning" HorizontalAlignment="Right" Margin="12,0,0,0"
+            <controls:Badge Grid.Row="1" Grid.Column="1" Tone="Warning" HorizontalAlignment="Left" Margin="0,4,0,0"
                             Content="{Binding [Studio.Create.MountToChoose], Source={x:Static services:I18n.Instance}}"
                             Visibility="{Binding IsWriteToChoose, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- A read root with no source folder: what the team will start from instead. -->
-            <TextBlock Grid.Column="3" FontSize="13" Margin="12,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center"
-                       TextWrapping="Wrap" TextAlignment="Right" Foreground="{DynamicResource WarningBrush}"
+            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="13" Margin="0,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                       TextWrapping="Wrap" TextAlignment="Left" Foreground="{DynamicResource WarningBrush}"
                        Text="{Binding [Studio.Create.MountToChooseRead], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding IsReadToChoose, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- Removing a bound folder gives the mount point back to the blueprint; removing a
                  bare implied root drops it, which the banner then explains. -->
-            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+            <StackPanel Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
               <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
                       Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                       CommandParameter="{Binding MountString}"
@@ -178,8 +188,8 @@
                      Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
           <!-- Line 3, a folder still to choose: name the folder, or give it its own inside the
                team, created at adoption and recorded team-relative (STUDIO-14, D-08). -->
-          <StackPanel Orientation="Horizontal" Margin="24,8,0,0"
-                      Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}">
+          <WrapPanel Margin="24,8,0,0"
+                     Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}">
             <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                     Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
                     CommandParameter="{Binding VirtualPath}"
@@ -189,7 +199,7 @@
                     CommandParameter="{Binding VirtualPath}"
                     Visibility="{Binding CanCreateInsideTeam, Converter={StaticResource BooleanToVisibility}}"
                     Content="{Binding [Studio.Create.CreateInsideTeam], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="folder"/>
-          </StackPanel>
+          </WrapPanel>
         </StackPanel>
       </Border>
     </DataTemplate>
@@ -701,7 +711,7 @@
                             <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
                                        Text="{Binding [Studio.Create.FolderFieldName], Source={x:Static services:I18n.Instance}}"/>
                             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                              <TextBox Style="{StaticResource Input}" Width="180" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                              <TextBox Style="{StaticResource Input}" MinWidth="180" VerticalAlignment="Center" FontFamily="{StaticResource MonoFont}"
                                        AutomationProperties.Name="{Binding [Studio.Create.FolderFieldName], Source={x:Static services:I18n.Instance}}"
                                        IsReadOnly="{Binding Tag, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={StaticResource Negate}}"
                                        Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
