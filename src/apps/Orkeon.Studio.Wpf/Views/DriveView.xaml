@@ -70,13 +70,11 @@
     <Border Style="{StaticResource Card}" Margin="0,0,0,16">
       <StackPanel>
         <DockPanel Margin="0,0,0,4">
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" VerticalAlignment="Top"
-                  Command="{Binding BeginAddCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Settings.MailAdd], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <!-- C11: «Add an account» is secondary with its +, the screen's primary is «Save» (R05) -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
+                  controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plus"
+                  Command="{Binding BeginAddCommand}"
+                  Content="{Binding [Studio.Settings.MailAdd], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <controls:LucideIcon Kind="hard-drive" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
             <TextBlock Style="{StaticResource CardTitle}"
