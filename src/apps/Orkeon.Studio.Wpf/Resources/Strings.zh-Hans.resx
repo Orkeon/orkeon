@@ -3778,13 +3778,13 @@
     <value>尚未选择团队。</value>
   </data>
   <data name="Studio.Run.SeeOptions" xml:space="preserve">
-    <value>查看选项 →</value>
+    <value>查看选项</value>
   </data>
   <data name="Studio.Run.SeeCommand" xml:space="preserve">
-    <value>查看命令 →</value>
+    <value>查看命令</value>
   </data>
   <data name="Studio.Run.SeeRun" xml:space="preserve">
-    <value>查看运行 →</value>
+    <value>查看运行</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
     <value>← 返回团队</value>

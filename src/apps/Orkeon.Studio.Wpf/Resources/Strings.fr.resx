@@ -2092,13 +2092,13 @@
     <value>Aucune équipe choisie.</value>
   </data>
   <data name="Studio.Run.SeeOptions" xml:space="preserve">
-    <value>Voir les options →</value>
+    <value>Voir les options</value>
   </data>
   <data name="Studio.Run.SeeCommand" xml:space="preserve">
-    <value>Voir la commande →</value>
+    <value>Voir la commande</value>
   </data>
   <data name="Studio.Run.SeeRun" xml:space="preserve">
-    <value>Voir l'exécution →</value>
+    <value>Voir l'exécution</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
     <value>← Retour à l'équipe</value>

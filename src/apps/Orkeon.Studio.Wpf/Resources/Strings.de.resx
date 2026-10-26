@@ -3778,13 +3778,13 @@
     <value>Kein Team ausgewählt.</value>
   </data>
   <data name="Studio.Run.SeeOptions" xml:space="preserve">
-    <value>Optionen ansehen →</value>
+    <value>Optionen ansehen</value>
   </data>
   <data name="Studio.Run.SeeCommand" xml:space="preserve">
-    <value>Befehl ansehen →</value>
+    <value>Befehl ansehen</value>
   </data>
   <data name="Studio.Run.SeeRun" xml:space="preserve">
-    <value>Ausführung ansehen →</value>
+    <value>Ausführung ansehen</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
     <value>← Zurück zum Team</value>

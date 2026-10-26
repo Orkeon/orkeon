@@ -102,13 +102,11 @@
         <DockPanel>
           <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
-                      Command="{Binding ShowOptionsTabCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{Binding [Studio.Run.SeeOptions], Source={x:Static services:I18n.Instance}}"/>
-                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
-                </StackPanel>
-              </Button>
+              <!-- C05 (R05): forward = the arrow icon after the label, never an arrow in the text -->
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}"
+                      Command="{Binding ShowOptionsTabCommand}"
+                      controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"
+                      Content="{Binding [Studio.Run.SeeOptions], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
                          Margin="0,0,12,0" Text="{Binding TeamFooter}"/>
             </DockPanel>
@@ -317,13 +315,10 @@
         <DockPanel>
           <Border DockPanel.Dock="Bottom" Style="{StaticResource PaneFooter}">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
-                      Command="{Binding OptionsNextCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{Binding OptionsNextLabel}"/>
-                  <controls:LucideIcon Kind="arrow-right" Size="16" Margin="7,0,0,0"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}"
+                      Command="{Binding OptionsNextCommand}"
+                      controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"
+                      Content="{Binding OptionsNextLabel}"/>
               <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
                          Margin="0,0,12,0" Text="{Binding OptionsFooter}"/>
             </DockPanel>
