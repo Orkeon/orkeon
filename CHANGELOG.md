@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
+
+Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.
+The drag now scrolls one row per mouse report and every tenth of a second while the mouse stays still past the edge,
+the selection following the edge row; at the transcript's first or last row it reaches its start or end, as before.
+
 ### Fixed — the TUI's copy key copies the transcript's mouse selection
 
 `Ctrl+C` looked only at the focused view's selection, and the transcript takes no focus: after a mouse selection in

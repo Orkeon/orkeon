@@ -56,8 +56,9 @@ Clipboard traffic goes through `Layout.TuiClipboard`, a hybrid built for hosts
 where Terminal.Gui's OS clipboard integration is unavailable (a Docker container
 or an SSH session has no xclip/X11 and no `powershell.exe`):
 
-- **Copy** (`Ctrl+C` on a selection, `Ctrl+A` select-all, or mouse drag-select —
-  in the transcript and in the input — auto-copies on release) fans out to the OS clipboard when supported, to the
+- **Copy** (`Ctrl+C` or `Ctrl+Shift+C` on a selection, `Ctrl+A` select-all, or mouse drag-select —
+  in the transcript and in the input — auto-copies on release; a drag held past the transcript's top or
+  bottom edge scrolls it) fans out to the OS clipboard when supported, to the
   **hosting terminal via OSC 52** (Windows Terminal, iTerm2, kitty… set the
   *host* clipboard even across docker/ssh), and to an in-process cache.
 - **Paste** (`Ctrl+V` or right click) reads the OS clipboard when available,

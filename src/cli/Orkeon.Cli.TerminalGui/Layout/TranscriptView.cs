@@ -1,4 +1,5 @@
 using System.Drawing;
+using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -25,7 +26,9 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// there again; while stuck it follows the tail when rows are added or the view is resized or laid out
 /// (a pane shown later). Scrolling up unsticks it: appending then leaves the viewport where the user put
 /// it. It sticks again once the viewport reaches the last row, by a scroll or by a resize.
-/// Not kept: double-click word selection and the auto-scroll while dragging a selection.
+/// A drag held above or below the view scrolls one row per mouse report and every tenth of a second while
+/// the mouse stays still, the selection following the edge row; at the buffer's first or last row it
+/// reaches the buffer's start or end. Not kept: double-click word selection.
 /// Must be touched on the UI thread only.
 /// </remarks>
 internal sealed class TranscriptView : View
@@ -39,6 +42,12 @@ internal sealed class TranscriptView : View
     private bool _dragging;
     private bool _followTail = true;
     private Rectangle _lastViewport;
+    // A drag held past the top or bottom edge scrolls one row per step: on each mouse report, and
+    // every DragScrollInterval while the mouse stays still (the terminal reports moves only).
+    private const int DragScrollInterval = 100;
+    private int _dragScroll;
+    private int _dragColumn;
+    private object? _dragScrollTimer;
 
     public TranscriptView(int capacity)
     {
@@ -195,6 +204,9 @@ internal sealed class TranscriptView : View
 
         var point = mouse.Position ?? Point.Empty;
         var position = _buffer.HitTest(Viewport.Y + point.Y, Viewport.X + point.X);
+        // The view holds the mouse while dragging: a report above or below it comes with a row
+        // outside the viewport, and the selection then scrolls instead of stopping at the edge.
+        var edge = point.Y < 0 ? -1 : point.Y >= Viewport.Height ? 1 : 0;
         if (flags.HasFlag(MouseFlags.LeftButtonPressed))
         {
             if (!_dragging)
@@ -203,7 +215,18 @@ internal sealed class TranscriptView : View
                 _anchor = position;
                 App?.Mouse.GrabMouse(this);
             }
-            _caret = position;
+            if (edge == 0)
+            {
+                StopDragScroll();
+                _caret = position;
+            }
+            else
+            {
+                _dragScroll = edge;
+                _dragColumn = Viewport.X + point.X;
+                DragScrollStep();
+                StartDragScroll();
+            }
             SetNeedsDraw();
             return true;
         }
@@ -213,7 +236,9 @@ internal sealed class TranscriptView : View
             if (_dragging)
             {
                 _dragging = false;
-                _caret = position;
+                StopDragScroll();
+                // Released past an edge: the caret stays on the edge row the scroll brought it to.
+                if (edge == 0) _caret = position;
                 App?.Mouse.UngrabMouse();
             }
             var selected = SelectedText;
@@ -256,6 +281,59 @@ internal sealed class TranscriptView : View
         var y = Math.Clamp(Viewport.Y + rows, 0, max);
         if (y != Viewport.Y) Viewport = Viewport with { Y = y };
         return true;
+    }
+
+    // One step of the drag scroll: one row in the drag's direction, the caret on the edge row the
+    // viewport now shows, at the mouse column; at the buffer's first or last row, the caret reaches
+    // the buffer's start or end, as a drag past the edge did before the scroll existed.
+    private void DragScrollStep()
+    {
+        Scroll(_dragScroll);
+        var height = Math.Max(1, Viewport.Height);
+        var max = Math.Max(0, _buffer.RowCount - height);
+        if (_dragScroll < 0)
+            _caret = Viewport.Y == 0 ? _buffer.Start : _buffer.HitTest(Viewport.Y, _dragColumn);
+        else
+            _caret = Viewport.Y >= max ? _buffer.End : _buffer.HitTest(Viewport.Y + height - 1, _dragColumn);
+        SetNeedsDraw();
+    }
+
+    private void StartDragScroll()
+    {
+        if (_dragScrollTimer is not null) return;
+        try
+        {
+            _dragScrollTimer = Application.AddTimeout(TimeSpan.FromMilliseconds(DragScrollInterval), () =>
+            {
+                if (!_dragging || _dragScroll == 0)
+                {
+                    _dragScrollTimer = null;
+                    return false;
+                }
+                DragScrollStep();
+                return true;
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            // Application not initialised (unit tests): each mouse report still scrolls one row.
+        }
+    }
+
+    private void StopDragScroll()
+    {
+        _dragScroll = 0;
+        if (_dragScrollTimer is not { } timer) return;
+        _dragScrollTimer = null;
+        try { Application.RemoveTimeout(timer); }
+        catch (InvalidOperationException) { /* Application already shut down */ }
+    }
+
+    /// <inheritdoc />
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) StopDragScroll();
+        base.Dispose(disposing);
     }
 
     private (TranscriptPosition From, TranscriptPosition To)? SelectionRange()
