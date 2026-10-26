@@ -3686,7 +3686,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     /// D08: the avatars' letters of the agents shown together. A name keeps its one capital
     /// unless another shown name starts with the same one: it then takes two letters — the
     /// first two words' initials («Data Analyst» → «DA»), else its first two letters
-    /// («Rédacteur» → «Ré», «Relecteur» → «Re»). An empty name stays «?».
+    /// («Writer» → «Wr», «Reviewer» → «Re»). An empty name stays «?».
     /// </summary>
     public static IReadOnlyList<string> AvatarInitials(IReadOnlyList<string> names)
     {

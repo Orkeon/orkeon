@@ -103,10 +103,10 @@ public partial class LaunchTabView : UserControl
     }
 }
 
-// ── L07 (B02): the two lines of a team in the « Équipe » list ──
+// ── L07 (B02): the two lines of a team in the team list ──
 
 /// <summary>
-/// The title line of a team in the « Équipe » list (B02, R09): its one-line display name, the
+/// The title line of a team in the team list (B02, R09): its one-line display name, the
 /// Markdown stripped (<see cref="TeamCatalog.NormalizeName"/>) — a name typed as a pasted README
 /// used to fill the list with « # », « > » and bullets.
 /// </summary>
@@ -122,7 +122,7 @@ public sealed class TeamChoiceTitleConverter : IValueConverter
 }
 
 /// <summary>
-/// The meta line of a team in the « Équipe » list (B02, R19): « 4 agents · lancée le 28/08 » — the
+/// The meta line of a team in the team list (B02, R19): « 4 agents · last run 28/08 » — the
 /// agent count when the folder shows one, then the last run (<see cref="TeamLastRunConverter"/>).
 /// </summary>
 public sealed class TeamChoiceMetaConverter : IValueConverter

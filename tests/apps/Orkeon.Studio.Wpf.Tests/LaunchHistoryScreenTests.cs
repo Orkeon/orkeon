@@ -59,7 +59,7 @@ public sealed class LaunchHistoryScreenTests
     [Fact]
     public void A_dated_header_starts_with_a_capital_in_the_culture_that_writes_it()
     {
-        // D05: fr writes « vendredi 28 août 2026 »; the header reads « Vendredi 28 août 2026 ».
+        // D05: fr writes its weekday in lower case; the header starts with a capital.
         var kept = CultureInfo.CurrentCulture;
         try
         {

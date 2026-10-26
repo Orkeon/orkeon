@@ -508,7 +508,7 @@ public sealed class LaunchHistoryViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNoMatch));
     }
 
-    // D05: « vendredi 28 août 2026 » is a header, so it starts with a capital like « Aujourd'hui »;
+    // D05: a long date is a header, so it starts with a capital like the "Today" header;
     // the culture's own upper case, the rest of the long date as the culture writes it.
     internal static string SentenceCase(string header) =>
         header.Length == 0 ? header
