@@ -39,6 +39,7 @@ public sealed class ReplayLaunchTests : IDisposable
     {
         while (await _replay.ReadLineAsync(TestContext.Current.CancellationToken) is not null)
         {
+            // Only the reads matter: each one drives the replay to its next line.
         }
     }
 

@@ -141,7 +141,7 @@ public sealed class RichContextIntegrationTests : IDisposable
         var decision = channel.RequestAsync(new ToolApprovalRequest
         {
             ToolName = "shell_command",
-            Arguments = ImmutableDictionary<string, object?>.Empty.Add("command", "npm test"),
+            Arguments = ImmutableDictionary.CreateRange([KeyValuePair.Create<string, object?>("command", "npm test")]),
             Mode = "default",
             Reason = "tool 'shell_command' requires approval (mode 'default').",
         }, ct);

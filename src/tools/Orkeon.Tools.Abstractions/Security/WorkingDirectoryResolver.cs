@@ -56,10 +56,8 @@ public static class WorkingDirectoryResolver
             return path;
 
         var segments = new List<string>();
-        foreach (var segment in $"{workingDirectory}/{path}".Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var segment in $"{workingDirectory}/{path}".Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).Where(s => s != "."))
         {
-            if (segment == ".")
-                continue;
             if (segment == "..")
             {
                 if (segments.Count > 0)

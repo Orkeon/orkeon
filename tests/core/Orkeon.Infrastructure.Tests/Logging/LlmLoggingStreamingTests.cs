@@ -304,6 +304,7 @@ public sealed class LlmLoggingStreamingTests
 
         await foreach (var _ in provider.ChatStreamingAsync([LlmMessage.User("hi")], cancellationToken: cancellation).WithCancellation(cancellation))
         {
+            // Draining the stream is the act: the log record is written once it ends.
         }
 
         await Polling.WaitUntilAsync(() => logger.Records.Count >= 1);

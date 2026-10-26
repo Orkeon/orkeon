@@ -38,7 +38,7 @@ internal sealed class TranscriptBuffer
     private sealed class Entry
     {
         public string Text = string.Empty;
-        public List<int> RowStarts = [0];
+        public readonly List<int> RowStarts = [0];
         public long FirstRow;
         public int Columns;
 
