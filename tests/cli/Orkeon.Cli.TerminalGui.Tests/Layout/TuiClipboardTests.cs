@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Text;
 using Orkeon.Cli.TerminalGui.Layout;
 
@@ -77,6 +78,54 @@ public sealed class TuiClipboardTests : IDisposable
         Assert.True(PaneClipboard.PasteInto(input));
 
         Assert.Equal("COLLÉ\nligne 2", input.Text.Replace("\r\n", "\n"));
+    }
+
+    [Fact]
+    public void PasteInto_inserts_at_the_caret_inside_a_line_and_moves_the_caret_past_the_paste()
+    {
+        TuiClipboard.TerminalWriter = new StringWriter();
+        TuiClipboard.Copy("é+");
+        using var input = new MouseClipboardTextView { Text = "ab😀cd", ReadOnly = false };
+        // Columns are runes: the emoji is one column but two UTF-16 chars.
+        input.InsertionPoint = new Point(3, 0);
+
+        Assert.True(PaneClipboard.PasteInto(input));
+
+        Assert.Equal("ab😀é+cd", input.Text);
+        Assert.Equal(new Point(5, 0), input.InsertionPoint);
+    }
+
+    [Fact]
+    public void PasteInto_multiline_lands_the_caret_at_the_end_of_the_pasted_text()
+    {
+        TuiClipboard.TerminalWriter = new StringWriter();
+        TuiClipboard.Copy("un\r\ndeux\r\ntrois");
+        using var input = new MouseClipboardTextView { Text = "[]", ReadOnly = false };
+        input.InsertionPoint = new Point(1, 0);
+
+        Assert.True(PaneClipboard.PasteInto(input));
+
+        Assert.Equal("[un\ndeux\ntrois]", input.Text.Replace("\r\n", "\n"));
+        Assert.Equal(new Point(5, 2), input.InsertionPoint);
+    }
+
+    [Fact]
+    public void PasteInto_a_whole_transcript_is_one_text_change()
+    {
+        // The rune-by-rune insertion of TextView.InsertText froze the TUI for minutes on a paste of
+        // two hundred lines (one change event per rune): the paste now sets the text once.
+        TuiClipboard.TerminalWriter = new StringWriter();
+        var transcript = string.Join('\n', Enumerable.Range(1, 200).Select(i => $"ligne {i} " + new string('x', 70)));
+        TuiClipboard.Copy(transcript);
+        using var input = new MouseClipboardTextView { Text = "", ReadOnly = false };
+        var changes = 0;
+        input.ContentsChanged += (_, _) => changes++;
+
+        Assert.True(PaneClipboard.PasteInto(input));
+
+        Assert.Equal(transcript, input.Text.Replace("\r\n", "\n"));
+        Assert.Equal(1, changes);
+        Assert.Equal(new Point(80, 199), input.InsertionPoint);
     }
 
     [Fact]

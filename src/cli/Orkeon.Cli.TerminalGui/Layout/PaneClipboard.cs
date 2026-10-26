@@ -1,3 +1,4 @@
+using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -85,8 +86,14 @@ internal static class PaneClipboard
     /// <summary>
     /// Pastes the best available clipboard content (<see cref="TuiClipboard.TryGetText"/>: OS
     /// clipboard, else the last in-TUI copy) into <paramref name="input"/> at the caret,
-    /// preserving any existing text. No-op (returns false) for a read-only input or when every
-    /// clipboard surface is empty.
+    /// preserving any existing text; the caret ends after the pasted text. No-op (returns false)
+    /// for a read-only input or when every clipboard surface is empty.
+    /// <para>
+    /// The text is recomposed in one block and set at once. <c>TextView.InsertText</c> inserts one
+    /// rune at a time, each insertion rebuilding the model and raising the change event: a paste of
+    /// fifty transcript lines froze the TUI for twelve seconds, two hundred lines for minutes. Setting
+    /// the text once takes a fraction of a second whatever the size.
+    /// </para>
     /// </summary>
     public static bool PasteInto(TextView input)
     {
@@ -97,8 +104,42 @@ internal static class PaneClipboard
         if (!TuiClipboard.TryGetText(out var text))
             return false;
 
-        // TextView.InsertText honours the caret position and multi-line content (embedded "\n").
-        input.InsertText(text);
+        var pasted = text.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var lines = input.Text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        var row = Math.Clamp(input.CurrentRow, 0, lines.Length - 1);
+        var line = lines[row];
+        var at = CharOffsetOfRune(line, input.CurrentColumn);
+        lines[row] = string.Concat(line.AsSpan(0, at), pasted, line.AsSpan(at));
+        input.Text = string.Join('\n', lines);
+
+        var pastedLines = pasted.Split('\n');
+        var lastPastedLine = pastedLines[^1];
+        var column = pastedLines.Length == 1
+            ? RuneCount(line.AsSpan(0, at)) + RuneCount(lastPastedLine)
+            : RuneCount(lastPastedLine);
+        input.InsertionPoint = new Point(column, row + pastedLines.Length - 1);
         return true;
+    }
+
+    /// <summary>The UTF-16 offset of the rune at <paramref name="runeIndex"/> in <paramref name="line"/>, the line's length past its end.</summary>
+    private static int CharOffsetOfRune(string line, int runeIndex)
+    {
+        var offset = 0;
+        var seen = 0;
+        foreach (var rune in line.EnumerateRunes())
+        {
+            if (seen++ >= runeIndex)
+                break;
+            offset += rune.Utf16SequenceLength;
+        }
+        return Math.Min(offset, line.Length);
+    }
+
+    private static int RuneCount(ReadOnlySpan<char> text)
+    {
+        var count = 0;
+        foreach (var _ in text.EnumerateRunes())
+            count++;
+        return count;
     }
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — pasting a long text into the TUI's input no longer freezes the interface
+
+In the TUI, a right-click or `Ctrl+V` pasted the clipboard through `TextView.InsertText`, one rune at a time, each
+insertion rebuilding the field's model and raising its change event: fifty transcript lines froze the interface for
+twelve seconds, two hundred for minutes. `PaneClipboard.PasteInto` now recomposes the text around the caret and sets
+it once, the caret landing after the pasted text, whatever its size.
+
 ### Fixed — the interactive REPL starts again when stdin is a terminal (#212)
 
 On `main` after the replay (#206), `orkeon-repl` hung after its start lines whenever stdin was a terminal, TUI and
