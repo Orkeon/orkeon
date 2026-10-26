@@ -91,6 +91,29 @@
     <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
 
+  <!-- ══ Page container (hrm R01): every screen's content — header, banners, cards — sits in
+       one column of 1040 px at most, whatever its state (empty, filled, failed, running). At
+       1440 px with the 212 px navigation the column runs from x = 297 to 1337: it starts 85 px
+       after the navigation's right edge (the brief's «86 px» counts the nav's 1 px line) and
+       leaves the rest on the right. The Margin assumes the container sits right at the nav's
+       edge with no padding of the shell around it; the shell lot (L01) places it and may
+       override the Margin, never the MaxWidth. TargetType FrameworkElement: a Border, a Grid or
+       a StackPanel takes it. ══ -->
+  <Style x:Key="PageContainer" TargetType="FrameworkElement">
+    <Setter Property="MaxWidth" Value="1040"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="Margin" Value="85,0,0,0"/>
+  </Style>
+  <!-- Left-aligned under a MaxWidth, an element measures to its content, so a short screen would
+       come out narrower than a full one. Where the content does not stretch on its own, the
+       shell puts it in the first column of a Grid whose columns are PageColumn then «*»: the
+       column takes 1040 px whenever there is room, whatever the content, and shrinks with the
+       window below that. -->
+  <Style x:Key="PageColumn" TargetType="ColumnDefinition">
+    <Setter Property="Width" Value="*"/>
+    <Setter Property="MaxWidth" Value="1040"/>
+  </Style>
+
   <!-- ══ Card ══ -->
   <Style x:Key="Card" TargetType="Border">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
