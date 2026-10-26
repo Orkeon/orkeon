@@ -49,10 +49,48 @@ public sealed class LaunchHistoryScreenTests
 
         var strings = EnglishStudioStrings.Instance;
         Assert.Equal(
-            [strings[StudioStringKeys.HistToday], strings[StudioStringKeys.HistYesterday], older.Date.ToString("D", CultureInfo.CurrentCulture)],
+            [strings[StudioStringKeys.HistToday], strings[StudioStringKeys.HistYesterday],
+             LaunchHistoryViewModel.SentenceCase(older.Date.ToString("D", CultureInfo.CurrentCulture))],
             history.Groups.Select(group => group.Header));
         Assert.Equal([Now.AddHours(-1), Now.AddHours(-3)], history.Groups[0].Entries.Select(row => row.StartedAt));
         Assert.False(history.HasNoMatch);
+    }
+
+    [Fact]
+    public void A_dated_header_starts_with_a_capital_in_the_culture_that_writes_it()
+    {
+        // D05: fr writes « vendredi 28 août 2026 »; the header reads « Vendredi 28 août 2026 ».
+        var kept = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+            Assert.Equal("Vendredi 28 août 2026", LaunchHistoryViewModel.SentenceCase(
+                new DateTime(2026, 8, 28).ToString("D", CultureInfo.CurrentCulture)));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = kept;
+        }
+
+        Assert.Equal("", LaunchHistoryViewModel.SentenceCase(""));
+        Assert.Equal("Aujourd'hui", LaunchHistoryViewModel.SentenceCase("Aujourd'hui"));
+    }
+
+    [Fact]
+    public void The_usage_parts_break_only_between_two_values()
+    {
+        // B11: « 6 020 tokens · cache 10 % · 602 tokens » never wraps inside a value; each part after
+        // the first carries its « · », and the parts say exactly what the joined line says.
+        var entry = Run("/teams/alpha", Now.AddHours(-1), RunOutcome.Success) with
+        {
+            Tokens = 6020, CacheHitTokens = 602, CacheMissTokens = 5418,
+        };
+        var row = Build(null, entry).Groups[0].Entries[0];
+
+        Assert.True(row.UsageParts.Count > 1);
+        Assert.DoesNotContain("·", row.UsageParts[0], StringComparison.Ordinal);
+        Assert.All(row.UsageParts.Skip(1), part => Assert.StartsWith("· ", part, StringComparison.Ordinal));
+        Assert.Equal(row.UsageText, string.Join(" ", row.UsageParts));
     }
 
     [Fact]
