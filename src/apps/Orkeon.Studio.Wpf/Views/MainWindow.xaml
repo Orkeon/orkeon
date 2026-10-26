@@ -1194,8 +1194,10 @@
               CornerRadius="18" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <!-- R11 (D07): the shared 20/600 modal title. R09 (B06): a long team name wraps to a
+                 second line, then ends on «…» with the whole title as a tooltip — never cut bare. -->
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
@@ -1307,8 +1309,7 @@
               CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
@@ -1414,9 +1415,8 @@
               CornerRadius="18" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding Title}"/>
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
