@@ -78,29 +78,19 @@
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
           <!-- the discreet door to "À propos" (design v3: the "…" next to the brand) -->
-          <Button Command="{Binding About.OpenCommand}" Cursor="Hand" Margin="7,0,0,0" VerticalAlignment="Center"
+          <!-- R04 (A04): every title-bar button is a 32 px ghost — this one included. -->
+          <Button Style="{StaticResource IconBtnGhost}" Command="{Binding About.OpenCommand}" Margin="4,0,0,0" VerticalAlignment="Center"
                   ToolTip="{Binding [Studio.Shell.AboutTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button.Template>
-              <ControlTemplate TargetType="Button">
-                <Border x:Name="Bg" Width="24" Height="24" CornerRadius="7" Background="Transparent">
-                  <TextBlock Text="…" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource InkFaintBrush}"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,5"/>
-                </Border>
-                <ControlTemplate.Triggers>
-                  <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-                  </Trigger>
-                </ControlTemplate.Triggers>
-              </ControlTemplate>
-            </Button.Template>
+            <controls:LucideIcon Kind="ellipsis" Size="16"/>
           </Button>
         </StackPanel>
 
         <!-- right cluster -->
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
           <!-- R12: the way into the assistant's side panel, pressed while it is open; the
-               accent dot says the assistant spoke while it was closed. -->
+               accent dot says the assistant spoke while it was closed. R04 (A04): a Secondary
+               (BtnToggle); open, sky ground and AccentInk text — the icon follows the text. -->
           <ToggleButton Style="{StaticResource BtnToggle}" Margin="0,0,14,0" VerticalAlignment="Center"
                         IsChecked="{Binding Chat.IsOpen, Mode=OneWay}" Command="{Binding Chat.ToggleCommand}"
                         AutomationProperties.AutomationId="AskAssistant"
@@ -108,7 +98,8 @@
                         ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="message-circle" Size="16" Margin="0,0,7,0"/>
+              <controls:LucideIcon Kind="message-circle" Size="16" Margin="0,0,8,0"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
               <TextBlock Text="{Binding [Studio.Shell.AskAssistant], Source={x:Static services:I18n.Instance}}" VerticalAlignment="Center"/>
               <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
                        Fill="{DynamicResource MarkBrush}"
@@ -155,13 +146,14 @@
                a row that asks to be clicked. The header line says whether this language
                came from the machine or from a choice, which is the difference a user has
                no other way of seeing. -->
-          <Grid VerticalAlignment="Center" Margin="0,0,10,0"
+          <Grid VerticalAlignment="Center" Margin="0,0,4,0"
                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button Style="{StaticResource LangBtn}" Command="{Binding Language.ToggleMenuCommand}">
+            <Button x:Name="LanguageButton" Style="{StaticResource BtnTitleBar}" Padding="10,0" Command="{Binding Language.ToggleMenuCommand}">
               <Button.ToolTip><TextBlock Text="{Binding Language.Tooltip}"/></Button.ToolTip>
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Language.CurrentDisplay}" VerticalAlignment="Center"/>
-                <controls:LucideIcon Kind="chevron-down" Size="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                <TextBlock FontFamily="{StaticResource MonoFont}" Text="{Binding Language.CurrentDisplay}" VerticalAlignment="Center"/>
+                <controls:LucideIcon Kind="chevron-down" Size="16" Margin="6,0,0,0" VerticalAlignment="Center"
+                                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                      RenderTransformOrigin="0.5,0.5">
                   <controls:LucideIcon.RenderTransform><RotateTransform/></controls:LucideIcon.RenderTransform>
                   <controls:LucideIcon.Style>
@@ -221,14 +213,14 @@
               </Border>
             </Popup>
           </Grid>
-          <Button Style="{StaticResource IconBtn}" Click="OnStartTour" Margin="0,0,10,0" VerticalAlignment="Center"
+          <Button Style="{StaticResource IconBtnGhost}" Click="OnStartTour" Margin="0,0,4,0" VerticalAlignment="Center"
                   ToolTip="{Binding [Studio.Shell.TourTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <controls:LucideIcon Kind="circle-help" Size="15"/>
+            <controls:LucideIcon Kind="circle-help" Size="16"/>
           </Button>
-          <Button x:Name="ThemeBtn" Style="{StaticResource IconBtn}" Click="OnToggleTheme" VerticalAlignment="Center"
+          <Button x:Name="ThemeBtn" Style="{StaticResource IconBtnGhost}" Click="OnToggleTheme" VerticalAlignment="Center"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <controls:LucideIcon x:Name="ThemeIcon" Kind="moon" Size="15"/>
+            <controls:LucideIcon x:Name="ThemeIcon" Kind="moon" Size="16"/>
           </Button>
           <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="12,12,2,12"/>
           <!-- caption buttons -->
