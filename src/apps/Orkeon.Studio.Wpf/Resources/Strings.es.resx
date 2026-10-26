@@ -3944,10 +3944,10 @@
   <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Guardar y salir</value></data>
   <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Salir sin guardar</value></data>
   <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Quedarse</value></data>
-  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODELOS</value></data>
-  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCESO</value></data>
-  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONEXIONES</value></data>
-  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>AVANZADO</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>Modelos</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Acceso</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Conexiones</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avanzado</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Abrir Modelos</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Abrir Claves API</value>

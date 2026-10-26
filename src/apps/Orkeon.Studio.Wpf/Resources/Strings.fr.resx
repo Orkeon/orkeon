@@ -2256,10 +2256,10 @@
   <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Enregistrer et quitter</value></data>
   <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Quitter sans enregistrer</value></data>
   <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Rester</value></data>
-  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODÈLES</value></data>
-  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCÈS</value></data>
-  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNEXIONS</value></data>
-  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>AVANCÉ</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>Modèles</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Accès</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connexions</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avancé</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Ouvrir Modèles</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Ouvrir Clés API</value>
