@@ -153,6 +153,69 @@ public class ReplPaneViewTests
         Assert.Equal(string.Empty, pane.CurrentHistory);
     }
 
+    // ── Issue #196: transcript append cost, coalescing, bound ────────────────────────────
+
+    [Fact]
+    public void A_burst_of_transcript_writes_costs_one_ui_dispatch()
+    {
+        var dispatcher = new Doubles.FakeUiDispatcher();
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), dispatcher);
+        dispatcher.RunPending();
+        var before = dispatcher.InvokeCount;
+
+        for (var i = 0; i < 100; i++) pane.AppendOutputLine($"line {i}");
+
+        Assert.Equal(before + 1, dispatcher.InvokeCount);
+        dispatcher.RunPending();
+        Assert.Equal(string.Concat(Enumerable.Range(0, 100).Select(i => $"line {i}\n")), pane.CurrentHistory);
+    }
+
+    [Fact]
+    public void Clear_is_ordered_with_the_transcript_writes_around_it()
+    {
+        var dispatcher = new Doubles.FakeUiDispatcher();
+        using var pane = new ReplPaneView(new TerminalGuiOptions(), dispatcher);
+        pane.AppendOutputLine("old");
+        pane.Clear();
+        pane.AppendOutputLine("new");
+
+        dispatcher.RunPending();
+
+        Assert.Equal("new\n", pane.CurrentHistory);
+    }
+
+    [Fact]
+    public void Transcript_work_per_line_stays_constant_over_ten_thousand_lines()
+    {
+        using var pane = CreatePane();
+        var model = pane.Transcript;
+        // Warm-up past one screen: the vertical scrollbar then appears, narrows the viewport and
+        // re-wraps every line once — a layout change, not an append cost.
+        for (var i = 0; i < 100; i++) pane.AppendOutputLine("warm-up");
+        var work = new long[10_000];
+        for (var i = 0; i < work.Length; i++)
+        {
+            var before = model.CharactersWrapped;
+            pane.AppendOutputLine($"transcript line {i:D5} long enough to wrap in a narrow pane once or twice");
+            work[i] = model.CharactersWrapped - before;
+        }
+
+        Assert.All(work, w => Assert.Equal(work[0], w));
+        Assert.Equal(work.Take(1_000).Sum(), work.TakeLast(1_000).Sum());
+    }
+
+    [Fact]
+    public void Transcript_is_bounded_by_its_capacity()
+    {
+        using var pane = new ReplPaneView(new TerminalGuiOptions { ReplTranscriptCapacity = 100 }, InlineDispatcher.Instance);
+
+        for (var i = 0; i < 1_000; i++) pane.AppendOutputLine($"line {i}");
+
+        Assert.Equal(100, pane.Transcript.LineCount);
+        Assert.StartsWith("line 901\n", pane.CurrentHistory, StringComparison.Ordinal);
+        Assert.EndsWith("line 999\n", pane.CurrentHistory, StringComparison.Ordinal);
+    }
+
     // ── Word wrap / horizontal scrollbar toggle ───────────────────────────────────────────
 
     [Fact]

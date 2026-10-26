@@ -116,6 +116,19 @@ any grammar (a PHP pattern without its `<?php` tag, a JSON pattern whose metavar
 rule scans `.tsx`. `ensure_import` also serves `tsx` and JavaScript; `ensure_using` stays C#. A method's receiver
 (Rust `self`, Python `self` or `cls`) is no longer a parameter of its selector.
 
+### Fixed — the TUI no longer rebuilds a whole pane for each appended line (#196)
+
+While a background crew ran, the Terminal.Gui loop thread spent most of its time rebuilding text: every line written
+to the REPL transcript (`_history.Text += text`) or to the logs pane (a join of the whole ring buffer, then
+`TextView.Text`) re-parsed and re-wrapped the whole pane, even with the logs pane hidden, so typing lagged and the
+spinner slowed. Both panes now draw from a line-based, bounded model (`TranscriptView`, `TranscriptBuffer`) that wraps
+only the lines added and drops head lines past the capacity; `TextView.InsertText` was not usable for this (it refuses a
+read-only view, records undo history and re-wraps the whole text on every character with word wrap on). Writes are
+coalesced (`AppendCoalescer`): a burst costs one `Application.Invoke`, not one per line. The logs ring buffer is fed on
+the caller's thread and a hidden logs pane does no UI work; showing it renders the buffer once. The transcript is
+bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines). Word wrap (`F3`), autoscroll, mouse
+selection with auto-copy and `Ctrl+A` / `Ctrl+C` keep working.
+
 ### Fixed — a tool the act does not offer is refused, not put to the operator (#193)
 
 A model's call to a tool `ctx.llm.act` does not offer (`read` when `tools: ["file_read"]`) reached the permission gate
