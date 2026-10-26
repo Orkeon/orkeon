@@ -208,8 +208,10 @@
                         <controls:PropertyRow Label="{Binding [Studio.Settings.FieldProvider], Source={x:Static services:I18n.Instance}}">
                           <TextBlock VerticalAlignment="Center" Text="{Binding Provider}"/>
                         </controls:PropertyRow>
-                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldEndpoint], Source={x:Static services:I18n.Instance}}">
-                          <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Endpoint}">
+                        <!-- D10 (R21): the endpoint URL is the expert's; Novice reads the provider. -->
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldEndpoint], Source={x:Static services:I18n.Instance}}"
+                                              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
+                          <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
                             <TextBlock.Style>
                               <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
                                 <Setter Property="FontSize" Value="13"/>
@@ -227,8 +229,25 @@
                         </controls:PropertyRow>
                         <!-- STUDIO-48: the name a crew writes to run on this model — the host profile
                              Llm:Profiles:<id> of the settings file —, or why no crew can. -->
-                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldInFile], Source={x:Static services:I18n.Instance}}"
-                                              Visibility="{Binding HasHostIdText, Converter={StaticResource BooleanToVisibility}}">
+                        <!-- D10 (R21): Novice hides the profile id (« profile: studio »); a setting no
+                             crew can name still says why, in both modes. -->
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldInFile], Source={x:Static services:I18n.Instance}}">
+                          <controls:PropertyRow.Style>
+                            <Style TargetType="controls:PropertyRow" BasedOn="{StaticResource {x:Type controls:PropertyRow}}">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasHostIdText}" Value="False">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                  <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsHostIdIssue}" Value="False"/>
+                                    <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=views:SettingsView}}" Value="True"/>
+                                  </MultiDataTrigger.Conditions>
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                </MultiDataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </controls:PropertyRow.Style>
                           <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding HostIdText}">
                             <TextBlock.Style>
                               <Style TargetType="TextBlock">
