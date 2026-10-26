@@ -2535,7 +2535,7 @@
   <!-- hrm:L09 end -->
 
   <!-- hrm:L10 begin -->
-  <data name="Studio.Settings.MountStringsEyebrow" xml:space="preserve"><value>MOUNT STRINGS</value></data>
+  <data name="Studio.Settings.MountStringsEyebrow" xml:space="preserve"><value>--mount ARGUMENTS</value></data>
   <!-- hrm:L10 end -->
 
   <!-- hrm:L11 begin -->
