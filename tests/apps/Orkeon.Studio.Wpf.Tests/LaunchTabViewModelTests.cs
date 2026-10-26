@@ -1571,11 +1571,22 @@ public sealed class LaunchTabViewModelTests
 
             var raised = new List<string?>();
             tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+            var counts = new List<int>();
+            var selectedKeys = new List<string?>();
+            ((System.Collections.Specialized.INotifyCollectionChanged)list).CollectionChanged += (_, _) =>
+            {
+                counts.Add(list.Count);
+                selectedKeys.Add(tab.SelectedModelKey);
+            };
             tab.Target.Select(pinned);
 
             // The team resolved: the same list gained the team's entry in second place, the
             // selection moved onto it, and the combo was told of the key, never of a new list.
+            // The list never emptied on the way, and the selection could be read at every step:
+            // the combo does both while the list moves.
             Assert.Same(list, tab.ModelChoices);
+            Assert.DoesNotContain(0, counts);
+            Assert.All(selectedKeys, key => Assert.NotNull(key));
             Assert.Equal(RunModelChoiceKind.Team, list[1].Kind);
             Assert.Equal("team", tab.SelectedModelKey);
             Assert.Contains(nameof(LaunchTabViewModel.SelectedModelKey), raised);

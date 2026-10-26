@@ -239,12 +239,15 @@ public sealed partial class LaunchTabViewModel
         {
             var choices = ModelChoices;
             var current = RunLlmChoice;
+            // The combo reads this while the list moves: nothing is assumed about its size. A getter
+            // that threw on an empty list broke the binding, and the box stayed empty for good.
+            var fallback = choices.Count > 0 ? choices[0] : null;
             if (_team.LlmChoice is { } saved && saved == current && choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Team) is { } team)
                 return team;
             if (current.UseDefault)
-                return choices[0];
+                return fallback;
             return choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, current.Profile, StringComparison.Ordinal))
-                ?? choices[0];
+                ?? fallback;
         }
         set
         {
@@ -630,18 +633,13 @@ public sealed partial class LaunchTabViewModel
     }
 
     /// <summary>
-    /// Brings <paramref name="list"/> to <paramref name="fresh"/> with the fewest moves: an entry
-    /// that stays is left where the combo knows it, one that goes is removed, one that comes is
-    /// inserted at its place.
+    /// Brings <paramref name="list"/> to <paramref name="fresh"/> with the fewest moves, and never
+    /// through an empty list: an entry that stays is left where the combo knows it, one that comes
+    /// is inserted or moved to its place first, and only then are the entries that go removed from
+    /// the tail they were pushed to. The combo reads the selection at every step.
     /// </summary>
     private static void Reconcile(ObservableCollection<RunModelChoice> list, List<RunModelChoice> fresh)
     {
-        for (var i = list.Count - 1; i >= 0; i--)
-        {
-            if (!fresh.Contains(list[i]))
-                list.RemoveAt(i);
-        }
-
         for (var i = 0; i < fresh.Count; i++)
         {
             if (i < list.Count && list[i] == fresh[i])
@@ -659,6 +657,9 @@ public sealed partial class LaunchTabViewModel
             else
                 list.Insert(i, fresh[i]);
         }
+
+        while (list.Count > fresh.Count)
+            list.RemoveAt(list.Count - 1);
     }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(
