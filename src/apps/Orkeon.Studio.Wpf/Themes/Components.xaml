@@ -409,6 +409,20 @@
     </Setter>
   </Style>
 
+  <!-- ══ OverflowMenuButton (R23): the «…» — the 32 px square icon button, Lucide ellipsis
+       (more-horizontal), always last. Its menu is built in Controls/OverflowMenuButton.cs. ══ -->
+  <Style TargetType="{x:Type controls:OverflowMenuButton}" BasedOn="{StaticResource IconBtn}"/>
+
+  <!-- ══ ActionBarRule (R23): the 1 px vertical rule between two groups of a card's action bar,
+       in the field border. Lives in an ActionBar, which hides it at an edge or after another. ══ -->
+  <Style x:Key="ActionBarRule" TargetType="Rectangle">
+    <Setter Property="Width" Value="1"/>
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Fill" Value="{DynamicResource FieldBorderBrush}"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+  </Style>
+
   <!-- ══ PageHeader: title + one-line subtitle on the left, page actions on the right ══ -->
   <Style TargetType="{x:Type controls:PageHeader}">
     <Setter Property="Focusable" Value="False"/>

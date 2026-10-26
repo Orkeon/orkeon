@@ -9,11 +9,17 @@ using System.Windows.Media;
 namespace Orkeon.Studio.Wpf.Controls;
 
 /// <summary>
-/// The action bar of an object (R5): one line, never wrapped. The buttons are laid left to
-/// right in the order given; those that no longer fit — the right-hand ones — leave the line and
-/// are offered by a «…» button at its end, which opens them as a menu. A
-/// <see cref="Separator"/> (or a <c>VSeparator</c> rectangle) between two buttons draws the vertical rule between the groups
-/// (work · files · lifecycle); a rule left at the edge of the line is not drawn.
+/// The action bar of a card (R23): one line, never wrapped, in the order given — the one order of
+/// both modes: Lancer, Essayer | Modifier, Renommer | Ouvrir le dossier, Dupliquer | «…». Novice
+/// collapses the buttons it does not show (Visibility), it never reorders them. A child marked
+/// <see cref="SetInMenu">ActionBar.InMenu</see> (Exporter, Archiver, Supprimer) never sits on the
+/// line: it is offered by the «…» button, a 32 px square (<see cref="OverflowMenuButton"/>) always
+/// at the end of the line. The buttons that no longer fit — the right-hand ones — join the menu
+/// too, before the InMenu ones, in the order given. A destructive item (a BtnDanger button, or one
+/// marked OverflowMenuButton.IsDestructive) closes the menu in red after a rule.
+/// A <see cref="Separator"/> or a rectangle (the <c>ActionBarRule</c> style: 1 px, FieldBorderBrush)
+/// between two buttons draws the vertical rule between the groups; a rule at either edge of the
+/// line, or right after another one (a group Novice emptied), is not drawn.
 /// A hidden button is not removed from the tree: it keeps its bindings, its command and its
 /// CanExecute, and the menu reads them at the moment it opens.
 /// </summary>
@@ -21,36 +27,54 @@ public sealed class ActionBar : Panel
 {
     private const double Gap = 8;
 
-    private readonly Button _more;
+    public static readonly DependencyProperty InMenuProperty = DependencyProperty.RegisterAttached(
+        "InMenu", typeof(bool), typeof(ActionBar),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsParentMeasure | FrameworkPropertyMetadataOptions.AffectsParentArrange));
+
+    private readonly OverflowMenuButton _more;
     private readonly List<UIElement> _hidden = [];
     private readonly HashSet<Control> _untabbed = [];
 
     public ActionBar()
     {
-        _more = new Button
-        {
-            Content = new LucideIcon { Kind = "ellipsis", Size = 16 },
-            Width = 40,
-        };
-        _more.SetResourceReference(StyleProperty, "BtnSecondary");
-        _more.SetBinding(ToolTipProperty, new System.Windows.Data.Binding("[Studio.Shell.MoreActions]") { Source = Services.I18n.Instance });
-        _more.SetBinding(AutomationProperties.NameProperty, new System.Windows.Data.Binding("[Studio.Shell.MoreActions]") { Source = Services.I18n.Instance });
-        _more.Click += (_, _) => OpenMenu();
+        _more = new OverflowMenuButton();
+        _more.MenuOpening += (_, _) => FillMenu();
         AddVisualChild(_more);
         AddLogicalChild(_more);
     }
 
-    /// <summary>The height of the bar's own «…» button; the buttons inside carry their own.</summary>
+    /// <summary>The side of the bar's own square «…» button (32 by default); the buttons inside carry their own height.</summary>
     public double ButtonHeight
     {
         get => _more.Height;
-        set => _more.Height = value;
+        set
+        {
+            _more.Height = value;
+            _more.Width = value;
+        }
+    }
+
+    public static bool GetInMenu(DependencyObject element)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        return (bool)element.GetValue(InMenuProperty);
+    }
+
+    public static void SetInMenu(DependencyObject element, bool value)
+    {
+        ArgumentNullException.ThrowIfNull(element);
+        element.SetValue(InMenuProperty, value);
     }
 
     protected override int VisualChildrenCount => base.VisualChildrenCount + 1;
 
     protected override Visual GetVisualChild(int index) =>
         index == base.VisualChildrenCount ? _more : base.GetVisualChild(index);
+
+    private static bool IsRule(UIElement child) => child is Separator or System.Windows.Shapes.Rectangle;
+
+    private bool HasMenuOnlyButton() =>
+        InternalChildren.Cast<UIElement>().Any(c => c.Visibility != Visibility.Collapsed && c is ButtonBase && GetInMenu(c));
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -59,11 +83,16 @@ public sealed class ActionBar : Panel
         foreach (UIElement child in InternalChildren)
         {
             child.Measure(new Size(double.PositiveInfinity, availableSize.Height));
-            if (child.Visibility != Visibility.Collapsed)
+            if (child.Visibility != Visibility.Collapsed && !GetInMenu(child))
             {
                 total += child.DesiredSize.Width + Gap;
                 height = Math.Max(height, child.DesiredSize.Height);
             }
+        }
+
+        if (HasMenuOnlyButton())
+        {
+            total += _more.DesiredSize.Width + Gap;
         }
 
         var width = double.IsInfinity(availableSize.Width) ? total : Math.Min(total, availableSize.Width);
@@ -73,32 +102,41 @@ public sealed class ActionBar : Panel
     protected override Size ArrangeOverride(Size finalSize)
     {
         var visible = InternalChildren.Cast<UIElement>().Where(c => c.Visibility != Visibility.Collapsed).ToList();
-        var needed = visible.Sum(c => c.DesiredSize.Width + Gap) - Gap;
-        var budget = needed <= finalSize.Width ? finalSize.Width : finalSize.Width - _more.DesiredSize.Width - Gap;
+        var onLine = visible.Where(c => !GetInMenu(c)).ToList();
+        var needed = onLine.Sum(c => c.DesiredSize.Width + Gap) - Gap;
+        var budget = needed <= finalSize.Width && !HasMenuOnlyButton()
+            ? finalSize.Width
+            : finalSize.Width - _more.DesiredSize.Width - Gap;
 
-        _hidden.Clear();
         var shown = new List<UIElement>();
+        var overflowed = false;
         double used = 0;
-        foreach (var child in visible)
+        foreach (var child in onLine)
         {
             var width = child.DesiredSize.Width;
-            if (_hidden.Count == 0 && used + width <= budget)
+            if (!overflowed && used + width <= budget)
             {
                 shown.Add(child);
                 used += width + Gap;
             }
             else
             {
-                _hidden.Add(child);
+                overflowed = true;
             }
         }
 
-        // A rule is only drawn between two shown buttons.
-        while (shown.Count > 0 && shown[^1] is Separator or System.Windows.Shapes.Rectangle)
+        // A rule is only drawn between two shown buttons: never at an edge, never doubled.
+        for (var i = shown.Count - 1; i >= 0; i--)
         {
-            _hidden.Insert(0, shown[^1]);
-            shown.RemoveAt(shown.Count - 1);
+            if (IsRule(shown[i]) && (i == 0 || i == shown.Count - 1 || IsRule(shown[i - 1])))
+            {
+                shown.RemoveAt(i);
+            }
         }
+
+        // The menu takes everything that is not on the line, in the order given.
+        _hidden.Clear();
+        _hidden.AddRange(visible.Where(c => !shown.Contains(c)));
 
         double x = 0;
         foreach (var child in shown)
@@ -142,9 +180,9 @@ public sealed class ActionBar : Panel
         return finalSize;
     }
 
-    private void OpenMenu()
+    private void FillMenu()
     {
-        var menu = new ContextMenu { PlacementTarget = _more, Placement = PlacementMode.Bottom };
+        _more.Items.Clear();
         foreach (var button in _hidden.OfType<ButtonBase>())
         {
             var item = new MenuItem
@@ -155,22 +193,20 @@ public sealed class ActionBar : Panel
             };
             if (FirstIcon(button) is { } icon)
             {
-                item.Icon = new LucideIcon { Kind = icon.Kind, Size = 14 };
+                item.Icon = new LucideIcon { Kind = icon.Kind, Size = 16 };
             }
 
-            // A destructive action keeps its colour in the menu (R2).
-            if (ReferenceEquals(button.Style, button.TryFindResource("BtnDanger")))
+            // A destructive action keeps its colour in the menu, after a rule (R06, R23).
+            if (OverflowMenuButton.GetIsDestructive(button) || ReferenceEquals(button.Style, button.TryFindResource("BtnDanger")))
             {
-                item.SetResourceReference(Control.ForegroundProperty, "DangerBrush");
+                OverflowMenuButton.SetIsDestructive(item, true);
             }
 
             ToolTipService.SetShowOnDisabled(item, true);
             var target = button;
             item.Click += (_, _) => Invoke(target);
-            menu.Items.Add(item);
+            _more.Items.Add(item);
         }
-
-        menu.IsOpen = true;
     }
 
     private static void Invoke(ButtonBase button)
