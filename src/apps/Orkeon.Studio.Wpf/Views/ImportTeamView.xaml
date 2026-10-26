@@ -26,18 +26,17 @@
     <!-- the candidate: the launcher's own picker + detector -->
     <Border Style="{StaticResource Card}" Margin="0,16,0,16">
       <StackPanel>
+        <!-- C07 (R10): the path and its two buttons on one 40 px line - the foundation's field and
+             button heights, nothing local. -->
         <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" VerticalAlignment="Center"
                   Command="{Binding Target.BrowseFolderCommand}"
                   Content="{Binding [Studio.Run.Browse], Source={x:Static services:I18n.Instance}}"/>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                  Command="{Binding Target.DetectCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="scan-search" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <TextBox Style="{StaticResource InputMono}" Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" VerticalAlignment="Center"
+                  controls:ButtonIcon.Kind="scan-search" Command="{Binding Target.DetectCommand}"
+                  Content="{Binding [Studio.Run.Detect], Source={x:Static services:I18n.Instance}}"/>
+          <TextBox Style="{StaticResource InputMono}" VerticalAlignment="Center"
+                   Text="{Binding Target.SelectedPath, UpdateSourceTrigger=PropertyChanged}"/>
         </DockPanel>
 
         <!-- drop zone (audit 04): dashed, centred; files also arrive via the typed path -->
@@ -63,10 +62,9 @@
         </Border>
         <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="{Binding Target.StatusDisplay}"/>
         <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
-          <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
-                    SelectedItem="{Binding Target.PreferredDirectoryKind}"
-                    Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>
+          <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningInkBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
+          <ComboBox Style="{StaticResource ComboM}" ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
+                    SelectedItem="{Binding Target.PreferredDirectoryKind}" Margin="0,6,0,0"/>
         </StackPanel>
       </StackPanel>
     </Border>
@@ -93,14 +91,14 @@
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Tone}" Value="warn">
                           <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
                   </controls:LucideIcon.Style>
                 </controls:LucideIcon>
                 <StackPanel>
-                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding Title}"/>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding Detail}"/>
                 </StackPanel>
               </DockPanel>
@@ -111,54 +109,37 @@
     </Border>
 
     <!-- pasted-secret warning: keys travel by environment, never inside a shared folder -->
-    <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource WarningBrush}" Margin="0,0,0,16"
-            Visibility="{Binding HasSecretWarnings, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <controls:LucideIcon Kind="triangle-alert" Size="15" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-          <TextBlock Style="{StaticResource CardTitle}" Margin="8,0,0,0"
-                     Text="{Binding [Studio.Import.SecretsTitle], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-        <TextBlock Style="{StaticResource Hint}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,8"
-                   Text="{Binding [Studio.Import.SecretsBody], Source={x:Static services:I18n.Instance}}"/>
-        <ItemsControl ItemsSource="{Binding SecretWarnings}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1" Text="{Binding}"/>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </Border>
+    <controls:Alert Tone="Warning" Margin="0,0,0,16"
+                    Title="{Binding [Studio.Import.SecretsTitle], Source={x:Static services:I18n.Instance}}"
+                    Message="{Binding [Studio.Import.SecretsBody], Source={x:Static services:I18n.Instance}}"
+                    Visibility="{Binding HasSecretWarnings, Converter={StaticResource BooleanToVisibility}}">
+      <ItemsControl ItemsSource="{Binding SecretWarnings}" Margin="0,6,0,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Style="{StaticResource MonoText}" Margin="0,1" Text="{Binding}"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </controls:Alert>
 
-    <StackPanel Orientation="Horizontal">
-      <Button Style="{StaticResource BtnPrimary}" Command="{Binding ImportCommand}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-          <TextBlock Text="{Binding [Studio.Import.Add], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
+    <StackPanel Style="{StaticResource ActionRow}" HorizontalAlignment="Left">
+      <Button Style="{StaticResource BtnPrimary}" Command="{Binding ImportCommand}" controls:ButtonIcon.Kind="plus"
+              Content="{Binding [Studio.Import.Add], Source={x:Static services:I18n.Instance}}"/>
       <!-- VFS-90 D-06: the candidate names folder declarations this machine does not have;
            authorizing them as recorded — under the same ids — is what makes it launchable. -->
       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding DeclareCopiesCommand}"
-              Visibility="{Binding HasUnknownMounts, Converter={StaticResource BooleanToVisibility}}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Import.DeclareCopies], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
+              controls:ButtonIcon.Kind="badge-check"
+              Visibility="{Binding HasUnknownMounts, Converter={StaticResource BooleanToVisibility}}"
+              Content="{Binding [Studio.Import.DeclareCopies], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Click="OnTestFirst"
-              IsEnabled="{Binding Target.IsResolved}">
+              controls:ButtonIcon.Kind="play" IsEnabled="{Binding Target.IsResolved}"
+              Content="{Binding [Studio.Import.TestFirst], Source={x:Static services:I18n.Instance}}">
         <Button.Visibility>
           <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"
                    Converter="{StaticResource BooleanToVisibility}"/>
         </Button.Visibility>
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Import.TestFirst], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
       </Button>
-      <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center" Margin="12,0,0,0"
+      <TextBlock Style="{StaticResource MonoText}" VerticalAlignment="Center" Margin="12,0,0,0"
                  Text="{Binding StatusMessage}"
                  Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
     </StackPanel>
