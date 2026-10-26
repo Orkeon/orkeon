@@ -8,7 +8,7 @@ namespace Orkeon.Studio.Wpf.Controls;
 /// <see cref="Title"/> in 16/600, one 14 px <see cref="Text"/> sentence and 0 to 2
 /// <see cref="Actions"/> (the only place where «Add …» may be the primary). Compact
 /// (<see cref="IsCompact"/>): a 24 px circle on the left of a 14/600 title and the sentence, no
-/// action — for a list inside a card («Créations en cours»). Its look is the implicit style in
+/// action — for a list inside a card («Creations in progress»). Its look is the implicit style in
 /// Themes/Components.xaml.
 /// </summary>
 public sealed class EmptyState : Control

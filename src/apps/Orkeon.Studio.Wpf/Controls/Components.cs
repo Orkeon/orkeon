@@ -91,9 +91,9 @@ public sealed class Alert : ContentControl
 
 /// <summary>
 /// The one badge (R12): a 22 px pill, the tone's tinted background and dark ink, the background
-/// kept in the dark theme; its text the Content. Folder rights read neutral «Lecture seule» and
-/// info (sky) «Lecture et écriture», everywhere; run statuses success «Réussie», danger
-/// «Échouée», info «En cours», neutral «En attente». A state line with a dot is a
+/// kept in the dark theme; its text the Content. Folder rights read neutral «Read only» and
+/// info (sky) «Read and write», everywhere; run statuses success «Succeeded», danger
+/// «Failed», info «Running», neutral «Waiting». A state line with a dot is a
 /// <c>StatusDot</c>, not a badge.
 /// </summary>
 public sealed class Badge : ContentControl

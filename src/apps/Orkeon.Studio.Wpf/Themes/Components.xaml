@@ -139,8 +139,8 @@
 
   <!-- ══ Badge (R12): a 22 px pill, radius exactly 11 (the h/2 rule of BadgeBase), the tone's
        tinted background and the tone's dark ink — the background is kept in the dark theme.
-       Neutral paper-sunk / muted ink; Info sky / accent ink (folder rights «Lecture et
-       écriture», a run «En cours»); Success, Warning, Danger their weak background and ink. ══ -->
+       Neutral paper-sunk / muted ink; Info sky / accent ink (folder rights «Read and
+       write», a running run); Success, Warning, Danger their weak background and ink. ══ -->
   <Style TargetType="{x:Type controls:Badge}">
     <Setter Property="Focusable" Value="False"/>
     <Setter Property="Height" Value="22"/>
