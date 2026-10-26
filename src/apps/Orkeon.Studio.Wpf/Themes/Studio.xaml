@@ -13,26 +13,54 @@
   <FontFamily x:Key="TextFont">pack://application:,,,/Fonts/#Hanken Grotesk, Segoe UI</FontFamily>
   <FontFamily x:Key="MonoFont">pack://application:,,,/Fonts/#IBM Plex Mono, Consolas</FontFamily>
 
-  <!-- ══ Typography ══ -->
-  <!-- Page title (R2): display face, 28 px, weight 600. WPF has no letter-spacing, so the
-       charter's -0.02 em tracking is not drawn (refonte ecarts). -->
+  <!-- ══ Typography (hrm R11) — one scale:
+       H1          page title, display face 32/600 (the About window is the other display use)
+       ModalTitle  title of a modal or a drawer, 20/600
+       CardTitle   title of a card, 16/600
+       Subhead     a heading inside a card, an object's title in a list, 14/600
+       BodyText    body copy, 14, line height 1.55 (22 px)
+       MetaText    meta line in words, 13, meta ink (InkFaintBrush); Hint is the same recipe
+       Eyebrow     mono capitals, 13 — machine-like micro-label
+       MonoText    machine values only (paths, ids, commands, counters), never a label.
+       WPF has no letter-spacing: the charter's tracking (-0.02 em on titles, 0.08 em on
+       eyebrows) is not drawn; the mono face's fixed advance stands in for the eyebrow's. ══ -->
   <Style x:Key="H1" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
-    <Setter Property="FontSize" Value="28"/>
+    <Setter Property="FontSize" Value="32"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
   </Style>
   <Style x:Key="SubTitle" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontSize" Value="14"/>
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style x:Key="ModalTitle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
   <Style x:Key="CardTitle" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="14.5"/>
-    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontSize" Value="16"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  </Style>
+  <Style x:Key="Subhead" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  </Style>
+  <Style x:Key="BodyText" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="LineHeight" Value="22"/>
   </Style>
   <Style x:Key="FieldLabel" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -41,13 +69,14 @@
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
     <Setter Property="Margin" Value="0,0,0,5"/>
   </Style>
-  <Style x:Key="Hint" TargetType="TextBlock">
+  <Style x:Key="MetaText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="LineHeight" Value="18"/>
   </Style>
+  <Style x:Key="Hint" TargetType="TextBlock" BasedOn="{StaticResource MetaText}"/>
   <!-- Mono uppercase micro-label. WPF has no text-transform: WRITE THE TEXT UPPERCASE. -->
   <Style x:Key="Eyebrow" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
@@ -313,11 +342,7 @@
   </Style>
 
   <!-- An object's title: wraps, never trimmed on one line. -->
-  <Style x:Key="ObjectTitle" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="14"/>
-    <Setter Property="FontWeight" Value="Bold"/>
-    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  <Style x:Key="ObjectTitle" TargetType="TextBlock" BasedOn="{StaticResource Subhead}">
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
@@ -832,12 +857,10 @@
     </Setter>
   </Style>
 
-  <!-- Card-header title: the «titre + méta mono + actions» row wants 13/700, one size
-       under the big CardTitle that opens a card. Both sit on the same centre line as the
+  <!-- Card-header title: the «titre + méta mono + actions» row is a Subhead (14/600, hrm R11),
+       one size under the CardTitle that opens a card. Both sit on the same centre line as the
        meta beside them — that alignment is the whole recipe (T-20). -->
-  <Style x:Key="CardHeaderTitle" TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
-    <Setter Property="FontSize" Value="13"/>
-    <Setter Property="FontWeight" Value="Bold"/>
+  <Style x:Key="CardHeaderTitle" TargetType="TextBlock" BasedOn="{StaticResource Subhead}">
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
 
