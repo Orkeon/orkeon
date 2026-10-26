@@ -86,6 +86,11 @@ internal static class CaptureSettle
         await dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
         window.UpdateLayout();
 
+        // 8. A07: the assistant panel's slot-in once more, after the last yield. Two replays caught
+        //    the slide in flight although step 7 had posed it, so whatever (re)starts it does so
+        //    during that Loaded wait. Nothing yields between here and the shot.
+        CapturePose.PoseAssistantSlot(window);
+
         return new SettleReport(layoutStable, imagesReady, ticked);
     }
 

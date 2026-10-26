@@ -48,19 +48,33 @@ internal static class CapturePose
     }
 
     /// <summary>
-    /// The assistant panel's slot-in, a 26 px slide that ends at 0. The shot comes before the
-    /// first tick moves it, so unposed the panel stands 26 px past the window's right edge: an
-    /// open panel is photographed where it comes to rest.
+    /// The assistant panel's slot-in, a 26 px slide that ends at 0, posed where it comes to rest.
+    /// <para>
+    /// Two replays photographed the slide in flight, at 13 to 26 px past the window's right edge
+    /// depending on the image, and clearing the animation on the transform the markup declares
+    /// changed nothing. So the pose does not touch that instance: it puts a fresh, unanimated
+    /// <see cref="TranslateTransform"/> in its place. Whatever clock the storyboard holds stays
+    /// on the old one, and the shot reads the new one at 0. A TranslateTransform, not Identity:
+    /// the storyboard's path names <c>TranslateTransform.X</c> and resolves it the next time the
+    /// panel opens.
+    /// </para>
     /// </summary>
+    public static void PoseAssistantSlot(Window window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        PoseAssistantSlot(CaptureVisualTree.Descendants(window));
+    }
+
     private static void PoseAssistantSlot(IEnumerable<DependencyObject> visuals)
     {
         foreach (var view in visuals.OfType<Views.ChatThreadView>())
         {
-            if (view.Content is not Border { RenderTransform: TranslateTransform { IsFrozen: false } slide })
-                continue;
-
-            slide.BeginAnimation(TranslateTransform.XProperty, null);
-            slide.X = 0;
+            if (view.IsVisible && view.Content is UIElement panel
+                && Math.Abs(panel.RenderTransform.Value.OffsetX) >= 0.5)
+            {
+                panel.RenderTransform = new TranslateTransform();
+            }
         }
     }
 
