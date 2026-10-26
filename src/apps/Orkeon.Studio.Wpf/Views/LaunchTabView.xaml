@@ -14,7 +14,8 @@
 
   <UserControl.Resources>
     <views:VerbosityLabelConverter x:Key="VerbosityLabel"/>
-    <views:TeamLastRunConverter x:Key="TeamLastRun"/>
+    <views:TeamChoiceTitleConverter x:Key="TeamChoiceTitle"/>
+    <views:TeamChoiceMetaConverter x:Key="TeamChoiceMeta"/>
     <!-- collapsible section header (Expander without the Aero chrome) -->
     <Style x:Key="FoldToggle" TargetType="ToggleButton">
       <Setter Property="Cursor" Value="Hand"/>
@@ -122,41 +123,61 @@
             </Border>
 
             <StackPanel IsEnabled="{Binding IsEditable}">
-              <!-- One line: the team by name, then the model this run takes (STUDIO-73). « Default (X) »,
-                   « The team's (Y) », the settings by name: the list replaces the old checkbox. -->
+              <!-- The team by name, then the model this run takes (STUDIO-73). « Default (X) »,
+                   « The team's (Y) », the settings by name: the list replaces the old checkbox.
+                   R10: each label above its field; both lists are the theme's M width (320). -->
               <WrapPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                <StackPanel Margin="0,0,24,8">
+                  <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Trial.TeamLabel], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="320" VerticalAlignment="Center"
+                  <!-- B02 (R09): one title line (the name, never its Markdown) over one meta line
+                       (« 4 agents · lancée le 28/08 »), rows 44 px high; the closed 40 px box shows
+                       the title only (no ComboBoxItem above it there). -->
+                  <ComboBox Style="{StaticResource ComboM}"
                             ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
                             SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}">
+                    <ComboBox.ItemContainerStyle>
+                      <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                        <Setter Property="MinHeight" Value="44"/>
+                        <Setter Property="Padding" Value="12,4"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                      </Style>
+                    </ComboBox.ItemContainerStyle>
                     <ComboBox.ItemTemplate>
                       <DataTemplate>
-                        <DockPanel>
-                          <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
-                                     Text="{Binding LastRunAt, Converter={StaticResource TeamLastRun}}"/>
-                          <TextBlock Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" Text="{Binding Name}"/>
-                        </DockPanel>
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                                     Text="{Binding Converter={StaticResource TeamChoiceTitle}}"/>
+                          <TextBlock x:Name="meta" Style="{StaticResource MetaText}" FontSize="12" TextWrapping="NoWrap"
+                                     TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
+                                     Text="{Binding Converter={StaticResource TeamChoiceMeta}}"/>
+                        </StackPanel>
+                        <DataTemplate.Triggers>
+                          <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}}" Value="{x:Null}">
+                            <Setter TargetName="meta" Property="Visibility" Value="Collapsed"/>
+                          </DataTrigger>
+                        </DataTemplate.Triggers>
                       </DataTemplate>
                     </ComboBox.ItemTemplate>
                   </ComboBox>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                <StackPanel Margin="0,0,0,8"
                             Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
+                  <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="260" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
-                            SelectedItem="{Binding SelectedModelChoice}" DisplayMemberPath="Label"
-                            ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
-                          VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
-                          Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
-                          VerticalAlignment="Center" Command="{Binding ConfigureModelCommand}"
-                          Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
-                          Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <ComboBox Style="{StaticResource ComboM}" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
+                              SelectedItem="{Binding SelectedModelChoice}" DisplayMemberPath="Label"
+                              ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                            VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
+                            Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
+                            Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
+                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                            VerticalAlignment="Center" Command="{Binding ConfigureModelCommand}"
+                            Content="{Binding [Studio.Teams.ConfigureModel], Source={x:Static services:I18n.Instance}}"
+                            Visibility="{Binding HasLlmProfiles, Converter={StaticResource InverseBooleanToVisibility}}"/>
+                  </StackPanel>
                 </StackPanel>
               </WrapPanel>
               <TextBlock Margin="0,0,0,6" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
