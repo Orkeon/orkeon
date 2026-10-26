@@ -9,24 +9,66 @@
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
-  <StackPanel>
+  <UserControl.Resources>
+    <!-- A team's folder (R12, C13): « /docs » in mono, then the shared rights badge — « Lecture seule »
+         neutral, « Lecture et écriture » sky. A folder nothing vouches for writes its path in red. -->
+    <DataTemplate x:Key="TeamFolderTemplate">
+      <StackPanel Orientation="Horizontal" Margin="0,0,16,4" VerticalAlignment="Center">
+        <controls:LucideIcon Kind="folder" Size="16" VerticalAlignment="Center" Margin="0,0,6,0" IsTabStop="False" Focusable="False">
+          <controls:LucideIcon.Style>
+            <Style TargetType="controls:LucideIcon">
+              <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </controls:LucideIcon.Style>
+        </controls:LucideIcon>
+        <TextBlock Text="{Binding Path}" VerticalAlignment="Center">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+              <Setter Property="FontSize" Value="13"/>
+              <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+        <controls:Badge Margin="8,0,0,0" VerticalAlignment="Center">
+          <controls:Badge.Style>
+            <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+              <Setter Property="Tone" Value="Neutral"/>
+              <Setter Property="Content" Value="{Binding [Studio.Settings.RightsReadOnly], Source={x:Static services:I18n.Instance}}"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                  <Setter Property="Tone" Value="Info"/>
+                  <Setter Property="Content" Value="{Binding [Studio.Create.RightsReadWrite], Source={x:Static services:I18n.Instance}}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </controls:Badge.Style>
+        </controls:Badge>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <!-- R02 (A02): 32 px after the last block, so nothing ends cut at the bottom of the scroll. -->
+  <StackPanel Margin="0,0,0,32">
 
     <!-- R3: one header — title, subtitle, and the page's two doors on the right. -->
     <controls:PageHeader Title="{Binding [Studio.Teams.ScreenTitle], Source={x:Static services:I18n.Instance}}"
                          Subtitle="{Binding [Studio.Teams.ScreenSub], Source={x:Static services:I18n.Instance}}">
-      <StackPanel Orientation="Horizontal">
-        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding ImportCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="upload" Size="16" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Teams.ImportShort], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
-        <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0" Command="{Binding CreateCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="plus" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Studio.Teams.Create], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+      <StackPanel Style="{StaticResource ActionRow}">
+        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding ImportCommand}"
+                controls:ButtonIcon.Kind="upload"
+                Content="{Binding [Studio.Teams.ImportShort], Source={x:Static services:I18n.Instance}}"/>
+        <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0" Command="{Binding CreateCommand}"
+                controls:ButtonIcon.Kind="plus"
+                Content="{Binding [Studio.Teams.Create], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
 
@@ -247,7 +289,8 @@
               <StackPanel>
                 <!-- The title wraps, never trimmed; the badge rides on its last line and never
                      shrinks (an InlineUIContainer, not a column). One status: this badge. -->
-                <TextBlock Style="{StaticResource ObjectTitle}" FontSize="17">
+                <!-- R09 (B10): the name is cut at the slug's cap; the tooltip says it whole. -->
+                <TextBlock Style="{StaticResource ObjectTitle}" FontSize="16" ToolTip="{Binding NameTip}">
                   <Run Text="{Binding Name, Mode=OneWay}"/>
                   <InlineUIContainer BaselineAlignment="Center">
                     <Border Margin="8,0,0,0">
@@ -302,7 +345,14 @@
                 <controls:PropertyRow Margin="0,12,0,0"
                                       Label="{Binding [Studio.Teams.RowModel], Source={x:Static services:I18n.Instance}}"
                                       Visibility="{Binding HasProfileDisplay, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Text="{Binding ProfileLabel}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProfileDisplay}"/>
+                  <!-- R19 (D08): the model's own name, as Settings and Run write it; a team that follows the
+                       elected default says so with the « par défaut » badge, never « Défaut (X) ». -->
+                  <WrapPanel>
+                    <TextBlock Text="{Binding ProfileName}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <controls:Badge Tone="Info" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    Content="{Binding [Studio.Settings.DefaultBadge], Source={x:Static services:I18n.Instance}}"
+                                    Visibility="{Binding FollowsDefaultLlm, Converter={StaticResource BooleanToVisibility}}"/>
+                  </WrapPanel>
                   <controls:PropertyRow.Action>
                     <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="28" Command="{Binding ChangeLlmCommand}"
                             Content="{Binding [Studio.Teams.ChangeShort], Source={x:Static services:I18n.Instance}}"
@@ -371,11 +421,11 @@
                     </TextBlock.Style>
                   </TextBlock>
                 </Button>
-                <!-- Folders: one chip per folder « /input · read », then « Change » (F-02, R6) -->
+                <!-- Folders: « /input » and its rights badge, then « Change » (F-02, R6; R12) -->
                 <controls:PropertyRow Margin="0,4,0,0"
                                       Label="{Binding [Studio.Teams.RowFolders], Source={x:Static services:I18n.Instance}}">
                   <Grid>
-                    <ItemsControl ItemsSource="{Binding MountChips}" ItemTemplate="{StaticResource MountChipTemplate}" Focusable="False"
+                    <ItemsControl ItemsSource="{Binding MountChips}" ItemTemplate="{StaticResource TeamFolderTemplate}" Focusable="False"
                                   Visibility="{Binding HasMounts, Converter={StaticResource BooleanToVisibility}}">
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     </ItemsControl>
