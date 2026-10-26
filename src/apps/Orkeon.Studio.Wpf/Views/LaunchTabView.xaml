@@ -187,9 +187,8 @@
 
                 <StackPanel Visibility="{Binding Target.NeedsShapeChoice, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Text="{Binding Target.YamlLayoutBlockedMessage}"/>
-                  <ComboBox ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
-                            SelectedItem="{Binding Target.PreferredDirectoryKind}"
-                            Width="280" HorizontalAlignment="Left" Margin="0,6,0,0"/>
+                  <ComboBox Style="{StaticResource ComboM}" ItemsSource="{x:Static launch:TargetSelectionViewModel.DirectoryKindChoices}"
+                            SelectedItem="{Binding Target.PreferredDirectoryKind}" Margin="0,6,0,0"/>
                 </StackPanel>
 
                 <StackPanel Visibility="{Binding Target.NeedsSelection, Converter={StaticResource BooleanToVisibility}}">
@@ -323,7 +322,7 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,0,12">
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
                              Text="{Binding [Studio.Run.LblVerbosity], Source={x:Static services:I18n.Instance}}"/>
-                  <ComboBox Width="160" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
+                  <ComboBox Style="{StaticResource ComboS}" ItemsSource="{x:Static launch:LaunchOptionsViewModel.VerbosityChoices}"
                             SelectedItem="{Binding Options.Verbosity}">
                     <ComboBox.ItemTemplate>
                       <DataTemplate>
@@ -373,7 +372,7 @@
                              IsChecked="{Binding Options.IsSettingsExplicit, Mode=OneWay}"
                              Content="{Binding [Studio.Run.SettingsExplicit], Source={x:Static services:I18n.Instance}}"/>
                 <DockPanel Margin="0,7,0,0">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                           Command="{Binding Options.BrowseSettingsCommand}"
                           Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
                   <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.SettingsPath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -423,7 +422,7 @@
                   <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0"
                              Text="{Binding [Studio.Run.LblInputsFile], Source={x:Static services:I18n.Instance}}"/>
                   <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                    <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                             Command="{Binding Options.BrowseInputsFileCommand}"
                             Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
                     <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.InputsFilePath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -431,7 +430,7 @@
                 </StackPanel>
 
                 <DockPanel Margin="0,10,0,0">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
                           Command="{Binding Options.BrowseLlmLogPathCommand}"
                           Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
                   <TextBox Style="{StaticResource InputMono}" Text="{Binding Options.LlmLogPath, UpdateSourceTrigger=PropertyChanged}"/>
