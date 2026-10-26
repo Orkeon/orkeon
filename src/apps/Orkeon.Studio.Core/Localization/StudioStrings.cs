@@ -625,9 +625,6 @@ public static class StudioStringKeys
     public const string RunBackToTeam = "Studio.Run.BackToTeam";
     public const string RunOrAPath = "Studio.Run.OrAPath";
     public const string RunLblModel = "Studio.Run.LblModel";
-    public const string RunModelDefault = "Studio.Run.ModelDefault";
-    public const string RunModelDefaultNone = "Studio.Run.ModelDefaultNone";
-    public const string RunModelTeam = "Studio.Run.ModelTeam";
     public const string RunTeamLastRun = "Studio.Run.TeamLastRun";
     public const string RunTeamNeverRun = "Studio.Run.TeamNeverRun";
     public const string RunOptionsFooter = "Studio.Run.OptionsFooter";
@@ -2804,9 +2801,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunBackToTeam] = "Back to the team",
         [StudioStringKeys.RunOrAPath] = "or a path",
         [StudioStringKeys.RunLblModel] = "Model",
-        [StudioStringKeys.RunModelDefault] = "Default ({0})",
-        [StudioStringKeys.RunModelDefaultNone] = "Default",
-        [StudioStringKeys.RunModelTeam] = "The team's ({0})",
         [StudioStringKeys.RunTeamLastRun] = "launched on {0}",
         [StudioStringKeys.RunTeamNeverRun] = "never launched",
         [StudioStringKeys.RunOptionsFooter] = "{0} · {1} · {2} {2:plural:folder|folders}",

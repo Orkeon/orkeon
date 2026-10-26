@@ -3795,15 +3795,6 @@
   <data name="Studio.Run.LblModel" xml:space="preserve">
     <value>Modell</value>
   </data>
-  <data name="Studio.Run.ModelDefault" xml:space="preserve">
-    <value>Standard ({0})</value>
-  </data>
-  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
-    <value>Standard</value>
-  </data>
-  <data name="Studio.Run.ModelTeam" xml:space="preserve">
-    <value>Das des Teams ({0})</value>
-  </data>
   <data name="Studio.Run.TeamLastRun" xml:space="preserve">
     <value>gestartet am {0}</value>
   </data>

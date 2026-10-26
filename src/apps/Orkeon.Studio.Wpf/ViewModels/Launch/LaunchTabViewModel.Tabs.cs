@@ -11,42 +11,6 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 
-/// <summary>What the model list of the team tab offers: the default, the team's own choice, or one setting by name.</summary>
-public enum RunModelChoiceKind
-{
-    /// <summary>The default elected when the run starts.</summary>
-    Default,
-
-    /// <summary>The model the team recorded.</summary>
-    Team,
-
-    /// <summary>One setting of this machine, by name.</summary>
-    Named,
-}
-
-/// <summary>One entry of the « Model » list of the team tab (refonte lot 12).</summary>
-/// <param name="Label">What the list says.</param>
-/// <param name="Kind">What picking it does.</param>
-/// <param name="Profile">The setting a <see cref="RunModelChoiceKind.Named"/> entry names.</param>
-public sealed record RunModelChoice(string Label, RunModelChoiceKind Kind, string? Profile = null)
-{
-    /// <summary>
-    /// What the combo selects by (SelectedValuePath): stable across the rebuilds of the list and
-    /// the changes of its labels, where the entry itself is not. The list is rebuilt under the
-    /// combo as the team and the settings load, and a selection held by item was cleared with the
-    /// old list; one held by key is re-applied to the new one.
-    /// </summary>
-    public string Key => Kind switch
-    {
-        RunModelChoiceKind.Default => "default",
-        RunModelChoiceKind.Team => "team",
-        _ => "named:" + Profile,
-    };
-
-    /// <inheritdoc />
-    public override string ToString() => Label;
-}
-
 /// <summary>One folder of the « Allowed folders » section of the options tab: the team's, as this launch mounts it.</summary>
 /// <param name="VirtualPath">The path the agents address.</param>
 /// <param name="RightsLabel">« Read » or « Read and write ».</param>
@@ -91,7 +55,6 @@ public sealed partial class LaunchTabViewModel
     private bool _isExpertMode;
     private bool _isJournalEnlarged;
     private IReadOnlyList<string> _crewRoles = [];
-    private ObservableCollection<RunModelChoice>? _modelChoices;
 
     /// <summary>The tab on screen; the command tab is the expert's, a novice lands on the options.</summary>
     public string ActiveTab
@@ -184,8 +147,7 @@ public sealed partial class LaunchTabViewModel
             var parts = new List<string>(3);
             if (TeamMetaLine is { Length: > 0 } meta)
                 parts.Add(meta);
-            if (SelectedModelChoice is { } model)
-                parts.Add(model.Label);
+            parts.Add(RunLlmLabelOf(RunLlmChoice));
             if (Target.KindDisplay is { Length: > 0 } kind)
                 parts.Add(kind);
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
@@ -197,91 +159,6 @@ public sealed partial class LaunchTabViewModel
     /// applies, else the detected shape.
     /// </summary>
     public string TargetTypeNote => Target.DirectoryRunNotice ?? Target.StatusDisplay;
-
-    /// <summary>
-    /// The « Model » list: « Default (X) », « The team's (Y) » when the team recorded one, then
-    /// the settings of this machine by name. Only the default without model settings. Built once
-    /// per change of what it lists, never per read: a list rebuilt on every read is a new items
-    /// source for the combo box at each pick, which writes its selection back, which raises the
-    /// list again — a loop that overflowed the stack.
-    /// </summary>
-    public IReadOnlyList<RunModelChoice> ModelChoices => _modelChoices ??= new ObservableCollection<RunModelChoice>(BuildModelChoices());
-
-    private List<RunModelChoice> BuildModelChoices()
-    {
-        var choices = new List<RunModelChoice>
-        {
-            new(_modelSettings?.Invoke().Default is { } elected
-                ? _strings.Format(StudioStringKeys.RunModelDefault, elected.Name)
-                : _strings[StudioStringKeys.RunModelDefaultNone], RunModelChoiceKind.Default),
-        };
-        if (_team.LlmChoice is { } saved && Target.IsResolved)
-            choices.Add(new(_strings.Format(StudioStringKeys.RunModelTeam, RunLlmLabelOf(saved)), RunModelChoiceKind.Team));
-        choices.AddRange(LlmProfiles.Select(name => new RunModelChoice(name, RunModelChoiceKind.Named, name)));
-
-        // A setting the run named and this machine no longer has stays in the list, in the words
-        // of the card (STUDIO-52): the list must not pass it off as the default it falls back to.
-        if (RunLlmChoice is { UseDefault: false, Profile: { Length: > 0 } pinned } current
-            && current != _team.LlmChoice
-            && !choices.Any(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, pinned, StringComparison.Ordinal)))
-            choices.Add(new(RunLlmLabelOf(current), RunModelChoiceKind.Named, pinned));
-        return choices;
-    }
-
-    /// <summary>
-    /// The entry of <see cref="ModelChoices"/> this run takes: the team's when the run takes what
-    /// the team recorded, else the default or the setting by name. Picking one sets
-    /// <see cref="RunLlmChoice"/>, which is all the launch reads.
-    /// </summary>
-    public RunModelChoice? SelectedModelChoice
-    {
-        get
-        {
-            var choices = ModelChoices;
-            var current = RunLlmChoice;
-            // The combo reads this while the list moves: nothing is assumed about its size. A getter
-            // that threw on an empty list broke the binding, and the box stayed empty for good.
-            var fallback = choices.Count > 0 ? choices[0] : null;
-            if (_team.LlmChoice is { } saved && saved == current && choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Team) is { } team)
-                return team;
-            if (current.UseDefault)
-                return fallback;
-            return choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, current.Profile, StringComparison.Ordinal))
-                ?? fallback;
-        }
-        set
-        {
-            if (value is null || value == SelectedModelChoice)
-                return;
-
-            switch (value.Kind)
-            {
-                case RunModelChoiceKind.Team when _team.LlmChoice is { } saved:
-                    ApplyRunLlmChoice(saved);
-                    break;
-                case RunModelChoiceKind.Named:
-                    _runUsesDefaultLlm = false;
-                    _runLlmProfile = value.Profile;
-                    RaiseRunLlmChanged();
-                    break;
-                default:
-                    RunUsesDefaultLlm = true;
-                    break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// <see cref="SelectedModelChoice"/> by its <see cref="RunModelChoice.Key"/>: what the combo of the
-    /// team tab binds. A key the list does not hold, or none, picks nothing.
-    /// </summary>
-    public string? SelectedModelKey
-    {
-        get => SelectedModelChoice?.Key;
-        set => SelectedModelChoice = value is null
-            ? null
-            : ModelChoices.FirstOrDefault(choice => string.Equals(choice.Key, value, StringComparison.Ordinal));
-    }
 
     // ── The options tab ──
 
@@ -575,11 +452,7 @@ public sealed partial class LaunchTabViewModel
                 RaiseTeamTabChanged();
                 break;
             case nameof(RunLlmChoice):
-                RefreshModelChoices();
-                OnPropertiesChanged(nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
-                break;
-            case nameof(LlmProfiles):
-                RefreshModelChoices();
+                OnPropertyChanged(nameof(TeamFicheLine));
                 break;
             case nameof(RunBadgeTone):
                 OnPropertiesChanged(nameof(RunTabState), nameof(RunTabSubtitle), nameof(RunPaneTitle), nameof(RunPaneContext),
@@ -603,63 +476,9 @@ public sealed partial class LaunchTabViewModel
 
     private void RaiseTeamTabChanged()
     {
-        RefreshModelChoices();
         OnPropertiesChanged(
             nameof(TeamTabState), nameof(TeamTabSubtitle), nameof(TeamFooter), nameof(TeamFicheLine), nameof(TargetTypeNote),
             nameof(LaunchReadinessTone), nameof(LaunchReadinessText), nameof(LaunchBlockedReason));
-    }
-
-    // The list changes only when what it lists changed — the team, its recorded model, the
-    // settings' names —, not on every pick: a pick raises LlmProfiles too (RaiseRunLlmChanged).
-    // It changes IN PLACE, never by a new instance: a combo whose items source is swapped clears
-    // its selection and writes the clearing back while the swap is under way, and a value it is
-    // handed during that write-back is kept without being resolved. The team tab's Model box
-    // then showed nothing on arrival, its value set and its index at -1.
-    private void RefreshModelChoices()
-    {
-        var fresh = BuildModelChoices();
-        if (_modelChoices is null)
-        {
-            _modelChoices = new ObservableCollection<RunModelChoice>(fresh);
-            OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
-            return;
-        }
-
-        if (fresh.SequenceEqual(_modelChoices))
-            return;
-
-        Reconcile(_modelChoices, fresh);
-        OnPropertiesChanged(nameof(SelectedModelChoice), nameof(SelectedModelKey), nameof(TeamFicheLine));
-    }
-
-    /// <summary>
-    /// Brings <paramref name="list"/> to <paramref name="fresh"/> with the fewest moves, and never
-    /// through an empty list: an entry that stays is left where the combo knows it, one that comes
-    /// is inserted or moved to its place first, and only then are the entries that go removed from
-    /// the tail they were pushed to. The combo reads the selection at every step.
-    /// </summary>
-    private static void Reconcile(ObservableCollection<RunModelChoice> list, List<RunModelChoice> fresh)
-    {
-        for (var i = 0; i < fresh.Count; i++)
-        {
-            if (i < list.Count && list[i] == fresh[i])
-                continue;
-
-            var at = -1;
-            for (var j = i + 1; j < list.Count && at < 0; j++)
-            {
-                if (list[j] == fresh[i])
-                    at = j;
-            }
-
-            if (at >= 0)
-                list.Move(at, i);
-            else
-                list.Insert(i, fresh[i]);
-        }
-
-        while (list.Count > fresh.Count)
-            list.RemoveAt(list.Count - 1);
     }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(

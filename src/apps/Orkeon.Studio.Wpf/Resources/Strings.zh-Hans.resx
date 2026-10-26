@@ -3795,15 +3795,6 @@
   <data name="Studio.Run.LblModel" xml:space="preserve">
     <value>模型</value>
   </data>
-  <data name="Studio.Run.ModelDefault" xml:space="preserve">
-    <value>默认（{0}）</value>
-  </data>
-  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
-    <value>默认</value>
-  </data>
-  <data name="Studio.Run.ModelTeam" xml:space="preserve">
-    <value>团队的（{0}）</value>
-  </data>
   <data name="Studio.Run.TeamLastRun" xml:space="preserve">
     <value>于 {0} 启动</value>
   </data>

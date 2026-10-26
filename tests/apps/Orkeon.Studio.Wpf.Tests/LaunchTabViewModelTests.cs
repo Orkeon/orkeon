@@ -1520,95 +1520,6 @@ public sealed class LaunchTabViewModelTests
         return (root, team);
     }
 
-    /// <summary>
-    /// A pick in the « Model » list keeps the list itself: a list rebuilt and raised on each pick
-    /// was a new items source for the combo box, which wrote its selection back, which raised the
-    /// list again until the stack overflowed.
-    /// </summary>
-    [Fact]
-    public void Should_KeepTheModelList_When_AModelIsPicked()
-    {
-        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
-        try
-        {
-            var (tab, _, _) = BuildForModel(pinned);
-            tab.Target.Select(pinned);
-            var list = tab.ModelChoices;
-            var raised = new List<string?>();
-            tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
-
-            tab.SelectedModelChoice = list.First(choice => choice.Profile == "GLM");
-
-            Assert.Same(list, tab.ModelChoices);
-            Assert.DoesNotContain(nameof(LaunchTabViewModel.ModelChoices), raised);
-            Assert.Equal("GLM", tab.RunLlmProfile);
-
-            raised.Clear();
-            tab.SelectedModelChoice = tab.SelectedModelChoice;
-            Assert.Empty(raised);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
-
-    /// <summary>
-    /// The combo of the team tab selects by key (SelectedValuePath) over one list instance the
-    /// view model changes in place: the key follows the choice, picks it back, ignores an unknown
-    /// or empty one, and the list is never replaced under the combo when the team resolves.
-    /// </summary>
-    [Fact]
-    public void Should_FollowAndPickTheModelByKey_When_TheComboSelectsByValue()
-    {
-        var (root, pinned) = ModelTeamOnDisk("Qwen", useDefault: null);
-        try
-        {
-            var (tab, _, _) = BuildForModel(pinned);
-            var list = tab.ModelChoices;
-            Assert.Equal("default", tab.SelectedModelKey);
-            Assert.DoesNotContain(list, choice => choice.Kind == RunModelChoiceKind.Team);
-
-            var raised = new List<string?>();
-            tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
-            var counts = new List<int>();
-            var selectedKeys = new List<string?>();
-            ((System.Collections.Specialized.INotifyCollectionChanged)list).CollectionChanged += (_, _) =>
-            {
-                counts.Add(list.Count);
-                selectedKeys.Add(tab.SelectedModelKey);
-            };
-            tab.Target.Select(pinned);
-
-            // The team resolved: the same list gained the team's entry in second place, the
-            // selection moved onto it, and the combo was told of the key, never of a new list.
-            // The list never emptied on the way, and the selection could be read at every step:
-            // the combo does both while the list moves.
-            Assert.Same(list, tab.ModelChoices);
-            Assert.DoesNotContain(0, counts);
-            Assert.All(selectedKeys, key => Assert.NotNull(key));
-            Assert.Equal(RunModelChoiceKind.Team, list[1].Kind);
-            Assert.Equal("team", tab.SelectedModelKey);
-            Assert.Contains(nameof(LaunchTabViewModel.SelectedModelKey), raised);
-            Assert.DoesNotContain(nameof(LaunchTabViewModel.ModelChoices), raised);
-
-            tab.SelectedModelKey = "named:GLM";
-            Assert.Equal("GLM", tab.RunLlmProfile);
-            Assert.Equal("GLM", tab.SelectedModelChoice?.Profile);
-            Assert.True(tab.CanRememberLlmForTeam);
-
-            raised.Clear();
-            tab.SelectedModelKey = null;
-            tab.SelectedModelKey = "named:nobody";
-            Assert.Equal("named:GLM", tab.SelectedModelKey);
-            Assert.Empty(raised);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
-    }
-
     [Fact]
     public void Should_PrefillTheRunsModelWithTheTeams_When_ATeamIsSelected()
     {
@@ -1712,12 +1623,6 @@ public sealed class LaunchTabViewModelTests
             await gone.ReplayAsync(entry, TestContext.Current.CancellationToken);
             Assert.StartsWith("This run: ", gone.RunLlmLine, StringComparison.Ordinal);
             Assert.NotEqual("This run: Qwen", gone.RunLlmLine);
-            // The model list keeps it, in the same words, instead of showing the default (refonte lot 12).
-            var kept = Assert.IsType<RunModelChoice>(gone.SelectedModelChoice);
-            Assert.Equal(RunModelChoiceKind.Named, kept.Kind);
-            Assert.Equal("Qwen", kept.Profile);
-            Assert.NotEqual("Qwen", kept.Label);
-            Assert.Same(kept, gone.ModelChoices[^1]);
         }
         finally
         {
