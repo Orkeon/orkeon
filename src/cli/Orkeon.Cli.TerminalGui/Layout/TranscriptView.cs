@@ -47,6 +47,7 @@ internal sealed class TranscriptView : View
     private const int DragScrollInterval = 100;
     private int _dragScroll;
     private int _dragColumn;
+    private int _lastDragRow;
     private object? _dragScrollTimer;
 
     public TranscriptView(int capacity)
@@ -206,7 +207,13 @@ internal sealed class TranscriptView : View
         var position = _buffer.HitTest(Viewport.Y + point.Y, Viewport.X + point.X);
         // The view holds the mouse while dragging: a report above or below it comes with a row
         // outside the viewport, and the selection then scrolls instead of stopping at the edge.
-        var edge = point.Y < 0 ? -1 : point.Y >= Viewport.Height ? 1 : 0;
+        // When the view's first row is the screen's, no report can come from above: a drag that
+        // reaches that row from below (or is already scrolling up) scrolls up instead. A selection
+        // started or moved along that row scrolls nothing.
+        var atScreenTop = point.Y == 0 && mouse.ScreenPosition.Y == 0 && (_lastDragRow > 0 || _dragScroll < 0);
+        var edge = point.Y < 0 || atScreenTop ? -1
+            : point.Y >= Viewport.Height ? 1
+            : 0;
         if (flags.HasFlag(MouseFlags.LeftButtonPressed))
         {
             if (!_dragging)
@@ -214,7 +221,9 @@ internal sealed class TranscriptView : View
                 _dragging = true;
                 _anchor = position;
                 App?.Mouse.GrabMouse(this);
+                edge = 0;
             }
+            _lastDragRow = point.Y;
             if (edge == 0)
             {
                 StopDragScroll();

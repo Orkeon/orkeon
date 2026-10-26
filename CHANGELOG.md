@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.
 The drag now scrolls one row per mouse report and every tenth of a second while the mouse stays still past the edge,
 the selection following the edge row; at the transcript's first or last row it reaches its start or end, as before.
+The transcript usually starts on the screen's first row, where no report can come from above: a drag that reaches
+that row from below scrolls up the same way, while a selection started or moved along it scrolls nothing.
 
 ### Fixed — the TUI's copy key copies the transcript's mouse selection
 
