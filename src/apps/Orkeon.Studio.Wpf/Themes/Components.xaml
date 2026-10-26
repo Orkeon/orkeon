@@ -206,13 +206,17 @@
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
 
-  <!-- ══ StepTabs (R14): the vertical classeur of a step with sections. 232 px of tabs on the
-       left, the pane on the right; the active tab takes the pane's background, its border runs
-       into the pane's (it covers the pane's left border by 1 px) and only its left corners are
-       rounded, so the pane loses its top-left radius. No ring, no shadow on the pane.
-       Grouped (lot 11): the groups as a horizontal bar above — capitals, the count of sections in
-       mono, the amber dot of a group waiting; the active group in the accent over a 2 px rule.
-       The column then lists the active group's tabs only (StepTab.IsOutsideActiveGroup). ══ -->
+  <!-- ══ StepTabs (R14, R13): the vertical classeur of a step with sections. A fixed 220 px
+       column of tabs on the left, the pane on the right. The pane slides 1 px under the column,
+       so its left border is the column's last pixel: every tab ends on it, at the same left and
+       the same width; the active one only opens its right edge (it paints over that pixel), and
+       the pane loses its top-left radius. No ring, no shadow on the pane.
+       Under the tabs, at a fixed place in the 220 px column: SideContent, the Novice help
+       « What this step does » (R21), nothing in Expert.
+       Grouped (lot 11, D05): the groups as a horizontal bar above — sentence case in 14/600, the
+       count of sections in mono meta, the sand dot of a group waiting; the active group in the
+       accent over a 2 px rule. The column then lists the active group's tabs only
+       (StepTab.IsOutsideActiveGroup). ══ -->
   <Style TargetType="{x:Type controls:StepTabs}">
     <Setter Property="Focusable" Value="False"/>
     <Setter Property="Template">
@@ -278,16 +282,18 @@
           </Border>
           <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="232"/>
+              <ColumnDefinition Width="220"/>
               <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <!-- Above the pane, so the active tab's 1 px overlap hides the pane's border. -->
             <StackPanel Grid.Column="0" Panel.ZIndex="1">
               <StackPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1"/>
-              <!-- Empty in Expert; the Novice help card « What this step does » otherwise. -->
-              <ContentPresenter Content="{TemplateBinding SideContent}" Margin="0,10,16,0"/>
+              <!-- R21: the help's fixed place, right under the last tab, in the column's width less a
+                   12 px gutter to the pane. Empty in Expert; the Novice help card otherwise. -->
+              <ContentPresenter x:Name="SideSlot" Content="{TemplateBinding SideContent}" Margin="0,12,12,0"/>
             </StackPanel>
-            <Border Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
+            <!-- -1 px: the pane's left border sits on the column's last pixel (see the header). -->
+            <Border Grid.Column="1" Margin="-1,0,0,0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="0,14,14,14" Padding="20,18" KeyboardNavigation.TabIndex="2">
               <ContentPresenter ContentSource="SelectedContent"/>
             </Border>
@@ -303,10 +309,16 @@
     </Setter>
   </Style>
 
-  <!-- ══ StepTab: state mark · title · 12 px state subtitle, 44 px at the least. Inactive: the
-       surface-2 background, a faint border, secondary ink, 12 px short of the pane; hovered, it
-       turns white, takes the line border and the xs shadow and slides 3 px toward the pane in
-       150 ms. The keyboard focus draws the accent ring. ══ -->
+  <!-- ══ StepTab (R13): state mark · title · 12 px state subtitle, 44 px at the least. Every tab
+       starts at the column's left edge and ends on the pane's border (the column's last pixel):
+       same left, same width, selected or not. Inactive: the surface-2 background, a faint border,
+       no right border — the pane's line closes it — and secondary ink; hovered, it turns white
+       with the line border, and stays in place. Selected: the pane's background, painted over the
+       pane's border, so its right edge opens onto the pane. The keyboard focus draws the accent ring.
+       The mark is an icon of its own, never a radio-like ring: done = green circle-check,
+       verified = green check, expected / warning = 8 px sand dot (warning also tints the
+       subtitle), empty = grey dashed circle (upcoming or optional), working = turning ring.
+       The title is 14/600 and wraps to a second line rather than being cut (B06). ══ -->
   <Style TargetType="{x:Type controls:StepTab}">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="Cursor" Value="Hand"/>
@@ -315,19 +327,17 @@
         <ControlTemplate TargetType="{x:Type controls:StepTab}">
           <!-- The grouped variant (lot 11): the group's title is in the classeur's bar, not over the tab. -->
           <StackPanel x:Name="TabRoot">
-          <Border x:Name="Chrome" MinHeight="44" Margin="0,0,12,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
+          <Border x:Name="Chrome" MinHeight="44" Margin="0,0,1,6" Padding="12,8,14,8" CornerRadius="10,0,0,10"
                   Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="1" SnapsToDevicePixels="True">
-            <Border.RenderTransform>
-              <TranslateTransform x:Name="Slide"/>
-            </Border.RenderTransform>
+                  BorderThickness="1,1,0,1" SnapsToDevicePixels="True">
             <DockPanel>
-              <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,1,10,0" VerticalAlignment="Top">
-                <Ellipse x:Name="EmptyMark" Stroke="{DynamicResource LineStrongBrush}" StrokeThickness="1.5"/>
-                <Ellipse x:Name="ExpectedMark" Width="10" Height="10" Fill="{DynamicResource WarningBrush}" Visibility="Collapsed"/>
+              <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,2,10,0" VerticalAlignment="Top">
+                <controls:LucideIcon x:Name="EmptyMark" Kind="circle-dashed" Size="16" Foreground="{DynamicResource NeutralDotBrush}"/>
+                <Ellipse x:Name="ExpectedMark" Width="8" Height="8" Fill="{DynamicResource WarningIconBrush}" Visibility="Collapsed"/>
                 <controls:LucideIcon x:Name="DoneMark" Kind="circle-check" Size="16" Foreground="{DynamicResource SuccessBrush}"
                                      Visibility="Collapsed"/>
-                <Ellipse x:Name="VerifiedMark" Width="10" Height="10" Fill="{DynamicResource SuccessBrush}" Visibility="Collapsed"/>
+                <controls:LucideIcon x:Name="VerifiedMark" Kind="check" Size="16" Foreground="{DynamicResource SuccessBrush}"
+                                     Visibility="Collapsed"/>
                 <controls:LucideIcon x:Name="WorkingMark" Kind="loader-circle" Size="16" Foreground="{DynamicResource AccentBrush}"
                                      RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
                   <controls:LucideIcon.RenderTransform>
@@ -346,8 +356,17 @@
                 </controls:LucideIcon>
               </Grid>
               <StackPanel VerticalAlignment="Center">
-                <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="13.5"
-                                  TextElement.FontWeight="SemiBold" TextElement.Foreground="{DynamicResource InkMutedBrush}"/>
+                <!-- A string header becomes a TextBlock under this presenter: the implicit style
+                     makes it wrap (two lines for the long Settings RAG title), never cut. -->
+                <ContentPresenter x:Name="Title" ContentSource="Header" TextElement.FontSize="14"
+                                  TextElement.FontWeight="SemiBold" TextElement.Foreground="{DynamicResource InkMutedBrush}">
+                  <ContentPresenter.Resources>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="TextWrapping" Value="Wrap"/>
+                      <Setter Property="LineHeight" Value="19"/>
+                    </Style>
+                  </ContentPresenter.Resources>
+                </ContentPresenter>
                 <TextBlock x:Name="Sub" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource InkFaintBrush}"
                            Text="{TemplateBinding Subtitle}"/>
               </StackPanel>
@@ -359,7 +378,7 @@
               <Setter TargetName="TabRoot" Property="Visibility" Value="Collapsed"/>
             </Trigger>
             <Trigger Property="State" Value="Warning">
-              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
               <Setter TargetName="Sub" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
             </Trigger>
@@ -376,7 +395,7 @@
               <Setter TargetName="WorkingMark" Property="Visibility" Value="Visible"/>
             </Trigger>
             <Trigger Property="State" Value="Expected">
-              <Setter TargetName="EmptyMark" Property="Stroke" Value="{DynamicResource WarningBrush}"/>
+              <Setter TargetName="EmptyMark" Property="Visibility" Value="Collapsed"/>
               <Setter TargetName="ExpectedMark" Property="Visibility" Value="Visible"/>
             </Trigger>
             <MultiTrigger>
@@ -386,28 +405,14 @@
               </MultiTrigger.Conditions>
               <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
               <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
-              <Setter TargetName="Chrome" Property="Effect" Value="{DynamicResource ShadowXs}"/>
-              <MultiTrigger.EnterActions>
-                <BeginStoryboard>
-                  <Storyboard>
-                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="3" Duration="0:0:0.15"/>
-                  </Storyboard>
-                </BeginStoryboard>
-              </MultiTrigger.EnterActions>
-              <MultiTrigger.ExitActions>
-                <BeginStoryboard>
-                  <Storyboard>
-                    <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.15"/>
-                  </Storyboard>
-                </BeginStoryboard>
-              </MultiTrigger.ExitActions>
             </MultiTrigger>
+            <!-- C15: the same left and the same right end; one more pixel that paints over the
+                 pane's border is all the selected tab changes in its geometry. -->
             <Trigger Property="IsSelected" Value="True">
               <Setter Property="Panel.ZIndex" Value="1"/>
               <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
               <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
-              <Setter TargetName="Chrome" Property="BorderThickness" Value="1,1,0,1"/>
-              <Setter TargetName="Chrome" Property="Margin" Value="0,0,-1,6"/>
+              <Setter TargetName="Chrome" Property="Margin" Value="0,0,0,6"/>
               <Setter TargetName="Title" Property="TextElement.Foreground" Value="{DynamicResource InkBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
