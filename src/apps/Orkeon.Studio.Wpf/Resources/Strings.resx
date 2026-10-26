@@ -698,8 +698,6 @@
   <data name="Studio.Settings.MailTabRights" xml:space="preserve"><value>Rights</value></data>
   <data name="Studio.Settings.MailTabAuth" xml:space="preserve"><value>Sign-in</value></data>
   <data name="Studio.Settings.MailTabServers" xml:space="preserve"><value>Servers</value></data>
-  <data name="Studio.Settings.MailSectionShow" xml:space="preserve"><value>Show</value></data>
-  <data name="Studio.Settings.MailSectionHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Nothing ticked, nothing allowed: the engine refuses an account that grants no right.</value></data>
   <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Read — list the folders, search, read messages and save attachments</value></data>
   <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organize — create and rename folders, move messages, mark them read or flagged</value></data>

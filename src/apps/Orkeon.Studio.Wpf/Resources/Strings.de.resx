@@ -1959,12 +1959,6 @@
   <data name="Studio.Settings.MailTabServers" xml:space="preserve">
     <value>Server</value>
   </data>
-  <data name="Studio.Settings.MailSectionShow" xml:space="preserve">
-    <value>Anzeigen</value>
-  </data>
-  <data name="Studio.Settings.MailSectionHide" xml:space="preserve">
-    <value>Ausblenden</value>
-  </data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve">
     <value>Nichts angekreuzt, nichts erlaubt: Die Engine lehnt ein Konto ab, das kein Recht gewährt.</value>
   </data>

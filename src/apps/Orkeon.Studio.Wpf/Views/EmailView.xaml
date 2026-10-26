@@ -210,43 +210,16 @@
     <Border Style="{StaticResource Card}" Margin="0,0,0,16"
             Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibility}}">
       <StackPanel>
-        <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Center"
-                  Command="{Binding ToggleSectionCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Size="12" Margin="0,0,6,0">
-                <controls:LucideIcon.Style>
-                  <Style TargetType="controls:LucideIcon">
-                    <Setter Property="Kind" Value="chevron-down"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsSectionOpen}" Value="True">
-                        <Setter Property="Kind" Value="chevron-up"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </controls:LucideIcon.Style>
-              </controls:LucideIcon>
-              <TextBlock>
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <Setter Property="Text" Value="{Binding [Studio.Settings.MailSectionShow], Source={x:Static services:I18n.Instance}}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsSectionOpen}" Value="True">
-                        <Setter Property="Text" Value="{Binding [Studio.Settings.MailSectionHide], Source={x:Static services:I18n.Instance}}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
-            </StackPanel>
-          </Button>
-          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <controls:LucideIcon Kind="sliders-horizontal" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
-            <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Tools:Email"
-                       Text="{Binding [Studio.Settings.MailSectionTitle], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </DockPanel>
-        <StackPanel Visibility="{Binding IsSectionOpen, Converter={StaticResource BooleanToVisibility}}">
+        <!-- C12: the one fold (R16) - «For every account» and its chevron, the label stable in
+             both states; IsSectionOpen is the same switch ToggleSectionCommand flips -->
+        <controls:Disclosure Header="{Binding [Studio.Settings.MailSectionTitle], Source={x:Static services:I18n.Instance}}"
+                             IsExpanded="{Binding IsSectionOpen}">
+          <controls:Disclosure.HeaderTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" ToolTip="Orkeon:Tools:Email"/>
+            </DataTemplate>
+          </controls:Disclosure.HeaderTemplate>
+        <StackPanel>
           <CheckBox Margin="0,10,0,0" IsChecked="{Binding WithholdRejected}" Foreground="{DynamicResource InkBrush}"
                     ToolTip="Screening:WithholdRejected"
                     Content="{Binding [Studio.Settings.MailWithholdRejected], Source={x:Static services:I18n.Instance}}"/>
@@ -265,6 +238,7 @@
           <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
                      Text="{Binding [Studio.Settings.MailCredentialsDirectoryHint], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
+        </controls:Disclosure>
       </StackPanel>
     </Border>
 
