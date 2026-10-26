@@ -63,12 +63,13 @@
                               Visibility="{Binding HasRequirements, Converter={StaticResource BooleanToVisibility}}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}"
-                                   VerticalAlignment="Center" Text="{Binding Name}"/>
-                        <TextBlock Style="{StaticResource Hint}" Margin="8,0,0,0" VerticalAlignment="Center"
+                      <!-- R09: the tool's name keeps its width, what it needs wraps beside it. -->
+                      <DockPanel Margin="0,3,0,0">
+                        <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}"
+                                   VerticalAlignment="Top" Text="{Binding Name}"/>
+                        <TextBlock Style="{StaticResource Hint}" Margin="8,0,0,0" VerticalAlignment="Top"
                                    TextWrapping="Wrap" Text="{Binding Text}"/>
-                      </StackPanel>
+                      </DockPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -94,7 +95,7 @@
                    Text="{Binding [Studio.Settings.ShellIntro], Source={x:Static services:I18n.Instance}}"/>
         <CheckBox Margin="0,14,0,0" IsChecked="{Binding Config.ShellTools.AllowInterpreters}"
                   Content="{Binding [Studio.Settings.ShellAllowInterpreters], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" Margin="24,3,0,0" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+        <TextBlock Style="{StaticResource Hint}" Margin="24,3,0,0" TextWrapping="Wrap" Foreground="{DynamicResource WarningInkBrush}"
                    Text="{Binding [Studio.Settings.ShellAllowInterpretersHint], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                    Text="{Binding [Studio.Settings.ShellExtra], Source={x:Static services:I18n.Instance}}"/>
