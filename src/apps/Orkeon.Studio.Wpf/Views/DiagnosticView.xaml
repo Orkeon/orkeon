@@ -20,59 +20,65 @@
         </Style>
       </controls:PageHeader.Style>
       <StackPanel Orientation="Horizontal">
-        <Button Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Click="OnCopyReport"
+        <Button Margin="0,0,8,0" Click="OnCopyReport" controls:ButtonIcon.Kind="copy"
                 Visibility="{Binding CanCopyReport, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
-            <TextBlock>
-              <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                  <Setter Property="Text" Value="{Binding [Studio.Diagnostics.CopyReport], Source={x:Static services:I18n.Instance}}"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding ReportCopied}" Value="True">
-                      <Setter Property="Text" Value="{Binding [Studio.Diagnostics.Copied], Source={x:Static services:I18n.Instance}}"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </TextBlock.Style>
-            </TextBlock>
-          </StackPanel>
+          <Button.Style>
+            <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+              <Setter Property="Content" Value="{Binding [Studio.Diagnostics.CopyReport], Source={x:Static services:I18n.Instance}}"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding ReportCopied}" Value="True">
+                  <Setter Property="Content" Value="{Binding [Studio.Diagnostics.Copied], Source={x:Static services:I18n.Instance}}"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Button.Style>
         </Button>
-        <Button Style="{StaticResource BtnSecondary}" Command="{Binding RunCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Diagnostics.Run], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnSecondary}" Command="{Binding RunCommand}" controls:ButtonIcon.Kind="rotate-cw"
+                Content="{Binding [Studio.Diagnostics.Run], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
 
-    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,12"
-               Text="{Binding ErrorMessage}"
-               Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}"/>
-
-    <!-- verdict card (audit 09/20): headline with the exact count, then the counts; each problem
-         carries its own action in the list below (lot 5). -->
-    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-            Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
-      <DockPanel LastChildFill="True">
-        <StackPanel>
-          <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding VerdictHeadline}">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasIssues}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-          <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding VerdictDetail}"/>
+    <!-- D01, C02 (R07, R18): the unusable report is one danger banner - Studio's French sentence as
+         its title, the engine's own text untranslated in « Technical details ». It is the point the
+         headline counts and no row of the list: the counts below leave it out (D02). -->
+    <controls:Alert Tone="Danger" Margin="0,0,0,16" Details="{Binding ErrorMessage}"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringPresentToVisibility}}">
+      <controls:Alert.Style>
+        <Style TargetType="controls:Alert" BasedOn="{StaticResource {x:Type controls:Alert}}">
+          <Setter Property="Title" Value="{Binding [Studio.Diagnostics.ReportUnreadable], Source={x:Static services:I18n.Instance}}"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsEngineMissing}" Value="True">
+              <Setter Property="Title" Value="{Binding [Studio.Create.FailureEngineMissing], Source={x:Static services:I18n.Instance}}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </controls:Alert.Style>
+      <controls:Alert.Actions>
+        <StackPanel Style="{StaticResource ActionRow}">
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
+                  controls:ButtonIcon.Kind="rotate-cw" Command="{Binding RunCommand}"
+                  Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnOpenSettingsFile"
+                  Content="{Binding [Studio.Diagnostics.OpenFile], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
-      </DockPanel>
-    </Border>
+      </controls:Alert.Actions>
+    </controls:Alert>
+
+    <!-- verdict (audit 09/20, R07): the headline with the exact count, then the counts of the rows
+         listed below (D02); each problem carries its own action in the list (lot 5). -->
+    <controls:Alert Margin="0,0,0,16" Title="{Binding VerdictHeadline}" Message="{Binding VerdictDetail}"
+                    Visibility="{Binding HasRun, Converter={StaticResource BooleanToVisibility}}">
+      <controls:Alert.Style>
+        <Style TargetType="controls:Alert" BasedOn="{StaticResource {x:Type controls:Alert}}">
+          <Setter Property="Tone" Value="Success"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding HasIssues}" Value="True">
+              <Setter Property="Tone" Value="Warning"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </controls:Alert.Style>
+    </controls:Alert>
 
     <!-- checks card -->
     <Border Style="{StaticResource Card}">
@@ -103,7 +109,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding IsSettingsFileInvalid}" Value="True">
-                    <Setter Property="Kind" Value="triangle-alert"/>
+                    <Setter Property="Kind" Value="ban"/>
                     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                   </DataTrigger>
                 </Style.Triggers>
@@ -111,7 +117,7 @@
             </controls:LucideIcon.Style>
           </controls:LucideIcon>
           <StackPanel>
-            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+            <TextBlock Style="{StaticResource Subhead}"
                        Text="{Binding [Studio.Diagnostics.SettingsFile], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding SettingsFileSentence}"/>
           </StackPanel>
@@ -138,10 +144,10 @@
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Status}" Value="Warning">
                           <Setter Property="Kind" Value="triangle-alert"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Status}" Value="Failure">
-                          <Setter Property="Kind" Value="triangle-alert"/>
+                          <Setter Property="Kind" Value="ban"/>
                           <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
@@ -150,7 +156,7 @@
                 </controls:LucideIcon>
                 <StackPanel>
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                    <TextBlock Style="{StaticResource Subhead}"
                                Text="{Binding FriendlyName, Mode=OneWay}"/>
                     <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="9,0,0,0" VerticalAlignment="Center"
                                Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Name, Mode=OneWay}"
@@ -196,38 +202,34 @@
                    Text="{Binding [Studio.Diagnostics.OrphansTitle], Source={x:Static services:I18n.Instance}}"/>
         <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,10" TextWrapping="Wrap"
                    Text="{Binding [Studio.Diagnostics.OrphansBody], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,8" TextWrapping="Wrap"
-                   Text="{Binding OrphanMessage}"
-                   Visibility="{Binding HasOrphanMessage, Converter={StaticResource BooleanToVisibility}}"/>
+        <controls:Alert Tone="Danger" Margin="0,0,0,8" Message="{Binding OrphanMessage}"
+                        Visibility="{Binding HasOrphanMessage, Converter={StaticResource BooleanToVisibility}}"/>
         <ItemsControl ItemsSource="{Binding OrphanSessions}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <DockPanel Margin="0,4">
                 <Grid DockPanel.Dock="Right" VerticalAlignment="Center">
-                  <Button Style="{StaticResource BtnSecondary}" Command="{Binding AskCleanCommand}"
-                          Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
-                      <TextBlock Text="{Binding [Studio.Diagnostics.OrphanClean], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
-                  <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding AskCleanCommand}"
+                          controls:ButtonIcon.Kind="eraser"
+                          Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}"
+                          Content="{Binding [Studio.Diagnostics.OrphanClean], Source={x:Static services:I18n.Instance}}"/>
+                  <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBorderBrush}"
                           BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
                           Visibility="{Binding IsConfirmingClean, Converter={StaticResource BooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                                 Foreground="{DynamicResource DangerBrush}"
+                                 Foreground="{DynamicResource DangerInkBrush}"
                                  Text="{Binding [Studio.Diagnostics.OrphanCleanConfirm], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmCleanCommand}"
+                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" Margin="8,0,0,0" Command="{Binding ConfirmCleanCommand}"
                               Content="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnSecondary}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
                               Command="{Binding CancelCleanCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Border>
                 </Grid>
                 <StackPanel Margin="0,0,12,0">
-                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+                  <TextBlock Style="{StaticResource Subhead}" Text="{Binding Title}"/>
                   <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding FolderLine}"/>
                 </StackPanel>
               </DockPanel>

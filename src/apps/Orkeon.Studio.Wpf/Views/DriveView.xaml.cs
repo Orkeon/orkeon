@@ -5,6 +5,10 @@ namespace Orkeon.Studio.Wpf.Views;
 /// <summary>The Drive settings tab. XAML wiring only; every behaviour lives in the ViewModels.</summary>
 public partial class DriveView : UserControl
 {
-    /// <summary>Loads the XAML.</summary>
-    public DriveView() => InitializeComponent();
+    /// <summary>Loads the XAML; picking another account brings its form on screen (R24).</summary>
+    public DriveView()
+    {
+        InitializeComponent();
+        SelectionReveal.Attach(AccountList, AccountForm);
+    }
 }

@@ -17,7 +17,7 @@ public partial class CreateTeamWizardTests
 
         Assert.Equal(CreateTeamViewModel.Step1NeedTab, vm.Step1TabIndex);
         Assert.Equal("Empty", vm.NeedTabState);
-        Assert.Equal("Describe the work to continue.", vm.NeedFooter);
+        Assert.Equal("Need not described yet.", vm.NeedFooter);
         Assert.Equal("Empty", vm.FoldersTabState);
         Assert.True(vm.IsFoldersTabEmpty);
         Assert.Equal("Proposed after the composition", vm.FoldersTabSubtitle);

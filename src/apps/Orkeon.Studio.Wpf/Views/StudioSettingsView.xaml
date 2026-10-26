@@ -28,7 +28,7 @@
 
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,5"
                    Text="{Binding [Studio.Settings.BalanceRefreshLabel], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left"
+        <ComboBox Style="{StaticResource ComboM}"
                   ItemsSource="{Binding Studio.RefreshChoices}"
                   SelectedItem="{Binding Studio.SelectedRefresh}"
                   DisplayMemberPath="Label"/>
@@ -44,16 +44,16 @@
             <DataTemplate>
               <StackPanel Margin="0,0,0,8">
                 <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Width="130" VerticalAlignment="Center"
+                  <TextBlock DockPanel.Dock="Left" Width="160" VerticalAlignment="Center" TextWrapping="Wrap"
                              FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                              Text="{Binding Title}"/>
-                  <TextBox DockPanel.Dock="Left" Style="{StaticResource InputMono}" Width="110"
+                  <TextBox DockPanel.Dock="Left" Style="{StaticResource InputMono}" Width="110" Margin="12,0,0,0"
                            Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}"/>
                   <!-- the currency to type it in: the last amount this session read -->
                   <TextBlock Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
                              Text="{Binding Hint}"/>
                 </DockPanel>
-                <TextBlock Style="{StaticResource Hint}" Margin="130,4,0,0" Foreground="{DynamicResource WarningBrush}"
+                <TextBlock Style="{StaticResource Hint}" Margin="172,4,0,0" Foreground="{DynamicResource WarningInkBrush}"
                            Text="{Binding [Studio.Settings.BalanceThresholdInvalid], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding IsInvalid, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
@@ -74,7 +74,7 @@
         </StackPanel>
         <TextBlock Style="{StaticResource Hint}"
                    Text="{Binding [Studio.Settings.StatusScopeHint], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left" Margin="0,12,0,0"
+        <ComboBox Style="{StaticResource ComboM}" Margin="0,12,0,0"
                   AutomationProperties.AutomationId="TokenScope"
                   SelectedValuePath="Tag"
                   SelectedValue="{Binding DataContext.StatusBar.TokenScope, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
@@ -102,7 +102,7 @@
 
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                    Text="{Binding [Studio.Settings.ArchiveSuggestionLabel], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left"
+        <ComboBox Style="{StaticResource ComboM}"
                   ItemsSource="{Binding Studio.ArchiveSuggestionChoices}"
                   SelectedItem="{Binding Studio.SelectedArchiveSuggestion}"
                   DisplayMemberPath="Label"
@@ -132,13 +132,14 @@
                   Command="{Binding Studio.ChangeTeamsRootCommand}"
                   Content="{Binding [Studio.Settings.TeamsRootChange], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
+            <!-- R09: a path is cut in the middle, whole in its tooltip. -->
+            <controls:MiddleEllipsisText Style="{StaticResource PathText}" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
             <!-- which of the four sources holds the root -->
             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Studio.TeamsRootSourceText}"/>
           </StackPanel>
         </DockPanel>
         <!-- a value set but unusable — a relative path — named with its reason -->
-        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource WarningInkBrush}"
                    Text="{Binding Studio.TeamsRootIgnoredText}"
                    Visibility="{Binding Studio.HasTeamsRootIgnored, Converter={StaticResource BooleanToVisibility}}"/>
       </StackPanel>

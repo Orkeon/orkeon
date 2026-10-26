@@ -77,7 +77,68 @@ public sealed class DiagnosticVerdictTests
         Assert.Equal(0, diagnostic.FailureCount);
         Assert.True(diagnostic.HasIssues);
         Assert.Equal("1 point to fix before launching a team.", diagnostic.VerdictHeadline);
-        Assert.Contains("2", diagnostic.VerdictDetail, StringComparison.Ordinal);
+        // D02: the detail counts the rows listed - the valid settings-file line is the third pass.
+        Assert.Equal("3 checks passed, 1 warning, 0 failures.", diagnostic.VerdictDetail);
+    }
+
+    [Fact]
+    public async Task The_detail_counts_the_rows_listed_the_settings_file_included()
+    {
+        // 062: four green checks, one warning, one failure, and a settings file with errors - the
+        // list shows two failures, so the detail says two, in step with « 3 points to fix ».
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(
+            ProcessOutputChannel.StandardOutput,
+            """[{"check":"cli","status":"ok","detail":"orkeon"},""" +
+            """{"check":"appsettings","status":"ok","detail":"readable"},""" +
+            """{"check":"mounts","status":"warn","detail":"missing"},""" +
+            """{"check":"llm-provider","status":"ok","detail":"deepseek"},""" +
+            """{"check":"llm-reachability","status":"fail","detail":"refused"},""" +
+            """{"check":"workspace","status":"ok","detail":"writable"}]"""));
+        var diagnostic = Create(launcher);
+        diagnostic.WatchSettingsFile(() => true);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, diagnostic.ShownOkCount);
+        Assert.Equal(1, diagnostic.ShownWarningCount);
+        Assert.Equal(2, diagnostic.ShownFailureCount);
+        Assert.Equal(diagnostic.IssueCount, diagnostic.ShownWarningCount + diagnostic.ShownFailureCount);
+        Assert.Equal("3 points to fix before launching a team.", diagnostic.VerdictHeadline);
+        Assert.Equal("4 checks passed, 1 warning, 2 failures.", diagnostic.VerdictDetail);
+    }
+
+    [Fact]
+    public async Task A_missing_engine_is_the_banner_not_a_failure_without_a_row()
+    {
+        // 063: doctor never started; the only row is the valid settings file. The point to fix
+        // is the engine banner, so the detail counts one pass and no failure.
+        var diagnostic = new DiagnosticViewModel(new OrkeonProcessRunner(
+            new FakeProcessLauncher(), new OrkeonBinaryLocator(new FakeExecutableProbe())));
+        diagnostic.WatchSettingsFile(() => false);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(diagnostic.IsEngineMissing);
+        Assert.NotNull(diagnostic.ErrorMessage);
+        Assert.Empty(diagnostic.Checks);
+        Assert.Equal(1, diagnostic.ShownOkCount);
+        Assert.Equal(0, diagnostic.ShownFailureCount);
+        Assert.Equal("1 point to fix before launching a team.", diagnostic.VerdictHeadline);
+        Assert.Equal("1 check passed, 0 warnings, 0 failures.", diagnostic.VerdictDetail);
+    }
+
+    [Fact]
+    public async Task An_unreadable_report_is_not_a_missing_engine()
+    {
+        var launcher = new FakeProcessLauncher();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, "not json at all"));
+        var diagnostic = Create(launcher);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(diagnostic.ErrorMessage);
+        Assert.False(diagnostic.IsEngineMissing);
     }
 
     [Fact]

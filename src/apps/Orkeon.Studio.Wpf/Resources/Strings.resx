@@ -49,7 +49,7 @@
   <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>The environment, once and for all</value></data>
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Only two things to set: the AI model, and the folders your agents may see. The diagnostic warns you when something is in the way.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>Help is contextual</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, each screen carries a column of explanations on the right. It steps aside in Expert mode.</value></data>
+  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>In Novice mode, the step-by-step screens (Create a team, Run) carry a “What this step does” box on the left, under the list of sections. It steps aside in Expert mode.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>waiting for an answer</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} tool(s): {1}</value></data>
@@ -121,7 +121,7 @@
   <data name="Studio.Settings.LblRights" xml:space="preserve"><value>Rights</value></data>
   <data name="Studio.Settings.OverridesTitle" xml:space="preserve"><value>Sub-path rights overrides</value></data>
   <data name="Studio.Settings.AddOverride" xml:space="preserve"><value>Add override</value></data>
-  <data name="Studio.Settings.Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
+  <data name="Studio.Settings.Preview" xml:space="preserve"><value>--mount ARGUMENT</value></data>
 
       <data name="Studio.Settings.RawJsonReadOnly" xml:space="preserve"><value>READ-ONLY</value></data>
   <data name="Studio.Settings.Copy" xml:space="preserve"><value>Copy</value></data>
@@ -387,7 +387,6 @@
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limits &amp; index</value></data>
 <data name="Studio.Shell.Json" xml:space="preserve"><value>File</value></data>
-<data name="Studio.Shell.Tools" xml:space="preserve"><value>Tools</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>E-mail</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Studio's assistant model</value></data>
@@ -485,7 +484,6 @@
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Trial instruction</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Adoption instruction</value></data>
 <data name="Studio.Create.TechTitle" xml:space="preserve"><value>Technical journal</value></data>
-<data name="Studio.Create.TechToggle" xml:space="preserve"><value>Show / hide</value></data>
 <data name="Studio.Create.NotesSub" xml:space="preserve"><value>An instruction applies to every agent, travels with the team, and becomes a point to check at trial time.</value></data>
 <data name="Studio.Create.Taken" xml:space="preserve"><value>Instruction taken as written.</value></data>
 <data name="Studio.Teams.Create" xml:space="preserve"><value>Create a team</value></data>
@@ -527,6 +525,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>A folder entry is malformed.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>An allowed folder does not exist on this machine.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve"><value>This folder is not chosen yet: pick one on this machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Two folders share the same internal name.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve"><value>An MCP server identifier is unusable: letters, digits, '.', '_' and '-' only.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve"><value>An MCP server names a transport the runtime does not know.</value></data>
@@ -677,7 +676,7 @@
   <data name="Studio.Settings.MailTitle" xml:space="preserve"><value>E-mail accounts</value></data>
   <data name="Studio.Settings.MailIntro" xml:space="preserve"><value>The mailboxes your agents may use. Each account says what an agent is allowed to do with it, and mail goes only to the recipients you list.</value></data>
   <data name="Studio.Settings.MailAdd" xml:space="preserve"><value>Add an account</value></data>
-  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>No account declared: the mail tools refuse every call until one is.</value></data>
+  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>The mail tools refuse every call until an account is declared.</value></data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve"><value>Account used when an agent names none</value></data>
   <data name="Studio.Settings.MailDefaultAccountHint" xml:space="preserve"><value>With a single account you can leave it empty: the engine uses that one.</value></data>
   <data name="Studio.Settings.MailNewTitle" xml:space="preserve"><value>A new account</value></data>
@@ -699,8 +698,6 @@
   <data name="Studio.Settings.MailTabRights" xml:space="preserve"><value>Rights</value></data>
   <data name="Studio.Settings.MailTabAuth" xml:space="preserve"><value>Sign-in</value></data>
   <data name="Studio.Settings.MailTabServers" xml:space="preserve"><value>Servers</value></data>
-  <data name="Studio.Settings.MailSectionShow" xml:space="preserve"><value>Show</value></data>
-  <data name="Studio.Settings.MailSectionHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Nothing ticked, nothing allowed: the engine refuses an account that grants no right.</value></data>
   <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Read — list the folders, search, read messages and save attachments</value></data>
   <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organize — create and rename folders, move messages, mark them read or flagged</value></data>
@@ -902,7 +899,7 @@
     <value>Import a team</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>No session in progress. An interrupted creation will show up here.</value>
+    <value>An interrupted creation will show up here.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Step {0} of {1} · {2}</value>
@@ -1870,7 +1867,7 @@
   <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve"><value>Type it on the Sign-in tab and save it; the test passes once it is stored.</value></data>
   <data name="Studio.Settings.DriveTitle" xml:space="preserve"><value>Drive accounts</value></data>
   <data name="Studio.Settings.DriveIntro" xml:space="preserve"><value>The Google Drive and OneDrive accounts your agents may use. Each account confines them to a folder you choose, and says what they are allowed to do there.</value></data>
-  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>No account declared: the drive tools refuse every call until one is.</value></data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>The drive tools refuse every call until an account is declared.</value></data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve"><value>Withhold the text of a file the prompt-injection screening rejects</value></data>
   <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve"><value>Off, the agent reads the file with a warning; on, it reads the warning alone.</value></data>
   <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve"><value>Nothing was stored. The drive guide (docs/guides/drive.md) says what each refusal means.</value></data>
@@ -1949,6 +1946,15 @@
   </data>
   <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
     <value>{0} {0:plural:tool|tools}</value>
+  </data>
+  <data name="Studio.Settings.TabShellDefault" xml:space="preserve">
+    <value>Default list</value>
+  </data>
+  <data name="Studio.Settings.TabShellReplaced" xml:space="preserve">
+    <value>Replaced list</value>
+  </data>
+  <data name="Studio.Settings.TabShellExtra" xml:space="preserve">
+    <value>{0} {0:plural:command|commands} added</value>
   </data>
   <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
     <value>{0} {0:plural:account|accounts}</value>
@@ -2053,7 +2059,7 @@
     <value>Display</value>
   </data>
   <data name="Studio.Run.StreamShort" xml:space="preserve">
-    <value>token by token</value>
+    <value>Token by token</value>
   </data>
   <data name="Studio.Run.TabRunIdle" xml:space="preserve">
     <value>Waiting · nothing to report</value>
@@ -2092,31 +2098,22 @@
     <value>No team chosen.</value>
   </data>
   <data name="Studio.Run.SeeOptions" xml:space="preserve">
-    <value>See the options →</value>
+    <value>See the options</value>
   </data>
   <data name="Studio.Run.SeeCommand" xml:space="preserve">
-    <value>See the command →</value>
+    <value>See the command</value>
   </data>
   <data name="Studio.Run.SeeRun" xml:space="preserve">
-    <value>See the run →</value>
+    <value>See the run</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
-    <value>← Back to the team</value>
+    <value>Back to the team</value>
   </data>
   <data name="Studio.Run.OrAPath" xml:space="preserve">
     <value>or a path</value>
   </data>
   <data name="Studio.Run.LblModel" xml:space="preserve">
     <value>Model</value>
-  </data>
-  <data name="Studio.Run.ModelDefault" xml:space="preserve">
-    <value>Default ({0})</value>
-  </data>
-  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
-    <value>Default</value>
-  </data>
-  <data name="Studio.Run.ModelTeam" xml:space="preserve">
-    <value>The team's ({0})</value>
   </data>
   <data name="Studio.Run.TeamLastRun" xml:space="preserve">
     <value>launched on {0}</value>
@@ -2140,7 +2137,7 @@
     <value>Add a folder for this launch</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Read</value>
+    <value>Read only</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Read and write</value>
@@ -2167,7 +2164,7 @@
     <value>Command composed from the team and the options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODE</value>
+    <value>Run type</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Sent</value>
@@ -2256,10 +2253,10 @@
   <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Save and leave</value></data>
   <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Leave without saving</value></data>
   <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Stay</value></data>
-  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODELS</value></data>
-  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCESS</value></data>
-  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNECTIONS</value></data>
-  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>ADVANCED</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>Models</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Access</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connections</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Advanced</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Open Models</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Open API keys</value>
@@ -2293,7 +2290,7 @@
     <value>Described, {0} {0:plural:question settled|questions settled}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>To describe</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Describe the work to continue.</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Need not described yet.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Need described.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Need described, {0} {0:plural:question settled|questions settled} with the assistant</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:folder to confirm|folders to confirm}</value></data>
@@ -2489,4 +2486,78 @@
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Enter to send · Shift+Enter for a new line</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Show the card</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>The trial is judged. What do we do next?</value></data>
+
+  <!-- hrm:fa begin -->
+  <!-- hrm:fa end -->
+
+  <!-- hrm:fb begin -->
+  <!-- hrm:fb end -->
+
+  <!-- hrm:fc begin -->
+  <!-- hrm:fc end -->
+
+  <!-- hrm:L01 begin -->
+  <data name="Studio.Shell.StatusNoModel" xml:space="preserve">
+    <value>No model</value>
+  </data>
+  <!-- hrm:L01 end -->
+
+  <!-- hrm:L02 begin -->
+  <!-- hrm:L02 end -->
+
+  <!-- hrm:L03 begin -->
+  <!-- hrm:L03 end -->
+
+  <!-- hrm:L04 begin -->
+  <!-- hrm:L04 end -->
+
+  <!-- hrm:L05 begin -->
+  <data name="Studio.Chat.WaitingBadge" xml:space="preserve"><value>Waiting for you</value></data>
+  <!-- hrm:L05 end -->
+
+  <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>No session in progress</value>
+  </data>
+  <!-- hrm:L06 end -->
+
+  <!-- hrm:L07 begin -->
+  <!-- hrm:L07 end -->
+
+  <!-- hrm:L08 begin -->
+  <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Not run</value></data>
+  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Run finished</value></data>
+  <!-- hrm:L08 end -->
+
+  <!-- hrm:L09 begin -->
+  <data name="Studio.History.EmptyTitle" xml:space="preserve"><value>History is empty</value></data>
+  <data name="Studio.Diagnostics.ReportUnreadable" xml:space="preserve"><value>The diagnostic report could not be read.</value></data>
+  <!-- hrm:L09 end -->
+
+  <!-- hrm:L10 begin -->
+  <data name="Studio.Settings.MountStringsEyebrow" xml:space="preserve"><value>--mount ARGUMENTS</value></data>
+  <!-- hrm:L10 end -->
+
+  <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>No folder yet</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Add a folder: the agents only see the folders listed here.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>No server</value>
+  </data>
+  <!-- hrm:L11 end -->
+
+  <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve"><value>No account</value></data>
+  <!-- hrm:L12 end -->
+
+  <!-- hrm:L13 begin -->
+  <!-- hrm:L13 end -->
+
+  <!-- hrm:L14 begin -->
+  <!-- hrm:L14 end -->
+
 </root>

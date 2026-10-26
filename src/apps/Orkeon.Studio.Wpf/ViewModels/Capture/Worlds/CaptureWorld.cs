@@ -65,6 +65,12 @@ internal sealed class CaptureWorld
     /// <summary>The assistant's beats, holdable so a state between two of them can be photographed.</summary>
     public CaptureUiDelay Delay { get; } = new();
 
+    /// <summary>
+    /// The wizard's pause before it searches the need for close use cases: immediate, unless a
+    /// stop holds it to stand in the moment the need is typed and the pause has not elapsed yet.
+    /// </summary>
+    public CaptureUiDelay SuggestionDelay { get; } = new();
+
     /// <summary>The clock a run's elapsed time is read on, stopped at the seeded world's own «now».</summary>
     public TimeProvider Clock { get; } = new PinnedClock(StudioFixture.Now);
 

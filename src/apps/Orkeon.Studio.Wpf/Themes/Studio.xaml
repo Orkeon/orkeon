@@ -13,26 +13,54 @@
   <FontFamily x:Key="TextFont">pack://application:,,,/Fonts/#Hanken Grotesk, Segoe UI</FontFamily>
   <FontFamily x:Key="MonoFont">pack://application:,,,/Fonts/#IBM Plex Mono, Consolas</FontFamily>
 
-  <!-- ══ Typography ══ -->
-  <!-- Page title (R2): display face, 28 px, weight 600. WPF has no letter-spacing, so the
-       charter's -0.02 em tracking is not drawn (refonte ecarts). -->
+  <!-- ══ Typography (hrm R11) — one scale:
+       H1          page title, display face 32/600 (the About window is the other display use)
+       ModalTitle  title of a modal or a drawer, 20/600
+       CardTitle   title of a card, 16/600
+       Subhead     a heading inside a card, an object's title in a list, 14/600
+       BodyText    body copy, 14, line height 1.55 (22 px)
+       MetaText    meta line in words, 13, meta ink (InkFaintBrush); Hint is the same recipe
+       Eyebrow     mono capitals, 13 — machine-like micro-label
+       MonoText    machine values only (paths, ids, commands, counters), never a label.
+       WPF has no letter-spacing: the charter's tracking (-0.02 em on titles, 0.08 em on
+       eyebrows) is not drawn; the mono face's fixed advance stands in for the eyebrow's. ══ -->
   <Style x:Key="H1" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
-    <Setter Property="FontSize" Value="28"/>
+    <Setter Property="FontSize" Value="32"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
   </Style>
   <Style x:Key="SubTitle" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontSize" Value="14"/>
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style x:Key="ModalTitle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
   <Style x:Key="CardTitle" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="14.5"/>
-    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontSize" Value="16"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  </Style>
+  <Style x:Key="Subhead" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  </Style>
+  <Style x:Key="BodyText" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="LineHeight" Value="22"/>
   </Style>
   <Style x:Key="FieldLabel" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -41,13 +69,14 @@
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
     <Setter Property="Margin" Value="0,0,0,5"/>
   </Style>
-  <Style x:Key="Hint" TargetType="TextBlock">
+  <Style x:Key="MetaText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="LineHeight" Value="18"/>
   </Style>
+  <Style x:Key="Hint" TargetType="TextBlock" BasedOn="{StaticResource MetaText}"/>
   <!-- Mono uppercase micro-label. WPF has no text-transform: WRITE THE TEXT UPPERCASE. -->
   <Style x:Key="Eyebrow" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
@@ -60,6 +89,29 @@
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+
+  <!-- ══ Page container (hrm R01): every screen's content — header, banners, cards — sits in
+       one column of 1040 px at most, whatever its state (empty, filled, failed, running). At
+       1440 px with the 212 px navigation the column runs from x = 297 to 1337: it starts 85 px
+       after the navigation's right edge (the brief's «86 px» counts the nav's 1 px line) and
+       leaves the rest on the right. The Margin assumes the container sits right at the nav's
+       edge with no padding of the shell around it; the shell lot (L01) places it and may
+       override the Margin, never the MaxWidth. TargetType FrameworkElement: a Border, a Grid or
+       a StackPanel takes it. ══ -->
+  <Style x:Key="PageContainer" TargetType="FrameworkElement">
+    <Setter Property="MaxWidth" Value="1040"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="Margin" Value="85,0,0,0"/>
+  </Style>
+  <!-- Left-aligned under a MaxWidth, an element measures to its content, so a short screen would
+       come out narrower than a full one. Where the content does not stretch on its own, the
+       shell puts it in the first column of a Grid whose columns are PageColumn then «*»: the
+       column takes 1040 px whenever there is room, whatever the content, and shrinks with the
+       window below that. -->
+  <Style x:Key="PageColumn" TargetType="ColumnDefinition">
+    <Setter Property="Width" Value="*"/>
+    <Setter Property="MaxWidth" Value="1040"/>
   </Style>
 
   <!-- ══ Card ══ -->
@@ -92,19 +144,22 @@
     </Setter>
   </Style>
 
-  <!-- ══ Buttons (refonte R4): four forms, no more. Primary (accent fill, one per zone: the
-       action that moves things forward), Secondary (surface, line-strong border, ink: every
-       other action, local ones included — no text-only button anywhere), Danger (red border,
-       red text), Assistant (light blue, blue border and text: only a command that asks the
-       model — « Ask the assistant », « Rephrase » —, never a zone's main action, one per zone).
-       The solid red BtnDangerSolid exists only inside a delete confirmation.
-       Heights 28 / 32 / 40 (default) / 48 through controls:ButtonSize.Height, which also sets
-       the radius (6 / 8 / 10 / 10) the template reads. A disabled button still shows its
+  <!-- ══ Buttons (hrm R04, R05, R06). One primary per zone (tide fill: the action that moves
+       things forward), Secondary (outline: every other action, «Ajouter …» included), Ghost (no
+       border, a hover tint: discreet actions, the title bar), Danger (danger outline: delete or
+       remove for good, arms a confirmation), DangerSolid (the confirmation itself only).
+       Assistant is a Secondary kept as a key for the call sites; the title-bar toggle (BtnToggle)
+       is the same Secondary at 32 px, sky + AccentInk while its panel is open.
+       Heights: 40 by default, 32 in cards, lists and compact bars — controls:ButtonSize.Height
+       also sets the radius (10; 6 at 28) and the padding the template reads.
+       Icons: controls:ButtonIcon.Kind="plus" draws a 16 px Lucide icon left of the label in the
+       button's own Foreground; controls:ButtonIcon.Placement="Trailing" puts it right of the
+       label (forward →, only). Never an arrow inside the text. A disabled button still shows its
        tooltip: it must say why and how to unlock it. ══ -->
   <Style x:Key="BtnBase" TargetType="Button">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="13.5"/>
+    <Setter Property="FontSize" Value="14"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Height" Value="40"/>
     <Setter Property="Padding" Value="16,0"/>
@@ -119,9 +174,33 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding controls:ButtonSize.CornerRadius}" Padding="{TemplateBinding Padding}">
-            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- A DockPanel, not a StackPanel: the label keeps the width left by the icons, so a
+                 long one still trims instead of overflowing the border. -->
+            <DockPanel HorizontalAlignment="Center" VerticalAlignment="Center" LastChildFill="True">
+              <controls:LucideIcon x:Name="lead" DockPanel.Dock="Left" Size="16" Margin="0,0,8,0"
+                                   VerticalAlignment="Center" Visibility="Collapsed"
+                                   Kind="{TemplateBinding controls:ButtonIcon.Kind}"
+                                   Foreground="{TemplateBinding Foreground}"/>
+              <controls:LucideIcon x:Name="trail" DockPanel.Dock="Right" Size="16" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" Visibility="Collapsed"
+                                   Kind="{TemplateBinding controls:ButtonIcon.Kind}"
+                                   Foreground="{TemplateBinding Foreground}"/>
+              <ContentPresenter x:Name="content" VerticalAlignment="Center"/>
+            </DockPanel>
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="controls:ButtonIcon.HasLeading" Value="True">
+              <Setter TargetName="lead" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="controls:ButtonIcon.HasTrailing" Value="True">
+              <Setter TargetName="trail" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <!-- Icon only: no gap, the icon is the whole content. -->
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="lead" Property="Margin" Value="0"/>
+              <Setter TargetName="trail" Property="Margin" Value="0"/>
+              <Setter TargetName="content" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
             </Trigger>
@@ -151,7 +230,7 @@
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
         <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
@@ -159,7 +238,29 @@
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- Danger: red border, red text — arms a confirmation, never deletes by itself. -->
+  <!-- Ghost: no border, the muted ink, a tint on hover — discreet actions, the dépliage
+       «libellé + chevron» (R16), every title-bar button (R04, see BtnTitleBar). -->
+  <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+        <Setter Property="Background" Value="{DynamicResource LineFaintBrush}"/>
+        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+  <!-- The title bar's buttons (R04): ghost, 32 px. -->
+  <Style x:Key="BtnTitleBar" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Setter Property="controls:ButtonSize.Height" Value="32"/>
+  </Style>
+  <!-- Danger (R06): danger outline, trash icon — arms a confirmation, never deletes by itself.
+       Removing from a list before saving is not this: that is a Secondary with the × icon. -->
   <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
@@ -173,21 +274,9 @@
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- Assistant: a round trip with the model, in its own blue rather than the accent. -->
-  <Style x:Key="BtnAssistant" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
-    <Style.Triggers>
-      <Trigger Property="IsMouseOver" Value="True">
-        <Setter Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
-      </Trigger>
-      <Trigger Property="IsPressed" Value="True">
-        <Setter Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
-        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
-      </Trigger>
-    </Style.Triggers>
-  </Style>
+  <!-- Assistant (R04): a round trip with the model is a Secondary like any other action — the
+       former blue was off the palette. Kept as a key so the call sites still read the intent. -->
+  <Style x:Key="BtnAssistant" TargetType="Button" BasedOn="{StaticResource BtnSecondary}"/>
   <!-- Solid danger: the confirm half of an in-place «Supprimer « X » ?» confirmation.
        Reached only from an armed confirmation, never from a resting action row. -->
   <Style x:Key="BtnDangerSolid" TargetType="Button" BasedOn="{StaticResource BtnBase}">
@@ -195,22 +284,33 @@
     <Setter Property="Foreground" Value="{DynamicResource DangerFgBrush}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource DangerInkBrush}"/>
+      </Trigger>
       <Trigger Property="IsPressed" Value="True">
         <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="1"/></Setter.Value></Setter>
       </Trigger>
     </Style.Triggers>
   </Style>
-  <!-- 32x32 icon button (title bar: theme, tour; a universal ✕ or copy beside a value).
-       Always with a ToolTip and an AutomationProperties.Name. -->
+  <!-- 32x32 square icon button, radius 6 (a universal ✕ or copy beside a value; the «…» menu
+       of a card, R23). Outline; IconBtnGhost for the title bar (R04). The icon goes through
+       controls:ButtonIcon.Kind with no Content, or a LucideIcon as Content. Always with a
+       ToolTip and an AutomationProperties.Name. -->
   <Style x:Key="IconBtn" TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
     <Setter Property="Padding" Value="0"/>
     <Setter Property="Width" Value="32"/>
     <Setter Property="Height" Value="32"/>
-    <Setter Property="controls:ButtonSize.CornerRadius" Value="8"/>
+    <Setter Property="controls:ButtonSize.CornerRadius" Value="6"/>
     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
   </Style>
-  <!-- The Assistant form as a toggle that opens the side panel («Demander à l'assistant»),
-       pressed in while the panel is open. -->
+  <Style x:Key="IconBtnGhost" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Width" Value="32"/>
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="controls:ButtonSize.CornerRadius" Value="6"/>
+  </Style>
+  <!-- The assistant's toggle in the title bar («Demander à l'assistant», R04): a Secondary at
+       32 px; while its panel is open, sky ground and AccentInk text. -->
   <Style x:Key="BtnToggle" TargetType="ToggleButton">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
@@ -218,9 +318,9 @@
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Height" Value="32"/>
     <Setter Property="Padding" Value="12,0"/>
-    <Setter Property="Background" Value="{DynamicResource AssistantWeakBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource AssistantLineBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Cursor" Value="Hand"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -230,17 +330,18 @@
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="8" Padding="{TemplateBinding Padding}">
+                  CornerRadius="10" Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantHoverBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource InkDisabledBrush}"/>
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
-              <Setter TargetName="bd" Property="Background" Value="{DynamicResource AssistantPressedBrush}"/>
-              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AssistantBrush}"/>
-              <Setter Property="Foreground" Value="{DynamicResource AssistantBrush}"/>
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource SkyBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
@@ -313,11 +414,7 @@
   </Style>
 
   <!-- An object's title: wraps, never trimmed on one line. -->
-  <Style x:Key="ObjectTitle" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
-    <Setter Property="FontSize" Value="14"/>
-    <Setter Property="FontWeight" Value="Bold"/>
-    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+  <Style x:Key="ObjectTitle" TargetType="TextBlock" BasedOn="{StaticResource Subhead}">
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
@@ -512,16 +609,23 @@
        An editable field says so: the field surface and its franker line, distinct from the
        sunk paper the read-only wells keep (YAML, raw JSON, journal, code) — it is that
        contrast which makes a field readable as one. A read-only TextBox goes back to the
-       well recipe: it is a thing to read, not an invitation to write. -->
+       well recipe: it is a thing to read, not an invitation to write.
+       hrm R10: every single-line field is 40 px high (Height, not MinHeight: a field beside a
+       40 px button never grows to 46), radius 10, horizontal padding 12 for the typed value AND
+       for the watermark. A TextBox applies its Padding itself, inside PART_ContentHost, plus a
+       2 px inset of its text view: the host therefore takes no Margin of its own (the former
+       Margin="{TemplateBinding Padding}" counted the padding twice, value at 22 px against a
+       watermark at 10, C08), only -2 px to cancel the inset, and the watermark takes the Padding
+       once — the two start on the same x. -->
   <Style x:Key="Input" TargetType="TextBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -529,16 +633,16 @@
         <ControlTemplate TargetType="TextBox">
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
             <Grid>
               <!-- WPF has no inset box-shadow: a hairline under the top edge, following the
                    radius, gives the same optical dip as a native entry field. -->
               <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
-                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      CornerRadius="10,10,0,0" BorderThickness="0,1,0,0"
                       BorderBrush="{DynamicResource FieldShadowBrush}"/>
               <!-- The alignment is the control's, not the template's: the multi-line style
                    (T-32) stretches so a paragraph starts on its first line instead of centring. -->
-              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+              <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
               <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, shown while the
                    box is empty — an empty field is not "nothing", it is the value the engine will
@@ -567,6 +671,20 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+    <!-- A box that wraps or takes Return is a paragraph, not a row: it grows from 40 px with
+         its text instead of being clipped to one line. -->
+    <Style.Triggers>
+      <Trigger Property="TextWrapping" Value="Wrap">
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="12,9"/>
+      </Trigger>
+      <Trigger Property="AcceptsReturn" Value="True">
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="12,9"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
   <Style x:Key="InputMono" TargetType="TextBox" BasedOn="{StaticResource Input}">
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
@@ -577,6 +695,8 @@
        the card — which is also why no view may put a Height on one of these. Stretch puts a
        paragraph on its first line instead of centring it. -->
   <Style x:Key="InputMultiline" TargetType="TextBox" BasedOn="{StaticResource Input}">
+    <Setter Property="Height" Value="Auto"/>
+    <Setter Property="Padding" Value="12,9"/>
     <Setter Property="AcceptsReturn" Value="True"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
     <Setter Property="MinLines" Value="5"/>
@@ -597,10 +717,10 @@
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -608,12 +728,13 @@
         <ControlTemplate TargetType="PasswordBox">
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
             <Grid>
               <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
-                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      CornerRadius="10,10,0,0" BorderThickness="0,1,0,0"
                       BorderBrush="{DynamicResource FieldShadowBrush}"/>
-              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+              <!-- Same as Input: the PasswordBox applies its Padding itself. -->
+              <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
             </Grid>
           </Border>
@@ -630,7 +751,10 @@
   <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══
        WPF rule (unlike CSS): CornerRadius is NOT clamped to height/2 — an oversized
        value deforms the corners into ogives. Every pill therefore carries a fixed
-       Height and CornerRadius = Height / 2, exactly. -->
+       Height and CornerRadius = Height / 2, exactly.
+       hrm R12/R20: a tinted ground and the DARK ink of the same tone (SuccessInk, WarningInk,
+       DangerInk, AccentInk); both grounds stay visible in the dark theme. Sky is the
+       «Lecture et écriture» pill, Neutral the «Lecture seule» one. -->
   <Style x:Key="BadgeText" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -650,23 +774,23 @@
   </Style>
   <Style x:Key="BadgeSky" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MarkBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
   </Style>
   <Style x:Key="BadgeOk" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
   </Style>
   <Style x:Key="BadgeWarn" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
   </Style>
   <Style x:Key="BadgeFail" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource DangerWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerInkBrush}"/>
   </Style>
   <Style x:Key="BadgeRun" TargetType="Border" BasedOn="{StaticResource BadgeBase}">
     <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentInkBrush}"/>
   </Style>
 
   <!-- ══ Tool / mount chip — THE one chip recipe (v3 W-03): mono 11.5, paper-sunk,
@@ -832,12 +956,10 @@
     </Setter>
   </Style>
 
-  <!-- Card-header title: the «titre + méta mono + actions» row wants 13/700, one size
-       under the big CardTitle that opens a card. Both sit on the same centre line as the
+  <!-- Card-header title: the «titre + méta mono + actions» row is a Subhead (14/600, hrm R11),
+       one size under the CardTitle that opens a card. Both sit on the same centre line as the
        meta beside them — that alignment is the whole recipe (T-20). -->
-  <Style x:Key="CardHeaderTitle" TargetType="TextBlock" BasedOn="{StaticResource CardTitle}">
-    <Setter Property="FontSize" Value="13"/>
-    <Setter Property="FontWeight" Value="Bold"/>
+  <Style x:Key="CardHeaderTitle" TargetType="TextBlock" BasedOn="{StaticResource Subhead}">
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
 
@@ -857,12 +979,14 @@
           <Border x:Name="bd" Background="{DynamicResource SurfaceBrush}"
                   BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                   CornerRadius="10" Padding="13,11">
-            <StackPanel Orientation="Horizontal">
-              <Ellipse x:Name="dot" Width="15" Height="15" StrokeThickness="1.5"
+            <!-- B06 (R09): a DockPanel, so the content gets the row's width - a path in it cuts
+                 with its «…» and a right-docked tag reaches the edge, instead of overflowing. -->
+            <DockPanel LastChildFill="True">
+              <Ellipse x:Name="dot" DockPanel.Dock="Left" Width="15" Height="15" StrokeThickness="1.5"
                        Stroke="{DynamicResource LineStrongBrush}" Fill="{DynamicResource PaperSunkBrush}"
                        VerticalAlignment="Center" Margin="0,0,11,0"/>
               <ContentPresenter VerticalAlignment="Center"/>
-            </StackPanel>
+            </DockPanel>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsChecked" Value="True">
@@ -968,15 +1092,20 @@
   </Style>
 
   <!-- The closed box is a field (T-31): field surface and line; the popup keeps the
-       surface and the ordinary line, it is a list, not a field. -->
+       surface and the ordinary line, it is a list, not a field.
+       hrm R10/R09: 40 px high, the value and the watermark both at 12 px from the left edge,
+       36 px reserved on the right for the chevron (11 + 13 + a 12 px gap), and a long value
+       ends in «…» there instead of sliding under the chevron (B06). The Padding setter states
+       the 12 px for the reader; the presenter's margin is literal because it adds the chevron's
+       reserve to it. Never sized by its value: ComboS / ComboM / ComboL below. -->
   <Style TargetType="ComboBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
     <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
-    <Setter Property="Padding" Value="10,7"/>
-    <Setter Property="MinHeight" Value="40"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
     <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
     <Setter Property="Template">
@@ -989,7 +1118,7 @@
                 <ControlTemplate TargetType="ToggleButton">
                   <Border x:Name="bd" Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                           BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}"
-                          BorderThickness="1" CornerRadius="9">
+                          BorderThickness="1" CornerRadius="10">
                     <!-- The real Lucide chevron rather than three hand-drawn segments, and
                          on the muted ink the mock uses: a chevron drawn twice drifts twice. -->
                     <controls:LucideIcon Kind="chevron-down" Size="13"
@@ -1012,10 +1141,18 @@
                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                              IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"/>
+                              IsHitTestVisible="False" Margin="12,0,36,0" VerticalAlignment="Center">
+              <!-- The text a string or a DisplayMemberPath item renders through: trimmed, one line. -->
+              <ContentPresenter.Resources>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                  <Setter Property="TextWrapping" Value="NoWrap"/>
+                </Style>
+              </ContentPresenter.Resources>
+            </ContentPresenter>
             <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, while nothing is picked. -->
             <TextBlock x:Name="watermark" Text="{TemplateBinding Tag}" IsHitTestVisible="False"
-                       Margin="10,0,26,0" VerticalAlignment="Center"
+                       Margin="12,0,36,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource InkFaintBrush}" Visibility="Collapsed"/>
             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    StaysOpen="False" PopupAnimation="Fade" VerticalOffset="4">
@@ -1047,6 +1184,19 @@
     </Setter>
   </Style>
 
+  <!-- The three combo widths (R10, C09): S 160, M 320, L the whole column. -->
+  <Style x:Key="ComboS" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="Width" Value="160"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+  </Style>
+  <Style x:Key="ComboM" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="Width" Value="320"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+  </Style>
+  <Style x:Key="ComboL" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+
   <Style TargetType="CheckBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="13"/>
@@ -1060,7 +1210,7 @@
             <!-- The box is a clickable surface, so it wears the field recipe (T-31). -->
             <Border x:Name="box" Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
                     Background="{DynamicResource FieldBrush}"
-                    BorderBrush="{DynamicResource FieldLineBrush}" BorderThickness="1">
+                    BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
               <Path x:Name="tick" Data="M3,8 L6.5,11.5 13,4.5" Stroke="{DynamicResource AccentFgBrush}"
                     StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                     StrokeLineJoin="Round" Visibility="Collapsed" Margin="0"/>
@@ -1094,7 +1244,7 @@
             <!-- The dot is a clickable surface too (T-31); PickRow and NavItem are rows, not fields. -->
             <Ellipse x:Name="dot" Width="15" Height="15" VerticalAlignment="Center"
                      Fill="{DynamicResource FieldBrush}"
-                     Stroke="{DynamicResource FieldLineBrush}" StrokeThickness="1.5"/>
+                     Stroke="{DynamicResource FieldBorderBrush}" StrokeThickness="1.5"/>
             <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
           </StackPanel>
           <ControlTemplate.Triggers>
@@ -1158,79 +1308,6 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ══ One API-key row (STUDIO-21): the variable, its status badge, who uses it, where to get
-       one, and the paste-to-remember flow. Shared by the API-keys card of the model tab and the
-       tool-keys card of the Tools tab; the row's DataContext is a SecretRowViewModel. ══ -->
-  <DataTemplate x:Key="SecretRowTemplate">
-    <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
-            BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
-      <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-          <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
-                       ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
-                       views:PasswordBinding.Text="{Binding KeyInput}"/>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding StoreCommand}"
-                  Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-        <StackPanel VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
-            <Border Margin="9,0,0,0" VerticalAlignment="Center">
-              <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                  <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding HasKey}" Value="True">
-                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </Border.Style>
-              <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
-            </Border>
-          </StackPanel>
-          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
-          <!-- No converter here: the converters live in App.xaml, declared AFTER this dictionary is
-               merged, and a static resource reference inside a theme template cannot see them (the
-               settings screen threw XamlParseException on this line). A trigger needs no converter. -->
-          <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13"
-                       Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0" Text="{Binding ConsoleUrl}"/>
-          </StackPanel>
-          <!-- STUDIO-44: a key the user scope refused is still in place for the session; say why. -->
-          <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,3,0,0"
-                     Foreground="{DynamicResource WarningBrush}" Text="{Binding StoreError}">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasStoreError}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-        </StackPanel>
-      </DockPanel>
-    </Border>
-  </DataTemplate>
-
 
   <!-- ══ A team's folder chip «/input · read» (#117): My teams and Run. The item exposes Label
        and IsUndeclared (TeamMountChip); an undeclared folder is outlined in danger. ══ -->
@@ -1290,5 +1367,178 @@
       </DataTrigger>
     </Style.Triggers>
   </Style>
+
+
+  <!-- hrm:fa begin -->
+  <!-- hrm:fa end -->
+
+  <!-- hrm:fb begin -->
+  <!-- hrm:fb end -->
+
+  <!-- hrm:fc begin -->
+  <!-- hrm:fc end -->
+
+  <!-- hrm:L01 begin -->
+  <!-- R01, R02 (L01): the shell's page host - PageContainer's 85 px offset from the nav, but
+       stretched, so the single PageColumn inside it (not the content) sets the 1040 px; 24 px
+       above the title, 32 px after the last block inside the scrolled area, 48 px on the right
+       for a window narrower than 1440 px. -->
+  <Style x:Key="PageHost" TargetType="Grid">
+    <Setter Property="Margin" Value="85,24,48,32"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+  <!-- hrm:L01 end -->
+
+  <!-- hrm:L02 begin -->
+  <!-- hrm:L02 end -->
+
+  <!-- hrm:L03 begin -->
+  <!-- The StatusDot (R08) for a sentence longer than a line (lot L03, Create's footers): the
+       dot on the first line, the text wrapping over the rest of the width. The implicit
+       StatusDot template is a horizontal StackPanel, which never lets its text wrap. -->
+  <ControlTemplate x:Key="StatusDotWrapTemplate" TargetType="controls:StatusDot">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Ellipse x:Name="dot" Width="8" Height="8" Margin="0,5,8,0" VerticalAlignment="Top"
+               Fill="{DynamicResource NeutralDotBrush}"/>
+      <ContentPresenter Grid.Column="1" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}">
+        <ContentPresenter.Resources>
+          <Style TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+          </Style>
+        </ContentPresenter.Resources>
+      </ContentPresenter>
+    </Grid>
+    <ControlTemplate.Triggers>
+      <Trigger Property="Tone" Value="Attention">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Error">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource DangerBrush}"/>
+      </Trigger>
+      <Trigger Property="Tone" Value="Ready">
+        <Setter TargetName="dot" Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+      </Trigger>
+    </ControlTemplate.Triggers>
+  </ControlTemplate>
+  <!-- hrm:L03 end -->
+
+  <!-- hrm:L04 begin -->
+  <!-- The action footer of a Create step (R02, R05): paper ground, the 1 px LineBrush rule
+       above, « Retour » on the left, the step's gesture on the right; 32 px after it, so the
+       last line is never cut at the end of the scroll. -->
+  <Style x:Key="StepActionFooter" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource PaperBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="0,1,0,0"/>
+    <Setter Property="Padding" Value="0,14,0,0"/>
+    <Setter Property="Margin" Value="0,16,0,32"/>
+  </Style>
+  <!-- hrm:L04 end -->
+
+  <!-- hrm:L05 begin -->
+  <!-- hrm:L05 end -->
+
+  <!-- hrm:L06 begin -->
+  <!-- hrm:L06 end -->
+
+  <!-- hrm:L07 begin -->
+  <!-- hrm:L07 end -->
+
+  <!-- hrm:L08 begin -->
+  <!-- hrm:L08 end -->
+
+  <!-- hrm:L09 begin -->
+  <!-- hrm:L09 end -->
+
+  <!-- hrm:L10 begin -->
+  <!-- ══ One API-key row, rc.5 (B06 051, C07, R09, R10): the variable, its status badge, who uses it, with the
+       « No key yet? » link on its own line under the question, cut in the middle with the whole
+       URL in its tooltip, instead of running under the key field. The field and its button are
+       both 40 px (the foundation's InputPassword and BtnSecondary). Used by the API-keys card of
+       the model tab and the tool-keys card of the Tools tab; DataContext: SecretRowViewModel. ══ -->
+  <DataTemplate x:Key="KeyRowTemplate">
+    <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
+            BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+          <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
+                       ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                       views:PasswordBinding.Text="{Binding KeyInput}"/>
+          <Button Style="{StaticResource BtnSecondary}" VerticalAlignment="Center" Command="{Binding StoreCommand}"
+                  Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <StackPanel VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
+            <Border Margin="9,0,0,0" VerticalAlignment="Center">
+              <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                  <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasKey}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+              <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
+            </Border>
+          </StackPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
+          <!-- No converter here: a trigger shows the link. -->
+          <StackPanel Margin="0,3,0,0">
+            <StackPanel.Style>
+              <Style TargetType="StackPanel">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </StackPanel.Style>
+            <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
+            <controls:MiddleEllipsisText Style="{StaticResource PathText}" Margin="0,2,0,0"
+                                         Foreground="{DynamicResource AccentBrush}" Text="{Binding ConsoleUrl}"/>
+          </StackPanel>
+          <!-- STUDIO-44: a key the user scope refused is still in place for the session; say why. -->
+          <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,3,0,0"
+                     Foreground="{DynamicResource WarningInkBrush}" Text="{Binding StoreError}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasStoreError}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </DataTemplate>
+  <!-- hrm:L10 end -->
+
+  <!-- hrm:L11 begin -->
+  <!-- hrm:L11 end -->
+
+  <!-- hrm:L12 begin -->
+  <!-- hrm:L12 end -->
+
+  <!-- hrm:L13 begin -->
+  <!-- hrm:L13 end -->
+
+  <!-- hrm:L14 begin -->
+  <!-- hrm:L14 end -->
 
 </ResourceDictionary>

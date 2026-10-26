@@ -78,29 +78,19 @@
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
           <!-- the discreet door to "À propos" (design v3: the "…" next to the brand) -->
-          <Button Command="{Binding About.OpenCommand}" Cursor="Hand" Margin="7,0,0,0" VerticalAlignment="Center"
+          <!-- R04 (A04): every title-bar button is a 32 px ghost — this one included. -->
+          <Button Style="{StaticResource IconBtnGhost}" Command="{Binding About.OpenCommand}" Margin="4,0,0,0" VerticalAlignment="Center"
                   ToolTip="{Binding [Studio.Shell.AboutTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button.Template>
-              <ControlTemplate TargetType="Button">
-                <Border x:Name="Bg" Width="24" Height="24" CornerRadius="7" Background="Transparent">
-                  <TextBlock Text="…" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource InkFaintBrush}"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,5"/>
-                </Border>
-                <ControlTemplate.Triggers>
-                  <Trigger Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-                  </Trigger>
-                </ControlTemplate.Triggers>
-              </ControlTemplate>
-            </Button.Template>
+            <controls:LucideIcon Kind="ellipsis" Size="16"/>
           </Button>
         </StackPanel>
 
         <!-- right cluster -->
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
           <!-- R12: the way into the assistant's side panel, pressed while it is open; the
-               accent dot says the assistant spoke while it was closed. -->
+               accent dot says the assistant spoke while it was closed. R04 (A04): a Secondary
+               (BtnToggle); open, sky ground and AccentInk text — the icon follows the text. -->
           <ToggleButton Style="{StaticResource BtnToggle}" Margin="0,0,14,0" VerticalAlignment="Center"
                         IsChecked="{Binding Chat.IsOpen, Mode=OneWay}" Command="{Binding Chat.ToggleCommand}"
                         AutomationProperties.AutomationId="AskAssistant"
@@ -108,7 +98,8 @@
                         ToolTip="{Binding [Studio.Chat.AskTip], Source={x:Static services:I18n.Instance}}"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
             <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="message-circle" Size="16" Margin="0,0,7,0"/>
+              <controls:LucideIcon Kind="message-circle" Size="16" Margin="0,0,8,0"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
               <TextBlock Text="{Binding [Studio.Shell.AskAssistant], Source={x:Static services:I18n.Instance}}" VerticalAlignment="Center"/>
               <Ellipse Width="7" Height="7" Margin="7,0,0,0" VerticalAlignment="Center"
                        Fill="{DynamicResource MarkBrush}"
@@ -155,13 +146,14 @@
                a row that asks to be clicked. The header line says whether this language
                came from the machine or from a choice, which is the difference a user has
                no other way of seeing. -->
-          <Grid VerticalAlignment="Center" Margin="0,0,10,0"
+          <Grid VerticalAlignment="Center" Margin="0,0,4,0"
                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button Style="{StaticResource LangBtn}" Command="{Binding Language.ToggleMenuCommand}">
+            <Button x:Name="LanguageButton" Style="{StaticResource BtnTitleBar}" Padding="10,0" Command="{Binding Language.ToggleMenuCommand}">
               <Button.ToolTip><TextBlock Text="{Binding Language.Tooltip}"/></Button.ToolTip>
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding Language.CurrentDisplay}" VerticalAlignment="Center"/>
-                <controls:LucideIcon Kind="chevron-down" Size="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                <TextBlock FontFamily="{StaticResource MonoFont}" Text="{Binding Language.CurrentDisplay}" VerticalAlignment="Center"/>
+                <controls:LucideIcon Kind="chevron-down" Size="16" Margin="6,0,0,0" VerticalAlignment="Center"
+                                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                      RenderTransformOrigin="0.5,0.5">
                   <controls:LucideIcon.RenderTransform><RotateTransform/></controls:LucideIcon.RenderTransform>
                   <controls:LucideIcon.Style>
@@ -189,15 +181,17 @@
                 </controls:LucideIcon>
               </StackPanel>
             </Button>
-            <Popup IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
-                   Placement="Bottom" VerticalOffset="6" HorizontalOffset="-140"
+            <!-- R04 (A05): the menu opens under «FR», its right edge on the button's
+                 (MainWindow.PlaceLanguageMenu) — never under the mode switch. -->
+            <Popup x:Name="LanguagePopup" IsOpen="{Binding Language.IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                   PlacementTarget="{Binding ElementName=LanguageButton}" Placement="Custom"
                    AllowsTransparency="True" PopupAnimation="Fade">
               <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
                       BorderThickness="1" CornerRadius="12" Padding="6" MinWidth="186"
                       Margin="10,0,10,14" Effect="{DynamicResource ShadowMd}">
                 <StackPanel>
-                  <TextBlock Style="{StaticResource MonoText}" FontSize="13" Padding="8,5,8,6"
-                             Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Language.MenuHeader}"/>
+                  <!-- One sentence-case line in the UI font («Langue choisie · Français»), no mono capitals. -->
+                  <TextBlock Style="{StaticResource MetaText}" Padding="8,5,8,6" Text="{Binding Language.MenuHeader}"/>
                   <ItemsControl ItemsSource="{Binding Language.Others}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
@@ -221,14 +215,14 @@
               </Border>
             </Popup>
           </Grid>
-          <Button Style="{StaticResource IconBtn}" Click="OnStartTour" Margin="0,0,10,0" VerticalAlignment="Center"
+          <Button Style="{StaticResource IconBtnGhost}" Click="OnStartTour" Margin="0,0,4,0" VerticalAlignment="Center"
                   ToolTip="{Binding [Studio.Shell.TourTip], Source={x:Static services:I18n.Instance}}"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <controls:LucideIcon Kind="circle-help" Size="15"/>
+            <controls:LucideIcon Kind="circle-help" Size="16"/>
           </Button>
-          <Button x:Name="ThemeBtn" Style="{StaticResource IconBtn}" Click="OnToggleTheme" VerticalAlignment="Center"
+          <Button x:Name="ThemeBtn" Style="{StaticResource IconBtnGhost}" Click="OnToggleTheme" VerticalAlignment="Center"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <controls:LucideIcon x:Name="ThemeIcon" Kind="moon" Size="15"/>
+            <controls:LucideIcon x:Name="ThemeIcon" Kind="moon" Size="16"/>
           </Button>
           <Rectangle Width="1" Fill="{DynamicResource LineBrush}" Margin="12,12,2,12"/>
           <!-- caption buttons -->
@@ -270,6 +264,38 @@
                       Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </Border>
+          <!-- Only from somewhere else: the draft says where it stopped, so leaving the
+               assistant is never the same as forgetting it. On the Créer screen itself it
+               would only repeat what is on screen. R13 (A10): a contextual block goes to the
+               foot of the nav column — above «Besoin d'aide ?» in Novice — never between two
+               entries, so the nav never moves when it comes or goes. -->
+          <Button x:Name="DraftNote" DockPanel.Dock="Bottom" Margin="0,8,0,8" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
+            <StackPanel>
+              <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                         Foreground="{DynamicResource AccentBrush}"
+                         Text="{Binding DataContext.CreateTeam.DraftTitle, RelativeSource={RelativeSource AncestorType=Window}}"/>
+              <TextBlock FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"
+                         Text="{Binding DataContext.CreateTeam.DraftLine, RelativeSource={RelativeSource AncestorType=Window}}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding DataContext.CreateTeam.IsAssistantWaiting, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+            <Button.Visibility>
+              <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                <Binding Path="DataContext.CreateTeam.HasDraft" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                <Binding Path="IsChecked" ElementName="NavCreate" Converter="{StaticResource Negate}"/>
+              </MultiBinding>
+            </Button.Visibility>
+          </Button>
           <!-- Lot 5: the former « Settings file » card is the dot on the Settings entry and a line
                of the Diagnostic; the file's path shows once, in Settings > File. -->
 
@@ -296,36 +322,6 @@
               </DockPanel>
             </RadioButton>
 
-            <!-- Under the entry, and only from somewhere else: the draft says where it
-                 stopped, so leaving the assistant is never the same as forgetting it.
-                 On the Créer screen itself it would only repeat what is on screen. -->
-            <Button x:Name="DraftNote" Style="{StaticResource DraftNote}" Click="OnResumeDraft">
-              <StackPanel>
-                <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
-                           Foreground="{DynamicResource AccentBrush}"
-                           Text="{Binding DataContext.CreateTeam.DraftTitle, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                <TextBlock FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"
-                           Text="{Binding DataContext.CreateTeam.DraftLine, RelativeSource={RelativeSource AncestorType=Window}}">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding DataContext.CreateTeam.IsAssistantWaiting, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
-                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                          <Setter Property="FontWeight" Value="SemiBold"/>
-                        </DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </TextBlock.Style>
-                </TextBlock>
-              </StackPanel>
-              <Button.Visibility>
-                <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
-                  <Binding Path="DataContext.CreateTeam.HasDraft" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                  <Binding Path="IsChecked" ElementName="NavCreate" Converter="{StaticResource Negate}"/>
-                </MultiBinding>
-              </Button.Visibility>
-            </Button>
             <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}"
                          HorizontalContentAlignment="Stretch">
               <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip. It counts the
@@ -372,11 +368,11 @@
                 <controls:LucideIcon Kind="sliders-horizontal" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Settings], Source={x:Static services:I18n.Instance}}"/>
                 <!-- the settings file's state: red when it has errors, amber while edits are unsaved -->
-                <Ellipse x:Name="SettingsDot" Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
+                <Ellipse x:Name="SettingsDot" Width="8" Height="8" Margin="8,0,0,0" VerticalAlignment="Center">
                   <Ellipse.Style>
                     <Style TargetType="Ellipse">
                       <Setter Property="Visibility" Value="Collapsed"/>
-                      <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
                       <Setter Property="ToolTip" Value="{Binding Config.PendingChangesText}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding Config.HasPendingChanges}" Value="True">
@@ -397,7 +393,7 @@
               <StackPanel Orientation="Horizontal">
                 <controls:LucideIcon Kind="stethoscope" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock Margin="10,0,0,0" Text="{Binding [Studio.Shell.Diag], Source={x:Static services:I18n.Instance}}"/>
-                <Ellipse Width="7" Height="7" Fill="{DynamicResource WarningBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource WarningIconBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
                          Visibility="{Binding DataContext.Config.Diagnostic.HasIssues, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
               </StackPanel>
             </RadioButton>
@@ -413,68 +409,95 @@
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+        <!-- R15 (A06, B04, C18): an anchored 420 px panel with its own scroll bar. It docks in
+             the Auto column while the content keeps 720 px beside it; narrower, it lays over the
+             content, right-aligned and shadowed, instead of squeezing it (PlaceAssistantPanel).
+             Closed, it is collapsed: the Auto column reserves nothing. -->
         <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="420"
                               AutomationProperties.AutomationId="AssistantPanel"
                               DataContext="{Binding Chat}"
+                              Loaded="OnAssistantPanelLoaded"
                               Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
         <!-- STUDIO-32 (D-02), refonte lot 2: « Archive » asks nothing; its undo is this toast at the
-             bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen. -->
+             bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen.
+             R15 (A09): 16 px above the status bar, 16 px left of the 8 px scroll bar, inside the
+             content column (PlaceAssistantPanel keeps the same margins). -->
         <Border x:Name="ArchiveUndoToast" Grid.Column="0" Panel.ZIndex="10" DataContext="{Binding Teams}"
                 AutomationProperties.AutomationId="ArchiveUndoToast"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,20" MaxWidth="440"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,16" MaxWidth="440"
                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,8,6,8"
                 Effect="{DynamicResource ShadowMd}"
                 Visibility="{Binding HasUndo, Converter={StaticResource BooleanToVisibility}}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" VerticalAlignment="Center"
-                    Command="{Binding DismissUndoCommand}"
-                    ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
-              <controls:LucideIcon Kind="x" Size="16"/>
-            </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Center"
+                    Command="{Binding DismissUndoCommand}" controls:ButtonIcon.Kind="x"
+                    ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                    AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="12,0,4,0"
-                    VerticalAlignment="Center" Command="{Binding UndoCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="rotate-ccw" Size="16" Margin="0,0,6,0"/>
-                <TextBlock Text="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    VerticalAlignment="Center" Command="{Binding UndoCommand}" controls:ButtonIcon.Kind="rotate-ccw"
+                    Content="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
             <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="16" Margin="0,0,10,0"
                                  VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
             <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
                        Foreground="{DynamicResource InkBrush}" Text="{Binding UndoNotice}"/>
           </DockPanel>
         </Border>
-        <!-- R3: two column widths only - standard 1040 (Create, Teams, Import, History, Diagnostic),
-             wide 1200 (Launch, Settings) - 48 px side margins, the scroll bar gutter always kept. -->
+        <!-- R01, R02 (A01, A02): one page column for every screen - 1040 px at most, 85 px after
+             the nav's edge (x = 297..1337 at 1440 px), whatever the screen's state: the single
+             PageColumn takes its width from the window, never from the content. The scroll area
+             runs down to the status bar; the 24 px top and 32 px end margins live INSIDE the
+             scrolled content (a ScrollViewer's Padding sits outside the viewport and left a dead
+             band above the bar). The right margin only shows below 1440 px. -->
         <Grid Grid.Column="0">
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavCreate, Converter={StaticResource BooleanToVisibility}}">
-          <views:CreateTeamView x:Name="CreatePanel" MaxWidth="1040" DataContext="{Binding CreateTeam}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:CreateTeamView x:Name="CreatePanel" DataContext="{Binding CreateTeam}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavTeams, Converter={StaticResource BooleanToVisibility}}">
-          <views:TeamsView x:Name="TeamsPanel" MaxWidth="1040" DataContext="{Binding Teams}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:TeamsView x:Name="TeamsPanel" DataContext="{Binding Teams}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavImport, Converter={StaticResource BooleanToVisibility}}">
-          <views:ImportTeamView x:Name="ImportPanel" MaxWidth="1040" DataContext="{Binding Import}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:ImportTeamView x:Name="ImportPanel" DataContext="{Binding Import}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavSettings, Converter={StaticResource BooleanToVisibility}}">
-          <views:SettingsView x:Name="SettingsPanel" MaxWidth="1200" DataContext="{Binding Settings}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:SettingsView x:Name="SettingsPanel" DataContext="{Binding Settings}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavDiag, Converter={StaticResource BooleanToVisibility}}">
-          <views:DiagnosticView x:Name="DiagPanel" MaxWidth="1040" DataContext="{Binding Config.Diagnostic}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:DiagnosticView x:Name="DiagPanel" DataContext="{Binding Config.Diagnostic}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavRun, Converter={StaticResource BooleanToVisibility}}">
-          <views:RunScreenView x:Name="RunPanel" MaxWidth="1200" DataContext="{Binding Run}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:RunScreenView x:Name="RunPanel" DataContext="{Binding Run}"/>
+          </Grid>
         </ScrollViewer>
-        <ScrollViewer VerticalScrollBarVisibility="Visible" Padding="48,24,48,44"
+        <ScrollViewer VerticalScrollBarVisibility="Visible"
                       Visibility="{Binding IsChecked, ElementName=NavHistory, Converter={StaticResource BooleanToVisibility}}">
-          <views:HistoryView x:Name="HistoryPanel" MaxWidth="1040" DataContext="{Binding Launch.History}"/>
+          <Grid Style="{StaticResource PageHost}">
+            <Grid.ColumnDefinitions><ColumnDefinition Style="{StaticResource PageColumn}"/></Grid.ColumnDefinitions>
+            <views:HistoryView x:Name="HistoryPanel" DataContext="{Binding Launch.History}"/>
+          </Grid>
         </ScrollViewer>
         </Grid>
       </Grid>
@@ -540,14 +563,14 @@
         </Style>
         <!-- The state's dot: accent while it works, warning while it waits on you, then its verdict. -->
         <Style x:Key="StatusDot" TargetType="Ellipse">
-          <Setter Property="Width" Value="7"/>
-          <Setter Property="Height" Value="7"/>
+          <Setter Property="Width" Value="8"/>
+          <Setter Property="Height" Value="8"/>
           <Setter Property="Margin" Value="8,0,5,0"/>
           <Setter Property="VerticalAlignment" Value="Center"/>
           <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
           <Style.Triggers>
             <DataTrigger Binding="{Binding Tone}" Value="waiting">
-              <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+              <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Tone}" Value="ok">
               <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
@@ -565,7 +588,7 @@
           <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
           <Style.Triggers>
             <DataTrigger Binding="{Binding IsWaiting}" Value="True">
-              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
               <Setter Property="FontWeight" Value="SemiBold"/>
             </DataTrigger>
           </Style.Triggers>
@@ -609,67 +632,40 @@
         </DataTemplate>
       </Border.Resources>
 
-      <DockPanel Margin="10,0">
-        <!-- Three zones (refonte R11): the default model on the left, what runs in the middle,
-             the balances on the right. The token scope (BR-14) is chosen in Réglages › Studio. -->
-        <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
-             entry per account, in both modes. A click on an entry reads the balances again — or,
-             for a provider whose balance only its console shows, opens that console (D-01). An
-             amount under its provider's threshold takes the warning tone (D-03), a failed read is
-             said quietly, an account not read yet carries the read-again glyph. Per account, with
-             the time of each read, on hover. -->
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
-                    DataContext="{Binding Balance}" ToolTip="{Binding Detail}"
-                    Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
-          <controls:LucideIcon Kind="wallet" Size="12" VerticalAlignment="Center"
-                               Foreground="{DynamicResource InkFaintBrush}"/>
-          <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Button Style="{StaticResource StatusBalanceEntry}" Command="{Binding ClickCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Figure" Style="{StaticResource StatusFigure}" Text="{Binding Text}"/>
-                    <controls:LucideIcon Kind="external-link" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
-                                         Foreground="{DynamicResource InkFaintBrush}"
-                                         Visibility="{Binding OffersConsole, Converter={StaticResource BooleanToVisibility}}"/>
-                    <controls:LucideIcon Kind="rotate-cw" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
-                                         Foreground="{DynamicResource InkFaintBrush}"
-                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibility}}"/>
-                  </StackPanel>
-                </Button>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                    <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding IsFaint}" Value="True">
-                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
-                  </DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-
-        <Rectangle DockPanel.Dock="Right" Width="1" Margin="12,7,0,7" Fill="{DynamicResource LineBrush}"
-                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}"/>
-        <!-- At rest, to the expert: provider · model of the default profile. -->
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
-                    ToolTip="{Binding ProfileTip}"
-                    Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}">
+      <!-- R03 (A03): three fixed zones that keep their place even empty - left the default
+           model («DeepSeek · deepseek-chat», or «Aucun modèle»), in both modes and while an
+           activity runs; centre the activities that run, or wait on the screen shown; right
+           the balances. The token scope (BR-14) is chosen in Réglages › Studio. -->
+      <Grid Margin="10,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" MinWidth="200"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
+                    ToolTip="{Binding ProfileTip}">
           <controls:LucideIcon Kind="sparkles" Size="12" VerticalAlignment="Center"
                                Foreground="{DynamicResource InkFaintBrush}"/>
-          <TextBlock Style="{StaticResource StatusFigure}" Margin="6,0,0,0" Text="{Binding Profile}"/>
+          <TextBlock Margin="6,0,0,0" Text="{Binding ModelText}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource StatusFigure}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasModel}" Value="False">
+                    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
         </StackPanel>
-        <Rectangle DockPanel.Dock="Left" Width="1" Margin="12,7,12,7" Fill="{DynamicResource LineBrush}"
-                   Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}"/>
+        <Rectangle Grid.Column="1" Width="1" Margin="12,7,12,7" Fill="{DynamicResource LineBrush}"/>
 
         <!-- The active groups share the width, so a narrow window trims their expert line and
              never pushes a group off the bar. -->
-        <UniformGrid Rows="1">
+        <UniformGrid Grid.Column="2" Rows="1">
           <Button Style="{StaticResource StatusGroup}" Command="{Binding Launch.OpenCommand}"
                   Visibility="{Binding Launch.IsActive, Converter={StaticResource BooleanToVisibility}}">
             <DockPanel>
@@ -686,8 +682,9 @@
               <ContentPresenter Content="{Binding Test}" ContentTemplate="{StaticResource RunGroupBody}"/>
             </DockPanel>
           </Button>
+          <!-- R03 (A03): on the bar while it runs; waiting only, on its own screen and step. -->
           <Button Style="{StaticResource StatusGroup}" Command="{Binding Atelier.OpenCommand}"
-                  Visibility="{Binding Atelier.IsActive, Converter={StaticResource BooleanToVisibility}}">
+                  Visibility="{Binding ShowsAtelier, Converter={StaticResource BooleanToVisibility}}">
             <!-- Stage first, then what it spent: the stage is the sentence the card already says. -->
             <DockPanel DataContext="{Binding Atelier}">
               <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
@@ -722,7 +719,51 @@
             </DockPanel>
           </Button>
         </UniformGrid>
-      </DockPanel>
+
+        <Rectangle Grid.Column="3" Width="1" Margin="12,7,0,7" Fill="{DynamicResource LineBrush}"
+                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}"/>
+        <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
+             entry per account, in both modes. A click on an entry reads the balances again — or,
+             for a provider whose balance only its console shows, opens that console (D-01). An
+             amount under its provider's threshold takes the warning tone (D-03), a failed read is
+             said quietly, an account not read yet carries the read-again glyph. Per account, with
+             the time of each read, on hover. -->
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
+                    DataContext="{Binding Balance}" ToolTip="{Binding Detail}"
+                    Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+          <controls:LucideIcon Kind="wallet" Size="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkFaintBrush}"/>
+          <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Style="{StaticResource StatusBalanceEntry}" Command="{Binding ClickCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Figure" Style="{StaticResource StatusFigure}" Text="{Binding Text}"/>
+                    <controls:LucideIcon Kind="external-link" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding OffersConsole, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:LucideIcon Kind="rotate-cw" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </Button>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
+                    <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsFaint}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
     </Border>
 
     <!-- ══════════ ÉDITEUR DE RÉGLAGE DE MODÈLE (overlay) ══════════ -->
@@ -748,10 +789,11 @@
                         BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
+                    <!-- R09 (B10): a trimmed title or description gives its full text on hover. -->
                     <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
+                               TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
                     <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Description}"/>
+                               TextTrimming="CharacterEllipsis" Text="{Binding Description}" ToolTip="{Binding Description}"/>
                   </StackPanel>
                 </Border>
                 <ControlTemplate.Triggers>
@@ -767,15 +809,14 @@
       </Grid.Resources>
       <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
-          <ScrollViewer VerticalScrollBarVisibility="Auto"
-                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
+          <!-- R15 (C21): the header stays put; only the body below it scrolls, so the scroll bar
+               starts under the header and ends above the footer, never on a rounded corner. -->
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}">
+            <TextBlock>
               <TextBlock.Style>
-                <Style TargetType="TextBlock">
+                <Style TargetType="TextBlock" BasedOn="{StaticResource ModalTitle}">
                   <Setter Property="Text" Value="{Binding [Studio.Settings.EditTitle], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsNew}" Value="True">
@@ -787,8 +828,11 @@
             </TextBlock>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding [Studio.Settings.EditSub], Source={x:Static services:I18n.Instance}}"/>
-
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
+          </StackPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,16,6,0"
+                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
+          <StackPanel Margin="22,0,16,0">
+            <TextBlock Style="{StaticResource FieldLabel}"
                        Text="{Binding [Studio.Settings.NameLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
@@ -817,13 +861,14 @@
                        Text="{Binding [Studio.Settings.ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- Provider cards, grouped as the v3 rev.2 design: local (keyless), cloud
-                 (key required), then the catch-all and the echo fallback. -->
+                 (key required), then the catch-all and the echo fallback. R15 (C21): every group
+                 lays out on the same 3 columns, so the cards line up from one group to the next. -->
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,0,6"
                        Text="{Binding [Studio.Settings.GroupLocal], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding LocalProviders}" ItemTemplate="{StaticResource ProviderCard}">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
@@ -838,7 +883,7 @@
 
             <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,7,0,0">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
@@ -1051,12 +1096,8 @@
 
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0"
                         Visibility="{Binding ShowTestRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestConnectionCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestConnectionCommand}" controls:ButtonIcon.Kind="plug-zap"
+                      Content="{Binding [Studio.Settings.TestConnection], Source={x:Static services:I18n.Instance}}"/>
               <!-- STUDIO-43: the button is disabled while the test runs (its command refuses a
                    second run) and the line says « Testing the connection… »; the verdict names
                    the step, the URL, the time waited and the cause, and wraps when long. -->
@@ -1093,12 +1134,8 @@
                  English (raw evidence), on hover. -->
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
                         Visibility="{Binding ShowBalanceRow, Converter={StaticResource BooleanToVisibility}}">
-              <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReadBalanceCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="wallet" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Command="{Binding ReadBalanceCommand}" controls:ButtonIcon.Kind="wallet"
+                      Content="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="400"
                          Text="{Binding BalanceResult}" ToolTip="{Binding BalanceDetail}"
                          Visibility="{Binding BalanceResult, Converter={StaticResource StringPresentToVisibility}}">
@@ -1114,25 +1151,17 @@
                 </TextBlock.Style>
               </TextBlock>
               <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding OpenBalanceConsoleCommand}"
-                      Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="external-link" Size="12" Margin="0,0,6,0"/>
-                  <TextBlock Text="{Binding [Studio.Settings.BalanceConsole], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+                      Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}" controls:ButtonIcon.Kind="external-link"
+                      Content="{Binding [Studio.Settings.BalanceConsole], Source={x:Static services:I18n.Instance}}"/>
             </StackPanel>
           </StackPanel>
           </ScrollViewer>
 
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel LastChildFill="False">
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="save"
+                      Content="{Binding [Studio.Settings.Save], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
@@ -1146,11 +1175,13 @@
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <!-- R11 (D07): the shared 20/600 modal title. R09 (B06): a long team name wraps to a
+                 second line, then ends on «…» with the whole title as a tooltip — never cut bare. -->
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Teams.TeamMountsSub], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Rows}" Margin="0,14,0,0">
@@ -1171,30 +1202,18 @@
                             </Border>
                             <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
                                  label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
-                            <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
-                              <Border.Style>
-                                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                                  <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                            <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                            <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                              <controls:Badge.Style>
+                                <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                   <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                      <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                      <Setter Property="Tone" Value="Info"/>
                                     </DataTrigger>
                                   </Style.Triggers>
                                 </Style>
-                              </Border.Style>
-                              <TextBlock Text="{Binding RightsBadge}">
-                                <TextBlock.Style>
-                                  <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                                    <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                                    <Style.Triggers>
-                                      <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                      </DataTrigger>
-                                    </Style.Triggers>
-                                  </Style>
-                                </TextBlock.Style>
-                              </TextBlock>
-                            </Border>
+                              </controls:Badge.Style>
+                            </controls:Badge>
                             <StackPanel>
                               <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
                                    rows are told apart here, not by squinting at a truncated path. -->
@@ -1228,26 +1247,18 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,4,0,0"
-                    Command="{Binding AddCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Teams.AddAnother], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding AddCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Teams.AddAnother], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}"/>
+                         TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -1259,11 +1270,10 @@
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding Title}"/>
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Create.AgentEditorSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
@@ -1314,28 +1324,25 @@
                          MinWidth="132" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.Scope], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}"/>
+                         TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}" ToolTip="{Binding ScopeInfo}"/>
             </DockPanel>
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}"
+                       Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}" ToolTip="{Binding KeyLine}"
                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding SaveLabel}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding SaveLabel}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
-                      Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}">
-                <TextBlock Foreground="{DynamicResource DangerBrush}"
-                           Text="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"/>
-              </Button>
+              <!-- R06: removing the agent from the team is definitive — danger outline with the trash
+                   icon, apart from Cancel and the one primary on the right. -->
+              <Button Style="{StaticResource BtnDanger}" HorizontalAlignment="Left" Command="{Binding RemoveCommand}"
+                      controls:ButtonIcon.Kind="trash-2"
+                      Content="{Binding [Studio.Create.Remove], Source={x:Static services:I18n.Instance}}"
+                      Visibility="{Binding IsNew, Converter={StaticResource InverseBooleanToVisibility}}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -1345,8 +1352,10 @@
     <!-- ══════════ CAS D'USAGE (panneau latéral, STUDIO-39) ══════════
          The gallery comes in from the right, over the wizard it was opened from: step 1 stays in
          sight on the left, under the scrim, so the need a card fills is never out of view. A click
-         on the scrim closes it, like every overlay here. -->
-    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
+         on the scrim closes it, like every overlay here.
+         R15 (A08): scrim and drawer start under the 52 px title bar (row 1), so the assistant
+         button, the mode switch, the language menu and the window buttons stay visible and usable. -->
+    <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
           Visibility="{Binding CreateTeam.Gallery.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="560" HorizontalAlignment="Right" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
@@ -1364,12 +1373,11 @@
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding Title}"/>
+            <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
+                       TextTrimming="CharacterEllipsis" LineHeight="26" LineStackingStrategy="BlockLineHeight" MaxHeight="52"/>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" LineHeight="18.5"
                        Margin="0,6,0,0" Text="{Binding [Studio.Settings.AllowedFoldersSub], Source={x:Static services:I18n.Instance}}"/>
 
@@ -1402,30 +1410,18 @@
                               <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. One word in
                                    the pill, the full label as its tooltip (STUDIO-16): the full label ate the
                                    width and the disk path read as «C:\Users\…\orkeon\…». -->
-                              <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
-                                <Border.Style>
-                                  <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                                    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                              <!-- R12 (C13): the shared rights badge, «Lecture seule» neutral, «Lecture et écriture» sky. -->
+                              <controls:Badge DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}" Content="{Binding RightsBadge}">
+                                <controls:Badge.Style>
+                                  <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
                                     <Style.Triggers>
                                       <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                        <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                        <Setter Property="Tone" Value="Info"/>
                                       </DataTrigger>
                                     </Style.Triggers>
                                   </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding RightsBadge}">
-                                  <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
-                                      <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                                      <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsReadOnly}" Value="False">
-                                          <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-                                        </DataTrigger>
-                                      </Style.Triggers>
-                                    </Style>
-                                  </TextBlock.Style>
-                                </TextBlock>
-                              </Border>
+                                </controls:Badge.Style>
+                              </controls:Badge>
                               <StackPanel>
                                 <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
                                      /output rows are told apart here, not by squinting at a truncated path. -->
@@ -1469,26 +1465,18 @@
 
             <!-- One door, leading to the one screen that declares. -->
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
-                    Command="{Binding DeclareNewCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="sliders-horizontal" Size="12" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Settings.Declare], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding DeclareNewCommand}" controls:ButtonIcon.Kind="sliders-horizontal"
+                    Content="{Binding [Studio.Settings.Declare], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="check" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                  <TextBlock Text="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}" controls:ButtonIcon.Kind="check"
+                      Content="{Binding [Studio.Settings.AllowedFoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                         Text="{Binding Summary}"/>
+                         Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -1506,8 +1494,10 @@
             <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
-          <!-- illustration plate: fixed light background, the artwork is opaque -->
-          <Border Grid.Column="0" CornerRadius="20,0,0,20" ClipToBounds="True">
+          <!-- illustration plate: the artwork cropped to the plate (UniformToFill cuts its white
+               corners away). R20 (D09): the plate's own radius is 19, inside the modal's 1 px
+               border, so no square corner of it shows past the modal's 20 px rounding. -->
+          <Border Grid.Column="0" CornerRadius="19,0,0,19">
               <Border.Background>
                   <ImageBrush ImageSource="/Assets/kama_molecule.png" Stretch="UniformToFill"
                               AlignmentX="Center" AlignmentY="Center"/>
@@ -1533,12 +1523,8 @@
             <DockPanel Margin="0,20,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding About.CloseCommand}"
                       Content="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
-              <Button Style="{StaticResource BtnSecondary}" Click="OnStartTourFromAbout" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="circle-help" Size="13" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
+              <Button Style="{StaticResource BtnSecondary}" Click="OnStartTourFromAbout" HorizontalAlignment="Left" controls:ButtonIcon.Kind="circle-help"
+                      Content="{Binding [Studio.Common.GuidedTour], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
           </StackPanel>
         </Grid>
@@ -1550,10 +1536,17 @@
             MouseLeftButtonDown="OnSplashClick"
             ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Border CornerRadius="28" ClipToBounds="True" HorizontalAlignment="Center"
-                  Effect="{DynamicResource ShadowLg}">
-              <Image Source="/Assets/kama_molecule.png" Width="300"
-                     RenderOptions.BitmapScalingMode="HighQuality"/>
+          <!-- R20 (D09): the artwork's PNG keeps opaque white outside its own rounded corners
+               (about 43 px at 300 px). ClipToBounds clipped to the square, so those corners showed
+               on the night paper. A 46 px rounded clip on the image removes the white on both
+               papers; the shadow sits on the parent, so it follows the rounded shape. -->
+          <Border HorizontalAlignment="Center" Effect="{DynamicResource ShadowLg}">
+              <Image Source="/Assets/kama_molecule.png" Width="300" Height="300"
+                     RenderOptions.BitmapScalingMode="HighQuality">
+                  <Image.Clip>
+                      <RectangleGeometry Rect="0,0,300,300" RadiusX="46" RadiusY="46"/>
+                  </Image.Clip>
+              </Image>
           </Border>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
               <Image Source="/Assets/orkeon-studio-mark.png" Width="26" Height="26"

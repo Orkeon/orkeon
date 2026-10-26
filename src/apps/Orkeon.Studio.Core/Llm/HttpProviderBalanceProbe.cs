@@ -205,6 +205,9 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
     /// <summary>Parses a successful answer with the dialect's reader.</summary>
     private static BalanceReading Read(BalanceDialect dialect, string body, Uri baseUri)
     {
+        if (string.IsNullOrWhiteSpace(body))
+            return UnexpectedShape;
+
         try
         {
             using var document = JsonDocument.Parse(body);

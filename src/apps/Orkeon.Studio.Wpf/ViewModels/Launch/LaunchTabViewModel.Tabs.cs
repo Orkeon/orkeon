@@ -11,29 +11,6 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Launch;
 
-/// <summary>What the model list of the team tab offers: the default, the team's own choice, or one setting by name.</summary>
-public enum RunModelChoiceKind
-{
-    /// <summary>The default elected when the run starts.</summary>
-    Default,
-
-    /// <summary>The model the team recorded.</summary>
-    Team,
-
-    /// <summary>One setting of this machine, by name.</summary>
-    Named,
-}
-
-/// <summary>One entry of the « Model » list of the team tab (refonte lot 12).</summary>
-/// <param name="Label">What the list says.</param>
-/// <param name="Kind">What picking it does.</param>
-/// <param name="Profile">The setting a <see cref="RunModelChoiceKind.Named"/> entry names.</param>
-public sealed record RunModelChoice(string Label, RunModelChoiceKind Kind, string? Profile = null)
-{
-    /// <inheritdoc />
-    public override string ToString() => Label;
-}
-
 /// <summary>One folder of the « Allowed folders » section of the options tab: the team's, as this launch mounts it.</summary>
 /// <param name="VirtualPath">The path the agents address.</param>
 /// <param name="RightsLabel">« Read » or « Read and write ».</param>
@@ -78,7 +55,6 @@ public sealed partial class LaunchTabViewModel
     private bool _isExpertMode;
     private bool _isJournalEnlarged;
     private IReadOnlyList<string> _crewRoles = [];
-    private IReadOnlyList<RunModelChoice>? _modelChoices;
 
     /// <summary>The tab on screen; the command tab is the expert's, a novice lands on the options.</summary>
     public string ActiveTab
@@ -124,13 +100,13 @@ public sealed partial class LaunchTabViewModel
         }
     }
 
-    /// <summary>« See the options → », the team pane's footer.</summary>
+    /// <summary>« See the options » (the arrow is the button's icon, C05), the team pane's footer.</summary>
     public RelayCommand ShowOptionsTabCommand { get; private set; } = null!;
 
-    /// <summary>« See the command → » (Expert) or « See the run → » (Novice), the options pane's footer.</summary>
+    /// <summary>« See the command » (Expert) or « See the run » (Novice), the options pane's footer.</summary>
     public RelayCommand OptionsNextCommand { get; private set; } = null!;
 
-    /// <summary>« See the run → », the command pane's footer.</summary>
+    /// <summary>« See the run », the command pane's footer.</summary>
     public RelayCommand ShowRunTabCommand { get; private set; } = null!;
 
     /// <summary>« ← Back to the team », the run pane's footer, and « Change team » of the fiche.</summary>
@@ -171,8 +147,7 @@ public sealed partial class LaunchTabViewModel
             var parts = new List<string>(3);
             if (TeamMetaLine is { Length: > 0 } meta)
                 parts.Add(meta);
-            if (SelectedModelChoice is { } model)
-                parts.Add(model.Label);
+            parts.Add(RunLlmLabelOf(RunLlmChoice));
             if (Target.KindDisplay is { Length: > 0 } kind)
                 parts.Add(kind);
             return parts.Count > 0 ? string.Join(" · ", parts) : null;
@@ -184,76 +159,6 @@ public sealed partial class LaunchTabViewModel
     /// applies, else the detected shape.
     /// </summary>
     public string TargetTypeNote => Target.DirectoryRunNotice ?? Target.StatusDisplay;
-
-    /// <summary>
-    /// The « Model » list: « Default (X) », « The team's (Y) » when the team recorded one, then
-    /// the settings of this machine by name. Only the default without model settings. Built once
-    /// per change of what it lists, never per read: a list rebuilt on every read is a new items
-    /// source for the combo box at each pick, which writes its selection back, which raises the
-    /// list again — a loop that overflowed the stack.
-    /// </summary>
-    public IReadOnlyList<RunModelChoice> ModelChoices => _modelChoices ??= BuildModelChoices();
-
-    private List<RunModelChoice> BuildModelChoices()
-    {
-        var choices = new List<RunModelChoice>
-        {
-            new(_modelSettings?.Invoke().Default is { } elected
-                ? _strings.Format(StudioStringKeys.RunModelDefault, elected.Name)
-                : _strings[StudioStringKeys.RunModelDefaultNone], RunModelChoiceKind.Default),
-        };
-        if (_team.LlmChoice is { } saved && Target.IsResolved)
-            choices.Add(new(_strings.Format(StudioStringKeys.RunModelTeam, RunLlmLabelOf(saved)), RunModelChoiceKind.Team));
-        choices.AddRange(LlmProfiles.Select(name => new RunModelChoice(name, RunModelChoiceKind.Named, name)));
-
-        // A setting the run named and this machine no longer has stays in the list, in the words
-        // of the card (STUDIO-52): the list must not pass it off as the default it falls back to.
-        if (RunLlmChoice is { UseDefault: false, Profile: { Length: > 0 } pinned } current
-            && current != _team.LlmChoice
-            && !choices.Any(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, pinned, StringComparison.Ordinal)))
-            choices.Add(new(RunLlmLabelOf(current), RunModelChoiceKind.Named, pinned));
-        return choices;
-    }
-
-    /// <summary>
-    /// The entry of <see cref="ModelChoices"/> this run takes: the team's when the run takes what
-    /// the team recorded, else the default or the setting by name. Picking one sets
-    /// <see cref="RunLlmChoice"/>, which is all the launch reads.
-    /// </summary>
-    public RunModelChoice? SelectedModelChoice
-    {
-        get
-        {
-            var choices = ModelChoices;
-            var current = RunLlmChoice;
-            if (_team.LlmChoice is { } saved && saved == current && choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Team) is { } team)
-                return team;
-            if (current.UseDefault)
-                return choices[0];
-            return choices.FirstOrDefault(c => c.Kind == RunModelChoiceKind.Named && string.Equals(c.Profile, current.Profile, StringComparison.Ordinal))
-                ?? choices[0];
-        }
-        set
-        {
-            if (value is null || value == SelectedModelChoice)
-                return;
-
-            switch (value.Kind)
-            {
-                case RunModelChoiceKind.Team when _team.LlmChoice is { } saved:
-                    ApplyRunLlmChoice(saved);
-                    break;
-                case RunModelChoiceKind.Named:
-                    _runUsesDefaultLlm = false;
-                    _runLlmProfile = value.Profile;
-                    RaiseRunLlmChanged();
-                    break;
-                default:
-                    RunUsesDefaultLlm = true;
-                    break;
-            }
-        }
-    }
 
     // ── The options tab ──
 
@@ -547,11 +452,7 @@ public sealed partial class LaunchTabViewModel
                 RaiseTeamTabChanged();
                 break;
             case nameof(RunLlmChoice):
-                RefreshModelChoices();
-                OnPropertiesChanged(nameof(SelectedModelChoice), nameof(TeamFicheLine));
-                break;
-            case nameof(LlmProfiles):
-                RefreshModelChoices();
+                OnPropertyChanged(nameof(TeamFicheLine));
                 break;
             case nameof(RunBadgeTone):
                 OnPropertiesChanged(nameof(RunTabState), nameof(RunTabSubtitle), nameof(RunPaneTitle), nameof(RunPaneContext),
@@ -575,22 +476,9 @@ public sealed partial class LaunchTabViewModel
 
     private void RaiseTeamTabChanged()
     {
-        RefreshModelChoices();
         OnPropertiesChanged(
             nameof(TeamTabState), nameof(TeamTabSubtitle), nameof(TeamFooter), nameof(TeamFicheLine), nameof(TargetTypeNote),
             nameof(LaunchReadinessTone), nameof(LaunchReadinessText), nameof(LaunchBlockedReason));
-    }
-
-    // The list changes only when what it lists changed — the team, its recorded model, the
-    // settings' names —, not on every pick: a pick raises LlmProfiles too (RaiseRunLlmChanged).
-    private void RefreshModelChoices()
-    {
-        var fresh = BuildModelChoices();
-        if (_modelChoices is not null && fresh.SequenceEqual(_modelChoices))
-            return;
-
-        _modelChoices = fresh;
-        OnPropertiesChanged(nameof(ModelChoices), nameof(SelectedModelChoice), nameof(TeamFicheLine));
     }
 
     private void RaiseFoldersChanged() => OnPropertiesChanged(

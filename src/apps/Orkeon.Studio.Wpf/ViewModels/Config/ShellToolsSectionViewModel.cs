@@ -45,8 +45,11 @@ public sealed class ShellToolsSectionViewModel : DocumentSectionViewModel
     /// <summary>Whether the file replaces the default list rather than adding to it.</summary>
     public bool ReplacesDefaults => Section.AllowedCommands is not null;
 
+    /// <summary>How many commands the file adds to the default list.</summary>
+    public int ExtraCommandCount => Section.ExtraAllowedCommands?.Count ?? 0;
+
     /// <inheritdoc />
-    protected override void OnSectionChanged() => OnPropertiesChanged(nameof(Exists), nameof(ReplacesDefaults));
+    protected override void OnSectionChanged() => OnPropertiesChanged(nameof(Exists), nameof(ReplacesDefaults), nameof(ExtraCommandCount));
 
     private static string Join(IReadOnlyList<string>? values) =>
         values is null ? "" : string.Join(Environment.NewLine, values);

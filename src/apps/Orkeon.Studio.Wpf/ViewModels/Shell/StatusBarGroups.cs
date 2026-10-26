@@ -407,6 +407,14 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     public bool IsWaiting => _progress?.IsWaiting == true || _progress?.WaitPhrase is not null;
 
     /// <summary>
+    /// Whether the assistant is at work — its engine or a rephrase runs and nothing waits on the
+    /// user (R03): a running group is on the bar from any screen, a waiting one only where its
+    /// wait can be answered (<see cref="StatusBarViewModel.ShowsAtelier"/>).
+    /// </summary>
+    public bool IsRunning => !IsWaiting
+        && (_progress?.IsEngineRunning == true || _meter.Latest(ExecutionKind.Rephrase) is { Ended: false });
+
+    /// <summary>
     /// The group is on the bar while the engine lives, a rephrase runs, or the session waits
     /// on the user with the engine paused (R13: the status bar names every wait point).
     /// </summary>
@@ -476,7 +484,7 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     {
         IsActive = ReadActive();
         OnPropertiesChanged(
-            nameof(CallModeText), nameof(TokensUp), nameof(TokensDown),
+            nameof(IsRunning), nameof(CallModeText), nameof(TokensUp), nameof(TokensDown),
             nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated));
     }
 
@@ -496,16 +504,17 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
         {
             case nameof(ComposeProgressViewModel.IsEngineRunning):
                 IsActive = ReadActive();
+                OnPropertyChanged(nameof(IsRunning));
                 break;
             case nameof(ComposeProgressViewModel.WaitPhrase):
                 IsActive = ReadActive();
-                OnPropertiesChanged(nameof(Stage), nameof(IsWaiting), nameof(Tone));
+                OnPropertiesChanged(nameof(Stage), nameof(IsWaiting), nameof(Tone), nameof(IsRunning));
                 break;
             case nameof(ComposeProgressViewModel.Title):
                 OnPropertyChanged(nameof(Stage));
                 break;
             case nameof(ComposeProgressViewModel.IsWaiting):
-                OnPropertiesChanged(nameof(IsWaiting), nameof(Tone));
+                OnPropertiesChanged(nameof(IsWaiting), nameof(Tone), nameof(IsRunning));
                 break;
             case nameof(ComposeProgressViewModel.TokensUp):
             case nameof(ComposeProgressViewModel.TokensDown):

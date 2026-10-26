@@ -36,15 +36,25 @@ internal static class WizardStops
             Category = CaptureCategory.Wizard,
             Screen = CaptureScreen.Create,
             Because = "The need typed — all «Composer» waits for since STUDIO-45 — the state in which it is "
-                    + "live, which the empty shot can never show.",
+                    + "live, which the empty shot can never show. The typing has not paused yet, so no "
+                    + "close case is offered: that is the next beat, and stop « etape1-cas-proches »'s.",
             Covers = ["CreateTeam.IsStep1", "CreateTeam.CanCompose"],
+            // Without the hold, the immediate pause searched the need on the keystroke and this shot
+            // carried the « 2 cas proches » of the close-cases stop: two pictures of one state (D11).
+            CoversFalse = ["CreateTeam.HasCloseUseCases"],
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c =>
             {
+                c.World.SuggestionDelay.Hold = true;
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
             }),
-            Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
+            Teardown = CaptureAction.Sync(static c =>
+            {
+                // The restart drops the pending pause; the release only stops holding.
+                c.Shell.CreateTeam.RestartCommand.Execute(null);
+                c.World.SuggestionDelay.Release();
+            }),
         },
 
         // STUDIO-46 — the Folders step, between the brief and the plan.
@@ -135,10 +145,13 @@ internal static class WizardStops
                 wizard.BrowseUseCasesCommand.Execute(null);
                 wizard.Gallery.Cards.First(card => card.Id == "06-competitive-intelligence").ChooseCommand.Execute(null);
             },
+            // The reference goes, the words go back to the fixture's need rather than to nothing:
+            // the step-2 and step-3 stops that follow resume a session over the need as typed, and
+            // an empty one drew « Besoin · » followed by nothing under the stepper (D04).
             Teardown = CaptureAction.Sync(static c =>
             {
                 c.Shell.CreateTeam.RemoveReferenceUseCaseCommand.Execute(null);
-                c.Shell.CreateTeam.Need = "";
+                c.Shell.CreateTeam.Need = StudioFixture.Need;
             }),
         },
 
@@ -263,7 +276,21 @@ internal static class WizardStops
                     + "decision the wizard asks for, since the tunnel ends on a blank step 1 (STUDIO-20).",
             Covers = ["CreateTeam.IsStep4"],
             SweepsLanguages = true,
-            Arrange = CaptureAction.Sync(static c => c.Shell.CreateTeam.GoStep4Command.Execute(null)),
+            // Step 4 is reachable only on a reopened adopted team. The full pass reaches this stop
+            // straight after « etape2-equipe-rouverte », which does that; the language sweep skips
+            // that stop, and this one used to inherit nothing to stand on (IsStep4 false in every
+            // sweep language). The stop now reopens the team itself when it is not already open.
+            Arrange = static async c =>
+            {
+                var wizard = c.Shell.CreateTeam;
+                if (!wizard.GoStep4Command.CanExecute(null))
+                {
+                    ReopenAdoptedTeam(c);
+                    await CaptureWait.UntilAsync(() => wizard.GoStep4Command.CanExecute(null));
+                }
+
+                wizard.GoStep4Command.Execute(null);
+            },
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
     ];

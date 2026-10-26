@@ -334,6 +334,15 @@ public sealed class MainWindowViewModel : ObservableObject
             PersistTokenScope = ui.PersistTokenScope,
         });
 
+        // R03 (A03): a creation that only waits on the user shows on the bar at the wizard step
+        // that holds its wait — presentation over the wizard's own step and wait point.
+        StatusBar.AtelierWaitOnShownStep = StatusBarViewModel.WaitConcernsStep(CreateTeam.WaitPoint, CreateTeam.Step);
+        CreateTeam.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(CreateTeamViewModel.Step) or nameof(CreateTeamViewModel.WaitPoint))
+                StatusBar.AtelierWaitOnShownStep = StatusBarViewModel.WaitConcernsStep(CreateTeam.WaitPoint, CreateTeam.Step);
+        };
+
         Import = new ImportTeamViewModel(new ImportTeamDependencies
         {
             TargetProbe = targetProbe,

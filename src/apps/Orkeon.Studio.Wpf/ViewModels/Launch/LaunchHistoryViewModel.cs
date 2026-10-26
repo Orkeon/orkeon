@@ -164,6 +164,14 @@ public sealed class LaunchHistoryEntryViewModel : ObservableObject
         Entry.Tokens, Entry.CacheHitTokens, Entry.CacheMissTokens, durationMs: null,
         _strings, CultureInfo.CurrentCulture));
 
+    /// <summary>
+    /// The same chips as <see cref="UsageText"/>, one part each, every part after the first led by
+    /// its « · » (B11): the line may break only between two parts, never inside « 0 tokens ».
+    /// </summary>
+    public IReadOnlyList<string> UsageParts => [.. Orkeon.Studio.Core.Launch.UsageMetricsFormatter.Chips(
+        Entry.Tokens, Entry.CacheHitTokens, Entry.CacheMissTokens, durationMs: null,
+        _strings, CultureInfo.CurrentCulture).Select((chip, index) => index == 0 ? chip : $"· {chip}")];
+
     /// <summary>The status badge's word: Succeeded, Failed, Cancelled, Not started.</summary>
     public string StatusText => _strings[LaunchHistoryViewModel.StatusKeyOf(Outcome)];
 
@@ -493,12 +501,18 @@ public sealed class LaunchHistoryViewModel : ObservableObject
         {
             var header = day.Key == today ? strings[StudioStringKeys.HistToday]
                 : day.Key == today.AddDays(-1) ? strings[StudioStringKeys.HistYesterday]
-                : day.Key.ToString("D", CultureInfo.CurrentCulture);
+                : SentenceCase(day.Key.ToString("D", CultureInfo.CurrentCulture));
             Groups.Add(new LaunchHistoryDayGroup(header, [.. day.OrderByDescending(row => row.StartedAt)]));
         }
 
         OnPropertyChanged(nameof(HasNoMatch));
     }
+
+    // D05: a long date is a header, so it starts with a capital like the "Today" header;
+    // the culture's own upper case, the rest of the long date as the culture writes it.
+    internal static string SentenceCase(string header) =>
+        header.Length == 0 ? header
+            : string.Concat(CultureInfo.CurrentCulture.TextInfo.ToUpper(header[0]).ToString(), header[1..]);
 
     private bool Keeps(LaunchHistoryEntryViewModel row) =>
         (_teamFilter?.Team is not { } team || string.Equals(TeamKey(row.Target), team, StringComparison.OrdinalIgnoreCase))

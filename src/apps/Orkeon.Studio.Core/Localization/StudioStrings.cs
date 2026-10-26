@@ -625,9 +625,6 @@ public static class StudioStringKeys
     public const string RunBackToTeam = "Studio.Run.BackToTeam";
     public const string RunOrAPath = "Studio.Run.OrAPath";
     public const string RunLblModel = "Studio.Run.LblModel";
-    public const string RunModelDefault = "Studio.Run.ModelDefault";
-    public const string RunModelDefaultNone = "Studio.Run.ModelDefaultNone";
-    public const string RunModelTeam = "Studio.Run.ModelTeam";
     public const string RunTeamLastRun = "Studio.Run.TeamLastRun";
     public const string RunTeamNeverRun = "Studio.Run.TeamNeverRun";
     public const string RunOptionsFooter = "Studio.Run.OptionsFooter";
@@ -1790,7 +1787,7 @@ public static class StudioStringKeys
     /// <summary>"To describe" — the need tab's subtitle before.</summary>
     public const string WizardTabNeedEmpty = "Studio.Create.TabNeedEmpty";
 
-    /// <summary>"Describe the work to continue." — the need pane's footer before.</summary>
+    /// <summary>"Need not described yet." — the need pane's footer before; the page footer says what to do (C04).</summary>
     public const string WizardTabNeedEmptyFooter = "Studio.Create.TabNeedEmptyFooter";
 
     /// <summary>"Need described."</summary>
@@ -2152,6 +2149,9 @@ public static class StudioStringKeys
     public const string SettingsTabFoldersEmpty = "Studio.Settings.TabFoldersEmpty";
     public const string SettingsTabFoldersProblems = "Studio.Settings.TabFoldersProblems";
     public const string SettingsTabToolsCount = "Studio.Settings.TabToolsCount";
+    public const string SettingsTabShellDefault = "Studio.Settings.TabShellDefault";
+    public const string SettingsTabShellReplaced = "Studio.Settings.TabShellReplaced";
+    public const string SettingsTabShellExtra = "Studio.Settings.TabShellExtra";
     public const string SettingsTabAccountsCount = "Studio.Settings.TabAccountsCount";
     public const string SettingsTabAccountsEmpty = "Studio.Settings.TabAccountsEmpty";
     public const string SettingsTabMcpCount = "Studio.Settings.TabMcpCount";
@@ -2782,7 +2782,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunDisplayProgress] = "Progress",
         [StudioStringKeys.RunDisplayRaw] = "Raw output",
         [StudioStringKeys.RunLblDisplay] = "Display",
-        [StudioStringKeys.RunStreamShort] = "token by token",
+        [StudioStringKeys.RunStreamShort] = "Token by token",
         [StudioStringKeys.RunTabRunIdle] = "Waiting · nothing to report",
         [StudioStringKeys.RunTabRunRunning] = "Running · {0}",
         [StudioStringKeys.RunTabRunSucceeded] = "Succeeded · {0}",
@@ -2795,15 +2795,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunTeamReady] = "Team ready: {0}",
         [StudioStringKeys.RunTeamReadyCounts] = "Team ready: {0} {0:plural:agent|agents}, {1} {1:plural:declared folder|declared folders}.",
         [StudioStringKeys.RunTeamNotChosen] = "No team chosen.",
-        [StudioStringKeys.RunSeeOptions] = "See the options →",
-        [StudioStringKeys.RunSeeCommand] = "See the command →",
-        [StudioStringKeys.RunSeeRun] = "See the run →",
-        [StudioStringKeys.RunBackToTeam] = "← Back to the team",
+        [StudioStringKeys.RunSeeOptions] = "See the options",
+        [StudioStringKeys.RunSeeCommand] = "See the command",
+        [StudioStringKeys.RunSeeRun] = "See the run",
+        [StudioStringKeys.RunBackToTeam] = "Back to the team",
         [StudioStringKeys.RunOrAPath] = "or a path",
         [StudioStringKeys.RunLblModel] = "Model",
-        [StudioStringKeys.RunModelDefault] = "Default ({0})",
-        [StudioStringKeys.RunModelDefaultNone] = "Default",
-        [StudioStringKeys.RunModelTeam] = "The team's ({0})",
         [StudioStringKeys.RunTeamLastRun] = "launched on {0}",
         [StudioStringKeys.RunTeamNeverRun] = "never launched",
         [StudioStringKeys.RunOptionsFooter] = "{0} · {1} · {2} {2:plural:folder|folders}",
@@ -2811,7 +2808,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunFoldersAddedNone] = "nothing added",
         [StudioStringKeys.RunFoldersAdded] = "{0} added",
         [StudioStringKeys.RunAddLaunchFolder] = "Add a folder for this launch",
-        [StudioStringKeys.RunRightsRead] = "Read",
+        [StudioStringKeys.RunRightsRead] = "Read only",
         [StudioStringKeys.RunRightsReadWrite] = "Read and write",
         [StudioStringKeys.RunRowEngine] = "Engine",
         [StudioStringKeys.RunRowTeamType] = "Team type",
@@ -2820,7 +2817,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunMountsCount] = "{0} {0:plural:folder|folders} mounted",
         [StudioStringKeys.RunEngineMissing] = "not found",
         [StudioStringKeys.RunCommandFooter] = "Command composed from the team and the options.",
-        [StudioStringKeys.RunModeLabel] = "MODE",
+        [StudioStringKeys.RunModeLabel] = "Run type",
         [StudioStringKeys.RunFigSent] = "Sent",
         [StudioStringKeys.RunFigReceived] = "Received",
         [StudioStringKeys.RunFigResult] = "Result in",
@@ -3029,6 +3026,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY"] = "No folder is allowed yet: the agents see none of yours. A team that reads or writes no file needs none.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
+        ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY"] = "This folder is not chosen yet: pick one on this machine.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION"] = "Two folders share the same internal name.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-ID"] = "An MCP server identifier is unusable: letters, digits, '.', '_' and '-' only.",
         ["Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT"] = "An MCP server names a transport the runtime does not know.",
@@ -3491,7 +3489,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardTabNeedDone] = "Described",
         [StudioStringKeys.WizardTabNeedDoneAnswers] = "Described, {0} {0:plural:question settled|questions settled}",
         [StudioStringKeys.WizardTabNeedEmpty] = "To describe",
-        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Describe the work to continue.",
+        [StudioStringKeys.WizardTabNeedEmptyFooter] = "Need not described yet.",
         [StudioStringKeys.WizardTabNeedFooter] = "Need described.",
         [StudioStringKeys.WizardTabNeedFooterAnswers] = "Need described, {0} {0:plural:question settled|questions settled} with the assistant",
         [StudioStringKeys.WizardTabFoldersPending] = "{0} {0:plural:folder to confirm|folders to confirm}",
@@ -3621,6 +3619,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.SettingsTabFoldersEmpty] = "No folder allowed",
         [StudioStringKeys.SettingsTabFoldersProblems] = "{0} {0:plural:folder|folders} to fix",
         [StudioStringKeys.SettingsTabToolsCount] = "{0} {0:plural:tool|tools}",
+        [StudioStringKeys.SettingsTabShellDefault] = "Default list",
+        [StudioStringKeys.SettingsTabShellReplaced] = "Replaced list",
+        [StudioStringKeys.SettingsTabShellExtra] = "{0} {0:plural:command|commands} added",
         [StudioStringKeys.SettingsTabAccountsCount] = "{0} {0:plural:account|accounts}",
         [StudioStringKeys.SettingsTabAccountsEmpty] = "No account",
         [StudioStringKeys.SettingsTabMcpCount] = "{0} {0:plural:server|servers}",

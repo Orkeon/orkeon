@@ -14,12 +14,17 @@ public enum Tone
 }
 
 /// <summary>
-/// The one alert of Studio (R7): icon on the left, the message, the actions on the right; in a
-/// card (<see cref="IsBanner"/> false) or as the page banner under the header. The engine's own
-/// text is shown as is: as the <see cref="Message"/> when Studio has no phrase of its own, or
-/// under a folded «Technical details» (<see cref="Details"/>) when it has. Content, when set,
-/// sits under the message (a list, a second line). Its look is the implicit style in
-/// Themes/Components.xaml.
+/// The one banner of Studio (R07): four tones — info (sky / tide), success, warning (sand icon,
+/// never red), error (the circle slashed) — plus a neutral one; a 1 px border of the tone; a
+/// 20 px icon on the first line of text (C22). An optional one-line <see cref="Title"/> in 14/600
+/// over the <see cref="Message"/> in 14/400; without a title, the message is the 14/600 line and
+/// wraps. Content, when set, sits under the message (a list, a second line). The engine's own
+/// text is never shown outside the folded «Technical details» (<see cref="Details"/>, a
+/// <see cref="Disclosure"/> over a mono <see cref="TechBlock"/>, R16/R18). The
+/// <see cref="Actions"/> (32 px buttons) sit on the right when the banner is wider than
+/// <see cref="WideThreshold"/>, under the text otherwise (<see cref="IsWide"/>, measured here from
+/// the width the container offers — no view model involved). It stretches to its container.
+/// Its look is the implicit style in Themes/Components.xaml.
 /// </summary>
 public sealed class Alert : ContentControl
 {
@@ -38,6 +43,21 @@ public sealed class Alert : ContentControl
     public static readonly DependencyProperty IsBannerProperty = DependencyProperty.Register(
         nameof(IsBanner), typeof(bool), typeof(Alert), new FrameworkPropertyMetadata(false));
 
+    public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
+        nameof(Title), typeof(string), typeof(Alert), new FrameworkPropertyMetadata(""));
+
+    public static readonly DependencyProperty IsDetailsExpandedProperty = DependencyProperty.Register(
+        nameof(IsDetailsExpanded), typeof(bool), typeof(Alert),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
+    private static readonly DependencyPropertyKey IsWidePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsWide), typeof(bool), typeof(Alert), new FrameworkPropertyMetadata(true));
+
+    public static readonly DependencyProperty IsWideProperty = IsWidePropertyKey.DependencyProperty;
+
+    /// <summary>The width above which the actions sit on the right of the text (R07).</summary>
+    public const double WideThreshold = 720;
+
     static Alert()
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(Alert), new FrameworkPropertyMetadata(typeof(Alert)));
@@ -49,12 +69,32 @@ public sealed class Alert : ContentControl
     public string? Details { get => (string?)GetValue(DetailsProperty); set => SetValue(DetailsProperty, value); }
     public object? Actions { get => GetValue(ActionsProperty); set => SetValue(ActionsProperty, value); }
     public bool IsBanner { get => (bool)GetValue(IsBannerProperty); set => SetValue(IsBannerProperty, value); }
+    public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
+    public bool IsDetailsExpanded { get => (bool)GetValue(IsDetailsExpandedProperty); set => SetValue(IsDetailsExpandedProperty, value); }
+
+    /// <summary>True when the width offered is above <see cref="WideThreshold"/>: the actions go right.</summary>
+    public bool IsWide => (bool)GetValue(IsWideProperty);
+
+    protected override Size MeasureOverride(Size constraint)
+    {
+        // Read from the width offered, not from the width obtained: moving the actions changes
+        // the latter, and a banner sized by its content would flip at every pass.
+        var wide = double.IsInfinity(constraint.Width) || constraint.Width > WideThreshold;
+        if (wide != IsWide)
+        {
+            SetValue(IsWidePropertyKey, wide);
+        }
+
+        return base.MeasureOverride(constraint);
+    }
 }
 
 /// <summary>
-/// The one badge (R8): a 22 px pill in one of five tones, its text the Content. Folder rights
-/// read neutral «Read» and info «Read and write»; run statuses success «Succeeded»,
-/// danger «Failed», neutral «Cancelled», info «Running». Never a bare coloured dot.
+/// The one badge (R12): a 22 px pill, the tone's tinted background and dark ink, the background
+/// kept in the dark theme; its text the Content. Folder rights read neutral «Read only» and
+/// info (sky) «Read and write», everywhere; run statuses success «Succeeded», danger
+/// «Failed», info «Running», neutral «Waiting». A state line with a dot is a
+/// <c>StatusDot</c>, not a badge.
 /// </summary>
 public sealed class Badge : ContentControl
 {
@@ -71,8 +111,9 @@ public sealed class Badge : ContentControl
 }
 
 /// <summary>
-/// One editable property in a card body (R6): «label · value · button» on one line — the
-/// label in the tertiary ink on a fixed 104 px, the value (the Content), and a 28 px secondary
+/// One editable property in a card body (R10): «label · value · button» — the label in the
+/// tertiary ink on a fixed 160 px column, 12 px, the value (the Content, wrapped rather than
+/// trimmed: a string value wraps by itself), and a 28 px secondary
 /// button on the right (<see cref="Action"/>: Change, Stop, Allow, Schedule). The same
 /// shape whatever the action.
 /// </summary>

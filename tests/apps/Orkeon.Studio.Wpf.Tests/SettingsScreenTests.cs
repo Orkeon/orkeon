@@ -463,6 +463,43 @@ public sealed class SettingsScreenTests
 
     // ── the tab gating ──
 
+    /// <summary>
+    /// The Access group splits the tools in three: the keys and the catalogue are for everyone,
+    /// the shell allow-list is the expert's, and its subtitle says what the file does to the list.
+    /// </summary>
+    [Fact]
+    public void The_tool_keys_and_catalogue_are_open_to_both_modes_and_the_shell_commands_are_the_experts()
+    {
+        var novice = Screen(new UiModeViewModel());
+        novice.ShowToolKeysCommand.Execute(null);
+        Assert.True(novice.IsToolKeysTab);
+        novice.ShowToolsCommand.Execute(null);
+        Assert.True(novice.IsToolsTab);
+        novice.ShowShellCommand.Execute(null);
+        Assert.True(novice.IsModelTab);
+
+        var mode = new UiModeViewModel("expert");
+        var expert = Screen(mode);
+        expert.ShowShellCommand.Execute(null);
+        Assert.True(expert.IsShellTab);
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabShellDefault], expert.ShellTabSubtitle);
+
+        var raised = new List<string?>();
+        expert.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        expert.Config.ShellTools.ExtraAllowedCommandsText = "git status\ndotnet --info";
+
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.SettingsTabShellExtra, 2), expert.ShellTabSubtitle);
+        Assert.Contains(nameof(SettingsScreenViewModel.ShellTabSubtitle), raised);
+
+        expert.Config.ShellTools.AllowedCommandsText = "ls";
+
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.SettingsTabShellReplaced], expert.ShellTabSubtitle);
+
+        mode.SetNoviceCommand.Execute(null);
+
+        Assert.True(expert.IsModelTab);
+    }
+
     private static SettingsScreenViewModel Screen(UiModeViewModel mode) => Screen(mode, new FakeApiKeyStore());
 
     private static SettingsScreenViewModel Screen(UiModeViewModel mode, IApiKeyStore keyStore)

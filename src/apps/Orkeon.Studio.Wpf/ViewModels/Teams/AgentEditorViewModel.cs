@@ -209,6 +209,10 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// </summary>
     private string? BuildAmendedJson(bool remove)
     {
+        // Nothing opened yet: no blueprint, nothing to amend, and nothing for the parser.
+        if (string.IsNullOrWhiteSpace(_blueprintJson))
+            return null;
+
         JsonNode? root;
         try
         {
@@ -275,6 +279,12 @@ public sealed class AgentEditorViewModel : ObservableObject
 
     private static List<(string Key, string? Role, string? Goal, IReadOnlyList<string> Tools)> ReadAgents(string blueprintJson)
     {
+        // The editor's summary line is bound, and read, before any blueprint is opened: an empty
+        // one names no agent, and is not handed to the parser, which would refuse it with an
+        // exception at every start.
+        if (string.IsNullOrWhiteSpace(blueprintJson))
+            return [];
+
         try
         {
             if (JsonNode.Parse(blueprintJson) is not JsonObject blueprint || blueprint["agents"] is not JsonArray agents)

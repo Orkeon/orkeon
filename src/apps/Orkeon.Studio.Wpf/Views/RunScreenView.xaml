@@ -7,14 +7,24 @@
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views"
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <!-- A01 (R01): one star column of the page container's width (PageColumn, 1040 px max, alone so
+       that no second star shares the room with it): the header and the launcher below it take that
+       width whatever the state - no team, a team, an error, a run - and the header's right edge is
+       the container's. -->
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Style="{StaticResource PageColumn}"/>
+    </Grid.ColumnDefinitions>
   <StackPanel>
 
     <!-- R3: one header; the mode switch on the right. -->
     <controls:PageHeader Title="{Binding [Studio.Run.Title], Source={x:Static services:I18n.Instance}}"
                          Subtitle="{Binding [Studio.Run.ScreenSub], Source={x:Static services:I18n.Instance}}">
       <StackPanel Orientation="Horizontal">
-      <!-- lot 12: « MODE », mono, before the switch; the header's subtitle says what each one does. -->
-      <TextBlock Style="{StaticResource MonoText}" FontSize="12" Margin="0,0,10,0" VerticalAlignment="Center"
+      <!-- A04 (R04): « Type d'exécution » before the switch, a label in the UI font - « Mode » is the
+           Novice / Expert selector's word. The switch is a header action: it sits inside the page
+           column, on the header's right edge. The header's subtitle says what each one does. -->
+      <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,10,0" VerticalAlignment="Center"
                  Text="{Binding [Studio.Run.ModeLabel], Source={x:Static services:I18n.Instance}}"/>
       <Border Style="{StaticResource SegmentedGroup}"
               ToolTip="{Binding [Studio.Run.ModeHint], Source={x:Static services:I18n.Instance}}">
@@ -63,4 +73,5 @@
     <views:LaunchTabView x:Name="TrialLauncher" DataContext="{Binding Trial}"
                          Visibility="{Binding DataContext.IsTrial, RelativeSource={RelativeSource AncestorType=views:RunScreenView}, Converter={StaticResource BooleanToVisibility}}"/>
   </StackPanel>
+  </Grid>
 </UserControl>

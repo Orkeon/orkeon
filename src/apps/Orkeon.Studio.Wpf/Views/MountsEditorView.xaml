@@ -44,20 +44,21 @@
       <!-- left pane: mount list + add/remove -->
       <DockPanel Grid.Column="0">
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding AddMountCommand}" Margin="0,0,8,0">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Settings.Add], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding RemoveMountCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <Button Style="{StaticResource BtnSecondary}" Command="{Binding AddMountCommand}" Margin="0,0,8,0"
+                  controls:ButtonIcon.Kind="plus"
+                  Content="{Binding [Studio.Settings.Add], Source={x:Static services:I18n.Instance}}"/>
+          <!-- C01 (R06, §4.7): removing a saved allowed folder is definitive: the danger outline
+               with the trash, like a model's «Supprimer» and an MCP server's «Retirer». -->
+          <Button Style="{StaticResource BtnDanger}" Command="{Binding RemoveMountCommand}"
+                  controls:ButtonIcon.Kind="trash-2"
+                  Content="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 
+        <!-- R17: an empty list says so with the shared empty state. -->
+        <controls:EmptyState DockPanel.Dock="Top" IsCompact="True" Icon="folder"
+                             Title="{Binding [Studio.Settings.MountsEmptyTitle], Source={x:Static services:I18n.Instance}}"
+                             Text="{Binding [Studio.Settings.MountsEmptyText], Source={x:Static services:I18n.Instance}}"
+                             Visibility="{Binding Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
         <ListBox ItemsSource="{Binding Mounts}" SelectedItem="{Binding SelectedMount}"
                  Background="Transparent" BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -98,28 +99,40 @@
               <StackPanel>
               <DockPanel LastChildFill="True">
                 <!-- an unparseable entry keeps its raw text visible instead of a blank, healthy-looking row -->
-                <TextBlock DockPanel.Dock="Left" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
-                      <Setter Property="FontSize" Value="13"/>
+                <!-- B06 (R09): a path is cut in the middle, the whole of it in the tooltip. -->
+                <controls:MiddleEllipsisText DockPanel.Dock="Left">
+                  <controls:MiddleEllipsisText.Style>
+                    <Style TargetType="{x:Type controls:MiddleEllipsisText}" BasedOn="{StaticResource PathText}">
+                      <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
                       <Setter Property="Text" Value="{Binding VirtualPath, Mode=OneWay}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsParsed}" Value="False">
                           <Setter Property="Text" Value="{Binding RawText, Mode=OneWay}"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
-                  </TextBlock.Style>
-                </TextBlock>
-                <!-- One word, bounded, the full label in the tooltip: the name never shrinks. -->
-                <Border Style="{StaticResource BadgeOk}" Margin="6,0,0,0" MaxWidth="160"
-                        HorizontalAlignment="Right" VerticalAlignment="Center"
-                        ToolTip="{Binding RightsLabel, Mode=OneWay}"
-                        Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="13" TextTrimming="CharacterEllipsis"
+                  </controls:MiddleEllipsisText.Style>
+                </controls:MiddleEllipsisText>
+                <!-- Bounded, the full label in the tooltip: the name never shrinks. C13 (R12): the
+                     shared rights pill, «Read only» neutral, every writing right sky. -->
+                <controls:Badge Margin="6,0,0,0" MaxWidth="160"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                ToolTip="{Binding RightsLabel, Mode=OneWay}"
+                                Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+                  <controls:Badge.Style>
+                    <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                      <Setter Property="Tone" Value="Info"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Rights}" Value="ReadOnly">
+                          <Setter Property="Tone" Value="Neutral"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:Badge.Style>
+                  <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                              Text="{Binding RightsBadge, Mode=OneWay}"/>
-                </Border>
+                </controls:Badge>
               </DockPanel>
               <!-- Lot 5: the row's own finding, on the faulty line (icon + text). -->
               <DockPanel Margin="0,4,0,0" DataContext="{Binding RowProblem}"
@@ -128,10 +141,10 @@
                   <controls:LucideIcon.Style>
                     <Style TargetType="controls:LucideIcon">
                       <Setter Property="Kind" Value="triangle-alert"/>
-                      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsError}" Value="True">
-                          <Setter Property="Kind" Value="circle-x"/>
+                          <Setter Property="Kind" Value="ban"/>
                           <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
@@ -160,11 +173,10 @@
 
           <!-- VFS-90: the entry's identity, read-only, with a copy button and the teams naming it. -->
           <DockPanel Margin="0,0,0,7" Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-            <Button DockPanel.Dock="Right" Width="24" Height="24" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnSecondary}"
+            <Button DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource IconBtnGhost}" controls:ButtonIcon.Kind="copy"
                     ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
-                    Command="{Binding CopyIdCommand}">
-              <controls:LucideIcon Kind="copy" Size="12"/>
-            </Button>
+                    AutomationProperties.Name="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                    Command="{Binding CopyIdCommand}"/>
             <StackPanel>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
                          Text="{Binding IdDisplay, Mode=OneWay}"/>
@@ -182,15 +194,20 @@
           <StackPanel Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
 
             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblPhysical], Source={x:Static services:I18n.Instance}}"/>
-            <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                      Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+            <!-- B06 (R09): the path takes the whole column (it was cut at ~290 px beside its two
+                 buttons), its full value in the tooltip; the buttons, same order, go under it. -->
+            <!-- Delay: the row is validated, and its folder probed on disk, when the typing pauses
+                 rather than at every character. -->
+            <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged, Delay=250}"
+                     ToolTip="{Binding PhysicalPath, Mode=OneWay}" ToolTipService.ShowOnDisabled="True"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                       Command="{Binding DataContext.CreatePhysicalFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       Content="{Binding [Studio.Settings.CreateFolder], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"/>
-            </DockPanel>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                      Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblVirtual], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMono}" Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -200,7 +217,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Button Style="{StaticResource BtnSecondary}" FontSize="13" Padding="9,4" Margin="0,0,6,0"
+                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,6,0"
                           FontFamily="{StaticResource MonoFont}" Tag="{Binding}" Click="OnSuggestVirtualPath"
                           Content="{Binding}"/>
                 </DataTemplate>
@@ -211,11 +228,12 @@
                        Visibility="{Binding IsVirtualPathValid, Converter={StaticResource InverseBooleanToVisibility}}"/>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblRights], Source={x:Static services:I18n.Instance}}"/>
-            <ComboBox HorizontalAlignment="Left" MinWidth="220"
+            <!-- C09 (R10): «Rights» is the L combo, the whole column, whatever option is chosen. -->
+            <ComboBox Style="{StaticResource ComboL}"
                       ItemsSource="{Binding RightsChoices}"
                       SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
 
-            <TextBlock Style="{StaticResource CardTitle}" FontSize="13" Margin="0,16,0,7"
+            <TextBlock Style="{StaticResource Subhead}" Margin="0,16,0,7"
                        Text="{Binding [Studio.Settings.OverridesTitle], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Overrides}">
               <ItemsControl.ItemTemplate>
@@ -223,10 +241,10 @@
                   <DockPanel Margin="0,0,0,7">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="8,0,0,0"
                             Command="{Binding DataContext.RemoveOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            CommandParameter="{Binding}">
-                      <controls:LucideIcon Kind="trash-2" Size="13"/>
-                    </Button>
-                    <ComboBox DockPanel.Dock="Right" Width="200" Margin="8,0,0,0"
+                            CommandParameter="{Binding}" controls:ButtonIcon.Kind="x"
+                            ToolTip="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"
+                            AutomationProperties.Name="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
+                    <ComboBox DockPanel.Dock="Right" Style="{StaticResource ComboM}" Margin="8,0,0,0"
                               ItemsSource="{Binding RightsChoices}"
                               SelectedValue="{Binding Rights}" SelectedValuePath="Rights" DisplayMemberPath="Label"/>
                     <TextBox Style="{StaticResource InputMono}" Text="{Binding RelativePath, UpdateSourceTrigger=PropertyChanged}"/>
@@ -235,12 +253,9 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left"
-                    Command="{Binding DataContext.AddOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Settings.AddOverride], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding DataContext.AddOverrideCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Settings.AddOverride], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- mount-string preview: exactly what lands in appsettings / on the command line -->
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,6"

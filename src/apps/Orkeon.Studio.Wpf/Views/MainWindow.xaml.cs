@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         UpdateThemeButton();
+        LanguagePopup.CustomPopupPlacementCallback = PlaceLanguageMenu;
         DataContextChanged += (_, _) => WireForgeNavigation();
         BeginSplash();
     }
@@ -83,6 +85,20 @@ public partial class MainWindow : Window
                 shell.CreateTeam.GoToWaitPointCommand.Execute(null);
             }
         };
+        // R03 (A03): the status bar's centre zone reads which screen is on show.
+        void Shown(System.Windows.Controls.RadioButton nav, ViewModels.Shell.StatusBarScreen screen)
+        {
+            nav.Checked += (_, _) => shell.StatusBar.ShownScreen = screen;
+            if (nav.IsChecked == true)
+                shell.StatusBar.ShownScreen = screen;
+        }
+        Shown(NavCreate, ViewModels.Shell.StatusBarScreen.Create);
+        Shown(NavTeams, ViewModels.Shell.StatusBarScreen.Teams);
+        Shown(NavImport, ViewModels.Shell.StatusBarScreen.Import);
+        Shown(NavRun, ViewModels.Shell.StatusBarScreen.Run);
+        Shown(NavHistory, ViewModels.Shell.StatusBarScreen.History);
+        Shown(NavSettings, ViewModels.Shell.StatusBarScreen.Settings);
+        Shown(NavDiag, ViewModels.Shell.StatusBarScreen.Diagnostic);
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Run.RefreshTeams(); };
@@ -175,6 +191,22 @@ public partial class MainWindow : Window
             4 => AssistantContext.WizardStep4,
             _ => AssistantContext.WizardStep1,
         };
+
+    /// <summary>
+    /// R04 (A05): the language menu under its button, right edges aligned, 6 px below. The
+    /// popup's root is wider than the visible menu by the card's 10 px side margins (room for
+    /// its shadow): the visible right edge is 10 px inside the root's. The sizes come in device
+    /// pixels, so the DIP offsets are scaled.
+    /// </summary>
+    private CustomPopupPlacement[] PlaceLanguageMenu(Size popupSize, Size targetSize, Point offset)
+    {
+        const double ShadowMargin = 10;
+        const double Gap = 6;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var x = targetSize.Width - popupSize.Width + (ShadowMargin * dpi.DpiScaleX);
+        var y = targetSize.Height + (Gap * dpi.DpiScaleY);
+        return [new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)];
+    }
 
     // ── window chrome ──
     private void OnMinimize(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
@@ -362,4 +394,62 @@ public partial class MainWindow : Window
 
     /// <summary>The draft note under the nav: one click puts the unfinished creation back in front.</summary>
     private void OnResumeDraft(object sender, RoutedEventArgs e) => NavCreate.IsChecked = true;
+
+    /// <summary>The assistant's panel width, as the markup declares it.</summary>
+    private const double AssistantPanelWidth = 420;
+
+    /// <summary>
+    /// The narrowest content column the docked panel may leave: 720 px (R15: the assistant
+    /// overlays below 720 px). Below it the panel overlays the content; at 1440 px the content
+    /// keeps 808 px beside it, so every control of the screen stays reachable.
+    /// </summary>
+    private const double MinDockedContentWidth = 720;
+
+    /// <summary>The toast's clearance: 16 px above the status bar, 16 px off the 8 px scroll bar (R15, A09).</summary>
+    private const double ToastBottomMargin = 16;
+    private const double ToastRightMargin = 8 + 16;
+
+    /// <summary>Hooks the panel's placement to the width of the content host it lives in.</summary>
+    private void OnAssistantPanelLoaded(object sender, RoutedEventArgs e)
+    {
+        if (AssistantPanel.Parent is not FrameworkElement host)
+            return;
+
+        host.SizeChanged -= OnAssistantHostSizeChanged;
+        host.SizeChanged += OnAssistantHostSizeChanged;
+        AssistantPanel.IsVisibleChanged -= OnAssistantPanelVisibleChanged;
+        AssistantPanel.IsVisibleChanged += OnAssistantPanelVisibleChanged;
+        PlaceAssistantPanel(host.ActualWidth);
+    }
+
+    private void OnAssistantHostSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged)
+            PlaceAssistantPanel(e.NewSize.Width);
+    }
+
+    private void OnAssistantPanelVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (AssistantPanel.Parent is FrameworkElement host)
+            PlaceAssistantPanel(host.ActualWidth);
+    }
+
+    /// <summary>
+    /// R15 (A06, B04, C18): docked beside the content while the content keeps its 720 px, laid
+    /// over it otherwise — right-aligned in the content column, above the screens, shadowed. Only
+    /// the placement changes; the panel, its scroll and its commands stay the same. The archive
+    /// toast moves left of an overlaying panel so the panel never hides it.
+    /// </summary>
+    private void PlaceAssistantPanel(double hostWidth)
+    {
+        var overlay = hostWidth > 0 && hostWidth - AssistantPanelWidth < MinDockedContentWidth;
+
+        System.Windows.Controls.Grid.SetColumn(AssistantPanel, overlay ? 0 : 1);
+        System.Windows.Controls.Panel.SetZIndex(AssistantPanel, overlay ? 20 : 0);
+        AssistantPanel.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        AssistantPanel.Effect = overlay ? TryFindResource("ShadowLg") as System.Windows.Media.Effects.Effect : null;
+
+        var panelClearance = overlay && AssistantPanel.IsVisible ? AssistantPanelWidth : 0;
+        ArchiveUndoToast.Margin = new Thickness(0, 0, panelClearance + ToastRightMargin, ToastBottomMargin);
+    }
 }

@@ -108,14 +108,34 @@ internal static class SettingsStops
 
         new()
         {
+            Name = "reglages-cles-outils",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsToolKeys,
+            Because = "The Tool keys section of the Access group (STUDIO-21): the three tool keys, "
+                    + "none remembered on the seeded machine.",
+            Covers = ["Settings.Tools.HasSecrets"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
             Name = "reglages-outils",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsTools,
-            Because = "The Tools tab (STUDIO-21): the three tool keys, none remembered on the seeded "
-                    + "machine, and the catalogue by family with what web_search, brave_search, "
-                    + "image_generation and the database tools need said next to their names.",
-            Covers = ["Settings.Tools.HasSecrets"],
+            Because = "The Tool catalogue section (STUDIO-21): the catalogue by family with what "
+                    + "web_search, brave_search, image_generation and the database tools need said "
+                    + "next to their names.",
             SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-shell",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsShell,
+            Modes = CaptureModes.Expert,
+            Because = "The Shell commands section (expert, STUDIO-21): the interpreters switch and "
+                    + "the two command lists, as the seeded file leaves them.",
         },
 
         new()
@@ -212,10 +232,15 @@ internal static class SettingsStops
                     + "its key as a tooltip (STUDIO-68).",
             Covers = ["Config.Email.HasSelectedAccount", "Config.Email.ShowsAuthTab"],
             CoversFalse = ["Config.Email.ShowsAccountTab"],
+            // The Gmail account is the selection the tab opens on: no selection happens, so nothing
+            // brings its form up from under the fold (R24 is about selecting) and the shot showed
+            // the list alone (D11). The campaign scrolls to the form; the other mail stops select
+            // an account, and bringing that one's form into view is the app's own gesture.
             Arrange = static async c =>
             {
                 await c.Shell.Config.Email.RefreshStatesAsync();
                 c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AuthTab;
+                await c.Surface.BringIntoViewAsync(c.Shell.Config.Email.SelectedAccount);
             },
             Teardown = CaptureAction.Sync(static c =>
                 c.Shell.Config.Email.SelectedAccount!.ActiveTab = EmailAccountRowViewModel.AccountTab),

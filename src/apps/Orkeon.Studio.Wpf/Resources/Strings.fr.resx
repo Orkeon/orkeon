@@ -49,7 +49,7 @@
   <data name="Studio.Shell.TourStep4Title" xml:space="preserve"><value>L'environnement, une fois pour toutes</value></data>
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux choses à régler : le modèle d'IA et les dossiers autorisés aux agents. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
-  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, chaque écran porte une colonne d'explications à droite. Elle s'efface en mode Expert.</value></data>
+  <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, les écrans à étapes (Créer une équipe, Lancer) portent un encadré « Ce que fait cette étape » à gauche, sous la liste des sections. Il s'efface en mode Expert.</value></data>
   <!-- STUDIO-34: the status bar at the foot of the window -->
   <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>en attente d'une réponse</value></data>
   <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} {0:plural:outil|outils} : {1}</value></data>
@@ -121,7 +121,7 @@
   <data name="Studio.Settings.LblRights" xml:space="preserve"><value>Droits</value></data>
   <data name="Studio.Settings.OverridesTitle" xml:space="preserve"><value>Droits par sous-chemin</value></data>
   <data name="Studio.Settings.AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
-  <data name="Studio.Settings.Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
+  <data name="Studio.Settings.Preview" xml:space="preserve"><value>ARGUMENT --mount</value></data>
 
       <data name="Studio.Settings.RawJsonReadOnly" xml:space="preserve"><value>LECTURE SEULE</value></data>
   <data name="Studio.Settings.Copy" xml:space="preserve"><value>Copier</value></data>
@@ -387,7 +387,6 @@
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Dossiers autorisés</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limites &amp; index</value></data>
 <data name="Studio.Shell.Json" xml:space="preserve"><value>Fichier</value></data>
-<data name="Studio.Shell.Tools" xml:space="preserve"><value>Outils</value></data>
 <data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Shell.Mails" xml:space="preserve"><value>Mails</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Modèle de l'assistant de Studio</value></data>
@@ -485,7 +484,6 @@
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Consigne d'essai</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Consigne d'adoption</value></data>
 <data name="Studio.Create.TechTitle" xml:space="preserve"><value>Journal technique</value></data>
-<data name="Studio.Create.TechToggle" xml:space="preserve"><value>Voir / masquer</value></data>
 <data name="Studio.Create.NotesSub" xml:space="preserve"><value>Une consigne s'applique à tous les agents, part avec l'équipe et devient un point à vérifier à l'essai.</value></data>
 <data name="Studio.Create.Taken" xml:space="preserve"><value>Consigne prise en compte telle quelle.</value></data>
 <data name="Studio.Teams.Create" xml:space="preserve"><value>Créer une équipe</value></data>
@@ -527,6 +525,7 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-EMPTY" xml:space="preserve"><value>Aucun dossier n'est autorisé pour l'instant : les agents ne voient aucun des vôtres. Une équipe qui ne lit ni n'écrit de fichier n'en a pas besoin.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>Une entrée de dossier est mal formée.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>Un dossier autorisé n'existe pas sur cette machine.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH-EMPTY" xml:space="preserve"><value>Ce dossier n'est pas encore choisi : choisissez-en un sur cette machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Deux dossiers partagent le même nom interne.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve"><value>Un identifiant de serveur MCP est inutilisable : lettres, chiffres, '.', '_' et '-' seulement.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve"><value>Un serveur MCP nomme un transport inconnu du moteur.</value></data>
@@ -677,7 +676,7 @@
   <data name="Studio.Settings.MailTitle" xml:space="preserve"><value>Comptes e-mail</value></data>
   <data name="Studio.Settings.MailIntro" xml:space="preserve"><value>Les boîtes que vos agents peuvent utiliser. Chaque compte dit ce qu'un agent a le droit d'en faire, et rien n'est envoyé hors des destinataires que vous listez.</value></data>
   <data name="Studio.Settings.MailAdd" xml:space="preserve"><value>Ajouter un compte</value></data>
-  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>Aucun compte déclaré : les outils de messagerie refusent tout appel tant qu'il n'y en a pas.</value></data>
+  <data name="Studio.Settings.MailEmpty" xml:space="preserve"><value>Les outils de messagerie refusent tout appel tant qu'aucun compte n'est déclaré.</value></data>
   <data name="Studio.Settings.MailDefaultAccount" xml:space="preserve"><value>Compte utilisé quand un agent n'en nomme aucun</value></data>
   <data name="Studio.Settings.MailDefaultAccountHint" xml:space="preserve"><value>Avec un seul compte, vous pouvez le laisser vide : le moteur prend celui-là.</value></data>
   <data name="Studio.Settings.MailNewTitle" xml:space="preserve"><value>Un nouveau compte</value></data>
@@ -687,10 +686,10 @@
   <data name="Studio.Settings.MailAddress" xml:space="preserve"><value>Adresse e-mail</value></data>
   <data name="Studio.Settings.MailAddConfirm" xml:space="preserve"><value>Ajouter le compte</value></data>
   <data name="Studio.Settings.MailRename" xml:space="preserve"><value>Renommer</value></data>
-  <data name="Studio.Settings.MailRemove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Studio.Settings.MailRemove" xml:space="preserve"><value>Retirer</value></data>
   <data name="Studio.Settings.MailRenameLabel" xml:space="preserve"><value>Nouveau nom</value></data>
   <data name="Studio.Settings.MailRenameCost" xml:space="preserve"><value>Un compte connecté par OAuth2 devra se reconnecter sous son nouveau nom : ses jetons sont rangés sous l'ancien. Un mot de passe reste dans sa variable d'environnement, sous le nom de la variable.</value></data>
-  <data name="Studio.Settings.MailRemoveQuestion" xml:space="preserve"><value>Supprimer ce compte ?</value></data>
+  <data name="Studio.Settings.MailRemoveQuestion" xml:space="preserve"><value>Retirer ce compte ?</value></data>
   <data name="Studio.Settings.MailRemoveCost" xml:space="preserve"><value>La variable d'environnement qui garde son mot de passe et ses jetons de connexion restent sur cette machine.</value></data>
   <data name="Studio.Settings.MailProblemsTitle" xml:space="preserve"><value>En l'état, une exécution ne peut pas utiliser ce compte :</value></data>
   <data name="Studio.Settings.MailNumberUnread" xml:space="preserve"><value>Un champ numérique contient autre chose qu'un nombre entier : il n'est pas écrit.</value></data>
@@ -699,8 +698,6 @@
   <data name="Studio.Settings.MailTabRights" xml:space="preserve"><value>Droits</value></data>
   <data name="Studio.Settings.MailTabAuth" xml:space="preserve"><value>Connexion</value></data>
   <data name="Studio.Settings.MailTabServers" xml:space="preserve"><value>Serveurs</value></data>
-  <data name="Studio.Settings.MailSectionShow" xml:space="preserve"><value>Afficher</value></data>
-  <data name="Studio.Settings.MailSectionHide" xml:space="preserve"><value>Masquer</value></data>
   <data name="Studio.Settings.MailRightsIntro" xml:space="preserve"><value>Rien de coché, rien de permis : le moteur refuse un compte qui n'accorde aucun droit.</value></data>
   <data name="Studio.Settings.MailRightRead" xml:space="preserve"><value>Lire — lister les dossiers, chercher, lire les messages et enregistrer les pièces jointes</value></data>
   <data name="Studio.Settings.MailRightOrganize" xml:space="preserve"><value>Organiser — créer et renommer des dossiers, déplacer des messages, les marquer lus ou suivis</value></data>
@@ -902,7 +899,7 @@
     <value>Importer une équipe</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Aucune création en cours. Une création interrompue réapparaîtra ici.</value>
+    <value>Une création interrompue réapparaîtra ici.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Étape {0} sur {1} · {2}</value>
@@ -1169,10 +1166,10 @@
     <value>Chaque ligne de l'historique garde son journal complet. Demandez-moi « pourquoi la dernière a échoué ? » et je reprends l'étape fautive et le message d'erreur.</value>
   </data>
   <data name="Studio.Shell.System" xml:space="preserve">
-    <value>SYSTÈME</value>
+    <value>Langue du système</value>
   </data>
   <data name="Studio.Shell.Chosen" xml:space="preserve">
-    <value>CHOISIE</value>
+    <value>Langue choisie</value>
   </data>
   <data name="Studio.Shell.FromSystem" xml:space="preserve">
     <value>langue du système</value>
@@ -1538,13 +1535,13 @@
     <value>La session n'a pas pu être supprimée — un de ses fichiers est peut-être ouvert.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
-    <value>lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRw" xml:space="preserve">
-    <value>écriture</value>
+    <value>Lecture et écriture</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
-    <value>écriture, sans suppression</value>
+    <value>Lecture et écriture, sans suppression</value>
   </data>
   <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
   <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
@@ -1789,7 +1786,7 @@
     <value>lecture, écriture</value>
   </data>
   <data name="Studio.Create.FolderRoleRead" xml:space="preserve">
-    <value>Lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Create.FolderRoleReadWrite" xml:space="preserve">
     <value>Lecture et écriture</value>
@@ -1870,7 +1867,7 @@
   <data name="Studio.Settings.DriveTestSecretFirstHint" xml:space="preserve"><value>Saisissez-le dans l'onglet Connexion et enregistrez-le ; le test réussit une fois qu'il est mémorisé.</value></data>
   <data name="Studio.Settings.DriveTitle" xml:space="preserve"><value>Comptes de stockage cloud</value></data>
   <data name="Studio.Settings.DriveIntro" xml:space="preserve"><value>Les comptes Google Drive et OneDrive que vos agents peuvent utiliser. Chaque compte les cantonne au dossier que vous choisissez et dit ce qu'ils ont le droit d'y faire.</value></data>
-  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>Aucun compte déclaré : les outils de stockage cloud refusent tout appel tant qu'il n'y en a pas.</value></data>
+  <data name="Studio.Settings.DriveEmpty" xml:space="preserve"><value>Les outils de stockage cloud refusent tout appel tant qu'aucun compte n'est déclaré.</value></data>
   <data name="Studio.Settings.DriveWithholdRejected" xml:space="preserve"><value>Retenir le texte d'un fichier que le filtrage des injections de prompt rejette</value></data>
   <data name="Studio.Settings.DriveWithholdRejectedHint" xml:space="preserve"><value>Désactivé, l'agent lit le fichier avec un avertissement ; activé, il ne lit que l'avertissement.</value></data>
   <data name="Studio.Settings.DriveSignInFailedHint" xml:space="preserve"><value>Rien n'a été mémorisé. Le guide du stockage cloud (docs/guides/drive.md) explique chaque refus.</value></data>
@@ -1950,6 +1947,15 @@
   <data name="Studio.Settings.TabToolsCount" xml:space="preserve">
     <value>{0} {0:plural:outil|outils}</value>
   </data>
+  <data name="Studio.Settings.TabShellDefault" xml:space="preserve">
+    <value>Liste par défaut</value>
+  </data>
+  <data name="Studio.Settings.TabShellReplaced" xml:space="preserve">
+    <value>Liste remplacée</value>
+  </data>
+  <data name="Studio.Settings.TabShellExtra" xml:space="preserve">
+    <value>{0} {0:plural:commande ajoutée|commandes ajoutées}</value>
+  </data>
   <data name="Studio.Settings.TabAccountsCount" xml:space="preserve">
     <value>{0} {0:plural:compte|comptes}</value>
   </data>
@@ -2019,7 +2025,7 @@
   <data name="Studio.Create.ScreenSub" xml:space="preserve"><value>Rien n'est écrit sur votre machine avant l'adoption.</value></data>
   <data name="Studio.Create.Back" xml:space="preserve"><value>Retour</value></data>
   <data name="Studio.Create.Resume" xml:space="preserve"><value>Reprendre</value></data>
-  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lecture</value></data>
+  <data name="Studio.Create.RightsRead" xml:space="preserve"><value>Lecture seule</value></data>
   <data name="Studio.Create.RightsReadWrite" xml:space="preserve"><value>Lecture et écriture</value></data>
   <data name="Studio.Create.MountToChoose" xml:space="preserve"><value>À choisir</value></data>
   <data name="Studio.Create.MountToChooseRead" xml:space="preserve"><value>À choisir : sans dossier source, l'équipe partira d'un dossier « input » vide.</value></data>
@@ -2053,7 +2059,7 @@
     <value>Affichage</value>
   </data>
   <data name="Studio.Run.StreamShort" xml:space="preserve">
-    <value>jeton par jeton</value>
+    <value>Jeton par jeton</value>
   </data>
   <data name="Studio.Run.TabRunIdle" xml:space="preserve">
     <value>En attente · rien à rapporter</value>
@@ -2092,31 +2098,22 @@
     <value>Aucune équipe choisie.</value>
   </data>
   <data name="Studio.Run.SeeOptions" xml:space="preserve">
-    <value>Voir les options →</value>
+    <value>Voir les options</value>
   </data>
   <data name="Studio.Run.SeeCommand" xml:space="preserve">
-    <value>Voir la commande →</value>
+    <value>Voir la commande</value>
   </data>
   <data name="Studio.Run.SeeRun" xml:space="preserve">
-    <value>Voir l'exécution →</value>
+    <value>Voir l'exécution</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
-    <value>← Retour à l'équipe</value>
+    <value>Retour à l'équipe</value>
   </data>
   <data name="Studio.Run.OrAPath" xml:space="preserve">
     <value>ou un chemin</value>
   </data>
   <data name="Studio.Run.LblModel" xml:space="preserve">
     <value>Modèle</value>
-  </data>
-  <data name="Studio.Run.ModelDefault" xml:space="preserve">
-    <value>Par défaut ({0})</value>
-  </data>
-  <data name="Studio.Run.ModelDefaultNone" xml:space="preserve">
-    <value>Par défaut</value>
-  </data>
-  <data name="Studio.Run.ModelTeam" xml:space="preserve">
-    <value>Celui de l'équipe ({0})</value>
   </data>
   <data name="Studio.Run.TeamLastRun" xml:space="preserve">
     <value>lancée le {0}</value>
@@ -2140,7 +2137,7 @@
     <value>Ajouter un dossier pour ce lancement</value>
   </data>
   <data name="Studio.Run.RightsRead" xml:space="preserve">
-    <value>Lecture</value>
+    <value>Lecture seule</value>
   </data>
   <data name="Studio.Run.RightsReadWrite" xml:space="preserve">
     <value>Lecture et écriture</value>
@@ -2167,7 +2164,7 @@
     <value>Commande composée depuis l'équipe et les options.</value>
   </data>
   <data name="Studio.Run.ModeLabel" xml:space="preserve">
-    <value>MODE</value>
+    <value>Type d'exécution</value>
   </data>
   <data name="Studio.Run.FigSent" xml:space="preserve">
     <value>Envoyés</value>
@@ -2256,10 +2253,10 @@
   <data name="Studio.Settings.LeaveSave" xml:space="preserve"><value>Enregistrer et quitter</value></data>
   <data name="Studio.Settings.LeaveDiscard" xml:space="preserve"><value>Quitter sans enregistrer</value></data>
   <data name="Studio.Settings.LeaveStay" xml:space="preserve"><value>Rester</value></data>
-  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>MODÈLES</value></data>
-  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>ACCÈS</value></data>
-  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>CONNEXIONS</value></data>
-  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>AVANCÉ</value></data>
+  <data name="Studio.Settings.GroupModels" xml:space="preserve"><value>Modèles</value></data>
+  <data name="Studio.Settings.GroupAccess" xml:space="preserve"><value>Accès</value></data>
+  <data name="Studio.Settings.GroupConnections" xml:space="preserve"><value>Connexions</value></data>
+  <data name="Studio.Settings.GroupAdvanced" xml:space="preserve"><value>Avancé</value></data>
   <data name="Studio.Diagnostics.OpenModels" xml:space="preserve"><value>Ouvrir Modèles</value></data>
   <data name="Studio.Diagnostics.OpenKeys" xml:space="preserve">
     <value>Ouvrir Clés API</value>
@@ -2293,7 +2290,7 @@
     <value>Décrit, {0} {0:plural:question réglée|questions réglées}</value>
   </data>
   <data name="Studio.Create.TabNeedEmpty" xml:space="preserve"><value>À décrire</value></data>
-  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Décrivez le travail pour continuer.</value></data>
+  <data name="Studio.Create.TabNeedEmptyFooter" xml:space="preserve"><value>Besoin pas encore décrit.</value></data>
   <data name="Studio.Create.TabNeedFooter" xml:space="preserve"><value>Besoin décrit.</value></data>
   <data name="Studio.Create.TabNeedFooterAnswers" xml:space="preserve"><value>Besoin décrit, {0} {0:plural:question réglée|questions réglées} avec l'assistant</value></data>
   <data name="Studio.Create.TabFoldersPending" xml:space="preserve"><value>{0} {0:plural:dossier à confirmer|dossiers à confirmer}</value></data>
@@ -2489,4 +2486,78 @@
   <data name="Studio.Chat.KeyHintPending" xml:space="preserve"><value>Ctrl+Entrée pour envoyer · Maj+Entrée pour un retour à la ligne</value></data>
   <data name="Studio.Chat.PendingReveal" xml:space="preserve"><value>Voir la carte</value></data>
   <data name="Studio.Create.DecisionQuestion" xml:space="preserve"><value>L'essai est jugé. Que fait-on ?</value></data>
+
+  <!-- hrm:fa begin -->
+  <!-- hrm:fa end -->
+
+  <!-- hrm:fb begin -->
+  <!-- hrm:fb end -->
+
+  <!-- hrm:fc begin -->
+  <!-- hrm:fc end -->
+
+  <!-- hrm:L01 begin -->
+  <data name="Studio.Shell.StatusNoModel" xml:space="preserve">
+    <value>Aucun modèle</value>
+  </data>
+  <!-- hrm:L01 end -->
+
+  <!-- hrm:L02 begin -->
+  <!-- hrm:L02 end -->
+
+  <!-- hrm:L03 begin -->
+  <!-- hrm:L03 end -->
+
+  <!-- hrm:L04 begin -->
+  <!-- hrm:L04 end -->
+
+  <!-- hrm:L05 begin -->
+  <data name="Studio.Chat.WaitingBadge" xml:space="preserve"><value>En attente de vous</value></data>
+  <!-- hrm:L05 end -->
+
+  <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>Aucune création en cours</value>
+  </data>
+  <!-- hrm:L06 end -->
+
+  <!-- hrm:L07 begin -->
+  <!-- hrm:L07 end -->
+
+  <!-- hrm:L08 begin -->
+  <data name="Studio.Run.LaneNotRun" xml:space="preserve"><value>Non exécuté</value></data>
+  <data name="Studio.Run.PaneFinishedContext" xml:space="preserve"><value>Exécution terminée</value></data>
+  <!-- hrm:L08 end -->
+
+  <!-- hrm:L09 begin -->
+  <data name="Studio.History.EmptyTitle" xml:space="preserve"><value>L'historique est vide</value></data>
+  <data name="Studio.Diagnostics.ReportUnreadable" xml:space="preserve"><value>Le rapport du diagnostic est illisible.</value></data>
+  <!-- hrm:L09 end -->
+
+  <!-- hrm:L10 begin -->
+  <data name="Studio.Settings.MountStringsEyebrow" xml:space="preserve"><value>ARGUMENTS --mount</value></data>
+  <!-- hrm:L10 end -->
+
+  <!-- hrm:L11 begin -->
+  <data name="Studio.Settings.MountsEmptyTitle" xml:space="preserve">
+    <value>Aucun dossier</value>
+  </data>
+  <data name="Studio.Settings.MountsEmptyText" xml:space="preserve">
+    <value>Ajoutez un dossier : les agents ne voient que les dossiers listés ici.</value>
+  </data>
+  <data name="Studio.Settings.McpEmptyTitle" xml:space="preserve">
+    <value>Aucun serveur</value>
+  </data>
+  <!-- hrm:L11 end -->
+
+  <!-- hrm:L12 begin -->
+  <data name="Studio.Settings.MailEmptyTitle" xml:space="preserve"><value>Aucun compte</value></data>
+  <!-- hrm:L12 end -->
+
+  <!-- hrm:L13 begin -->
+  <!-- hrm:L13 end -->
+
+  <!-- hrm:L14 begin -->
+  <!-- hrm:L14 end -->
+
 </root>

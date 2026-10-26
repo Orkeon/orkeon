@@ -125,8 +125,12 @@ public enum TeamSortOrder
 /// then reads red: the settings are the list of what this machine allows, and a team reaching
 /// outside it should not have to be discovered by reading a sidecar.
 /// </param>
+/// <param name="Path">
+/// The virtual path alone («/docs»), for a card that writes the rights as a badge beside it (R12);
+/// the unreadable label when the entry does not parse. Empty where nothing set it.
+/// </param>
 public sealed record TeamMountChip(
-    string Label, bool IsReadWrite, string MountString = "", bool IsUndeclared = false);
+    string Label, bool IsReadWrite, string MountString = "", bool IsUndeclared = false, string Path = "");
 
 /// <summary>One team card of the my-teams screen.</summary>
 public sealed class TeamCardViewModel : ObservableObject
@@ -170,8 +174,9 @@ public sealed class TeamCardViewModel : ObservableObject
         MountChips = [.. summary.Mounts.Select(mountString =>
         {
             var (label, readWrite) = MountLabels.Describe(mountString, strings);
+            var path = MountDefinition.TryParse(mountString, out var mount, out _) && mount is not null ? mount.VirtualPath : label;
             return new TeamMountChip(
-                label, readWrite, IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declaredMounts, summary.Path));
+                label, readWrite, IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declaredMounts, summary.Path), Path: path);
         })];
         ScheduleDisplay = summary.Schedule switch
         {
@@ -418,6 +423,12 @@ public sealed class TeamCardViewModel : ObservableObject
     /// </summary>
     public string Name => TeamCatalog.NormalizeName(Summary.Name);
 
+    /// <summary>
+    /// The title's tooltip (R09): the name as the sidecar gives it, markup stripped and its first
+    /// paragraph only — <see cref="Name"/> is cut at the slug's cap, and a cut title says the rest here.
+    /// </summary>
+    public string NameTip => TeamCatalog.Summarize(Summary.Name) is { Length: > 0 } whole ? whole : Name;
+
     /// <summary>Folder name — expert only.</summary>
     public string Slug => Summary.Slug;
 
@@ -583,7 +594,8 @@ public sealed class TeamCardViewModel : ObservableObject
     internal void RefreshSetting()
     {
         _scheduledRun = ReadScheduledRun();
-        OnPropertiesChanged(nameof(ProfileDisplay), nameof(ProfileLabel), nameof(HasProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine),
+        OnPropertiesChanged(nameof(ProfileDisplay), nameof(ProfileLabel), nameof(ProfileName), nameof(FollowsDefaultLlm),
+            nameof(HasProfileDisplay), nameof(MetaLine), nameof(ScheduledRunLine),
             nameof(HasScheduledRunLine), nameof(UseDefaultLlmLabel), nameof(LlmProfiles), nameof(HasLlmProfiles));
     }
 
@@ -934,6 +946,15 @@ public sealed class TeamCardViewModel : ObservableObject
 
     /// <summary>The model alone, the value of the card's «Model» row (refonte R6).</summary>
     public string? ProfileLabel => _owner.LlmLabelOf(Summary);
+
+    /// <summary>
+    /// The «Model» row's value as every screen names a model (R19): the elected default's own name for
+    /// a team that follows it — the row adds the «default» badge — else <see cref="ProfileLabel"/>.
+    /// </summary>
+    public string? ProfileName => _owner.DefaultLlmNameOf(Summary) ?? ProfileLabel;
+
+    /// <summary>Whether the «Model» row carries the «default» badge: the team follows the elected default.</summary>
+    public bool FollowsDefaultLlm => _owner.DefaultLlmNameOf(Summary) is not null;
 
     /// <summary>
     /// The card's one meta line, « · »-joined like the launcher's (v3 F-02):
@@ -1630,6 +1651,23 @@ public sealed class TeamsViewModel : ObservableObject
         var settings = _modelSettings();
         return TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings)
             .LlmLabel(_strings, settings, ownSettingsFile: choice.UseDefault && _hasOwnSettingsFile?.Invoke(team.Path) == true);
+    }
+
+    /// <summary>
+    /// The elected default's name when <paramref name="team"/> follows it — exactly where
+    /// <see cref="LlmLabelOf"/> says « Default (X) » — else null: a pinned setting, the team's own
+    /// settings file, no default elected, or no model settings at all.
+    /// </summary>
+    internal string? DefaultLlmNameOf(TeamSummary team)
+    {
+        if (_modelSettings is null)
+            return null;
+
+        var choice = team.LlmChoice;
+        var settings = _modelSettings();
+        var follows = TeamSettingStanding.Of(choice.UseDefault ? null : choice.Profile, settings).Kind == TeamSettingKind.None;
+        var ownSettingsFile = choice.UseDefault && _hasOwnSettingsFile?.Invoke(team.Path) == true;
+        return follows && !ownSettingsFile ? settings.Default?.Name : null;
     }
 
     /// <summary>Raised by a card's « Configure a model »; the shell opens the model settings.</summary>

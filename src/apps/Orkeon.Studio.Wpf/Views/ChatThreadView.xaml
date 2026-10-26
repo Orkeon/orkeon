@@ -31,6 +31,8 @@
     </Storyboard>
 
     <!-- The panel slides in from where the content used to be — 280 ms, ease out, no bounce.
+         A07: it slides, it never fades. A fade from 0 left the panel at a third of its
+         opacity in every shot taken right after it opened, and an open panel is opaque.
          NO Storyboard.TargetName here, deliberately. This storyboard is begun from a trigger
          that lives in a Style (see Panel below), and a Style has no namescope: WPF resolves
          TargetName when the storyboard STARTS and throws
@@ -44,8 +46,6 @@
                        From="26" To="0" Duration="0:0:0.28">
         <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
       </DoubleAnimation>
-      <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                       From="0" To="1" Duration="0:0:0.28"/>
     </Storyboard>
 
     <Style x:Key="ChatDot" TargetType="Ellipse">
@@ -125,42 +125,62 @@
             </Border>
           </Grid>
 
+          <!-- R05: the header's two buttons at the compact 32 px, icon through ButtonIcon. -->
           <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Command="{Binding CloseCommand}"
-                  ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}">
-            <controls:LucideIcon Kind="x" Size="14"/>
-          </Button>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Height="28" Padding="11,0" FontSize="13"
-                  Margin="0,0,8,0" Command="{Binding StopCommand}"
-                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="square" Size="11" Margin="0,0,6,0"/>
-              <TextBlock Text="{Binding [Studio.Chat.Stop], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+                  controls:ButtonIcon.Kind="x"
+                  ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"
+                  AutomationProperties.Name="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"/>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                  Margin="0,0,8,0" Command="{Binding StopCommand}" controls:ButtonIcon.Kind="square"
+                  Content="{Binding [Studio.Chat.Stop], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
 
           <StackPanel VerticalAlignment="Center">
-            <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Studio.Chat.Title], Source={x:Static services:I18n.Instance}}"/>
+            <!-- A07: waiting on the user is said by the header badge, never by dimming. -->
+            <DockPanel>
+              <controls:Badge DockPanel.Dock="Right" Tone="Warning" Margin="8,0,0,0" VerticalAlignment="Center"
+                              Content="{Binding [Studio.Chat.WaitingBadge], Source={x:Static services:I18n.Instance}}"
+                              Visibility="{Binding IsWaitingOnUser, Converter={StaticResource BooleanToVisibility}}"/>
+              <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         Text="{Binding [Studio.Chat.Title], Source={x:Static services:I18n.Instance}}"/>
+            </DockPanel>
             <TextBlock FontSize="13" Margin="0,1,0,0" Foreground="{DynamicResource InkMutedBrush}"
                        Text="{Binding [Studio.Chat.Subtitle], Source={x:Static services:I18n.Instance}}"/>
+            <!-- The status line steps aside while the badge says the same thing. -->
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,1,0,0"
                        Foreground="{DynamicResource InkFaintBrush}" TextTrimming="CharacterEllipsis"
-                       Text="{Binding Status}"/>
+                       Text="{Binding Status}" ToolTip="{Binding Status}"
+                       Visibility="{Binding IsWaitingOnUser, Converter={StaticResource InverseBooleanToVisibility}}"/>
           </StackPanel>
         </DockPanel>
       </Border>
 
       <!-- ── « Ce que j'ai retenu » ── -->
       <Button DockPanel.Dock="Top" Style="{StaticResource RecapHeader}" Command="{Binding ToggleRecapCommand}">
+        <!-- R16: the one fold pattern, label then chevron (down closed, up open); the count
+             stays on the right edge. -->
         <DockPanel>
-          <controls:LucideIcon DockPanel.Dock="Left" Kind="{Binding RecapIcon}" Size="13" Margin="0,0,9,0"
-                               Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
                      VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
                      Text="{Binding RecapProgress}"/>
-          <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                     Foreground="{DynamicResource InkBrush}"
-                     Text="{Binding [Studio.Chat.Recap], Source={x:Static services:I18n.Instance}}"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Studio.Chat.Recap], Source={x:Static services:I18n.Instance}}"/>
+            <controls:LucideIcon Size="16" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource InkMutedBrush}">
+              <controls:LucideIcon.Style>
+                <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                  <Setter Property="Kind" Value="chevron-down"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsRecapExpanded}" Value="True">
+                      <Setter Property="Kind" Value="chevron-up"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:LucideIcon.Style>
+            </controls:LucideIcon>
+          </StackPanel>
         </DockPanel>
       </Button>
       <Border DockPanel.Dock="Top" Background="{DynamicResource Surface2Brush}"
@@ -216,13 +236,11 @@
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
                      Text="{Binding [Studio.Chat.YourQuestion], Source={x:Static services:I18n.Instance}}"/>
           <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Height="38" Padding="15,0"
-                    Margin="9,0,0,0" VerticalAlignment="Bottom" Command="{Binding SendCommand}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding SendLabel}" Margin="0,0,7,0"/>
-                <controls:LucideIcon Kind="arrow-right" Size="13" Foreground="{DynamicResource AccentFgBrush}"/>
-              </StackPanel>
-            </Button>
+            <!-- R05: forward, so the arrow is an icon on the right of the label, 40 px. -->
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}"
+                    Margin="9,0,0,0" VerticalAlignment="Bottom" Command="{Binding SendCommand}"
+                    Content="{Binding SendLabel}"
+                    controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
             <Grid>
               <TextBox x:Name="Composer" Style="{StaticResource InputMultiline}"
                        Text="{Binding Draft, UpdateSourceTrigger=PropertyChanged}">
@@ -240,7 +258,11 @@
               <!-- The placeholder: the question's own example while one is on the table,
                    the neutral invitation otherwise. WPF has no watermark, and one overlay
                    is cheaper than an attached property nothing else would use. -->
-              <TextBlock IsHitTestVisible="False" FontSize="13" Margin="12,10,0,0" TextTrimming="CharacterEllipsis"
+              <!-- B10: it wraps inside the box, on the typed text's 12 px inset, rather than
+                   cutting on its first line; only past the box's five lines does it trim. -->
+              <TextBlock IsHitTestVisible="False" FontSize="13" Margin="13,10,13,10" TextWrapping="Wrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Top"
+                         MaxHeight="{Binding ActualHeight, ElementName=Composer}"
                          Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Placeholder}"
                          Visibility="{Binding Text, ElementName=Composer, Converter={StaticResource StringPresentToVisibility}, ConverterParameter=invert}"/>
             </Grid>
@@ -261,10 +283,12 @@
       <ScrollViewer x:Name="Scroll" VerticalScrollBarVisibility="Auto" Padding="16">
         <StackPanel>
 
-          <!-- the brief, pinned: what the whole conversation is about -->
+          <!-- the brief, pinned: what the whole conversation is about. D03: with no brief from
+               the owner, the card shows on an empty thread only, so «nothing described yet»
+               never sits above a conversation. -->
           <Border Background="{DynamicResource PaperSunkBrush}" BorderBrush="{DynamicResource LineBrush}"
                   BorderThickness="1" CornerRadius="12" Padding="13,11" Margin="0,0,0,13"
-                  Visibility="{Binding ShowsBrief, Converter={StaticResource BooleanToVisibility}}">
+                  Visibility="{Binding ShowsBriefCard, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
               <!-- STUDIO-57: no « Edit » any more — it only went back to step 1, which « Start
                    over » does; what was wanted here is the text, selectable and copyable. -->
@@ -296,7 +320,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
               <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
                          Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Primer}"/>
@@ -318,7 +342,7 @@
                             CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
                       <Border.Style>
                         <Style TargetType="Border">
-                          <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+                          <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                           <Style.Triggers>
                             <!-- the closing bubble: the brief is complete, and it reads that way -->
                             <DataTrigger Binding="{Binding IsClosing}" Value="True">
@@ -369,9 +393,12 @@
                     </Border>
                   </DockPanel>
 
-                  <!-- the user, on the right, no avatar: the corner says who spoke -->
-                  <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentWeakBrush}"
+                  <!-- the user, on the right, no avatar, on sky (C19, R22): the assistant's bubbles
+                       are neutral and start after its 35 px avatar column; the user's start 56 px
+                       in, so a bubble that fills its line still reads as the other side's. -->
+                  <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}"
                           BorderThickness="1" CornerRadius="13,4,13,13" Padding="13,11" HorizontalAlignment="Right"
+                          Margin="56,0,0,0"
                           Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibility}}">
                     <controls:MarkdownText FontSize="13" LineHeight="19" Source="{Binding Body}"
                                            CodeFontFamily="{StaticResource MonoFont}"
@@ -403,7 +430,7 @@
             <Border CornerRadius="4,13,13,13" HorizontalAlignment="Left">
               <Border.Style>
                 <Style TargetType="Border">
-                  <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+                  <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                   <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
                   <Setter Property="BorderThickness" Value="1"/>
                   <Setter Property="Padding" Value="13,11"/>
@@ -452,7 +479,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource WarningBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource WarningBorderBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
               <StackPanel>
                 <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
@@ -476,7 +503,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="14,10" HorizontalAlignment="Left">
               <StackPanel Orientation="Horizontal">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,11,0">

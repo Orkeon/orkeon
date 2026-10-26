@@ -45,6 +45,10 @@ internal static class TeamsStops
                     + "each with the step it reached and the two ways out.",
             Covers = ["Teams.HasInProgress"],
             SweepsLanguages = true,
+            // The section sits under five team cards, below the fold: without the scroll this shot
+            // was « equipes-liste » again, byte for byte (D11). No gesture of the app scrolls there,
+            // so the campaign does — down to the last session, the section's foot.
+            Arrange = static c => c.Surface.BringIntoViewAsync(c.Shell.Teams.InProgress[^1]),
         },
 
         new()

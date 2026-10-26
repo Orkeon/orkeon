@@ -25,20 +25,14 @@
         </Style>
       </controls:PageHeader.Style>
       <StackPanel Orientation="Horizontal" Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
-        <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnSecondary}" Command="{Binding Config.ValidateCommand}" Margin="0,0,8,0"
+                controls:ButtonIcon.Kind="badge-check"
+                Content="{Binding [Studio.Common.Validate], Source={x:Static services:I18n.Instance}}"/>
         <!-- Novice saves automatically (audit 07/16); the explicit ending of the cycle is
              the expert's. -->
-        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="save" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-            <TextBlock Text="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
+        <Button Style="{StaticResource BtnPrimary}" Command="{Binding Config.SaveCommand}"
+                controls:ButtonIcon.Kind="save"
+                Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
       </StackPanel>
     </controls:PageHeader>
     <!-- Lot 11: the outcomes only; « Loaded: path » is said once, in the File section. -->
@@ -50,12 +44,12 @@
                     Message="{Binding [Studio.Settings.LeaveQuestion], Source={x:Static services:I18n.Instance}}"
                     Visibility="{Binding IsAskingToLeave, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Actions>
-        <StackPanel Orientation="Horizontal">
-          <Button Style="{StaticResource BtnPrimary}" Margin="0,0,7,0" Command="{Binding SaveAndLeaveCommand}"
+        <StackPanel Style="{StaticResource ActionRow}">
+          <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding SaveAndLeaveCommand}"
                   Content="{Binding [Studio.Settings.LeaveSave], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource BtnDanger}" Margin="0,0,7,0" Command="{Binding DiscardAndLeaveCommand}"
+          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding DiscardAndLeaveCommand}"
                   Content="{Binding [Studio.Settings.LeaveDiscard], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding StayCommand}"
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding StayCommand}"
                   Content="{Binding [Studio.Settings.LeaveStay], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </controls:Alert.Actions>
@@ -63,19 +57,19 @@
 
     <!-- lot 5: « N unsaved changes · Cancel · Save », from the first edit until it is saved or dropped -->
     <Border x:Name="PendingBar" Margin="0,14,0,0" Padding="14,8" CornerRadius="10"
-            Background="{DynamicResource WarningWeakBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+            Background="{DynamicResource WarningWeakBrush}" BorderBrush="{DynamicResource WarningBorderBrush}" BorderThickness="1"
             Visibility="{Binding Config.HasPendingChanges, Converter={StaticResource BooleanToVisibility}}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,7,0"
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                   Command="{Binding Config.DiscardCommand}"
                   Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
           <Button Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="32" Command="{Binding Config.SaveCommand}"
                   Content="{Binding [Studio.Common.Save], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <controls:LucideIcon Kind="pencil" Size="14" Margin="0,0,8,0" Foreground="{DynamicResource WarningBrush}"/>
-          <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+          <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,8,0" Foreground="{DynamicResource WarningIconBrush}"/>
+          <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource WarningInkBrush}"
                      Text="{Binding Config.PendingChangesText}"/>
         </StackPanel>
       </DockPanel>
@@ -95,7 +89,7 @@
                models: a property row and its list. The tab's subtitle says when it is missing. -->
           <StackPanel Margin="0,0,0,18">
             <controls:PropertyRow Label="{Binding [Studio.Settings.AssistantRow], Source={x:Static services:I18n.Instance}}">
-              <Grid Width="260" HorizontalAlignment="Left">
+              <Grid Width="320" HorizontalAlignment="Left">
                 <ComboBox ItemsSource="{Binding Profiles.ProfileNames}"
                           SelectedItem="{Binding Profiles.StudioProfileName}"
                           AutomationProperties.Name="{Binding [Studio.Settings.ModelTitle], Source={x:Static services:I18n.Instance}}"/>
@@ -105,10 +99,10 @@
                            Visibility="{Binding Profiles.HasStudioProfile, Converter={StaticResource InverseBooleanToVisibility}}"/>
               </Grid>
             </controls:PropertyRow>
-            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource Hint}" Margin="172,4,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Settings.ModelHintNovice], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsNovice, Converter={StaticResource BooleanToVisibility}}"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="104,4,0,0" TextWrapping="Wrap"
+            <TextBlock Style="{StaticResource Hint}" Margin="172,4,0,0" TextWrapping="Wrap"
                        Text="{Binding [Studio.Settings.ModelHintExpert], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
@@ -117,13 +111,10 @@
           <Border Style="{StaticResource Card}" Margin="0,0,0,16">
             <StackPanel>
               <DockPanel Margin="0,0,0,4">
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" VerticalAlignment="Top"
-                        Command="{Binding Profiles.NewProfileCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                    <TextBlock Text="{Binding [Studio.Settings.New], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
+                <!-- R05: an « add » is a secondary with its +; the screen's one primary is « Save ». -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
+                        Command="{Binding Profiles.NewProfileCommand}" controls:ButtonIcon.Kind="plus"
+                        Content="{Binding [Studio.Settings.New], Source={x:Static services:I18n.Instance}}"/>
                 <StackPanel Margin="0,0,14,0">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="sparkles" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -138,30 +129,26 @@
                 </StackPanel>
               </DockPanel>
 
-              <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
-                         Text="{Binding [Studio.Settings.ProfileEmpty], Source={x:Static services:I18n.Instance}}"
-                         Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
+              <!-- R17: the shared empty state, compact inside the card — its one action is the
+                   « New model » of the card's header, not repeated here. -->
+              <controls:EmptyState IsCompact="True" Icon="sparkles" Margin="0,12,0,0"
+                                   Title="{Binding [Studio.Settings.ProfileEmpty], Source={x:Static services:I18n.Instance}}"
+                                   Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
 
               <!-- STUDIO-12 C6: a profile file that exists but cannot be read is said out loud —
                    it used to load as the empty set, the same screen as a first run. -->
-              <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
-                         Foreground="{DynamicResource WarningBrush}"
-                         Text="{Binding Profiles.LoadError}"
-                         Visibility="{Binding Profiles.HasLoadError, Converter={StaticResource BooleanToVisibility}}"/>
+              <controls:Alert Tone="Warning" Margin="0,12,0,0" Message="{Binding Profiles.LoadError}"
+                              Visibility="{Binding Profiles.HasLoadError, Converter={StaticResource BooleanToVisibility}}"/>
 
               <!-- STUDIO-56: a write of the profiles file that failed is said, not swallowed; the
                    settings stay as shown for the session and the next change writes them again. -->
-              <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
-                         Foreground="{DynamicResource WarningBrush}"
-                         Text="{Binding Profiles.ProfileWriteError}"
-                         Visibility="{Binding Profiles.HasProfileWriteError, Converter={StaticResource BooleanToVisibility}}"/>
+              <controls:Alert Tone="Warning" Margin="0,12,0,0" Message="{Binding Profiles.ProfileWriteError}"
+                              Visibility="{Binding Profiles.HasProfileWriteError, Converter={StaticResource BooleanToVisibility}}"/>
 
               <!-- STUDIO-44: a key pasted and saved with its profile is in place for the session, but
                    the user scope refused it; the editor has closed, so the list says so. -->
-              <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
-                         Foreground="{DynamicResource WarningBrush}"
-                         Text="{Binding Profiles.KeyStoreError}"
-                         Visibility="{Binding Profiles.HasKeyStoreError, Converter={StaticResource BooleanToVisibility}}"/>
+              <controls:Alert Tone="Warning" Margin="0,12,0,0" Message="{Binding Profiles.KeyStoreError}"
+                              Visibility="{Binding Profiles.HasKeyStoreError, Converter={StaticResource BooleanToVisibility}}"/>
 
               <!-- lot 9: one card per model — its name and badges, four label/value rows, and its
                    action bar (R5): the work actions, a rule, « Delete » in the danger tone. -->
@@ -172,7 +159,7 @@
                     <Border BorderThickness="1" BorderBrush="{DynamicResource LineBrush}" CornerRadius="11" Padding="14,12" Margin="0,0,0,8">
                       <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                          <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Text="{Binding Name}"/>
+                          <TextBlock Style="{StaticResource Subhead}" VerticalAlignment="Center" Text="{Binding Name}"/>
                           <Border Style="{StaticResource BadgeRun}" Margin="10,0,0,0"
                                   Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibility}}">
                             <TextBlock Style="{StaticResource BadgeText}"
@@ -196,7 +183,7 @@
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                                    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
                                   </DataTrigger>
                                 </Style.Triggers>
                               </Style>
@@ -211,8 +198,10 @@
                         <controls:PropertyRow Label="{Binding [Studio.Settings.FieldProvider], Source={x:Static services:I18n.Instance}}">
                           <TextBlock VerticalAlignment="Center" Text="{Binding Provider}"/>
                         </controls:PropertyRow>
-                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldEndpoint], Source={x:Static services:I18n.Instance}}">
-                          <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Endpoint}">
+                        <!-- D10 (R21): the endpoint URL is the expert's; Novice reads the provider. -->
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldEndpoint], Source={x:Static services:I18n.Instance}}"
+                                              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
+                          <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
                             <TextBlock.Style>
                               <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
                                 <Setter Property="FontSize" Value="13"/>
@@ -230,15 +219,32 @@
                         </controls:PropertyRow>
                         <!-- STUDIO-48: the name a crew writes to run on this model — the host profile
                              Llm:Profiles:<id> of the settings file —, or why no crew can. -->
-                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldInFile], Source={x:Static services:I18n.Instance}}"
-                                              Visibility="{Binding HasHostIdText, Converter={StaticResource BooleanToVisibility}}">
+                        <!-- D10 (R21): Novice hides the profile id (« profile: studio »); a setting no
+                             crew can name still says why, in both modes. -->
+                        <controls:PropertyRow Label="{Binding [Studio.Settings.FieldInFile], Source={x:Static services:I18n.Instance}}">
+                          <controls:PropertyRow.Style>
+                            <Style TargetType="controls:PropertyRow" BasedOn="{StaticResource {x:Type controls:PropertyRow}}">
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasHostIdText}" Value="False">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                  <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsHostIdIssue}" Value="False"/>
+                                    <Condition Binding="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=views:SettingsView}}" Value="True"/>
+                                  </MultiDataTrigger.Conditions>
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                </MultiDataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </controls:PropertyRow.Style>
                           <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding HostIdText}">
                             <TextBlock.Style>
                               <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsHostIdIssue}" Value="True">
-                                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                                   </DataTrigger>
                                 </Style.Triggers>
                               </Style>
@@ -274,36 +280,28 @@
                              without being the default — every run reads that key as its default's. -->
                         <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}">
                           <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                     Foreground="{DynamicResource WarningBrush}" Text="{Binding DefaultKeyVariableWarning}"
+                                     Foreground="{DynamicResource WarningInkBrush}" Text="{Binding DefaultKeyVariableWarning}"
                                      Visibility="{Binding HasDefaultKeyVariableWarning, Converter={StaticResource BooleanToVisibility}}"/>
                         </StackPanel>
                         <controls:ActionBar ButtonHeight="32" Margin="0,10,0,0">
                           <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding SetDefaultCommand}"
-                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="badge-check" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding EditCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="pencil" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="copy" Size="16" Margin="0,0,7,0"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
-                          <Rectangle Style="{StaticResource VSeparator}" Margin="4,0,4,0"/>
-                          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Command="{Binding DeleteCommand}">
-                            <StackPanel Orientation="Horizontal">
-                              <controls:LucideIcon Kind="trash-2" Size="16" Margin="0,0,7,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                              <TextBlock Text="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
-                            </StackPanel>
-                          </Button>
+                                  Visibility="{Binding IsDefault, Converter={StaticResource InverseBooleanToVisibility}}"
+                                  controls:ButtonIcon.Kind="badge-check"
+                                  Content="{Binding [Studio.Settings.UseDefault], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding EditCommand}"
+                                  controls:ButtonIcon.Kind="pencil"
+                                  Content="{Binding [Studio.Settings.Edit], Source={x:Static services:I18n.Instance}}"/>
+                          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding DuplicateCommand}"
+                                  controls:ButtonIcon.Kind="copy"
+                                  Content="{Binding [Studio.Settings.Duplicate], Source={x:Static services:I18n.Instance}}"/>
+                          <Rectangle Style="{StaticResource ActionBarRule}"/>
+                          <!-- R06: removing a model is definitive — it takes the setting out of the
+                               profiles file and of the settings file at once, with no « Save » in
+                               between —, so it is the danger outline with its trash, at the end of
+                               the bar after a rule. -->
+                          <Button Style="{StaticResource BtnDanger}" controls:ButtonSize.Height="32" Command="{Binding DeleteCommand}"
+                                  controls:ButtonIcon.Kind="trash-2"
+                                  Content="{Binding [Studio.Settings.Delete], Source={x:Static services:I18n.Instance}}"/>
                         </controls:ActionBar>
                       </StackPanel>
                     </Border>
@@ -351,22 +349,23 @@
         <StackPanel>
           <!-- STUDIO-48 (GAP-19): the profile the document search calls, Orkeon:Rag:LlmProfile,
                chosen among the host profiles of the model tab. Expert, like the RAG settings of the limits tab. -->
+          <!-- B06 (R10): the list under its title and hint, at the medium width — the choice's label
+               (« default — the model marked default ») trims with « … » before the chevron. -->
           <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-            <DockPanel>
-              <ComboBox DockPanel.Dock="Right" Width="260" VerticalAlignment="Center"
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="scan-search" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Studio.Settings.RagLlmTitle], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                         Text="{Binding [Studio.Settings.RagLlmHint], Source={x:Static services:I18n.Instance}}"/>
+              <ComboBox Style="{StaticResource ComboM}" Margin="0,12,0,0"
                         ItemsSource="{Binding Profiles.RagProfileChoices}"
                         SelectedItem="{Binding Profiles.SelectedRagProfile}"
-                        DisplayMemberPath="Label"/>
-              <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="scan-search" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                  <TextBlock Style="{StaticResource CardTitle}"
-                             Text="{Binding [Studio.Settings.RagLlmTitle], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.RagLlmHint], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </DockPanel>
+                        DisplayMemberPath="Label"
+                        ToolTip="{Binding Profiles.SelectedRagProfile.Label}"/>
+            </StackPanel>
           </Border>
 
         </StackPanel>
@@ -389,7 +388,7 @@
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
                          Text="{Binding [Studio.Settings.Intro], Source={x:Static services:I18n.Instance}}"/>
-              <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource SecretRowTemplate}"/>
+              <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
             </StackPanel>
           </Border>
 
@@ -444,8 +443,9 @@
                         </Button>
                       </StackPanel>
                       <StackPanel>
-                        <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                                   Text="{Binding PhysicalPath}" TextTrimming="CharacterEllipsis"/>
+                        <!-- R09: the folder's path is cut in the middle, whole in its tooltip. -->
+                        <controls:MiddleEllipsisText Style="{StaticResource PathText}" FontWeight="SemiBold"
+                                                     Foreground="{DynamicResource InkBrush}" Text="{Binding PhysicalPath}"/>
                         <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0"
                                    Foreground="{DynamicResource InkFaintBrush}">
                           <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
@@ -463,10 +463,10 @@
                             <controls:LucideIcon.Style>
                               <Style TargetType="controls:LucideIcon">
                                 <Setter Property="Kind" Value="triangle-alert"/>
-                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource WarningIconBrush}"/>
                                 <Style.Triggers>
                                   <DataTrigger Binding="{Binding IsError}" Value="True">
-                                    <Setter Property="Kind" Value="circle-x"/>
+                                    <Setter Property="Kind" Value="ban"/>
                                     <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
                                   </DataTrigger>
                                 </Style.Triggers>
@@ -483,12 +483,8 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left"
-                    Command="{Binding Config.Mounts.AllowFolderCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Settings.Allow], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    Command="{Binding Config.Mounts.AllowFolderCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Settings.Allow], Source={x:Static services:I18n.Instance}}"/>
           </StackPanel>
 
           <StackPanel Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
@@ -497,7 +493,9 @@
           <Border Style="{StaticResource Well}" Margin="0,14,0,0" Padding="13,10"
                   Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="MOUNT STRINGS" Margin="0,0,0,5"/>
+              <!-- D01 (R18): the eyebrow is Studio's, translated; the strings below stay raw, in mono. -->
+              <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,5"
+                         Text="{Binding [Studio.Settings.MountStringsEyebrow], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
                        Text="{Binding [Studio.Settings.NoviceEmpty], Source={x:Static services:I18n.Instance}}"
                        Visibility="{Binding Config.Mounts.Mounts.Count, Converter={StaticResource ZeroToVisibility}}"/>
@@ -539,12 +537,21 @@
                                  Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                                  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                  Text="{Binding Label, Mode=OneWay}"/>
-                      <Border Style="{StaticResource BadgeOk}" Margin="8,0,0,0" MaxWidth="160"
-                              HorizontalAlignment="Right" VerticalAlignment="Center"
-                              ToolTip="{Binding RightsLabel, Mode=OneWay}">
-                        <TextBlock Style="{StaticResource BadgeText}" FontSize="13" TextTrimming="CharacterEllipsis"
-                                   Text="{Binding RightsBadge, Mode=OneWay}"/>
-                      </Border>
+                      <!-- R12: the rights pill of every screen — read-only neutral, read-write sky. -->
+                      <controls:Badge Margin="8,0,0,0" MaxWidth="160" HorizontalAlignment="Right"
+                                      ToolTip="{Binding RightsLabel, Mode=OneWay}">
+                        <controls:Badge.Style>
+                          <Style TargetType="controls:Badge" BasedOn="{StaticResource {x:Type controls:Badge}}">
+                            <Setter Property="Tone" Value="Neutral"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                                <Setter Property="Tone" Value="Info"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </controls:Badge.Style>
+                        <TextBlock TextTrimming="CharacterEllipsis" Text="{Binding RightsBadge, Mode=OneWay}"/>
+                      </controls:Badge>
                     </DockPanel>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -553,10 +560,22 @@
           </Border>
         </StackPanel>
       </controls:StepTab>
-      <controls:StepTab Tag="tools" Header="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"
+      <controls:StepTab Tag="toolkeys" Header="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ToolKeysTabSubtitle}" State="{Binding ToolKeysTabState}"
+                      Visibility="{Binding Tools.HasSecrets, Converter={StaticResource BooleanToVisibility}}">
+        <!-- ══ CLES DES OUTILS (STUDIO-21): the keys the tools need, a section of the Access group ══ -->
+        <views:ToolKeysView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="tools" Header="{Binding [Studio.Settings.ToolsTitle], Source={x:Static services:I18n.Instance}}"
                       Subtitle="{Binding ToolsTabSubtitle}">
-        <!-- ══ OUTILS (STUDIO-21): the tool keys, the catalogue, the shell allow-list ══ -->
+        <!-- ══ CATALOGUE DES OUTILS (STUDIO-21): every tool a run exposes, by family ══ -->
         <views:ToolsView/>
+      </controls:StepTab>
+      <controls:StepTab Tag="shell" Header="{Binding [Studio.Settings.ShellTitle], Source={x:Static services:I18n.Instance}}"
+                      Subtitle="{Binding ShellTabSubtitle}"
+                      Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+        <!-- ══ COMMANDES SHELL (expert, STUDIO-21): the shell allow-list ══ -->
+        <views:ShellToolsView/>
       </controls:StepTab>
       <controls:StepTab Tag="mails" Header="{Binding [Studio.Shell.Mails], Source={x:Static services:I18n.Instance}}"
                       Subtitle="{Binding MailsTabSubtitle}" State="{Binding MailsTabState}"

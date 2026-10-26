@@ -15,24 +15,12 @@
 
     <!-- file actions -->
     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding NewCommand}" Margin="0,0,8,0">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="file-plus-2" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.New], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding OpenCommand}" Margin="0,0,8,0">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.Open], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding LoadFromLocationCommand}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.Reload], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding NewCommand}" Margin="0,0,8,0"
+              controls:ButtonIcon.Kind="file-plus-2" Content="{Binding [Studio.Common.New], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding OpenCommand}" Margin="0,0,8,0"
+              controls:ButtonIcon.Kind="folder-open" Content="{Binding [Studio.Common.Open], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding LoadFromLocationCommand}"
+              controls:ButtonIcon.Kind="rotate-cw" Content="{Binding [Studio.Common.Reload], Source={x:Static services:I18n.Instance}}"/>
     </StackPanel>
 
     <!-- ══ Save location card ══ -->
@@ -52,8 +40,10 @@
               <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                          Text="{Binding [Studio.Settings.LocationGlobal], Source={x:Static services:I18n.Instance}}"/>
             </DockPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="0,3,0,0" Text="{Binding Location.GlobalPath}"/>
-            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,3,0,0"
+            <!-- B06 (R09): the path on one line, cut in the middle, whole in its tooltip. -->
+            <controls:MiddleEllipsisText Style="{StaticResource PathText}" Margin="0,3,0,0" HorizontalAlignment="Stretch"
+                                         Text="{Binding Location.GlobalPath}"/>
+            <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerInkBrush}" Margin="0,3,0,0"
                        Text="{Binding Location.GlobalPathError}"
                        Visibility="{Binding Location.GlobalPathError, Converter={StaticResource StringPresentToVisibility}}"/>
           </StackPanel>
@@ -107,17 +97,20 @@
         <!-- where a Save will actually land, so the chain above has a visible anchor -->
         <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                 CornerRadius="10" Padding="13,9" Margin="0,4,0,0">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="save" Size="13" Foreground="{DynamicResource AccentBrush}" Margin="0,1,8,0" VerticalAlignment="Center"/>
-            <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
+          <!-- B06 (R09): the label keeps its width, the path takes the rest and is cut in the middle. -->
+          <DockPanel>
+            <controls:LucideIcon DockPanel.Dock="Left" Kind="save" Size="13" Foreground="{DynamicResource AccentBrush}" Margin="0,1,8,0" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Left" FontSize="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
                        Text="{Binding [Studio.Settings.SaveTarget], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"
-                       Text="{Binding Location.GlobalPath}"
-                       Visibility="{Binding Location.IsGlobal, Converter={StaticResource BooleanToVisibility}}"/>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"
-                       Text="{Binding Location.CustomPath}"
-                       Visibility="{Binding Location.IsCustom, Converter={StaticResource BooleanToVisibility}}"/>
-          </StackPanel>
+            <Grid Margin="8,0,0,0">
+              <controls:MiddleEllipsisText Style="{StaticResource PathText}"
+                                           Text="{Binding Location.GlobalPath}"
+                                           Visibility="{Binding Location.IsGlobal, Converter={StaticResource BooleanToVisibility}}"/>
+              <controls:MiddleEllipsisText Style="{StaticResource PathText}"
+                                           Text="{Binding Location.CustomPath}"
+                                           Visibility="{Binding Location.IsCustom, Converter={StaticResource BooleanToVisibility}}"/>
+            </Grid>
+          </DockPanel>
         </Border>
       </StackPanel>
     </Border>

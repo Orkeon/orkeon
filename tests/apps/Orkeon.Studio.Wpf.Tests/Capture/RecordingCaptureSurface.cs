@@ -17,9 +17,21 @@ internal sealed class RecordingCaptureSurface : ICaptureSurface
     /// <summary>The tour stop currently shown, or null.</summary>
     public int? TourStep { get; private set; }
 
+    /// <summary>Every ViewModel a stop asked to bring into view since the last screen change.</summary>
+    public List<object> BroughtIntoView { get; } = [];
+
     public Task ShowAsync(CaptureScreen screen)
     {
         Visited.Add(screen);
+        // The real surface scrolls back to the top here: what was brought up belongs to the stop before.
+        BroughtIntoView.Clear();
+        return Task.CompletedTask;
+    }
+
+    public Task BringIntoViewAsync(object content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        BroughtIntoView.Add(content);
         return Task.CompletedTask;
     }
 

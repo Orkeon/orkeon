@@ -141,14 +141,14 @@ public sealed class LaunchTabsTests : IDisposable
     }
 
     [Fact]
-    public void Without_model_settings_the_model_list_offers_the_default_alone()
+    public void Without_model_settings_the_run_follows_the_default_and_names_no_setting()
     {
         var (tab, _) = Build(new FakeTargetProbe().WithFile("/crews/team.yaml"));
         tab.Target.Select("/crews/team.yaml");
 
-        var choice = Assert.Single(tab.ModelChoices);
-        Assert.Equal(RunModelChoiceKind.Default, choice.Kind);
-        Assert.Equal(choice, tab.SelectedModelChoice);
+        Assert.True(tab.RunUsesDefaultLlm);
+        Assert.False(tab.HasLlmProfiles);
+        Assert.Empty(tab.LlmProfiles);
     }
 
     [Fact]

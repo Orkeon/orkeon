@@ -181,10 +181,4 @@ public partial class CreateTeamView : UserControl
             }
         }
     }
-
-    private void OnToggleTech(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is ViewModels.Teams.CreateTeamViewModel vm)
-            vm.IsTechOpen = !vm.IsTechOpen;
-    }
 }

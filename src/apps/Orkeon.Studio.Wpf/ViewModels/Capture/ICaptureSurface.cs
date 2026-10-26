@@ -29,6 +29,16 @@ internal interface ICaptureSurface
     /// <summary>Closes the guided tour.</summary>
     void EndTour();
 
+    /// <summary>
+    /// Scrolls the screen until what presents <paramref name="content"/> (a ViewModel the screen
+    /// shows: a row of a list, the form of a selection) is in view. Only the scroll position
+    /// changes. A stop asks for it when its state sits under the fold and no gesture of the app
+    /// brings it up — a section further down the page, a tab switched on a selection already
+    /// made; a state a selection reaches is the app's to bring into view (R24), never this.
+    /// Every stop starts at the top of its screen: <see cref="ShowAsync"/> scrolls back there.
+    /// </summary>
+    Task BringIntoViewAsync(object content);
+
     /// <summary>Lets bindings, layout and the compositor catch up.</summary>
     Task SettleAsync();
 }

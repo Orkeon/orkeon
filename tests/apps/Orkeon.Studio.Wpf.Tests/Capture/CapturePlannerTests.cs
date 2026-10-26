@@ -108,8 +108,10 @@ public sealed class CapturePlannerTests
         // Refonte lot 12: +2 stops (executer-options, the Options tab of the launcher's classeur,
         // both modes, both themes = +4; executer-commande, the Command tab, expert only, both
         // themes = +2) = +6 shots.
-        Assert.Equal(75, CaptureCatalog.All.Count);
-        Assert.Equal(406, plan.Count);
+        // Settings > Access in three sections: +2 stops (reglages-cles-outils, both modes, both themes,
+        // language sweep = +8; reglages-shell, expert only, both themes = +2) = +10 shots.
+        Assert.Equal(77, CaptureCatalog.All.Count);
+        Assert.Equal(416, plan.Count);
     }
 
     [Fact]

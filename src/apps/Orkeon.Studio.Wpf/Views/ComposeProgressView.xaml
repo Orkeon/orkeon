@@ -17,7 +17,7 @@
       <DockPanel>
         <!-- Turning only while the engine is working. When it is waiting on YOU the title
              says so and nothing spins: a spinner over a question is the oldest lie here. -->
-        <controls:LucideIcon DockPanel.Dock="Left" Kind="loader-circle" Size="14" Margin="0,1,10,0"
+        <controls:LucideIcon DockPanel.Dock="Left" Kind="loader-circle" Size="14" Margin="0,3,10,0"
                              Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Top"
                              RenderTransformOrigin="0.5,0.5"
                              Visibility="{Binding IsWorking, Converter={StaticResource BooleanToVisibility}}">
@@ -37,12 +37,12 @@
         </controls:LucideIcon>
 
         <!-- The waiting state gets its own steady glyph: still something, but not motion. -->
-        <controls:LucideIcon DockPanel.Dock="Left" Kind="circle-help" Size="14" Margin="0,1,10,0"
+        <controls:LucideIcon DockPanel.Dock="Left" Kind="circle-help" Size="14" Margin="0,3,10,0"
                              Foreground="{DynamicResource MarkBrush}" VerticalAlignment="Top"
                              Visibility="{Binding IsWaiting, Converter={StaticResource BooleanToVisibility}}"/>
 
-        <TextBlock FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                   TextWrapping="Wrap" Text="{Binding Title}"/>
+        <!-- R11: a card's title, 16/600. -->
+        <TextBlock Style="{StaticResource CardTitle}" TextWrapping="Wrap" Text="{Binding Title}"/>
       </DockPanel>
 
       <!-- The model's own last words — or the sentence that admits there are none. -->
@@ -56,6 +56,7 @@
              than left to a symbol nobody has to decode. -->
         <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" Text="{Binding TokensNote}" Margin="0,0,12,0"
+                   ToolTip="{Binding TokensNote}"
                    Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
 
         <!-- What is already acquired. Facts only — a step that produced nothing says nothing. -->

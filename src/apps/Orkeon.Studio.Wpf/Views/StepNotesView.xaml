@@ -13,11 +13,12 @@
   <Border Style="{StaticResource Card}">
     <StackPanel>
       <StackPanel Orientation="Horizontal">
-        <controls:LucideIcon Kind="pencil" Size="15" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-        <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="10,0,0,0"
+        <controls:LucideIcon Kind="pencil" Size="16" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+        <!-- hrm D07 (R11): a card's title is a CardTitle, 16/600, on every step. -->
+        <TextBlock Style="{StaticResource CardTitle}" Margin="10,0,0,0" VerticalAlignment="Center"
                    Text="{Binding Title, ElementName=Root}"/>
       </StackPanel>
-      <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,7,0,12"
+      <TextBlock Style="{StaticResource MetaText}" Margin="0,7,0,12"
                  Text="{Binding [Studio.Create.NotesSub], Source={x:Static services:I18n.Instance}}"/>
 
       <!-- the field IS the consigne: typed text is taken as-is, no add step, no list -->

@@ -9,22 +9,22 @@ using System.Windows.Media;
 
 namespace Orkeon.Studio.Wpf.Controls;
 
-/// <summary>The state mark of a <see cref="StepTab"/> (refonte R14): one meaning per mark.</summary>
+/// <summary>The state mark of a <see cref="StepTab"/> (refonte R14, harmonisation R13): one meaning per mark, each its own icon, never a radio-like ring.</summary>
 public enum StepTabState
 {
-    /// <summary>An empty circle: optional, or nothing in it yet.</summary>
+    /// <summary>A grey dashed circle: upcoming, optional, or nothing in it yet.</summary>
     Empty,
 
     /// <summary>A green check: the section is done.</summary>
     Done,
 
-    /// <summary>An amber dot: an action of the user's is expected there — the step's wait point (R13).</summary>
+    /// <summary>An 8 px sand dot: an action of the user's is expected there — the step's wait point (R13).</summary>
     Expected,
 
-    /// <summary>An amber dot and the subtitle in the warning tone: something there needs fixing.</summary>
+    /// <summary>An 8 px sand dot and the subtitle in the warning tone: something there needs fixing.</summary>
     Warning,
 
-    /// <summary>A green dot: the section was checked and holds.</summary>
+    /// <summary>A green check (no circle): the section was checked and holds.</summary>
     Verified,
 
     /// <summary>A turning ring: the engine is working on the section.</summary>
@@ -92,7 +92,7 @@ public sealed class StepTabGroup : INotifyPropertyChanged
     /// <summary>The group's place in the bar.</summary>
     public int Index { get; }
 
-    /// <summary>The group's title, in capitals.</summary>
+    /// <summary>The group's title, as the catalogue writes it: sentence case, never forced to capitals (D05).</summary>
     public string Label { get => _label; internal set => Set(ref _label, value); }
 
     /// <summary>How many of its sections show (the expert-only ones are not counted in Novice).</summary>
@@ -117,10 +117,11 @@ public sealed class StepTabGroup : INotifyPropertyChanged
 }
 
 /// <summary>
-/// The vertical classeur of a step with sections (R14): a 232 px column of <see cref="StepTab"/>
-/// on the left, the selected section's pane on the right. The active tab runs into the pane;
-/// the space under the tabs holds <see cref="SideContent"/> — the Novice help card, nothing in
-/// Expert. The pane's own footer belongs to each section's content; the step's action bar
+/// The vertical classeur of a step with sections (R14, R13): a fixed 220 px column of <see cref="StepTab"/>
+/// on the left, the selected section's pane on the right. Every tab has the same left and width;
+/// the active one opens its right edge onto the pane. Right under the tabs, at a fixed place in
+/// the column, <see cref="SideContent"/> holds the Novice help « What this step does » (R21),
+/// nothing in Expert. The pane's own footer belongs to each section's content; the step's action bar
 /// stays outside the classeur.
 /// <para>
 /// Grouped (refonte lot 11): when a tab carries a <see cref="StepTab.Group"/>, the groups become
@@ -251,7 +252,7 @@ public sealed class StepTabs : TabControl
             {
                 var visible = tabs.Where(entry => entry.Group == index && entry.Tab.Visibility == Visibility.Visible).ToList();
                 var group = Groups[index];
-                group.Label = titles[index].ToUpper(System.Globalization.CultureInfo.CurrentUICulture);
+                group.Label = titles[index];
                 group.Count = visible.Count;
                 group.HasDot = visible.Any(entry => entry.Tab.State is StepTabState.Expected or StepTabState.Warning);
                 group.IsActive = index == _activeGroup;

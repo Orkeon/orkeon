@@ -4,12 +4,12 @@ using System.Windows.Controls;
 namespace Orkeon.Studio.Wpf.Controls;
 
 /// <summary>
-/// The four heights of a button (refonte R4): 28 for the button of a property row, 32 for
-/// toolbars and rows, 40 the default (fields, lists, buttons), 48 for the main input of a
-/// screen. Each height carries its own radius (6, 8, 10, 10), padding and font size, so a
-/// view says only <c>controls:ButtonSize.Height="32"</c> and the three button styles
-/// (<c>BtnPrimary</c>, <c>BtnSecondary</c>, <c>BtnDanger</c>) draw the rest.
-/// The template reads <see cref="CornerRadiusProperty"/> rather than a literal radius.
+/// The heights of a button. hrm R05: 40 is the default (a screen's actions, a form row), 32 the
+/// compact one (cards, lists, compact bars, the title bar); 28 survives for the button of a
+/// property row and 48 for the main input of a screen. Radius 10 from 32 up, 6 at 28 (the
+/// small square ones). Each height carries its padding and font size, so a view says only
+/// <c>controls:ButtonSize.Height="32"</c> and every style based on <c>BtnBase</c> draws the
+/// rest. The template reads <see cref="CornerRadiusProperty"/> rather than a literal radius.
 /// </summary>
 public static class ButtonSize
 {
@@ -55,8 +55,8 @@ public static class ButtonSize
         var (radius, padding, fontSize) = (double)e.NewValue switch
         {
             <= 28 => (6.0, 10.0, 13.0),
-            <= 32 => (8.0, 12.0, 13.0),
-            <= 40 => (10.0, 16.0, 13.5),
+            <= 32 => (10.0, 12.0, 13.0),
+            <= 40 => (10.0, 16.0, 14.0),
             _ => (10.0, 20.0, 15.0),
         };
 

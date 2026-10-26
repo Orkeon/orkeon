@@ -3,7 +3,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// <summary>
 /// One stop of the guided tour, as data.
 /// </summary>
-/// <param name="TargetName">The <c>x:Name</c> to spotlight; null for the centred closing step.</param>
+/// <param name="TargetName">The <c>x:Name</c> to spotlight; null, or a name drawn nowhere on screen, for a centred card.</param>
 /// <param name="TitleKey">Resource key of the title.</param>
 /// <param name="BodyKey">Resource key of the body.</param>
 public sealed record GuidedTourStep(string? TargetName, string TitleKey, string BodyKey);
@@ -25,6 +25,9 @@ public static class GuidedTourCatalog
         new("NavGroupTeams", "Studio.Shell.TourStep2Title", "Studio.Shell.TourStep2Body"),
         new("NavGroupWork", "Studio.Shell.TourStep3Title", "Studio.Shell.TourStep3Body"),
         new("NavGroupEnv", "Studio.Shell.TourStep4Title", "Studio.Shell.TourStep4Body"),
-        new(null, "Studio.Shell.TourStep5Title", "Studio.Shell.TourStep5Body"),
+        // The help slot of the section list (StepTabs' template part): the step names the real
+        // place of the Novice help and rings it. In Expert, or on a screen without steps, the slot
+        // is empty and the step falls back to the centred card.
+        new("SideSlot", "Studio.Shell.TourStep5Title", "Studio.Shell.TourStep5Body"),
     ];
 }

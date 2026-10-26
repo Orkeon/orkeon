@@ -120,10 +120,26 @@ public sealed class WizardAgentCard : ObservableObject
 }
 
 /// <summary>One line of the trial checklist.</summary>
-public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false)
+/// <param name="Statement">What the line checks: a criterion of the brief, or a finding.</param>
+/// <param name="Passed">The engine's result for the line; null while it is not judged.</param>
+/// <param name="Detail">The finding's text, when the engine wrote one.</param>
+/// <param name="IsRemark">Whether the finding blocks nothing: the criterion is still met.</param>
+/// <param name="IsCriterion">
+/// hrm:L04 (D02): whether the line is one of the brief's criteria; false for a finding that names
+/// none, which keeps its own mark (a remark's triangle, a failure's barred circle).
+/// </param>
+public sealed record WizardChecklistLine(string Statement, bool? Passed, string? Detail, bool IsRemark = false, bool IsCriterion = true)
 {
     /// <summary>Whether the line is a failure — a blocking finding: the red icon.</summary>
     public bool IsFailure => Passed == false && !IsRemark;
+
+    // hrm:L04 — presentation only (D02, R19): what the line's icon says, for the summary.
+    /// <summary>
+    /// Whether the criterion is met — the engine's rule for « passing »: no finding against it,
+    /// or a finding that blocks nothing (a remark). The line draws the check either way.
+    /// </summary>
+    public bool IsMet => Passed == true || IsRemark;
+    // hrm:L04 end
 }
 
 /// <summary>
@@ -3250,12 +3266,13 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         {
             // The blueprint speaks for itself: one card per agent, its own goal and tools,
             // and « Modifier » wired to the edit arbitration.
-            foreach (var agent in proposal.Agents)
+            var initials = AvatarInitials([.. proposal.Agents.Select(agent => agent.Role)]);
+            foreach (var (agent, initial) in proposal.Agents.Zip(initials))
             {
                 Agents.Add(new WizardAgentCard(
                     agent.Key,
                     agent.Role,
-                    agent.Role.Length > 0 ? agent.Role[..1].ToUpperInvariant() : "?",
+                    initial,
                     agent.Goal is { Length: > 0 } goal
                         ? goal
                         : string.Join(" ", proposal.Steps.Where(step => step.AgentRole == agent.Role).Select(step => step.Description)),
@@ -3269,13 +3286,15 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         }
 
         var fallback = _strings[StudioStringKeys.WizardAgentFallback];
-        foreach (var group in proposal.Steps.GroupBy(s => s.AgentRole ?? fallback))
+        var groups = proposal.Steps.GroupBy(s => s.AgentRole ?? fallback).ToList();
+        var groupInitials = AvatarInitials([.. groups.Select(group => group.Key)]);
+        foreach (var (group, initial) in groups.Zip(groupInitials))
         {
             var name = group.Key;
             Agents.Add(new WizardAgentCard(
                 key: null,
                 name,
-                name.Length > 0 ? name[..1].ToUpperInvariant() : "?",
+                initial,
                 string.Join(" ", group.Select(s => s.Description)),
                 tools: [],
                 edit: null,
@@ -3329,8 +3348,14 @@ public sealed partial class CreateTeamViewModel : ObservableObject
     private void SyncChecklist()
     {
         Checklist.Clear();
-        foreach (var item in _model.BuildChecklist())
-            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark));
+        var items = _model.BuildChecklist();
+        // hrm:L04 (D02): the criteria are the last lines; the findings that name none come first.
+        var firstCriterion = items.Count - Math.Min(_model.Criteria.Count, items.Count);
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            Checklist.Add(new WizardChecklistLine(item.Statement, item.Passed, item.Detail, item.IsRemark, index >= firstCriterion));
+        }
     }
 
     private void SyncDecisions()
@@ -3653,4 +3678,37 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         WizardFailureKind.PromoteRefused => _strings[StudioStringKeys.WizardFailurePromoteRefused],
         _ => _strings[StudioStringKeys.WizardFailureUnknown],
     };
+
+    // ── Presentation only (harmonisation rc.5, lot L03) ─────────────────────────────────
+    // What the cards draw, never what the team is: nothing here feeds the model or a command.
+
+    /// <summary>
+    /// D08: the avatars' letters of the agents shown together. A name keeps its one capital
+    /// unless another shown name starts with the same one: it then takes two letters — the
+    /// first two words' initials («Data Analyst» → «DA»), else its first two letters
+    /// («Writer» → «Wr», «Reviewer» → «Re»). An empty name stays «?».
+    /// </summary>
+    public static IReadOnlyList<string> AvatarInitials(IReadOnlyList<string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        var single = names.Select(name => name.Length > 0 ? name[..1].ToUpperInvariant() : "?").ToList();
+        var shared = single
+            .Where(initial => initial != "?")
+            .GroupBy(initial => initial, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        return [.. names.Select((name, index) => shared.Contains(single[index]) ? TwoLetters(name, single[index]) : single[index])];
+    }
+
+    private static string TwoLetters(string name, string single)
+    {
+        var words = name.Split([' ', '-', '_'], StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+            return string.Concat(words[0][..1].ToUpperInvariant(), words[1][..1].ToUpperInvariant());
+        var word = words.Length == 1 ? words[0] : name;
+        return word.Length >= 2
+            ? string.Concat(word[..1].ToUpperInvariant(), char.ToLowerInvariant(word[1]).ToString())
+            : single;
+    }
 }

@@ -483,4 +483,28 @@ public sealed class MountsEditorViewModelTests
         Assert.False(editor.ToggleRightsCommand.CanExecute("not a row"));
         Assert.Equal(["/a:/docs:ro", "/a:/tmp:ro"], editor.ToRawEntries().Select(e => MountDefinition.Parse(e).WithoutId().ToMountString()));
     }
+
+    /// <summary>
+    /// A row « Add » creates has no folder yet. The editor says so itself, without a trip through
+    /// the parser, which refuses an empty path with an exception, nor through the disk probe.
+    /// </summary>
+    [Fact]
+    public void Should_FlagAnUnchosenFolderWithoutParsingOrProbing_When_ARowIsAdded()
+    {
+        var probe = new FakeDirectoryProbe("/a");
+        var editor = new MountsEditorViewModel(probe, requireAtLeastOne: true);
+
+        var added = editor.AddMount();
+
+        Assert.NotNull(added.RowProblem);
+        Assert.Equal(ValidationCodes.MountPathEmpty, added.RowProblem!.Code);
+        Assert.True(editor.HasErrors);
+        Assert.DoesNotContain(editor.ValidationMessages, m => m.Code is ValidationCodes.MountFormat or ValidationCodes.MountsEmpty);
+        Assert.DoesNotContain(probe.ExistsCalls.Keys, path => string.IsNullOrWhiteSpace(path));
+
+        added.PhysicalPath = "/a";
+
+        Assert.Null(added.RowProblem);
+        Assert.False(editor.HasErrors);
+    }
 }

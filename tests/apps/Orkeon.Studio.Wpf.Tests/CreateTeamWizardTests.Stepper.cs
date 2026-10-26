@@ -165,8 +165,51 @@ public partial class CreateTeamWizardTests
         Assert.True(remark.IsRemark);
         Assert.False(remark.IsFailure);
         Assert.True(vm.Checklist[1].Passed);
+        // hrm D02: a remark is met; its line draws the check, the remark as a note under it.
+        Assert.True(remark.IsMet);
+        Assert.True(vm.Checklist[1].IsMet);
         Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
         Assert.True(vm.HasVerdictSummary);
+    }
+
+    [Fact]
+    public async Task The_summary_counts_remarks_as_met_even_when_the_score_fails_the_verdict()
+    {
+        // hrm D02 (020): a remark on every criterion and a failing verdict at 0.41 — the two
+        // criteria are met (two checks on screen); the score alone fails the trial, on its badge.
+        var (vm, processes, _) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefTwoCriteria));
+            processes.Emit(Out(
+                """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.41,"passing":false,"judge":"llm","findings":[{"id":"F1","severity":"minor","acceptance":"A1","statement":"Une source manque"},{"id":"F2","severity":"major","acceptance":"A2","statement":"Trop long"}],"suggestions":[]}"""));
+        };
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.All(vm.Checklist, line => Assert.True(line.IsMet));
+        Assert.False(vm.VerdictPassing);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
+    }
+
+    [Fact]
+    public async Task The_summary_counts_a_blocking_finding_as_not_met()
+    {
+        var (vm, processes, _) = Build();
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(BriefTwoCriteria));
+            processes.Emit(Out(
+                """{"v":2,"seq":9,"ts":"t","kind":"verdict.ready","score":0.3,"passing":false,"judge":"llm","findings":[{"id":"F1","severity":"blocking","acceptance":"A2","statement":"Aucune source"}],"suggestions":[]}"""));
+        };
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        var met = vm.Checklist.Count(line => line.IsMet);
+        Assert.Equal(1, met);
+        Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, met, 2), vm.VerdictSummary);
     }
 
     [Fact]
@@ -184,6 +227,10 @@ public partial class CreateTeamWizardTests
         await Compose(vm);
 
         Assert.Equal(3, vm.Checklist.Count);
+        // hrm D02: the orphan finding keeps its own mark; the two criteria draw the check.
+        Assert.False(vm.Checklist[0].IsCriterion);
+        Assert.True(vm.Checklist[1].IsCriterion);
+        Assert.True(vm.Checklist[2].IsCriterion);
         Assert.Equal(EnglishStudioStrings.Instance.Format(StudioStringKeys.WizardVerdictSummary, 2, 2), vm.VerdictSummary);
     }
 
