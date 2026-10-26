@@ -108,12 +108,23 @@
                     </Style>
                   </TextBlock.Style>
                 </TextBlock>
-                <!-- One word, bounded, the full label in the tooltip: the name never shrinks. -->
-                <Border Style="{StaticResource BadgeOk}" Margin="6,0,0,0" MaxWidth="160"
+                <!-- Bounded, the full label in the tooltip: the name never shrinks. C13 (R12): the
+                     shared rights pill, «Read only» neutral, every writing right sky. -->
+                <Border Margin="6,0,0,0" MaxWidth="160"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
                         ToolTip="{Binding RightsLabel, Mode=OneWay}"
                         Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="13" TextTrimming="CharacterEllipsis"
+                  <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource BadgeSky}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Rights}" Value="ReadOnly">
+                          <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                          <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Border.Style>
+                  <TextBlock Style="{StaticResource BadgeText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                              Text="{Binding RightsBadge, Mode=OneWay}"/>
                 </Border>
               </DockPanel>
