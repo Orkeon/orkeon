@@ -1326,9 +1326,6 @@
   <data name="Studio.Create.TechTitle" xml:space="preserve">
     <value>技术日志</value>
   </data>
-  <data name="Studio.Create.TechToggle" xml:space="preserve">
-    <value>显示 / 隐藏</value>
-  </data>
   <data name="Studio.Create.NotesSub" xml:space="preserve">
     <value>指令适用于所有智能体，随团队一起保存，并成为试运行时的检查点。</value>
   </data>

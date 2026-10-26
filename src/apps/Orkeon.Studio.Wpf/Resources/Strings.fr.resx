@@ -485,7 +485,6 @@
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Consigne d'essai</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Consigne d'adoption</value></data>
 <data name="Studio.Create.TechTitle" xml:space="preserve"><value>Journal technique</value></data>
-<data name="Studio.Create.TechToggle" xml:space="preserve"><value>Voir / masquer</value></data>
 <data name="Studio.Create.NotesSub" xml:space="preserve"><value>Une consigne s'applique à tous les agents, part avec l'équipe et devient un point à vérifier à l'essai.</value></data>
 <data name="Studio.Create.Taken" xml:space="preserve"><value>Consigne prise en compte telle quelle.</value></data>
 <data name="Studio.Teams.Create" xml:space="preserve"><value>Créer une équipe</value></data>

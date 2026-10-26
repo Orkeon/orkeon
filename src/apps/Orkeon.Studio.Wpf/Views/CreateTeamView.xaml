@@ -1275,23 +1275,17 @@
                   <TextBlock FontSize="13" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap" Text="{Binding CompositionDraftText}"/>
                 </controls:PropertyRow>
                 <WrapPanel Margin="0,12,0,0">
-                  <!-- Expert: the technical journal, folded by default. -->
-                  <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4" Click="OnToggleTech"
-                          Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"
-                          Content="{Binding [Studio.Create.TechTitle], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="scroll-text"/>
                   <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,4"
                           Command="{Binding OpenFolderCommand}"
                           ToolTip="{Binding OpenFolderTooltip}" ToolTipService.ShowOnDisabled="True"
                           Visibility="{Binding HasShellOpener, Converter={StaticResource BooleanToVisibility}}"
                           Content="{Binding [Studio.Create.OpenDraft], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="folder-open"/>
                 </WrapPanel>
-                <Border Margin="0,8,0,0">
-                  <Border.Visibility>
-                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
-                      <Binding Path="DataContext.Mode.IsExpert" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                      <Binding Path="IsTechOpen"/>
-                    </MultiBinding>
-                  </Border.Visibility>
+                <!-- Expert: the technical journal, folded by default (R16, C12): the stable label and
+                     its chevron, the journal in mono under it once open. -->
+                <controls:Disclosure Margin="0,8,0,0" IsExpanded="{Binding IsTechOpen}"
+                                     Header="{Binding [Studio.Create.TechTitle], Source={x:Static services:I18n.Instance}}"
+                                     Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
                   <StackPanel>
                     <DockPanel Margin="0,0,0,6">
                       <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
@@ -1313,7 +1307,7 @@
                       </ScrollViewer>
                     </Border>
                   </StackPanel>
-                </Border>
+                </controls:Disclosure>
               </StackPanel>
             </DockPanel>
           </controls:StepTab>
@@ -1843,34 +1837,32 @@
             </Style.Triggers>
           </Style>
         </Border.Style>
-        <StackPanel>
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Click="OnToggleTech"
-            Content="{Binding [Studio.Create.TechToggle], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="eye"/>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13"
-                    Margin="0,0,8,0" Click="OnCopyTechJournal"
-                    Visibility="{Binding RawLog.Lines.Count, Converter={StaticResource CountToVisibility}}"
-                    Content="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}" controls:ButtonIcon.Kind="copy"/>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"
-                         Text="{Binding [Studio.Create.TechTitle], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource CardHeaderMeta}" MaxWidth="300" Text="{Binding SessionSlug}"/>
-            </StackPanel>
-          </DockPanel>
-          <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="8" Margin="0,12,0,0"
-                  MaxHeight="230" Visibility="{Binding IsTechOpen, Converter={StaticResource BooleanToVisibility}}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding RawLog.Lines}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Padding="6,1"
-                               Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-          </Border>
-        </StackPanel>
+        <!-- R16 (C12): « Technical journal » is the fold's own label and chevron, never an eye or
+             « Show / hide »; the session's name and « Copy » stay on the header's right. -->
+        <Grid>
+          <controls:Disclosure IsExpanded="{Binding IsTechOpen}"
+                               Header="{Binding [Studio.Create.TechTitle], Source={x:Static services:I18n.Instance}}">
+            <Border Background="{DynamicResource ConsoleBgBrush}" CornerRadius="9" Padding="8" Margin="0,6,0,0" MaxHeight="230">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding RawLog.Lines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Padding="6,1"
+                                   Foreground="{DynamicResource ConsoleFgBrush}" TextWrapping="Wrap" Text="{Binding Text}"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+            </Border>
+          </controls:Disclosure>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <TextBlock Style="{StaticResource CardHeaderMeta}" MaxWidth="300" VerticalAlignment="Center" Text="{Binding SessionSlug}"/>
+            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="8,0,0,0"
+                    Click="OnCopyTechJournal" controls:ButtonIcon.Kind="copy"
+                    Content="{Binding [Studio.Run.JournalCopy], Source={x:Static services:I18n.Instance}}"
+                    Visibility="{Binding RawLog.Lines.Count, Converter={StaticResource CountToVisibility}}"/>
+          </StackPanel>
+        </Grid>
       </Border>
     </StackPanel>
 

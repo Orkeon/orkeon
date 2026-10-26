@@ -1326,9 +1326,6 @@
   <data name="Studio.Create.TechTitle" xml:space="preserve">
     <value>Technisches Protokoll</value>
   </data>
-  <data name="Studio.Create.TechToggle" xml:space="preserve">
-    <value>Ein-/ausblenden</value>
-  </data>
   <data name="Studio.Create.NotesSub" xml:space="preserve">
     <value>Eine Anweisung gilt für alle Agenten, reist mit dem Team und wird beim Probelauf zum Prüfpunkt.</value>
   </data>

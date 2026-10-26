@@ -1326,9 +1326,6 @@
   <data name="Studio.Create.TechTitle" xml:space="preserve">
     <value>Registro técnico</value>
   </data>
-  <data name="Studio.Create.TechToggle" xml:space="preserve">
-    <value>Ver / ocultar</value>
-  </data>
   <data name="Studio.Create.NotesSub" xml:space="preserve">
     <value>Una instrucción se aplica a todos los agentes, viaja con el equipo y se convierte en un punto a verificar en la prueba.</value>
   </data>
