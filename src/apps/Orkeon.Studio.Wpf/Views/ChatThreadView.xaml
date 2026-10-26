@@ -248,7 +248,11 @@
               <!-- The placeholder: the question's own example while one is on the table,
                    the neutral invitation otherwise. WPF has no watermark, and one overlay
                    is cheaper than an attached property nothing else would use. -->
-              <TextBlock IsHitTestVisible="False" FontSize="13" Margin="12,10,0,0" TextTrimming="CharacterEllipsis"
+              <!-- B10: it wraps inside the box, on the typed text's 12 px inset, rather than
+                   cutting on its first line; only past the box's five lines does it trim. -->
+              <TextBlock IsHitTestVisible="False" FontSize="13" Margin="13,10,13,10" TextWrapping="Wrap"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Top"
+                         MaxHeight="{Binding ActualHeight, ElementName=Composer}"
                          Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Placeholder}"
                          Visibility="{Binding Text, ElementName=Composer, Converter={StaticResource StringPresentToVisibility}, ConverterParameter=invert}"/>
             </Grid>
@@ -306,7 +310,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
               <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
                          Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Primer}"/>
@@ -328,7 +332,7 @@
                             CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
                       <Border.Style>
                         <Style TargetType="Border">
-                          <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+                          <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                           <Style.Triggers>
                             <!-- the closing bubble: the brief is complete, and it reads that way -->
                             <DataTrigger Binding="{Binding IsClosing}" Value="True">
@@ -379,9 +383,12 @@
                     </Border>
                   </DockPanel>
 
-                  <!-- the user, on the right, no avatar: the corner says who spoke -->
-                  <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentWeakBrush}"
+                  <!-- the user, on the right, no avatar, on sky (C19, R22): the assistant's bubbles
+                       are neutral and start after its 35 px avatar column; the user's start 56 px
+                       in, so a bubble that fills its line still reads as the other side's. -->
+                  <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource InfoBorderBrush}"
                           BorderThickness="1" CornerRadius="13,4,13,13" Padding="13,11" HorizontalAlignment="Right"
+                          Margin="56,0,0,0"
                           Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibility}}">
                     <controls:MarkdownText FontSize="13" LineHeight="19" Source="{Binding Body}"
                                            CodeFontFamily="{StaticResource MonoFont}"
@@ -413,7 +420,7 @@
             <Border CornerRadius="4,13,13,13" HorizontalAlignment="Left">
               <Border.Style>
                 <Style TargetType="Border">
-                  <Setter Property="Background" Value="{DynamicResource SkyBrush}"/>
+                  <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                   <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
                   <Setter Property="BorderThickness" Value="1"/>
                   <Setter Property="Padding" Value="13,11"/>
@@ -462,7 +469,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource WarningBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource WarningBorderBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="13,11" HorizontalAlignment="Left">
               <StackPanel>
                 <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="18.5"
@@ -486,7 +493,7 @@
               <controls:LucideIcon Kind="wand-2" Size="13" Foreground="{DynamicResource MarkBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
-            <Border Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}"
+            <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="4,13,13,13" Padding="14,10" HorizontalAlignment="Left">
               <StackPanel Orientation="Horizontal">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,11,0">
