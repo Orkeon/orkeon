@@ -15,24 +15,12 @@
 
     <!-- file actions -->
     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding NewCommand}" Margin="0,0,8,0">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="file-plus-2" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.New], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding OpenCommand}" Margin="0,0,8,0">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.Open], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
-      <Button Style="{StaticResource BtnSecondary}" Command="{Binding LoadFromLocationCommand}">
-        <StackPanel Orientation="Horizontal">
-          <controls:LucideIcon Kind="rotate-cw" Size="13" Margin="0,0,7,0"/>
-          <TextBlock Text="{Binding [Studio.Common.Reload], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </Button>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding NewCommand}" Margin="0,0,8,0"
+              controls:ButtonIcon.Kind="file-plus-2" Content="{Binding [Studio.Common.New], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding OpenCommand}" Margin="0,0,8,0"
+              controls:ButtonIcon.Kind="folder-open" Content="{Binding [Studio.Common.Open], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource BtnSecondary}" Command="{Binding LoadFromLocationCommand}"
+              controls:ButtonIcon.Kind="rotate-cw" Content="{Binding [Studio.Common.Reload], Source={x:Static services:I18n.Instance}}"/>
     </StackPanel>
 
     <!-- ══ Save location card ══ -->

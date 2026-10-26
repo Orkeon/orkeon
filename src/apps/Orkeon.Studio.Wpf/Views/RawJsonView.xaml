@@ -10,12 +10,9 @@
     <Border Style="{StaticResource Card}" Padding="0">
       <StackPanel>
         <DockPanel Margin="22,14,14,0">
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Click="OnCopy">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="copy" Size="13" Margin="0,0,7,0"/>
-              <TextBlock Text="{Binding [Studio.Settings.Copy], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Click="OnCopy"
+                  controls:ButtonIcon.Kind="copy"
+                  Content="{Binding [Studio.Settings.Copy], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <controls:LucideIcon Kind="lock" Size="12" Margin="0,0,7,0"/>
             <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
@@ -25,7 +22,7 @@
         <TextBox Text="{Binding RawJson, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
                  Background="{DynamicResource PaperSunkBrush}" Foreground="{DynamicResource InkMutedBrush}"
                  FontFamily="{StaticResource MonoFont}" FontSize="13" Padding="22,14,22,18" Margin="0,12,0,0"
-                 MaxHeight="420"
+                 Height="Auto" MaxHeight="420"
                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
       </StackPanel>
     </Border>

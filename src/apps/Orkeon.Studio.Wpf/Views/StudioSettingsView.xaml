@@ -28,7 +28,7 @@
 
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,5"
                    Text="{Binding [Studio.Settings.BalanceRefreshLabel], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left"
+        <ComboBox Style="{StaticResource ComboM}"
                   ItemsSource="{Binding Studio.RefreshChoices}"
                   SelectedItem="{Binding Studio.SelectedRefresh}"
                   DisplayMemberPath="Label"/>
@@ -74,7 +74,7 @@
         </StackPanel>
         <TextBlock Style="{StaticResource Hint}"
                    Text="{Binding [Studio.Settings.StatusScopeHint], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left" Margin="0,12,0,0"
+        <ComboBox Style="{StaticResource ComboM}" Margin="0,12,0,0"
                   AutomationProperties.AutomationId="TokenScope"
                   SelectedValuePath="Tag"
                   SelectedValue="{Binding DataContext.StatusBar.TokenScope, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}">
@@ -102,7 +102,7 @@
 
         <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                    Text="{Binding [Studio.Settings.ArchiveSuggestionLabel], Source={x:Static services:I18n.Instance}}"/>
-        <ComboBox Width="260" HorizontalAlignment="Left"
+        <ComboBox Style="{StaticResource ComboM}"
                   ItemsSource="{Binding Studio.ArchiveSuggestionChoices}"
                   SelectedItem="{Binding Studio.SelectedArchiveSuggestion}"
                   DisplayMemberPath="Label"
