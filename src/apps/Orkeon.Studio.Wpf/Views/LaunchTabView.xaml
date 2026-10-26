@@ -94,8 +94,8 @@
             </Border>
 
             <StackPanel IsEnabled="{Binding IsEditable}">
-              <!-- The team by name, then the model this run takes (STUDIO-73). « Default (X) »,
-                   « The team's (Y) », the settings by name: the list replaces the old checkbox.
+              <!-- The team by name, then the model this run takes (STUDIO-73): the box « Use the
+                   default model (X) » and the settings by name, the team card's own editor.
                    R10: each label above its field; both lists are the theme's M width (320). -->
               <WrapPanel>
                 <StackPanel Margin="0,0,24,8">
@@ -139,14 +139,20 @@
                             Visibility="{Binding HasTeamCard, Converter={StaticResource BooleanToVisibility}}">
                   <TextBlock Style="{StaticResource FieldLabel}"
                              Text="{Binding [Studio.Run.LblModel], Source={x:Static services:I18n.Instance}}"/>
-                  <StackPanel Orientation="Horizontal">
-                    <!-- Selected by key, not by item, over a list the view model changes in place as the team
-                         and the settings load: a list swapped under the combo left the box empty on arrival.
-                         The path comes before the value, so the first value is resolved with it. -->
-                    <ComboBox Style="{StaticResource ComboM}" VerticalAlignment="Center" ItemsSource="{Binding ModelChoices}"
-                              SelectedValuePath="Key" SelectedValue="{Binding SelectedModelKey}" DisplayMemberPath="Label"
-                              ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
-                    <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0"
+                  <!-- The team card's « Change the model » editor, as is (TeamsView): the box « Use the
+                       default model (X) », then the settings of this machine by name, held by plain
+                       strings. A list of entries selected by item or by key stayed empty on arrival. -->
+                  <CheckBox IsChecked="{Binding RunUsesDefaultLlm}" IsEnabled="{Binding HasLlmProfiles}"
+                            Foreground="{DynamicResource InkBrush}" Content="{Binding UseDefaultLlmLabel}"
+                            ToolTip="{Binding [Studio.Teams.UseDefaultLlmHint], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,7,0,0"
+                              Visibility="{Binding RunUsesDefaultLlm, Converter={StaticResource InverseBooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Text="{Binding [Studio.Teams.PinnedLlm], Source={x:Static services:I18n.Instance}}"/>
+                    <ComboBox Style="{StaticResource ComboM}" ItemsSource="{Binding LlmProfiles}" SelectedItem="{Binding RunLlmProfile}"/>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                    <Button Style="{StaticResource BtnSecondary}"
                             VerticalAlignment="Center" Command="{Binding RememberLlmForTeamCommand}"
                             Content="{Binding [Studio.Run.RememberLlmForTeam], Source={x:Static services:I18n.Instance}}"
                             Visibility="{Binding CanRememberLlmForTeam, Converter={StaticResource BooleanToVisibility}}"/>
