@@ -94,20 +94,21 @@
               <StackPanel>
               <DockPanel LastChildFill="True">
                 <!-- an unparseable entry keeps its raw text visible instead of a blank, healthy-looking row -->
-                <TextBlock DockPanel.Dock="Left" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
-                  <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
-                      <Setter Property="FontSize" Value="13"/>
+                <!-- B06 (R09): a path is cut in the middle, the whole of it in the tooltip. -->
+                <controls:MiddleEllipsisText DockPanel.Dock="Left">
+                  <controls:MiddleEllipsisText.Style>
+                    <Style TargetType="{x:Type controls:MiddleEllipsisText}" BasedOn="{StaticResource PathText}">
+                      <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
                       <Setter Property="Text" Value="{Binding VirtualPath, Mode=OneWay}"/>
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsParsed}" Value="False">
                           <Setter Property="Text" Value="{Binding RawText, Mode=OneWay}"/>
-                          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource WarningInkBrush}"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
-                  </TextBlock.Style>
-                </TextBlock>
+                  </controls:MiddleEllipsisText.Style>
+                </controls:MiddleEllipsisText>
                 <!-- Bounded, the full label in the tooltip: the name never shrinks. C13 (R12): the
                      shared rights pill, «Read only» neutral, every writing right sky. -->
                 <Border Margin="6,0,0,0" MaxWidth="160"
@@ -189,15 +190,18 @@
           <StackPanel Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
 
             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblPhysical], Source={x:Static services:I18n.Instance}}"/>
-            <DockPanel>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
-                      Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
-              <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" FontSize="13" Margin="8,0,0,0"
+            <!-- B06 (R09): the path takes the whole column (it was cut at ~290 px beside its two
+                 buttons), its full value in the tooltip; the buttons, same order, go under it. -->
+            <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="{Binding PhysicalPath, Mode=OneWay}" ToolTipService.ShowOnDisabled="True"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0"
                       Command="{Binding DataContext.CreatePhysicalFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                       Content="{Binding [Studio.Settings.CreateFolder], Source={x:Static services:I18n.Instance}}"/>
-              <TextBox Style="{StaticResource InputMono}" Text="{Binding PhysicalPath, UpdateSourceTrigger=PropertyChanged}"/>
-            </DockPanel>
+              <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                      Command="{Binding DataContext.BrowsePhysicalPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                      Content="{Binding [Studio.Common.Browse], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
 
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0" Text="{Binding [Studio.Settings.LblVirtual], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMono}" Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
