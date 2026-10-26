@@ -394,4 +394,61 @@ public partial class MainWindow : Window
 
     /// <summary>The draft note under the nav: one click puts the unfinished creation back in front.</summary>
     private void OnResumeDraft(object sender, RoutedEventArgs e) => NavCreate.IsChecked = true;
+
+    /// <summary>The assistant's panel width, as the markup declares it.</summary>
+    private const double AssistantPanelWidth = 420;
+
+    /// <summary>
+    /// The narrowest content column the docked panel may leave: 720 px of content plus the two
+    /// 48 px gutters of the screens' scroll host (R15). Below it the panel overlays the content.
+    /// </summary>
+    private const double MinDockedContentWidth = 720 + 2 * 48;
+
+    /// <summary>The toast's clearance: 16 px above the status bar, 16 px off the 8 px scroll bar (R15, A09).</summary>
+    private const double ToastBottomMargin = 16;
+    private const double ToastRightMargin = 8 + 16;
+
+    /// <summary>Hooks the panel's placement to the width of the content host it lives in.</summary>
+    private void OnAssistantPanelLoaded(object sender, RoutedEventArgs e)
+    {
+        if (AssistantPanel.Parent is not FrameworkElement host)
+            return;
+
+        host.SizeChanged -= OnAssistantHostSizeChanged;
+        host.SizeChanged += OnAssistantHostSizeChanged;
+        AssistantPanel.IsVisibleChanged -= OnAssistantPanelVisibleChanged;
+        AssistantPanel.IsVisibleChanged += OnAssistantPanelVisibleChanged;
+        PlaceAssistantPanel(host.ActualWidth);
+    }
+
+    private void OnAssistantHostSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged)
+            PlaceAssistantPanel(e.NewSize.Width);
+    }
+
+    private void OnAssistantPanelVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (AssistantPanel.Parent is FrameworkElement host)
+            PlaceAssistantPanel(host.ActualWidth);
+    }
+
+    /// <summary>
+    /// R15 (A06, B04, C18): docked beside the content while the content keeps its 720 px, laid
+    /// over it otherwise — right-aligned in the content column, above the screens, shadowed. Only
+    /// the placement changes; the panel, its scroll and its commands stay the same. The archive
+    /// toast moves left of an overlaying panel so the panel never hides it.
+    /// </summary>
+    private void PlaceAssistantPanel(double hostWidth)
+    {
+        var overlay = hostWidth > 0 && hostWidth - AssistantPanelWidth < MinDockedContentWidth;
+
+        System.Windows.Controls.Grid.SetColumn(AssistantPanel, overlay ? 0 : 1);
+        System.Windows.Controls.Panel.SetZIndex(AssistantPanel, overlay ? 20 : 0);
+        AssistantPanel.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        AssistantPanel.Effect = overlay ? TryFindResource("ShadowLg") as System.Windows.Media.Effects.Effect : null;
+
+        var panelClearance = overlay && AssistantPanel.IsVisible ? AssistantPanelWidth : 0;
+        ArchiveUndoToast.Margin = new Thickness(0, 0, panelClearance + ToastRightMargin, ToastBottomMargin);
+    }
 }

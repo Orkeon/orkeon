@@ -409,9 +409,14 @@
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+        <!-- R15 (A06, B04, C18): an anchored 420 px panel with its own scroll bar. It docks in
+             the Auto column while the content keeps 720 px beside it; narrower, it lays over the
+             content, right-aligned and shadowed, instead of squeezing it (PlaceAssistantPanel).
+             Closed, it is collapsed: the Auto column reserves nothing. -->
         <views:ChatThreadView x:Name="AssistantPanel" Grid.Column="1" Width="420"
                               AutomationProperties.AutomationId="AssistantPanel"
                               DataContext="{Binding Chat}"
+                              Loaded="OnAssistantPanelLoaded"
                               Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
         <!-- STUDIO-32 (D-02), refonte lot 2: « Archive » asks nothing; its undo is this toast at the
              bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen. -->
