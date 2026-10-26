@@ -349,14 +349,34 @@ public sealed class DiagnosticViewModel : ObservableObject
     /// <summary>Re-reads the settings file's state after a validation.</summary>
     internal void RefreshSettingsFile() => OnPropertiesChanged(
         nameof(IsSettingsFileInvalid), nameof(SettingsFileSentence), nameof(IssueCount),
-        nameof(HasIssues), nameof(VerdictHeadline));
+        nameof(HasIssues), nameof(VerdictHeadline), nameof(VerdictDetail));
 
     private Func<bool>? _settingsFileInvalid;
 
-    /// <summary>"2 checks passed, 1 warning, 0 failures." under the headline.</summary>
+    /// <summary>
+    /// "2 checks passed, 1 warning, 0 failures." under the headline (D02, R19): counted from the
+    /// rows the screen lists - Studio's own settings-file line, then doctor's checks. The unusable
+    /// report (a missing engine, an unreadable output) is not a row: it is the error banner above.
+    /// </summary>
     public string VerdictDetail => _strings.Format(
         StudioStringKeys.DiagCounts,
-        OkCount, WarningCount, FailureCount);
+        ShownOkCount, ShownWarningCount, ShownFailureCount);
+
+    /// <summary>The rows of the list that are green: the checks, and the settings file when valid.</summary>
+    public int ShownOkCount => OkCount + (IsSettingsFileInvalid ? 0 : 1);
+
+    /// <summary>The rows of the list that warn.</summary>
+    public int ShownWarningCount => WarningCount;
+
+    /// <summary>The rows of the list that failed: the checks, and the settings file when it has errors.</summary>
+    public int ShownFailureCount =>
+        Checks.Count(c => c.Status == DoctorStatus.Failure) + (IsSettingsFileInvalid ? 1 : 0);
+
+    /// <summary>
+    /// Whether the unusable report is a missing engine (doctor never started): the banner then says
+    /// « The Orkeon engine was not found on this machine. », and an unreadable output otherwise.
+    /// </summary>
+    public bool IsEngineMissing => _lastReport?.Run.Outcome == RunOutcome.NotStarted;
 
     /// <summary>The "copied!" feedback of the header button; the view resets it after ~1.6 s.</summary>
     public bool ReportCopied
@@ -486,6 +506,7 @@ public sealed class DiagnosticViewModel : ObservableObject
             OnPropertyChanged(nameof(IssueCount));
             OnPropertyChanged(nameof(VerdictHeadline));
             OnPropertyChanged(nameof(VerdictDetail));
+            OnPropertyChanged(nameof(IsEngineMissing));
         });
 
         return report;

@@ -4220,6 +4220,7 @@
 
   <!-- hrm:L09 begin -->
   <data name="Studio.History.EmptyTitle" xml:space="preserve"><value>Der Verlauf ist leer</value></data>
+  <data name="Studio.Diagnostics.ReportUnreadable" xml:space="preserve"><value>Der Diagnosebericht ist nicht lesbar.</value></data>
   <!-- hrm:L09 end -->
 
   <!-- hrm:L10 begin -->

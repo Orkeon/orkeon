@@ -2532,6 +2532,7 @@
 
   <!-- hrm:L09 begin -->
   <data name="Studio.History.EmptyTitle" xml:space="preserve"><value>History is empty</value></data>
+  <data name="Studio.Diagnostics.ReportUnreadable" xml:space="preserve"><value>The diagnostic report could not be read.</value></data>
   <!-- hrm:L09 end -->
 
   <!-- hrm:L10 begin -->

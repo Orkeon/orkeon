@@ -4220,6 +4220,7 @@
 
   <!-- hrm:L09 begin -->
   <data name="Studio.History.EmptyTitle" xml:space="preserve"><value>El historial está vacío</value></data>
+  <data name="Studio.Diagnostics.ReportUnreadable" xml:space="preserve"><value>No se puede leer el informe del diagnóstico.</value></data>
   <!-- hrm:L09 end -->
 
   <!-- hrm:L10 begin -->
