@@ -120,6 +120,10 @@ public sealed class WizardAgentCard : ObservableObject
 }
 
 /// <summary>One line of the trial checklist.</summary>
+/// <param name="Statement">What the line checks: a criterion of the brief, or a finding.</param>
+/// <param name="Passed">The engine's result for the line; null while it is not judged.</param>
+/// <param name="Detail">The finding's text, when the engine wrote one.</param>
+/// <param name="IsRemark">Whether the finding blocks nothing: the criterion is still met.</param>
 /// <param name="IsCriterion">
 /// hrm:L04 (D02): whether the line is one of the brief's criteria; false for a finding that names
 /// none, which keeps its own mark (a remark's triangle, a failure's barred circle).
