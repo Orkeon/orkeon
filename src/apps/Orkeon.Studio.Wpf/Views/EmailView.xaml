@@ -263,10 +263,10 @@
                               Command="{Binding DataContext.RenameAccountCommand, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
                               CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="pencil-line"
                               Content="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
-                      <!-- R06: the account leaves the list until «Save» writes the file - a neutral ×, not the danger outline -->
-                      <Button Style="{StaticResource BtnSecondary}"
+                      <!-- R06: the removal opens a confirmation - the danger outline with the trash -->
+                      <Button Style="{StaticResource BtnDanger}"
                               Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=views:EmailView}}"
-                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x"
+                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="trash-2"
                               Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Grid>
@@ -459,13 +459,12 @@
                 </Border>
 
                 <!-- D-07: the removal confirmation says what stays on the machine. R07: the shared
-                     banner; the account only leaves the list until «Save», so the tone is the
-                     warning and the confirmation the neutral × (R06) -->
+                     banner, warning tone; its confirming button is the solid danger (R06) -->
                 <controls:Alert Tone="Warning" Margin="0,12,0,0" Title="{Binding [Studio.Settings.MailRemoveQuestion], Source={x:Static services:I18n.Instance}}"
                                 Message="{Binding [Studio.Settings.MailRemoveCost], Source={x:Static services:I18n.Instance}}" Visibility="{Binding IsConfirmingRemove, Converter={StaticResource BooleanToVisibility}}">
                   <controls:Alert.Actions>
                     <StackPanel Style="{StaticResource ActionRow}">
-                      <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x" Margin="0,0,8,0"
+                      <Button Style="{StaticResource BtnDangerSolid}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="trash-2" Margin="0,0,8,0"
                               Command="{Binding ConfirmRemoveCommand}" Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnGhost}" controls:ButtonSize.Height="32"
                               Command="{Binding CancelRemoveCommand}" Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>

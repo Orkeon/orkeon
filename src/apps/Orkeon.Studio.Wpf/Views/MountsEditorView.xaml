@@ -47,10 +47,10 @@
           <Button Style="{StaticResource BtnSecondary}" Command="{Binding AddMountCommand}" Margin="0,0,8,0"
                   controls:ButtonIcon.Kind="plus"
                   Content="{Binding [Studio.Settings.Add], Source={x:Static services:I18n.Instance}}"/>
-          <!-- C01 (R06): a removal from the list holds only until «Save», so it is the neutral
-               secondary with ×, never the danger outline. -->
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding RemoveMountCommand}"
-                  controls:ButtonIcon.Kind="x"
+          <!-- C01 (R06, §4.7): removing a saved allowed folder is definitive: the danger outline
+               with the trash, like a model's «Supprimer» and an MCP server's «Retirer». -->
+          <Button Style="{StaticResource BtnDanger}" Command="{Binding RemoveMountCommand}"
+                  controls:ButtonIcon.Kind="trash-2"
                   Content="{Binding [Studio.Settings.MountsRemove], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
 

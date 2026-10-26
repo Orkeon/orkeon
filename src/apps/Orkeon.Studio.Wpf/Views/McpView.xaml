@@ -43,10 +43,10 @@
           <Border Style="{StaticResource Card}" Margin="0,0,0,12">
             <StackPanel>
               <DockPanel>
-                <!-- C01 (R06): the row leaves the document only at «Save» (MarkDirty), so the
-                     removal is the neutral secondary with ×, like an allowed folder's. -->
-                <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" VerticalAlignment="Top"
-                        controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="x"
+                <!-- C01 (R06, §4.7): a saved server leaves the settings for good, like an allowed
+                     folder or a model: the danger outline with the trash, the same in all three. -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource BtnDanger}" VerticalAlignment="Top"
+                        controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="trash-2"
                         Command="{Binding DataContext.RemoveServerCommand, RelativeSource={RelativeSource AncestorType=views:McpView}}"
                         CommandParameter="{Binding}"
                         Content="{Binding [Studio.Settings.McpRemove], Source={x:Static services:I18n.Instance}}"/>
