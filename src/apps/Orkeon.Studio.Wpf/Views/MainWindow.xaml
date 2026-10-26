@@ -1494,8 +1494,10 @@
             <ColumnDefinition Width="250"/>
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
-          <!-- illustration plate: fixed light background, the artwork is opaque -->
-          <Border Grid.Column="0" CornerRadius="20,0,0,20" ClipToBounds="True">
+          <!-- illustration plate: the artwork cropped to the plate (UniformToFill cuts its white
+               corners away). R20 (D09): the plate's own radius is 19, inside the modal's 1 px
+               border, so no square corner of it shows past the modal's 20 px rounding. -->
+          <Border Grid.Column="0" CornerRadius="19,0,0,19">
               <Border.Background>
                   <ImageBrush ImageSource="/Assets/kama_molecule.png" Stretch="UniformToFill"
                               AlignmentX="Center" AlignmentY="Center"/>
@@ -1534,10 +1536,17 @@
             MouseLeftButtonDown="OnSplashClick"
             ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Border CornerRadius="28" ClipToBounds="True" HorizontalAlignment="Center"
+          <!-- R20 (D09): the artwork's PNG keeps opaque white outside its own rounded corners
+               (≈ 43 px at 300 px). ClipToBounds clipped to the square, so those corners showed on
+               the night paper. The artwork is now the Border's background, which the Border
+               draws inside its CornerRadius: 46 px removes the white on paper and on #0F1E2A,
+               and the shadow follows the rounded shape. -->
+          <Border Width="300" Height="300" CornerRadius="46" HorizontalAlignment="Center"
+                  RenderOptions.BitmapScalingMode="HighQuality"
                   Effect="{DynamicResource ShadowLg}">
-              <Image Source="/Assets/kama_molecule.png" Width="300"
-                     RenderOptions.BitmapScalingMode="HighQuality"/>
+              <Border.Background>
+                  <ImageBrush ImageSource="/Assets/kama_molecule.png" Stretch="UniformToFill"/>
+              </Border.Background>
           </Border>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
               <Image Source="/Assets/orkeon-studio-mark.png" Width="26" Height="26"
