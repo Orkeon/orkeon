@@ -399,10 +399,11 @@ public partial class MainWindow : Window
     private const double AssistantPanelWidth = 420;
 
     /// <summary>
-    /// The narrowest content column the docked panel may leave: 720 px of content plus the two
-    /// 48 px gutters of the screens' scroll host (R15). Below it the panel overlays the content.
+    /// The narrowest content column the docked panel may leave: 720 px (R15: the assistant
+    /// overlays below 720 px). Below it the panel overlays the content; at 1440 px the content
+    /// keeps 808 px beside it, so every control of the screen stays reachable.
     /// </summary>
-    private const double MinDockedContentWidth = 720 + 2 * 48;
+    private const double MinDockedContentWidth = 720;
 
     /// <summary>The toast's clearance: 16 px above the status bar, 16 px off the 8 px scroll bar (R15, A09).</summary>
     private const double ToastBottomMargin = 16;
