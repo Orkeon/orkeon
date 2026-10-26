@@ -809,7 +809,7 @@
       </Grid.Resources>
       <Border Width="680" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <!-- R15 (C21): the header stays put; only the body below it scrolls, so the scroll bar
                starts under the header and ends above the footer, never on a rounded corner. -->
@@ -1169,8 +1169,8 @@
           </StackPanel>
           </ScrollViewer>
 
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel LastChildFill="False">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -1191,7 +1191,7 @@
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding TeamMounts}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <!-- R11 (D07): the shared 20/600 modal title. R09 (B06): a long team name wraps to a
@@ -1270,8 +1270,8 @@
               </StackPanel>
             </Button>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -1294,7 +1294,7 @@
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding CreateTeam.AgentEditor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}"/>
@@ -1354,8 +1354,8 @@
                        Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}"
                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding SaveCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -1400,7 +1400,7 @@
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-              CornerRadius="18" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
+              CornerRadius="20" DataContext="{Binding AllowedFolders}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
           <StackPanel Margin="22,20,22,0">
             <TextBlock Style="{StaticResource ModalTitle}" Text="{Binding Title}" ToolTip="{Binding Title}"
@@ -1499,8 +1499,8 @@
               </StackPanel>
             </Button>
           </StackPanel>
-          <Border Background="{DynamicResource Surface2Brush}" BorderBrush="{DynamicResource LineFaintBrush}"
-                  BorderThickness="0,1,0,0" CornerRadius="0,0,18,18" Padding="22,18" Margin="0,18,0,0">
+          <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
+                  BorderThickness="0,1,0,0" CornerRadius="0,0,19,19" Padding="22,18" Margin="0,18,0,0">
             <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmCommand}">
                 <StackPanel Orientation="Horizontal">
