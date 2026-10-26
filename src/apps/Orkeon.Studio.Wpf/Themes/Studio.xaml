@@ -1306,79 +1306,6 @@
     </Style.Triggers>
   </Style>
 
-  <!-- ══ One API-key row (STUDIO-21): the variable, its status badge, who uses it, where to get
-       one, and the paste-to-remember flow. Shared by the API-keys card of the model tab and the
-       tool-keys card of the Tools tab; the row's DataContext is a SecretRowViewModel. ══ -->
-  <DataTemplate x:Key="SecretRowTemplate">
-    <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
-            BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
-      <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-          <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
-                       ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
-                       views:PasswordBinding.Text="{Binding KeyInput}"/>
-          <Button Style="{StaticResource BtnSecondary}" Command="{Binding StoreCommand}"
-                  Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-        <StackPanel VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
-            <Border Margin="9,0,0,0" VerticalAlignment="Center">
-              <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                  <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningInkBrush}"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding HasKey}" Value="True">
-                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessInkBrush}"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </Border.Style>
-              <TextBlock Style="{StaticResource BadgeText}" FontSize="13" Text="{Binding StatusText}"/>
-            </Border>
-          </StackPanel>
-          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
-          <!-- No converter here: the converters live in App.xaml, declared AFTER this dictionary is
-               merged, and a static resource reference inside a theme template cannot see them (the
-               settings screen threw XamlParseException on this line). A trigger needs no converter. -->
-          <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13"
-                       Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0" Text="{Binding ConsoleUrl}"/>
-          </StackPanel>
-          <!-- STUDIO-44: a key the user scope refused is still in place for the session; say why. -->
-          <TextBlock FontSize="13" TextWrapping="Wrap" Margin="0,3,0,0"
-                     Foreground="{DynamicResource WarningBrush}" Text="{Binding StoreError}">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Visibility" Value="Collapsed"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasStoreError}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-        </StackPanel>
-      </DockPanel>
-    </Border>
-  </DataTemplate>
-
 
   <!-- ══ A team's folder chip «/input · read» (#117): My teams and Run. The item exposes Label
        and IsUndeclared (TeamMountChip); an undeclared folder is outlined in danger. ══ -->
@@ -1526,7 +1453,7 @@
   <!-- hrm:L09 end -->
 
   <!-- hrm:L10 begin -->
-  <!-- ══ One API-key row, rc.5 (B06 051, C07, R09, R10): SecretRowTemplate's content with the
+  <!-- ══ One API-key row, rc.5 (B06 051, C07, R09, R10): the variable, its status badge, who uses it, with the
        « No key yet? » link on its own line under the question, cut in the middle with the whole
        URL in its tooltip, instead of running under the key field. The field and its button are
        both 40 px (the foundation's InputPassword and BtnSecondary). Used by the API-keys card of
@@ -1563,7 +1490,7 @@
             </Border>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
-          <!-- No converter here (see SecretRowTemplate): a trigger shows the link. -->
+          <!-- No converter here: a trigger shows the link. -->
           <StackPanel Margin="0,3,0,0">
             <StackPanel.Style>
               <Style TargetType="StackPanel">
