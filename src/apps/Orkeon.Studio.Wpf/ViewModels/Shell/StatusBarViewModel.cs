@@ -25,6 +25,31 @@ public enum StatusBarActivity
     Atelier,
 }
 
+/// <summary>The window's screens, as far as the status bar's centre zone is concerned (R03).</summary>
+public enum StatusBarScreen
+{
+    /// <summary>Create a team: the assistant's screen.</summary>
+    Create,
+
+    /// <summary>My teams.</summary>
+    Teams,
+
+    /// <summary>Import.</summary>
+    Import,
+
+    /// <summary>Launch: the Run and Test launchers' screen.</summary>
+    Run,
+
+    /// <summary>History.</summary>
+    History,
+
+    /// <summary>Settings.</summary>
+    Settings,
+
+    /// <summary>Diagnostic.</summary>
+    Diagnostic,
+}
+
 /// <summary>Which activity's screen a click on the status bar asks for (D-04).</summary>
 public sealed class StatusBarOpenEventArgs : EventArgs
 {
@@ -117,6 +142,9 @@ public sealed class StatusBarViewModel : ObservableObject
     private const string SessionScope = "session";
     private const string ExecutionScope = "execution";
 
+    /// <summary>The left zone's line when no default profile is elected (R03).</summary>
+    private const string NoModelKey = "Studio.Shell.StatusNoModel";
+
     private static readonly TimeSpan Beat = TimeSpan.FromSeconds(1);
 
     private readonly IStudioStrings _strings;
@@ -127,6 +155,8 @@ public sealed class StatusBarViewModel : ObservableObject
     private readonly Action<string>? _persistTokenScope;
     private string _tokenScope;
     private bool _beating;
+    private StatusBarScreen _shownScreen;
+    private bool _atelierWaitOnShownStep = true;
 
     /// <summary>Builds the bar over the activities it watches.</summary>
     public StatusBarViewModel(StatusBarSources? sources = null)
@@ -151,6 +181,11 @@ public sealed class StatusBarViewModel : ObservableObject
         Launch.PropertyChanged += OnGroupChanged;
         Test.PropertyChanged += OnGroupChanged;
         Atelier.PropertyChanged += OnGroupChanged;
+        Atelier.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(StatusBarAtelierGroupViewModel.IsActive) or nameof(StatusBarAtelierGroupViewModel.IsRunning))
+                OnPropertyChanged(nameof(ShowsAtelier));
+        };
         _mode.PropertyChanged += OnModeChanged;
         _strings.CultureChanged += (_, _) => OnCultureChanged();
         if (_profiles is not null)
@@ -214,6 +249,62 @@ public sealed class StatusBarViewModel : ObservableObject
 
     /// <summary>The profile shows at rest, to the expert, when there is one to show.</summary>
     public bool ShowsProfile => IsAtRest && _mode.IsExpert && Profile is not null;
+
+    /// <summary>
+    /// The left zone (R03): «provider · model» of the default profile, or «No model» when none
+    /// is elected — in both modes, at rest and while an activity runs, so the zone never empties.
+    /// </summary>
+    public string ModelText => Profile ?? _strings[NoModelKey];
+
+    /// <summary>Whether a default profile names the model; the «No model» line reads fainter.</summary>
+    public bool HasModel => Profile is not null;
+
+    /// <summary>The screen the window shows; the shell sets it as the navigation moves.</summary>
+    public StatusBarScreen ShownScreen
+    {
+        get => _shownScreen;
+        set
+        {
+            if (SetProperty(ref _shownScreen, value))
+                OnPropertyChanged(nameof(ShowsAtelier));
+        }
+    }
+
+    /// <summary>
+    /// Whether the creation's wait point belongs to the step the wizard shows — the shell sets it
+    /// from <see cref="WaitConcernsStep"/>. True when nothing ties the wait to a step.
+    /// </summary>
+    public bool AtelierWaitOnShownStep
+    {
+        get => _atelierWaitOnShownStep;
+        set
+        {
+            if (SetProperty(ref _atelierWaitOnShownStep, value))
+                OnPropertyChanged(nameof(ShowsAtelier));
+        }
+    }
+
+    /// <summary>
+    /// The centre zone shows the assistant's group (R03, A03) while it runs, from any screen; a
+    /// group that only waits on the user shows on the Create screen, at the step that holds the
+    /// wait — «Waiting for you: choose a folder» means nothing on the trial step or on Launch.
+    /// Nothing about the group itself changes: only where it is shown.
+    /// </summary>
+    public bool ShowsAtelier => Atelier.IsActive
+        && (Atelier.IsRunning || (_shownScreen == StatusBarScreen.Create && _atelierWaitOnShownStep));
+
+    /// <summary>
+    /// Whether a wait point is answered on the given wizard step: the folders and the model on
+    /// step 1, the folder to choose on step 2, the adoption on step 4. An answer to the assistant
+    /// or a decision is given in the panel, from any step.
+    /// </summary>
+    public static bool WaitConcernsStep(WizardWaitPoint point, int step) => point switch
+    {
+        WizardWaitPoint.ConfirmFolders or WizardWaitPoint.FillFolders or WizardWaitPoint.ChooseModel => step == 1,
+        WizardWaitPoint.ChooseFolder => step == 2,
+        WizardWaitPoint.Adopt => step == 4,
+        _ => true,
+    };
 
     /// <summary>Raised by a click on a group: the shell brings its activity's screen forward.</summary>
     public event EventHandler<StatusBarOpenEventArgs>? OpenRequested;
@@ -305,7 +396,7 @@ public sealed class StatusBarViewModel : ObservableObject
         Test.RefreshAll();
         Atelier.RefreshAll();
         Balance.Rebuild();
-        OnPropertiesChanged(nameof(Profile), nameof(ProfileTip));
+        OnPropertiesChanged(nameof(Profile), nameof(ProfileTip), nameof(ModelText));
     }
 
     private void OnProfilesChanged(object? sender, PropertyChangedEventArgs e)
@@ -313,7 +404,7 @@ public sealed class StatusBarViewModel : ObservableObject
         if (e.PropertyName != nameof(ModelProfilesViewModel.Set))
             return;
 
-        OnPropertiesChanged(nameof(Profile), nameof(ProfileTip), nameof(ShowsProfile));
+        OnPropertiesChanged(nameof(Profile), nameof(ProfileTip), nameof(ShowsProfile), nameof(ModelText), nameof(HasModel));
 
         // The default, the assistant or a profile changed: the segment covers other accounts,
         // and says so — a newly covered one shows unread; nothing is read until a trigger.

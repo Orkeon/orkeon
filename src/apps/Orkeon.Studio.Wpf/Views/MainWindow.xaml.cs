@@ -85,6 +85,20 @@ public partial class MainWindow : Window
                 shell.CreateTeam.GoToWaitPointCommand.Execute(null);
             }
         };
+        // R03 (A03): the status bar's centre zone reads which screen is on show.
+        void Shown(System.Windows.Controls.RadioButton nav, ViewModels.Shell.StatusBarScreen screen)
+        {
+            nav.Checked += (_, _) => shell.StatusBar.ShownScreen = screen;
+            if (nav.IsChecked == true)
+                shell.StatusBar.ShownScreen = screen;
+        }
+        Shown(NavCreate, ViewModels.Shell.StatusBarScreen.Create);
+        Shown(NavTeams, ViewModels.Shell.StatusBarScreen.Teams);
+        Shown(NavImport, ViewModels.Shell.StatusBarScreen.Import);
+        Shown(NavRun, ViewModels.Shell.StatusBarScreen.Run);
+        Shown(NavHistory, ViewModels.Shell.StatusBarScreen.History);
+        Shown(NavSettings, ViewModels.Shell.StatusBarScreen.Settings);
+        Shown(NavDiag, ViewModels.Shell.StatusBarScreen.Diagnostic);
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Run.RefreshTeams(); };

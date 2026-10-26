@@ -630,67 +630,40 @@
         </DataTemplate>
       </Border.Resources>
 
-      <DockPanel Margin="10,0">
-        <!-- Three zones (refonte R11): the default model on the left, what runs in the middle,
-             the balances on the right. The token scope (BR-14) is chosen in Réglages › Studio. -->
-        <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
-             entry per account, in both modes. A click on an entry reads the balances again — or,
-             for a provider whose balance only its console shows, opens that console (D-01). An
-             amount under its provider's threshold takes the warning tone (D-03), a failed read is
-             said quietly, an account not read yet carries the read-again glyph. Per account, with
-             the time of each read, on hover. -->
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
-                    DataContext="{Binding Balance}" ToolTip="{Binding Detail}"
-                    Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
-          <controls:LucideIcon Kind="wallet" Size="12" VerticalAlignment="Center"
-                               Foreground="{DynamicResource InkFaintBrush}"/>
-          <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Button Style="{StaticResource StatusBalanceEntry}" Command="{Binding ClickCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Figure" Style="{StaticResource StatusFigure}" Text="{Binding Text}"/>
-                    <controls:LucideIcon Kind="external-link" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
-                                         Foreground="{DynamicResource InkFaintBrush}"
-                                         Visibility="{Binding OffersConsole, Converter={StaticResource BooleanToVisibility}}"/>
-                    <controls:LucideIcon Kind="rotate-cw" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
-                                         Foreground="{DynamicResource InkFaintBrush}"
-                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibility}}"/>
-                  </StackPanel>
-                </Button>
-                <DataTemplate.Triggers>
-                  <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                    <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding IsFaint}" Value="True">
-                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
-                  </DataTrigger>
-                </DataTemplate.Triggers>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-
-        <Rectangle DockPanel.Dock="Right" Width="1" Margin="12,7,0,7" Fill="{DynamicResource LineBrush}"
-                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}"/>
-        <!-- At rest, to the expert: provider · model of the default profile. -->
-        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
-                    ToolTip="{Binding ProfileTip}"
-                    Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}">
+      <!-- R03 (A03): three fixed zones that keep their place even empty - left the default
+           model («DeepSeek · deepseek-chat», or «Aucun modèle»), in both modes and while an
+           activity runs; centre the activities that run, or wait on the screen shown; right
+           the balances. The token scope (BR-14) is chosen in Réglages › Studio. -->
+      <Grid Margin="10,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" MinWidth="200"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
+                    ToolTip="{Binding ProfileTip}">
           <controls:LucideIcon Kind="sparkles" Size="12" VerticalAlignment="Center"
                                Foreground="{DynamicResource InkFaintBrush}"/>
-          <TextBlock Style="{StaticResource StatusFigure}" Margin="6,0,0,0" Text="{Binding Profile}"/>
+          <TextBlock Margin="6,0,0,0" Text="{Binding ModelText}">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock" BasedOn="{StaticResource StatusFigure}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasModel}" Value="False">
+                    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
         </StackPanel>
-        <Rectangle DockPanel.Dock="Left" Width="1" Margin="12,7,12,7" Fill="{DynamicResource LineBrush}"
-                   Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}"/>
+        <Rectangle Grid.Column="1" Width="1" Margin="12,7,12,7" Fill="{DynamicResource LineBrush}"/>
 
         <!-- The active groups share the width, so a narrow window trims their expert line and
              never pushes a group off the bar. -->
-        <UniformGrid Rows="1">
+        <UniformGrid Grid.Column="2" Rows="1">
           <Button Style="{StaticResource StatusGroup}" Command="{Binding Launch.OpenCommand}"
                   Visibility="{Binding Launch.IsActive, Converter={StaticResource BooleanToVisibility}}">
             <DockPanel>
@@ -707,8 +680,9 @@
               <ContentPresenter Content="{Binding Test}" ContentTemplate="{StaticResource RunGroupBody}"/>
             </DockPanel>
           </Button>
+          <!-- R03 (A03): on the bar while it runs; waiting only, on its own screen and step. -->
           <Button Style="{StaticResource StatusGroup}" Command="{Binding Atelier.OpenCommand}"
-                  Visibility="{Binding Atelier.IsActive, Converter={StaticResource BooleanToVisibility}}">
+                  Visibility="{Binding ShowsAtelier, Converter={StaticResource BooleanToVisibility}}">
             <!-- Stage first, then what it spent: the stage is the sentence the card already says. -->
             <DockPanel DataContext="{Binding Atelier}">
               <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
@@ -743,7 +717,51 @@
             </DockPanel>
           </Button>
         </UniformGrid>
-      </DockPanel>
+
+        <Rectangle Grid.Column="3" Width="1" Margin="12,7,0,7" Fill="{DynamicResource LineBrush}"
+                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}"/>
+        <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
+             entry per account, in both modes. A click on an entry reads the balances again — or,
+             for a provider whose balance only its console shows, opens that console (D-01). An
+             amount under its provider's threshold takes the warning tone (D-03), a failed read is
+             said quietly, an account not read yet carries the read-again glyph. Per account, with
+             the time of each read, on hover. -->
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
+                    DataContext="{Binding Balance}" ToolTip="{Binding Detail}"
+                    Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+          <controls:LucideIcon Kind="wallet" Size="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkFaintBrush}"/>
+          <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Style="{StaticResource StatusBalanceEntry}" Command="{Binding ClickCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Figure" Style="{StaticResource StatusFigure}" Text="{Binding Text}"/>
+                    <controls:LucideIcon Kind="external-link" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding OffersConsole, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:LucideIcon Kind="rotate-cw" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </Button>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                    <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsFaint}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
     </Border>
 
     <!-- ══════════ ÉDITEUR DE RÉGLAGE DE MODÈLE (overlay) ══════════ -->

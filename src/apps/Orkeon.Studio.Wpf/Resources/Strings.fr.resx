@@ -2500,6 +2500,9 @@
   <!-- hrm:fc end -->
 
   <!-- hrm:L01 begin -->
+  <data name="Studio.Shell.StatusNoModel" xml:space="preserve">
+    <value>Aucun modèle</value>
+  </data>
   <!-- hrm:L01 end -->
 
   <!-- hrm:L02 begin -->
