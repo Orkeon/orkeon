@@ -229,9 +229,19 @@
       <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}" Margin="4,0,0,0"
                  VerticalAlignment="Center" Text="{Binding Profiles.StudioProfileName}"/>
     </StackPanel>
-    <!-- §F.5: «Votre solution est prête.» and friends as a faint line, not raw mono -->
-    <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,6,0,0" Text="{Binding StatusMessage}"
-               TextWrapping="Wrap"/>
+    <!-- §F.5: «Votre solution est prête.» and friends as a faint line, not raw mono. C03: while
+         the failure banner is up it says the failure itself — the line would only repeat it. -->
+    <TextBlock Margin="0,6,0,0" Text="{Binding StatusMessage}">
+      <TextBlock.Style>
+        <Style TargetType="TextBlock" BasedOn="{StaticResource MetaText}">
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding HasFailure}" Value="True">
+              <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </TextBlock.Style>
+    </TextBlock>
 
     <!-- STUDIO-27 (D-05): an adopted team that is scheduled runs only once the user agrees —
          « Install » asks the engine, which installs it with the system's own scheduler; « Later »
@@ -281,9 +291,12 @@
     <!-- STUDIO-13: the failure, in BOTH modes (D-01), as a danger alert (R7): the novice
          sentence of the family, the engine's own words folded under « Technical details » —
          never translated (STUDIO-11) — and the ways out under the message. -->
-    <controls:Alert Tone="Danger" MaxWidth="720" HorizontalAlignment="Left" Margin="0,14,0,0"
+    <controls:Alert Tone="Danger" Margin="0,14,0,0"
                     Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
+      <!-- C02: the ways out are the banner's actions — on its right when it is wide, under the
+           text otherwise; the banner takes the container's width. -->
+      <controls:Alert.Actions>
       <WrapPanel>
         <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Click="OnCopyFailureReport"
                 Visibility="{Binding CanCopyFailureReport, Converter={StaticResource BooleanToVisibility}}">
@@ -325,10 +338,11 @@
           </StackPanel>
         </Button>
       </WrapPanel>
+      </controls:Alert.Actions>
     </controls:Alert>
 
     <!-- Before anything: the assistant must have a model — the wizard is gated until then (R7). -->
-    <controls:Alert x:Name="AssistantGate" Tone="Warning" MaxWidth="720" HorizontalAlignment="Left" Margin="0,16,0,0"
+    <controls:Alert x:Name="AssistantGate" Tone="Warning" Margin="0,16,0,0"
                     Message="{Binding [Studio.Create.GateTitle], Source={x:Static services:I18n.Instance}}"
                     Visibility="{Binding NeedsAssistant, Converter={StaticResource BooleanToVisibility}}">
       <controls:Alert.Actions>
