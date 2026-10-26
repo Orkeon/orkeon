@@ -189,12 +189,15 @@
                                    Foreground="{DynamicResource WarningBrush}"
                                    Visibility="{Binding HasProblems, Converter={StaticResource BooleanToVisibility}}"/>
               <!-- the drive, then the folder the agents are confined to -->
-              <TextBlock Style="{StaticResource Hint}" Margin="12,0,8,0" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis">
-                <Run Text="{Binding Provider, Mode=OneWay}"/>
-                <Run Text=" · "/>
-                <Run Text="{Binding RootLine, Mode=OneWay}"/>
-              </TextBlock>
+              <!-- B06: the folder is a path - cut in the middle, whole in the tooltip (R09) -->
+              <DockPanel Margin="12,0,8,0" VerticalAlignment="Center">
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource Hint}" TextWrapping="NoWrap" VerticalAlignment="Center">
+                  <Run Text="{Binding Provider, Mode=OneWay}"/>
+                  <Run Text=" · "/>
+                </TextBlock>
+                <controls:MiddleEllipsisText VerticalAlignment="Center" FontSize="13"
+                                             Foreground="{DynamicResource InkFaintBrush}" Text="{Binding RootLine}"/>
+              </DockPanel>
             </DockPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>

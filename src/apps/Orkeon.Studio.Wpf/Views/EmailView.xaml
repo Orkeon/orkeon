@@ -197,8 +197,9 @@
               <controls:LucideIcon DockPanel.Dock="Right" Kind="triangle-alert" Size="13" VerticalAlignment="Center"
                                    Foreground="{DynamicResource WarningBrush}"
                                    Visibility="{Binding HasProblems, Converter={StaticResource BooleanToVisibility}}"/>
-              <TextBlock Style="{StaticResource Hint}" Margin="12,0,8,0" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Text="{Binding Address}"/>
+              <!-- B06: an address too long for the row is cut in the middle, whole in the tooltip (R09) -->
+              <controls:MiddleEllipsisText Margin="12,0,8,0" VerticalAlignment="Center" FontSize="13"
+                                           Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Address}"/>
             </DockPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
