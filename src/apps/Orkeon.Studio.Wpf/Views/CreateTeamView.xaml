@@ -1684,16 +1684,13 @@
                              Title="{Binding [Studio.Create.NotesTry], Source={x:Static services:I18n.Instance}}"/>
 
         <!-- The action bar (lot 3): « Back » to the composition. The verdict's decisions stay
-             in the verdict card, next to what they decide. -->
-        <Border Style="{StaticResource WizardActionBar}">
+             in the verdict card, next to what they decide. hrm R02/R05: the step's footer, back
+             on the left with its arrow. -->
+        <Border Style="{StaticResource StepActionFooter}">
           <DockPanel LastChildFill="False">
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
-                    Command="{Binding GoBackCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
+                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
           </DockPanel>
         </Border>
       </StackPanel>
@@ -1858,22 +1855,17 @@
           </views:StepNotesView.Style>
         </views:StepNotesView>
 
-        <!-- The action bar (lot 3): « Back » and « Adopt the team ». -->
-        <Border Style="{StaticResource WizardActionBar}">
-          <StackPanel Style="{StaticResource ActionRow}" HorizontalAlignment="Right">
-            <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40" Command="{Binding GoBackCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="arrow-left" Size="16" Margin="0,0,7,0"/>
-                <TextBlock Text="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-            <Button x:Name="AdoptButton" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40" Margin="8,0,0,0" Command="{Binding SaveTeamCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="save" Size="16" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-                <TextBlock Text="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
-          </StackPanel>
+        <!-- The action bar (lot 3): « Back » and « Adopt the team ». hrm R02/R05: the step's
+             footer, back on the left, the one primary of the step on the right. -->
+        <Border Style="{StaticResource StepActionFooter}">
+          <DockPanel LastChildFill="False">
+            <Button DockPanel.Dock="Left" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="40"
+                    Command="{Binding GoBackCommand}" controls:ButtonIcon.Kind="arrow-left"
+                    Content="{Binding [Studio.Create.Back], Source={x:Static services:I18n.Instance}}"/>
+            <Button x:Name="AdoptButton" DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" controls:ButtonSize.Height="40"
+                    Command="{Binding SaveTeamCommand}" controls:ButtonIcon.Kind="save"
+                    Content="{Binding [Studio.Create.Save], Source={x:Static services:I18n.Instance}}"/>
+          </DockPanel>
         </Border>
       </StackPanel>
 

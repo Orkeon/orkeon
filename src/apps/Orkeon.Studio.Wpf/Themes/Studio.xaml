@@ -1467,6 +1467,16 @@
   <!-- hrm:L03 end -->
 
   <!-- hrm:L04 begin -->
+  <!-- The action footer of a Create step (R02, R05): paper ground, the 1 px LineBrush rule
+       above, « Retour » on the left, the step's gesture on the right; 32 px after it, so the
+       last line is never cut at the end of the scroll. -->
+  <Style x:Key="StepActionFooter" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource PaperBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="0,1,0,0"/>
+    <Setter Property="Padding" Value="0,14,0,0"/>
+    <Setter Property="Margin" Value="0,16,0,32"/>
+  </Style>
   <!-- hrm:L04 end -->
 
   <!-- hrm:L05 begin -->
