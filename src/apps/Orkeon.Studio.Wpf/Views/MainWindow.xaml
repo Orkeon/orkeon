@@ -810,13 +810,12 @@
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
               CornerRadius="18" DataContext="{Binding Settings.Profiles.Editor}" Effect="{DynamicResource ShadowLg}">
         <StackPanel>
-          <ScrollViewer VerticalScrollBarVisibility="Auto"
-                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
+          <!-- R15 (C21): the header stays put; only the body below it scrolls, so the scroll bar
+               starts under the header and ends above the footer, never on a rounded corner. -->
           <StackPanel Margin="22,20,22,0">
-            <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18" FontWeight="SemiBold"
-                       Foreground="{DynamicResource InkBrush}">
+            <TextBlock>
               <TextBlock.Style>
-                <Style TargetType="TextBlock">
+                <Style TargetType="TextBlock" BasedOn="{StaticResource ModalTitle}">
                   <Setter Property="Text" Value="{Binding [Studio.Settings.EditTitle], Source={x:Static services:I18n.Instance}}"/>
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsNew}" Value="True">
@@ -828,8 +827,11 @@
             </TextBlock>
             <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="{Binding [Studio.Settings.EditSub], Source={x:Static services:I18n.Instance}}"/>
-
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
+          </StackPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,16,6,0"
+                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ModalBodyHeight}}">
+          <StackPanel Margin="22,0,16,0">
+            <TextBlock Style="{StaticResource FieldLabel}"
                        Text="{Binding [Studio.Settings.NameLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"
@@ -858,13 +860,14 @@
                        Text="{Binding [Studio.Settings.ProviderLabel], Source={x:Static services:I18n.Instance}}"/>
 
             <!-- Provider cards, grouped as the v3 rev.2 design: local (keyless), cloud
-                 (key required), then the catch-all and the echo fallback. -->
+                 (key required), then the catch-all and the echo fallback. R15 (C21): every group
+                 lays out on the same 3 columns, so the cards line up from one group to the next. -->
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="Medium"
                        Foreground="{DynamicResource InkFaintBrush}" Margin="0,0,0,6"
                        Text="{Binding [Studio.Settings.GroupLocal], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding LocalProviders}" ItemTemplate="{StaticResource ProviderCard}">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
@@ -879,7 +882,7 @@
 
             <ItemsControl ItemsSource="{Binding OtherProviders}" ItemTemplate="{StaticResource ProviderCard}" Margin="0,7,0,0">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
             </ItemsControl>
 
