@@ -135,12 +135,8 @@
                    TextWrapping="Wrap" Text="{Binding AddRefusal}"
                    Visibility="{Binding HasAddRefusal, Converter={StaticResource BooleanToVisibility}}"/>
         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmAddCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,6,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Settings.MailAddConfirm], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmAddCommand}" controls:ButtonIcon.Kind="plus"
+                  Content="{Binding [Studio.Settings.MailAddConfirm], Source={x:Static services:I18n.Instance}}"/>
           <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelAddCommand}"
                   Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
@@ -262,20 +258,12 @@
                                 Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
                       <Button Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
                               Command="{Binding DataContext.RenameAccountCommand, RelativeSource={RelativeSource AncestorType=views:DriveView}}"
-                              CommandParameter="{Binding}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="pencil-line" Size="12" Margin="0,0,7,0"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="pencil-line"
+                              Content="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnDanger}"
                               Command="{Binding DataContext.RemoveAccountCommand, RelativeSource={RelativeSource AncestorType=views:DriveView}}"
-                              CommandParameter="{Binding}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,7,0"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                              CommandParameter="{Binding}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="trash-2"
+                              Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
                   </Grid>
                   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -304,27 +292,15 @@
                              Visibility="{Binding DataContext.IsStateOfSavedFile, RelativeSource={RelativeSource AncestorType=views:DriveView}, Converter={StaticResource BooleanToVisibility}}"/>
                   <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <!-- the one gesture that connects for real: never run on its own, stopped when the tab is left -->
-                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="plug-zap" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Settings.MailTest], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
+                    <Button Style="{StaticResource BtnSecondary}" Command="{Binding TestCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plug-zap"
+                            Content="{Binding [Studio.Settings.MailTest], Source={x:Static services:I18n.Instance}}"/>
                     <!-- every drive account signs in with OAuth2; both read the file as saved, like the test -->
                     <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding SignInCommand}"
-                            Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="key-round" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Settings.MailSignIn], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
+                            Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="key-round"
+                            Content="{Binding [Studio.Settings.MailSignIn], Source={x:Static services:I18n.Instance}}"/>
                     <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding SignOutCommand}"
-                            Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="eraser" Size="13" Margin="0,0,7,0"/>
-                        <TextBlock Text="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
+                            Visibility="{Binding ShowSignIn, Converter={StaticResource BooleanToVisibility}}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="eraser"
+                            Content="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
                     <TextBlock Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"
                                Text="{Binding [Studio.Settings.MailTesting], Source={x:Static services:I18n.Instance}}"
                                Visibility="{Binding IsTesting, Converter={StaticResource BooleanToVisibility}}"/>
@@ -395,20 +371,11 @@
                       <TextBox Style="{StaticResource InputMono}" IsReadOnly="True" TextWrapping="Wrap"
                                Text="{Binding Address, Mode=OneWay}"/>
                       <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Style="{StaticResource BtnSecondary}" Command="{Binding CopyLinkCommand}">
-                          <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,7,0"/>
-                            <TextBlock Text="{Binding [Studio.Settings.MailCopyLink], Source={x:Static services:I18n.Instance}}"/>
-                          </StackPanel>
-                        </Button>
+                        <Button Style="{StaticResource BtnSecondary}" Command="{Binding CopyLinkCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="copy"
+                                Content="{Binding [Studio.Settings.MailCopyLink], Source={x:Static services:I18n.Instance}}"/>
                         <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding OpenCommand}"
-                                Visibility="{Binding CanOpen, Converter={StaticResource BooleanToVisibility}}">
-                          <StackPanel Orientation="Horizontal">
-                            <controls:LucideIcon Kind="external-link" Size="12" Margin="0,0,7,0"
-                                                 Foreground="{DynamicResource AccentFgBrush}"/>
-                            <TextBlock Text="{Binding [Studio.Settings.MailOpenInBrowser], Source={x:Static services:I18n.Instance}}"/>
-                          </StackPanel>
-                        </Button>
+                                Visibility="{Binding CanOpen, Converter={StaticResource BooleanToVisibility}}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="external-link"
+                                Content="{Binding [Studio.Settings.MailOpenInBrowser], Source={x:Static services:I18n.Instance}}"/>
                       </StackPanel>
                     </StackPanel>
 
@@ -467,13 +434,8 @@
                     <!-- one way out, whatever the phase: it stops the child while one waits -->
                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                       <Button Style="{StaticResource BtnPrimary}" Margin="0,0,8,0" Command="{Binding RestartCommand}"
-                              Visibility="{Binding CanRestart, Converter={StaticResource BooleanToVisibility}}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="rotate-ccw" Size="12" Margin="0,0,7,0"
-                                               Foreground="{DynamicResource AccentFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailSignInRestart], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                              Visibility="{Binding CanRestart, Converter={StaticResource BooleanToVisibility}}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="rotate-ccw"
+                              Content="{Binding [Studio.Settings.MailSignInRestart], Source={x:Static services:I18n.Instance}}"/>
                       <Button Command="{Binding CancelCommand}">
                         <Button.Style>
                           <Style TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
@@ -501,13 +463,8 @@
                                  Text="{Binding [Studio.Settings.MailRenameLabel], Source={x:Static services:I18n.Instance}}"/>
                       <TextBox Style="{StaticResource InputMono}" Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
                                Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"/>
-                      <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ConfirmRenameCommand}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="pencil-line" Size="12" Margin="0,0,6,0"
-                                               Foreground="{DynamicResource AccentFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                      <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ConfirmRenameCommand}" controls:ButtonIcon.Kind="pencil-line"
+                              Content="{Binding [Studio.Settings.MailRename], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelRenameCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
@@ -528,13 +485,8 @@
                       <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                                  Foreground="{DynamicResource DangerBrush}"
                                  Text="{Binding [Studio.Settings.MailRemoveQuestion], Source={x:Static services:I18n.Instance}}"/>
-                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmRemoveCommand}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
-                                               Foreground="{DynamicResource DangerFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                      <Button Style="{StaticResource BtnDangerSolid}" Margin="8,0,0,0" Command="{Binding ConfirmRemoveCommand}" controls:ButtonIcon.Kind="trash-2"
+                              Content="{Binding [Studio.Settings.MailRemove], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelRemoveCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
@@ -552,13 +504,8 @@
                     <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
                                Foreground="{DynamicResource DangerBrush}" Text="{Binding SignOutConfirmText}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                      <Button Style="{StaticResource BtnDangerSolid}" Command="{Binding ConfirmSignOutCommand}">
-                        <StackPanel Orientation="Horizontal">
-                          <controls:LucideIcon Kind="eraser" Size="12" Margin="0,0,6,0"
-                                               Foreground="{DynamicResource DangerFgBrush}"/>
-                          <TextBlock Text="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
-                        </StackPanel>
-                      </Button>
+                      <Button Style="{StaticResource BtnDangerSolid}" Command="{Binding ConfirmSignOutCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="eraser"
+                              Content="{Binding [Studio.Settings.MailSignOut], Source={x:Static services:I18n.Instance}}"/>
                       <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CancelSignOutCommand}"
                               Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>
@@ -681,12 +628,8 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding AddRecipientCommand}">
-                    <StackPanel Orientation="Horizontal">
-                      <controls:LucideIcon Kind="plus" Size="12" Margin="0,0,7,0"/>
-                      <TextBlock Text="{Binding [Studio.Settings.MailRecipientAdd], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                  </Button>
+                  <Button Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left" Command="{Binding AddRecipientCommand}" controls:ButtonSize.Height="32" controls:ButtonIcon.Kind="plus"
+                          Content="{Binding [Studio.Settings.MailRecipientAdd], Source={x:Static services:I18n.Instance}}"/>
                   <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
                               Visibility="{Binding ShowShareClosed, Converter={StaticResource BooleanToVisibility}}">
                     <controls:LucideIcon Kind="triangle-alert" Size="12" Foreground="{DynamicResource WarningBrush}"
