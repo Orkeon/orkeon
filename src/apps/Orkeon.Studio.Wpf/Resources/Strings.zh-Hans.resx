@@ -3778,7 +3778,7 @@
     <value>查看运行</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
-    <value>← 返回团队</value>
+    <value>返回团队</value>
   </data>
   <data name="Studio.Run.OrAPath" xml:space="preserve">
     <value>或一个路径</value>

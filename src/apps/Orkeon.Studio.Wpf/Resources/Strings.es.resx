@@ -3778,7 +3778,7 @@
     <value>Ver la ejecución</value>
   </data>
   <data name="Studio.Run.BackToTeam" xml:space="preserve">
-    <value>← Volver al equipo</value>
+    <value>Volver al equipo</value>
   </data>
   <data name="Studio.Run.OrAPath" xml:space="preserve">
     <value>o una ruta</value>

@@ -2798,7 +2798,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunSeeOptions] = "See the options",
         [StudioStringKeys.RunSeeCommand] = "See the command",
         [StudioStringKeys.RunSeeRun] = "See the run",
-        [StudioStringKeys.RunBackToTeam] = "← Back to the team",
+        [StudioStringKeys.RunBackToTeam] = "Back to the team",
         [StudioStringKeys.RunOrAPath] = "or a path",
         [StudioStringKeys.RunLblModel] = "Model",
         [StudioStringKeys.RunModelDefault] = "Default ({0})",
