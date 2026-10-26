@@ -132,7 +132,8 @@
                   Command="{Binding Studio.ChangeTeamsRootCommand}"
                   Content="{Binding [Studio.Settings.TeamsRootChange], Source={x:Static services:I18n.Instance}}"/>
           <StackPanel>
-            <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
+            <!-- R09: a path is cut in the middle, whole in its tooltip. -->
+            <controls:MiddleEllipsisText Style="{StaticResource PathText}" Foreground="{DynamicResource InkBrush}" Text="{Binding Studio.TeamsRootPath}"/>
             <!-- which of the four sources holds the root -->
             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding Studio.TeamsRootSourceText}"/>
           </StackPanel>

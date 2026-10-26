@@ -359,22 +359,23 @@
         <StackPanel>
           <!-- STUDIO-48 (GAP-19): the profile the document search calls, Orkeon:Rag:LlmProfile,
                chosen among the host profiles of the model tab. Expert, like the RAG settings of the limits tab. -->
+          <!-- B06 (R10): the list under its title and hint, at the medium width — the choice's label
+               (« default — the model marked default ») trims with « … » before the chevron. -->
           <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-            <DockPanel>
-              <ComboBox DockPanel.Dock="Right" Width="260" VerticalAlignment="Center"
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="scan-search" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBlock Style="{StaticResource CardTitle}"
+                           Text="{Binding [Studio.Settings.RagLlmTitle], Source={x:Static services:I18n.Instance}}"/>
+              </StackPanel>
+              <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                         Text="{Binding [Studio.Settings.RagLlmHint], Source={x:Static services:I18n.Instance}}"/>
+              <ComboBox Style="{StaticResource ComboM}" Margin="0,12,0,0"
                         ItemsSource="{Binding Profiles.RagProfileChoices}"
                         SelectedItem="{Binding Profiles.SelectedRagProfile}"
-                        DisplayMemberPath="Label"/>
-              <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="scan-search" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                  <TextBlock Style="{StaticResource CardTitle}"
-                             Text="{Binding [Studio.Settings.RagLlmTitle], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.RagLlmHint], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </DockPanel>
+                        DisplayMemberPath="Label"
+                        ToolTip="{Binding Profiles.SelectedRagProfile.Label}"/>
+            </StackPanel>
           </Border>
 
         </StackPanel>
@@ -397,7 +398,7 @@
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
                          Text="{Binding [Studio.Settings.Intro], Source={x:Static services:I18n.Instance}}"/>
-              <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource SecretRowTemplate}"/>
+              <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
             </StackPanel>
           </Border>
 

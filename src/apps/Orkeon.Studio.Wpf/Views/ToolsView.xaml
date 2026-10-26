@@ -18,7 +18,7 @@
         </StackPanel>
         <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
                    Text="{Binding [Studio.Settings.ToolKeysIntro], Source={x:Static services:I18n.Instance}}"/>
-        <ItemsControl ItemsSource="{Binding Tools.Secrets}" ItemTemplate="{StaticResource SecretRowTemplate}"/>
+        <ItemsControl ItemsSource="{Binding Tools.Secrets}" ItemTemplate="{StaticResource KeyRowTemplate}"/>
       </StackPanel>
     </Border>
 
