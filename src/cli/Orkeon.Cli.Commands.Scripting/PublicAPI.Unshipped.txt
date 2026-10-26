@@ -47,3 +47,9 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.init -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.BeginWork() -> System.IDisposable!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.WorkSettled -> System.EventHandler?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.CompletionFailed -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs!>?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.ReportCompletionFailure(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance, string! error) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.CommandCompletionFailedEventArgs(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance, string! error) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Error.get -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!

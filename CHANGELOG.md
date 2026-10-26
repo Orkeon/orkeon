@@ -19,7 +19,8 @@ session-wide answer (`s`) also settles the queued approvals of the same tool, so
 question still waiting when the file ends stops the replay (`replay ended with an approval waiting: <tool>`, exit `1`),
 as does a command reading past the end (its read gets the end of the input, under `--interactive` too); a REPL that
 throws under `--replay` alone exits `1` with one line on stderr. The replay concludes only once the command in flight,
-its background work and their `completed()` callbacks have ended. Ctrl-C (Esc Esc in the TUI)
+its background work and their `completed()` callbacks have ended; a `completed()` that throws stops the replay at
+the line that launched it (`[t1] <command> completed() failed: <error>`), one that only runs long is waited for. Ctrl-C (Esc Esc in the TUI)
 stops the replay; a second Ctrl-C while it is still stopping ends the process (exit `130`). New `--log-level <level>`,
 also the starting level of the TUI's logs pane; `--replay` and `--log-level` refuse a value that starts with `--`.
 
@@ -28,7 +29,7 @@ failed; a scripted command's error, rejection or quota refusal now returns it, a
 `result`, `cancel` and `help-cmd` and an unknown ticket — the message printed is unchanged.
 `InteractiveRunnerBase.OnCommandOutcome` and `ICommandOutcomeObserver` report each command's outcome;
 `IToolApprovalWatch.PendingChanged` and `PendingToolApproval.Id`, `CommandInstanceRegistry.InstanceRegistered` /
-`InstanceTerminated` / `WorkSettled` / `HasRunning` / `BeginWork` signal the work in flight (an instance counts until its
+`InstanceTerminated` / `WorkSettled` / `CompletionFailed` / `HasRunning` / `BeginWork` signal the work in flight (an instance counts until its
 terminal observers have run, a `completed()` drain until it ended); `DefaultCommandRegistry` takes a host's own built-ins.
 
 ### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount **[breaking]** (#199, #200)

@@ -180,6 +180,28 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Completed_that_throws_reports_the_failure_before_the_drain_ends()
+    {
+        var service = NewDispatchService();
+        RegisterEchoAgent(service);
+        var failures = new List<(string Ticket, string Error, bool RunningWhenReported)>();
+        service.Registry.CompletionFailed += (_, e) => failures.Add((e.Instance.Ticket, e.Error, service.Registry.HasRunning));
+        var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Registry.WorkSettled += (_, _) => { if (!service.Registry.HasRunning) settled.TrySetResult(); };
+
+        var registry = LoadFixture("askbg-throws.cmd.ts", service);
+        var cmd = registry.ScriptCommands.Single(c => c.Name == "askbg-throws");
+        var console = new ScriptedTestConsole();
+        await cmd.ExecuteAsync(Ctx("askbg-throws hello", "hello", console), CancellationToken.None);
+
+        await settled.Task.WaitAsync(HangGuard, TestContext.Current.CancellationToken);
+        var failure = Assert.Single(failures);
+        Assert.Equal("t1", failure.Ticket);
+        Assert.Contains("render broke", failure.Error, StringComparison.Ordinal);
+        Assert.True(failure.RunningWhenReported);
+    }
+
+    [Fact]
     public async Task Async_admission_quota_rejects_a_second_in_flight_instance()
     {
         var service = NewDispatchService();

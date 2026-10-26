@@ -43,7 +43,8 @@ internal enum ReplayReader
 /// </para>
 /// <para>
 /// It also records the background instances launched while a line is tracked (<see cref="TrackingLine"/>):
-/// one that ends <see cref="CommandInstanceState.Failed"/> is a failure of that line. An instance launched by a
+/// one that ends <see cref="CommandInstanceState.Failed"/>, or whose <c>completed()</c> callback fails
+/// (<see cref="CommandInstanceRegistry.CompletionFailed"/>), is a failure of that line. An instance launched by a
 /// <c>completed()</c> callback is charged to the line in flight when it registers, not to the line that
 /// launched its parent.
 /// </para>
@@ -139,6 +140,7 @@ internal sealed class ReplayIdleGate : IDisposable
             _registry.InstanceRegistered += OnRegistered;
             _registry.InstanceTerminated += OnTerminated;
             _registry.WorkSettled += OnWorkSettled;
+            _registry.CompletionFailed += OnCompletionFailed;
         }
 
         if (_approvals is not null)
@@ -292,6 +294,7 @@ internal sealed class ReplayIdleGate : IDisposable
             _registry.InstanceRegistered -= OnRegistered;
             _registry.InstanceTerminated -= OnTerminated;
             _registry.WorkSettled -= OnWorkSettled;
+            _registry.CompletionFailed -= OnCompletionFailed;
         }
 
         if (_approvals is not null)
@@ -308,8 +311,9 @@ internal sealed class ReplayIdleGate : IDisposable
 
     private void OnTerminated(object? sender, CommandInstanceEventArgs e)
     {
+        // The line stays recorded until the replay ends: the instance's completed() may still fail.
         var instance = e.Instance;
-        if (_launchedAt.TryRemove(instance.Ticket, out var line) && instance.State == CommandInstanceState.Failed)
+        if (_launchedAt.TryGetValue(instance.Ticket, out var line) && instance.State == CommandInstanceState.Failed)
         {
             var view = instance.Snapshot();
             var cause = $"[{view.ticket}] {view.name} failed: {view.error ?? "no error given"}";
@@ -335,6 +339,18 @@ internal sealed class ReplayIdleGate : IDisposable
     }
 
     private void OnWorkSettled(object? sender, EventArgs e) => Signal();
+
+    private void OnCompletionFailed(object? sender, CommandCompletionFailedEventArgs e)
+    {
+        if (_launchedAt.TryGetValue(e.Instance.Ticket, out var line))
+        {
+            var cause = $"[{e.Instance.Ticket}] {e.Instance.Name} completed() failed: {e.Error}";
+            lock (_gate)
+                _failure ??= new ReplayFailure(line, cause);
+        }
+
+        Signal();
+    }
 
     private PendingToolApproval? FirstPending() => _approvals?.Pending is { Count: > 0 } pending ? pending[0] : null;
 

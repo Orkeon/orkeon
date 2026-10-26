@@ -97,6 +97,20 @@ public sealed class CommandInstanceRegistry
         return new WorkHandle(this);
     }
 
+    /// <summary>
+    /// Raised, on the draining thread, when the <c>completed()</c> callback of an instance threw or rejected (an engine
+    /// limit included): an error of the line that launched it for a replay of the REPL. Raised while the drain is
+    /// still work in flight, so a waiter that sees no work has seen it.
+    /// </summary>
+    public event EventHandler<CommandCompletionFailedEventArgs>? CompletionFailed;
+
+    /// <summary>Reports that the <c>completed()</c> callback of <paramref name="instance"/> failed with <paramref name="error"/>.</summary>
+    public void ReportCompletionFailure(CommandInstance instance, string error)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+        CompletionFailed?.Invoke(this, new CommandCompletionFailedEventArgs(instance, error));
+    }
+
     private void EndWork()
     {
         Interlocked.Decrement(ref _inFlight);
