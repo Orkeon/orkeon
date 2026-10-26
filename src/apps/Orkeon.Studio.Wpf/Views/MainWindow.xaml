@@ -789,10 +789,11 @@
                         BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                         CornerRadius="10" Padding="11,8">
                   <StackPanel>
+                    <!-- R09 (B10): a trimmed title or description gives its full text on hover. -->
                     <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Title}"/>
+                               TextTrimming="CharacterEllipsis" Text="{Binding Title}" ToolTip="{Binding Title}"/>
                     <TextBlock FontSize="13" Foreground="{DynamicResource InkMutedBrush}" Margin="0,1,0,0"
-                               TextTrimming="CharacterEllipsis" Text="{Binding Description}"/>
+                               TextTrimming="CharacterEllipsis" Text="{Binding Description}" ToolTip="{Binding Description}"/>
                   </StackPanel>
                 </Border>
                 <ControlTemplate.Triggers>
