@@ -145,10 +145,13 @@ internal static class WizardStops
                 wizard.BrowseUseCasesCommand.Execute(null);
                 wizard.Gallery.Cards.First(card => card.Id == "06-competitive-intelligence").ChooseCommand.Execute(null);
             },
+            // The reference goes, the words go back to the fixture's need rather than to nothing:
+            // the step-2 and step-3 stops that follow resume a session over the need as typed, and
+            // an empty one drew « Besoin · » followed by nothing under the stepper (D04).
             Teardown = CaptureAction.Sync(static c =>
             {
                 c.Shell.CreateTeam.RemoveReferenceUseCaseCommand.Execute(null);
-                c.Shell.CreateTeam.Need = "";
+                c.Shell.CreateTeam.Need = StudioFixture.Need;
             }),
         },
 

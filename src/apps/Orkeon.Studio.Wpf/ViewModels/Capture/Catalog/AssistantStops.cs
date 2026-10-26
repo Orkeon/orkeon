@@ -26,8 +26,12 @@ internal static class AssistantStops
                     + "turns, and the pinned brief card that belongs to this screen only.",
             Covers = ["Chat.IsOpen", "Chat.IsEmpty", "Chat.ShowsBrief"],
             SweepsLanguages = true,
+            // The pinned « Votre brief » card reads the wizard's need: set here rather than
+            // inherited, since the stops before leave the wizard blank (a restart, a cleared need)
+            // and the card then said nothing while the thread talked about a need (D03 072).
             Arrange = CaptureAction.Sync(static c =>
             {
+                c.Shell.CreateTeam.Need = StudioFixture.Need;
                 c.Shell.Chat.SetContext(AssistantContext.WizardStep1);
                 c.Shell.Chat.OpenCommand.Execute(null);
             }),
