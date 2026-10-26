@@ -253,17 +253,20 @@ public sealed partial class CaptureCatalogConformityTests : IAsyncLifetime
 
     /// <summary>
     /// A tour step whose target names nothing spotlights nothing — a silent, shippable defect the
-    /// literals in the code-behind used to hide.
+    /// literals in the code-behind used to hide. A target is an element of the window, or a part
+    /// of a shared control template drawn in it (the help slot of the section list, R21).
     /// </summary>
     [Fact]
     public void Every_guided_tour_target_names_an_element_of_the_window()
     {
-        var markup = ReadSource("Views", "MainWindow.xaml");
+        var window = ReadSource("Views", "MainWindow.xaml");
+        var templates = ReadSource("Themes", "Components.xaml");
 
         var missing = GuidedTourCatalog.Steps
             .Select(step => step.TargetName)
             .OfType<string>()
-            .Where(target => !markup.Contains($"x:Name=\"{target}\"", StringComparison.Ordinal))
+            .Where(target => !window.Contains($"x:Name=\"{target}\"", StringComparison.Ordinal)
+                          && !templates.Contains($"x:Name=\"{target}\"", StringComparison.Ordinal))
             .ToList();
 
         Assert.True(missing.Count == 0,

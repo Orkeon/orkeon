@@ -146,6 +146,9 @@ public sealed class TourOverlay : Grid
         _counter.Text = I18nStudioStrings.Instance.Format(
             "Studio.Shell.CounterPattern", _index + 1, _steps.Count);
         _back.Visibility = _index > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // The last step closes the tour itself: "Skip" next to "Finish" would be two ways out
+        // with one meaning (R21: the closing step offers Back and Finish only).
+        _skip.Visibility = _index < _steps.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });
 
@@ -153,7 +156,7 @@ public sealed class TourOverlay : Grid
 
         _pop.Measure(new Size(PopW, double.PositiveInfinity));
         var ph = Math.Max(_pop.DesiredSize.Height, 200);
-        var (x, y) = PlacePopover(spotlight, ph);
+        var (x, y) = ClearPageHeader(PlacePopover(spotlight, ph), spotlight, ph);
         Canvas.SetLeft(_pop, x); Canvas.SetTop(_pop, y);
     }
 
@@ -232,12 +235,45 @@ public sealed class TourOverlay : Grid
         return centered;
     }
 
+    /// <summary>
+    /// Keeps the popover off the page header (title, subtitle and the page actions on its right,
+    /// such as « Recommencer »): a card dropped under the mode switch lands on that band, so it is
+    /// moved down to the header's bottom edge instead (R21: the tour covers no action). A spotlight
+    /// on the header band itself, or a card that would not fit below it, keeps its place.
+    /// </summary>
+    private (double X, double Y) ClearPageHeader((double X, double Y) place, Rect? spotlight, double ph)
+    {
+        if (FindVisiblePageHeader() is not { } header)
+            return place;
+
+        var origin = header.TransformToVisual(this).Transform(new Point(0, 0));
+        var band = new Rect(origin.X, origin.Y, header.ActualWidth, header.ActualHeight);
+        var card = new Rect(place.X, place.Y, PopW, ph);
+
+        if (!card.IntersectsWith(band) || spotlight is { } t && t.IntersectsWith(band))
+            return place;
+
+        var below = band.Bottom + 14;
+        return below + ph <= ActualHeight - 12 ? (place.X, below) : place;
+    }
+
+    private PageHeader? FindVisiblePageHeader()
+    {
+        var window = Window.GetWindow(this);
+        return window is null
+            ? null
+            : CaptureVisualTree.Descendants(window).OfType<PageHeader>()
+                .FirstOrDefault(header => header.IsVisible && header.ActualHeight > 0);
+    }
+
     private static double Clamp(double v, double min, double max) => Math.Max(min, Math.Min(v, max));
 
     /// <summary>
     /// Finds a step target by name. Window.FindName alone cannot see names registered in a
     /// UserControl's own namescope, so a visual-tree walk is the fallback that keeps every
-    /// spotlight working whatever view declares the anchor.
+    /// spotlight working whatever view declares the anchor. A template part (the help slot of
+    /// <see cref="StepTabs"/>) exists once per instance, most of them collapsed or empty: the walk
+    /// takes the first one actually drawn, and none at all means the centred card.
     /// </summary>
     private FrameworkElement? ResolveTarget(string name)
     {
@@ -245,9 +281,13 @@ public sealed class TourOverlay : Grid
         if (window is null)
             return null;
 
-        if (window.FindName(name) is FrameworkElement direct)
+        if (window.FindName(name) is FrameworkElement direct && IsDrawn(direct))
             return direct;
 
-        return CaptureVisualTree.FindByName(window, name);
+        return CaptureVisualTree.Descendants(window).OfType<FrameworkElement>()
+            .FirstOrDefault(element => string.Equals(element.Name, name, StringComparison.Ordinal) && IsDrawn(element));
     }
+
+    private static bool IsDrawn(FrameworkElement element) =>
+        element.IsVisible && element.ActualWidth > 0 && element.ActualHeight > 0;
 }
