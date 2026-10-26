@@ -315,7 +315,7 @@ declare global {
         /** `edit_batch` - Applies node_replace, node_insert and idempotent intent operations over several files as one transaction. Each operation is {kind, path, selector, text} plus expected_hash (required, node_replace only) or position (node_insert: 'inside', 'before' or 'after'). An intent operation is {kind, path} with kind ensure_using / ensure_import (name, module for TypeScript or JavaScript) or ensure_field / ensure_member (selector of the type, text): it adds the line or member only when absent and reports applied false when it was already there. Operations on one file apply in order, each on the bytes the previous one produced. validate 'parse' (default) refuses the batch when an operation introduces a parse error; 'build' also runs dotnet build on the project above the edited files and restores every file when it is red. On any failure all files are left as they were. */
         editBatch(input: {
             /** The operations, applied as one transaction; those on one file apply in order, each on the bytes the previous one produced. */
-            operations: readonly { readonly expected_hash?: string; readonly index?: number; readonly kind: string; readonly level?: number; readonly module?: string; readonly name?: string; readonly path: string; readonly position?: string; readonly selector: string; readonly text: string; }[];
+            operations: readonly { readonly expected_hash?: string; readonly index?: number; readonly kind: "node_replace" | "node_insert" | "ensure_using" | "ensure_import" | "ensure_field" | "ensure_member" | "ensure_section" | "insert_under_heading" | "replace_mermaid"; readonly level?: number; readonly module?: string; readonly name?: string; readonly path: string; readonly position?: "inside" | "before" | "after"; readonly selector?: string; readonly text?: string; }[];
             /** What refuses the batch: 'parse' when an operation introduces a parse error, 'build' when dotnet build on the project above the edited files is red too. */
             validate?: "parse" | "build";
         }, ctx?: ExecutionContext): Promise<{
@@ -1476,7 +1476,7 @@ declare global {
             /** Output file path for the .xlsx */
             file_path: string;
             /** Sheets to write (each with name, headers, rows) */
-            sheets: readonly { readonly headers: readonly string[]; readonly name: string; readonly rows: readonly (readonly string[])[]; }[];
+            sheets: readonly { readonly headers?: readonly string[]; readonly name: string; readonly rows?: readonly (readonly string[])[]; }[];
         }, ctx?: ExecutionContext): Promise<{
             readonly file_path: string;
             readonly file_size: number;

@@ -20,11 +20,11 @@ console over the full chain.
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, two acts streaming at once (two background `runAgent` sub-runs, the tasks
 of a parallel crew wave) wrote their deltas into one another character by character. `ConsoleLlmDeltaSink` now
-renders one whole line at a time: each turn holds its own line buffer, a line is written once complete, under one
-lock, and the turn's end writes what is left. A turn that runs under a command instance (a background command, a
-`runAgent` sub-run) prefixes its lines with the instance's ticket, `[t2] `, as the completion lines are; a crew task
-adds its id (`[t2 task-1] `); the foreground command's act writes bare lines as before. Token-by-token rendering
-becomes line-by-line.
+streams the foreground act as it arrives, as before, and renders every other turn one whole line at a time: the
+turn holds its own line buffer, a line is written once complete, under one lock, the turn's end writes what is left,
+and a line that arrives while the foreground act is inside a line waits for that line's end. A turn that runs under
+a command instance (a background command, a `runAgent` sub-run) prefixes its lines with the instance's ticket,
+`[t2] `, as the completion lines are; a crew task adds its id (`[t2 task-1] `).
 
 **API:** `ILlmDeltaSink.BeginTurn(label)` (default: the sink itself) opens one streamed turn; the scripted act loop
 and the crews' chat-client loop stream each turn through the sink it returns, the latter labelled with the task id.
@@ -38,12 +38,15 @@ arguments from the description alone and guessed (`node_outline {"selector": …
 `operations`). Their request records now carry `[FieldSchema]` on every argument — `path` required on the node tools,
 `op` and `position` with their enums, `operations` required on `edit_batch` with `validate` (`parse` | `build`,
 default `parse`) — and a call missing a required argument is refused before the tool runs, with the argument's name
-(`Required parameter 'path' is missing`).
+(`Required parameter 'path' is missing`), the items of `operations` included (`Required parameter
+'operations[0].path' is missing`, `Parameter 'operations[0].kind' must be one of: …`). A value a schema lists as an
+enum is now judged as listed: `position: "Inside"` is refused with the list.
 
 **API:** `ParameterSchema.ItemProperties` (Orkeon.Domain) describes the items of an array of objects; the schema
 generator fills it from the item record (its `[FieldSchema]` when present, the C# types and nullability otherwise),
-and the OpenAI and Anthropic formatters publish it as the items' `properties` and `required`. Every tool whose request
-holds a list of its own records gains the items' shape in its definition.
+the OpenAI and Anthropic formatters publish it as the items' `properties` and `required`, `ToolParameterValidator`
+judges each item by it, and `tools.generated.d.ts` types the item's members by the same `[FieldSchema]` (enum,
+`IsRequired`). Every tool whose request holds a list of its own records gains the items' shape in its definition.
 
 ### Added — `orkeon-repl --replay <file>`: replay a session, line after line
 

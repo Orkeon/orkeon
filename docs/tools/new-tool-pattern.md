@@ -76,6 +76,13 @@ and the property.
 - **A model may send a dictionary two ways**: a JSON object, or an array of
   `[{"key":…,"value":…}]`. Both are accepted and read as the same dictionary; an empty `[]`
   means `{}`, and a repeated key or a value of the wrong type is refused.
+- **An array of the tool's own record** (`IReadOnlyList<EditBatchOperation>`) is emitted with
+  its items' `properties` and `required` (`ParameterSchema.ItemProperties`): every public
+  property of the record, described by its `[FieldSchema]` when it carries one, inferred from the
+  C# type and nullability otherwise. A record that references itself is described one level deep.
+  The validator judges each item's properties as it judges the parameters — required, type,
+  enum — before the tool runs, naming the place (`Required parameter 'operations[0].path' is
+  missing`); the TypeScript typings of the item read the same `[FieldSchema]` (enum, `IsRequired`).
 
 A `ParameterSchema` written by hand follows the same rules: `Type` is `null` for a free parameter, and
 `Values` holds the value schema of a dictionary (`IsMap`).

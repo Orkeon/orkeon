@@ -109,7 +109,8 @@ public sealed class OpenAIToolSchemaFormatter : IToolSchemaFormatter
             if (param.ItemProperties is { Count: > 0 })
             {
                 items["properties"] = param.ItemProperties.ToDictionary(p => p.Key, p => (object)FormatParameter(p.Value));
-                items["required"] = param.ItemProperties.Where(p => p.Value.Required).Select(p => p.Key).ToList();
+                if (param.RequiredItemProperties() is { Count: > 0 } required)
+                    items["required"] = required;
             }
             prop["items"] = items;
         }

@@ -7,6 +7,7 @@ using Orkeon.ConsoleApp.Replay;
 using Orkeon.ConsoleApp.Services;
 using Orkeon.ConsoleApp.Tests.Fakes;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.ConsoleApp.Tests.Replay;
 
@@ -36,25 +37,52 @@ public sealed class ReplayServiceCollectionExtensionsTests
         return services.BuildServiceProvider();
     }
 
-    [Fact]
-    public void ShouldResolveTheConsole_WhenTheLineEditorTakesTheCompletion()
+    /// <summary>
+    /// Resolves the console under a hang guard, not a bound: the cycle of #212 never returns (the container
+    /// waits on itself), and a test that freezes the run says less than one that fails. The provider is not
+    /// disposed on that path: its disposal would wait on the same resolution.
+    /// </summary>
+    private static async Task<IConsoleAdapter> ResolveConsoleAsync(ServiceProvider provider)
     {
-        using var provider = BuildTerminalRepl();
-
-        var console = provider.GetRequiredService<IConsoleAdapter>();
-
-        Assert.IsType<ReplayConsoleAdapter>(console);
-        Assert.Same(console, provider.GetRequiredService<ReplayConsoleAdapter>());
+        var ct = TestContext.Current.CancellationToken;
+        var resolution = Task.Run(() => provider.GetRequiredService<IConsoleAdapter>(), ct);
+        var first = await Task.WhenAny(resolution, Task.Delay(Polling.DefaultTimeout, ct));
+        Assert.True(first == resolution, "resolving the terminal console did not return: the console resolves itself (#212)");
+        return await resolution;
     }
 
     [Fact]
-    public void ShouldOfferReplayAmongTheUniversalCommands_WhenTheConsoleIsResolvedFirst()
+    public async Task ShouldResolveTheConsole_WhenTheLineEditorTakesTheCompletion()
     {
-        using var provider = BuildTerminalRepl();
-        provider.GetRequiredService<IConsoleAdapter>();
+        var provider = BuildTerminalRepl();
 
-        var names = provider.GetRequiredService<DefaultCommandRegistry>().Commands.Select(c => c.Name).ToList();
+        var console = await ResolveConsoleAsync(provider);
+        try
+        {
+            Assert.IsType<ReplayConsoleAdapter>(console);
+            Assert.Same(console, provider.GetRequiredService<ReplayConsoleAdapter>());
+        }
+        finally
+        {
+            await provider.DisposeAsync();
+        }
+    }
 
-        Assert.Equal(["help", "exit", "clear", "replay"], names);
+    [Fact]
+    public async Task ShouldOfferReplayAmongTheUniversalCommands_WhenTheConsoleIsResolvedFirst()
+    {
+        var provider = BuildTerminalRepl();
+
+        await ResolveConsoleAsync(provider);
+        try
+        {
+            var names = provider.GetRequiredService<DefaultCommandRegistry>().Commands.Select(c => c.Name).ToList();
+
+            Assert.Equal(["help", "exit", "clear", "replay"], names);
+        }
+        finally
+        {
+            await provider.DisposeAsync();
+        }
     }
 }

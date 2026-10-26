@@ -112,6 +112,23 @@ public sealed class StructuralToolSchemaTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldRefuseTheCallNamingTheOperationsPath_WhenAnOperationLacksIt()
+    {
+        using var tool = new EditBatchTool(_fs, _pool);
+        var operations = new List<object?>
+        {
+            new Dictionary<string, object?> { ["kind"] = "node_insert", ["selector"] = "Demo.Calc", ["position"] = "inside", ["text"] = "int x;" },
+        };
+
+        var response = await tool.CallAsync(
+            new ToolCallRequest("edit_batch", new Dictionary<string, object?> { ["operations"] = operations }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Equal("Required parameter 'operations[0].path' is missing", response.Error);
+    }
+
+    [Fact]
     public async Task ShouldRefuseTheCallNamingTheOperations_WhenEditBatchIsCalledWithoutThem()
     {
         using var tool = new EditBatchTool(_fs, _pool);
