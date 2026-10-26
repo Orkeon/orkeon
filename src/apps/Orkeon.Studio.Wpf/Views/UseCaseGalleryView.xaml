@@ -138,25 +138,22 @@
 
     <!-- D-05: no catalogue, no fallback — a danger alert (R7, lot 3): the novice sentence
          (« The Orkeon engine cannot be found on this machine »), the CLI's own words folded
-         under « Technical details », the ways out. -->
+         under « Technical details », the ways out. C02 (R07): the shared Alert, its buttons in
+         its Actions slot — the drawer is 560 px (< 720), so they sit under the text. -->
     <controls:Alert DockPanel.Dock="Top" Tone="Danger" Margin="24,16,24,0"
                     Message="{Binding Failure.Headline}" Details="{Binding Failure.Detail}"
                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}">
-      <WrapPanel>
-        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RetryCommand}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="rotate-cw" Size="16" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
-        <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding OpenDiagnosticCommand}"
-                Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel Orientation="Horizontal">
-            <controls:LucideIcon Kind="stethoscope" Size="16" Margin="0,0,7,0"/>
-            <TextBlock Text="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"/>
-          </StackPanel>
-        </Button>
-      </WrapPanel>
+      <controls:Alert.Actions>
+        <WrapPanel>
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="0,0,8,0" Command="{Binding RetryCommand}"
+                  controls:ButtonIcon.Kind="rotate-cw"
+                  Content="{Binding [Studio.Create.FailureRetry], Source={x:Static services:I18n.Instance}}"/>
+          <Button Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Command="{Binding OpenDiagnosticCommand}"
+                  controls:ButtonIcon.Kind="stethoscope"
+                  Content="{Binding [Studio.Create.FailureOpenDiagnostic], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding FailureOffersDiagnostic, Converter={StaticResource BooleanToVisibility}}"/>
+        </WrapPanel>
+      </controls:Alert.Actions>
     </controls:Alert>
 
     <!-- nothing kept: say so, and the way back -->
