@@ -51,7 +51,88 @@ public class TranscriptViewTests
         Assert.Equal("one two three\n", view.TranscriptText);
     }
 
+    [Fact]
+    public void ShouldFollowTheTailAgain_WhenAHeightChangeBringsTheViewportToTheEnd()
+    {
+        using var view = CreateView(height: 5);
+        view.AppendLines(Enumerable.Range(0, 50).Select(i => $"row {i}"));
+        view.MoveEnd();
+        view.Viewport = view.Viewport with { Y = 40 };
+
+        // Ten rows high, row 40 is the last viewport: the view is at its end without a scroll.
+        view.Frame = new System.Drawing.Rectangle(0, 0, 20, 10);
+        view.Layout();
+        Assert.Equal(40, view.Viewport.Y);
+        view.AppendLines(["row 50"]);
+
+        Assert.Equal(41, view.Viewport.Y);
+    }
+
+    [Fact]
+    public void ShouldKeepTheLogsWhereTheUserScrolled_WhenEntriesArrive()
+    {
+        var options = new TerminalGuiOptions { LogsVisibleAtStartup = true };
+        using var logs = new LogsPaneView(options, InlineDispatcher.Instance);
+        var view = logs.Transcript;
+        view.Frame = new System.Drawing.Rectangle(0, 0, 20, 5);
+        view.Layout();
+        for (var i = 0; i < 50; i++) logs.Append($"log {i}");
+        Assert.Equal(45, view.Viewport.Y);
+        view.Viewport = view.Viewport with { Y = 10 };
+
+        logs.Append("log 50");
+        Assert.Equal(10, view.Viewport.Y);
+
+        view.MoveEnd();
+        logs.Append("log 51");
+        Assert.Equal(47, view.Viewport.Y);
+    }
+
+    [Fact]
+    public void ShouldKeepTheTranscriptWhereTheUserScrolled_WhenOutputArrives()
+    {
+        using var repl = new ReplPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        var view = repl.HistoryView;
+        view.Frame = new System.Drawing.Rectangle(0, 0, 20, 5);
+        view.Layout();
+        for (var i = 0; i < 50; i++) repl.AppendOutputLine($"line {i}");
+        var end = view.Viewport.Y;
+        Assert.True(end > 10);
+        view.Viewport = view.Viewport with { Y = 10 };
+
+        repl.AppendOutput("token");
+        Assert.Equal(10, view.Viewport.Y);
+
+        view.MoveEnd();
+        repl.AppendOutputLine(" more");
+        Assert.Equal(end + 1, view.Viewport.Y);
+    }
+
 #pragma warning disable CS0618 // Terminal.Gui legacy static Application: the headless ansi driver is reached through it
+    [Fact]
+    public void ShouldDrawTheTextAfterAnOverflowingTab_WhenTheTabStopsShortOfTheRowEnd()
+    {
+        Application.Init(driverName: "ansi");
+        try
+        {
+            using var top = new Terminal.Gui.Views.Window();
+            using var view = new TranscriptView(10) { Width = 6, Height = 3 };
+            top.Add(view);
+            Application.Begin(top);
+            view.AppendLines(["abcde\tZ"]);
+
+            Application.LayoutAndDraw(true);
+
+            var screen = Application.Driver!.ToString() ?? string.Empty;
+            Assert.Contains("abcde", screen, StringComparison.Ordinal);
+            Assert.Contains("Z", screen, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Application.Shutdown();
+        }
+    }
+
     [Fact]
     public void ShouldDrawTheTailOfBothPanes_WhenTheToplevelRendersHeadless()
     {

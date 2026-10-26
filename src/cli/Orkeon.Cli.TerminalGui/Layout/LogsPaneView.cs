@@ -15,7 +15,8 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// dispatch per burst) and appended to a line-based <see cref="TranscriptView"/> that wraps only the
 /// new lines and drops head entries past the capacity. The capacity counts entries in both: a
 /// multi-line entry (an exception and its stack) is kept or dropped whole. Showing the pane renders
-/// the buffer once in full and sticks to its tail, applied when the pane is laid out.
+/// the buffer once in full and sticks to its tail, applied when the pane is laid out. New entries
+/// follow the tail only while the view sticks to it: a user who scrolled up stays where they are.
 /// </remarks>
 public sealed class LogsPaneView : FrameView
 {
@@ -154,8 +155,9 @@ public sealed class LogsPaneView : FrameView
         if (cleared) _textView.Clear();
         if (lines.Count > _capacity) lines.RemoveRange(0, lines.Count - _capacity);
         if (lines.Count == 0) return;
+        // No MoveEnd here: the view follows the tail while it sticks to the end, and a user who
+        // scrolled up to read older entries is not pulled back by the next one.
         _textView.AppendLines(lines);
-        _textView.MoveEnd();
     }
 
     /// <inheritdoc />

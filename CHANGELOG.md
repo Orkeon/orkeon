@@ -74,9 +74,12 @@ coalesced (`AppendCoalescer`): a burst costs one `Application.Invoke`, not one p
 the caller's thread and a hidden logs pane does no UI work; showing it renders the buffer once. The transcript is
 bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines; the empty line after the last newline
 does not count); `LogsBufferCapacity` still counts log entries, an entry on several lines (an exception and its stack)
-being kept or dropped whole. Word wrap (`F3`), tabs (expanded to the next stop of four columns), autoscroll, mouse
-selection with auto-copy, the navigation keys and `Ctrl+A` / `Ctrl+C` keep working; a pane shown after entries
-arrived while it was hidden lands on its tail. Double-click word selection and the auto-scroll while dragging a
+being kept or dropped whole. Word wrap (`F3`), tabs (expanded to the next stop of four columns; with the wrap on, a
+tab whose stop lies past the row end is cut at that end and the text after it opens the next row), mouse selection
+with auto-copy, the navigation keys and `Ctrl+A` / `Ctrl+C` keep working. Autoscroll is a state: a pane follows its
+tail while its view is at the end; scrolling up stops it, so new output or log entries leave a reader where they are,
+and it resumes once the view is back on the last row (a scroll, `End`, or a taller pane). A pane shown after entries
+arrived while it was hidden, or cleared, lands on its tail. Double-click word selection and the auto-scroll while dragging a
 selection are not kept.
 
 ### Fixed — `--llm-log` keeps the cache, reasoning and cost counts of a streamed exchange (#197)
@@ -86,10 +89,12 @@ The `usage` of a streamed exchange in `llm-exchanges-*.jsonl` was rebuilt from t
 OpenAI-compatible provider now writes the fields of the stream's usage chunks as the vendor sent them (merged when a
 vendor splits its usage across chunks, a later value of a field replacing an earlier one): DeepSeek's
 `prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, `prompt_tokens_details.cached_tokens`,
-`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. The three totals are always
-written, taken from the counts the stream accumulated when the vendor's object lacks them (an empty `usage` sent
-last); any other field the vendor did not return stays absent, and a stream that reports only the three totals logs
-the same three fields as before. Ollama and
+`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. A `total_tokens` the vendor
+did not send is written as `prompt_tokens + completion_tokens` when both are known, and left absent when they are not
+(no `0`); a chunk that changes `prompt_tokens` or `completion_tokens` without a total of its own drops the total of an
+earlier chunk, which is recomputed the same way (so is the response's `TokensUsed`, `0` when nothing was counted). Any other field the
+vendor did not return stays absent, and a stream that reports only the three totals logs the same three fields as
+before. Ollama and
 Anthropic streams are unchanged.
 
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant

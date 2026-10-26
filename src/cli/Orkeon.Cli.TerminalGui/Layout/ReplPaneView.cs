@@ -231,8 +231,8 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _transcriptWrites.Post(text);
     }
 
-    // UI thread: applies a burst of transcript writes in posting order (null is a clear), then
-    // scrolls to the end once.
+    // UI thread: applies a burst of transcript writes in posting order (null is a clear). The view
+    // follows the tail on its own while it sticks to the end; a user who scrolled up stays put.
     private void ApplyTranscriptWrites(IReadOnlyList<string?> writes)
     {
         var pending = new System.Text.StringBuilder();
@@ -249,7 +249,6 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             }
         }
         if (pending.Length > 0) _history.Append(pending.ToString());
-        _history.MoveEnd();
     }
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
@@ -905,6 +904,9 @@ public sealed class ReplPaneView : View, ITaskListNavigator
 
     /// <summary>Test-only accessor for the transcript model (line count, wrap work).</summary>
     internal TranscriptBuffer Transcript => _history.Buffer;
+
+    /// <summary>Test-only accessor for the transcript view (its viewport and follow state).</summary>
+    internal TranscriptView HistoryView => _history;
 
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);

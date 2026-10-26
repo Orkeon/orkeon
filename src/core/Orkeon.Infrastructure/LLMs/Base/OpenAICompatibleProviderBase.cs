@@ -456,7 +456,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public LeadingReasoningSplitter? Splitter { get; init; }
         /// <summary>Tool-call fragments accumulated by stream index.</summary>
         public SortedDictionary<int, StreamedToolCall> ToolCalls { get; } = new();
-        public int TotalTokens { get; set; }
+        /// <summary>The vendor's <c>total_tokens</c>; null when none was sent, or when a later chunk changed a count it summed.</summary>
+        public int? TotalTokens { get; set; }
         public int? PromptTokens { get; set; }
         public int? CompletionTokens { get; set; }
         public int? CacheHitTokens { get; set; }
@@ -549,9 +550,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     private static void AccumulateUsage(JsonElement usage, ChatStreamState state)
     {
-        state.TotalTokens = usage.TryGetProperty("total_tokens", out var t) && t.TryGetInt32(out var tv) ? tv : state.TotalTokens;
-        state.PromptTokens = TryReadInt(usage, "prompt_tokens") ?? state.PromptTokens;
-        state.CompletionTokens = TryReadInt(usage, "completion_tokens") ?? state.CompletionTokens;
+        var prompt = TryReadInt(usage, "prompt_tokens") ?? state.PromptTokens;
+        var completion = TryReadInt(usage, "completion_tokens") ?? state.CompletionTokens;
+        // A chunk that changes a count without a total of its own makes the earlier total stale.
+        var countsChanged = prompt != state.PromptTokens || completion != state.CompletionTokens;
+        state.TotalTokens = TryReadInt(usage, "total_tokens") ?? (countsChanged ? null : state.TotalTokens);
+        state.PromptTokens = prompt;
+        state.CompletionTokens = completion;
         state.CacheHitTokens = TryReadInt(usage, "prompt_cache_hit_tokens")
             ?? TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens")
             ?? state.CacheHitTokens;
@@ -563,14 +568,22 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     // A vendor may split its usage across chunks: the fields of each chunk are kept, a later value
-    // of the same field replacing the earlier one.
+    // of the same field replacing the earlier one. A chunk that changes prompt_tokens or
+    // completion_tokens without a total_tokens of its own drops the earlier total, now stale: the
+    // exchange log recomputes it from the two counts.
     private static JsonElement MergeUsage(JsonElement previous, JsonElement usage)
     {
         var merged = System.Text.Json.Nodes.JsonObject.Create(previous)!;
+        if (!usage.TryGetProperty("total_tokens", out _)
+            && (CountChanged(previous, usage, "prompt_tokens") || CountChanged(previous, usage, "completion_tokens")))
+            merged.Remove("total_tokens");
         foreach (var property in usage.EnumerateObject())
             merged[property.Name] = System.Text.Json.Nodes.JsonNode.Parse(property.Value.GetRawText());
         return JsonSerializer.SerializeToElement(merged);
     }
+
+    private static bool CountChanged(JsonElement previous, JsonElement usage, string name)
+        => TryReadInt(usage, name) is { } count && TryReadInt(previous, name) != count;
 
     private static void AccumulateDelta(
         JsonElement delta, ChatStreamState state, List<LlmStreamEvent> events, string reasoningFieldName)
@@ -909,7 +922,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         return new LlmResponse
         {
             Content = finalContent,
-            TokensUsed = state.TotalTokens,
+            TokensUsed = state.TotalTokens
+                ?? (state.PromptTokens is { } prompt && state.CompletionTokens is { } completion ? prompt + completion : 0),
             PromptTokens = state.PromptTokens,
             CompletionTokens = state.CompletionTokens,
             CacheHitTokens = state.CacheHitTokens,

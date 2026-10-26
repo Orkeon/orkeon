@@ -19,9 +19,12 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// line break), vertical and horizontal scrolling with the built-in scrollbars, mouse drag selection in
 /// inverse video with auto-copy on release (<see cref="TuiClipboard"/>), Ctrl+A / Ctrl+C and the
 /// navigation keys (arrows, Page Up / Page Down, Home / End) when focused, and tabs expanded to the next
-/// stop of <see cref="TranscriptBuffer.TabWidth"/> columns (a copy keeps the tab). The autoscroll is a
-/// state, not a one-shot scroll: <see cref="MoveEnd"/> sticks the view to its tail, applied again when
-/// rows are added or the view is resized or laid out (a pane shown later), until the user scrolls up.
+/// stop of <see cref="TranscriptBuffer.TabWidth"/> columns (a copy keeps the tab; with the wrap on, a tab
+/// whose stop lies past the row end is clipped to that end). The autoscroll is a state, not a one-shot
+/// scroll: the view starts stuck to its tail, and <see cref="MoveEnd"/> or <see cref="Clear"/> stick it
+/// there again; while stuck it follows the tail when rows are added or the view is resized or laid out
+/// (a pane shown later). Scrolling up unsticks it: appending then leaves the viewport where the user put
+/// it. It sticks again once the viewport reaches the last row, by a scroll or by a resize.
 /// Not kept: double-click word selection and the auto-scroll while dragging a selection.
 /// Must be touched on the UI thread only.
 /// </remarks>
@@ -35,6 +38,7 @@ internal sealed class TranscriptView : View
     private TranscriptPosition _caret;
     private bool _dragging;
     private bool _followTail = true;
+    private Rectangle _lastViewport;
 
     public TranscriptView(int capacity)
     {
@@ -82,10 +86,12 @@ internal sealed class TranscriptView : View
         ContentChanged();
     }
 
+    /// <summary>Empties the transcript; the view sticks to its (new) tail again.</summary>
     public void Clear()
     {
         _buffer.Clear();
         _anchor = null;
+        _followTail = true;
         ContentChanged();
     }
 
@@ -98,6 +104,8 @@ internal sealed class TranscriptView : View
         _followTail = true;
         FollowTail();
     }
+
+    private bool AtEnd => Viewport.Y >= _buffer.RowCount - Viewport.Height;
 
     // Applies the stick-to-the-end state; a no-op while the view has no height yet.
     private void FollowTail()
@@ -120,11 +128,21 @@ internal sealed class TranscriptView : View
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnViewportChanged(e);
-        if (_buffer.Width != Viewport.Width) Relayout();
-        if (e.OldViewport.Size != e.NewViewport.Size) FollowTail();
-        else if (e.OldViewport.Y != e.NewViewport.Y)
+        // Compared with the viewport seen last, not with the event's: before the view is initialized
+        // Terminal.Gui reports an empty new viewport, which would read every scroll as a resize.
+        var previous = _lastViewport;
+        var current = Viewport;
+        _lastViewport = current;
+        if (_buffer.Width != current.Width) Relayout();
+        if (previous.Size != current.Size)
+        {
+            // A resize that brings the viewport to the end (a taller view) follows the tail again.
+            if (AtEnd) _followTail = true;
+            FollowTail();
+        }
+        else if (previous.Y != current.Y)
             // A scroll (keys, wheel, scrollbar): the view follows the tail again once back at the end.
-            _followTail = Viewport.Y >= _buffer.RowCount - Viewport.Height;
+            _followTail = AtEnd;
     }
 
     /// <inheritdoc />
@@ -152,7 +170,7 @@ internal sealed class TranscriptView : View
         foreach (var grapheme in GraphemeHelper.GetGraphemes(row.Text[row.Start..row.End]))
         {
             // A tab is drawn as the blanks up to the next stop of its row.
-            var w = TranscriptBuffer.ColumnsOf(grapheme, column);
+            var w = _buffer.ColumnsAt(grapheme, column);
             var at = column - skip;
             column += w;
             var position = new TranscriptPosition(row.Line, offset);

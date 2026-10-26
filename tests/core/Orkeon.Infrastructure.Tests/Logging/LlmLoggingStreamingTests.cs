@@ -263,14 +263,46 @@ public sealed class LlmLoggingStreamingTests
     [Trait("BR", "CH-197")]
     public async Task ShouldFillTheMissingTotals_WhenTheLastUsageLacksThem()
     {
+        // No usage object of the stream carries total_tokens: the logged one is filled.
         var usage = await LogStreamedUsageAsync(
-            """{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}""",
+            """{"prompt_tokens":10}""",
+            """{"completion_tokens":5}""",
             """{"cost":0.00042}""");
 
         Assert.Equal(10, usage.GetProperty("prompt_tokens").GetInt32());
         Assert.Equal(5, usage.GetProperty("completion_tokens").GetInt32());
         Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
         Assert.Equal(0.00042, usage.GetProperty("cost").GetDouble(), 10);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogTheSumAsTheTotal_WhenTheVendorSendsNoTotal()
+    {
+        var usage = await LogStreamedUsageAsync("""{"prompt_tokens":10,"completion_tokens":5}""");
+
+        Assert.Equal(15, usage.GetProperty("total_tokens").GetInt32());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldLogNoTotal_WhenNothingWasCounted()
+    {
+        var usage = await LogStreamedUsageAsync("""{"cost":0.00042}""");
+
+        Assert.False(usage.TryGetProperty("total_tokens", out _), usage.GetRawText());
+    }
+
+    [Fact]
+    [Trait("BR", "CH-197")]
+    public async Task ShouldRecomputeTheTotal_WhenALaterChunkChangesACountWithoutATotal()
+    {
+        var usage = await LogStreamedUsageAsync(
+            """{"prompt_tokens":10,"completion_tokens":1,"total_tokens":11}""",
+            """{"completion_tokens":50}""");
+
+        Assert.Equal(50, usage.GetProperty("completion_tokens").GetInt32());
+        Assert.Equal(60, usage.GetProperty("total_tokens").GetInt32());
     }
 
     /// <summary>Streams one answer whose last chunks carry <paramref name="usageJsons"/>, in order; returns the logged usage.</summary>

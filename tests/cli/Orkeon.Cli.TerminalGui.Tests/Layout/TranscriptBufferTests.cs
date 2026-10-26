@@ -279,4 +279,52 @@ public class TranscriptBufferTests
 
         Assert.Equal(8, buffer.MaxColumns);
     }
+
+    [Fact]
+    public void ShouldWrapTheTextAfterATab_WhenTheTabOverflowsBeforeTheRowEnd()
+    {
+        var buffer = new TranscriptBuffer(capacity: 10);
+        buffer.SetLayout(width: 6, wordWrap: true);
+
+        buffer.AppendLines(["abcde\tx"]);
+
+        // The tab is clipped to the last column of its row and "x" opens the next one.
+        Assert.Equal(2, buffer.RowCount);
+        var second = buffer.GetRow(1)!.Value;
+        Assert.Equal("x", second.Text[second.Start..second.End]);
+        Assert.Equal(new TranscriptPosition(buffer.FirstLineId, 6), buffer.HitTest(row: 1, column: 0));
+        Assert.Equal(new TranscriptPosition(buffer.FirstLineId, 7), buffer.HitTest(row: 1, column: 3));
+    }
+
+    [Fact]
+    public void ShouldHangATab_WhenItStartsAtTheRowEnd()
+    {
+        var buffer = new TranscriptBuffer(capacity: 10);
+        buffer.SetLayout(width: 6, wordWrap: true);
+
+        buffer.AppendLines(["abcdef\tx"]);
+
+        Assert.Equal(2, buffer.RowCount);
+        Assert.Equal(7, buffer.GetRow(1)!.Value.Start);
+    }
+
+    [Fact]
+    public void ShouldMeasureAZwjSequenceOnce_WhenItIsStreamedInTwoPieces()
+    {
+        const string first = "ab\U0001F468";
+        const string second = "\u200D\U0001F469\u200D\U0001F467";
+        foreach (var wrap in new[] { false, true })
+        {
+            var streamed = new TranscriptBuffer(capacity: 10);
+            var whole = new TranscriptBuffer(capacity: 10);
+            streamed.SetLayout(width: wrap ? 40 : 0, wordWrap: wrap);
+            whole.SetLayout(width: wrap ? 40 : 0, wordWrap: wrap);
+
+            streamed.Append(first);
+            streamed.Append(second);
+            whole.Append(first + second);
+
+            Assert.Equal(whole.MaxColumns, streamed.MaxColumns);
+        }
+    }
 }

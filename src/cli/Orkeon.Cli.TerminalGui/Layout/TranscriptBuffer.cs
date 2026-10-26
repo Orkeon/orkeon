@@ -42,6 +42,11 @@ internal sealed class TranscriptBuffer
         public long FirstRow;
         public int Columns;
 
+        // With the wrap off: where the last grapheme starts and its column, so an extension re-measures
+        // from there (a ZWJ or VS16 sequence split across two pieces is one grapheme, not two).
+        public int TailStart;
+        public int TailColumn;
+
         // Counts against the capacity: the first line of an entry, or a line of the stream. False for
         // the continuation lines of a multi-line entry and for the empty line opened after a final \n.
         public bool Unit;
@@ -125,6 +130,18 @@ internal sealed class TranscriptBuffer
     /// <summary>Columns a grapheme takes at <paramref name="column"/> of its row: a tab reaches the next stop.</summary>
     public static int ColumnsOf(string grapheme, int column)
         => grapheme == "\t" ? TabWidth - (column % TabWidth) : Math.Max(0, grapheme.GetColumns());
+
+    /// <summary>
+    /// Columns a grapheme takes at <paramref name="column"/> of a row laid out by this buffer: as
+    /// <see cref="ColumnsOf"/>, except that with the wrap on a tab whose stop lies past the row end is
+    /// clipped to the columns left on its row. Wrapping, drawing and hit-testing all measure with it.
+    /// </summary>
+    public int ColumnsAt(string grapheme, int column)
+    {
+        var w = ColumnsOf(grapheme, column);
+        var width = EffectiveWidth;
+        return grapheme == "\t" && width > 0 && column < width && column + w > width ? width - column : w;
+    }
 
     /// <summary>Sets the wrap width and mode; re-wraps every line only when either changed.</summary>
     public void SetLayout(int width, bool wordWrap)
@@ -218,7 +235,7 @@ internal sealed class TranscriptBuffer
         var columns = 0;
         foreach (var grapheme in GraphemeHelper.GetGraphemes(slice.Text[slice.Start..slice.End]))
         {
-            var width = ColumnsOf(grapheme, columns);
+            var width = ColumnsAt(grapheme, columns);
             if (columns + width > column) break;
             columns += width;
             offset += grapheme.Length;
@@ -368,9 +385,17 @@ internal sealed class TranscriptBuffer
         var width = EffectiveWidth;
         if (resumeFrom >= 0 && width == 0)
         {
-            CharactersWrapped += text.Length - resumeFrom;
-            var column = entry.Columns;
-            foreach (var grapheme in GraphemeHelper.GetGraphemes(text[resumeFrom..])) column += ColumnsOf(grapheme, column);
+            // Resume at the start of the previous last grapheme: the new text may extend it.
+            var from = entry.TailStart;
+            var column = entry.TailColumn;
+            CharactersWrapped += text.Length - from;
+            foreach (var grapheme in GraphemeHelper.GetGraphemes(text[from..]))
+            {
+                entry.TailStart = from;
+                entry.TailColumn = column;
+                column += ColumnsOf(grapheme, column);
+                from += grapheme.Length;
+            }
             entry.Columns = column;
             return;
         }
@@ -386,14 +411,25 @@ internal sealed class TranscriptBuffer
         var columns = 0;
         var peak = 0;
         var breakAt = -1;
+        if (resumeFrom < 0)
+        {
+            entry.TailStart = 0;
+            entry.TailColumn = 0;
+        }
         foreach (var grapheme in GraphemeHelper.GetGraphemes(text[index..]))
         {
+            if (width == 0)
+            {
+                entry.TailStart = index;
+                entry.TailColumn = columns;
+            }
             var w = ColumnsOf(grapheme, columns);
             var isSpace = grapheme is " " or "\t";
             var overflows = width > 0 && columns + w > width;
-            // A space that overflows hangs at the end of its row (clipped when drawn) instead of
-            // opening the next row with a blank.
-            if (isSpace && overflows) w = 0;
+            // A space or a tab that overflows from the row end hangs there (clipped when drawn)
+            // instead of opening the next row with a blank. A tab that overflows before the row end
+            // is clipped to the columns left (ColumnsAt), so what follows it opens the next row.
+            if (isSpace && overflows) w = columns < width ? width - columns : 0;
             else if (overflows && columns > 0)
             {
                 if (breakAt > starts[^1])
