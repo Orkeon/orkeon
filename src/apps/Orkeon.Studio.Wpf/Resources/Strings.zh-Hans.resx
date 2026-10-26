@@ -2487,7 +2487,7 @@
     <value>导入团队</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>没有进行中的会话。中断的创建会重新出现在这里。</value>
+    <value>中断的创建会重新出现在这里。</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>第 {0} / {1} 步 · {2}</value>
@@ -4207,6 +4207,9 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>没有进行中的会话</value>
+  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->

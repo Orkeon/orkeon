@@ -902,7 +902,7 @@
     <value>Import a team</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>No session in progress. An interrupted creation will show up here.</value>
+    <value>An interrupted creation will show up here.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Step {0} of {1} · {2}</value>
@@ -2519,6 +2519,9 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>No session in progress</value>
+  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->

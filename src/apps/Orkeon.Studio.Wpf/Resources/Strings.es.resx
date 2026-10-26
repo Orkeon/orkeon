@@ -2487,7 +2487,7 @@
     <value>Importar un equipo</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Ninguna sesión en curso. Una creación interrumpida reaparecerá aquí.</value>
+    <value>Una creación interrumpida reaparecerá aquí.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Paso {0} de {1} · {2}</value>
@@ -4207,6 +4207,9 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>Ninguna sesión en curso</value>
+  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->

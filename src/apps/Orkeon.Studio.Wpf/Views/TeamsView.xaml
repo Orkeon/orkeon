@@ -172,71 +172,51 @@
       </controls:Alert.Actions>
     </controls:Alert>
 
-    <Border Style="{StaticResource Card}" Padding="30,30,30,30" Margin="0,0,0,10"
+    <!-- R17 (C17): the one empty state — icon in a sky circle, title, sentence, two actions. -->
+    <Border Style="{StaticResource Card}" Padding="30,18" Margin="0,0,0,10"
             Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel HorizontalAlignment="Center">
-        <Border Width="40" Height="40" CornerRadius="20" HorizontalAlignment="Center"
-                Background="{DynamicResource AccentWeakBrush}">
-          <controls:LucideIcon Kind="brain-circuit" Size="19" Foreground="{DynamicResource AccentBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Border>
-        <TextBlock FontSize="14.5" FontWeight="Bold" Margin="0,12,0,0" HorizontalAlignment="Center"
-                   Foreground="{DynamicResource InkBrush}"
-                   Text="{Binding [Studio.Teams.EmptyTitle], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" FontSize="13" MaxWidth="420" Margin="0,6,0,0"
-                   TextWrapping="Wrap" TextAlignment="Center"
-                   Text="{Binding [Studio.Teams.EmptyBody], Source={x:Static services:I18n.Instance}}"/>
-        <StackPanel Orientation="Horizontal" Margin="0,16,0,0" HorizontalAlignment="Center">
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding CreateCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding ImportCommand}"
-                  Content="{Binding [Studio.Teams.Import], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </StackPanel>
+      <controls:EmptyState Icon="brain-circuit"
+                           Title="{Binding [Studio.Teams.EmptyTitle], Source={x:Static services:I18n.Instance}}"
+                           Text="{Binding [Studio.Teams.EmptyBody], Source={x:Static services:I18n.Instance}}">
+        <controls:EmptyState.Actions>
+          <StackPanel Style="{StaticResource ActionRow}">
+            <Button Style="{StaticResource BtnPrimary}" Command="{Binding CreateCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
+            <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding ImportCommand}" controls:ButtonIcon.Kind="upload"
+                    Content="{Binding [Studio.Teams.Import], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </controls:EmptyState.Actions>
+      </controls:EmptyState>
     </Border>
 
     <!-- STUDIO-32 (D-04): every team archived — the list is empty, the teams are not: the way on is
          the archives, not the creation. -->
-    <Border Style="{StaticResource Card}" Padding="30,30,30,30" Margin="0,0,0,10"
+    <Border Style="{StaticResource Card}" Padding="30,18" Margin="0,0,0,10"
             Visibility="{Binding IsAllArchived, Converter={StaticResource BooleanToVisibility}}">
-      <StackPanel HorizontalAlignment="Center">
-        <Border Width="40" Height="40" CornerRadius="20" HorizontalAlignment="Center"
-                Background="{DynamicResource PaperSunkBrush}">
-          <controls:LucideIcon Kind="archive" Size="19" Foreground="{DynamicResource InkMutedBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Border>
-        <TextBlock FontSize="14.5" FontWeight="Bold" Margin="0,12,0,0" HorizontalAlignment="Center"
-                   Foreground="{DynamicResource InkBrush}"
-                   Text="{Binding [Studio.Teams.AllArchivedTitle], Source={x:Static services:I18n.Instance}}"/>
-        <TextBlock Style="{StaticResource Hint}" FontSize="13" MaxWidth="420" Margin="0,6,0,0"
-                   TextWrapping="Wrap" TextAlignment="Center"
-                   Text="{Binding [Studio.Teams.AllArchivedBody], Source={x:Static services:I18n.Instance}}"/>
-        <StackPanel Orientation="Horizontal" Margin="0,16,0,0" HorizontalAlignment="Center">
-          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ToggleArchivesCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Teams.OpenArchives], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-          <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateCommand}"
-                  Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
-        </StackPanel>
-      </StackPanel>
+      <controls:EmptyState Icon="archive"
+                           Title="{Binding [Studio.Teams.AllArchivedTitle], Source={x:Static services:I18n.Instance}}"
+                           Text="{Binding [Studio.Teams.AllArchivedBody], Source={x:Static services:I18n.Instance}}">
+        <controls:EmptyState.Actions>
+          <StackPanel Style="{StaticResource ActionRow}">
+            <Button Style="{StaticResource BtnPrimary}" Command="{Binding ToggleArchivesCommand}" controls:ButtonIcon.Kind="archive"
+                    Content="{Binding [Studio.Teams.OpenArchives], Source={x:Static services:I18n.Instance}}"/>
+            <Button Style="{StaticResource BtnSecondary}" Margin="8,0,0,0" Command="{Binding CreateCommand}" controls:ButtonIcon.Kind="plus"
+                    Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </controls:EmptyState.Actions>
+      </controls:EmptyState>
     </Border>
 
     <!-- STUDIO-32 (D-04): the search found nothing — said, with the way back. -->
-    <StackPanel Orientation="Horizontal" Margin="0,2,0,14"
-                Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
-      <controls:LucideIcon Kind="scan-search" Size="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-      <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" Text="{Binding NoMatchLine}"/>
-      <Button Style="{StaticResource LinkBtn}" Margin="10,0,0,0" VerticalAlignment="Center"
-              Foreground="{DynamicResource AccentBrush}" Command="{Binding ClearSearchCommand}"
-              Content="{Binding [Studio.Teams.ClearSearch], Source={x:Static services:I18n.Instance}}"/>
-    </StackPanel>
+    <Border Style="{StaticResource Card}" Padding="30,18" Margin="0,0,0,10"
+            Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
+      <controls:EmptyState Icon="scan-search" Title="{Binding NoMatchLine}">
+        <controls:EmptyState.Actions>
+          <Button Style="{StaticResource BtnSecondary}" Command="{Binding ClearSearchCommand}" controls:ButtonIcon.Kind="x"
+                  Content="{Binding [Studio.Teams.ClearSearch], Source={x:Static services:I18n.Instance}}"/>
+        </controls:EmptyState.Actions>
+      </controls:EmptyState>
+    </Border>
 
     <!-- The cards the screen lists: the active teams or the archives, the search applied, in the
          chosen order (STUDIO-32, D-01). -->
@@ -708,9 +688,11 @@
                 Visibility="{Binding ShowArchives, Converter={StaticResource InverseBooleanToVisibility}}">
       <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
                  Text="{Binding [Studio.Teams.InProgress], Source={x:Static services:I18n.Instance}}"/>
-      <TextBlock Style="{StaticResource Hint}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                 Text="{Binding [Studio.Teams.NoSessions], Source={x:Static services:I18n.Instance}}"
-                 Visibility="{Binding HasInProgress, Converter={StaticResource InverseBooleanToVisibility}}"/>
+      <!-- R17 (C17): nothing underway — the compact empty state, no action. -->
+      <controls:EmptyState IsCompact="True" Icon="history" Padding="0,4"
+                           Title="{Binding [Studio.Teams.NoSessionsTitle], Source={x:Static services:I18n.Instance}}"
+                           Text="{Binding [Studio.Teams.NoSessions], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding HasInProgress, Converter={StaticResource InverseBooleanToVisibility}}"/>
       <ItemsControl ItemsSource="{Binding InProgress}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>

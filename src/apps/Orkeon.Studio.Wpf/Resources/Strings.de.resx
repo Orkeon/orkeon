@@ -2487,7 +2487,7 @@
     <value>Team importieren</value>
   </data>
   <data name="Studio.Teams.NoSessions" xml:space="preserve">
-    <value>Keine laufende Sitzung. Eine unterbrochene Erstellung erscheint hier wieder.</value>
+    <value>Eine unterbrochene Erstellung erscheint hier wieder.</value>
   </data>
   <data name="Studio.Create.DraftStepPattern" xml:space="preserve">
     <value>Schritt {0} von {1} · {2}</value>
@@ -4207,6 +4207,9 @@
   <!-- hrm:L05 end -->
 
   <!-- hrm:L06 begin -->
+  <data name="Studio.Teams.NoSessionsTitle" xml:space="preserve">
+    <value>Keine laufende Sitzung</value>
+  </data>
   <!-- hrm:L06 end -->
 
   <!-- hrm:L07 begin -->
