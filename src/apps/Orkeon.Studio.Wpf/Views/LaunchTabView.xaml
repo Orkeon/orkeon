@@ -103,12 +103,19 @@
                              Text="{Binding [Studio.Trial.TeamLabel], Source={x:Static services:I18n.Instance}}"/>
                   <!-- B02 (R09): one title line (the name, never its Markdown) over one meta line
                        (« 4 agents · lancée le 28/08 »), rows 44 px high; the closed 40 px box shows
-                       the title only (no ComboBoxItem above it there). -->
+                       the title only: the meta line takes its visibility from the nearest resource,
+                       Collapsed on the ComboBox, Visible in each ComboBoxItem's style. -->
                   <ComboBox Style="{StaticResource ComboM}"
                             ItemsSource="{Binding DataContext.TeamChoices, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}"
                             SelectedItem="{Binding DataContext.SelectedTeam, RelativeSource={RelativeSource AncestorType=views:RunScreenView}}">
+                    <ComboBox.Resources>
+                      <Visibility x:Key="TeamChoiceMetaVisibility">Collapsed</Visibility>
+                    </ComboBox.Resources>
                     <ComboBox.ItemContainerStyle>
                       <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                        <Style.Resources>
+                          <Visibility x:Key="TeamChoiceMetaVisibility">Visible</Visibility>
+                        </Style.Resources>
                         <Setter Property="MinHeight" Value="44"/>
                         <Setter Property="Padding" Value="12,4"/>
                         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -119,15 +126,11 @@
                         <StackPanel VerticalAlignment="Center">
                           <TextBlock Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                                      Text="{Binding Converter={StaticResource TeamChoiceTitle}}"/>
-                          <TextBlock x:Name="meta" Style="{StaticResource MetaText}" FontSize="12" TextWrapping="NoWrap"
+                          <TextBlock Style="{StaticResource MetaText}" FontSize="12" TextWrapping="NoWrap"
+                                     Visibility="{DynamicResource TeamChoiceMetaVisibility}"
                                      TextTrimming="CharacterEllipsis" Margin="0,1,0,0"
                                      Text="{Binding Converter={StaticResource TeamChoiceMeta}}"/>
                         </StackPanel>
-                        <DataTemplate.Triggers>
-                          <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}}" Value="{x:Null}">
-                            <Setter TargetName="meta" Property="Visibility" Value="Collapsed"/>
-                          </DataTrigger>
-                        </DataTemplate.Triggers>
                       </DataTemplate>
                     </ComboBox.ItemTemplate>
                   </ComboBox>
