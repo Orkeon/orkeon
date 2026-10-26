@@ -55,8 +55,9 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
 
         // Every stop starts at the top of its screen, whatever the one before scrolled to: a
         // stop that brought a row into view, or a selection the app brought up in a teardown,
-        // would otherwise decide where the next picture stands.
-        (PanelFor(screen)?.Parent as ScrollViewer)?.ScrollToTop();
+        // would otherwise decide where the next picture stands. The panel sits in the page host
+        // (R01), so its scroll viewer is an ancestor, not its parent.
+        ScrollViewerAbove(PanelFor(screen))?.ScrollToTop();
 
         await SettleAsync();
     }
@@ -81,6 +82,18 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
 
         target.BringIntoView();
         await SettleAsync();
+    }
+
+    /// <summary>The scroll viewer a screen's panel scrolls in, however deep the page host nests it.</summary>
+    private static ScrollViewer? ScrollViewerAbove(FrameworkElement? panel)
+    {
+        for (var node = panel?.Parent; node is not null; node = LogicalTreeHelper.GetParent(node))
+        {
+            if (node is ScrollViewer viewer)
+                return viewer;
+        }
+
+        return null;
     }
 
     private static object? ContentOf(FrameworkElement element) => element switch
