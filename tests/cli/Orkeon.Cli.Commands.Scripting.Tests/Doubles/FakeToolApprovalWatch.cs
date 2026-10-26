@@ -12,4 +12,10 @@ public sealed class FakeToolApprovalWatch : IToolApprovalWatch
     public List<PendingToolApproval> Pending { get; } = [];
 
     IReadOnlyList<PendingToolApproval> IToolApprovalWatch.Pending => Pending;
+
+    /// <inheritdoc />
+    public event EventHandler? PendingChanged;
+
+    /// <summary>Signals a change of <see cref="Pending"/>, as the approval channel does.</summary>
+    public void NotifyPendingChanged() => PendingChanged?.Invoke(this, EventArgs.Empty);
 }
