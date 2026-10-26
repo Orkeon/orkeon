@@ -462,7 +462,7 @@ un crew lancé par autre chose (un `runCrewAsync` détaché, la compaction, l'in
 reste atteignable par `/ps` et `/cancel <ticket>` ; aucune touche ne l'annule. `Ctrl+C` n'annule
 jamais et ne quitte jamais : avec une sélection il la copie (le transcript, ou la saisie, où un
 glissement de souris sélectionne aussi) ; sans sélection il imprime une ligne d'aide
-(`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` colle le presse-papiers dans
+(`Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` colle le presse-papiers dans
 la saisie quelle que soit la vue qui a le focus, en mode runner comme en mode REPL, et s'efface
 tant qu'une boîte de dialogue modale (recherche, confirmation de sortie) a le focus. Dans la
 liste des tâches (`↓` ou `F4`), `Échap` revient au prompt et n'annule rien, un tour en cours ou non ;

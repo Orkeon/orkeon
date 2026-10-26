@@ -451,7 +451,7 @@ runs. Only the prompt's turn is interrupted: a crew started by anything else (a 
 `runCrewAsync`, compaction, indexing) keeps running, and stays reachable through `/ps` and
 `/cancel <ticket>`; no key cancels it. `Ctrl+C` never cancels and never quits: with a selection it
 copies it (the transcript, or the input, where a mouse drag selects too); without one it prints a
-one-line hint (`Ctrl+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` pastes the
+one-line hint (`Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.`). `Ctrl+V` pastes the
 clipboard into the input whichever view has focus, in the runner and in the REPL modes, and stands
 down while a modal dialog (find, quit confirmation) has focus. In the tasks list (`↓` or `F4`), `Esc`
 returns to the prompt and cancels nothing, a turn running or not; it arms the pair like an `Esc` on

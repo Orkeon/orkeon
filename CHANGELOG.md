@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the TUI's copy key copies the transcript's mouse selection
+
+`Ctrl+C` looked only at the focused view's selection, and the transcript takes no focus: after a mouse selection in
+the transcript the key printed its hint instead of copying what was visibly selected. The key now falls back to the
+transcript's selection. `Ctrl+Shift+C`, the copy shortcut of GNOME terminals, reaches the same handler while the TUI
+holds the mouse, and the hint names both keys.
+
 ### Fixed — pasting a long text into the TUI's input no longer freezes the interface
 
 In the TUI, a right-click or `Ctrl+V` pasted the clipboard through `TextView.InsertText`, one rune at a time, each

@@ -169,7 +169,7 @@ Ctrl+C reaches Terminal.Gui's input loop instead of being intercepted by the
 ## Cancellation model
 
 Ctrl+C never cancels and never quits: it copies the selection, and without
-one prints `Ctrl+C copies a selection — esc esc interrupts the turn.` The
+one prints `Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.` The
 interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
 
 - **`Esc`** on the prompt clears the draft and arms the pair (also on an empty

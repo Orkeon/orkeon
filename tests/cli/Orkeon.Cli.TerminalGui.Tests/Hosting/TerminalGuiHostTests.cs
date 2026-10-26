@@ -23,12 +23,68 @@ public class TerminalGuiHostTests
         return new TerminalGuiHost(options);
     }
 
-    private const string Hint = "Ctrl+C copies a selection — esc esc interrupts the turn.";
+    private const string Hint = "Ctrl+C or Ctrl+Shift+C copies a selection — esc esc interrupts the turn.";
 
     private static ReplPaneView CreatePane()
         => new(new TerminalGuiOptions(), InlineDispatcher.Instance);
 
     private static Key CtrlC() => new(KeyCode.C | KeyCode.CtrlMask);
+
+    private static Key CtrlShiftC() => new(KeyCode.C | KeyCode.CtrlMask | KeyCode.ShiftMask);
+
+    [Fact]
+    public void CtrlC_copies_the_transcript_selection_when_the_input_has_none()
+    {
+        // The transcript is not focusable: its mouse selection is never the focused one, yet it is
+        // what the user sees selected. Ctrl+C copies it instead of printing the hint.
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriter = new StringWriter();
+        try
+        {
+            var runner = new FakeInteractiveRunner { Running = false };
+            using var pane = CreatePane();
+            pane.AppendOutputLine("alpha beta");
+            pane.HistoryView.SelectAll();
+
+            TerminalGuiHost.HandleCtrlC(CtrlC(), runner, pane);
+
+            Assert.True(TuiClipboard.TryGetText(out var copied));
+            Assert.Contains("alpha beta", copied, StringComparison.Ordinal);
+            Assert.Equal("alpha beta\n", pane.CurrentHistory);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriter = null;
+        }
+    }
+
+    [Fact]
+    public void CtrlShiftC_copies_the_transcript_selection_too()
+    {
+        // A terminal whose copy shortcut is Ctrl+Shift+C (Ptyxis, GNOME Terminal) passes it on
+        // while the TUI holds the mouse: it reaches the same handler as Ctrl+C.
+        TuiClipboard.Reset();
+        TuiClipboard.TerminalWriter = new StringWriter();
+        try
+        {
+            var runner = new FakeInteractiveRunner { Running = false };
+            using var pane = CreatePane();
+            pane.AppendOutputLine("gamma");
+            pane.HistoryView.SelectAll();
+
+            TerminalGuiHost.HandleCtrlC(CtrlShiftC(), runner, pane);
+
+            Assert.True(TuiClipboard.TryGetText(out var copied));
+            Assert.Contains("gamma", copied, StringComparison.Ordinal);
+            Assert.Equal("gamma\n", pane.CurrentHistory);
+        }
+        finally
+        {
+            TuiClipboard.Reset();
+            TuiClipboard.TerminalWriter = null;
+        }
+    }
 
     [Fact]
     [Trait("BR", "CH-04")]
