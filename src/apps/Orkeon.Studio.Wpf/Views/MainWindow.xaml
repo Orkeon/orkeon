@@ -1258,7 +1258,7 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock FontSize="13" Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}"/>
+                         TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
             </DockPanel>
           </Border>
         </StackPanel>
@@ -1324,10 +1324,10 @@
                          MinWidth="132" VerticalAlignment="Center"
                          Text="{Binding [Studio.Create.Scope], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource MonoText}" FontSize="13" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}"/>
+                         TextTrimming="CharacterEllipsis" Text="{Binding ScopeInfo}" ToolTip="{Binding ScopeInfo}"/>
             </DockPanel>
             <TextBlock Style="{StaticResource MonoText}" FontSize="13" Foreground="{DynamicResource InkFaintBrush}"
-                       Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}"
+                       Margin="0,9,0,0" TextTrimming="CharacterEllipsis" Text="{Binding KeyLine}" ToolTip="{Binding KeyLine}"
                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
           </StackPanel>
           <Border Background="{DynamicResource PaperBrush}" BorderBrush="{DynamicResource LineFaintBrush}"
@@ -1476,7 +1476,7 @@
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Margin="0,0,10,0" Command="{Binding CancelCommand}"
                       Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                         Text="{Binding Summary}"/>
+                         Text="{Binding Summary}" ToolTip="{Binding Summary}"/>
             </DockPanel>
           </Border>
         </StackPanel>
