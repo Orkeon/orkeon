@@ -1386,8 +1386,10 @@
     <!-- ══════════ CAS D'USAGE (panneau latéral, STUDIO-39) ══════════
          The gallery comes in from the right, over the wizard it was opened from: step 1 stays in
          sight on the left, under the scrim, so the need a card fills is never out of view. A click
-         on the scrim closes it, like every overlay here. -->
-    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
+         on the scrim closes it, like every overlay here.
+         R15 (A08): scrim and drawer start under the 52 px title bar (row 1), so the assistant
+         button, the mode switch, the language menu and the window buttons stay visible and usable. -->
+    <Grid Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
           Visibility="{Binding CreateTeam.Gallery.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="560" HorizontalAlignment="Right" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
