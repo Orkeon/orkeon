@@ -107,8 +107,23 @@
                       Command="{Binding ShowOptionsTabCommand}"
                       controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"
                       Content="{Binding [Studio.Run.SeeOptions], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                         Margin="0,0,12,0" Text="{Binding TeamFooter}"/>
+              <!-- C04 (R08): the card footer says the section's state behind its dot - the tab's own
+                   mark: sand while a team is to choose or refused, green once it can run. -->
+              <controls:StatusDot Margin="0,0,12,0" Content="{Binding TeamFooter}">
+                <controls:StatusDot.Style>
+                  <Style TargetType="controls:StatusDot" BasedOn="{StaticResource {x:Type controls:StatusDot}}">
+                    <Setter Property="Tone" Value="Ready"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding TeamTabState}" Value="Expected">
+                        <Setter Property="Tone" Value="Attention"/>
+                      </DataTrigger>
+                      <DataTrigger Binding="{Binding TeamTabState}" Value="Warning">
+                        <Setter Property="Tone" Value="Attention"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </controls:StatusDot.Style>
+              </controls:StatusDot>
             </DockPanel>
           </Border>
           <StackPanel>
@@ -319,8 +334,8 @@
                       Command="{Binding OptionsNextCommand}"
                       controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"
                       Content="{Binding OptionsNextLabel}"/>
-              <TextBlock Style="{StaticResource Hint}" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"
-                         Margin="0,0,12,0" Text="{Binding OptionsFooter}"/>
+              <!-- R08: the options keep their marks to themselves - a neutral dot, like the tab -->
+              <controls:StatusDot Tone="Neutral" Margin="0,0,12,0" Content="{Binding OptionsFooter}"/>
             </DockPanel>
           </Border>
           <StackPanel>
@@ -1190,35 +1205,25 @@
             </StackPanel>
           </Button>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Ellipse x:Name="ReadinessDot" Width="8" Height="8" Margin="0,0,10,0" VerticalAlignment="Center">
-            <Ellipse.Style>
-              <Style TargetType="Ellipse">
-                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
-                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
-                  </DataTrigger>
-                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="running">
-                    <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </Ellipse.Style>
-          </Ellipse>
-          <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" Text="{Binding LaunchReadinessText}">
-            <TextBlock.Style>
-              <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
-                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </TextBlock.Style>
-          </TextBlock>
-        </StackPanel>
+        <!-- C04 (R08): the page footer says what is missing to launch, behind the shared dot - never
+             the card footer's sentence. Ready in green, refused in red, running in the neutral grey. -->
+        <controls:StatusDot x:Name="ReadinessDot" Content="{Binding LaunchReadinessText}">
+          <controls:StatusDot.Style>
+            <Style TargetType="controls:StatusDot" BasedOn="{StaticResource {x:Type controls:StatusDot}}">
+              <Setter Property="Tone" Value="Ready"/>
+              <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="danger">
+                  <Setter Property="Tone" Value="Error"/>
+                  <Setter Property="Foreground" Value="{DynamicResource DangerInkBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding LaunchReadinessTone}" Value="running">
+                  <Setter Property="Tone" Value="Neutral"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </controls:StatusDot.Style>
+        </controls:StatusDot>
       </DockPanel>
     </Border>
 
