@@ -314,7 +314,7 @@
     <value>Ausnahme hinzufügen</value>
   </data>
   <data name="Studio.Settings.Preview" xml:space="preserve">
-    <value>MOUNT-STRING</value>
+    <value>--mount-ARGUMENT</value>
   </data>
   <data name="Studio.Settings.RawJsonReadOnly" xml:space="preserve">
     <value>NUR LESEN</value>

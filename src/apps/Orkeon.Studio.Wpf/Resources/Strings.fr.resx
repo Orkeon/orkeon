@@ -121,7 +121,7 @@
   <data name="Studio.Settings.LblRights" xml:space="preserve"><value>Droits</value></data>
   <data name="Studio.Settings.OverridesTitle" xml:space="preserve"><value>Droits par sous-chemin</value></data>
   <data name="Studio.Settings.AddOverride" xml:space="preserve"><value>Ajouter une exception</value></data>
-  <data name="Studio.Settings.Preview" xml:space="preserve"><value>MOUNT STRING</value></data>
+  <data name="Studio.Settings.Preview" xml:space="preserve"><value>ARGUMENT --mount</value></data>
 
       <data name="Studio.Settings.RawJsonReadOnly" xml:space="preserve"><value>LECTURE SEULE</value></data>
   <data name="Studio.Settings.Copy" xml:space="preserve"><value>Copier</value></data>

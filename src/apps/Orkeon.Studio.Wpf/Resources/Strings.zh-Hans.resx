@@ -314,7 +314,7 @@
     <value>添加例外</value>
   </data>
   <data name="Studio.Settings.Preview" xml:space="preserve">
-    <value>挂载字符串</value>
+    <value>--mount 参数</value>
   </data>
   <data name="Studio.Settings.RawJsonReadOnly" xml:space="preserve">
     <value>只读</value>
