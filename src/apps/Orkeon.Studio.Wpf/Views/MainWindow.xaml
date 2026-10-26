@@ -419,27 +419,24 @@
                               Loaded="OnAssistantPanelLoaded"
                               Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
         <!-- STUDIO-32 (D-02), refonte lot 2: « Archive » asks nothing; its undo is this toast at the
-             bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen. -->
+             bottom right of the content, for ten seconds (TeamsViewModel.UndoWindow), over any screen.
+             R15 (A09): 16 px above the status bar, 16 px left of the 8 px scroll bar, inside the
+             content column (PlaceAssistantPanel keeps the same margins). -->
         <Border x:Name="ArchiveUndoToast" Grid.Column="0" Panel.ZIndex="10" DataContext="{Binding Teams}"
                 AutomationProperties.AutomationId="ArchiveUndoToast"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,20" MaxWidth="440"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,16" MaxWidth="440"
                 Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,8,6,8"
                 Effect="{DynamicResource ShadowMd}"
                 Visibility="{Binding HasUndo, Converter={StaticResource BooleanToVisibility}}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="28" Height="28" VerticalAlignment="Center"
-                    Command="{Binding DismissUndoCommand}"
-                    ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
-              <controls:LucideIcon Kind="x" Size="16"/>
-            </Button>
+            <Button DockPanel.Dock="Right" Style="{StaticResource IconBtnGhost}" VerticalAlignment="Center"
+                    Command="{Binding DismissUndoCommand}" controls:ButtonIcon.Kind="x"
+                    ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"
+                    AutomationProperties.Name="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32" Margin="12,0,4,0"
-                    VerticalAlignment="Center" Command="{Binding UndoCommand}">
-              <StackPanel Orientation="Horizontal">
-                <controls:LucideIcon Kind="rotate-ccw" Size="16" Margin="0,0,6,0"/>
-                <TextBlock Text="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
-              </StackPanel>
-            </Button>
+                    VerticalAlignment="Center" Command="{Binding UndoCommand}" controls:ButtonIcon.Kind="rotate-ccw"
+                    Content="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
             <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="16" Margin="0,0,10,0"
                                  VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
             <TextBlock FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
