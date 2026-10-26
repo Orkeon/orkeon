@@ -429,6 +429,68 @@ public sealed class FileSystemRegistryTests : IDisposable
         Assert.Null(registry.WorkingDirectory);
     }
 
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/output/../workspace")]
+    [InlineData("/output/./sub")]
+    [InlineData("/output/..")]
+    public void ShouldRefuseTheWriteDirectory_WhenItHoldsADotSegment(string requested)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWriteDirectory(requested));
+        Assert.Equal(FileSystemRegistry.DefaultWriteDirectory, registry.WriteDirectory);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/workspace/../output")]
+    [InlineData("/workspace/./src")]
+    public void ShouldRefuseTheWorkingDirectory_WhenItHoldsADotSegment(string requested)
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWorkingDirectory(requested));
+        Assert.Equal(FileSystemRegistry.DefaultWorkingDirectory, registry.WorkingDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldRefuseTheWriteDirectory_WhenASubtreeOverrideRemovesWrite()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("out"), "/output", FileAccessRights.ReadWrite,
+                [new SubPathOverride("ro", FileAccessRights.ReadOnly)]),
+        ]);
+
+        Assert.Throws<ArgumentException>(() => registry.SetWriteDirectory("/output/ro"));
+        Assert.Equal(FileSystemRegistry.DefaultWriteDirectory, registry.WriteDirectory);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public void ShouldAcceptTheWriteDirectory_WhenASubtreeOverrideGrantsWriteOnAReadOnlyMount()
+    {
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(CreateSubDir("docs"), "/docs", FileAccessRights.ReadOnly,
+                [new SubPathOverride("drafts", FileAccessRights.ReadWrite)]),
+        ]);
+
+        registry.SetWriteDirectory("/docs/drafts");
+
+        Assert.Equal("/docs/drafts", registry.WriteDirectory);
+    }
+
     [Fact]
     [Trait("BR", "CH-199")]
     public void ShouldShowTheShapeOfAnAddress_WhenNoMountMatches()

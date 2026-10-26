@@ -401,6 +401,22 @@ public sealed class XlsxReadToolTests : IDisposable
         Assert.Contains(deniedValidator.Calls, c => c.Path.EndsWith("passwd.xlsx", StringComparison.Ordinal));
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadRelativePath_AgainstTheWorkingDirectory()
+    {
+        var xlsxPath = CreateXlsxFile("Sheet1", ["Name"], [["Alice"]]);
+        using var tool = new XlsxReadTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "xlsx_reader",
+            Parameters: new Dictionary<string, object?> { ["file_path"] = Path.GetFileName(xlsxPath) }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+        Assert.Single(Assert.IsType<List<object>>(dict["sheets"], exactMatch: false));
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

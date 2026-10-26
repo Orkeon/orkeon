@@ -3,7 +3,7 @@ using Orkeon.Cli.Commands.Scripting.Runtime;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 
-public sealed class ScriptServiceLocatorTests
+public sealed partial class ScriptServiceLocatorTests
 {
     private sealed record DummyService(string Tag);
 
@@ -89,5 +89,56 @@ public sealed class ScriptServiceLocatorTests
         Assert.Null(approval.command);
         Assert.Equal("read", approval.tool);
         Assert.Equal(new string('x', 60) + "…", approval.input);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-198")]
+    public void Approvals_typings_declare_the_shape_the_runtime_serves()
+    {
+        var typings = CliTypings();
+
+        // The key the typings name is the key the whitelist serves, and it returns PendingApprovals.
+        Assert.Contains($"get(name: \"{ScriptServiceKeys.Approvals}\"): PendingApprovals;", typings, StringComparison.Ordinal);
+
+        // PendingApprovals.list() is the one member of ScriptPendingApprovals a script can call.
+        Assert.Matches(@"\blist\(\)\s*:\s*readonly PendingApproval\[\]", DeclarationBody(typings, "PendingApprovals"));
+        var list = typeof(ScriptPendingApprovals).GetMethod(nameof(ScriptPendingApprovals.list));
+        Assert.NotNull(list);
+        Assert.Empty(list.GetParameters());
+        Assert.Equal(typeof(ScriptPendingApproval[]), list.ReturnType);
+
+        // PendingApproval declares exactly the properties ScriptPendingApproval exposes, nullable where they are.
+        var declared = ReadonlyField().Matches(DeclarationBody(typings, "PendingApproval"))
+            .ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value.Trim(), StringComparer.Ordinal);
+        var nullability = new System.Reflection.NullabilityInfoContext();
+        var runtime = typeof(ScriptPendingApproval)
+            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .ToDictionary(
+                p => p.Name,
+                p => nullability.Create(p).ReadState == System.Reflection.NullabilityState.Nullable ? "string | null" : "string",
+                StringComparer.Ordinal);
+        Assert.Equal(runtime.OrderBy(kv => kv.Key, StringComparer.Ordinal), declared.OrderBy(kv => kv.Key, StringComparer.Ordinal));
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"readonly (\w+): ([^;]+);")]
+    private static partial System.Text.RegularExpressions.Regex ReadonlyField();
+
+    private static string DeclarationBody(string typings, string name)
+    {
+        var start = typings.IndexOf($"interface {name} ", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"interface {name} is not declared in orkeon-cli.d.ts");
+        return typings[start..typings.IndexOf("\n}", start, StringComparison.Ordinal)];
+    }
+
+    private static string CliTypings()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            var candidate = Path.Combine(directory.FullName, "src", "cli", "Orkeon.Cli.Commands.Scripting", "Typings", "orkeon-cli.d.ts");
+            if (File.Exists(candidate))
+                return File.ReadAllText(candidate);
+        }
+
+        throw new FileNotFoundException("orkeon-cli.d.ts not found above the test base directory.");
     }
 }

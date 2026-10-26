@@ -105,8 +105,12 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
 
         async Task<CsvReaderResponse> ExecuteTypedCoreAsync()
         {
-            if (!await _fileSystemService.ExistsAsync(request.Path, cancellationToken).ConfigureAwait(false))
-                throw new FileNotFoundException($"File not found: {request.Path}");
+            // The absolute virtual path the validation judged: a relative path resolves
+            // against the working directory, and every call below addresses that same file.
+            var path = AbsolutizePath(request.Path);
+
+            if (!await _fileSystemService.ExistsAsync(path, cancellationToken).ConfigureAwait(false))
+                throw new FileNotFoundException($"File not found: {path}");
 
             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
@@ -117,9 +121,9 @@ public partial class CsvReaderTool : FileToolBase<CsvReaderRequest, CsvReaderRes
             };
 
             var (rows, headers, rowCount) = await ReadCsvDataVfsAsync(
-                _fileSystemService, request.Path, config, request.HasHeader, request.MaxRows, cancellationToken).ConfigureAwait(false);
+                _fileSystemService, path, config, request.HasHeader, request.MaxRows, cancellationToken).ConfigureAwait(false);
 
-            LogReadCsv(request.Path, rows.Count, headers.Count);
+            LogReadCsv(path, rows.Count, headers.Count);
 
             return new CsvReaderResponse
             {

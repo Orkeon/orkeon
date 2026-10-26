@@ -30,10 +30,11 @@ failed; a scripted command's error, rejection or quota refusal now returns it, a
 ### Changed — file tools accept a relative path; `shell_command` no longer falls back to the first mount **[breaking]** (#199, #200)
 
 A file tool (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`, `directory_search`,
-`count_pattern`, `node_*`, `edit_batch`) resolves a relative `path` against the agent's working root, else the file
-system's new working directory (`IFileSystemService.WorkingDirectory`: `/workspace` when mounted, else the one a host
-designates with `FileSystemRegistry.SetWorkingDirectory` or `Orkeon:FileSystem:WorkingDirectory`; the runners fall
-back to `/output`), and echoes the absolute path. The path is made absolute before the mount check and the root guard.
+`count_pattern`, `node_*`, `edit_batch`, and the data tools `csv_reader`, `docx_reader`, `docx_writer`,
+`xlsx_reader`, `xlsx_writer`, `pdf_reader`, `xml_parser`) resolves a relative `path` against the agent's working root,
+else the file system's new working directory (`IFileSystemService.WorkingDirectory`: the one a host designates with
+`Orkeon:FileSystem:WorkingDirectory` or `FileSystemRegistry.SetWorkingDirectory`, else `/workspace` when mounted; the
+runners fall back to `/output`), and echoes the absolute path. The path is made absolute before the mount check and the root guard.
 An empty `path` is refused with `path is required: the absolute path of the file, e.g. /workspace/src/stats.js`, and a
 path in no mount says `a path starts with a mount: /workspace/src/stats.js`. `node_outline`, `node_read` and
 `directory_search` go through the same resolution, and so do `structural_search`, `structural_rewrite` (`paths`),
@@ -44,10 +45,12 @@ the agent root before any I/O.
 read-only command could land in `/session-history`. It now runs in the agent's root, else the working directory; with
 mounts but no working directory it is refused, naming the mounts. A host without `/workspace` designates its working
 mount (`Orkeon:FileSystem:WorkingDirectory`, or `SetWorkingDirectory`). A relative `working_directory` is made
-absolute before the root guard, so `../p2` cannot leave the agent root. Where the working directory does not grant a
-writing command its rights (a read-only `/workspace`, as in `orkeon forge`), the command runs outside any agent root in
-the new write directory: `Orkeon:FileSystem:WriteDirectory`, else `/output` when an agent-facing mount grants Write
-there — never the order of the mounts; with none it is refused, naming the option, and under an agent root it never
+absolute before the root guard, so `../p2` cannot leave the agent root. Where the working directory is refused for
+its rights alone (a writing command needs every right on it: read, write, create, delete; a read-only `/workspace`, as
+in `orkeon forge`), the command runs outside any agent root in the new write directory:
+`Orkeon:FileSystem:WriteDirectory` (an absolute path without `.` or `..` segments whose effective rights, subtree
+overrides included, grant Write), else `/output` when an agent-facing mount grants Write there — never the order of the
+mounts; any other refusal of the working directory is reported as is; with none it is refused, naming the option, and under an agent root it never
 moves. The file tools' relative paths still resolve against the working directory only. The `orkeon forge` trial
 carries the host's working and write directories forward while it still mounts them.
 
@@ -89,8 +92,7 @@ vendor splits its usage across chunks, a later value of a field replacing an ear
 `completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. The three totals are always
 written, taken from the counts the stream accumulated when the vendor's object lacks them (an empty `usage` sent
 last); any other field the vendor did not return stays absent, and a stream that reports only the three totals logs
-the same three fields as before. Ollama and
-Anthropic streams are unchanged.
+the same three fields as before. Ollama and Anthropic streams are unchanged.
 
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
 

@@ -110,15 +110,10 @@ public sealed class FileSystemRegistry : IDisposable
     /// An absolute virtual path inside an agent-facing mount: a working directory an agent cannot
     /// address would hand it relative paths it could never spell back.
     /// </param>
-    /// <exception cref="ArgumentException">The path is not absolute, or no agent-facing mount holds it.</exception>
+    /// <exception cref="ArgumentException">The path is not absolute, holds a <c>.</c> or <c>..</c> segment, or no agent-facing mount holds it.</exception>
     public void SetWorkingDirectory(string virtualPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
-        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
-        if (!normalized.StartsWith('/'))
-            throw new ArgumentException(
-                $"A working directory is an absolute virtual path, e.g. {DefaultWorkingDirectory}; '{virtualPath}' is not.",
-                nameof(virtualPath));
+        var normalized = NormalizeDesignatedDirectory(virtualPath, "working", DefaultWorkingDirectory);
 
         _lock.EnterWriteLock();
         try
@@ -162,23 +157,21 @@ public sealed class FileSystemRegistry : IDisposable
     /// Designates the write directory (see <see cref="WriteDirectory"/>). A host calls it when the
     /// writable mount its agents produce in is not <see cref="DefaultWriteDirectory"/>.
     /// </summary>
-    /// <param name="virtualPath">An absolute virtual path inside an agent-facing mount that grants Write.</param>
-    /// <exception cref="ArgumentException">The path is not absolute, or no writable agent-facing mount holds it.</exception>
+    /// <param name="virtualPath">
+    /// An absolute virtual path, without a <c>.</c> or <c>..</c> segment, inside an agent-facing
+    /// mount whose effective rights on that path (subtree overrides included) grant Write.
+    /// </param>
+    /// <exception cref="ArgumentException">The path is not absolute, holds a <c>.</c> or <c>..</c> segment, or no agent-facing mount grants Write on it.</exception>
     public void SetWriteDirectory(string virtualPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
-        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
-        if (!normalized.StartsWith('/'))
-            throw new ArgumentException(
-                $"A write directory is an absolute virtual path, e.g. {DefaultWriteDirectory}; '{virtualPath}' is not.",
-                nameof(virtualPath));
+        var normalized = NormalizeDesignatedDirectory(virtualPath, "write", DefaultWriteDirectory);
 
         _lock.EnterWriteLock();
         try
         {
             if (FindWritableAgentFacingMountUnsafe(normalized) is null)
                 throw new ArgumentException(
-                    $"No writable agent-facing mount holds the write directory '{virtualPath}'.",
+                    $"No agent-facing mount grants Write on the write directory '{virtualPath}'.",
                     nameof(virtualPath));
             _writeDirectory = normalized;
         }
@@ -462,8 +455,37 @@ public sealed class FileSystemRegistry : IDisposable
     private FileSystemMount? FindAgentFacingMountUnsafe(string virtualPath) =>
         FindMountUnsafe(virtualPath) is { Visibility: MountVisibility.AgentFacing } mount ? mount : null;
 
+    /// <summary>
+    /// The agent-facing mount holding <paramref name="virtualPath"/> when the effective rights of
+    /// that exact path grant Write: a subtree override that removes Write (<c>/output/ro</c>)
+    /// counts, as it does when the path is resolved.
+    /// </summary>
     private FileSystemMount? FindWritableAgentFacingMountUnsafe(string virtualPath) =>
-        FindAgentFacingMountUnsafe(virtualPath) is { } mount && mount.DefaultRights.HasFlag(FileAccessRights.Write) ? mount : null;
+        FindAgentFacingMountUnsafe(virtualPath) is { } mount
+        && mount.ResolveRights(ExtractRelativePath(virtualPath, mount.VirtualPath)).HasFlag(FileAccessRights.Write)
+            ? mount
+            : null;
+
+    /// <summary>
+    /// The spelling a designated directory is kept under: absolute, without a trailing slash, and
+    /// without a <c>.</c> or <c>..</c> segment. Such a segment is refused rather than resolved: the
+    /// registry checks a designation against its mounts, and resolution would refuse
+    /// <c>/output/../workspace</c> as a traversal at every command after accepting it here.
+    /// </summary>
+    private static string NormalizeDesignatedDirectory(string virtualPath, string kind, string example)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
+        var normalized = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+        if (!normalized.StartsWith('/'))
+            throw new ArgumentException(
+                $"A {kind} directory is an absolute virtual path, e.g. {example}; '{virtualPath}' is not.",
+                nameof(virtualPath));
+        if (normalized.Replace('\\', '/').Split('/').Any(segment => segment is "." or ".."))
+            throw new ArgumentException(
+                $"A {kind} directory names its directory without '.' or '..' segments, e.g. {example}; '{virtualPath}' does not.",
+                nameof(virtualPath));
+        return normalized;
+    }
 
     private static string ExtractRelativePath(string virtualPath, string mountVirtualPath)
     {

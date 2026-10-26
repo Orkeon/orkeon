@@ -95,14 +95,18 @@ public partial class DocxReadTool : FileToolBase<DocxReadRequest, DocxReadRespon
 
         async Task<DocxReadResponse> ExecuteTypedCoreAsync()
         {
+            // The absolute virtual path the validation judged: a relative path resolves
+            // against the working directory, and every call below addresses that same file.
+            var path = AbsolutizePath(request.FilePath);
+
             // VFS path: read the bytes through the virtual file system, which resolves the
             // virtual path (e.g. /data/x.docx) to its physical mount location.
-            var vfsResult = ResolveVirtualPath(request.FilePath, FileAccessRights.Read);
+            var vfsResult = ResolveVirtualPath(path, FileAccessRights.Read);
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var bytes = await _fileSystemService.TryReadAllBytesAsync(request.FilePath, cancellationToken).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"File not found: {request.FilePath}");
+            var bytes = await _fileSystemService.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
+                ?? throw new FileNotFoundException($"File not found: {path}");
             var document = WordprocessingDocument.Open(new MemoryStream(bytes), false);
 
             using (document)
@@ -120,7 +124,7 @@ public partial class DocxReadTool : FileToolBase<DocxReadRequest, DocxReadRespon
                     ? ExtractMetadata(document)
                     : [];
 
-                LogReadDocx(request.FilePath, paragraphs.Count);
+                LogReadDocx(path, paragraphs.Count);
 
                 return new DocxReadResponse
                 {

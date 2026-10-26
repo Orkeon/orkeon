@@ -98,6 +98,10 @@ public partial class DocxWriteTool : FileToolBase<DocxWriteRequest, DocxWriteRes
 
         async Task<DocxWriteResponse> ExecuteTypedCoreAsync()
         {
+            // The absolute virtual path the validation judged: a relative path resolves
+            // against the working directory, and every call below addresses that same file.
+            var path = AbsolutizePath(request.FilePath);
+
             // Build the document in memory, then commit the bytes through the
             // virtual file system so the physical mount location is resolved by the VFS.
             byte[] bytes;
@@ -110,14 +114,14 @@ public partial class DocxWriteTool : FileToolBase<DocxWriteRequest, DocxWriteRes
                 bytes = ms.ToArray();
             }
 
-            var fileSize = await _fileSystemService.WriteAllBytesAsync(request.FilePath, bytes, cancellationToken).ConfigureAwait(false);
+            var fileSize = await _fileSystemService.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
 
-            LogWriteDocx(request.FilePath, request.Paragraphs.Count, request.BulletItems.Count);
+            LogWriteDocx(path, request.Paragraphs.Count, request.BulletItems.Count);
 
             return new DocxWriteResponse
             {
                 Success = true,
-                FilePath = request.FilePath,
+                FilePath = path,
                 FileSize = fileSize
             };
         }

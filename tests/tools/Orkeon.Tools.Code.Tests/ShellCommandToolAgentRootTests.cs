@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
@@ -715,7 +716,7 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
     /// when <paramref name="withOutput"/> is false.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the duration of the test.")]
-    private FileSystemService ForgeLikeFileSystem(bool writableWorkspace = false, bool withOutput = true)
+    private FileSystemService ForgeLikeFileSystem(bool writableWorkspace = false, bool withOutput = true, StubPathValidator? validator = null)
     {
         var workspace = Directory.CreateDirectory(Path.Combine(_tempDir, "ws", "job")).Parent!.FullName;
         var output = Directory.CreateDirectory(Path.Combine(_tempDir, "out")).FullName;
@@ -724,7 +725,29 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
         if (withOutput)
             mounts.Add(new FileSystemMount(output, "/output", FileAccessRights.ReadWrite));
         var registry = new FileSystemRegistry(mounts);
-        return new FileSystemService(registry, new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+        return new FileSystemService(registry, validator ?? new StubPathValidator().AllowAll(), NullLogger<FileSystemService>.Instance);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldNotFallBackToTheWriteDirectory_WhenTheWorkspaceIsRefusedForAnotherReason()
+    {
+        // The workspace grants every right, but the path validator refuses it: that is no
+        // rights denial, and running in /output instead would hide the refusal.
+        var workspace = Path.Combine(_tempDir, "ws");
+        var validator = new StubPathValidator().RespondWith((p, _) =>
+            string.Equals(p, workspace, StringComparison.Ordinal)
+                ? PathValidationResult.Denied("refused by the path validator")
+                : PathValidationResult.Allowed(p));
+        var sandbox = new FakeShellSandbox { UsesVirtualPaths = false };
+        using var tool = new ShellCommandTool(ForgeLikeFileSystem(writableWorkspace: true, validator: validator), extraAllowedCommands: ["make"]) { Sandbox = sandbox };
+
+        var response = await tool.CallAsync(Request("make --version", ""), Ct);
+
+        var result = Assert.IsType<Dictionary<string, object?>>(response.Result, exactMatch: false);
+        Assert.False((bool)result["completed"]!);
+        Assert.Contains("refused by the path validator", Assert.IsType<string>(result["stderr"]), StringComparison.Ordinal);
+        Assert.All(sandbox.Sessions, s => Assert.Empty(s.Invocations));
     }
 
     [Fact]

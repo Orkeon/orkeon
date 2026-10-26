@@ -177,6 +177,26 @@ public sealed class WorkingDirectoryDesignationTests : IDisposable
         Assert.Contains(ConfigurationKeys.FileSystemWriteDirectory, ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [Trait("BR", "CH-199")]
+    [InlineData("/output/../workspace")]
+    [InlineData("/output/ro")]
+    public void ShouldNameTheSetting_WhenTheConfiguredWriteDirectoryTraversesOrIsMadeReadOnly(string configuredWrite)
+    {
+        // Both used to be accepted at start, then refused at every writing command.
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount(Dir("ws"), "/workspace", FileAccessRights.ReadWrite),
+            new FileSystemMount(Dir("out"), "/output", FileAccessRights.ReadWrite,
+                [new SubPathOverride("ro", FileAccessRights.ReadOnly)]),
+        ]);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => WorkingDirectoryDesignation.Apply(registry, configured: null, configuredWrite: configuredWrite));
+
+        Assert.Contains(ConfigurationKeys.FileSystemWriteDirectory, ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     [Trait("BR", "CH-199")]
     public void ShouldHonourTheWriteDirectorySetting_WhenTheRegistryIsBuiltFromConfiguration()
