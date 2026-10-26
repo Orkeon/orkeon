@@ -291,6 +291,92 @@
     </Setter>
   </Style>
 
+  <!-- ══ EmptyState (R17): a 40 px sky circle (20 px icon in the accent) · 16/600 title · one
+       14 px sentence · 0 to 2 actions, centred. Compact: a 24 px circle (14 px icon) on the left
+       of a 14/600 title and the sentence, no action. ══ -->
+  <Style TargetType="{x:Type controls:EmptyState}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Padding" Value="0,12"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:EmptyState}">
+          <Grid Margin="{TemplateBinding Padding}">
+            <StackPanel x:Name="full" HorizontalAlignment="Center">
+              <Border Width="40" Height="40" CornerRadius="20" HorizontalAlignment="Center" Background="{DynamicResource SkyBrush}">
+                <controls:LucideIcon Kind="{Binding Icon, RelativeSource={RelativeSource TemplatedParent}}" Size="20"
+                                     Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <TextBlock Text="{TemplateBinding Title}" FontSize="16" FontWeight="SemiBold" Margin="0,12,0,0"
+                         HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                         Foreground="{TemplateBinding Foreground}"/>
+              <TextBlock x:Name="fullText" Text="{TemplateBinding Text}" FontSize="14" LineHeight="21" MaxWidth="480" Margin="0,6,0,0"
+                         HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                         Foreground="{DynamicResource InkMutedBrush}"/>
+              <ContentPresenter x:Name="actions" Content="{TemplateBinding Actions}" Margin="0,16,0,0" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <DockPanel x:Name="compact" Visibility="Collapsed">
+              <Border DockPanel.Dock="Left" Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top" Margin="0,0,10,0"
+                      Background="{DynamicResource SkyBrush}">
+                <controls:LucideIcon Kind="{Binding Icon, RelativeSource={RelativeSource TemplatedParent}}" Size="14"
+                                     Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{TemplateBinding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"
+                           Foreground="{TemplateBinding Foreground}"/>
+                <TextBlock x:Name="compactText" Text="{TemplateBinding Text}" FontSize="14" LineHeight="21" Margin="0,2,0,0"
+                           TextWrapping="Wrap" Foreground="{DynamicResource InkMutedBrush}"/>
+              </StackPanel>
+            </DockPanel>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsCompact" Value="True">
+              <Setter TargetName="full" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="compact" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="Actions" Value="{x:Null}">
+              <Setter TargetName="actions" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="Text" Value="">
+              <Setter TargetName="fullText" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="compactText" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ══ SkeletonLines (R17): three grey 12 px lines, full, 85 % and 60 % wide. ══ -->
+  <Style TargetType="{x:Type controls:SkeletonLines}">
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type controls:SkeletonLines}">
+          <StackPanel>
+            <Border Height="12" CornerRadius="6" Background="{TemplateBinding Background}"/>
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="85*"/>
+                <ColumnDefinition Width="15*"/>
+              </Grid.ColumnDefinitions>
+              <Border Height="12" CornerRadius="6" Background="{TemplateBinding Background}"/>
+            </Grid>
+            <Grid Margin="0,10,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="60*"/>
+                <ColumnDefinition Width="40*"/>
+              </Grid.ColumnDefinitions>
+              <Border Height="12" CornerRadius="6" Background="{TemplateBinding Background}"/>
+            </Grid>
+          </StackPanel>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ══ PageHeader: title + one-line subtitle on the left, page actions on the right ══ -->
   <Style TargetType="{x:Type controls:PageHeader}">
     <Setter Property="Focusable" Value="False"/>
