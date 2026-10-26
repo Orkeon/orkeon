@@ -1122,15 +1122,17 @@ comptes e-mail, quand un tel compte est déclaré
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).
 
 **`WorkingDirectory`** — le répertoire virtuel contre lequel se résout un chemin d'outil relatif, et
-où s'exécute un `shell_command` qui n'en nomme aucun : un chemin absolu dans un mount visible des
-agents, faute de quoi l'hôte refuse de démarrer en nommant la clé. Non défini, les runners prennent
+où s'exécute un `shell_command` qui n'en nomme aucun : un chemin absolu sans segment `.` ni `..`
+dans un mount visible des agents, faute de quoi l'hôte refuse de démarrer en nommant la clé. Défini,
+il l'emporte sur `/workspace`. Non défini, les runners prennent
 `/workspace` s'il est monté, sinon `/output`, sinon aucun
 ([Répertoire de travail et chemins relatifs](../architecture/vfs-compliance.md#répertoire-de-travail-et-chemins-relatifs)).
 
 **`WriteDirectory`** — le répertoire virtuel accessible en écriture où s'exécute un `shell_command`
 d'écriture qui ne nomme aucun répertoire, hors de toute racine d'agent, quand le répertoire de
 travail ne lui accorde pas tous les droits (un `/workspace` en lecture seule, comme dans
-`orkeon forge`) : un chemin absolu dans un mount visible des agents et accessible en écriture, faute
+`orkeon forge`) : un chemin absolu sans segment `.` ni `..` dans un mount visible des agents dont
+les droits effectifs sur ce chemin, surcharges de sous-arbre comprises, accordent l'écriture, faute
 de quoi l'hôte refuse de démarrer en nommant la clé. Non défini, `/output` quand un mount visible
 des agents y accorde l'écriture, sinon aucun, et une telle commande est refusée. Il ne dépend jamais
 de l'ordre des mounts, et les chemins relatifs des outils de fichiers se résolvent toujours contre le

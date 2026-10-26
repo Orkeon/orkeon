@@ -146,17 +146,19 @@ défaut, listé par `GetAvailableMounts` et dans le prompt des agents) ou `Inter
 ## Répertoire de travail et chemins relatifs
 
 Le registre tient un **répertoire de travail** (`FileSystemRegistry.WorkingDirectory`, exposé par
-`IFileSystemService.WorkingDirectory`) : `/workspace` quand un mount visible des agents le réclame,
-sinon le répertoire qu'un hôte a désigné par `SetWorkingDirectory(virtualPath)` (un chemin absolu
-dans un mount visible des agents), sinon aucun. Les runners le désignent depuis
+`IFileSystemService.WorkingDirectory`) : le répertoire qu'un hôte a désigné par
+`SetWorkingDirectory(virtualPath)` (un chemin absolu dans un mount visible des agents, sans segment
+`.` ni `..`) tant que son mount est enregistré, sinon `/workspace` quand un mount visible des
+agents le réclame, sinon aucun. Les runners le désignent depuis
 `Orkeon:FileSystem:WorkingDirectory`, sinon prennent `/workspace`, sinon `/output` ; un registre
 d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le monte encore.
 
 - Un outil fichier (`file_read`, `file_write`, `edit_file`, `glob`, `grep`, `directory_read`,
-  `directory_search`, `count_pattern`, les outils `node_*`, `edit_batch`) résout un **chemin
-  relatif** contre la `working_root` de l'agent quand il en a une, sinon contre le répertoire de
+  `directory_search`, `count_pattern`, les outils `node_*`, `edit_batch`, et les outils de données
+  `csv_reader`, `docx_reader`, `docx_writer`, `xlsx_reader`, `xlsx_writer`, `pdf_reader`,
+  `xml_parser`) résout un **chemin relatif** contre la `working_root` de l'agent quand il en a une, sinon contre le répertoire de
   travail (`WorkingDirectoryResolver.Absolutize`) : `src/./lib/../stats.js` devient
-  `/workspace/src/stats.js`, et la réponse renvoie ce chemin absolu. Le chemin devient absolu
+  `/workspace/src/stats.js`, chaque appel suivant vise ce chemin, et la réponse le renvoie. Le chemin devient absolu
   **avant** le contrôle des mounts et la garde de racine : `../p2/x` depuis une racine
   `/workspace/wt/p1` est refusé comme hors de la racine. Sans répertoire de travail, un chemin
   relatif reste refusé. `structural_search` et `structural_rewrite` (`paths`), `txt_search` et
@@ -174,13 +176,18 @@ d'exécution (`ScopedMountComposition`) garde celui du démarrage tant qu'il le 
   `/workspace/wt/p1` est refusé.
 - Un **répertoire d'écriture** (`FileSystemRegistry.WriteDirectory`,
   `IFileSystemService.WriteDirectory`) reçoit un `shell_command` d'écriture qui ne nomme aucun
-  `working_directory`, hors de toute racine d'agent, quand le répertoire de travail ne lui accorde
-  pas tous les droits (un `/workspace` en lecture seule, comme dans `orkeon forge`). C'est le
-  répertoire désigné par `Orkeon:FileSystem:WriteDirectory` (`SetWriteDirectory`, un chemin absolu
-  dans un mount visible des agents et accessible en écriture, faute de quoi l'hôte refuse de
-  démarrer), sinon `/output` quand un mount visible des agents y accorde l'écriture, sinon aucun. Il
-  ne dépend jamais de l'ordre des mounts. Rien ne change quand le répertoire de travail est
-  accessible en écriture ; sous une racine d'agent, aucun repli ; sans répertoire d'écriture, le
+  `working_directory`, hors de toute racine d'agent, quand le répertoire de travail est refusé pour
+  ses seuls droits. Une commande d'écriture (toute commande hors de la liste en lecture seule) exige
+  tous les droits sur son répertoire de travail : lecture, écriture, création et suppression ; un
+  `/workspace` en lecture seule, comme dans `orkeon forge`, ne les accorde pas. Tout autre refus
+  (aucun mount, une traversée, un chemin réservé par le runtime, le validateur de chemins) est
+  rapporté tel quel. C'est le répertoire désigné par `Orkeon:FileSystem:WriteDirectory`
+  (`SetWriteDirectory`, un chemin absolu sans segment `.` ni `..` dont les droits effectifs,
+  surcharges de sous-arbre comprises, accordent l'écriture dans un mount visible des agents, faute
+  de quoi l'hôte refuse de démarrer), sinon `/output` quand un mount visible des agents y accorde
+  l'écriture, sinon aucun. Il ne dépend jamais de l'ordre des mounts. Rien ne change quand le
+  répertoire de travail accorde tous les droits (un `/workspace` monté en lecture-écriture) ; sous
+  une racine d'agent, aucun repli ; sans répertoire d'écriture, le
   refus nomme l'option. Les chemins relatifs des outils de fichiers se résolvent toujours contre le
   seul répertoire de travail.
 - Un registre d'exécution reporte les répertoires de travail et d'écriture du démarrage

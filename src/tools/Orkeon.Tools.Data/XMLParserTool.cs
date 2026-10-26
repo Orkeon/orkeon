@@ -175,12 +175,15 @@ public partial class XmlParserTool : FileToolBase<XmlParserRequest, XmlParserRes
         {
             // VFS path: read the file through the virtual file system, which resolves the
             // virtual path (e.g. /data/x.xml) to its physical mount location.
-            var vfsResult = ResolveVirtualPath(input, FileAccessRights.Read);
+            // A relative path resolves against the working directory: the read addresses the
+            // same absolute path the validation judged.
+            var path = AbsolutizePath(input);
+            var vfsResult = ResolveVirtualPath(path, FileAccessRights.Read);
             if (!vfsResult.IsAllowed)
                 throw new InvalidOperationException(vfsResult.DenialReason ?? "path validation failed");
 
-            var vfsContent = await _fileSystemService.TryReadAllTextAsync(input, cancellationToken).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"File not found: {input}");
+            var vfsContent = await _fileSystemService.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
+                ?? throw new FileNotFoundException($"File not found: {path}");
             return (ParseSecure(vfsContent), true);
         }
 

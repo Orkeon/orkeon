@@ -1085,12 +1085,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// the literal <c>"."</c>, which no registry can resolve (ADR-008).
     /// </para>
     /// <para>
-    /// A command named no directory, run under no agent root, whose working directory does not
-    /// grant the rights it needs (a writing command in the read-only <c>/workspace</c> of
-    /// <c>orkeon forge</c>) runs in the designated write directory instead
-    /// (<see cref="IFileSystemService.WriteDirectory"/>, <c>/output</c> by default): a choice the
-    /// host makes, never the order of the mounts. Under an agent root the root rules, and with no
-    /// write directory the refusal names the option.
+    /// A command named no directory, run under no agent root, whose working directory is refused
+    /// for its rights alone (it lacks one of the rights <see cref="RequiredPathRights"/> yields:
+    /// Read for a read-only command, every right - read, write, create, delete - for any other,
+    /// so a writing command in the read-only <c>/workspace</c> of <c>orkeon forge</c>) runs in the
+    /// designated write directory instead (<see cref="IFileSystemService.WriteDirectory"/>,
+    /// <c>/output</c> by default): a choice the host makes, never the order of the mounts. A
+    /// working directory granting every right never falls back. Under an agent root the root
+    /// rules, any other refusal (no mount, a traversal, a reserved path) is reported as is, and
+    /// with no write directory the refusal names the option.
     /// </para>
     /// </summary>
     private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
@@ -1117,7 +1120,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var resolved = _fileSystem.ResolveAndValidate(virtualDirectory, rights);
         if (resolved.IsAllowed)
             return (resolved.ResolvedPath!, null);
-        if (named || AgentRunScope.Current?.Root is not null)
+        if (named || AgentRunScope.Current?.Root is not null || !IsRightsDenial(virtualDirectory))
             return ("", resolved.DenialReason);
 
         var writeDirectory = _fileSystem.WriteDirectory;
@@ -1130,6 +1133,15 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             ? (fallback.ResolvedPath!, null)
             : ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
     }
+
+    /// <summary>
+    /// Whether the working directory was refused for its rights alone: the same resolution asking
+    /// no right succeeds, so the mount exists, the path stays inside it and the path validator
+    /// accepts it. Any other refusal (no mount, a traversal, a reserved path) is reported as is:
+    /// running elsewhere would hide it.
+    /// </summary>
+    private bool IsRightsDenial(string virtualDirectory)
+        => _fileSystem.ResolveAndValidate(virtualDirectory, FileAccessRights.None).IsAllowed;
 
     /// <summary>What a refused command without a directory can do: name one, or have the host designate one.</summary>
     private const string NoWriteDirectoryHint =
@@ -1168,7 +1180,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// its read-only restriction holds) reads what it is given, so Read is what it uses. Any
     /// other command (an interpreter, an extra or custom command, <c>git</c> once interpreters
     /// lift its restriction) may write, create or delete there, and nothing tells which, so its
-    /// paths need every right. Asking it for Read alone looked like a guarantee the tool did not
+    /// paths need every right: <see cref="FileAccessRights.ReadWrite"/>, that is read, write,
+    /// create and delete together, not Write alone. Asking it for Read alone looked like a guarantee the tool did not
     /// give: <c>find /docs -delete</c> passed on a read-only <c>/docs</c>.
     /// </para>
     /// </summary>

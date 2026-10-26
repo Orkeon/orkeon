@@ -355,6 +355,39 @@ public sealed class XlsxWriteToolTests : IDisposable
         Assert.False(_tool.Schema.Parameters["append_to_existing"].Required);
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldWriteAndAppendRelativePath_AgainstTheWorkingDirectory_AndEchoTheAbsolutePath()
+    {
+        using var tool = new XlsxWriteTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+        ToolCallRequest Request(string sheet, bool append) => new(
+            ToolName: "xlsx_writer",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["file_path"] = "book.xlsx",
+                ["append_to_existing"] = append,
+                ["sheets"] = new List<object>
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = sheet,
+                        ["headers"] = new List<object> { "Name" },
+                        ["rows"] = new List<object> { new List<object> { "Alice" } }
+                    }
+                }
+            });
+
+        var first = await tool.CallAsync(Request("First", append: false), TestContext.Current.CancellationToken);
+        var second = await tool.CallAsync(Request("Second", append: true), TestContext.Current.CancellationToken);
+
+        Assert.True(first.Success, first.Error);
+        Assert.True(second.Success, second.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(second.Result, exactMatch: false);
+        Assert.Equal("/workspace/book.xlsx", dict["file_path"]?.ToString());
+        Assert.Equal(2, Convert.ToInt32(dict["sheet_count"]!));
+        Assert.True(File.Exists(Path.Combine(_testDir, "book.xlsx")));
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

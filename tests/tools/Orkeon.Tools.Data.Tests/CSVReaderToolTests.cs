@@ -257,6 +257,22 @@ public sealed class CsvReaderToolTests : IDisposable
         return path;
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadRelativePath_AgainstTheWorkingDirectory()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_testDir, "data.csv"), "name,age\nAlice,30", TestContext.Current.CancellationToken);
+        using var tool = new CsvReaderTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" });
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "csv_reader",
+            Parameters: new Dictionary<string, object?> { [ParamPath] = "data.csv" }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+        Assert.Equal(1, (int)dict["row_count"]!);
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);

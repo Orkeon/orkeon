@@ -1075,15 +1075,16 @@ the e-mail accounts, when one is declared
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)).
 
 **`WorkingDirectory`** — the virtual directory a relative tool path resolves against and a
-`shell_command` runs in when it names none: an absolute path inside an agent-facing mount, else the
-host refuses to start, naming the key. Unset, the runners take `/workspace` when it is mounted, else
+`shell_command` runs in when it names none: an absolute path without `.` or `..` segments inside an
+agent-facing mount, else the host refuses to start, naming the key. Set, it wins over `/workspace`. Unset, the runners take `/workspace` when it is mounted, else
 `/output`, else none
 ([Working directory and relative paths](../architecture/vfs-compliance.md#working-directory-and-relative-paths)).
 
 **`WriteDirectory`** — the writable virtual directory a writing `shell_command` runs in when it
 names no directory, runs under no agent root, and the working directory does not grant it every
-right (a read-only `/workspace`, as in `orkeon forge`): an absolute path inside a writable
-agent-facing mount, else the host refuses to start, naming the key. Unset, `/output` when an
+right (a read-only `/workspace`, as in `orkeon forge`): an absolute path without `.` or `..`
+segments in an agent-facing mount whose effective rights on it, subtree overrides included, grant
+Write, else the host refuses to start, naming the key. Unset, `/output` when an
 agent-facing mount grants Write there, else none, and such a command is refused. It never comes
 from the order of the mounts, and the file tools' relative paths still resolve against the working
 directory only.

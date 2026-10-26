@@ -338,6 +338,22 @@ public sealed class DocxReadToolTests : IDisposable
         Assert.Contains(deniedValidator.Calls, c => c.Path.EndsWith("passwd.docx", StringComparison.Ordinal));
     }
 
+    [Fact]
+    [Trait("BR", "CH-199")]
+    public async Task ShouldReadRelativePath_AgainstTheWorkingDirectory()
+    {
+        var docxPath = CreateDocxFile("Relative", ["Read through the working directory."]);
+        using var tool = new DocxReadTool(new DiskBackedFileSystemService(_testDir, "/workspace") { WorkingDirectory = "/workspace" }, new StubPathValidator().AllowAll());
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "docx_reader",
+            Parameters: new Dictionary<string, object?> { ["file_path"] = Path.GetFileName(docxPath) }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result, exactMatch: false);
+        Assert.Contains("Read through the working directory.", dict["content"]?.ToString(), StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);
