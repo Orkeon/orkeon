@@ -62,6 +62,36 @@ has answered. `input` is the call's input as the TUI status line shows it: the s
 now call. The typings declare `PendingApprovals` and `PendingApproval`, and `get("approvals")` returns the
 former without a type argument.
 
+### Fixed — the TUI no longer rebuilds a whole pane for each appended line (#196)
+
+While a background crew ran, the Terminal.Gui loop thread spent most of its time rebuilding text: every line written
+to the REPL transcript (`_history.Text += text`) or to the logs pane (a join of the whole ring buffer, then
+`TextView.Text`) re-parsed and re-wrapped the whole pane, even with the logs pane hidden, so typing lagged and the
+spinner slowed. Both panes now draw from a line-based, bounded model (`TranscriptView`, `TranscriptBuffer`) that wraps
+only the lines added and drops head lines past the capacity; `TextView.InsertText` was not usable for this (it refuses a
+read-only view, records undo history and re-wraps the whole text on every character with word wrap on). Writes are
+coalesced (`AppendCoalescer`): a burst costs one `Application.Invoke`, not one per line. The logs ring buffer is fed on
+the caller's thread and a hidden logs pane does no UI work; showing it renders the buffer once. The transcript is
+bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines; the empty line after the last newline
+does not count); `LogsBufferCapacity` still counts log entries, an entry on several lines (an exception and its stack)
+being kept or dropped whole. Word wrap (`F3`), tabs (expanded to the next stop of four columns), autoscroll, mouse
+selection with auto-copy, the navigation keys and `Ctrl+A` / `Ctrl+C` keep working; a pane shown after entries
+arrived while it was hidden lands on its tail. Double-click word selection and the auto-scroll while dragging a
+selection are not kept.
+
+### Fixed — `--llm-log` keeps the cache, reasoning and cost counts of a streamed exchange (#197)
+
+The `usage` of a streamed exchange in `llm-exchanges-*.jsonl` was rebuilt from three totals (`total_tokens`,
+`prompt_tokens`, `completion_tokens`), so a run's log could not tell a cache hit from a full-price token. An
+OpenAI-compatible provider now writes the fields of the stream's usage chunks as the vendor sent them (merged when a
+vendor splits its usage across chunks, a later value of a field replacing an earlier one): DeepSeek's
+`prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, `prompt_tokens_details.cached_tokens`,
+`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. The three totals are always
+written, taken from the counts the stream accumulated when the vendor's object lacks them (an empty `usage` sent
+last); any other field the vendor did not return stays absent, and a stream that reports only the three totals logs
+the same three fields as before. Ollama and
+Anthropic streams are unchanged.
+
 ### Changed — Orkeon Studio: one Launch screen with a Trial | Real switch; shared components and a side assistant
 
 The Test and Run screens of Orkeon Studio merge into one **Launch** screen (`RunScreenViewModel`, `RunScreenView`). A
@@ -138,36 +168,6 @@ any grammar (a PHP pattern without its `<?php` tag, a JSON pattern whose metavar
 `.tsx` file is read with the `tsx` grammar by the node tools; a `typescript` rule still scans `.ts` and `.tsx`, a `tsx`
 rule scans `.tsx`. `ensure_import` also serves `tsx` and JavaScript; `ensure_using` stays C#. A method's receiver
 (Rust `self`, Python `self` or `cls`) is no longer a parameter of its selector.
-
-### Fixed — the TUI no longer rebuilds a whole pane for each appended line (#196)
-
-While a background crew ran, the Terminal.Gui loop thread spent most of its time rebuilding text: every line written
-to the REPL transcript (`_history.Text += text`) or to the logs pane (a join of the whole ring buffer, then
-`TextView.Text`) re-parsed and re-wrapped the whole pane, even with the logs pane hidden, so typing lagged and the
-spinner slowed. Both panes now draw from a line-based, bounded model (`TranscriptView`, `TranscriptBuffer`) that wraps
-only the lines added and drops head lines past the capacity; `TextView.InsertText` was not usable for this (it refuses a
-read-only view, records undo history and re-wraps the whole text on every character with word wrap on). Writes are
-coalesced (`AppendCoalescer`): a burst costs one `Application.Invoke`, not one per line. The logs ring buffer is fed on
-the caller's thread and a hidden logs pane does no UI work; showing it renders the buffer once. The transcript is
-bounded by the new `TerminalGuiOptions.ReplTranscriptCapacity` (10000 lines; the empty line after the last newline
-does not count); `LogsBufferCapacity` still counts log entries, an entry on several lines (an exception and its stack)
-being kept or dropped whole. Word wrap (`F3`), tabs (expanded to the next stop of four columns), autoscroll, mouse
-selection with auto-copy, the navigation keys and `Ctrl+A` / `Ctrl+C` keep working; a pane shown after entries
-arrived while it was hidden lands on its tail. Double-click word selection and the auto-scroll while dragging a
-selection are not kept.
-
-### Fixed — `--llm-log` keeps the cache, reasoning and cost counts of a streamed exchange (#197)
-
-The `usage` of a streamed exchange in `llm-exchanges-*.jsonl` was rebuilt from three totals (`total_tokens`,
-`prompt_tokens`, `completion_tokens`), so a run's log could not tell a cache hit from a full-price token. An
-OpenAI-compatible provider now writes the fields of the stream's usage chunks as the vendor sent them (merged when a
-vendor splits its usage across chunks, a later value of a field replacing an earlier one): DeepSeek's
-`prompt_cache_hit_tokens` and `prompt_cache_miss_tokens`, `prompt_tokens_details.cached_tokens`,
-`completion_tokens_details.reasoning_tokens` and OpenRouter's `cost` keep their own names. The three totals are always
-written, taken from the counts the stream accumulated when the vendor's object lacks them (an empty `usage` sent
-last); any other field the vendor did not return stays absent, and a stream that reports only the three totals logs
-the same three fields as before. Ollama and
-Anthropic streams are unchanged.
 
 ### Fixed — a tool the act does not offer is refused, not put to the operator (#193)
 
