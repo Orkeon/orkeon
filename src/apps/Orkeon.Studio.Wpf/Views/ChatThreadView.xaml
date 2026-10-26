@@ -125,18 +125,15 @@
             </Border>
           </Grid>
 
+          <!-- R05: the header's two buttons at the compact 32 px, icon through ButtonIcon. -->
           <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Command="{Binding CloseCommand}"
-                  ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}">
-            <controls:LucideIcon Kind="x" Size="14"/>
-          </Button>
-          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" Height="28" Padding="11,0" FontSize="13"
-                  Margin="0,0,8,0" Command="{Binding StopCommand}"
-                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="square" Size="11" Margin="0,0,6,0"/>
-              <TextBlock Text="{Binding [Studio.Chat.Stop], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
+                  controls:ButtonIcon.Kind="x"
+                  ToolTip="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"
+                  AutomationProperties.Name="{Binding [Studio.Chat.Close], Source={x:Static services:I18n.Instance}}"/>
+          <Button DockPanel.Dock="Right" Style="{StaticResource BtnSecondary}" controls:ButtonSize.Height="32"
+                  Margin="0,0,8,0" Command="{Binding StopCommand}" controls:ButtonIcon.Kind="square"
+                  Content="{Binding [Studio.Chat.Stop], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
 
           <StackPanel VerticalAlignment="Center">
             <!-- A07: waiting on the user is said by the header badge, never by dimming. -->
@@ -160,15 +157,30 @@
 
       <!-- ── « Ce que j'ai retenu » ── -->
       <Button DockPanel.Dock="Top" Style="{StaticResource RecapHeader}" Command="{Binding ToggleRecapCommand}">
+        <!-- R16: the one fold pattern, label then chevron (down closed, up open); the count
+             stays on the right edge. -->
         <DockPanel>
-          <controls:LucideIcon DockPanel.Dock="Left" Kind="{Binding RecapIcon}" Size="13" Margin="0,0,9,0"
-                               Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"/>
           <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="13"
                      VerticalAlignment="Center" Foreground="{DynamicResource InkFaintBrush}"
                      Text="{Binding RecapProgress}"/>
-          <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
-                     Foreground="{DynamicResource InkBrush}"
-                     Text="{Binding [Studio.Chat.Recap], Source={x:Static services:I18n.Instance}}"/>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Studio.Chat.Recap], Source={x:Static services:I18n.Instance}}"/>
+            <controls:LucideIcon Size="16" Margin="8,0,0,0" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource InkMutedBrush}">
+              <controls:LucideIcon.Style>
+                <Style TargetType="controls:LucideIcon" BasedOn="{StaticResource {x:Type controls:LucideIcon}}">
+                  <Setter Property="Kind" Value="chevron-down"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsRecapExpanded}" Value="True">
+                      <Setter Property="Kind" Value="chevron-up"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </controls:LucideIcon.Style>
+            </controls:LucideIcon>
+          </StackPanel>
         </DockPanel>
       </Button>
       <Border DockPanel.Dock="Top" Background="{DynamicResource Surface2Brush}"
@@ -224,13 +236,11 @@
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,6"
                      Text="{Binding [Studio.Chat.YourQuestion], Source={x:Static services:I18n.Instance}}"/>
           <DockPanel>
-            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Height="38" Padding="15,0"
-                    Margin="9,0,0,0" VerticalAlignment="Bottom" Command="{Binding SendCommand}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding SendLabel}" Margin="0,0,7,0"/>
-                <controls:LucideIcon Kind="arrow-right" Size="13" Foreground="{DynamicResource AccentFgBrush}"/>
-              </StackPanel>
-            </Button>
+            <!-- R05: forward, so the arrow is an icon on the right of the label, 40 px. -->
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}"
+                    Margin="9,0,0,0" VerticalAlignment="Bottom" Command="{Binding SendCommand}"
+                    Content="{Binding SendLabel}"
+                    controls:ButtonIcon.Kind="arrow-right" controls:ButtonIcon.Placement="Trailing"/>
             <Grid>
               <TextBox x:Name="Composer" Style="{StaticResource InputMultiline}"
                        Text="{Binding Draft, UpdateSourceTrigger=PropertyChanged}">
