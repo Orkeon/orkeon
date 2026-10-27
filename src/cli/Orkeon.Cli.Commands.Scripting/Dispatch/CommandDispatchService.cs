@@ -135,14 +135,29 @@ public sealed partial class CommandDispatchService
         }
     }
 
-    /// <summary>Dispatches to an agent in the background and returns a ticket immediately. Design §4.2.</summary>
+    /// <summary>
+    /// Dispatches to an agent in the background and returns a ticket immediately. Design §4.2. The new instance
+    /// counts in the chain depth like a <see cref="postWork(string, string, Func{CancellationToken, Task{CommandResponse}})"/>
+    /// launch: the parent's depth plus one, refused at <c>MaxChainDepth</c> with a script error carrying the
+    /// <see cref="ChainDepthExceededException"/> message (<c>chain depth N reached (MaxChainDepth N, /command)</c>).
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget dispatch fault barrier: a background agent failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
     public string post(string agent, string intent, string payload)
     {
         var scope = _ambient.Value;
         var agentId = ResolveAgent(agent);
+        var command = scope?.CommandName ?? "post";
+        int depth;
+        try { depth = ChainDepthOf(scope, command, continueChain: false); }
+        catch (ChainDepthExceededException refused)
+        {
+            // A bare CLR exception unwinds through the script (SCR-25): hand the refusal over as a JS throw,
+            // as script-host.runCrewAsync does.
+            throw new Jint.Runtime.JavaScriptException(new JsString(refused.Message));
+        }
         var correlationId = Guid.NewGuid();
-        var instance = _registry.Register(scope?.CommandName ?? "post", CommandInstanceKind.Async, agent, intent, correlationId);
+        var instance = _registry.Register(command, CommandInstanceKind.Async, agent, intent, correlationId);
+        instance.Depth = depth;
         scope?.Capture(instance);
 
         // Detached: a fresh CTS unlinked from the REPL command token (which is disposed the
@@ -209,16 +224,12 @@ public sealed partial class CommandDispatchService
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
-        var depth = scope?.Depth ?? 0;
         var command = scope?.CommandName ?? label ?? "postWork";
-        var keepDepth = continueChain && scope?.ParentCommand is { } parent && string.Equals(parent, command, StringComparison.Ordinal);
-        if (continueChain && !keepDepth && scope?.ParentCommand is { } other)
-            LogChainContinueIgnored(command, other);
-        if (!keepDepth && depth >= _maxChainDepth) throw new ChainDepthExceededException(depth, _maxChainDepth, command);
+        var depth = ChainDepthOf(scope, command, continueChain);
         var correlationId = Guid.NewGuid();
         var instance = _registry.Register(
             command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, correlationId);
-        instance.Depth = keepDepth ? depth : depth + 1;
+        instance.Depth = depth;
         scope?.Capture(instance);
 
         var cts = scope?.Timeout is { } t ? new CancellationTokenSource(t) : new CancellationTokenSource();
@@ -286,6 +297,23 @@ public sealed partial class CommandDispatchService
         var request = new AgentChannelRequest(correlationId, _cliAgentId, agentId, intent ?? string.Empty, payload ?? string.Empty);
         var response = await _channel.RequestAsync(request, timeout, ct).ConfigureAwait(false);
         return new CommandResponse(agent, intent ?? string.Empty, response.Success, response.Payload, response.Error);
+    }
+
+    /// <summary>
+    /// The chain depth a launch of <paramref name="command"/> from <paramref name="scope"/> takes: the scope's depth
+    /// plus one, or the scope's depth when <paramref name="continueChain"/> is asked from the <c>completed</c> of the
+    /// same command (#221).
+    /// </summary>
+    /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
+    private int ChainDepthOf(CommandDispatchScope? scope, string command, bool continueChain)
+    {
+        var depth = scope?.Depth ?? 0;
+        var keepDepth = continueChain && scope?.ParentCommand is { } parent && string.Equals(parent, command, StringComparison.Ordinal);
+        if (continueChain && !keepDepth && scope?.ParentCommand is { } other)
+            LogChainContinueIgnored(command, other);
+        if (keepDepth) return depth;
+        if (depth >= _maxChainDepth) throw new ChainDepthExceededException(depth, _maxChainDepth, command);
+        return depth + 1;
     }
 
     private AgentId ResolveAgent(string agent)

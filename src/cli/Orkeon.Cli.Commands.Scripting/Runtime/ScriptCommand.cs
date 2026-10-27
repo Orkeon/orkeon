@@ -97,8 +97,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         await _engineLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Pump point: replay any async completions that settled since the last invocation
-            // on this engine (design §4.3) — under the lock, on the engine thread.
+            // Pump point: replay this command's async completions that settled since its last
+            // invocation (design §4.3) — under the lock, on the engine thread.
             await DrainCompletionsAsync(context.Console).ConfigureAwait(false);
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
@@ -278,8 +278,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
-    // Static: the commands of one file share a drain queue, so whichever command drains an
-    // item must find the count of the invocation that launched it.
+    // Static: keyed by instance, so the drain finds the count of the invocation that launched it
+    // whichever ScriptCommand object of the file wired it.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CommandInstance, AdmissionCount> _admissionOf = new();
 
     /// <summary>Instances of one invocation still unsettled; the slot is released when it reaches zero.</summary>
@@ -305,7 +305,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     private async Task DrainCompletionsAsync(IConsoleAdapter console)
     {
-        var pending = _drainQueue.DrainAll();
+        // Only this command's completions: a sibling of the same file pumps its own (they share the queue).
+        var pending = _drainQueue.DrainFor(_descriptor.Name);
         if (pending.Count == 0) return;
 
         var next = 0;

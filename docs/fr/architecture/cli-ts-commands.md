@@ -330,16 +330,21 @@ defineAsyncCommand({
 - `completed(result, ctx)` n'est **pas** appelé depuis le thread d'arrière-plan
   (Jint est mono-thread). Dès que le travail aboutit, l'hôte imprime une ligne
   concise (`✓ [t1] ask-bg → echo: done`) et exécute `completed` sur le moteur du
-  script, sous son verrou — inutile de taper une autre commande.
+  script, sous son verrou — inutile de taper une autre commande. Les commandes d'un
+  même fichier partagent un moteur, mais chacune n'exécute que les fins de ses propres
+  instances (les exécutions lancées sous son nom) : une commande sœur tapée entre-temps
+  n'exécute jamais le `completed` d'une autre commande.
 - Pour une valeur à lire à la demande, sondez avec `result --ticket=…` (ci-dessous).
 - **Chaînage depuis `completed`.** `completed` peut appeler `runCrewAsync(name, input)` :
   il retourne aussitôt un ticket, et la fin du second crew est drainée vers sa propre
   commande (le même nom de commande), dont le `completed` s'exécute à son tour. La
   chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
   la profondeur compte combien de sauts `completed` séparent une instance de son
-  lancement (`inspect` l'affiche). Un `runCrewAsync` plus profond est refusé par une
-  `ChainDepthExceededException`, levée en JS, dont le message nomme la profondeur, la
-  limite et la commande : `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
+  lancement (`inspect` l'affiche). Un `commands.post` compte de la même façon (la
+  profondeur du parent plus un ; il ne prend pas d'options). Un `runCrewAsync` ou un
+  `post` plus profond est refusé par une `ChainDepthExceededException`, levée en JS, dont
+  le message nomme la profondeur, la limite et la commande :
+  `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
 - **Un pilote qui boucle : `{ chain: "continue" }`.** Une commande qui relance son propre
   travail après chaque cycle terminé (un plan exécuté lot après lot) passe
   `runCrewAsync(name, input, { chain: "continue" })` : la nouvelle instance prend la

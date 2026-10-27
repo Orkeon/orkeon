@@ -73,7 +73,12 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
 export interface CommandsFacade {
   /** Dispatch to an agent and return its response (a sync command blocks until it arrives). */
   request(agent: string, intent: string, payload: string): CommandResponse;
-  /** Dispatch to an agent in the background; returns a ticket immediately. */
+  /**
+   * Dispatch to an agent in the background; returns a ticket immediately. Its completion drains to the
+   * `completed` of the command that posted it. Called from a `completed`, the new instance is one hop deeper
+   * in the chain, bounded by `MaxChainDepth` like {@link ScriptHostFacade.runCrewAsync}: at the limit it throws
+   * `chain depth 8 reached (MaxChainDepth 8, /<command>)`.
+   */
   post(agent: string, intent: string, payload: string): string;
   /** List in-flight / recent instances, optionally filtered. */
   list(filter?: CommandInstanceFilter | string): readonly CommandInstanceView[];

@@ -326,16 +326,20 @@ defineAsyncCommand({
 - `completed(result, ctx)` is **not** called from the background thread (Jint is
   single-threaded). As soon as the work settles, the host prints a terse line
   (`✓ [t1] ask-bg → echo: done`) and runs `completed` on the script's engine, under
-  its lock — no need to type another command.
+  its lock — no need to type another command. The commands of one file share an
+  engine, but each runs only the completions of its own instances (the runs launched
+  under its name): a sibling command typed meanwhile never runs another command's
+  `completed`.
 - For a value you want to read on demand, poll with `result --ticket=…` (below).
 - **Chaining from `completed`.** `completed` may call `runCrewAsync(name, input)`: it
   returns a ticket at once, and the second crew's completion drains to its own
   command (the same command name), whose `completed` runs in turn. The chain is
   bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
   the depth counts how many `completed` hops deep an instance was launched (`inspect`
-  shows it). A deeper `runCrewAsync` is refused with `ChainDepthExceededException`, as a
-  JS throw whose message names the depth, the limit and the command:
-  `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
+  shows it). A `commands.post` counts the same way (the parent's depth plus one; it takes
+  no options). A deeper `runCrewAsync` or `post` is refused with
+  `ChainDepthExceededException`, as a JS throw whose message names the depth, the limit
+  and the command: `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
 - **A driver that loops: `{ chain: "continue" }`.** A command that relaunches its own
   work after each completed cycle (a plan run batch after batch) passes
   `runCrewAsync(name, input, { chain: "continue" })`: the new instance takes the depth of

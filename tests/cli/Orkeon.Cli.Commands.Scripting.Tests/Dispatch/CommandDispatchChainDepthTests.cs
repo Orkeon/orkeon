@@ -8,6 +8,7 @@ using Orkeon.Cli.Commands.Scripting.Loading;
 using Orkeon.Cli.Commands.Scripting.Registry;
 using Orkeon.Cli.Commands.Scripting.Runtime;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
+using Orkeon.Domain.Common;
 using Orkeon.Infrastructure.Communication;
 using Orkeon.Scripting;
 using Orkeon.Scripting.Builders;
@@ -120,6 +121,46 @@ public sealed class CommandDispatchChainDepthTests : IDisposable
         var ticket = service.postWork("crew", "crew:x", Work, continueChain: true);
 
         Assert.Equal(2, service.Registry.Get(ticket)!.Depth);
+    }
+
+    [Fact]
+    [Trait("BR", "#221")]
+    public void ShouldClimbOneHop_WhenCommandsPostIsCalledFromACompleted()
+    {
+        var service = NewEchoService(maxChainDepth: 4);
+
+        using var scope = service.BeginCommand("askbg", CancellationToken.None, parentDepth: 2, parentCommand: "askbg");
+        var ticket = service.post("echo", "run", "x");
+
+        Assert.Equal(3, service.Registry.Get(ticket)!.Depth);
+    }
+
+    [Fact]
+    [Trait("BR", "#221")]
+    public async Task ShouldRefuseCommandsPostAtTheLimitNamingIt_WhenEachCompletedPostsAgain()
+    {
+        var service = NewEchoService(maxChainDepth: 2);
+        var cmd = ChainHarness.Load(service, _tempDir, _crewsDir, "post-chain.cmd.ts", "post-chain",
+            whitelist => whitelist.AddOptional("commands", _ => service));
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(Ctx("post-chain go", "go", console), CancellationToken.None);
+        await WaitUntil(() => console.Output.Contains("refused:", StringComparison.Ordinal) || console.Output.Contains("unbounded:", StringComparison.Ordinal));
+
+        Assert.DoesNotContain("unbounded:", console.Output, StringComparison.Ordinal);
+        var line = console.Output.Split('\n').Single(l => l.Contains("refused:", StringComparison.Ordinal)).TrimEnd('\r');
+        Assert.Equal("refused:chain depth 2 reached (MaxChainDepth 2, /post-chain)", line);
+        Assert.Equal(2, service.Registry.List(CommandInstanceFilter.All).Count);
+    }
+
+    private CommandDispatchService NewEchoService(int maxChainDepth)
+    {
+        var service = NewService(maxChainDepth);
+        var echo = AgentId.Create();
+        _disposables.Add(service.Directory.Register("echo", echo));
+        _disposables.Add(service.Channel.RegisterHandler(echo, (req, _) =>
+            Task.FromResult(AgentChannelResponse.Ok(req.CorrelationId, echo, "echoed"))));
+        return service;
     }
 
     private static CommandDispatchService NewService(int maxChainDepth = 1)

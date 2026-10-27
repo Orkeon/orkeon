@@ -40,9 +40,15 @@ internal static class ChainHarness
             service,
             NullLogger<ScriptHostFacade>.Instance);
 
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture), Path.Combine(tempDir, fixture));
         var builder = new ScriptServiceWhitelist().AddOptional("script-host", _ => facade);
-        var whitelist = (extra is null ? builder : extra(builder)).Build();
+        return LoadAll(service, tempDir, fixture, extra is null ? builder : extra(builder)).Single(c => c.Name == command);
+    }
+
+    /// <summary>Loads every command of <paramref name="fixture"/>, the scripts seeing the services of <paramref name="whitelist"/>.</summary>
+    internal static IReadOnlyList<IInteractiveCommand> LoadAll(
+        CommandDispatchService service, string tempDir, string fixture, ScriptServiceWhitelist whitelist)
+    {
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture), Path.Combine(tempDir, fixture));
         var loader = new ScriptCommandLoader(
             new DiskBackedFileSystemService(tempDir, virtualRoot: "/cmd"),
             PassThroughTranspiler.Instance,
@@ -55,11 +61,11 @@ internal static class ChainHarness
             new ScriptCommandLoaderDependencies
             {
                 LoggerFactory = null,
-                Services = new ScriptServiceLocator(whitelist, EmptyProvider.Instance),
+                Services = new ScriptServiceLocator(whitelist.Build(), EmptyProvider.Instance),
                 Dispatch = service,
             });
         var (registry, _) = loader.LoadAndRegisterAsync(CancellationToken.None).GetAwaiter().GetResult();
-        return registry.ScriptCommands.Single(c => c.Name == command);
+        return registry.ScriptCommands.ToList();
     }
 
     internal static CommandContext Ctx(string raw, string arg, IConsoleAdapter console) => new()

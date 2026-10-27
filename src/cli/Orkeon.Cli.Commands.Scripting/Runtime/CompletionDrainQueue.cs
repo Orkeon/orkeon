@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Jint.Native;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 
@@ -12,25 +11,49 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// </summary>
 /// <remarks>
 /// One instance per <c>*.cmd.ts</c> file (shared by all that file's commands, which share one
-/// Jint engine). Thread-safe by construction.
+/// Jint engine). A command pumps only the completions of its own instances (<see cref="DrainFor"/>),
+/// so a sibling of the same file never runs another command's <c>completed</c> under its own name.
+/// Thread-safe: every access holds one lock.
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The type is a genuine FIFO queue abstraction (enqueue/drain) and the 'Queue' suffix accurately describes its semantics; it is not intended to derive from System.Collections.Queue.")]
 public sealed class CompletionDrainQueue
 {
-    private readonly ConcurrentQueue<PendingCompletion> _pending = new();
+    private readonly List<PendingCompletion> _pending = new();
+    private readonly Lock _lock = new();
 
     /// <summary>Enqueue a terminal instance + its (optional) <c>completed</c> callback.</summary>
     public void Enqueue(JsValue? completed, CommandInstance instance)
-        => _pending.Enqueue(new PendingCompletion(completed, instance));
+    {
+        lock (_lock) _pending.Add(new PendingCompletion(completed, instance));
+    }
 
     /// <summary>Drain all pending completions, oldest first. Each is removed exactly once.</summary>
     public IReadOnlyList<PendingCompletion> DrainAll()
     {
-        if (_pending.IsEmpty) return Array.Empty<PendingCompletion>();
-        var drained = new List<PendingCompletion>();
-        while (_pending.TryDequeue(out var item))
-            drained.Add(item);
-        return drained;
+        lock (_lock)
+        {
+            if (_pending.Count == 0) return Array.Empty<PendingCompletion>();
+            var drained = _pending.ToList();
+            _pending.Clear();
+            return drained;
+        }
+    }
+
+    /// <summary>
+    /// Drain the pending completions of the instances keyed to <paramref name="commandName"/> (the
+    /// <see cref="CommandInstance.Name"/> a launch records), oldest first; the others stay queued for their own
+    /// command. Each is removed exactly once.
+    /// </summary>
+    internal IReadOnlyList<PendingCompletion> DrainFor(string commandName)
+    {
+        lock (_lock)
+        {
+            if (_pending.Count == 0) return Array.Empty<PendingCompletion>();
+            var drained = _pending.FindAll(p => string.Equals(p.Instance.Name, commandName, StringComparison.Ordinal));
+            if (drained.Count > 0)
+                _pending.RemoveAll(p => string.Equals(p.Instance.Name, commandName, StringComparison.Ordinal));
+            return drained;
+        }
     }
 }
 
