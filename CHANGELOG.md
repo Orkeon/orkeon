@@ -21,6 +21,36 @@ prints the task's detail, now on the displayed screen, and sends nothing. The pu
 and the `ConsoleThread` ambient of `Orkeon.Cli.Abstractions` carry the thread to a console that separates threads; a
 console that does not implement it gets today's output.
 
+### Added — scripted commands carry a group, and `/help` prints one block per group (#214)
+
+`defineCommand` and `defineAsyncCommand` take an optional `group` (`^[a-z][a-z0-9-]*$`); when it is absent, the
+group is the folder holding the `*.cmd.ts` (`/cli-commands/session/clear.cmd.ts` → `session`), none at the mount
+root. `/help` prints one `[<group>]` block per group in registration order, `(no group)` last; the runner's own
+commands (`ps`, `inspect`, `result`, `cancel`, `help-cmd`) are in `[runner]`, and `help-cmd <name>` names the group
+on its first line. `IInteractiveCommand` gains a default member `string? Group => null`, `ValidationFailure` gains
+`InvalidGroup`.
+
+### Changed — a built-in script extension is readable; writes and execution stay refused (#215)
+
+A plain read (`FileAccessRights.Read`) of `.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs` and `.wsf` is allowed:
+`file_read`, `node_read`, `grep` and the index read the project's scripts as they read its sources. Writes,
+creations, deletions and command targets on them stay refused; binaries (`.exe`, `.dll`, …) and the extensions of
+`AdditionalBlockedExtensions` still refuse reads. `PathSecurity:BlockReadsOfBlockedExtensions: true` restores the
+old refusal. New `IPathValidator.ValidatePath(path, requiredRight, workspaceRoot)` overload, strict by default for
+any other implementer.
+
+### Fixed — one refused file no longer fails `index_codebase` (#215)
+
+The discovery skips a file the VFS refuses instead of failing the whole index; the skipped files are reported in
+`filter_stats.excluded_by_policy` and `excluded_by_policy_paths`.
+
+### Fixed — `shell_command` reaches a private git remote through the keyring and the ssh agent (#216)
+
+The shell's environment allow-list passes `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` and `SSH_AUTH_SOCK` on, so
+`gh`'s keyring credential helper and the ssh agent work from a command; the process-isolation twin list follows.
+Under Bubblewrap this happens only with `Confinement:AllowNetwork`, and only the socket files themselves are bound
+(never the whole runtime directory). LLM API keys and every other variable stay dropped.
+
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 
 Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.
