@@ -1,3 +1,4 @@
+using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.ConsoleApp.Replay;
@@ -406,6 +407,25 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
 
         Assert.True(_inner.Contains("replay stopped at line 1: the REPL failed: boom"));
         Assert.False(_replay.IsActive);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    [Trait("BR", "BR-10")]
+    public void ShouldForwardThreadedLines_WhenReplayDecoratesThreadedConsole()
+    {
+        var threaded = new FakeThreadedConsole { SeparatesThreads = true };
+        var over = (object)new ReplayConsoleAdapter(threaded, _gate) as IThreadedConsole;
+        var plain = (object)new ReplayConsoleAdapter(new FakeConsoleAdapter(), _gate) as IThreadedConsole;
+
+        Assert.NotNull(over);
+        Assert.True(over.SeparatesThreads);
+        over.WriteLine("t1", "x");
+        over.WriteAttention("t1", "y");
+        Assert.Equal([("t1", "x")], threaded.Lines);
+        Assert.Equal([("t1", "y")], threaded.Attentions);
+        Assert.NotNull(plain);
+        Assert.False(plain.SeparatesThreads);
     }
 
     [Fact]

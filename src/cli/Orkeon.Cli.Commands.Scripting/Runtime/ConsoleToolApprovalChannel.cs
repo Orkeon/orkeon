@@ -122,7 +122,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
             if (parsed is null)
             {
                 // Asked again whole: the operator may never have seen it, written under another task's lines.
-                Console.WriteLine("  answer y (allow once), s (allow for this session) or n (deny)");
+                Attention(head.Value, "  answer y (allow once), s (allow for this session) or n (deny)");
                 Ask(head.Value, withPrompt: false);
                 return true;
             }
@@ -148,7 +148,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
                 }
             }
 
-            Console.WriteLine(Outcome(toolName, decision));
+            Record(head.Value, Outcome(toolName, decision));
             if (_queue.First is { } nextQuestion)
                 Ask(nextQuestion.Value, withPrompt: false);
         }
@@ -196,7 +196,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
             {
                 if (_queue.First is null)
                     return true;
-                Console.WriteLine("  a command cannot run while this one waits for its crew: answer y, s or n");
+                Attention(_queue.First.Value, "  a command cannot run while this one waits for its crew: answer y, s or n");
                 Ask(_queue.First.Value, withPrompt: false);
             }
         }
@@ -234,7 +234,7 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
 
             var wasShown = _queue.First == pending.Node;
             _queue.Remove(pending.Node);
-            Console.WriteLine($"  approval for {pending.Request.ToolName} withdrawn: its run was cancelled");
+            Record(pending, $"  approval for {pending.Request.ToolName} withdrawn: its run was cancelled");
             if (wasShown && _queue.First is { } next)
                 Ask(next.Value, withPrompt: true);
         }
@@ -247,12 +247,29 @@ internal sealed class ConsoleToolApprovalChannel : IToolApprovalChannel, IReplLi
     private void Ask(PendingApproval pending, bool withPrompt)
     {
         var request = pending.Request;
-        Console.WriteLine("");
-        Console.WriteLine($"  ? {OriginOf(pending)}{request.Reason}");
-        Console.WriteLine($"    {request.ToolName} {FormatArguments(request)}");
+        Attention(pending, "");
+        Attention(pending, $"  ? {OriginOf(pending)}{request.Reason}");
+        Attention(pending, $"    {request.ToolName} {FormatArguments(request)}");
         if (withPrompt)
             Console.Write(PromptFor(pending));
         _promptShown = withPrompt;
+    }
+
+    // Every line names the thread of the question it belongs to; a console that does not separate threads gets a plain line.
+    private void Attention(PendingApproval pending, string text)
+    {
+        if (Console is IThreadedConsole { SeparatesThreads: true } threaded)
+            threaded.WriteAttention(pending.Origin?.Ticket, text);
+        else
+            Console.WriteLine(text);
+    }
+
+    private void Record(PendingApproval pending, string text)
+    {
+        if (Console is IThreadedConsole { SeparatesThreads: true } threaded)
+            threaded.WriteLine(pending.Origin?.Ticket, text);
+        else
+            Console.WriteLine(text);
     }
 
     private static string OriginOf(PendingApproval pending)

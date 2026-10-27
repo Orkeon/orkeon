@@ -43,10 +43,14 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     /// <param name="label">What the turn belongs to as the caller knows it; null when it knows nothing.</param>
     public ILlmDeltaSink BeginTurn(string? label)
     {
-        var parts = new[] { ProgressAmbient.CurrentInstance?.Ticket, label }
+        var ticket = ProgressAmbient.CurrentInstance?.Ticket;
+        var separate = _console is IThreadedConsole { SeparatesThreads: true };
+        var parts = new[] { separate ? null : ticket, label }
             .Where(static p => !string.IsNullOrWhiteSpace(p));
         var tag = string.Join(' ', parts);
-        return new TurnSink(this, tag.Length == 0 ? string.Empty : $"[{tag}] ");
+        var thread = separate && !string.IsNullOrWhiteSpace(ticket) ? ticket : null;
+        var inlineEligible = tag.Length == 0 && thread is null;
+        return new TurnSink(this, tag.Length == 0 ? string.Empty : $"[{tag}] ", thread, inlineEligible);
     }
 
     /// <summary>A delta of a caller that opened no turn: it goes to one shared, unlabelled turn.</summary>
@@ -54,7 +58,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     {
         TurnSink turn;
         lock (_lock)
-            turn = _defaultTurn ??= new TurnSink(this, string.Empty);
+            turn = _defaultTurn ??= new TurnSink(this, string.Empty, null, true);
         turn.OnDelta(delta);
     }
 
@@ -67,7 +71,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
             turn = _defaultTurn;
             _defaultTurn = null;
         }
-        (turn ?? new TurnSink(this, string.Empty)).OnTurnCompleted();
+        (turn ?? new TurnSink(this, string.Empty, null, true)).OnTurnCompleted();
     }
 
     /// <summary>Whether <paramref name="turn"/> may stream straight through: no other turn does.</summary>
@@ -109,25 +113,34 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     }
 
     /// <summary>A whole line of a buffered turn: held while the inline turn is inside a line, written otherwise.</summary>
-    private void WriteLine(string line)
+    private void WriteLine(string? thread, string line)
     {
         lock (_lock)
         {
-            if (_inline is not null && _inlineMidLine)
+            // The inline turn writes on main: a line of another thread lands on another screen and waits for nothing.
+            if (_inline is not null && _inlineMidLine && thread is null)
                 _held.Enqueue(line);
             else
-                _console.WriteLine(line);
+                Emit(thread, line);
         }
     }
 
     private void Release()
     {
-        while (_held.TryDequeue(out var line))
+        while (_held.TryDequeue(out var held))
+            Emit(null, held);
+    }
+
+    private void Emit(string? thread, string line)
+    {
+        if (_console is IThreadedConsole { SeparatesThreads: true } threaded)
+            threaded.WriteLine(thread, line);
+        else
             _console.WriteLine(line);
     }
 
     /// <summary>One turn: inline when it is the only unprefixed one, else a line buffer flushed line by line.</summary>
-    private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix) : ILlmDeltaSink
+    private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible) : ILlmDeltaSink
     {
         private readonly StringBuilder _line = new();
         private readonly object _gate = new();
@@ -138,7 +151,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
         {
             lock (_gate)
             {
-                _inline ??= prefix.Length == 0 && owner.TryClaimInline(this);
+                _inline ??= inlineEligible && owner.TryClaimInline(this);
                 if (_inline.Value)
                 {
                     owner.WriteInline(delta);
@@ -165,8 +178,8 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
                     return;
                 }
 
-                if (_line.Length > 0 || prefix.Length == 0)
-                    owner.WriteLine(prefix + _line);
+                if (_line.Length > 0 || inlineEligible)
+                    owner.WriteLine(thread, prefix + _line);
                 _line.Clear();
                 _scanFrom = 0;
             }
@@ -182,7 +195,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
                 if (_line[i] != '\n')
                     continue;
                 var end = i > 0 && _line[i - 1] == '\r' ? i - 1 : i;
-                owner.WriteLine(prefix + _line.ToString(0, end));
+                owner.WriteLine(thread, prefix + _line.ToString(0, end));
                 _line.Remove(0, i + 1);
                 i = -1;
             }
