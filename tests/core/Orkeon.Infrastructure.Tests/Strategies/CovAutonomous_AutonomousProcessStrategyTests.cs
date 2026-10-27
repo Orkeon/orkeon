@@ -295,6 +295,35 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_DelegatedWorkPassingTheTokenBudget_KeepsItsOutput()
+    {
+        // Arrange: the helper's answer costs more tokens than the crew has left
+        var delegator = CreateAgent("delegator", allowDelegation: true);
+        var helper = CreateAgent("helper");
+        var task1 = CreateTask("hard task");
+        var task2 = CreateTask("later task");
+        var crew = BuildCrew([delegator, helper], [task1, task2]);
+        _manager.SetAssignResult(new TaskAssignment(task1.Id, delegator.Id, "lead", DateTime.UtcNow));
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Id == delegator.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help")
+                : new TaskResult(true, "helper solved it", null, [], TimeSpan.FromMilliseconds(10), TokensUsed: 500));
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = 100 };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: the work done is kept, the run still fails on the budget, and no later task runs
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: Tokens", result.Error, StringComparison.Ordinal);
+        Assert.Contains("helper solved it", result.Output);
+        Assert.DoesNotContain("DELEGATION FAILED", result.Output, StringComparison.Ordinal);
+        Assert.Equal(2, _execService.ExecuteTaskCallCount);
+        Assert.Equal(500, budget.CurrentTokensConsumed);
+    }
+
+    [Fact]
     public async Task The_peer_a_failed_task_is_handed_to_reads_the_tasks_plan_too()
     {
         // GAP-31: a task reads its plan from the run's scope where its prompt is composed. The peer

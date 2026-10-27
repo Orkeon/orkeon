@@ -220,7 +220,10 @@ under its semaphore and its `onError` policy. Neither gives the run a budget unl
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (and the
 same `budget` in `crew.runAgent`'s options) bounds that run with the keys and values of
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` in seconds or as `"5m"`,
-`delegationDepth`, `spawnedAgents`). A spent dimension ends the run with `BudgetExhaustedError`,
+`delegationDepth`, `spawnedAgents`). `tokens` is a running sum of the prompt and completion of every
+call, the context counted again on each; once it is reached, `ctx.llm.act` makes one last call with no
+tools and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
+A spent dimension ends the run with `BudgetExhaustedError`,
 the error a crew's budget gives, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`) derives
 its budget from the run's. An unknown key, a count that is not a whole number of 1 or more, or an
 unreadable `wallTime` is refused when the run opens, where `crewBuilder().budget(...)` skips it.

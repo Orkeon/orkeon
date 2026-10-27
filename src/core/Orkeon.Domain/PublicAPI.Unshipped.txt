@@ -1404,3 +1404,4 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.get -> System.Collec
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.CurrentTokenCalls.get -> int

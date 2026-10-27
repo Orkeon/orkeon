@@ -153,6 +153,25 @@ the call starts (one `ActSession` per call):
 Both callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); the permission gate always comes first.
 
+## The token budget of act
+
+`budget({ tokens })` is a running sum: each chat call of the loop adds its prompt plus its completion
+(the provider's total). Every call resends the whole context, so the context is counted again on each
+call: a turn of n calls whose context grows evenly pays it about n times, and the figure bounds neither
+the size of the conversation nor what a provider bills with its cache. Each call logs the running sum
+next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
+calls`, Information).
+
+When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer: a
+final answer is returned as it is, and tool calls run. The gate before the next call then ends the act
+with one last chat call, with no tools (`ToolMode.None`), after a user turn telling the model its budget
+is spent and asking it to answer now with what it has. That answer is the act's result, with
+`budgetExhausted: true`; its tokens are recorded but start no other wrap-up. A warning logs that the
+budget ran out. When that last call fails, or answers nothing, the act rejects with
+`BudgetExhaustedError`, whose message names what it counted: `Token budget exhausted: <sum> tokens sent
+and received over <n> calls (limit <limit>)`. The other dimensions (tool calls, wall time, delegation
+depth, spawns) still reject at the gate, and `maxIterations` still ends with `exhausted: true`.
+
 ## Child agents: `spawn_agent` and `ctx.spawnBackground`
 
 - **`spawn_agent`** is a model-callable tool, always offered in `act`. It runs a named crew agent as a

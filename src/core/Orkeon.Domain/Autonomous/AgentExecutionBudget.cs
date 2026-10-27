@@ -22,7 +22,11 @@ public sealed class AgentExecutionBudget
     /// <summary>Maximum wall-clock time before forced return.</summary>
     public TimeSpan MaxWallTime { get; init; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>Maximum total tokens (prompt + completion) the agent may consume.</summary>
+    /// <summary>
+    /// Maximum running sum of tokens the agent may consume: the prompt plus the completion of every
+    /// call recorded through <see cref="RecordTokens"/>. A call that resends its whole context counts
+    /// that context again, so a conversation of n calls pays its context about n times.
+    /// </summary>
     public int MaxTokensConsumed { get; init; } = 16_000;
 
     /// <summary>Maximum sub-agents this agent may spawn.</summary>
@@ -58,6 +62,7 @@ public sealed class AgentExecutionBudget
     private int _toolCalls;
     private int _delegationDepth;
     private int _tokensConsumed;
+    private int _tokenCalls;
     private int _spawnedAgents;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
     private readonly long _startTimestamp = TimeProvider.System.GetTimestamp();
@@ -74,6 +79,9 @@ public sealed class AgentExecutionBudget
 
     /// <summary>Current tokens consumed.</summary>
     public int CurrentTokensConsumed => _tokensConsumed;
+
+    /// <summary>Number of calls recorded through <see cref="RecordTokens"/>.</summary>
+    public int CurrentTokenCalls => _tokenCalls;
 
     /// <summary>Current number of spawned agents.</summary>
     public int CurrentSpawnedAgents => _spawnedAgents;
@@ -172,18 +180,25 @@ public sealed class AgentExecutionBudget
                 $"Delegation depth {_delegationDepth} exceeds max {MaxDelegationDepth}.");
     }
 
-    /// <summary>Records token consumption and throws if the token budget is exhausted.</summary>
+    /// <summary>
+    /// Records the tokens of one call (its prompt plus its completion) and throws if the running sum
+    /// passes the token budget. The tokens stay recorded when it throws.
+    /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
     public void RecordTokens(int tokens)
     {
         AssertWallTime();
         var consumed = Interlocked.Add(ref _tokensConsumed, tokens);
+        var calls = Interlocked.Increment(ref _tokenCalls);
         ChargedTo?.RecordTokens(tokens);
         if (consumed > MaxTokensConsumed)
-            throw new BudgetExhaustedException(
-                BudgetDimension.Tokens,
-                $"Token budget exhausted ({consumed}/{MaxTokensConsumed}).");
+            throw TokensExhausted(consumed, calls);
     }
+
+    /// <summary>The refusal of a spent token budget, naming what it counted.</summary>
+    private BudgetExhaustedException TokensExhausted(int consumed, int calls) => new(
+        BudgetDimension.Tokens,
+        $"Token budget exhausted: {consumed} tokens sent and received over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxTokensConsumed})");
 
     /// <summary>Records a sub-agent spawn and throws if the spawn limit is exceeded.</summary>
     /// <exception cref="BudgetExhaustedException"/>
@@ -230,9 +245,7 @@ public sealed class AgentExecutionBudget
                 BudgetDimension.ToolCalls,
                 $"Tool-call budget exhausted ({_toolCalls}/{MaxToolCalls}).");
         if (_tokensConsumed >= MaxTokensConsumed)
-            throw new BudgetExhaustedException(
-                BudgetDimension.Tokens,
-                $"Token budget exhausted ({_tokensConsumed}/{MaxTokensConsumed}).");
+            throw TokensExhausted(_tokensConsumed, _tokenCalls);
         if (_delegationDepth > MaxDelegationDepth)
             throw new BudgetExhaustedException(
                 BudgetDimension.DelegationDepth,

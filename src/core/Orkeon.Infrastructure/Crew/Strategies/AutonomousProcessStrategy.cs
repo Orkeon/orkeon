@@ -409,10 +409,14 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // Account for the tokens consumed by the delegated task on
             // both the child budget (so its snapshot reflects reality)
             // and the parent budget (so the overall cap is honoured).
+            // A token budget the delegated work passes keeps that work (#218): the tokens are
+            // recorded on both budgets, the output goes back, and the takeover carries the
+            // exhaustion so the run stops after this task.
             if (result.TokensUsed > 0)
             {
-                childBudget.RecordTokens(result.TokensUsed);
-                budget.RecordTokens(result.TokensUsed);
+                var childSpent = RecordDelegatedTokens(childBudget, result.TokensUsed);
+                var crewSpent = RecordDelegatedTokens(budget, result.TokensUsed);
+                takeover.TokensExhausted = crewSpent ?? childSpent;
             }
 
             // Crew-level telemetry: delegated executions cost real tokens
@@ -426,6 +430,23 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             return AgentChannelResponse.Fail(
                 request.CorrelationId, peer.Id,
                 $"Budget exhausted: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Records the tokens of finished delegated work on <paramref name="budget"/>, and returns the
+    /// refusal when the token budget is passed instead of throwing it: the work is done and kept.
+    /// </summary>
+    private static BudgetExhaustedException? RecordDelegatedTokens(AgentExecutionBudget budget, int tokens)
+    {
+        try
+        {
+            budget.RecordTokens(tokens);
+            return null;
+        }
+        catch (BudgetExhaustedException ex) when (ex.Dimension == BudgetDimension.Tokens)
+        {
+            return ex;
         }
     }
 
@@ -456,7 +477,11 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// A task this run handed to a peer after its agent failed it: the task itself, and the context
     /// of the attempt that failed, which the peer's derives from.
     /// </summary>
-    private sealed record Takeover(CrewTask Task, SimpleExecutionContext Context);
+    private sealed record Takeover(CrewTask Task, SimpleExecutionContext Context)
+    {
+        /// <summary>The token budget the peer's finished work passed, if it did (#218).</summary>
+        public BudgetExhaustedException? TokensExhausted { get; set; }
+    }
 
     /// <summary>
     /// What one task produced: its outputs, the role that answers for it, the cause of its
@@ -568,7 +593,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         // The peer takes the task over: the agent that failed it says so, the task goes on under
         // the peer, which runs it in the failed attempt's context (GAP-21).
         await taskContext.Outcome.RecordHandOverAsync(task, delegateAgent, failure ?? "unknown error").ConfigureAwait(false);
-        taskContext.Takeovers[request.CorrelationId] = new Takeover(task, failedContext);
+        var takeover = new Takeover(task, failedContext);
+        taskContext.Takeovers[request.CorrelationId] = takeover;
 
         AgentChannelResponse response;
         try
@@ -600,7 +626,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
         return new ExecutedTask(
             output, appOutput, delegateAgent.Role.Value,
-            response.Success ? null : $"delegated to {delegateAgent.Role}, who failed: {response.Error}");
+            response.Success ? null : $"delegated to {delegateAgent.Role}, who failed: {response.Error}",
+            takeover.TokensExhausted);
     }
 
     /// <summary>

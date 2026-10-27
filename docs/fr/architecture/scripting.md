@@ -156,6 +156,27 @@ au début de l'appel (une `ActSession` par appel) :
 Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
 
+## Le budget de tokens d'act
+
+`budget({ tokens })` est une somme courante : chaque appel de chat de la boucle ajoute son prompt et sa
+complétion (le total du fournisseur). Chaque appel renvoie tout le contexte, si bien que le contexte est
+compté de nouveau à chaque appel : un tour de n appels dont le contexte croît régulièrement le paie
+environ n fois, et le chiffre ne borne ni la taille de la conversation ni ce qu'un fournisseur facture
+avec son cache. Chaque appel journalise la somme courante à côté de la limite (`act: agent '<nom>' call
+used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
+
+Quand la somme atteint la limite, l'act n'échoue pas. Un appel dont les tokens la dépassent garde sa
+réponse : une réponse finale est rendue telle quelle, et les appels d'outils s'exécutent. La garde
+avant l'appel suivant termine alors l'act par un dernier appel de chat, sans outils (`ToolMode.None`),
+après un tour utilisateur qui dit au modèle que son budget est épuisé et lui demande de répondre
+maintenant avec ce qu'il a. Cette réponse est le résultat de l'act, avec `budgetExhausted: true` ; ses
+tokens sont comptés mais ne lancent aucune autre conclusion. Un avertissement journalise que le budget
+est épuisé. Quand ce dernier appel échoue, ou ne répond rien, l'act rejette avec
+`BudgetExhaustedError`, dont le message nomme ce qu'il a compté : `Token budget exhausted: <somme>
+tokens sent and received over <n> calls (limit <limite>)`. Les autres dimensions (appels d'outils,
+temps mural, profondeur de délégation, enfants) rejettent toujours à la garde, et `maxIterations`
+termine toujours par `exhausted: true`.
+
 ## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
 
 - **`spawn_agent`** est un outil appelable par le modèle, toujours proposé dans `act`. Il exécute un

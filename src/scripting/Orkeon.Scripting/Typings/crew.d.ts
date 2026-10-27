@@ -170,6 +170,15 @@ declare global {
         readonly toolCalls?: number;
         readonly delegationDepth?: number;
         readonly wallTime?: number | string;
+        /**
+         * The most tokens the run may spend, as a running sum: the prompt plus the completion of
+         * every LLM call. Each call resends its whole context, so the context is counted again on
+         * each call, and a turn of n calls pays it about n times: this bounds neither the size of
+         * the conversation nor what a provider bills with its cache. When the sum reaches the limit,
+         * `ctx.llm.act` makes one last call with no tools and resolves with `budgetExhausted: true`;
+         * the error says what it counted, `Token budget exhausted: <sum> tokens sent and received
+         * over <n> calls (limit <limit>)`.
+         */
         readonly tokens?: number;
         readonly spawnedAgents?: number;
     }

@@ -230,7 +230,10 @@ l'exécution sans qu'on le demande :
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (et le
 même `budget` dans les options de `crew.runAgent`) borne cette exécution avec les clés et valeurs de
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` en secondes ou sous la forme `"5m"`,
-`delegationDepth`, `spawnedAgents`). Une dimension épuisée termine l'exécution par
+`delegationDepth`, `spawnedAgents`). `tokens` est une somme courante du prompt et de la complétion de
+chaque appel, le contexte compté de nouveau à chacun ; une fois atteinte, `ctx.llm.act` fait un dernier
+appel sans outils et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
+Une dimension épuisée termine l'exécution par
 `BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
 (`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. Une clé inconnue, un compte qui
 n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,

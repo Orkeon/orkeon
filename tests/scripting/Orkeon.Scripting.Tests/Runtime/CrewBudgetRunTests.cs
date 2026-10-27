@@ -200,8 +200,10 @@ public sealed class CrewBudgetRunTests
         var outcome = await RunAAsync(engine);
 
         // Assert
-        Assert.Equal("budget: Token budget exhausted (50/50).", outcome);
-        Assert.Equal(2, provider.ChatCount);
+        // The third call is the wrap-up with no tools (#218): the looping model answers nothing, so
+        // the act still rejects with the budget's error.
+        Assert.Equal("budget: Token budget exhausted: 50 tokens sent and received over 2 calls (limit 50)", outcome);
+        Assert.Equal(3, provider.ChatCount);
     }
 
     [Fact]
@@ -223,11 +225,14 @@ public sealed class CrewBudgetRunTests
         // Act
         var result = await crew.RunAsync(null, Ct);
 
-        // Assert: the turn of each run in flight when the tally reached 100 may land, never a later one
-        Assert.Equal(
-            "completed: budget: Token budget exhausted (100/100). | budget: Token budget exhausted (100/100).",
-            result.output);
-        Assert.Equal(4, provider.ChatCount);
+        // Assert: the turn of each run in flight when the tally reached 100 may land, never a later
+        // one; each run then makes its one wrap-up call (#218), which answers nothing here
+        var parts = result.output.Split(" | ");
+        Assert.Equal(2, parts.Length);
+        Assert.StartsWith("completed: budget: Token budget exhausted: ", parts[0], StringComparison.Ordinal);
+        Assert.StartsWith("budget: Token budget exhausted: ", parts[1], StringComparison.Ordinal);
+        Assert.All(parts, p => Assert.EndsWith("(limit 100)", p, StringComparison.Ordinal));
+        Assert.Equal(6, provider.ChatCount);
         Assert.Equal(4, tool.CallCount);
     }
 
