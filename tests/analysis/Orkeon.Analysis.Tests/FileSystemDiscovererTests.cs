@@ -1,5 +1,6 @@
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Tests.Doubles;
 
 namespace Orkeon.Analysis.Tests;
 
@@ -169,6 +170,64 @@ public class FileSystemDiscovererTests
                 ["a.md", "b.markdown"],
                 result.Files.Select(f => f.RelativePath).OrderBy(x => x, StringComparer.Ordinal).ToArray());
             Assert.All(result.Files, f => Assert.Equal("markdown", f.Language));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    // Issue #215: a file the VFS refuses is skipped and counted; it never fails the discovery.
+    [Fact]
+    public async Task ShouldSkipAndCountDeniedFile_WhenTheVfsRefusesItsRead()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/run.sh", "#!/usr/bin/env bash\necho hi\n"),
+            ("src/math.js", "export function add(a, b) { return a + b; }"),
+        ]);
+        try
+        {
+            var fs = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir))
+            {
+                DeniedReadPaths = { $"{TestFixtures.TestVirtualRoot}/src/run.sh" },
+            };
+            var sut = new FileSystemDiscoverer(fs);
+
+            var result = await sut.DiscoverAllAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None);
+
+            var file = Assert.Single(result.Files);
+            Assert.Equal("src/math.js", file.RelativePath);
+            Assert.Equal(1, result.FilterStats.ExcludedByPolicy);
+            Assert.Equal([$"{TestFixtures.TestVirtualRoot}/src/run.sh"], result.FilterStats.ExcludedByPolicyPaths.ToArray());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldStreamTheOtherFiles_WhenTheVfsRefusesOneRead()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/run.sh", "#!/usr/bin/env bash\necho hi\n"),
+            ("src/math.js", "export function add(a, b) { return a + b; }"),
+        ]);
+        try
+        {
+            var fs = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir))
+            {
+                DeniedReadPaths = { $"{TestFixtures.TestVirtualRoot}/src/run.sh" },
+            };
+            var sut = new FileSystemDiscoverer(fs);
+
+            var files = new List<DiscoveredFile>();
+            await foreach (var f in sut.DiscoverAsync(
+                new DiscoveryRequest { RootPath = TestFixtures.TestVirtualRoot }, CancellationToken.None))
+                files.Add(f);
+
+            Assert.Equal("src/math.js", Assert.Single(files).RelativePath);
         }
         finally
         {

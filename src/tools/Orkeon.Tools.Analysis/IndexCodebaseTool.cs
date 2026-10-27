@@ -86,6 +86,8 @@ public sealed class IndexCodebaseTool : ToolBase<IndexCodebaseRequest, IndexCode
                 ExcludedByGitignore = buildResult.FilterStats.ExcludedByGitignore,
                 ExcludedByLanguage = buildResult.FilterStats.ExcludedByLanguage,
                 ExcludedBySuffix = buildResult.FilterStats.ExcludedBySuffix,
+                ExcludedByPolicy = buildResult.FilterStats.ExcludedByPolicy,
+                ExcludedByPolicyPaths = buildResult.FilterStats.ExcludedByPolicyPaths,
                 VfsFileEntriesYielded = buildResult.FilterStats.VfsFileEntriesYielded,
                 PhysicalEntriesProbe = buildResult.FilterStats.PhysicalEntriesProbe,
                 PhysicalRoot = buildResult.FilterStats.PhysicalRoot,

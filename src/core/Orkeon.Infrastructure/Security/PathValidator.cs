@@ -25,6 +25,16 @@ public partial class PathValidator : IPathValidator
     };
 
     /// <summary>
+    /// The built-in blocked extensions that hold script text: a plain read of one is allowed
+    /// (reading is not executing) unless <see cref="PathSecurityOptions.BlockReadsOfBlockedExtensions"/>
+    /// is set. Binaries stay refused for every operation.
+    /// </summary>
+    private static readonly HashSet<string> ReadableScriptExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".bat", ".cmd", ".ps1", ".sh", ".bash", ".vbs", ".wsf"
+    };
+
+    /// <summary>
     /// Blocked system paths that should never be accessible.
     /// </summary>
     private static readonly string[] BlockedSystemPaths =
@@ -56,8 +66,15 @@ public partial class PathValidator : IPathValidator
     }
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fail-closed path validation: any failure normalizing the requested path or workspace root via Path.GetFullPath is logged and converted into a Denied result rather than throwing.")]
     public PathValidationResult ValidatePath(string requestedPath, string? workspaceRoot = null)
+        => Validate(requestedPath, workspaceRoot, isPlainRead: false);
+
+    /// <inheritdoc />
+    public PathValidationResult ValidatePath(string requestedPath, FileAccessRights requiredRight, string? workspaceRoot = null)
+        => Validate(requestedPath, workspaceRoot, isPlainRead: requiredRight == FileAccessRights.Read);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fail-closed path validation: any failure normalizing the requested path or workspace root via Path.GetFullPath is logged and converted into a Denied result rather than throwing.")]
+    private PathValidationResult Validate(string requestedPath, string? workspaceRoot, bool isPlainRead)
     {
         // Null/empty check
         if (string.IsNullOrWhiteSpace(requestedPath))
@@ -90,7 +107,7 @@ public partial class PathValidator : IPathValidator
             return systemPathCheck;
 
         // Check blocked extensions
-        var extensionCheck = CheckBlockedExtensions(resolvedPath);
+        var extensionCheck = CheckBlockedExtensions(resolvedPath, isPlainRead);
         if (!extensionCheck.IsAllowed)
             return extensionCheck;
 
@@ -144,13 +161,16 @@ public partial class PathValidator : IPathValidator
         return PathValidationResult.Allowed(resolvedPath);
     }
 
-    private PathValidationResult CheckBlockedExtensions(string resolvedPath)
+    private PathValidationResult CheckBlockedExtensions(string resolvedPath, bool isPlainRead)
     {
         var extension = Path.GetExtension(resolvedPath);
         if (string.IsNullOrEmpty(extension))
             return PathValidationResult.Allowed(resolvedPath);
 
-        if (BuiltInBlockedExtensions.Contains(extension))
+        var readExempt = isPlainRead
+                         && !_options.BlockReadsOfBlockedExtensions
+                         && ReadableScriptExtensions.Contains(extension);
+        if (BuiltInBlockedExtensions.Contains(extension) && !readExempt)
         {
             LogPathValidationDeniedHasBlocked(resolvedPath, extension);
             return PathValidationResult.Denied($"File extension '{extension}' is not allowed");

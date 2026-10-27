@@ -103,7 +103,7 @@ All fields are immutable `record` types in `Orkeon.Analysis.DependencyInjection.
 
 ## Six-phase pipeline
 
-1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns and `.gitignore`.
+1. **Discovery** (`IFileSystemDiscoverer`) — recursive traversal, package detection via markers (`package.json`, `*.csproj`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile`, `CMakeLists.txt`), exclusion via patterns and `.gitignore`. A file the file system policy refuses to read (a mount right, a blocked extension) is skipped and counted, never a failure of the whole build: `index_codebase` reports it in `filter_stats.excluded_by_policy` and `filter_stats.excluded_by_policy_paths`.
 2. **Parse + Extract** (`UniversalSemanticMapper` + `ILanguageAdapter`) — Tree-sitter parse → application of the adapter's queries → L2 (module) and L3 (symbol) nodes with `Fqn`, `Signature`, `SourceSnippet`, `Sha256`; L4 statements (`StatementExtractor`), extracted on every build.
 3. **Dependency resolution** (`DependencyGraphBuilder` + `IReferenceResolver`) — resolution of imports, calls, inheritance, implementations into edges (`EdgeKind.Imports`, `Calls`, `Extends`, `Implements`). Unresolved FQNs become `UnresolvedRef`.
 4. **Fingerprinting** (`IFrameworkFingerprinter`) — application of per-decorator/annotation rules (NestJS, Angular, ASP.NET, Flask, FastAPI): placing tags such as `http-endpoint`, `guard`, `service` on the relevant nodes.

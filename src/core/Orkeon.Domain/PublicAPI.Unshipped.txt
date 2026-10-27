@@ -1403,3 +1403,4 @@ Orkeon.Domain.FileSystem.IFileSystemService.WriteDirectory.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!

@@ -57,6 +57,14 @@ public sealed record IndexFilterStats
     [JsonPropertyName("excluded_by_suffix")]
     public int ExcludedBySuffix { get; init; }
 
+    /// <summary>Files the file system policy refused to read, left out of the index.</summary>
+    [JsonPropertyName("excluded_by_policy")]
+    public int ExcludedByPolicy { get; init; }
+
+    /// <summary>Virtual paths of the files counted by <see cref="ExcludedByPolicy"/>.</summary>
+    [JsonPropertyName("excluded_by_policy_paths")]
+    public ImmutableArray<string> ExcludedByPolicyPaths { get; init; } = [];
+
     [JsonPropertyName("vfs_file_entries_yielded")]
     public int VfsFileEntriesYielded { get; init; }
 

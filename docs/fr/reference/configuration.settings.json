@@ -200,6 +200,7 @@
     "Orkeon:Sandbox:VirtualPath": "Chemin virtuel où le sandbox est monté. `/sandbox` par défaut.",
     "PathSecurity:AdditionalAllowedDirectories": "Répertoires supplémentaires autorisés au-delà de la racine de l'espace de travail.",
     "PathSecurity:AdditionalBlockedExtensions": "Extensions de fichier supplémentaires à bloquer, en plus de la liste intégrée.",
+    "PathSecurity:BlockReadsOfBlockedExtensions": "Si une simple lecture d'une extension de script intégrée (`.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.wsf`) est refusée elle aussi. Défaut : `false` : lire un script n'est pas l'exécuter, la lecture passe tandis qu'une écriture, une création, une suppression ou une cible de commande y est refusée. Les extensions binaires intégrées et `AdditionalBlockedExtensions` refusent la lecture quoi que dise cette option.",
     "PathSecurity:DefaultWorkspaceRoot": "Le répertoire racine de l'espace de travail par défaut. À null, c'est le répertoire de travail courant.",
     "PathSecurity:MaxFileSizeBytes": "Taille de fichier maximale autorisée, en octets. Défaut : 50 Mo.",
     "PathSecurity:ResolveSymlinks": "S'il faut résoudre les liens symboliques et vérifier que la cible est dans l'espace de travail. Défaut : true.",

@@ -1724,6 +1724,13 @@
       "description": "Additional file extensions to block beyond the built-in list."
     },
     {
+      "path": "PathSecurity:BlockReadsOfBlockedExtensions",
+      "section": "PathSecurity",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a plain read of a built-in script extension (`.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.wsf`) is refused too. Default: `false`: reading a script is not executing it, so a read passes while a write, a creation, a deletion or a command target on it is refused. Built-in binary extensions and `AdditionalBlockedExtensions` refuse reads whatever this says."
+    },
+    {
       "path": "PathSecurity:DefaultWorkspaceRoot",
       "section": "PathSecurity",
       "type": "string",

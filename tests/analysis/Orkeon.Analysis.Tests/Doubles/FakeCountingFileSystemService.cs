@@ -64,9 +64,14 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
         foreach (var e in entries.OrderBy(x => x.VirtualPath, StringComparer.Ordinal)) yield return e;
     }
 
+    /// <summary>Virtual paths whose stream read is refused with <see cref="FileAccessDeniedException"/>, as the VFS refuses one.</summary>
+    public HashSet<string> DeniedReadPaths = [];
+
     public Task<Stream> OpenReadStreamAsync(string virtualPath, CancellationToken ct)
     {
         _reads.Enqueue(virtualPath);
+        if (DeniedReadPaths.Contains(virtualPath))
+            throw new FileAccessDeniedException($"Read refused on '{virtualPath}'.", virtualPath, FileAccessRights.Read);
         return _inner.OpenReadStreamAsync(virtualPath, ct);
     }
 

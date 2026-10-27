@@ -227,6 +227,14 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         catch (FileNotFoundException) { return null; }
         catch (IOException) { return null; }
         catch (UnauthorizedAccessException) { return null; }
+        catch (FileAccessDeniedException)
+        {
+            // The VFS policy refused the read (a mount right, a blocked extension): the file is
+            // left out of the index and reported, never a failure of the whole discovery.
+            stats.ExcludedByPolicy++;
+            stats.ExcludedByPolicyPaths.Add(entry.Entry.VirtualPath);
+            return null;
+        }
 
         return new DiscoveredFile(entry.Entry.VirtualPath, entry.Relative, language, size, sha);
     }
@@ -308,6 +316,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         public int ExcludedByGitignore;
         public int ExcludedByLanguage;
         public int ExcludedBySuffix;
+        public int ExcludedByPolicy;
+        public readonly ImmutableArray<string>.Builder ExcludedByPolicyPaths = ImmutableArray.CreateBuilder<string>();
         public int TotalEnumerated;
         public int VfsFileEntriesYielded;
         public int PhysicalEntriesProbe;
@@ -319,6 +329,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
             ExcludedByGitignore = ExcludedByGitignore,
             ExcludedByLanguage = ExcludedByLanguage,
             ExcludedBySuffix = ExcludedBySuffix,
+            ExcludedByPolicy = ExcludedByPolicy,
+            ExcludedByPolicyPaths = ExcludedByPolicyPaths.ToImmutable(),
             TotalEnumerated = TotalEnumerated,
             VfsFileEntriesYielded = VfsFileEntriesYielded,
             PhysicalEntriesProbe = PhysicalEntriesProbe,

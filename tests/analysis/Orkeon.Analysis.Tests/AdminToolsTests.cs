@@ -1,6 +1,7 @@
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
+using Orkeon.Analysis.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Analysis;
 
@@ -80,6 +81,34 @@ public class AdminToolsTests
                 CancellationToken.None);
             Assert.Equal("unchanged", resp.IndexId);
             Assert.Equal(0, resp.NodeCount);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    // Issue #215: one refused file never fails index_codebase; the caller learns what was skipped.
+    [Fact]
+    public async Task IndexCodebase_completes_and_reports_a_file_the_vfs_refuses()
+    {
+        var dir = await TestFixtures.WriteDirectoryAsync([
+            ("src/run.sh", "#!/usr/bin/env bash\necho hi\n"),
+            ("src/a.ts", TestFixtures.SimpleClass),
+        ]);
+        try
+        {
+            var denied = $"{TestFixtures.TestVirtualRoot}/src/run.sh";
+            var fs = new FakeCountingFileSystemService(TestFixtures.CreateFs(dir)) { DeniedReadPaths = { denied } };
+            var store = new InMemoryRaggableStore([], [], new FakeFileSystemService());
+            RaggableTreeBuilder Factory() => new(new TypeScriptAdapter(), fs);
+            using var tool = new IndexCodebaseTool(store, Factory);
+
+            var resp = await tool.ExecuteTypedForTest(
+                new IndexCodebaseRequest { RootPath = TestFixtures.TestVirtualRoot },
+                CancellationToken.None);
+
+            Assert.Equal(1, resp.FileCount);
+            Assert.True(resp.NodeCount > 0);
+            Assert.Equal(1, resp.FilterStats.ExcludedByPolicy);
+            Assert.Equal([denied], resp.FilterStats.ExcludedByPolicyPaths.ToArray());
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
