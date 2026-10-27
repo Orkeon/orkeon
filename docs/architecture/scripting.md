@@ -284,13 +284,13 @@ the rejection still runs and drains.
 ```typescript
 defineAsyncCommand({
   name: "step",
-  description: "Run a crew, then the next one, reading the session's mode at each hop.",
+  description: "Run a crew, then the next one, saving the session at each hop.",
   dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
   completed: async (result, ctx) => {
-    // "session": a host service of the application whose readMode() returns a Task, a promise here
-    const mode = await ctx.services.get("session").readMode();
-    ctx.writeLine(`plan done, mode ${mode}`);
-    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload, mode });
+    // "session": a host service of the application whose save() returns a Task, a promise here
+    const saved = await ctx.services.get("session").save();
+    ctx.writeLine(`plan done, session saved to ${saved}`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
   },
 });
 ```

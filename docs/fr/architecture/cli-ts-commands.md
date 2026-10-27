@@ -653,22 +653,27 @@ for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for a
 (`Orkeon:Cli:Session:Persist`, actif sauf si les réglages le désactivent) : elle est enregistrée après
 chaque tour et à la sortie dans `<SessionsDirectory>/<projet>/last.json`, et rechargée au démarrage.
 Tant qu'elle est conservée, `ctx.services.get("session")` sert deux appels. `save()` écrit ce fichier
-tout de suite, sous la même forme, et se résout en son chemin virtuel. `load(path)` lit un fichier que
-le REPL a enregistré, à un chemin virtuel, et remplace le tampon de conversation et le sac d'état (les
-deux choses que `/clear` remet à zéro), avec l'identifiant et le titre de la session, par les siens ;
-il se résout en le nombre de messages chargés, et le tour suivant poursuit cette conversation. Les
-instances de commandes en cours (`commands.list`) ne sont pas touchées, et la session continue de
-s'enregistrer dans son propre fichier. Le fichier est jugé en entier avant tout changement : un
-fichier absent, illisible ou sans la forme qu'écrit le REPL (`SessionId`, `Messages` avec chacun un
-`Role` et un `Content`, `State`) rejette la promesse, et la session reste telle qu'elle était. Les
-deux passent par le système de fichiers virtuel : un chemin hors d'un montage, ou sans droit de
-lecture, est refusé de la même façon.
+tout de suite, sous la même forme, et se résout en son chemin virtuel ; `save(path)` écrit la session
+sous la même forme dans un autre fichier virtuel, que `load` accepte en retour, et se résout en ce
+chemin (un chemin vide rejette la promesse). `load(path)` lit un fichier que le REPL a enregistré, à
+un chemin virtuel, et remplace le tampon de conversation et le sac d'état (les deux choses que
+`/clear` remet à zéro), avec l'identifiant et le titre de la session, par les siens ; il se résout en
+le nombre de messages chargés, et le tour suivant poursuit cette conversation. Les instances de
+commandes en cours (`commands.list`) ne sont pas touchées, et la session continue de s'enregistrer
+dans son propre fichier : la session chargée écrase `last.json` après le tour suivant, il faut donc
+archiver la session courante avec `save(path)` avant un `load`, sans quoi elle est perdue. Le fichier
+est jugé en entier avant tout changement : un fichier absent, illisible ou sans la forme qu'écrit le
+REPL (`SessionId`, `Messages` avec chacun un `Role` et un `Content`, `State`) rejette la promesse, et
+la session reste telle qu'elle était. Les deux passent par le système de fichiers virtuel : un chemin
+hors d'un montage, ou sans droit de lecture (ou d'écriture), est refusé de la même façon. Un `load`
+pendant le tour en cours d'une autre commande n'est pas pris en charge : le dernier qui écrit le
+tampon l'emporte.
 
 ```typescript
 const session = ctx.services.get("session");
-const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
+const archived = await session.save("/workspace/saved/before-review.json"); // garder d'abord la session courante
 const count = await session.load("/workspace/saved/review.json");
-ctx.writeLine(`loaded ${count} messages`);
+ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
 ```
 
 **Version du runtime.** `ctx.services.get("runtime")`, toujours présent, décrit le runtime qui exécute

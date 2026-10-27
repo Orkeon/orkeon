@@ -59,8 +59,8 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
    *
    *   completed: async (result, ctx) => {
    *     // A host service of the application whose method returns a Task, which the script sees as a promise.
-   *     const mode = await ctx.services.get("session").readMode();
-   *     ctx.writeLine(`mode: ${mode}`);
+   *     const saved = await ctx.services.get("session").save();
+   *     ctx.writeLine(`session saved to ${saved}`);
    *     ctx.services.get("script-host").runCrewAsync("next-step", { previous: result.payload });
    *   },
    */
@@ -235,7 +235,7 @@ export interface ServiceLocator {
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
    *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
    *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
-   *   `"session"` → {@link SessionFacade} (save the persisted session now, load a saved one, in `orkeon-repl`),
+   *   `"session"` → {@link SessionFacade} (save the persisted session now, here or to another file, load a saved one, in `orkeon-repl`),
    *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
@@ -334,16 +334,20 @@ export interface PendingApprovals {
  */
 export interface SessionFacade {
   /**
-   * Writes the session now to its file — the file and the shape the REPL writes at exit
-   * (`<SessionsDirectory>/<project>/last.json`) — and resolves to that file's virtual path.
+   * Writes the session now and resolves to the virtual path written. Without `path`, to its own file —
+   * the file and the shape the REPL writes at exit (`<SessionsDirectory>/<project>/last.json`). With
+   * `path`, to that virtual file instead, in the same shape, so {@link SessionFacade.load} reads it back.
+   * A blank `path` rejects. The session goes on saving to its own file, so archive the current one with
+   * `save(path)` before a `load`: the loaded session overwrites the own file at the next save.
    */
-  save(): Promise<string>;
+  save(path?: string): Promise<string>;
   /**
    * Swaps the conversation buffer and the state bag (with the session's id and title) for those of a
    * file the REPL saved, and resolves to the number of messages loaded: the next turn continues the
    * loaded conversation. The running command instances (`commands.list`) are untouched, and the
-   * session goes on saving to its own file. A missing file, or one not of the shape the REPL writes,
-   * rejects and leaves the session as it was.
+   * session goes on saving to its own file (archive the current one first with `save(path)`). A
+   * missing file, or one not of the shape the REPL writes, rejects and leaves the session as it was.
+   * A load while another command's turn runs is not supported: the last writer wins.
    */
   load(path: string): Promise<number>;
 }

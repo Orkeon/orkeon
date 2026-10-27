@@ -43,7 +43,8 @@ public static class ScriptServiceKeys
 
     /// <summary>
     /// Optional: the REPL's persisted session — <c>ctx.services.get("session")</c> (<see cref="SessionFacade"/>):
-    /// <c>save()</c> now, <c>load(path)</c> another saved session. Present when the session is persisted per project.
+    /// <c>save()</c> it now to its own file, <c>save(path)</c> to another, <c>load(path)</c> a saved one in its place.
+    /// Present when the session is persisted per project.
     /// </summary>
     public const string Session = "session";
 

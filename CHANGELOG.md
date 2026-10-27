@@ -35,15 +35,18 @@ lists `contextTokens` among the dimensions.
 
 ### Added — a command saves the REPL's session now, or loads a saved one (#227)
 
-The `session` service of `*.cmd.ts` (`ctx.services.get("session")`, `SessionFacade`), served in `orkeon-repl` while
-the session is persisted (`Orkeon:Cli:Session:Persist`, the REPL's default), gains `save()` and `load(path)`.
+A new `session` service of `*.cmd.ts` (`ctx.services.get("session")`, `SessionFacade`), served in `orkeon-repl` while
+the session is persisted (`Orkeon:Cli:Session:Persist`, the REPL's default), offers `save(path?)` and `load(path)`.
 `save()` writes the session now to the file and in the shape the REPL writes at exit
-(`<SessionsDirectory>/<project>/last.json`) and resolves to its virtual path. `load(path)` reads a session file the
-REPL saved, through the virtual file system, and swaps the conversation buffer and the state bag (with the session's
-id and title) for its own, so the next turn continues the loaded conversation; the running command instances are
-untouched and the session goes on saving to its own file. A missing file, or one without the shape the REPL writes,
-is refused whole: the promise rejects and the session stays as it was. `FileSessionBufferService` gains
-`SessionFilePath` and `LoadFromAsync(path)`.
+(`<SessionsDirectory>/<project>/last.json`) and resolves to its virtual path; `save(path)` writes it in the same shape
+to another virtual file instead (a blank path is refused), so `load` reads it back. `load(path)` reads a session file
+the REPL saved, through the virtual file system, and swaps the conversation buffer and the state bag (with the
+session's id and title) for its own, so the next turn continues the loaded conversation; it resolves to the number of
+messages loaded. The running command instances are untouched and the session goes on saving to its own file, which the
+loaded session overwrites at the next save: archive the current one with `save(path)` before `load`. A missing file,
+or one without the shape the REPL writes, is refused whole: the promise rejects and the session stays as it was. A load
+while another command's turn runs is not supported (the last writer wins). `FileSessionBufferService` gets
+`SessionFilePath`, `SaveToAsync(path)` and `LoadFromAsync(path)`, which returns the count of messages loaded.
 
 ### Added — scripted commands read the version of the runtime that runs them (#225)
 

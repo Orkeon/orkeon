@@ -216,7 +216,8 @@ Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, bool trustAnnotations = false, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.TrustAnnotations.get -> bool
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.TrustAnnotations.set -> void
-Orkeon.Infrastructure.Session.FileSessionBufferService.LoadFromAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Session.FileSessionBufferService.LoadFromAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+Orkeon.Infrastructure.Session.FileSessionBufferService.SaveToAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Session.FileSessionBufferService.SessionFilePath.get -> string?
 Orkeon.Infrastructure.Tools.TokenBudgetResponse.UsedTokensByKind.get -> Orkeon.Infrastructure.Tools.TokenBudgetByKind!
 Orkeon.Infrastructure.Tools.TokenBudgetResponse.UsedTokensByKind.set -> void

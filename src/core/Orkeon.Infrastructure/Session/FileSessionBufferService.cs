@@ -32,7 +32,7 @@ public sealed class FileSessionBufferService : ISessionBufferService
         _projectKey = projectKey;
         var json = await _fileSystem.TryReadAllTextAsync(FilePath(projectKey), cancellationToken).ConfigureAwait(false);
         if (json is null || Parse(json) is not { Session: { } saved }) return;
-        _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
+        _ = _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
     }
 
     /// <summary>
@@ -44,12 +44,15 @@ public sealed class FileSessionBufferService : ISessionBufferService
     /// <summary>
     /// Swaps the conversation buffer, the state bag, the id and the title for those of a file this service saved,
     /// read at the virtual <paramref name="path"/>. The file is judged whole before anything changes: a refused file
-    /// leaves the session as it was. The session keeps saving to <see cref="SessionFilePath"/>.
+    /// leaves the session as it was. The session keeps saving to <see cref="SessionFilePath"/>, so the loaded
+    /// session overwrites that file at the next save: archive the current one with <see cref="SaveToAsync"/> first.
+    /// A load while another command's turn runs is not supported: the last writer of the buffer wins.
     /// </summary>
+    /// <returns>The number of messages loaded, counted under the same lock as the swap.</returns>
     /// <exception cref="FileNotFoundException">No file at <paramref name="path"/>.</exception>
     /// <exception cref="InvalidDataException">The file is not a session this service saved.</exception>
     /// <exception cref="FileAccessDeniedException">The path is outside any mount or lacks read rights.</exception>
-    public async Task LoadFromAsync(string path, CancellationToken cancellationToken = default)
+    public async Task<int> LoadFromAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var json = await _fileSystem.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
@@ -57,7 +60,7 @@ public sealed class FileSessionBufferService : ISessionBufferService
         var (saved, problem) = Parse(json);
         if (saved is null)
             throw new InvalidDataException($"'{path}' is not a session the REPL saved ({problem}); the session is unchanged.");
-        _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
+        return _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
     }
 
     /// <summary>The session a file holds when it has the shape <see cref="SaveAsync"/> writes, else what is wrong with it.</summary>
@@ -86,15 +89,33 @@ public sealed class FileSessionBufferService : ISessionBufferService
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         if (_projectKey is null) return;
+        await _fileSystem.WriteAllTextAsync(FilePath(_projectKey), Serialize(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Writes the buffer, state bag, id and title to the virtual <paramref name="path"/>, in the shape
+    /// <see cref="SaveAsync"/> writes, so <see cref="LoadFromAsync"/> reads it back. The project's file is left as it
+    /// is, and the session goes on saving there.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="path"/> is null, empty or blank.</exception>
+    /// <exception cref="FileAccessDeniedException">The path is outside any mount or lacks write rights.</exception>
+    public async Task SaveToAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        await _fileSystem.WriteAllTextAsync(path, Serialize(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The session as one JSON document of the shape <see cref="Parse"/> accepts.</summary>
+    private string Serialize()
+    {
         var snapshot = _inner.Snapshot();
-        var json = JsonSerializer.Serialize(new PersistedSession
+        return JsonSerializer.Serialize(new PersistedSession
         {
             SessionId = snapshot.SessionId,
             Title = snapshot.Title,
             Messages = snapshot.Messages,
             State = snapshot.State,
         });
-        await _fileSystem.WriteAllTextAsync(FilePath(_projectKey), json, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

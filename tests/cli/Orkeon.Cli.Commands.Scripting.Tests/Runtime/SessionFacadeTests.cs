@@ -121,6 +121,86 @@ public sealed class SessionFacadeTests
 
     [Fact]
     [Trait("BR", "#227")]
+    public async Task ShouldArchiveTheCurrentSession_SoItSurvivesALoad_WhenSaveIsGivenAPath()
+    {
+        var fs = NewFs();
+        var other = await SavedElsewhereAsync(fs);
+        var session = NewSession(fs);
+        await session.LoadAsync(Project, Ct);
+        session.ReplaceMessages([new SessionMessage { Role = "user", Content = "current" }]);
+        session.SetState("current-key", "x");
+        var facade = Facade(session);
+
+        var archived = await facade.save(" /workspace/saved/current.json ");
+        await facade.load(other);
+        await facade.save();
+        var count = await facade.load(archived);
+
+        Assert.Equal("/workspace/saved/current.json", archived);
+        Assert.Equal(1, count);
+        Assert.Equal("current", Assert.Single(session.GetMessages()).Content);
+        Assert.Equal("x", session.GetState("current-key"));
+    }
+
+    [Theory]
+    [Trait("BR", "#227")]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task ShouldRefuseToSave_WhenThePathIsBlank(string path)
+    {
+        var session = NewSession(NewFs());
+        await session.LoadAsync(Project, Ct);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => Facade(session).save(path));
+
+        Assert.Contains("session.save", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [Trait("BR", "#227")]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task ShouldRefuseToLoad_WhenThePathIsBlank(string path)
+    {
+        var session = NewSession(NewFs());
+        await session.LoadAsync(Project, Ct);
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => Facade(session).load(path));
+
+        Assert.Contains("session.load", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldRefuseToLoadADirectory_AndLeaveTheSession()
+    {
+        var fs = NewFs().AddDirectory("/workspace/saved");
+        var session = NewSession(fs);
+        await session.LoadAsync(Project, Ct);
+        session.ReplaceMessages([new SessionMessage { Role = "user", Content = "current" }]);
+
+        await Assert.ThrowsAsync<FileNotFoundException>(() => Facade(session).load("/workspace/saved"));
+
+        Assert.Equal("current", Assert.Single(session.GetMessages()).Content);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldRefuseAPathOutsideAnyMount_WhenSavingOrLoading()
+    {
+        var session = NewSession(NewFs());
+        await session.LoadAsync(Project, Ct);
+        session.ReplaceMessages([new SessionMessage { Role = "user", Content = "current" }]);
+        var facade = Facade(session);
+
+        await Assert.ThrowsAsync<FileAccessDeniedException>(() => facade.load("/etc/last.json"));
+        await Assert.ThrowsAsync<FileAccessDeniedException>(() => facade.save("/etc/last.json"));
+
+        Assert.Equal("current", Assert.Single(session.GetMessages()).Content);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
     public void ShouldNotBeServed_WhenTheSessionIsNotPersisted()
     {
         using var inMemory = new ServiceCollection()

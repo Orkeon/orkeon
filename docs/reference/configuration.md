@@ -1809,7 +1809,7 @@ The context window used by `token_budget` (`TokenBudgetTool`) and the TUI.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `ContextWindowTokens` | integer | — | The model's context window, in tokens: a number above zero. Unset is `200000`. |
-| `Persist` | boolean | `false` | Whether the session (messages, state, id and title) is persisted per project under `SessionsDirectory`; off unless a host turns it on, and the REPL turns it on when the key is absent. While it is on, a `*.cmd.ts` saves it now (`ctx.services.get("session").save()`) or loads another saved session in its place (`load(path)`). |
+| `Persist` | boolean | `false` | Whether the session (messages, state, id and title) is persisted per project under `SessionsDirectory`; off unless a host turns it on, and the REPL turns it on when the key is absent. While it is on, a `*.cmd.ts` saves it now (`ctx.services.get("session").save()`, or `save(path)` to keep a copy elsewhere) or loads another saved session in its place (`load(path)`). |
 | `SessionsDirectory` | string | `"/workspace/.orkeon/sessions"` | Virtual directory holding one folder of persisted session per project. |
 | `StartScript` | string | — | The script run once at the REPL's start (`Orkeon:Cli:Session:StartScript`); unset runs none. |
 <!-- /settings -->

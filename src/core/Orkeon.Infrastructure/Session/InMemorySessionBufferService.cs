@@ -42,8 +42,11 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
         lock (_gate) return (_sessionId, _title, _messages.ToArray(), new Dictionary<string, string>(_state, StringComparer.Ordinal));
     }
 
-    /// <summary>Puts back a persisted session as it was saved: no validation, the file is the source.</summary>
-    internal void Restore(string sessionId, string? title, IEnumerable<SessionMessage> messages, IReadOnlyDictionary<string, string> state)
+    /// <summary>
+    /// Puts back a persisted session as it was saved: no validation, the file is the source. Returns the number of
+    /// messages restored, counted under the lock of the swap.
+    /// </summary>
+    internal int Restore(string sessionId, string? title, IEnumerable<SessionMessage> messages, IReadOnlyDictionary<string, string> state)
     {
         lock (_gate)
         {
@@ -53,6 +56,7 @@ public sealed class InMemorySessionBufferService : ISessionBufferService
             _messages.AddRange(messages);
             _state.Clear();
             foreach (var (key, value) in state) _state[key] = value;
+            return _messages.Count;
         }
     }
 

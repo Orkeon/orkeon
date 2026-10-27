@@ -31,8 +31,8 @@ public sealed class CliSessionOptions
     /// <summary>
     /// Whether the session (messages, state, id and title) is persisted per project under <see cref="SessionsDirectory"/>;
     /// off unless a host turns it on, and the REPL turns it on when the key is absent. While it is on, a <c>*.cmd.ts</c>
-    /// saves it now (<c>ctx.services.get("session").save()</c>) or loads another saved session in its place
-    /// (<c>load(path)</c>).
+    /// saves it now (<c>ctx.services.get("session").save()</c>, or <c>save(path)</c> to keep a copy elsewhere) or loads
+    /// another saved session in its place (<c>load(path)</c>).
     /// </summary>
     public bool Persist { get; set; }
 

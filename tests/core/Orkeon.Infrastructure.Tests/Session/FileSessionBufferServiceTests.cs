@@ -168,8 +168,9 @@ public sealed class FileSessionBufferServiceTests
         running.ReplaceMessages([new SessionMessage { Role = "user", Content = "other" }]);
         running.SetState("other", "1");
 
-        await running.LoadFromAsync(path, TestContext.Current.CancellationToken);
+        var count = await running.LoadFromAsync(path, TestContext.Current.CancellationToken);
 
+        Assert.Equal(2, count);
         Assert.Equal(["question-42", "answer-42"], running.GetMessages().Select(m => m.Content));
         Assert.Equal("3", running.GetState("breaker"));
         Assert.Null(running.GetState("other"));
@@ -237,5 +238,38 @@ public sealed class FileSessionBufferServiceTests
 
         Assert.Contains("/workspace/missing.json", error.Message, StringComparison.Ordinal);
         Assert.Equal(2, running.MessageCount);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldWriteALoadableCopy_AndLeaveItsOwnFile_WhenSavingToAnotherPath()
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+        var ownBefore = await fs.TryReadAllTextAsync(running.SessionFilePath!, TestContext.Current.CancellationToken);
+        running.AppendNote("archived-only");
+
+        await running.SaveToAsync("/workspace/saved/archive.json", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ownBefore, await fs.TryReadAllTextAsync(running.SessionFilePath!, TestContext.Current.CancellationToken));
+        var reader = NewService(fs);
+        await reader.LoadAsync(ProjectB, TestContext.Current.CancellationToken);
+        var count = await reader.LoadFromAsync("/workspace/saved/archive.json", TestContext.Current.CancellationToken);
+        Assert.Equal(3, count);
+        Assert.Equal(running.GetMessages().Select(m => m.Content), reader.GetMessages().Select(m => m.Content));
+        Assert.Equal("3", reader.GetState("breaker"));
+        Assert.Equal(running.GetMetadata().SessionId, reader.GetMetadata().SessionId);
+    }
+
+    [Theory]
+    [Trait("BR", "#227")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ShouldRefuseToSave_WhenTheOtherPathIsBlank(string path)
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => running.SaveToAsync(path, TestContext.Current.CancellationToken));
     }
 }

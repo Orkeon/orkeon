@@ -628,20 +628,25 @@ for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for a
 (`Orkeon:Cli:Session:Persist`, on unless the settings turn it off): it is saved after each turn and
 at exit to `<SessionsDirectory>/<project>/last.json`, and reloaded at start. While it is persisted,
 `ctx.services.get("session")` serves two calls. `save()` writes that file now, in the same shape,
-and resolves to its virtual path. `load(path)` reads a file the REPL saved, at a virtual path, and
-swaps the conversation buffer and the state bag (the two things `/clear` resets), with the session's
-id and title, for its own; it resolves to the number of messages loaded, and the next turn continues
-that conversation. The running command instances (`commands.list`) are untouched, and the session
-goes on saving to its own file. The file is judged whole before anything changes: a missing file, an
-unreadable one, or one without the shape the REPL writes (`SessionId`, `Messages` with a `Role` and a
-`Content` each, `State`) rejects the promise, and the session stays as it was. Both go through the
-virtual file system: a path outside a mount, or without read rights, is refused the same way.
+and resolves to its virtual path; `save(path)` writes the session in the same shape to another
+virtual file instead, which `load` accepts back, and resolves to that path (a blank path rejects).
+`load(path)` reads a file the REPL saved, at a virtual path, and swaps the conversation buffer and
+the state bag (the two things `/clear` resets), with the session's id and title, for its own; it
+resolves to the number of messages loaded, and the next turn continues that conversation. The running
+command instances (`commands.list`) are untouched, and the session goes on saving to its own file:
+the loaded session overwrites `last.json` after the next turn, so archive the current one with
+`save(path)` before a `load`, or it is lost. The file is judged whole before anything changes: a
+missing file, an unreadable one, or one without the shape the REPL writes (`SessionId`, `Messages`
+with a `Role` and a `Content` each, `State`) rejects the promise, and the session stays as it was.
+Both go through the virtual file system: a path outside a mount, or without the read (or write)
+right, is refused the same way. A `load` while another command's turn runs is not supported: the
+last writer of the buffer wins.
 
 ```typescript
 const session = ctx.services.get("session");
-const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
+const archived = await session.save("/workspace/saved/before-review.json"); // keep the current session first
 const count = await session.load("/workspace/saved/review.json");
-ctx.writeLine(`loaded ${count} messages`);
+ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
 ```
 
 **Runtime version.** `ctx.services.get("runtime")`, always present, answers the runtime that runs the
