@@ -240,6 +240,21 @@ public class TaskTranscriptTrackerTests
     }
 
     [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldReportLaunchAndEndLinesOnce_WhenEndedRowsAreListed()
+    {
+        var tracker = new TaskTranscriptTracker(GlyphSet.Unicode);
+        var ended = Ended("T-1", TaskRowState.Done, name: "w", intent: "");
+        var all = new List<string>();
+        all.AddRange(tracker.Observe([Main, Task("T-1", name: "w", intent: "")], []));
+        all.AddRange(tracker.Observe([Main], [ended]));
+        all.AddRange(tracker.Observe([Main], [ended]));
+        all.AddRange(tracker.Observe([Main], [ended]));
+
+        Assert.Equal(["● w", "  ⎿  Backgrounded agent (↓ tasks)", "● Agent \"w\" finished · 2m 15s"], all);
+    }
+
+    [Fact]
     public void The_ascii_set_writes_ascii_state_glyphs_and_hints()
     {
         var tracker = new TaskTranscriptTracker(GlyphSet.Ascii);

@@ -336,6 +336,11 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     {
         var previous = _screens.Displayed;
         if (!_screens.Show(_navigation.RecipientTicket)) return;
+        SwapDisplayed(previous);
+    }
+
+    private void SwapDisplayed(TranscriptView previous)
+    {
         Remove(previous);
         var screen = _screens.Displayed;
         screen.Height = Dim.Fill(_inputRows + BandRows + BelowRows);
@@ -720,10 +725,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
         var recipient = _navigation.RecipientTicket;
         var action = _navigation.OnRowsChanged(rows);
-        if (action.DepartedRecipient is { } departed)
-            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
         if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
             Apply(action);
+        var previous = _screens.Displayed;
+        if (_screens.DiscardAbsent([.. rows.Select(row => row.Ticket).OfType<string>()]))
+        {
+            SwapDisplayed(previous);
+            previous.Dispose();
+        }
+        if (action.DepartedRecipient is { } departed && recipient is not null && !_screens.Tickets.Contains(recipient, StringComparer.Ordinal))
+            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
     }
 
     /// <summary><c>@alpha finished · recipient is main</c>: the recipient task left the list.</summary>

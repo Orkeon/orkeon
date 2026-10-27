@@ -115,3 +115,4 @@ static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.ComposeApproval(Orkeon.
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.SeparatesThreads.get -> bool
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteAttention(string? thread, string! text) -> void
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteLine(string? thread, string! text) -> void
+static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.ComposeListRows(System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! live, System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! ended) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!

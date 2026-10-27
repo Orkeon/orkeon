@@ -10,6 +10,8 @@ internal sealed class ThreadScreens
     private readonly Action<TranscriptView> _configure;
     private bool? _wordWrap;
     private readonly Dictionary<string, TranscriptView> _tasks = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _listedBefore = new(StringComparer.Ordinal);
+    private HashSet<string> _openAtLastPoll = new(StringComparer.Ordinal);
 
     public ThreadScreens(int capacity, Action<TranscriptView> configure)
     {
@@ -53,6 +55,35 @@ internal sealed class ThreadScreens
         if (ReferenceEquals(screen, Displayed)) return false;
         Displayed = screen;
         return true;
+    }
+
+    /// <summary>
+    /// Discards the screens of unlisted tickets that were listed before or were already open at the
+    /// previous call; a screen opened since is kept to the next call. True when the displayed one went:
+    /// it is then no longer displayed and not disposed, the caller detaches it and disposes it.
+    /// </summary>
+    public bool DiscardAbsent(IReadOnlyCollection<string> listed)
+    {
+        _listedBefore.UnionWith(listed);
+        var displayedGone = false;
+        foreach (var (ticket, screen) in _tasks.ToArray())
+        {
+            if (listed.Contains(ticket) || !(_listedBefore.Contains(ticket) || _openAtLastPoll.Contains(ticket))) continue;
+            _tasks.Remove(ticket);
+            _listedBefore.Remove(ticket);
+            if (string.Equals(ticket, DisplayedThread, StringComparison.Ordinal))
+            {
+                displayedGone = true;
+                DisplayedThread = null;
+                Displayed = Main;
+            }
+            else
+            {
+                screen.Dispose();
+            }
+        }
+        _openAtLastPoll = [.. _tasks.Keys];
+        return displayedGone;
     }
 
     /// <summary>Flips the shared wrap state and applies it to every screen.</summary>

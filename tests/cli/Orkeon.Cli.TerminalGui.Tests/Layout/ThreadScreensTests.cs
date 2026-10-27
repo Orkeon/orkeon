@@ -34,6 +34,20 @@ public class ThreadScreensTests
     }
 
     [Fact]
+    [Trait("BR", "BR-08")] // A1
+    public void ShouldDiscardNeverListedScreen_WhenItOutlivesOnePollUnlisted()
+    {
+        var screens = Create();
+        screens.For("T9").AppendLines(["early line"]);
+
+        Assert.False(screens.DiscardAbsent([]));
+        Assert.Contains("T9", screens.Tickets);
+
+        Assert.False(screens.DiscardAbsent([]));
+        Assert.DoesNotContain("T9", screens.Tickets);
+    }
+
+    [Fact]
     [Trait("BR", "BR-09")]
     public void ShouldKeepEveryLineInOrder_WhenScreenIsHidden()
     {

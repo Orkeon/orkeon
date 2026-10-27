@@ -627,6 +627,9 @@ public class ReplPaneViewTests
         /// <summary>When true, the row provider throws, as a registry that went away does.</summary>
         public bool Fail { get; set; }
 
+        /// <summary>The ended tasks the host still lists.</summary>
+        public List<AgentRowInfo> Ended { get; } = [];
+
         public List<AgentRowInfo> Rows { get; } =
         [
             new() { Name = "main", IsActive = true },
@@ -639,7 +642,7 @@ public class ReplPaneViewTests
     {
         var rows = new TaskRows();
         var top = new SplitPaneToplevel(new TerminalGuiOptions { Glyphs = GlyphMode.Always }, InlineDispatcher.Instance);
-        top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Fail ? throw new InvalidOperationException("registry gone") : rows.Rows });
+        top.Agents.Bind(new TuiIntegration { AgentRows = () => rows.Fail ? throw new InvalidOperationException("registry gone") : rows.Rows, FinishedAgentRows = () => rows.Ended });
         // A real frame, as CreatePane gives one: the soft-wrapped input needs a viewport width.
         top.Frame = new System.Drawing.Rectangle(0, 0, 100, 30);
         top.Layout();
@@ -1455,6 +1458,89 @@ public class ReplPaneViewTests
         Assert.Contains("@worker@crew finished · recipient is main", top.Repl.CurrentHistory, StringComparison.Ordinal);
         Assert.StartsWith("  ● main", top.Agents.CurrentText, StringComparison.Ordinal);
     }
+
+    private static void MakeT1Recipient(SplitPaneToplevel top)
+    {
+        top.Repl.RaiseKeyDown(new Key(KeyCode.CursorDown));
+        top.Agents.NewKeyDownEvent(Key.CursorDown);
+        top.Agents.NewKeyDownEvent(Key.Esc);
+        Assert.Equal("T-1", top.Repl.Navigation.RecipientTicket);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-12")]
+    public void ShouldKeepRecipientAndScreen_WhenRecipientTaskEnds()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-1", "worker output");
+        MakeT1Recipient(top);
+
+        rows.Rows.RemoveAt(1);
+        rows.Ended.Add(new AgentRowInfo { Name = "worker@crew", Ticket = "T-1", State = TaskRowState.Done });
+        top.Agents.Refresh();
+        top.Agents.Refresh();
+
+        Assert.Equal("T-1", top.Repl.Navigation.RecipientTicket);
+        Assert.Equal("T-1", top.Repl.DisplayedThread);
+        Assert.Contains("worker output", top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.DoesNotContain(ReplPaneView.DepartedRecipientLine(top.Repl.Glyphs, "worker@crew"), top.Repl.ThreadText(null), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-08")] // UC-02
+    public void ShouldDiscardScreenAndReturnToMain_WhenHostForgetsDisplayedTask()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-1", "worker output");
+        MakeT1Recipient(top);
+        rows.Rows.RemoveAt(1);
+        rows.Ended.Add(new AgentRowInfo { Name = "worker@crew", Ticket = "T-1", State = TaskRowState.Done });
+        top.Agents.Refresh();
+
+        rows.Ended.Clear();
+        top.Agents.Refresh();
+
+        Assert.Null(top.Repl.Navigation.RecipientTicket);
+        Assert.Null(top.Repl.DisplayedThread);
+        Assert.Contains(ReplPaneView.DepartedRecipientLine(top.Repl.Glyphs, "worker@crew"), top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, top.Repl.ThreadText("T-1"));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-08")]
+    public void ShouldDiscardHiddenScreen_WhenHostForgetsTask()
+    {
+        var (top, rows) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-1", "worker output");
+        top.Repl.AppendThreadLine("T-2", "scout output");
+        MakeT1Recipient(top);
+        top.Agents.Refresh();
+
+        rows.Rows.RemoveAt(2);
+        top.Agents.Refresh();
+
+        Assert.Equal("T-1", top.Repl.DisplayedThread);
+        Assert.Contains("worker output", top.Repl.CurrentHistory, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, top.Repl.ThreadText("T-2"));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-01")]
+    [Trait("BR", "BR-08")]
+    public void ShouldKeepScreen_WhenTaskWroteBeforeItsFirstRow()
+    {
+        var (top, _) = CreateTopWithTasks();
+        using var owner = top;
+        top.Repl.AppendThreadLine("T-9", "early line");
+
+        top.Agents.Refresh();
+
+        Assert.Contains("early line", top.Repl.ThreadText("T-9"), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_faulted_poll_keeps_the_recipient_and_the_rows_and_writes_no_line()
     {
