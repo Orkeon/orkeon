@@ -133,8 +133,10 @@ defineCommand({
 
 `group` (also accepted by `defineAsyncCommand`) is the `[<group>]` block `/help` lists the command
 under. When absent it is the name of the folder holding the `*.cmd.ts`
-(`/cli-commands/session/clear.cmd.ts` is in `session`; a file at the root of the mount has no
-group, and a folder name that is not a valid group name gives none). `/help` prints one block per
+(`/cli-commands/session/clear.cmd.ts` is in `session`), taken below the directory of
+`Orkeon:Cli:ScriptCommands:Directories` that found the file: a file directly in that directory has no
+group, however deep the directory sits in its mount (`/workspace/commands/a.cmd.ts`, found under
+`/workspace/commands`, has none), and a folder name that is not a valid group name gives none. `/help` prints one block per
 group in registration order, `(no group)` last; the runner's own commands (`ps`, `inspect`,
 `result`, `cancel`, `help-cmd`) sit in `runner`, and `help-cmd <name>` names the group on its
 first line. An invalid `group` is refused like an invalid name.
@@ -188,8 +190,8 @@ interface CommandRuntimeContext {
 ```
 
 `ctx.command.rawInput` is the line as typed (`/deploy prod --force`); in an async command's
-`completed`, it is the line that launched that ticket, whichever command later pumps the
-completion. `ctx.progress`
+`completed`, it is the line that launched that ticket: only the launching command runs the
+completions of its own instances, even when it was typed again since. `ctx.progress`
 returns a handle with `advance(label?)`, `set(value, label?)` and `done(label?)`. A global
 `console.log/info/debug/warn/error` forwards to `ctx.log`.
 
@@ -345,10 +347,10 @@ defineAsyncCommand({
   `runCrewAsync(name, input, { chain: "continue" })`: the new instance takes the depth of
   the instance whose `completed` is running instead of that depth plus one, so the loop
   command → crew → the same command's `completed` → crew runs as long as it needs. The
-  option is honoured only when the parent instance belongs to the command the new
-  launch is chained to (the same command name); otherwise it is ignored with a warning
-  in the host log and the depth climbs, so recursion between two different commands is
-  still bounded. Outside a `completed` it changes nothing (a first hop is depth 1). Any
+  parent instance is always one of the same command: a command runs only the `completed`
+  of its own instances, and what that `completed` launches is keyed to it. Outside a
+  `completed` (a `dispatch`, a handler) the option changes nothing: the launch takes the
+  depth it takes without it (a first hop is depth 1), and a `post` always climbs. Any
   other `chain` value is a script error.
 
 ### Admission quota — `maxConcurrent`
@@ -529,10 +531,12 @@ character counts two); on a narrow pane the phrase gives way first, then the nam
 metrics, and a resize rebuilds the rows at the new width. It grows up to 6 rows, then scrolls with
 the cursor. **One screen per thread.** Each of `main` and the tasks has a screen of its own, of
 `ReplTranscriptCapacity` lines, and only the recipient's is displayed. A line a task writes (streamed
-text, completion lines, a tool-call question) lands on that task's screen, opened at its first line,
+text, a tool-call question) lands on that task's screen, opened at its first line,
 and carries no `[t1]` ticket prefix in the split-pane console (the plain console keeps it); a crew
 label (`[<taskId>] `) stays, telling the agents of one crew apart inside the screen. The `main`
-screen holds the prompt's turns and the lifecycle lines, never a task's output. Copy, the mouse
+screen holds the prompt's turns and the lifecycle lines, never a task's output. A task's end line
+(`  ✓ [t1] ask-bg → echo: done`) and what its command's `completed` writes go to `main`, the end line
+keeping its ticket, which names the task there. Copy, the mouse
 selection and word wrap (one state for every screen) act on the displayed screen; `Esc Esc` still
 interrupts the prompt's turn whatever screen is displayed, its `Interrupted` line landing on `main`. An
 attention line, such as a tool-call question, shows on the displayed screen whichever task asks and is

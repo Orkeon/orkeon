@@ -323,9 +323,11 @@ public sealed class AgentsPaneView : View
     public void Refresh()
     {
         IReadOnlyList<AgentRowInfo> rows;
+        bool turnRunning;
         try
         {
             rows = _integration?.AgentRows?.Invoke() ?? [];
+            turnRunning = _integration?.PromptTurnRunning?.Invoke() == true;
         }
         catch
         {
@@ -337,7 +339,7 @@ public sealed class AgentsPaneView : View
 
         var hasFeed = TryReadFinished(out var finished);
         if (hasFeed) _lastFinished = finished;
-        _rows = AgentsPaneModel.ComposeListRows(rows, hasFeed ? finished : _lastFinished).ToList();
+        _rows = AgentsPaneModel.ComposeListRows(rows, hasFeed ? finished : _lastFinished, turnRunning).ToList();
         if (TranscriptSink is { } sink)
         {
             foreach (var line in _tracker.Observe(rows, hasFeed ? finished : null)) sink(line);

@@ -12,10 +12,10 @@ public sealed class CommandDispatchScope : IDisposable
     private readonly List<CommandInstance> _captured = new();
     private readonly List<CommandInstance> _turn = new();
 
-    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0, string? parentCommand = null)
+    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0, bool fromCompleted = false)
     {
         Depth = depth;
-        ParentCommand = parentCommand;
+        FromCompleted = fromCompleted;
         PromptOwner = isPrompt ? this : promptOwner;
         CommandName = commandName;
         CancellationToken = cancellationToken;
@@ -27,11 +27,11 @@ public sealed class CommandDispatchScope : IDisposable
     public int Depth { get; }
 
     /// <summary>
-    /// Name of the command owning the instance whose <c>completed</c> runs in this scope, or <see langword="null"/>
-    /// outside a <c>completed</c> drain. A launch asking to continue the chain keeps <see cref="Depth"/> only when it
-    /// equals <see cref="CommandName"/>.
+    /// Whether a <c>completed</c> runs in this scope. The instance it completes is always one of
+    /// <see cref="CommandName"/> (a command drains only its own completions), so a launch asking to continue the chain
+    /// keeps <see cref="Depth"/> here and climbs everywhere else.
     /// </summary>
-    internal string? ParentCommand { get; }
+    internal bool FromCompleted { get; }
 
     /// <summary>Name of the command currently executing.</summary>
     public string CommandName { get; }

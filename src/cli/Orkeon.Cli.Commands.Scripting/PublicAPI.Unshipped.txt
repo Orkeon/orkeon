@@ -25,8 +25,8 @@ Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.Depth.get -> 
 Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.Limit.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Depth.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.CommandDispatchService(Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory! directory, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry! registry, Microsoft.Extensions.Logging.ILogger<Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService!>? logger = null, Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker? progress = null, int maxChainDepth = 8) -> void
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0, string? parentCommand = null) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain) -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0, bool fromCompleted = false) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false) -> string!
 *REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.runCrewAsync(string! name, Jint.Native.JsValue? input = null) -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.runCrewAsync(string! name, Jint.Native.JsValue? input = null, Jint.Native.JsValue? options = null) -> string!
 override Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
@@ -65,3 +65,7 @@ static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.IsValidG
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidGroup = 5 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Group.get -> string?
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Group.get -> string?
+*REMOVED*Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work) -> string!
+*REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue.DrainAll() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion>!
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.get -> string?
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.init -> void

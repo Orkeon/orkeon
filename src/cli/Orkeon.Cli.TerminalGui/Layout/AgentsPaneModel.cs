@@ -73,8 +73,12 @@ public static class AgentsPaneModel
     internal static string FormatRow(GlyphSet glyphs, AgentRowInfo row, int width, bool cursor = false, bool recipient = false)
         => RowSegment.Concat(Segments(glyphs, row, width, cursor, recipient));
 
-    /// <summary>The rows of the list: main, the live tasks, then the ended ones absent from the live rows.</summary>
-    public static IReadOnlyList<AgentRowInfo> ComposeListRows(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended)
+    /// <summary>
+    /// The rows of the list: main, the live tasks, then the ended ones absent from the live rows. When no task is live
+    /// and ended ones remain, main is added here, running while <paramref name="promptTurnRunning"/> says the prompt's
+    /// turn runs, as the host's live rows state it otherwise.
+    /// </summary>
+    public static IReadOnlyList<AgentRowInfo> ComposeListRows(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended, bool promptTurnRunning = false)
     {
         ArgumentNullException.ThrowIfNull(live);
         ArgumentNullException.ThrowIfNull(ended);
@@ -85,7 +89,7 @@ public static class AgentsPaneModel
             .OrderBy(r => r.Ticket?.Length ?? 0)
             .ThenBy(r => r.Ticket, StringComparer.Ordinal);
         var rows = live.ToList();
-        if (rows.Count == 0 && kept.Any()) rows.Add(new AgentRowInfo { Name = "main", IsActive = true });
+        if (rows.Count == 0 && kept.Any()) rows.Add(new AgentRowInfo { Name = "main", IsActive = true, State = promptTurnRunning ? TaskRowState.Running : TaskRowState.Idle });
         rows.AddRange(kept);
         return rows;
     }

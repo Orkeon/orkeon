@@ -27,18 +27,6 @@ public sealed class CompletionDrainQueue
         lock (_lock) _pending.Add(new PendingCompletion(completed, instance));
     }
 
-    /// <summary>Drain all pending completions, oldest first. Each is removed exactly once.</summary>
-    public IReadOnlyList<PendingCompletion> DrainAll()
-    {
-        lock (_lock)
-        {
-            if (_pending.Count == 0) return Array.Empty<PendingCompletion>();
-            var drained = _pending.ToList();
-            _pending.Clear();
-            return drained;
-        }
-    }
-
     /// <summary>
     /// Drain the pending completions of the instances keyed to <paramref name="commandName"/> (the
     /// <see cref="CommandInstance.Name"/> a launch records), oldest first; the others stay queued for their own

@@ -108,6 +108,24 @@ public class AgentsPaneViewTests
         Assert.Equal(["main", "done"], pane.Rows.Select(r => r.Name).ToArray());
     }
 
+    [Theory]
+    [Trait("BR", "BR-07")]
+    [InlineData(true, TaskRowState.Running)]
+    [InlineData(false, TaskRowState.Idle)]
+    public void ShouldGiveMainThePromptTurnState_WhenOnlyEndedTasksRemain(bool turnRunning, TaskRowState expected)
+    {
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        pane.Bind(new TuiIntegration
+        {
+            AgentRows = () => [],
+            FinishedAgentRows = () => [EndedRow("done", "T-1")],
+            PromptTurnRunning = () => turnRunning,
+        });
+        pane.Refresh();
+
+        Assert.Equal(expected, pane.Rows.Single(r => r.Name == "main").State);
+    }
+
     [Fact]
     [Trait("BR", "BR-07")]
     [Trait("BR", "UC-05")]

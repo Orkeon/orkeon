@@ -135,8 +135,11 @@ defineCommand({
 
 `group` (accepté aussi par `defineAsyncCommand`) est le bloc `[<group>]` sous lequel `/help` liste la
 commande. Absent, c'est le nom du dossier qui contient le `*.cmd.ts`
-(`/cli-commands/session/clear.cmd.ts` est dans `session` ; un fichier à la racine du montage n'a
-pas de groupe, et un nom de dossier qui n'est pas un nom de groupe valide n'en donne pas). `/help`
+(`/cli-commands/session/clear.cmd.ts` est dans `session`), pris sous le dossier de
+`Orkeon:Cli:ScriptCommands:Directories` qui a trouvé le fichier : un fichier placé directement dans ce
+dossier n'a pas de groupe, quelle que soit la profondeur du dossier dans son montage
+(`/workspace/commands/a.cmd.ts`, trouvé sous `/workspace/commands`, n'en a pas), et un nom de dossier
+qui n'est pas un nom de groupe valide n'en donne pas). `/help`
 imprime un bloc par groupe dans l'ordre d'enregistrement, `(no group)` en dernier ; les commandes
 propres au runner (`ps`, `inspect`, `result`, `cancel`, `help-cmd`) sont dans `runner`, et
 `help-cmd <name>` nomme le groupe sur sa première ligne. Un `group` invalide est refusé comme un
@@ -191,8 +194,8 @@ interface CommandRuntimeContext {
 ```
 
 `ctx.command.rawInput` est la ligne telle que tapée (`/deploy prod --force`) ; dans le
-`completed` d'une commande asynchrone, c'est la ligne qui a lancé ce ticket, quelle que soit la
-commande qui pompe ensuite la complétion. `ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
+`completed` d'une commande asynchrone, c'est la ligne qui a lancé ce ticket : seule la commande
+qui l'a lancé exécute les complétions de ses propres instances, même retapée depuis. `ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
 `done(label?)`. Une globale `console.log/info/debug/warn/error` renvoie vers `ctx.log`.
 
 Le `.d.ts` complet est livré dans l'outil `orkeon` : `orkeon typings` l'écrit en
@@ -350,12 +353,12 @@ defineAsyncCommand({
   `runCrewAsync(name, input, { chain: "continue" })` : la nouvelle instance prend la
   profondeur de l'instance dont le `completed` s'exécute au lieu de cette profondeur plus
   un, si bien que la boucle commande → crew → `completed` de la même commande → crew dure
-  autant qu'il le faut. L'option n'est honorée que si l'instance parente appartient à la
-  commande à laquelle le nouveau lancement est chaîné (le même nom de commande) ; sinon
-  elle est ignorée avec un avertissement dans le log de l'hôte et la profondeur monte, si
-  bien qu'une récursion entre deux commandes différentes reste bornée. Hors d'un
-  `completed` elle ne change rien (un premier saut est de profondeur 1). Toute autre valeur
-  de `chain` est une erreur de script.
+  autant qu'il le faut. L'instance parente est toujours une instance de la même commande :
+  une commande n'exécute que le `completed` de ses propres instances, et ce que ce
+  `completed` lance lui est rattaché. Hors d'un `completed` (un `dispatch`, un handler)
+  l'option ne change rien : le lancement prend la profondeur qu'il prendrait sans elle (un
+  premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
+  `chain` est une erreur de script.
 
 ### Quota d'admission — `maxConcurrent`
 
@@ -549,11 +552,12 @@ emoji ou un caractère CJK en compte deux) ; sur un volet étroit la phrase cèd
 puis les métriques, et un redimensionnement reconstruit les lignes à la nouvelle largeur. Elle
 grandit jusqu'à 6 lignes, puis défile avec le curseur. **Un écran par fil.** `main` et chaque tâche ont leur propre écran, de
 `ReplTranscriptCapacity` lignes, et seul celui du destinataire est affiché. Une ligne qu'une tâche écrit
-(texte streamé, lignes de complétion, question d'approbation d'outil) arrive sur l'écran de cette tâche,
+(texte streamé, question d'approbation d'outil) arrive sur l'écran de cette tâche,
 ouvert à sa première ligne, et ne porte pas de préfixe de ticket `[t1]` dans la console à volets (la console
 simple le garde) ; une étiquette de crew (`[<taskId>] `) reste, elle distingue les agents d'un crew dans
 l'écran. L'écran `main` porte les tours de l'invite et les lignes de cycle de vie, jamais la sortie d'une
-tâche. La copie, la sélection à la souris, le retour à la ligne (un seul état pour tous les écrans)
+tâche. La ligne de fin d'une tâche (`  ✓ [t1] ask-bg → echo: done`) et ce qu'écrit le `completed` de sa
+commande vont sur `main`, la ligne de fin gardant son ticket, qui y nomme la tâche. La copie, la sélection à la souris, le retour à la ligne (un seul état pour tous les écrans)
 agissent sur l'écran affiché ; `Échap Échap` interrompt toujours le tour de l'invite, quel que soit l'écran
 affiché, sa ligne `Interrupted` arrivant sur `main`. Une ligne d'attention, comme une question d'approbation
 d'outil, s'affiche sur l'écran affiché quelle que soit la tâche qui demande, et est enregistrée une fois

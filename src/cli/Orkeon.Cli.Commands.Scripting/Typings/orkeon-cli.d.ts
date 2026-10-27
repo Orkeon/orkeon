@@ -272,9 +272,10 @@ export interface CrewLaunchOptions {
    * `"continue"`: called from a `completed`, the new instance takes the chain depth of the instance whose
    * `completed` runs instead of that depth plus one, so a driver that relaunches its own work after each
    * cycle (command -> crew -> the same command's `completed` -> crew) is not stopped by `MaxChainDepth`.
-   * Honoured only when the parent instance belongs to the same command the launch is chained to; for
-   * another command it is ignored (a warning in the host log) and the depth climbs, so recursion between
-   * two commands stays bounded. Outside a `completed` it changes nothing. Any other value throws.
+   * The parent is always an instance of the same command: a command runs only the `completed` of its own
+   * instances, and what that `completed` launches is keyed to it. Outside a `completed` (a `dispatch`, a
+   * handler) it changes nothing: the launch takes the depth it takes without it (a first hop is depth 1).
+   * Any other value throws.
    */
   chain?: "continue";
 }

@@ -138,7 +138,7 @@ public sealed class ScriptCommandCompletedAdmissionTests : IDisposable
 
     [Fact]
     [Trait("BR", "R9")]
-    public async Task ShouldReleaseSlot_WhenAnotherCommandOfTheSameFileDrainsItsCompleted()
+    public async Task ShouldReleaseSlot_WhenItsOwnPushDrainRunsAfterASiblingHeldTheSharedEngineLock()
     {
         Gate("a-run").TrySetResult();
         var all = LoadAll("pair.cmd.ts");
@@ -147,7 +147,8 @@ public sealed class ScriptCommandCompletedAdmissionTests : IDisposable
         var first = await b.ExecuteAsync(ChainHarness.Ctx("pair-b x", "x", _console), CancellationToken.None);
         Assert.NotEqual(PairQuota, first.Message);
 
-        // A1 parks its dispatch holding the shared engine lock; A2 queues on the lock first.
+        // A1 parks its dispatch holding the shared engine lock; A2 queues on the lock before B's push drain, and
+        // pumps only pair-a's completions: B's completed still drains, through B's own push drain, once A lets go.
         var a1 = Task.Run(() => a.ExecuteAsync(ChainHarness.Ctx("pair-a park", "p", _console), CancellationToken.None));
         await ChainHarness.WaitUntil(() => Gate("park-entered").Task.IsCompleted);
         var a2 = a.ExecuteAsync(ChainHarness.Ctx("pair-a two", "t", _console), CancellationToken.None);

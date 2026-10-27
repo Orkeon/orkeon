@@ -309,6 +309,13 @@ public sealed partial class ScriptCommandLoader
         return collected;
     }
 
+    /// <summary>The longest configured directory holding <paramref name="virtualPath"/>: the one that found it.</summary>
+    private string? SourceDirectoryOf(string virtualPath)
+        => _options.Directories
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Where(d => virtualPath.StartsWith(d.TrimEnd('/') + "/", StringComparison.Ordinal))
+            .MaxBy(d => d.TrimEnd('/').Length);
+
     private async Task<(Engine, SemaphoreSlim, CompletionDrainQueue, IReadOnlyList<CommandDescriptor>)> MaterialiseAsync(
         string virtualPath,
         CancellationToken ct)
@@ -364,7 +371,9 @@ public sealed partial class ScriptCommandLoader
 
         collector.Freeze();
 
-        return (engine, new SemaphoreSlim(1, 1), new CompletionDrainQueue(), collector.Descriptors);
+        var sourceDirectory = SourceDirectoryOf(virtualPath);
+        var descriptors = collector.Descriptors.Select(d => d with { SourceDirectory = sourceDirectory }).ToList();
+        return (engine, new SemaphoreSlim(1, 1), new CompletionDrainQueue(), descriptors);
     }
 
     // --- source-generated logging ---

@@ -95,29 +95,29 @@ public sealed class CommandDispatchChainDepthTests : IDisposable
 
     [Fact]
     [Trait("BR", "#221")]
-    public void ShouldStillClimb_WhenChainContinueIsAskedFromTheCompletedOfAnotherCommand()
+    public void ShouldStillClimb_WhenChainContinueIsAskedOutsideACompleted()
     {
         var service = NewService(maxChainDepth: 2);
         static Task<CommandResponse> Work(CancellationToken _) => Task.FromResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
 
         string ticket;
-        using (service.BeginCommand("pair-b", CancellationToken.None, parentDepth: 1, parentCommand: "pair-a"))
+        using (service.BeginCommand("dev-batches", CancellationToken.None, parentDepth: 1))
             ticket = service.postWork("crew", "crew:x", Work, continueChain: true);
         Assert.Equal(2, service.Registry.Get(ticket)!.Depth);
 
-        using var scope = service.BeginCommand("pair-b", CancellationToken.None, parentDepth: 2, parentCommand: "pair-a");
+        using var scope = service.BeginCommand("dev-batches", CancellationToken.None, parentDepth: 2);
         var refused = Assert.Throws<ChainDepthExceededException>(() => service.postWork("crew", "crew:x", Work, continueChain: true));
-        Assert.Equal("chain depth 2 reached (MaxChainDepth 2, /pair-b)", refused.Message);
+        Assert.Equal("chain depth 2 reached (MaxChainDepth 2, /dev-batches)", refused.Message);
     }
 
     [Fact]
     [Trait("BR", "#221")]
-    public void ShouldKeepTheParentDepth_WhenChainContinueIsAskedFromTheCompletedOfTheSameCommand()
+    public void ShouldKeepTheParentDepth_WhenChainContinueIsAskedFromACompleted()
     {
         var service = NewService(maxChainDepth: 2);
         static Task<CommandResponse> Work(CancellationToken _) => Task.FromResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
 
-        using var scope = service.BeginCommand("dev-batches", CancellationToken.None, parentDepth: 2, parentCommand: "dev-batches");
+        using var scope = service.BeginCommand("dev-batches", CancellationToken.None, parentDepth: 2, fromCompleted: true);
         var ticket = service.postWork("crew", "crew:x", Work, continueChain: true);
 
         Assert.Equal(2, service.Registry.Get(ticket)!.Depth);
@@ -129,7 +129,7 @@ public sealed class CommandDispatchChainDepthTests : IDisposable
     {
         var service = NewEchoService(maxChainDepth: 4);
 
-        using var scope = service.BeginCommand("askbg", CancellationToken.None, parentDepth: 2, parentCommand: "askbg");
+        using var scope = service.BeginCommand("askbg", CancellationToken.None, parentDepth: 2, fromCompleted: true);
         var ticket = service.post("echo", "run", "x");
 
         Assert.Equal(3, service.Registry.Get(ticket)!.Depth);

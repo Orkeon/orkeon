@@ -26,7 +26,10 @@ public sealed class ScriptCommandGroupTests : IDisposable
         return "defineCommand({ name: \"" + name + "\", description: \"d\", " + groupField + " handler: function () {} });";
     }
 
-    private async Task<ScriptCommandRegistry> LoadAsync(params (string RelativePath, string Source)[] files)
+    private Task<ScriptCommandRegistry> LoadAsync(params (string RelativePath, string Source)[] files)
+        => LoadFromAsync("/cmd", "/cmd", files);
+
+    private async Task<ScriptCommandRegistry> LoadFromAsync(string mount, string directory, params (string RelativePath, string Source)[] files)
     {
         var ct = TestContext.Current.CancellationToken;
         foreach (var (path, source) in files)
@@ -36,10 +39,10 @@ public sealed class ScriptCommandGroupTests : IDisposable
             await File.WriteAllTextAsync(full, source, ct);
         }
         var loader = new ScriptCommandLoader(
-            fileSystem: new DiskBackedFileSystemService(_tempDir, virtualRoot: "/cmd"),
+            fileSystem: new DiskBackedFileSystemService(_tempDir, virtualRoot: mount),
             transpiler: PassThroughTranspiler.Instance,
             engineFactory: new JsEngineFactory(),
-            options: new ScriptCommandLoaderOptions { Directories = ImmutableArray.Create("/cmd") });
+            options: new ScriptCommandLoaderOptions { Directories = ImmutableArray.Create(directory) });
         var (registry, _) = await loader.LoadAndRegisterAsync(ct);
         return registry;
     }
@@ -62,6 +65,17 @@ public sealed class ScriptCommandGroupTests : IDisposable
         var registry = await LoadAsync(("root.cmd.ts", Define("rooted")));
 
         Assert.Null(GroupOf(registry, "rooted"));
+    }
+
+    [Fact]
+    [Trait("BR", "#214")]
+    public async Task ShouldTakeTheGroupRelativeToTheLoaderDirectory_WhenItIsNestedInTheMount()
+    {
+        var registry = await LoadFromAsync("/workspace", "/workspace/commands",
+            ("commands/a.cmd.ts", Define("top")), ("commands/session/b.cmd.ts", Define("wipe")));
+
+        Assert.Null(GroupOf(registry, "top"));
+        Assert.Equal("session", GroupOf(registry, "wipe"));
     }
 
     [Fact]
