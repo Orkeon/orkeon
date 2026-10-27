@@ -61,8 +61,9 @@ A spent `budget({ tokens })` ends `ctx.llm.act` with one last tool-less call who
 `budgetExhausted: true`, instead of rejecting and dropping the turn; a failing wrap-up still rejects with
 `BudgetExhaustedError`. The budget stays a running sum of prompt plus completion of every call, now documented as
 such, and its message reads `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
-Each act call logs the running sum next to the limit, and the autonomous strategy keeps the output of delegated work
-that passes the token budget.
+Each act call logs the running sum next to the limit. The autonomous strategy now charges its direct executions to the
+token budget as it does delegated work, so the budget covers the whole run, and keeps the output of the work that
+passes it.
 
 ### Fixed — `github`, `http_api`, `rag_eval`, `web_search` and MCP tools declare their access (#219)
 
@@ -87,7 +88,10 @@ and that a rejection prints `Error in completed('<name>'): …` and reports a co
 `runCrewAsync(name, input, { chain: "continue" })`, called from a command's own `completed`, keeps the new instance
 at its parent's depth, so a driver that loops batch after batch is no longer stopped by `MaxChainDepth`; a launch
 into another command's `completed` still climbs (the option is ignored with a warning). `inspect` shows an
-instance's depth, and the refusal reads `chain depth N reached (MaxChainDepth N, /<command>)`.
+instance's depth, and the refusal reads `chain depth N reached (MaxChainDepth N, /<command>)`. `commands.post` now
+counts in the depth too (one level per post, refused at the limit with the same catchable error), and a command
+replays only the completions of its own instances: a sibling command of the same file no longer runs another
+command's `completed`.
 
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 
