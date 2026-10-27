@@ -283,7 +283,9 @@ lock, so it is safe even when a background async dispatch invokes it.
 
 A normal `defineCommand` that awaits the agent. `request` blocks until the agent
 responds and returns the `CommandResponse` (so `await` on it resolves to the
-value — a sync command is meant to block):
+value — a sync command is meant to block). Its `streamed` is true when the answer
+already streamed inline to the console (`Orkeon:Cli:ConsoleStreaming:Enabled`):
+print `payload` only when it is false, or the answer shows twice (#228):
 
 ```typescript
 defineCommand({

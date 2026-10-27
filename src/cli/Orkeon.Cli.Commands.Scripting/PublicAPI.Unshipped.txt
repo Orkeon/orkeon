@@ -69,3 +69,7 @@ Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Group.get -> string?
 *REMOVED*Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue.DrainAll() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion>!
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.get -> string?
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.get -> bool
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.get -> bool
+Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.init -> void

@@ -288,7 +288,10 @@ dispatch asynchrone d'arrière-plan l'invoque.
 
 Une `defineCommand` normale qui attend l'agent. `request` bloque jusqu'à ce que
 l'agent réponde et retourne la `CommandResponse` (de sorte qu'un `await` dessus se
-résout en la valeur — une commande sync est faite pour bloquer) :
+résout en la valeur — une commande sync est faite pour bloquer). Son `streamed` est
+vrai quand la réponse a déjà été streamée en ligne sur la console
+(`Orkeon:Cli:ConsoleStreaming:Enabled`) : n'imprimez `payload` que s'il est faux,
+sinon la réponse s'affiche deux fois (#228) :
 
 ```typescript
 defineCommand({

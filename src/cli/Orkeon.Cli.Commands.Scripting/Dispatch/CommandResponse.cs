@@ -32,6 +32,15 @@ public sealed class CommandResponse
     /// <summary>The agent's response payload (empty on failure).</summary>
     public string payload { get; }
 
+    /// <summary>
+    /// True when the turn that produced <see cref="payload"/> already streamed inline to the console (#228):
+    /// the foreground answer, written token by token while it arrived, so the script skips its own print.
+    /// False when console streaming is off, when the agent did not stream, and for a background instance
+    /// (<c>post</c>, <c>runCrewAsync</c>): its turns are written as whole lines prefixed with the ticket
+    /// (<c>[t2] </c>), not inline.
+    /// </summary>
+    public bool streamed { get; init; }
+
     /// <summary>Failure reason when <see cref="success"/> is false; otherwise <see langword="null"/>.</summary>
     public string? error { get; }
 }

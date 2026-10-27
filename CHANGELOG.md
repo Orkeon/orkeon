@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
+
+With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
+that then printed the payload printed it twice. `CommandResponse` (the value of `commands.request`, the `result` of
+`completed`) and `CrewRunOutput` (`script-host.runCrew`) now carry `streamed: boolean`: true only when the turn that
+produced the payload streamed inline, so the script skips its own print. A background instance (`post`,
+`runCrewAsync`) and a crew task write whole lines prefixed with their ticket or task and report false. The dispatch
+opens one receipt per agent request and per crew run in that work's async flow, and `ConsoleLlmDeltaSink` records
+each turn's inline decision into it, so commands running at once each read their own.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

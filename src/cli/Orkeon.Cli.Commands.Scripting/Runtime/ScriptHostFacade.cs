@@ -172,7 +172,8 @@ public sealed partial class ScriptHostFacade
                     intent: safeName,
                     success: output.ok,
                     payload: output.summary ?? string.Empty,
-                    error: output.error);
+                    error: output.error)
+                { streamed = output.streamed };
             });
         }
         catch (ChainDepthExceededException refused)
@@ -235,10 +236,12 @@ public sealed partial class ScriptHostFacade
         var validation = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
         var physicalPath = validation.IsAllowed ? validation.ResolvedPath : null;
 
+        // The crew's flow: a turn of it that streams inline to the console marks the run as streamed (#228).
+        var receipt = Streaming.InlineStreamReceipt.Open();
         try
         {
             var result = await _host.RunFromFileAsync(physicalPath, virtualPath, ct, inputsJson).ConfigureAwait(false);
-            return MapResult(result);
+            return MapResult(result, receipt.Streamed);
         }
         catch (OperationCanceledException)
         {
@@ -313,17 +316,17 @@ public sealed partial class ScriptHostFacade
         return crewName.Length > 0 ? crewName : null;
     }
 
-    private static CrewRunOutput MapResult(object? result)
+    private static CrewRunOutput MapResult(object? result, bool streamed)
     {
         if (result is null)
-            return new CrewRunOutput { ok = true, summary = null };
+            return new CrewRunOutput { ok = true, summary = null, streamed = streamed };
         if (result is string s)
-            return new CrewRunOutput { ok = true, summary = s, artifacts = s };
+            return new CrewRunOutput { ok = true, summary = s, artifacts = s, streamed = streamed };
 
         // ScriptHost returns an anonymous { crewName, finalOutput, tasks } for crew runs.
         var finalOutput = TryGetStringProperty(result, "finalOutput");
         string? summary = finalOutput ?? SafeSerialize(result);
-        return new CrewRunOutput { ok = true, summary = summary, artifacts = result };
+        return new CrewRunOutput { ok = true, summary = summary, artifacts = result, streamed = streamed };
     }
 
     private static string? TryGetStringProperty(object obj, string propertyName)

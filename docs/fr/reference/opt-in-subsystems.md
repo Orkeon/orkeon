@@ -629,6 +629,15 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   ne s'écrivent jamais l'un dans l'autre et aucune ligne n'est coupée (#211). Les tours
   qui ne streament aucun contenu visible (appels d'outils purs) n'émettent rien. Le sink
   compose avec un `onDelta` côté script (les deux reçoivent chaque delta).
+- **Dire au script que la réponse a déjà été streamée** (#228) : la `CommandResponse` que
+  retourne un `request()` ou que reçoit un `completed(result)`, et la `CrewRunOutput` de
+  `runCrew`, portent `streamed: boolean`, vrai seulement quand le tour qui a produit le
+  payload a streamé en ligne (la réponse de premier plan) ; un script n'imprime le payload
+  que quand `streamed` est faux, et la réponse s'affiche une fois. Une instance en
+  arrière-plan (`post`, `runCrewAsync`) et une tâche de crew écrivent des lignes entières
+  préfixées et rapportent faux. Le dispatch ouvre un reçu par requête d'agent et par
+  exécution de crew dans le flux asynchrone de ce travail ; les tours du sink y
+  enregistrent, de sorte que des commandes qui tournent en même temps lisent chacune le leur.
 - **Défaut rétro-compatible** : flag absent → aucun sink enregistré → `act` conserve
   son rendu bufferisé (identique à l'octet près), les scripts peuvent toujours
   streamer via `onDelta`.

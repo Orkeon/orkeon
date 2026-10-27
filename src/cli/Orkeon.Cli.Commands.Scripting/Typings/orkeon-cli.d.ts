@@ -95,6 +95,13 @@ export interface CommandResponse {
   readonly intent: string;
   readonly success: boolean;
   readonly payload: string;
+  /**
+   * True when the turn that produced `payload` already streamed inline to the console
+   * (`Orkeon:Cli:ConsoleStreaming:Enabled`): skip your own print of it, or the answer shows twice.
+   * False when streaming is off, when the agent did not stream, and for a background instance
+   * (`post`, `runCrewAsync`), whose turns are written as whole lines prefixed with its ticket (`[t2] `).
+   */
+  readonly streamed: boolean;
   readonly error?: string;
 }
 
@@ -332,6 +339,11 @@ export interface CrewRunOutput {
   readonly summary?: string;
   readonly artifacts?: unknown;
   readonly error?: string;
+  /**
+   * True when the turn that produced `summary` already streamed inline to the console; false when
+   * streaming is off and for the turns written as whole prefixed lines (a crew task's `[task] `).
+   */
+  readonly streamed: boolean;
 }
 
 // ── Args schema: `args: { who: { type: "string" } }` gives the handler `args.who: string`. ──
