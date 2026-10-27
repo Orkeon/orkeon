@@ -414,8 +414,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // exhaustion so the run stops after this task.
             if (result.TokensUsed > 0)
             {
-                var childSpent = RecordDelegatedTokens(childBudget, result.TokensUsed);
-                var crewSpent = RecordDelegatedTokens(budget, result.TokensUsed);
+                var childSpent = RecordFinishedWorkTokens(childBudget, result.TokensUsed);
+                var crewSpent = RecordFinishedWorkTokens(budget, result.TokensUsed);
                 takeover.TokensExhausted = crewSpent ?? childSpent;
             }
 
@@ -434,10 +434,11 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     }
 
     /// <summary>
-    /// Records the tokens of finished delegated work on <paramref name="budget"/>, and returns the
-    /// refusal when the token budget is passed instead of throwing it: the work is done and kept.
+    /// Records the tokens of finished work - a direct execution or a peer's takeover - on
+    /// <paramref name="budget"/>, and returns the refusal when the token budget is passed instead of
+    /// throwing it: the work is done and kept.
     /// </summary>
-    private static BudgetExhaustedException? RecordDelegatedTokens(AgentExecutionBudget budget, int tokens)
+    private static BudgetExhaustedException? RecordFinishedWorkTokens(AgentExecutionBudget budget, int tokens)
     {
         try
         {
@@ -529,12 +530,18 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // takes over below — record it before any branching.
             tokenTally.Record(result);
 
+            // Its tokens are spent from the crew's budget too, once, as a delegated execution's
+            // are (#218): a direct answer that passes the budget is kept, and the run stops after
+            // this task.
+            var tokensSpent = result.TokensUsed > 0 ? RecordFinishedWorkTokens(budget, result.TokensUsed) : null;
+
             var error = result.Error ?? result.LastError;
 
             // A failed task is handed to a peer when the agent may delegate and the budget
-            // allows it. With no peer in the crew, the failure stands — it used to throw out
-            // of the strategy instead.
-            if (!result.Success && agent.AllowDelegation && budget.CurrentDelegationDepth < budget.MaxDelegationDepth)
+            // allows it - a spent token budget pays for no takeover. With no peer in the crew,
+            // the failure stands — it used to throw out of the strategy instead.
+            if (!result.Success && tokensSpent is null && agent.AllowDelegation
+                && budget.CurrentDelegationDepth < budget.MaxDelegationDepth)
             {
                 if (agents.Exists(a => a.Id != agent.Id))
                     return await AttemptDelegationAsync(taskContext, agent, context, error).ConfigureAwait(false);
@@ -546,7 +553,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 BuildDomainTaskOutput(task, result),
                 BuildAppTaskOutput(task, agent, result),
                 agent.Role.Value,
-                error);
+                error,
+                tokensSpent);
         }
         catch (BudgetExhaustedException ex)
         {

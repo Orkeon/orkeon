@@ -324,6 +324,104 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_DirectExecutions_RecordTheirTokensOnTheBudget()
+    {
+        // Arrange: two tasks answered directly, 30 tokens each
+        var agent = CreateAgent("worker");
+        var task1 = CreateTask("first");
+        var task2 = CreateTask("second");
+        var crew = BuildCrew([agent], [task1, task2]);
+        _manager.SetAssignResult(new TaskAssignment(task1.Id, agent.Id, "only", DateTime.UtcNow));
+        _execService.SetExecuteResult(new TaskResult(true, "done", null, [], TimeSpan.Zero, TokensUsed: 30));
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = 1_000 };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: the main path spends from the crew's token budget, one call per execution
+        Assert.True(result.Success);
+        Assert.Equal(60, budget.CurrentTokensConsumed);
+        Assert.Equal(2, budget.CurrentTokenCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_DirectWorkPassingTheTokenBudget_KeepsItsOutputAndStopsTheRun()
+    {
+        // Arrange: the first task's direct answer costs more tokens than the crew has
+        var agent = CreateAgent("worker");
+        var task1 = CreateTask("first");
+        var task2 = CreateTask("second");
+        var crew = BuildCrew([agent], [task1, task2]);
+        _manager.SetAssignResult(new TaskAssignment(task1.Id, agent.Id, "only", DateTime.UtcNow));
+        _execService.SetExecuteResult(new TaskResult(true, "first answered", null, [], TimeSpan.Zero, TokensUsed: 500));
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = 100 };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: the answer is kept, the run fails on the budget, the later task never runs
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: Tokens", result.Error, StringComparison.Ordinal);
+        Assert.Contains("first answered", result.Output);
+        Assert.DoesNotContain("BUDGET EXHAUSTED", result.Output, StringComparison.Ordinal);
+        Assert.Equal(1, _execService.ExecuteTaskCallCount);
+        Assert.Equal(500, budget.CurrentTokensConsumed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_FailedDirectAttemptThenDelegation_CountsEachExecutionOnce()
+    {
+        // Arrange: the failed direct attempt costs 40 tokens, the peer's takeover 42
+        var delegator = CreateAgent("delegator", allowDelegation: true);
+        var helper = CreateAgent("helper");
+        var task = CreateTask("hard task");
+        var crew = BuildCrew([delegator, helper], [task]);
+        _manager.SetAssignResult(new TaskAssignment(task.Id, delegator.Id, "lead", DateTime.UtcNow));
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Id == delegator.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help", TokensUsed: 40)
+                : new TaskResult(true, "helper solved it", null, [], TimeSpan.Zero, TokensUsed: 42));
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = 1_000 };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal(82, budget.CurrentTokensConsumed);
+        Assert.Equal(2, budget.CurrentTokenCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_FailedDirectAttemptSpendingTheTokenBudget_IsNotDelegated()
+    {
+        // Arrange: the direct attempt fails after spending more tokens than the crew has
+        var delegator = CreateAgent("delegator", allowDelegation: true);
+        var helper = CreateAgent("helper");
+        var task = CreateTask("hard task");
+        var crew = BuildCrew([delegator, helper], [task]);
+        _manager.SetAssignResult(new TaskAssignment(task.Id, delegator.Id, "lead", DateTime.UtcNow));
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+            agent.Id == delegator.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help", TokensUsed: 500)
+                : new TaskResult(true, "helper solved it", null, [], TimeSpan.Zero));
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = 100 };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: no peer is paid for once the budget is spent, and the run fails on it
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: Tokens", result.Error, StringComparison.Ordinal);
+        Assert.Equal(1, _execService.ExecuteTaskCallCount);
+        Assert.Equal(0, budget.CurrentDelegationDepth);
+    }
+
+    [Fact]
     public async Task The_peer_a_failed_task_is_handed_to_reads_the_tasks_plan_too()
     {
         // GAP-31: a task reads its plan from the run's scope where its prompt is composed. The peer
