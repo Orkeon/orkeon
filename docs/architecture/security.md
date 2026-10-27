@@ -69,6 +69,15 @@ agent's **shell session**, which the operating system confines
   (`Mode = None`); the command never falls back to running unconfined.
 - **No network** unless `Confinement:AllowNetwork = true`: a network namespace with loopback only
   under bubblewrap, `(deny network*)` under Seatbelt, no network capability under AppContainer.
+- **Session sockets.** The shell's environment allow-list carries `DBUS_SESSION_BUS_ADDRESS`,
+  `XDG_RUNTIME_DIR` and `SSH_AUTH_SOCK` when the host has them: they name the session bus (the
+  keyring of `gh` and `git-credential-libsecret`) and the ssh agent, never a secret. Under
+  bubblewrap they follow only with `AllowNetwork = true`, and then only the socket files are bound
+  read-write at their own path — the `SSH_AUTH_SOCK` path and a `unix:path=` bus — when they exist
+  and are no directory; `XDG_RUNTIME_DIR` itself is never bound. A `unix:abstract=` bus needs no
+  bind: an abstract socket follows the network namespace, which `AllowNetwork` shares. Without the
+  network neither the variables nor the binds are given. Every other variable, the LLM API keys
+  first, stays dropped.
 - **Paths.** Under bubblewrap the arguments are checked and passed virtual. Under Seatbelt,
   AppContainer and `None` they are translated virtual→physical, and physical paths in the output
   come back virtual.

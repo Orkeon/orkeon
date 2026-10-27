@@ -2037,8 +2037,13 @@ variable itself. The list is the one the code carries — a test holds this tabl
 
 **Passed on, not read.** The `shell_command` tool hands the command it starts a fixed list of the
 host's variables — `PATH`, `HOME`, the locale, the temporary folders, `DOTNET_ROOT`,
-`NUGET_PACKAGES` and what Windows needs to start a program —, and the code sandbox builds a
-smaller environment still: neither reads them as settings, and no key travels that way. `PATH`
+`NUGET_PACKAGES` and what Windows needs to start a program —, plus the three that name a socket
+of the operator's session and hold no secret themselves: `DBUS_SESSION_BUS_ADDRESS`,
+`XDG_RUNTIME_DIR` (the keyring a credential helper such as `gh auth git-credential` reads) and
+`SSH_AUTH_SOCK` (the ssh agent). Under bubblewrap these three follow only when
+`Confinement:AllowNetwork` is true ([security](../architecture/security.md)). The code sandbox
+builds a smaller environment still, the three sockets included: neither reads them as settings,
+and no key travels that way — `OPENAI_API_KEY`, `ORKEON_*` and every other variable stay behind. `PATH`
 is also where a `.ork.ts` script looks for esbuild last, and Orkeon Studio for `orkeon`; `HOME` is
 read when the system names no profile folder, to place the per-user settings. The variables
 written under `MCP:Servers:<name>:Env` are the operator's: Orkeon hands them to the server it

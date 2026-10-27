@@ -12,8 +12,9 @@ public sealed class BubblewrapCommandLineTests
         IEnumerable<ConfinedPath>? paths = null,
         IEnumerable<string>? readOnlyPaths = null,
         bool allowNetwork = false,
-        string workingDirectory = "/workspace")
-        => BubblewrapCommandLine.Build(paths ?? [], readOnlyPaths ?? [], allowNetwork, workingDirectory);
+        string workingDirectory = "/workspace",
+        IEnumerable<string>? socketPaths = null)
+        => BubblewrapCommandLine.Build(paths ?? [], readOnlyPaths ?? [], allowNetwork, workingDirectory, socketPaths ?? []);
 
     private static int IndexOf(IReadOnlyList<string> arguments, params string[] sequence)
     {
@@ -125,5 +126,27 @@ public sealed class BubblewrapCommandLineTests
         Assert.Equal(["--chdir", "/workspace/app", "--"], arguments.TakeLast(3));
         Assert.True(IndexOf(arguments, "--setenv", "HOME", "/tmp") >= 0);
         Assert.True(IndexOf(arguments, "--setenv", "TMPDIR", "/tmp") >= 0);
+    }
+
+    [Fact]
+    public void ShouldBindEachSessionSocketReadWriteAtItsOwnPath_AfterTheMounts_WhenTheNetworkIsAllowed()
+    {
+        var arguments = Build(
+            [new ConfinedPath("/phys/ws", "/workspace", ConfinedAccess.ReadWrite)],
+            allowNetwork: true,
+            socketPaths: ["/run/user/1000/bus", "/tmp/ssh-x/agent.1"]);
+
+        var bus = IndexOf(arguments, "--bind-try", "/run/user/1000/bus", "/run/user/1000/bus");
+        Assert.True(bus > IndexOf(arguments, "--bind-try", "/phys/ws", "/workspace"));
+        Assert.True(IndexOf(arguments, "--bind-try", "/tmp/ssh-x/agent.1", "/tmp/ssh-x/agent.1") > IndexOf(arguments, "--tmpfs", "/tmp"));
+        Assert.True(bus < IndexOf(arguments, "--"));
+    }
+
+    [Fact]
+    public void ShouldBindNoSessionSocket_WhenTheNetworkIsNotAllowed()
+    {
+        var arguments = Build(allowNetwork: false, socketPaths: ["/run/user/1000/bus"]);
+
+        Assert.DoesNotContain("/run/user/1000/bus", arguments);
     }
 }

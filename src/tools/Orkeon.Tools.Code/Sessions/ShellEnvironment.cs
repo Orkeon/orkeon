@@ -36,28 +36,60 @@ internal static class ShellEnvironment
     ];
 
     /// <summary>
+    /// The variables that name a socket of the operator's session (#216): the session bus, through
+    /// which <c>gh</c>, <c>git-credential-libsecret</c> and the GNOME/KDE keyrings hand a credential
+    /// over, the runtime directory the bus and the keyrings live in, and the ssh agent. Each holds an
+    /// address, never a secret: the secret stays behind the socket's own access control. A sandbox
+    /// that cuts the network leaves them out.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> SessionSocketVariables =
+        ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK"];
+
+    /// <summary>
     /// Replaces the inherited environment of <paramref name="startInfo"/> with the propagated
-    /// variables, so a command the allowlist permits can read its own environment without reading
-    /// the runner's secrets.
+    /// variables of the process environment, the session sockets included, so a command the
+    /// allowlist permits can read its own environment without reading the runner's secrets.
     /// </summary>
     public static void ConfigureRestricted(ProcessStartInfo startInfo)
+        => ConfigureRestricted(startInfo, Environment.GetEnvironmentVariable, includeSessionSockets: true);
+
+    /// <summary>
+    /// Replaces the inherited environment of <paramref name="startInfo"/> with the propagated
+    /// variables <paramref name="read"/> answers.
+    /// </summary>
+    /// <param name="startInfo">The start of the session or of one of its jobs.</param>
+    /// <param name="read">Reads one variable of the parent environment; null when it is unset.</param>
+    /// <param name="includeSessionSockets">Whether the <see cref="SessionSocketVariables"/> follow.</param>
+    public static void ConfigureRestricted(ProcessStartInfo startInfo, Func<string, string?> read, bool includeSessionSockets)
     {
         ArgumentNullException.ThrowIfNull(startInfo);
         startInfo.Environment.Clear();
-        foreach (var (name, value) in RestrictedVariables())
+        foreach (var (name, value) in RestrictedVariables(read, includeSessionSockets))
             startInfo.Environment[name] = value;
     }
 
     /// <summary>
-    /// The variables a session starts with: the propagated ones the host has, then the two that
-    /// keep <c>dotnet</c> quiet. The keys compare without case, as Windows does.
+    /// The variables a session starts with, read from the process environment, the session sockets
+    /// included. The keys compare without case, as Windows does.
     /// </summary>
     public static Dictionary<string, string> RestrictedVariables()
+        => RestrictedVariables(Environment.GetEnvironmentVariable, includeSessionSockets: true);
+
+    /// <summary>
+    /// The variables a session starts with: the propagated ones <paramref name="read"/> answers, the
+    /// session sockets when <paramref name="includeSessionSockets"/>, then the two that keep
+    /// <c>dotnet</c> quiet. The keys compare without case, as Windows does.
+    /// </summary>
+    public static Dictionary<string, string> RestrictedVariables(Func<string, string?> read, bool includeSessionSockets)
     {
+        ArgumentNullException.ThrowIfNull(read);
         var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in s_propagatedEnvironmentVariables)
+        var names = includeSessionSockets
+            ? s_propagatedEnvironmentVariables.Concat(SessionSocketVariables)
+            : s_propagatedEnvironmentVariables;
+        foreach (var name in names)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = read(name);
             if (!string.IsNullOrEmpty(value))
                 variables[name] = value;
         }
@@ -68,4 +100,44 @@ internal static class ShellEnvironment
         variables["DOTNET_NOLOGO"] = "1";
         return variables;
     }
+
+    /// <summary>
+    /// The host paths of the session sockets a confined view binds: the <c>SSH_AUTH_SOCK</c> path,
+    /// then each <c>unix:path=</c> of <c>DBUS_SESSION_BUS_ADDRESS</c>. Only normalized absolute paths
+    /// below the root count. A <c>unix:abstract=</c> bus names no path: an abstract socket belongs to
+    /// the network namespace, which a view with the network shares. <c>XDG_RUNTIME_DIR</c> is never
+    /// one: the directory holds far more than the sockets. Pure: it reads no file.
+    /// </summary>
+    /// <param name="read">Reads one variable of the parent environment; null when it is unset.</param>
+    public static IReadOnlyList<string> SessionSocketPaths(Func<string, string?> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        var paths = new List<string>();
+        if (read("SSH_AUTH_SOCK") is { } agent && IsBindableSocketPath(agent))
+            paths.Add(agent);
+
+        foreach (var address in (read("DBUS_SESSION_BUS_ADDRESS") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!address.StartsWith("unix:", StringComparison.Ordinal))
+                continue;
+            foreach (var pair in address["unix:".Length..].Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!pair.StartsWith("path=", StringComparison.Ordinal))
+                    continue;
+                var path = Uri.UnescapeDataString(pair["path=".Length..]);
+                if (IsBindableSocketPath(path) && !paths.Contains(path, StringComparer.Ordinal))
+                    paths.Add(path);
+            }
+        }
+
+        return paths;
+    }
+
+    // An absolute POSIX path that is not the root and names no '.' or '..' segment, so a bind of it
+    // lands exactly where the variable says.
+    private static bool IsBindableSocketPath(string path)
+        => path.Length > 1
+           && path[0] == '/'
+           && !path.EndsWith('/')
+           && path.Split('/').Skip(1).All(segment => segment.Length > 0 && segment != "." && segment != "..");
 }

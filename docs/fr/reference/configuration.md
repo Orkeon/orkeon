@@ -2100,9 +2100,14 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 
 **Transmises, pas lues.** L'outil `shell_command` remet à la commande qu'il lance une liste fixe
 de variables de l'hôte — `PATH`, `HOME`, la locale, les dossiers temporaires, `DOTNET_ROOT`,
-`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, et le bac à sable de code
-bâtit un environnement plus réduit encore : ni l'un ni l'autre ne les lit comme des réglages, et
-aucune clé ne passe par là. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
+`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
+une socket de la session de l'opérateur et ne portent aucun secret elles-mêmes :
+`DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (le trousseau que lit un assistant d'identifiants
+comme `gh auth git-credential`) et `SSH_AUTH_SOCK` (l'agent ssh). Sous bubblewrap, ces trois ne
+suivent que si `Confinement:AllowNetwork` vaut true ([sécurité](../architecture/security.md)). Le
+bac à sable de code bâtit un environnement plus réduit encore, les trois sockets comprises : ni
+l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là — `OPENAI_API_KEY`,
+`ORKEON_*` et toute autre variable restent derrière. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
 dernier, et Orkeon Studio l'exécutable `orkeon` ; `HOME` est lue quand le système ne nomme aucun
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
 `MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et

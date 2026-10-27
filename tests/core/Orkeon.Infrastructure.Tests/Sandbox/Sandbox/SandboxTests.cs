@@ -716,6 +716,41 @@ public sealed class ProcessIsolationSandboxTests : IDisposable
         Assert.Null(exception);
     }
 
+    private static readonly Dictionary<string, string> s_operatorSession = new(StringComparer.Ordinal)
+    {
+        ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus",
+        ["XDG_RUNTIME_DIR"] = "/run/user/1000",
+        ["SSH_AUTH_SOCK"] = "/run/user/1000/ssh-agent.socket",
+        ["OPENAI_API_KEY"] = "sk-secret",
+        ["ORKEON_Llm__ApiKey"] = "secret",
+    };
+
+    private static string? ReadOperatorSession(string name) => s_operatorSession.GetValueOrDefault(name);
+
+    [Fact]
+    public void ShouldPropagateTheSessionSockets_WhenConfiguringTheRestrictedEnvironment()
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
+
+        HostProcessRunner.ConfigureRestrictedEnvironment(startInfo, ReadOperatorSession);
+
+        Assert.Equal("unix:path=/run/user/1000/bus", startInfo.Environment["DBUS_SESSION_BUS_ADDRESS"]);
+        Assert.Equal("/run/user/1000", startInfo.Environment["XDG_RUNTIME_DIR"]);
+        Assert.Equal("/run/user/1000/ssh-agent.socket", startInfo.Environment["SSH_AUTH_SOCK"]);
+    }
+
+    [Fact]
+    public void ShouldStillDropTheSecrets_WhenConfiguringTheRestrictedEnvironment()
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
+        startInfo.Environment["OPENAI_API_KEY"] = "sk-inherited";
+
+        HostProcessRunner.ConfigureRestrictedEnvironment(startInfo, ReadOperatorSession);
+
+        Assert.DoesNotContain("OPENAI_API_KEY", startInfo.Environment.Keys);
+        Assert.DoesNotContain("ORKEON_Llm__ApiKey", startInfo.Environment.Keys);
+    }
+
     public void Dispose()
     {
         _fixture.Dispose();

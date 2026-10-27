@@ -342,15 +342,31 @@ public partial class HostProcessRunner : ICodeSandbox
         return process;
     }
 
+    /// <summary>
+    /// The variables that name a socket of the operator's session and hold no secret themselves
+    /// (#216): the session bus, the runtime directory, the ssh agent. Twin of
+    /// <c>ShellEnvironment.SessionSocketVariables</c> (<c>src/tools/Orkeon.Tools.Code/Sessions</c>).
+    /// </summary>
+    private static readonly string[] s_sessionSocketVariables =
+        ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK"];
+
     private static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
+        => ConfigureRestrictedEnvironment(startInfo, Environment.GetEnvironmentVariable);
+
+    /// <summary>
+    /// Replaces the inherited environment of <paramref name="startInfo"/> with the allow-list, read
+    /// through <paramref name="read"/>: every other variable of the runner, its LLM API keys first,
+    /// is dropped.
+    /// </summary>
+    internal static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo, Func<string, string?> read)
     {
         startInfo.Environment.Clear();
         startInfo.Environment["PATH"] = GetMinimalPath();
         startInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         startInfo.Environment["DOTNET_NOLOGO"] = "1";
-        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        if (!string.IsNullOrEmpty(dotnetRoot))
-            startInfo.Environment["DOTNET_ROOT"] = dotnetRoot;
+        PropagateEnvVar(startInfo, "DOTNET_ROOT", read);
+        foreach (var name in s_sessionSocketVariables)
+            PropagateEnvVar(startInfo, name, read);
 
         if (OperatingSystem.IsWindows())
         {
@@ -364,13 +380,13 @@ public partial class HostProcessRunner : ICodeSandbox
             startInfo.Environment["TMP"] = Path.GetTempPath(); // NOSONAR — required for dotnet CLI; sandbox dir itself is Guid-scoped
 
             // Required for dotnet SDK resolution and NuGet package cache
-            PropagateEnvVar(startInfo, "SystemRoot");
-            PropagateEnvVar(startInfo, "SystemDrive");
-            PropagateEnvVar(startInfo, "APPDATA");
-            PropagateEnvVar(startInfo, "LOCALAPPDATA");
-            PropagateEnvVar(startInfo, "ProgramFiles");
-            PropagateEnvVar(startInfo, "ProgramFiles(x86)");
-            PropagateEnvVar(startInfo, "NUGET_PACKAGES");
+            PropagateEnvVar(startInfo, "SystemRoot", read);
+            PropagateEnvVar(startInfo, "SystemDrive", read);
+            PropagateEnvVar(startInfo, "APPDATA", read);
+            PropagateEnvVar(startInfo, "LOCALAPPDATA", read);
+            PropagateEnvVar(startInfo, "ProgramFiles", read);
+            PropagateEnvVar(startInfo, "ProgramFiles(x86)", read);
+            PropagateEnvVar(startInfo, "NUGET_PACKAGES", read);
         }
         else
         {
@@ -378,9 +394,9 @@ public partial class HostProcessRunner : ICodeSandbox
         }
     }
 
-    private static void PropagateEnvVar(ProcessStartInfo startInfo, string name)
+    private static void PropagateEnvVar(ProcessStartInfo startInfo, string name, Func<string, string?> read)
     {
-        var value = Environment.GetEnvironmentVariable(name);
+        var value = read(name);
         if (!string.IsNullOrEmpty(value))
             startInfo.Environment[name] = value;
     }

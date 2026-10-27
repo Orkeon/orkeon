@@ -72,6 +72,16 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Pas de réseau** sauf `Confinement:AllowNetwork = true` : un espace de noms réseau limité au
   loopback sous bubblewrap, `(deny network*)` sous Seatbelt, aucune capacité réseau sous
   AppContainer.
+- **Sockets de session.** La liste blanche d'environnement du shell porte
+  `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` et `SSH_AUTH_SOCK` quand l'hôte les a : elles
+  nomment le bus de session (le trousseau de `gh` et de `git-credential-libsecret`) et l'agent ssh,
+  jamais un secret. Sous bubblewrap elles ne suivent qu'avec `AllowNetwork = true`, et seuls les
+  fichiers de socket sont alors montés en lecture-écriture à leur propre chemin — le chemin de
+  `SSH_AUTH_SOCK` et un bus `unix:path=` — quand ils existent et ne sont pas un répertoire ;
+  `XDG_RUNTIME_DIR` lui-même n'est jamais monté. Un bus `unix:abstract=` n'a besoin d'aucun
+  montage : une socket abstraite suit l'espace de noms réseau, que `AllowNetwork` partage. Sans le
+  réseau, ni les variables ni les montages ne sont donnés. Toute autre variable, les clés d'API des
+  LLM en tête, reste écartée.
 - **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.

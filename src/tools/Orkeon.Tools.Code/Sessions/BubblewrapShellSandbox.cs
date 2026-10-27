@@ -14,11 +14,22 @@ namespace Orkeon.Tools.Code.Sessions;
 /// parent-death signal follows the forking thread. The shell also exits when its input closes.
 /// </remarks>
 /// <param name="probe">Whether bubblewrap works here; probed once per process by default.</param>
-internal sealed class BubblewrapShellSandbox(Func<BubblewrapAvailability> probe) : IShellSandbox
+/// <param name="readEnvironment">Reads one variable of the parent environment; null when it is unset.</param>
+/// <param name="kindOf">What a host path is: a directory, a file (a socket counts), or null when absent.</param>
+internal sealed class BubblewrapShellSandbox(
+    Func<BubblewrapAvailability> probe,
+    Func<string, string?> readEnvironment,
+    Func<string, ConfinedAccess?> kindOf) : IShellSandbox
 {
     /// <summary>A sandbox over the process-wide probe.</summary>
     public BubblewrapShellSandbox()
         : this(BubblewrapProbe.Current)
+    {
+    }
+
+    /// <summary>A sandbox over <paramref name="probe"/>, the process environment and the host's paths.</summary>
+    public BubblewrapShellSandbox(Func<BubblewrapAvailability> probe)
+        : this(probe, Environment.GetEnvironmentVariable, BubblewrapProbe.HiddenKindOf)
     {
     }
 
@@ -53,14 +64,26 @@ internal sealed class BubblewrapShellSandbox(Func<BubblewrapAvailability> probe)
                 new PosixShellSession.DetachedLaunch(Prepare, view.Paths, OnDedicatedThread: true))
             .ConfigureAwait(false);
 
-        ProcessStartInfo Prepare()
-        {
-            var info = new ProcessStartInfo(bubblewrap.ExecutablePath!);
-            foreach (var argument in BubblewrapCommandLine.Build(view.Paths, view.ReadOnlyPaths, view.AllowNetwork, "/"))
-                info.ArgumentList.Add(argument);
-            info.ArgumentList.Add(UnconfinedShellSandbox.PosixShell);
-            ShellEnvironment.ConfigureRestricted(info);
-            return info;
-        }
+        ProcessStartInfo Prepare() => PrepareStartInfo(view, bubblewrap.ExecutablePath!);
+    }
+
+    /// <summary>
+    /// The start of <c>bwrap &lt;view&gt; -- /bin/sh</c>, without starting it. With the network, the
+    /// sockets of the operator's session follow (#216): each socket path that exists and is no
+    /// directory is bound read-write at its own path, and their variables are propagated; without the
+    /// network, neither, since the credential they lead to only serves a remote.
+    /// </summary>
+    internal ProcessStartInfo PrepareStartInfo(ShellSessionView view, string executablePath)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        List<string> sockets = view.AllowNetwork
+            ? [.. ShellEnvironment.SessionSocketPaths(readEnvironment).Where(path => kindOf(path) == ConfinedAccess.HiddenFile)]
+            : [];
+        var info = new ProcessStartInfo(executablePath);
+        foreach (var argument in BubblewrapCommandLine.Build(view.Paths, view.ReadOnlyPaths, view.AllowNetwork, "/", sockets))
+            info.ArgumentList.Add(argument);
+        info.ArgumentList.Add(UnconfinedShellSandbox.PosixShell);
+        ShellEnvironment.ConfigureRestricted(info, readEnvironment, includeSessionSockets: view.AllowNetwork);
+        return info;
     }
 }
