@@ -91,12 +91,15 @@ agent's **shell session**, which the operating system confines
   not. An unconfined session (`Mode = None`, a container) and the code sandbox always receive the
   bus: no jail holds them, and they reach its socket in `XDG_RUNTIME_DIR` without the variable.
 - **Added variables.** `Orkeon:Tools:Shell:Environment:Propagate` adds host variables to the
-  allow-list, for the shell session and the code sandbox alike. The secret filter wins over it: a
-  name starting with `ORKEON_`, containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`,
-  `CREDENTIAL` or `AUTH` (without case), blank, or holding `=` or a NUL is dropped with a warning,
-  and so is one whose value carries URL credentials (`http://user:password@proxy:3128`,
-  `https://<token>@host`), the warning naming the variable and never its value; a built-in name is
-  ignored. Names compare with case (`http_proxy` and `HTTP_PROXY` are two variables), except on
+  allow-list, for the shell session and the code sandbox alike. The code sandbox reads the key from
+  configuration only: a list set in code with `Configure<ShellToolOptions>` reaches the shell alone,
+  since `Orkeon.Infrastructure` does not reference the shell's project. The secret filter wins over
+  it: a name starting with `ORKEON_`, containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`,
+  `PASS`, `CREDENTIAL` or `AUTH`, or holding the word `PAT` on its own (`GITHUB_PAT`, not `PATH`),
+  without case, blank, or holding `=` or a NUL is dropped with a warning, and so is one whose value
+  carries URL credentials (`http://user:password@proxy:3128`, `https://<token>@host`, or schemeless
+  `user:password@proxy:3128`, a `/` in the password included), the warning naming the variable and
+  never its value; a built-in name is ignored. Names compare with case (`http_proxy` and `HTTP_PROXY` are two variables), except on
   Windows. The filter reads names and URL userinfo only: a value carrying a credential in another
   shape passes, so list only variables whose value is no secret. Under bubblewrap an added variable passes with or without the
   network, since only a socket needs it, and **no path it names is bound**: the view stays what

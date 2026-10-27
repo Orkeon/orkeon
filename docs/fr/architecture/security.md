@@ -96,12 +96,16 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
   reçoivent toujours le bus : aucune prison ne les retient, et ils atteignent sa socket dans
   `XDG_RUNTIME_DIR` sans la variable.
 - **Variables ajoutées.** `Orkeon:Tools:Shell:Environment:Propagate` ajoute des variables de l'hôte
-  à la liste blanche, pour la session shell comme pour le bac à sable de code. Le filtre des secrets
-  l'emporte : un nom qui commence par `ORKEON_`, contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`,
-  `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse), vide, ou qui porte `=` ou un NUL est écarté avec
-  un avertissement, de même qu'une variable dont la valeur porte des identifiants d'URL
-  (`http://user:password@proxy:3128`, `https://<jeton>@hôte`), l'avertissement nommant la variable
-  et jamais sa valeur ; un nom intégré est ignoré. Les noms se comparent avec la casse (`http_proxy`
+  à la liste blanche, pour la session shell comme pour le bac à sable de code. Le bac à sable de
+  code ne lit la clé que dans la configuration : une liste posée dans le code avec
+  `Configure<ShellToolOptions>` n'atteint que le shell, puisque `Orkeon.Infrastructure` ne référence
+  pas le projet du shell. Le filtre des secrets l'emporte : un nom qui commence par `ORKEON_`,
+  contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `PASS`, `CREDENTIAL` ou `AUTH`, ou le mot
+  `PAT` seul (`GITHUB_PAT`, pas `PATH`), sans casse, vide, ou qui porte `=` ou un NUL est écarté
+  avec un avertissement, de même qu'une variable dont la valeur porte des identifiants d'URL
+  (`http://user:password@proxy:3128`, `https://<jeton>@hôte`, ou sans schéma
+  `user:password@proxy:3128`, un `/` dans le mot de passe compris), l'avertissement nommant la
+  variable et jamais sa valeur ; un nom intégré est ignoré. Les noms se comparent avec la casse (`http_proxy`
   et `HTTP_PROXY` sont deux variables), sauf sous Windows. Le filtre ne lit que les noms et les
   identifiants d'URL : une valeur qui porte un secret sous une autre forme passe, donc ne listez que
   des variables dont la valeur n'est pas un secret. Sous bubblewrap, une variable ajoutée passe avec ou

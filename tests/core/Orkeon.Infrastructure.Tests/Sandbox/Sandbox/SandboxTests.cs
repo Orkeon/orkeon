@@ -777,6 +777,28 @@ public sealed class ProcessIsolationSandboxTests : IDisposable
         Assert.Equal(5, logger.Entries.Count(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Warning));
     }
 
+    [Theory]
+    [InlineData("PROXY_PASS", false)]
+    [InlineData("GITHUB_PAT", false)]
+    [InlineData("MANPATH", true)]
+    [InlineData("PYTHONPATH", true)]
+    public void ShouldApplyTheShellSecretWords_WhenSelectingThePropagatedNames(string name, bool kept)
+    {
+        var propagated = HostProcessRunner.SelectPropagatedVariables([name], _ => "value", null);
+
+        Assert.Equal(kept ? [name] : [], propagated);
+    }
+
+    [Theory]
+    [InlineData("git@github.com:org/repo.git")]
+    [InlineData("https://registry.example.com/@scope/pkg")]
+    public void ShouldKeepAnAddedVariableWithoutUrlCredentials_WhenSelectingThePropagatedNames(string value)
+    {
+        var propagated = HostProcessRunner.SelectPropagatedVariables(["HTTPS_PROXY"], _ => value, null);
+
+        Assert.Equal(["HTTPS_PROXY"], propagated);
+    }
+
     [Fact]
     public void ShouldKeepTwoNamesDifferingByCase_ExceptOnWindows_WhenSelectingThePropagatedNames()
     {
@@ -802,10 +824,13 @@ public sealed class ProcessIsolationSandboxTests : IDisposable
         }
     }
 
-    [Fact]
-    public void ShouldDropAnAddedVariableWithUrlCredentials_WithAWarningThatHidesTheValue()
+    [Theory]
+    [InlineData("http://user:s3cr3t@proxy.local:3128")]
+    [InlineData("user:s3cr3t@proxy.local:3128")]
+    [InlineData("http://u:a/s3cr3t@proxy.local")]
+    public void ShouldDropAnAddedVariableWithUrlCredentials_WithAWarningThatHidesTheValue(string value)
     {
-        var session = new Dictionary<string, string>(StringComparer.Ordinal) { ["HTTPS_PROXY"] = "http://user:s3cr3t@proxy.local:3128" };
+        var session = new Dictionary<string, string>(StringComparer.Ordinal) { ["HTTPS_PROXY"] = value };
         var logger = new Orkeon.Tests.Shared.Doubles.RecordingLogger();
         var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
 

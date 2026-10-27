@@ -361,11 +361,12 @@ public partial class HostProcessRunner : ICodeSandbox
     internal const string PropagateConfigurationKey = "Orkeon:Tools:Shell:Environment:Propagate";
 
     /// <summary>
-    /// The words an added name may not contain, compared without case. Twin of
+    /// The words an added name may not contain, compared without case; the word <c>PAT</c> on its own
+    /// (<c>GITHUB_PAT</c>, not <c>PATH</c>) is refused too. Twin of
     /// <c>ShellEnvironment.SecretWords</c> (<c>src/tools/Orkeon.Tools.Code/Sessions</c>).
     /// </summary>
     internal static readonly IReadOnlyList<string> SecretWords =
-        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH"];
+        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "PASS", "CREDENTIAL", "AUTH"];
 
     // Every name ConfigureRestrictedEnvironment sets or propagates on its own: an added one is a duplicate.
     private static readonly string[] s_builtInVariables =
@@ -397,7 +398,7 @@ public partial class HostProcessRunner : ICodeSandbox
     /// The added names the child may receive, in their order, each once (<see cref="VariableNameComparer"/>):
     /// a name that is invalid (blank, holding <c>=</c> or a NUL), starts with <c>ORKEON_</c> or
     /// contains one of the <see cref="SecretWords"/>, or whose value carries URL credentials
-    /// (<c>scheme://user:password@host</c>), is refused with a warning that never quotes the value; a
+    /// (<c>scheme://user:password@host</c>, <c>user:password@host</c>), is refused with a warning that never quotes the value; a
     /// built-in name is ignored. Twin of <c>ShellEnvironment.SelectPropagated</c>.
     /// </summary>
     /// <param name="configured">The names as configured.</param>
@@ -435,8 +436,15 @@ public partial class HostProcessRunner : ICodeSandbox
             return "the ORKEON_ variables are the runner's own and carry its secrets";
         if (SecretWords.FirstOrDefault(word => name.Contains(word, StringComparison.OrdinalIgnoreCase)) is { } word)
             return $"it contains '{word}', which names a secret";
+        if (HoldsPatWord(name))
+            return "it contains the word 'PAT', which names a secret";
         return null;
     }
+
+    // Whether one segment of the name, split on '_', '-' or '.', is "PAT" (a personal access token,
+    // GITHUB_PAT): the word alone, so PATH, MANPATH or PYTHONPATH pass.
+    private static bool HoldsPatWord(string name)
+        => name.Split(['_', '-', '.']).Any(segment => segment.Equals("PAT", StringComparison.OrdinalIgnoreCase));
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning,
         Message = "Orkeon:Tools:Shell:Environment:Propagate: '{Name}' is not propagated to the code sandbox: {Reason}.")]
@@ -453,12 +461,16 @@ public partial class HostProcessRunner : ICodeSandbox
 
     /// <summary>
     /// Whether <paramref name="value"/> carries the userinfo of a URL (<c>scheme://user:password@host</c>,
-    /// or a lone user standing for a token). Twin of <c>ShellEnvironment.CarriesUrlCredentials</c>.
+    /// a lone user standing for a token, or a schemeless <c>user:password@host</c>, the password possibly
+    /// holding <c>/</c>). Twin of <c>ShellEnvironment.CarriesUrlCredentials</c>.
     /// </summary>
     internal static bool CarriesUrlCredentials(string value) => UrlUserInfo().IsMatch(value);
 
-    // A scheme, '//', then an authority part that ends with '@' before any '/', '?', '#', blank or list separator.
-    [GeneratedRegex(@"[A-Za-z][A-Za-z0-9+.\-]*://[^/?#@\s,;]+@", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    // Userinfo ended by '@', in two shapes curl and git both accept. With a scheme: '//', a user
+    // without '/', ':' or a separator, then an optional ':password' that may hold '/' (a lone user
+    // stands for a token). Without one, at the start of the value or of a list item: 'user:password@',
+    // the password not starting with '//' (that is a scheme). A blank, ',' or ';' ends either shape.
+    [GeneratedRegex(@"(?:[A-Za-z][A-Za-z0-9+.\-]*://[^/?#@\s,;:]*(?::[^?#@\s,;]*)?|(?<![^\s,;])[^/?#@\s,;:]+:(?!//)[^?#@\s,;]*)@", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
     private static partial Regex UrlUserInfo();
 
     private void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
