@@ -82,6 +82,34 @@ public class OllamaChatEndpointTests
             payload.GetProperty("tools")[0].GetProperty("function").GetProperty("name").GetString());
     }
 
+    /// <summary>
+    /// Ollama's API has no <c>tool_choice</c>: a turn that allows no tool call sends no tool, and
+    /// stays on <c>/api/chat</c> when its history holds tool calls.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldSendNoTool_WhenTheTurnAllowsNoToolCall()
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(
+            HttpStatusCode.OK, """{"message":{"role":"assistant","content":"done"},"done":true}""");
+        using var provider = CreateProvider(BaseConfig(), handler);
+        var config = WithTools(BaseConfig()) with { ToolMode = ToolCallMode.None };
+        LlmMessage[] history =
+        [
+            LlmMessage.User("weather?"),
+            new LlmMessage { Role = "assistant", Content = "", RawToolCalls = """[{"id":"c1","type":"function","function":{"name":"get_weather","arguments":"{}"}}]""" },
+            new LlmMessage { Role = "tool", Content = "sunny", ToolCallId = "c1" },
+        ];
+
+        await provider.ChatAsync(history, config, TestContext.Current.CancellationToken);
+
+        var request = handler.CapturedRequests.Single();
+        Assert.EndsWith("/api/chat", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+        var payload = await ReadRequestAsync(request);
+        Assert.False(payload.TryGetProperty("tools", out _));
+        Assert.False(payload.TryGetProperty("tool_choice", out _));
+    }
+
     // ── Native tool calling (the actual reason for the migration) ───────────
 
     /// <summary>

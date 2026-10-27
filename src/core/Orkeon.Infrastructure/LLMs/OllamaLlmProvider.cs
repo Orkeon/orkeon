@@ -474,6 +474,11 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
         if (config.Tools is not { Count: > 0 } || _toolCallingStrategy?.SupportsNativeToolCalling != true)
             return;
 
+        // Ollama's API has no tool_choice: a turn that allows no tool call (the budget wrap-up, #218)
+        // is honoured by sending no tool. The history's tool turns still keep the request on /api/chat.
+        if (config.ToolMode == Orkeon.Domain.Tools.Protocol.ToolCallMode.None)
+            return;
+
         foreach (var kvp in _toolCallingStrategy.Formatter.FormatToolsForPayload(config.Tools, config.ToolMode))
             payload[kvp.Key] = kvp.Value;
     }

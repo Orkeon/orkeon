@@ -36,13 +36,17 @@ public class CovToolCalling_AnthropicToolSchemaFormatterTests
     }
 
     [Fact]
-    public void FormatTools_None_OmitsToolChoiceAndEmptiesTools()
+    [Trait("BR", "CH-218")]
+    public void FormatTools_None_KeepsTheToolsAndForbidsEveryCall()
     {
+        // A history that holds tool_use or tool_result blocks is refused unless the tools are defined:
+        // None keeps them and says no tool may be called.
         var payload = _formatter.FormatToolsForPayload([SimpleSchema()], ToolCallMode.None);
 
-        Assert.False(payload.ContainsKey("tool_choice"));
+        var choice = Assert.IsType<Dictionary<string, object>>(payload["tool_choice"]);
+        Assert.Equal("none", choice["type"]);
         var tools = Assert.IsType<List<Dictionary<string, object>>>(payload["tools"]);
-        Assert.Empty(tools);
+        Assert.Single(tools);
     }
 
     [Fact]
