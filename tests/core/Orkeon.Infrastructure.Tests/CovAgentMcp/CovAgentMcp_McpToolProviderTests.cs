@@ -26,7 +26,7 @@ public sealed class CovAgentMcp_McpToolProviderTests
         var config = new McpServerConfig { Transport = McpTransportType.Sse, Url = null };
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => provider.ConnectServerAsync("s1", config, TestContext.Current.CancellationToken));
+            () => provider.ConnectServerAsync("s1", config, ct: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public sealed class CovAgentMcp_McpToolProviderTests
         var config = new McpServerConfig { Transport = (McpTransportType)999 };
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => provider.ConnectServerAsync("s1", config, TestContext.Current.CancellationToken));
+            () => provider.ConnectServerAsync("s1", config, ct: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class CovAgentMcp_McpToolProviderTests
         await using var provider = new ProviderSut(_registry);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => provider.ConnectServerAsync("s1", transport, TestContext.Current.CancellationToken));
+            () => provider.ConnectServerAsync("s1", transport, ct: TestContext.Current.CancellationToken));
 
         // Client disposed the transport during cleanup.
         Assert.True(transport.DisposeCallCount >= 1);
@@ -65,11 +65,11 @@ public sealed class CovAgentMcp_McpToolProviderTests
     {
         var provider = new ProviderSut(_registry);
         var transport = BuildToolDiscoveryTransport();
-        await provider.ConnectServerAsync("dup", transport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("dup", transport, ct: TestContext.Current.CancellationToken);
 
         var second = BuildToolDiscoveryTransport();
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => provider.ConnectServerAsync("dup", second, TestContext.Current.CancellationToken));
+            () => provider.ConnectServerAsync("dup", second, ct: TestContext.Current.CancellationToken));
         Assert.Contains("already connected", ex.Message);
 
         await provider.DisposeAsync();
@@ -80,7 +80,7 @@ public sealed class CovAgentMcp_McpToolProviderTests
     {
         var provider = new ProviderSut(_registry);
         var transport = BuildToolDiscoveryTransport();
-        await provider.ConnectServerAsync("live", transport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("live", transport, ct: TestContext.Current.CancellationToken);
 
         var statuses = provider.GetServerStatuses();
 

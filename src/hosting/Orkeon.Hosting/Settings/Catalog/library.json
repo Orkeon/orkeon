@@ -2051,6 +2051,13 @@
       "description": "Transport type to use."
     },
     {
+      "path": "MCP:Servers:<name>:TrustAnnotations",
+      "section": "MCP",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the permission gate takes this server's tool annotations at their word: a tool marked readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could label a destructive tool read-only, so its tools stay classified fail-closed."
+    },
+    {
       "path": "MCP:Servers:<name>:Url",
       "section": "MCP",
       "type": "uri",

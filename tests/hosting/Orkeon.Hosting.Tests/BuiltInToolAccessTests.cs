@@ -81,9 +81,24 @@ public sealed class BuiltInToolAccessTests : IDisposable
         Assert.Equal(PermissionAction.Deny, (await gate.CheckAsync("rag_ingest", NoArgs, "plan", tool.Access, TestContext.Current.CancellationToken)).Action);
     }
 
+    // rag_eval ingests the dataset's corpus into a collection (reindex rebuilds it) and writes its
+    // markdown/JSON reports through the VFS: an edit, never a read plan mode lets through.
+    [Fact]
+    public async Task ShouldClassifyRagEvalAsAnEdit()
+    {
+        var tool = Assert.Single(await RegisteredToolsAsync(), t => t.Name == "rag_eval");
+        var gate = new ModePermissionGate(isInteractive: true);
+        var args = new Dictionary<string, object?> { ["dataset"] = "/workspace/golden.yaml" };
+
+        Assert.Equal(ToolAccess.Edit, tool.Access);
+        Assert.Equal(ToolAccess.Edit, tool.AccessFor(args));
+        Assert.Equal(PermissionAction.Allow, (await gate.CheckAsync("rag_eval", args, "acceptEdits", tool.AccessFor(args), TestContext.Current.CancellationToken)).Action);
+        Assert.Equal(PermissionAction.Ask, (await gate.CheckAsync("rag_eval", args, "default", tool.AccessFor(args), TestContext.Current.CancellationToken)).Action);
+        Assert.Equal(PermissionAction.Deny, (await gate.CheckAsync("rag_eval", args, "plan", tool.AccessFor(args), TestContext.Current.CancellationToken)).Action);
+    }
+
     [Theory]
     [InlineData("web_search")]
-    [InlineData("rag_eval")]
     public async Task ShouldAllowTheReadOnlyToolsInPlan(string name)
     {
         var tool = Assert.Single(await RegisteredToolsAsync(), t => t.Name == name);

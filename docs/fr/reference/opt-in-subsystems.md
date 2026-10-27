@@ -552,14 +552,20 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `IBaseTool.AccessFor(arguments)` (défaut : `Access`), que la barrière lit à chaque appel :
   `github` est `Read` pour `list_issues`, `get_pr`, `search_repos` et `get_repo`, `Execute`
   pour `create_issue`, `create_pr` et toute action inconnue ou absente ; `http_api` est
-  `Read` pour `GET`, `HEAD` et `OPTIONS` (une méthode absente est son défaut `GET`),
-  `Execute` pour toute autre méthode. Leur `Access` statique reste `Execute`, la classe la
+  `Read` pour `GET`, `HEAD` et `OPTIONS` (une méthode absente est son défaut `GET`) sans
+  corps ni en-tête de substitution de méthode (`X-HTTP-Method-Override`, `X-HTTP-Method`,
+  `X-Method-Override`, quelle que soit la casse), `Execute` pour toute autre méthode ou pour
+  une méthode de lecture qui porte l'un ou l'autre. Leur `Access` statique reste `Execute`, la classe la
   plus restrictive qu'ils puissent prendre. Les outils de lecture intégrés
   (file/directory/session/memory/analysis, `web_scrape`, `scrape_element`, `rag_search`,
-  `rag_eval`, `web_search`), `file_write` et `rag_ingest` (Edit : il écrit dans l'index de
-  connaissances, jamais dans l'espace de travail) et `shell_command` (Execute) se déclarent
-  tous. Un outil MCP prend sa classe des `annotations` du serveur (`readOnlyHint: true` →
-  `Read`, d'autres annotations → `Execute`, aucune → `Unspecified`).
+  `web_search`), `file_write`, `rag_ingest` (Edit : il écrit dans l'index de
+  connaissances, jamais dans l'espace de travail) et `rag_eval` (Edit : il ingère le corpus du
+  jeu de données dans la collection — `reindex` la reconstruit — et écrit ses rapports par le
+  VFS) et `shell_command` (Execute) se déclarent tous. Un outil MCP ne prend sa classe des
+  `annotations` du serveur que si l'opérateur fait confiance à ce serveur
+  (`MCP:Servers:<name>:TrustAnnotations = true` : `readOnlyHint: true` → `Read`, d'autres
+  annotations → `Execute`) ; les outils d'un serveur non fiable — le défaut — et d'un serveur
+  qui n'envoie aucune annotation restent `Unspecified`, quoi que disent leurs indications.
   `BuiltInToolAccessTests` liste les outils intégrés encore laissés à `Unspecified`.
 - **Défaut rétro-compatible** : flag absent → aucune barrière enregistrée → `act` se
   comporte exactement comme avant. Les scripts optent pour un mode à l'appel via

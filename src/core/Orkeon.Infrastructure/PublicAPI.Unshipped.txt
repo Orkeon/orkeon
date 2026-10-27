@@ -210,3 +210,9 @@ Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Budget.get -> Orkeon.
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Budget.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.get -> Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client) -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.McpToolAdapter(Orkeon.Infrastructure.MCP.McpToolDefinition! definition, Orkeon.Infrastructure.MCP.McpClient! client, bool trustAnnotations = false) -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, bool trustAnnotations = false, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.TrustAnnotations.get -> bool
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.TrustAnnotations.set -> void

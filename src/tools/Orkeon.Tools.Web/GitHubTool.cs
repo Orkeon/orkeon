@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
@@ -152,8 +154,9 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     /// <summary>What the description adds when the tool holds no token, so a refusal tells the operator what to set.</summary>
     internal const string NoTokenNotice =
-        " No token is configured: write operations (create_issue, create_pr) need one, set " +
-        "Orkeon:Tools:GitHub:Token or the GITHUB_TOKEN environment variable.";
+        " No token is configured: write operations (create_issue, create_pr) need one. It is read from " +
+        "the setting Orkeon:Tools:GitHub:Token, then the environment variable named by " +
+        "Orkeon:Tools:GitHub:TokenVariable (default GITHUB_TOKEN), then GH_TOKEN.";
 
     /// <inheritdoc />
     public override string Description =>
@@ -185,10 +188,28 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
                 return $"Owner is required for action '{request.Action}'";
             if (string.IsNullOrWhiteSpace(request.Repo))
                 return $"Repo is required for action '{request.Action}'";
+            if (InvalidPathSegment("Owner", request.Owner) is { } badOwner)
+                return badOwner;
+            if (InvalidPathSegment("Repo", request.Repo) is { } badRepo)
+                return badRepo;
         }
 
         return MissingActionField(request);
     }
+
+    // Owner and repo become path segments of a request that carries the token: a value holding '/', '?',
+    // '#', '%' or a dot segment would send it to another endpoint, so only GitHub's own name characters pass.
+    private static string? InvalidPathSegment(string field, string value) =>
+        PathSegmentPattern().IsMatch(value) && value is not ("." or "..")
+            ? null
+            : $"{field} '{value}' must match ^[A-Za-z0-9_.-]+$ and be neither '.' nor '..'";
+
+    [GeneratedRegex("^[A-Za-z0-9_.-]+$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex PathSegmentPattern();
+
+    // The /repos/{owner}/{repo} root of a request, each segment escaped after its validation.
+    private static string RepoUrl(GitHubRequest request) =>
+        $"{BaseUrl}/repos/{Uri.EscapeDataString(request.Owner)}/{Uri.EscapeDataString(request.Repo)}";
 
     // The field the action itself needs beyond owner and repo, when it is missing; null when none is.
     private static string? MissingActionField(GitHubRequest request)
@@ -295,7 +316,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     private async Task<GitHubResponse> ListIssuesAsync(GitHubRequest request, CancellationToken ct)
     {
-        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/issues";
+        var url = $"{RepoUrl(request)}/issues";
         var json = await GetStringAsync(url, ct).ConfigureAwait(false);
         var items = ParseItemArray(json);
 
@@ -314,7 +335,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         Justification = "The content is owned by the request message SendAsync sends.")]
     private async Task<GitHubResponse> CreateIssueAsync(GitHubRequest request, CancellationToken ct)
     {
-        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/issues";
+        var url = $"{RepoUrl(request)}/issues";
         var payload = new Dictionary<string, string?> { ["title"] = request.Title, ["body"] = request.Body };
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
@@ -348,7 +369,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         Justification = "The content is owned by the request message SendAsync sends.")]
     private async Task<GitHubResponse> CreatePullRequestAsync(GitHubRequest request, CancellationToken ct)
     {
-        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/pulls";
+        var url = $"{RepoUrl(request)}/pulls";
         var payload = new Dictionary<string, string?>
         {
             ["title"] = request.Title,
@@ -386,7 +407,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     private async Task<GitHubResponse> GetPullRequestAsync(GitHubRequest request, CancellationToken ct)
     {
-        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/pulls/{request.Number}";
+        var url = string.Create(CultureInfo.InvariantCulture, $"{RepoUrl(request)}/pulls/{request.Number}");
 
         using var response = await SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -447,7 +468,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
     private async Task<GitHubResponse> GetRepositoryAsync(GitHubRequest request, CancellationToken ct)
     {
-        var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}";
+        var url = RepoUrl(request);
 
         using var response = await SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);

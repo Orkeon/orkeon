@@ -142,7 +142,7 @@ public class CrewFactoryStrictToolsTests
         var (factory, agentRepo, registry) = BuildFactory(strictTools: true);
         await using var transport = McpDiscoveryTransport.Exposing("search_issues");
         await using var provider = new McpToolProvider(registry);
-        await provider.ConnectServerAsync("tracker", transport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("tracker", transport, ct: TestContext.Current.CancellationToken);
         var config = BuildConfigWithAgentTools("search_issues");
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);

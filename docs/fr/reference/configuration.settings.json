@@ -241,6 +241,7 @@
     "MCP:Servers:<name>:Command": "Commande qui lance le processus du serveur MCP (pour le transport stdio).",
     "MCP:Servers:<name>:Env:<name>": "Variables d'environnement du processus serveur.",
     "MCP:Servers:<name>:Transport": "Type de transport à utiliser.",
+    "MCP:Servers:<name>:TrustAnnotations": "Si la permission gate prend au mot les annotations des outils de ce serveur : un outil marqué readOnlyHint devient alors une lecture, que le mode plan laisse passer. Désactivé par défaut : un serveur non fiable pourrait étiqueter en lecture seule un outil destructeur, ses outils restent donc classés par défaut comme des écritures.",
     "MCP:Servers:<name>:Url": "URL du point d'accès pour le transport SSE.",
     "MCP:Server:Name": "Nom du serveur annoncé à l'initialisation MCP.",
     "MCP:Server:Version": "Version du serveur annoncée à l'initialisation MCP.",

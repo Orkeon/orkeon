@@ -74,7 +74,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             try
             {
-                await ConnectAndRegisterAsync(serverId, client, transport, ct).ConfigureAwait(false);
+                await ConnectAndRegisterAsync(serverId, client, transport, config.TrustAnnotations, ct).ConfigureAwait(false);
             }
             catch
             {
@@ -88,10 +88,17 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// Connects to an MCP server using an externally-provided transport
     /// (useful for testing or custom transports).
     /// </summary>
+    /// <param name="serverId">The server's identifier.</param>
+    /// <param name="transport">The transport to the server.</param>
+    /// <param name="trustAnnotations">
+    /// Whether the server's tool annotations decide each tool's access class
+    /// (<see cref="McpServerConfig.TrustAnnotations"/>); <see langword="false"/> by default.
+    /// </param>
+    /// <param name="ct">The cancellation token.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
         Justification = "Ownership of the client passes to _clients in ConnectAndRegisterAsync, disposed by DisconnectServerAsync; on failure the catch path here disposes it.")]
     public async Task ConnectServerAsync(
-        string serverId, IMcpTransport transport, CancellationToken ct = default)
+        string serverId, IMcpTransport transport, bool trustAnnotations = false, CancellationToken ct = default)
     {
         if (_clients.ContainsKey(serverId))
             throw new InvalidOperationException($"Server '{serverId}' is already connected.");
@@ -100,7 +107,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
         try
         {
-            await ConnectAndRegisterAsync(serverId, client, transport, ct).ConfigureAwait(false);
+            await ConnectAndRegisterAsync(serverId, client, transport, trustAnnotations, ct).ConfigureAwait(false);
         }
         catch
         {
@@ -117,7 +124,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// tool that held the name keeps it.
     /// </summary>
     private async Task ConnectAndRegisterAsync(
-        string serverId, McpClient client, IMcpTransport transport, CancellationToken ct)
+        string serverId, McpClient client, IMcpTransport transport, bool trustAnnotations, CancellationToken ct)
     {
         // Dual-era connection: server/discover probe, legacy initialize fallback.
         await client.ConnectAsync(ct).ConfigureAwait(false);
@@ -127,7 +134,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         var rejectedNames = new List<string>();
         foreach (var toolDef in tools)
         {
-            var adapter = new McpToolAdapter(toolDef, client);
+            var adapter = new McpToolAdapter(toolDef, client, trustAnnotations);
             if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
             {
                 registeredNames.Add(toolDef.Name);

@@ -538,14 +538,19 @@ No attribute carries an id of a crew, task or agent.
   (default: `Access`), which the gate reads for each call: `github` is `Read` for
   `list_issues`, `get_pr`, `search_repos` and `get_repo`, `Execute` for `create_issue`,
   `create_pr` and any unknown or missing action; `http_api` is `Read` for `GET`, `HEAD` and
-  `OPTIONS` (a missing method is its default `GET`), `Execute` for any other method. Their
+  `OPTIONS` (a missing method is its default `GET`) without a body or a method-override header
+  (`X-HTTP-Method-Override`, `X-HTTP-Method`, `X-Method-Override`, any case), `Execute` for any
+  other method or for a read method that carries either. Their
   static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
-  `scrape_element`, `rag_search`, `rag_eval`, `web_search`), `file_write` and `rag_ingest`
-  (Edit: it writes into the knowledge index, never into the workspace) and `shell_command`
-  (Execute) all declare themselves. An MCP tool takes its class from the server's
-  `annotations` (`readOnlyHint: true` → `Read`, other annotations → `Execute`, none →
-  `Unspecified`). `BuiltInToolAccessTests` lists the built-in tools still left at
+  `scrape_element`, `rag_search`, `web_search`), `file_write`, `rag_ingest`
+  (Edit: it writes into the knowledge index, never into the workspace) and `rag_eval` (Edit: it
+  ingests the dataset's corpus into the collection — `reindex` rebuilds it — and writes its
+  reports through the VFS) and `shell_command` (Execute) all declare themselves. An MCP tool
+  takes its class from the server's `annotations` only when the operator trusts that server
+  (`MCP:Servers:<name>:TrustAnnotations = true`: `readOnlyHint: true` → `Read`, other
+  annotations → `Execute`); an untrusted server's tools — the default — and a server that
+  sends no annotations stay `Unspecified`, whatever their hints say. `BuiltInToolAccessTests` lists the built-in tools still left at
   `Unspecified`.
 - **Backward-compatible default**: flag absent → no gate registered → `act`
   behaves exactly as before. Scripts opt into a mode per call via the

@@ -27,27 +27,38 @@ public class McpToolAdapter : IBaseTool
     public ToolSchema Schema => _schema;
 
     /// <summary>
-    /// The access class the server's annotations give the tool: <see cref="ToolAccess.Read"/> for
-    /// <c>readOnlyHint: true</c>, <see cref="ToolAccess.Execute"/> for annotations without it, and
-    /// <see cref="ToolAccess.Unspecified"/> when the server sends no annotations, so the permission
+    /// The access class the server's annotations give the tool, for a server the operator trusts
+    /// (<see cref="McpServerConfig.TrustAnnotations"/>): <see cref="ToolAccess.Read"/> for
+    /// <c>readOnlyHint: true</c>, <see cref="ToolAccess.Execute"/> for annotations without it. The
+    /// annotations of an untrusted server are a claim any server can make — a destructive tool labelled
+    /// read-only would pass <c>plan</c> mode — so they are ignored there, and the tool reports
+    /// <see cref="ToolAccess.Unspecified"/>, as it does when the server sends none: the permission
     /// gate keeps its fail-closed classification.
     /// </summary>
     public ToolAccess Access => _definition.Annotations switch
     {
         null => ToolAccess.Unspecified,
+        _ when !_trustAnnotations => ToolAccess.Unspecified,
         { ReadOnlyHint: true } => ToolAccess.Read,
         _ => ToolAccess.Execute,
     };
 
+    private readonly bool _trustAnnotations;
+
     /// <summary>Initializes a new instance of <see cref="McpToolAdapter"/>.</summary>
     /// <param name="definition">The MCP tool definition.</param>
     /// <param name="client">The MCP client used to invoke the tool.</param>
-    public McpToolAdapter(McpToolDefinition definition, McpClient client)
+    /// <param name="trustAnnotations">
+    /// Whether the server's <c>annotations</c> decide <see cref="Access"/>; <see langword="false"/> (the
+    /// default) leaves every tool of the server at <see cref="ToolAccess.Unspecified"/>.
+    /// </param>
+    public McpToolAdapter(McpToolDefinition definition, McpClient client, bool trustAnnotations = false)
     {
         ArgumentNullException.ThrowIfNull(definition);
         _definition = definition;
         ArgumentNullException.ThrowIfNull(client);
         _client = client;
+        _trustAnnotations = trustAnnotations;
         _schema = ConvertToToolSchema(definition);
     }
 
