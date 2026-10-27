@@ -471,14 +471,16 @@ Blank entries and a repeat of the newest one are not recorded. In the list (the 
 `↑/↓ select · enter view`), `↓` moves down without wrapping, `↑` moves up and, on the first row,
 returns to the field; `Esc` returns to the field from any row, `F4` too, and the field gets its text
 and caret back; `Home` / `End` reach the first / last row; `Enter` prints the selected task's detail
-in the transcript and sends nothing; a printable key returns to the field with that character typed.
+on the displayed screen and sends nothing; a printable key returns to the field with that character typed.
 `Tab` returns to the field like `Esc`; `Ctrl+V` or a right-click returns to it and pastes at the
 restored caret. The state follows the focus: a click on a row focuses the list on that row (a
-double-click also prints its detail), and focus reaching the field any other way leaves the list
+double-click also prints its detail on the displayed screen), and focus reaching the field any other way leaves the list
 and keeps the current text; the `❯` cursor is never drawn while the keys go to the prompt.
 The selected row is the recipient of the next message, and stays so back in the field: the
 placeholder reads `Message @<task>…` and the rule above the prompt ends with `── <task> ─`; selecting `main` gives
-the default recipient back. The selection follows its task when the list re-sorts, and the field
+the default recipient back. The transcript keeps **one screen per thread**, `main` and each task:
+the selection displays that thread's screen, so moving it with `↑` / `↓` switches the screen
+shown, and `main` shows the main one (see "The bottom area"). The selection follows its task when the list re-sorts, and the field
 takes the focus back, with `main` as recipient, when the list empties. Sending to a task needs the
 host's `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while no host provides it, `Enter`
 with a task recipient prints that sending to a task is not supported yet, and the text stays in the
@@ -491,21 +493,38 @@ italic), a bare rule, the status bar, a blank line and the tasks list. The statu
 by two columns and joins its parts with a dim ` · `: the permission mode (`⏵⏵ bypass permissions on
 (shift+tab to cycle)`, yellow for `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise),
 the hints, and `↓ tasks` while a task other than `main` exists; from the list it reads
-`↑/↓ select · enter view` alone. The list shows `main` first, then the tasks in creation order: the
+`↑/↓ select · enter view` alone. The list shows `main` first, then the live tasks in creation order, then the ended tasks in
+creation order, and `main` stays listed while any task, live or ended, is listed: the
 accent `❯` in column 0 while the list has focus, `●` for the recipient and `◯` for the others
-(green while running, red when failed or cancelled, dim otherwise), the name in bold, the activity
+(green while running, red when failed or cancelled, dim otherwise; an ended row is dim and its
+activity phrase reads the outcome, `✔ finished`, `✗ failed` or `⊘ cancelled`, its metrics the final
+duration), the name in bold, the activity
 phrase cut with `…`, and right-aligned and dim `<duration> · ↓ <tokens> tokens`, the task's total,
 updated by the 1 Hz poll. Widths are terminal columns measured over graphemes (an emoji or a CJK
 character counts two); on a narrow pane the phrase gives way first, then the name, then the
 metrics, and a resize rebuilds the rows at the new width. It grows up to 6 rows, then scrolls with
-the cursor. Between two polls, a new task prints `● <name>(<intent>)` then
+the cursor. **One screen per thread.** Each of `main` and the tasks has a screen of its own, of
+`ReplTranscriptCapacity` lines, and only the recipient's is displayed. A line a task writes (streamed
+text, completion lines, a tool-call question) lands on that task's screen, opened at its first line,
+and carries no `[t1]` ticket prefix in the split-pane console (the plain console keeps it); a crew
+label (`[<taskId>] `) stays, telling the agents of one crew apart inside the screen. The `main`
+screen holds the prompt's turns and the lifecycle lines, never a task's output. Copy, the mouse
+selection and word wrap (one state for every screen) act on the displayed screen; `Esc Esc` still
+interrupts the prompt's turn whatever screen is displayed, its `Interrupted` line landing on `main`. An
+attention line, such as a tool-call question, shows on the displayed screen whichever task asks and is
+recorded once in the asking task's screen. In the split-pane console, ended tasks stay listed until
+the host forgets them, with their screen: a task that ends keeps its row, its screen and, as the recipient, the recipient;
+row and screen leave together when `TuiIntegration.FinishedAgentRows` no longer returns the task. A
+poll whose ended feed fails keeps the ended rows of the last successful read: a fault is not the
+host forgetting a task. Between two polls, a new task prints `● <name>(<intent>)` then
 `⎿  Backgrounded agent (↓ tasks)` in the transcript, and a task that ended
 `● Agent "<name>" finished · <duration>`, `✗ Agent "<name>" failed · <duration>` or
 `⊘ Agent "<name>" cancelled · <duration>`: the final state comes from the host's
 `TuiIntegration.FinishedAgentRows` (the ended tasks it retains), so a task that starts and ends
 between two polls still gets both lines, in order; without it, a task that leaves the list reads as
-finished. A recipient that ends while the prompt has focus prints
-`@<task> finished · recipient is main`, and a poll whose row provider throws writes nothing and leaves the rows, the list and the recipient as they were.
+finished. These lines go to the `main` screen. The recipient stays on a task that ends; the line
+`@<task> finished · recipient is main` is printed, and the recipient goes back to `main`,
+only when the host forgets the recipient task, while the prompt has focus; a poll whose row provider throws writes nothing and leaves the rows, the list and the recipient as they were.
 `Esc Esc` prints `⎿  Interrupted · What should Orkeon do instead?`. Colours come from semantic roles (Normal, Dim, Accent, Ok, Alert, Error) on the
 terminal's own background, in 24-bit when `COLORTERM` is `truecolor` or `24bit` and in 16 named
 colours otherwise. `--glyphs ascii` turns

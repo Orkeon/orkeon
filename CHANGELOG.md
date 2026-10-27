@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one screen per thread in the split-pane console; ended tasks stay listed
+
+The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each
+task have a screen of their own, and the recipient's screen is the one displayed: selecting a task in the list
+switches the screen, a line a task writes lands on its own screen, opened at its first line, and a tool-call
+question shows on the displayed screen and is recorded once in the asking task's screen. The `[t1] ` ticket prefix is
+gone from the split-pane console (the screen says whose line it is; a crew label stays) and is kept in plain mode,
+which is unchanged. Ended tasks are no longer dropped at once: they stay listed, after the live tasks, with their
+outcome and their screen until the host forgets them (retention), and a recipient that ends stays the recipient;
+`@<task> finished · recipient is main` is printed only when the host forgets that task. `Enter` on a task row still
+prints the task's detail, now on the displayed screen, and sends nothing. The public `IThreadedConsole` interface
+and the `ConsoleThread` ambient of `Orkeon.Cli.Abstractions` carry the thread to a console that separates threads; a
+console that does not implement it gets today's output.
+
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 
 Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.

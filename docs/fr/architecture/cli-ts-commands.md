@@ -485,15 +485,17 @@ enregistrées. Dans la liste (la barre d'aide affiche `↑/↓ select · enter v
 boucler, `↑` remonte et, sur la première ligne, revient au champ ; `Échap` revient au champ depuis
 n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseur ; `Début` / `Fin`
 atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
-dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
+sur l'écran affiché et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
 `Tab` revient au champ comme `Échap` ; `Ctrl+V` ou un clic droit y revient et colle au curseur
 restauré. L'état suit le focus : un clic sur une ligne donne le focus à la liste sur cette ligne (un
-double-clic imprime aussi son détail), et le focus qui atteint le champ par un autre chemin quitte
+double-clic imprime aussi son détail sur l'écran affiché), et le focus qui atteint le champ par un autre chemin quitte
 la liste et garde le texte courant ; le curseur `❯` n'est jamais dessiné tant que les touches vont
 au prompt.
 La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
 le texte indicatif affiche `Message @<tâche>…` et le filet au-dessus de l'invite se termine par `── <tâche> ─` ;
-sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
+sélectionner `main` rend le destinataire par défaut. Le transcript tient **un écran par fil**, `main` et chaque tâche :
+la sélection affiche l'écran du fil, si bien que la déplacer avec `↑` / `↓` change l'écran montré, et `main`
+montre celui de main (voir « La zone du bas »). La sélection suit sa tâche quand la liste se
 retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
 à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
 qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
@@ -508,21 +510,39 @@ tâches. La barre d'état est indentée de deux colonnes et joint ses parties pa
 mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaune pour
 `bypassPermissions`, `dontAsk` et `acceptEdits`, atténué sinon), les aides, et `↓ tasks` tant
 qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
-La liste montre `main` d'abord, puis les tâches dans l'ordre de création : le `❯` de l'accent en
+La liste montre `main` d'abord, puis les tâches vivantes dans l'ordre de création, puis les tâches
+terminées dans l'ordre de création, et `main` reste listée tant que l'une des tâches, vivante ou terminée,
+est listée : le `❯` de l'accent en
 colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
-cours, rouge en échec ou annulée, atténué sinon), le nom en gras, la phrase d'activité coupée par
+cours, rouge en échec ou annulée, atténué sinon ; une ligne terminée est atténuée, sa phrase d'activité
+dit l'issue, `✔ finished`, `✗ failed` ou `⊘ cancelled`, ses métriques la durée finale), le nom en gras, la phrase d'activité coupée par
 `…`, et alignés à droite et atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour
 par le sondage à 1 Hz. Les largeurs sont des colonnes de terminal mesurées sur les graphèmes (un
 emoji ou un caractère CJK en compte deux) ; sur un volet étroit la phrase cède d'abord, puis le nom,
 puis les métriques, et un redimensionnement reconstruit les lignes à la nouvelle largeur. Elle
-grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une nouvelle tâche
+grandit jusqu'à 6 lignes, puis défile avec le curseur. **Un écran par fil.** `main` et chaque tâche ont leur propre écran, de
+`ReplTranscriptCapacity` lignes, et seul celui du destinataire est affiché. Une ligne qu'une tâche écrit
+(texte streamé, lignes de complétion, question d'approbation d'outil) arrive sur l'écran de cette tâche,
+ouvert à sa première ligne, et ne porte pas de préfixe de ticket `[t1]` dans la console à volets (la console
+simple le garde) ; une étiquette de crew (`[<taskId>] `) reste, elle distingue les agents d'un crew dans
+l'écran. L'écran `main` porte les tours de l'invite et les lignes de cycle de vie, jamais la sortie d'une
+tâche. La copie, la sélection à la souris, le retour à la ligne (un seul état pour tous les écrans)
+agissent sur l'écran affiché ; `Échap Échap` interrompt toujours le tour de l'invite, quel que soit l'écran
+affiché, sa ligne `Interrupted` arrivant sur `main`. Une ligne d'attention, comme une question d'approbation
+d'outil, s'affiche sur l'écran affiché quelle que soit la tâche qui demande, et est enregistrée une fois
+dans l'écran de la tâche qui demande. Dans la console à volets, les tâches terminées restent listées jusqu'à ce que
+l'hôte les oublie, avec leur écran : une tâche qui se termine garde sa ligne, son écran et, si elle était
+destinataire, le destinataire ; ligne et écran partent ensemble quand `TuiIntegration.FinishedAgentRows` ne
+rend plus la tâche. Un sondage dont le flux des terminées échoue garde les lignes terminées de la
+dernière lecture réussie : une panne n'est pas l'hôte qui oublie une tâche. Entre deux sondages, une nouvelle tâche
 imprime `● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` dans le transcript, et une
 tâche terminée `● Agent "<nom>" finished · <durée>`, `✗ Agent "<nom>" failed · <durée>` ou
 `⊘ Agent "<nom>" cancelled · <durée>` : l'état final vient du `TuiIntegration.FinishedAgentRows` de
 l'hôte (les tâches terminées qu'il conserve), si bien qu'une tâche qui démarre et finit entre deux
 sondages reçoit quand même ses deux lignes, dans l'ordre ; sans lui, une tâche qui quitte la liste
-se lit comme terminée. Un destinataire qui se termine pendant que le prompt a le focus imprime
-`@<tâche> finished · recipient is main`, et un sondage dont le fournisseur de lignes lève une
+se lit comme terminée. Ces lignes vont à l'écran `main`. Le destinataire reste sur une tâche qui se termine ; la ligne
+`@<tâche> finished · recipient is main` est imprimée, et le destinataire revient à `main`,
+seulement quand l'hôte l'oublie, tant que le prompt a le focus ; un sondage dont le fournisseur de lignes lève une
 exception n'écrit rien et laisse les lignes, la liste et le destinataire tels quels. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
 (Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
 `truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change

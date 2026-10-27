@@ -606,7 +606,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   (`ILlmDeltaSink.BeginTurn`) — un second act qui streame en même temps, un act sous une
   instance de commande en arrière-plan, une tâche de crew — tient son propre tampon de
   ligne et écrit une ligne entière à la fois, préfixée du ticket de l'instance (`[t2] `),
-  comme les lignes de complétion, une tâche de crew ajoutant son id (`[t2 task-1] `) ;
+  comme les lignes de complétion, une tâche de crew ajoutant son id (`[t2 task-1] `) — le
+  préfixe reste en mode simple, alors que la console à volets abandonne le préfixe, montre la
+  ligne sur l'écran de la tâche et garde l'étiquette de crew (`[task-1] `) ;
   une de leurs lignes qui arrive pendant que l'act de premier plan est au milieu d'une
   ligne attend la fin de celle-ci. Ainsi deux acts qui streament en même temps — deux
   sous-exécutions `runAgent` en arrière-plan, les tâches d'une vague parallèle de crew —

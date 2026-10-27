@@ -591,7 +591,9 @@ No attribute carries an id of a crew, task or agent.
   (`ILlmDeltaSink.BeginTurn`) — a second act streaming at once, an act under a background
   command instance, a crew task — holds its own line buffer and writes one whole line at a
   time, prefixed with the instance's ticket (`[t2] `), as the completion lines are, a
-  crew task adding its id (`[t2 task-1] `); a line of theirs that arrives while the
+  crew task adding its id (`[t2 task-1] `) — the prefix stays in plain mode, while the
+  split-pane console drops the prefix, shows the line on the task's screen and keeps the crew
+  label (`[task-1] `); a line of theirs that arrives while the
   foreground act is inside a line waits for that line's end. So two acts streaming at
   once — two background `runAgent` sub-runs, the tasks of a parallel crew wave — never
   write into one another and no line is cut (#211). Turns that stream no visible
