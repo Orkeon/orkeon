@@ -163,7 +163,9 @@ public partial class PathValidator : IPathValidator
 
     private PathValidationResult CheckBlockedExtensions(string resolvedPath, bool isPlainRead)
     {
-        var extension = Path.GetExtension(resolvedPath);
+        // Windows drops trailing dots and spaces from a file name, and a shell runs 'run.sh ' as
+        // readily as 'run.sh': strip them first, or "run.sh." has no extension and "run.sh " has ".sh ".
+        var extension = Path.GetExtension(resolvedPath.TrimEnd(' ', '.'));
         if (string.IsNullOrEmpty(extension))
             return PathValidationResult.Allowed(resolvedPath);
 
