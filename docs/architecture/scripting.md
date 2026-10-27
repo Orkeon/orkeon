@@ -250,7 +250,34 @@ ANT-007/ANT-010, "assumed blocking by design"):
 The nominal path for long work is the ticket cycle: `runCrewAsync(name, input?)`
 (backed by `CommandDispatchService.postWork`, same mechanism as `commands.post`)
 returns a ticket immediately and delivers the crew summary to a
-`defineAsyncCommand`'s `completed(result)` callback.
+`defineAsyncCommand`'s `completed(result, ctx)` callback.
+
+`completed` may be `async` (`(result, ctx) => void | Promise<void>` in
+`orkeon-cli.d.ts`). When it returns a promise, the drain awaits it before going on to the
+next completion or the next command of the script, the same rule as an `async dispatch`:
+its whole body, every `await` included, settles there. A host read made at each hop (the
+session's rules, `inspect`) therefore sees what the operator changed between two hops, and
+a `runCrewAsync` made after an `await` is chained to the command like one made before it.
+A promise the handler does not await is not waited for, and a launch made from it is not
+chained. A rejection or a throw does not stop the drain: the console shows
+`Error in completed('<name>'): <first line of the reason>`, the host log keeps the whole
+error, and the registry reports a completion failure for the instance
+(`CommandInstanceRegistry.ReportCompletionFailure`, which stops an `orkeon-repl --replay` on
+the line that launched it). The instance keeps its own state, and a crew launched before
+the rejection still runs and drains.
+
+```typescript
+defineAsyncCommand({
+  name: "step",
+  description: "Run a crew, then the next one, reading the session's rules at each hop.",
+  dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
+  completed: async (result, ctx) => {
+    const rules = await ctx.services.get("permissions").list();   // the rules in force now
+    ctx.writeLine(`plan done, ${rules.length} rule(s) in force`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
+  },
+});
+```
 
 ## Threading model
 

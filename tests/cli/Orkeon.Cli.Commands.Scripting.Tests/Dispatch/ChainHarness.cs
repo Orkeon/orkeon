@@ -20,6 +20,12 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
 internal static class ChainHarness
 {
     internal static IInteractiveCommand Load(CommandDispatchService service, string tempDir, string crewsDir)
+        => Load(service, tempDir, crewsDir, "chain-async.cmd.ts", "chain-async");
+
+    /// <summary>Loads <paramref name="command"/> from <paramref name="fixture"/>, <paramref name="extra"/> adding services to the whitelist.</summary>
+    internal static IInteractiveCommand Load(
+        CommandDispatchService service, string tempDir, string crewsDir, string fixture, string command,
+        Func<ScriptServiceWhitelist, ScriptServiceWhitelist>? extra = null)
     {
         foreach (var crew in new[] { "one", "two" })
         {
@@ -34,9 +40,9 @@ internal static class ChainHarness
             service,
             NullLogger<ScriptHostFacade>.Instance);
 
-        const string fixture = "chain-async.cmd.ts";
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture), Path.Combine(tempDir, fixture));
-        var whitelist = new ScriptServiceWhitelist().AddOptional("script-host", _ => facade).Build();
+        var builder = new ScriptServiceWhitelist().AddOptional("script-host", _ => facade);
+        var whitelist = (extra is null ? builder : extra(builder)).Build();
         var loader = new ScriptCommandLoader(
             new DiskBackedFileSystemService(tempDir, virtualRoot: "/cmd"),
             PassThroughTranspiler.Instance,
@@ -53,7 +59,7 @@ internal static class ChainHarness
                 Dispatch = service,
             });
         var (registry, _) = loader.LoadAndRegisterAsync(CancellationToken.None).GetAwaiter().GetResult();
-        return registry.ScriptCommands.Single(c => c.Name == "chain-async");
+        return registry.ScriptCommands.Single(c => c.Name == command);
     }
 
     internal static CommandContext Ctx(string raw, string arg, IConsoleAdapter console) => new()

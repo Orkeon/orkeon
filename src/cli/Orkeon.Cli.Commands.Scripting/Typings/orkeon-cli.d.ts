@@ -43,8 +43,27 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
   maxConcurrent?: number;
   /** Launches the work and returns immediately (do not block). Typically returns `{ ticket }`. */
   dispatch: (args: ParsedArgs<TArgs>, ctx: CommandRuntimeContext) => unknown;
-  /** Replayed on the engine thread when the agent responds. */
-  completed?: (result: CommandResponse, ctx: CommandRuntimeContext) => void;
+  /**
+   * Replayed on the engine thread, under the script's engine lock, when the agent (or the crew of a
+   * `runCrewAsync`) responds. It may be `async`: when it returns a promise the drain awaits it before
+   * going on (to the next completion, to the next command of the same script), so its whole body,
+   * every `await` included, must settle there — a host read (`ctx.services.get(...)`), then a
+   * `runCrewAsync`, is the intended use. Work left pending past the promise (a promise not awaited)
+   * is not waited for, and a launch it makes is not chained to this command.
+   *
+   * A rejection, or a throw, does not stop the drain: the console shows
+   * `Error in completed('<name>'): <first line of the reason>`, the host log keeps the whole error,
+   * and the registry reports a completion failure for the instance (`ReportCompletionFailure`;
+   * `orkeon-repl --replay` stops on the line that launched it). The instance keeps its own state
+   * (`done` or `failed`), and a launch made before the rejection still runs and drains.
+   *
+   *   completed: async (result, ctx) => {
+   *     const rules = await ctx.services.get("permissions").list();
+   *     ctx.writeLine(`${rules.length} rule(s) in force`);
+   *     ctx.services.get("script-host").runCrewAsync("next-step", { previous: result.payload });
+   *   },
+   */
+  completed?: (result: CommandResponse, ctx: CommandRuntimeContext) => void | Promise<void>;
 }
 
 /**

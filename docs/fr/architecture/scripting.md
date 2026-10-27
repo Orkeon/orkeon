@@ -262,7 +262,34 @@ ANT-007/ANT-010, « bloquants assumés ») :
 La voie nominale pour le travail long est le cycle à ticket : `runCrewAsync(name, input?)`
 (adossé à `CommandDispatchService.postWork`, même mécanisme que `commands.post`)
 retourne un ticket immédiatement et livre le résumé du crew au callback
-`completed(result)` d'un `defineAsyncCommand`.
+`completed(result, ctx)` d'un `defineAsyncCommand`.
+
+`completed` peut être `async` (`(result, ctx) => void | Promise<void>` dans
+`orkeon-cli.d.ts`). Quand il retourne une promesse, le drain l'attend avant de passer à la
+complétion suivante ou à la commande suivante du script, la même règle qu'un `async dispatch` :
+tout son corps, chaque `await` compris, s'y règle. Une lecture de l'hôte faite à chaque saut
+(les règles de la session, `inspect`) voit donc ce que l'opérateur a changé entre deux sauts,
+et un `runCrewAsync` fait après un `await` est chaîné à la commande comme un lancement fait
+avant. Une promesse que le handler n'attend pas n'est pas attendue, et un lancement fait
+depuis elle n'est pas chaîné. Un rejet ou une exception n'arrête pas le drain : la console
+affiche `Error in completed('<name>'): <première ligne de la raison>`, le log de l'hôte garde
+l'erreur entière, et le registre signale un échec de complétion pour l'instance
+(`CommandInstanceRegistry.ReportCompletionFailure`, qui arrête un `orkeon-repl --replay` sur la
+ligne qui l'a lancée). L'instance garde son propre état, et un crew lancé avant le rejet
+s'exécute et se draine quand même.
+
+```typescript
+defineAsyncCommand({
+  name: "step",
+  description: "Run a crew, then the next one, reading the session's rules at each hop.",
+  dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
+  completed: async (result, ctx) => {
+    const rules = await ctx.services.get("permissions").list();   // les règles en vigueur maintenant
+    ctx.writeLine(`plan done, ${rules.length} rule(s) in force`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
+  },
+});
+```
 
 ## Modèle de threading
 
