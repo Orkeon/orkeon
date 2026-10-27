@@ -55,6 +55,40 @@ a name starting with `ORKEON_`, containing a secret word (`KEY`, `TOKEN`, `SECRE
 `AUTH`) or invalid is dropped with a warning, a built-in one is ignored, and under Bubblewrap an added value passes
 whatever the network while no path it names is bound.
 
+### Changed — a spent token budget ends `act` with a last answer instead of losing the turn (#218)
+
+A spent `budget({ tokens })` ends `ctx.llm.act` with one last tool-less call whose answer resolves with
+`budgetExhausted: true`, instead of rejecting and dropping the turn; a failing wrap-up still rejects with
+`BudgetExhaustedError`. The budget stays a running sum of prompt plus completion of every call, now documented as
+such, and its message reads `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
+Each act call logs the running sum next to the limit, and the autonomous strategy keeps the output of delegated work
+that passes the token budget.
+
+### Fixed — `github`, `http_api`, `rag_eval`, `web_search` and MCP tools declare their access (#219)
+
+`IBaseTool.AccessFor(arguments)` gives the access class per call, defaulting to `Access`. The `github` read actions
+and `http_api`'s `GET`, `HEAD` and `OPTIONS` are reads, allowed in `plan` mode; their writes stay `Execute`.
+`rag_eval` and `web_search` are reads. An MCP tool follows its server's `readOnlyHint` annotation, and stays
+`Unspecified` (fail-closed) when the server sends none.
+
+### Added — the `github` tool receives a token (#222)
+
+The tool reads its token at registration from `Orkeon:Tools:GitHub:Token`, then from the variable
+`Orkeon:Tools:GitHub:TokenVariable` names (default `GITHUB_TOKEN`), then `GH_TOKEN`. The token is masked in results,
+errors and logs; without one, the tool's description says where to set it.
+
+### Fixed — an async `completed()` is typed `void | Promise<void>` (#220)
+
+The drain of `defineAsyncCommand` already awaited a returned promise; the typings and the scripting guide now say so,
+and that a rejection prints `Error in completed('<name>'): …` and reports a completion failure.
+
+### Added — a self-relaunching driver keeps its chain depth (#221)
+
+`runCrewAsync(name, input, { chain: "continue" })`, called from a command's own `completed`, keeps the new instance
+at its parent's depth, so a driver that loops batch after batch is no longer stopped by `MaxChainDepth`; a launch
+into another command's `completed` still climbs (the option is ignored with a warning). `inspect` shows an
+instance's depth, and the refusal reads `chain depth N reached (MaxChainDepth N, /<command>)`.
+
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 
 Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.
