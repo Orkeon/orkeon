@@ -93,17 +93,18 @@ public sealed class JsLlmFacadeBudgetTests
         // Act
         var result = await facade.ActAsync(engine, "read and summarise", null);
 
-        // Assert: one wrap-up call, its tokens recorded, no second wrap-up
+        // Assert: the second call spends the budget, so its tool never runs; one wrap-up call, its
+        // tokens recorded, no second wrap-up
         Assert.Equal("Here is what the reads found.", result.Get("output").AsString());
         Assert.True(result.Get("budgetExhausted").AsBoolean());
         Assert.Equal(3, provider.ChatCalls);
-        Assert.Equal(2, tool.CallCount);
+        Assert.Equal(1, tool.CallCount);
         Assert.Equal(150, budget.CurrentTokensConsumed);
     }
 
     [Fact]
     [Trait("BR", "CH-218")]
-    public async Task ShouldOfferNoToolAndSayTheBudgetIsSpent_WhenTheActWrapsUp()
+    public async Task ShouldKeepTheToolsButAllowNoCallAndSayTheBudgetIsSpent_WhenTheActWrapsUp()
     {
         // Arrange
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
@@ -115,15 +116,112 @@ public sealed class JsLlmFacadeBudgetTests
         // Act
         await facade.ActAsync(engine, "read and summarise", null);
 
-        // Assert
+        // Assert: the history holds tool calls and their results, which a provider such as
+        // Anthropic refuses unless the tools are defined - the schemas stay, no call is allowed.
         Assert.NotEmpty(provider.Configs[0]!.Tools ?? []);
         var wrapUp = provider.Configs[2]!;
-        Assert.Empty(wrapUp.Tools ?? []);
+        Assert.Equal(provider.Configs[0]!.Tools!.Select(t => t.Name), (wrapUp.Tools ?? []).Select(t => t.Name));
         Assert.Equal(ToolCallMode.None, wrapUp.ToolMode);
         var note = provider.Messages[2][^1];
         Assert.Equal("user", note.Role);
         Assert.Contains("budget", note.Content, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("answer now", note.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldNotRunATool_WhenTheWrapUpAnswersWithAToolCallAnyway()
+    {
+        // Arrange: the wrap-up answers with some text and a tool call, which ToolMode.None forbids
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var wrapUpBody = ToolCallBody("echo_tool", "{\"text\":\"c\"}").Replace("\"content\":\"\"", "\"content\":\"Partial summary.\"", StringComparison.Ordinal);
+        var provider = ReadsThenWrapsUp(new LlmResponse { Content = "Partial summary.", RawResponseBody = wrapUpBody, TokensUsed = 30 });
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = 100 };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Equal("Partial summary.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(1, tool.CallCount);
+        Assert.Equal(3, provider.ChatCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldKeepTheWrapUpAnswer_WhenTheWrapUpEndsAfterTheWallTime()
+    {
+        // Arrange: the wrap-up call itself outlasts the wall time
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var clock = new ManualTimeProvider();
+        var provider = ReadsThenWrapsUp(new LlmResponse { Content = "Summary.", RawResponseBody = null, TokensUsed = 30 });
+        provider.OnChat = call => { if (call == 3) clock.Advance(TimeSpan.FromMinutes(6)); };
+        var budget = new AgentExecutionBudget
+        {
+            MaxToolCalls = 10, MaxTokensConsumed = 100, MaxWallTime = TimeSpan.FromMinutes(5), TimeProvider = clock,
+        };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Equal("Summary.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(150, budget.CurrentTokensConsumed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldRunNoToolAndWrapUp_WhenTheBudgetIsSpentOnTheLastIteration()
+    {
+        // Arrange: two iterations; the second call passes the budget and asks for a tool
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var provider = ReadsThenWrapsUp(new LlmResponse { Content = "Summary.", RawResponseBody = null, TokensUsed = 30 });
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = 100 };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+        var opts = await engine.EvaluateAsync("({ maxIterations: 2 })", cancellationToken: TestContext.Current.CancellationToken);
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", opts);
+
+        // Assert: the tool of the call that spent the budget never ran, and its request is not
+        // left unanswered in the history the wrap-up sends
+        Assert.Equal("Summary.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(1, tool.CallCount);
+        Assert.Equal(3, provider.ChatCalls);
+        Assert.Equal(budget.CurrentToolCalls, provider.Messages[2].Count(m => m.Role == "tool"));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldRunNoTool_WhenTheBudgetIsSpentByTheCallThatAskedForIt()
+    {
+        // Arrange: the first call passes the budget and asks for a tool
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var provider = new SequencedProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("echo_tool", "{\"text\":\"a\"}"), TokensUsed = 200 },
+            new LlmResponse { Content = "Summary.", RawResponseBody = null, TokensUsed = 30 },
+        });
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = 100 };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Equal("Summary.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(0, tool.CallCount);
+        Assert.Equal(2, provider.ChatCalls);
     }
 
     [Fact]
@@ -244,6 +342,7 @@ public sealed class JsLlmFacadeBudgetTests
         private int _i;
         public int ChatCalls { get; private set; }
         public int FailOnCall { get; set; }
+        public Action<int>? OnChat { get; set; }
         public List<LlmConfig?> Configs { get; } = [];
         public List<LlmMessage[]> Messages { get; } = [];
 
@@ -260,6 +359,7 @@ public sealed class JsLlmFacadeBudgetTests
             ChatCalls++;
             Configs.Add(config);
             Messages.Add(messages);
+            OnChat?.Invoke(ChatCalls);
             if (ChatCalls == FailOnCall)
                 throw new HttpRequestException("provider unavailable");
             return Task.FromResult(_responses[Math.Min(_i++, _responses.Length - 1)]);

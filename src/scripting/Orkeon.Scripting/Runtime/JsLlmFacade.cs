@@ -1079,7 +1079,7 @@ public sealed partial class JsLlmFacade
                 // Pre-flight gate: refuse to pay for another LLM turn once any budget
                 // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
                 // host via JsCrew.TryUnwrapTypedHostException), except a spent token budget,
-                // which ends the act with one last call and no tools (#218).
+                // which ends the act with one last call that may call no tool (#218).
                 try
                 {
                     _budget?.ThrowIfExhausted();
@@ -1099,6 +1099,10 @@ public sealed partial class JsLlmFacade
                 RecordCallTokens(resp.TokensUsed);
 
                 var (calls, assistantTurn) = ReadToolCalls(resp);
+                // A token budget this very call spent runs none of the tools it asked for: the act
+                // ends with the wrap-up, whatever iteration this is (#218).
+                if (assistantTurn is not null && TokenBudgetSpent() is { } spentByThisCall)
+                    return await WrapUpAsync(session, messages, spentByThisCall, i + 1).ConfigureAwait(false);
                 if (assistantTurn is null)
                 {
                     var answer = RenderAnswer(resp);
@@ -1164,8 +1168,8 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Records the tokens of one call of the act loop and logs the running sum next to the limit. A
-    /// spent token budget does not throw here: the answer in hand is kept, and the next iteration's
-    /// gate ends the act with <see cref="WrapUpAsync"/>.
+    /// spent budget - tokens or wall time - does not throw here: the tokens are recorded whatever the
+    /// budget says, the answer in hand is kept, and the gates that follow end the act.
     /// </summary>
     private void RecordCallTokens(int tokens)
     {
@@ -1174,10 +1178,9 @@ public sealed partial class JsLlmFacade
         {
             _budget.RecordTokens(tokens);
         }
-        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
-            when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
+        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
-            // Recorded already: the gate before the next call sees it.
+            // Recorded already: the gate after this call, or before the next one, sees it.
         }
         finally
         {
@@ -1191,10 +1194,31 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// The end of an act whose token budget is spent (#218): one last chat call with no tools, told
-    /// the budget is spent, whose answer is the act's result marked <c>budgetExhausted</c>. Its
-    /// tokens are recorded but never start another wrap-up. When it fails or answers nothing, the
-    /// act rejects with the budget's own error, as before.
+    /// The token refusal of the budget when its tokens are spent, else null. Any other spent dimension
+    /// throws, as the gate before each call does.
+    /// </summary>
+    private Orkeon.Domain.Autonomous.BudgetExhaustedException? TokenBudgetSpent()
+    {
+        try
+        {
+            _budget?.ThrowIfExhausted();
+            return null;
+        }
+        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
+            when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
+        {
+            return spent;
+        }
+    }
+
+    /// <summary>
+    /// The end of an act whose token budget is spent (#218): one last chat call that may call no tool, told
+    /// the budget is spent, whose answer is the act's result marked <c>budgetExhausted</c>. The
+    /// session's tools stay in the request - a provider refuses a history of tool calls when the request
+    /// defines no tool - with <see cref="ToolCallMode.None"/>, and a tool call the model returns anyway
+    /// is never run: only its text is the answer. Its tokens are recorded but never start another
+    /// wrap-up, and a wall time it outlasts keeps its answer. When it fails or answers nothing, the act
+    /// rejects with the budget's own error, as before.
     /// </summary>
     private async Task<object> WrapUpAsync(
         ActSession session, List<LlmMessage> messages, Orkeon.Domain.Autonomous.BudgetExhaustedException spent, int iteration)
@@ -1208,7 +1232,7 @@ public sealed partial class JsLlmFacade
         {
             activity?.SetTag("orkeon.llm.act.iteration", iteration);
             activity?.SetTag("orkeon.llm.act.budget_exhausted", true);
-            var cfg = session.Config with { Tools = [], ToolMode = ToolCallMode.None };
+            var cfg = session.Config with { Tools = session.ToolSchemas ?? session.Config.Tools, ToolMode = ToolCallMode.None };
             try
             {
                 resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
@@ -1238,7 +1262,7 @@ public sealed partial class JsLlmFacade
 
     [Microsoft.Extensions.Logging.LoggerMessage(
         EventId = 4, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
-        Message = "act: agent '{Agent}' ran out of budget - {Reason}; one last call with no tools asks for its answer")]
+        Message = "act: agent '{Agent}' ran out of budget - {Reason}; one last call that may call no tool asks for its answer")]
     static partial void LogTokenBudgetSpent(Microsoft.Extensions.Logging.ILogger logger, string agent, string reason);
 
     /// <summary>

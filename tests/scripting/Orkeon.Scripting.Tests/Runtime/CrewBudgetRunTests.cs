@@ -226,14 +226,15 @@ public sealed class CrewBudgetRunTests
         var result = await crew.RunAsync(null, Ct);
 
         // Assert: the turn of each run in flight when the tally reached 100 may land, never a later
-        // one; each run then makes its one wrap-up call (#218), which answers nothing here
+        // one, and no tool it asks for runs: the three turns before it ran theirs (fewer when two turns
+        // land together past 75). Each run then makes its one wrap-up call (#218), which answers nothing here
         var parts = result.output.Split(" | ");
         Assert.Equal(2, parts.Length);
         Assert.StartsWith("completed: budget: Token budget exhausted: ", parts[0], StringComparison.Ordinal);
         Assert.StartsWith("budget: Token budget exhausted: ", parts[1], StringComparison.Ordinal);
         Assert.All(parts, p => Assert.EndsWith("(limit 100)", p, StringComparison.Ordinal));
         Assert.Equal(6, provider.ChatCount);
-        Assert.Equal(4, tool.CallCount);
+        Assert.InRange(tool.CallCount, 2, 3);
     }
 
     [Fact]

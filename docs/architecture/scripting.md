@@ -162,11 +162,15 @@ the size of the conversation nor what a provider bills with its cache. Each call
 next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
 calls`, Information).
 
-When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer: a
-final answer is returned as it is, and tool calls run. The gate before the next call then ends the act
-with one last chat call, with no tools (`ToolMode.None`), after a user turn telling the model its budget
-is spent and asking it to answer now with what it has. That answer is the act's result, with
-`budgetExhausted: true`; its tokens are recorded but start no other wrap-up. A warning logs that the
+When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
+a final answer is returned as it is. The tool calls it asks for do not run: once the budget is spent no
+other tool runs, on the last iteration too, and the act ends with one last chat call that may call no
+tool, after a user turn telling the model its budget is spent and asking it to answer now with what it
+has. That call keeps the tools of the loop declared with `ToolMode.None` — a history that holds tool
+calls needs them on Anthropic, which is sent `tool_choice: none`, as the OpenAI-compatible providers
+are; Ollama, which has no such switch, is sent no tools. That answer is the act's result, with
+`budgetExhausted: true`; a tool call it returns anyway is never run, its tokens are recorded but start
+no other wrap-up, and it is kept even when it ends after the wall-time limit. A warning logs that the
 budget ran out. When that last call fails, or answers nothing, the act rejects with
 `BudgetExhaustedError`, whose message names what it counted: `Token budget exhausted: <sum> tokens sent
 and received over <n> calls (limit <limit>)`. The other dimensions (tool calls, wall time, delegation

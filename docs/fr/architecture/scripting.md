@@ -166,16 +166,20 @@ avec son cache. Chaque appel journalise la somme courante à côté de la limite
 used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
 
 Quand la somme atteint la limite, l'act n'échoue pas. Un appel dont les tokens la dépassent garde sa
-réponse : une réponse finale est rendue telle quelle, et les appels d'outils s'exécutent. La garde
-avant l'appel suivant termine alors l'act par un dernier appel de chat, sans outils (`ToolMode.None`),
-après un tour utilisateur qui dit au modèle que son budget est épuisé et lui demande de répondre
-maintenant avec ce qu'il a. Cette réponse est le résultat de l'act, avec `budgetExhausted: true` ; ses
-tokens sont comptés mais ne lancent aucune autre conclusion. Un avertissement journalise que le budget
-est épuisé. Quand ce dernier appel échoue, ou ne répond rien, l'act rejette avec
-`BudgetExhaustedError`, dont le message nomme ce qu'il a compté : `Token budget exhausted: <somme>
-tokens sent and received over <n> calls (limit <limite>)`. Les autres dimensions (appels d'outils,
-temps mural, profondeur de délégation, enfants) rejettent toujours à la garde, et `maxIterations`
-termine toujours par `exhausted: true`.
+réponse : une réponse finale est rendue telle quelle. Les appels d'outils qu'il demande ne s'exécutent
+pas : une fois le budget épuisé aucun autre outil ne tourne, à la dernière itération aussi, et l'act se
+termine par un dernier appel de chat qui ne peut appeler aucun outil, après un tour utilisateur qui dit
+au modèle que son budget est épuisé et lui demande de répondre maintenant avec ce qu'il a. Cet appel
+garde les outils de la boucle déclarés avec `ToolMode.None` — un historique qui contient des appels
+d'outils les exige chez Anthropic, qui reçoit `tool_choice: none`, comme les providers compatibles
+OpenAI ; Ollama, qui n'a pas ce réglage, ne reçoit aucun outil. Cette réponse est le résultat de l'act,
+avec `budgetExhausted: true` ; un appel d'outil qu'elle rend malgré tout n'est jamais exécuté, ses
+tokens sont comptés mais ne lancent aucune autre conclusion, et elle est gardée même quand elle se
+termine après la limite de temps mural. Un avertissement journalise que le budget est épuisé. Quand ce
+dernier appel échoue, ou ne répond rien, l'act rejette avec `BudgetExhaustedError`, dont le message
+nomme ce qu'il a compté : `Token budget exhausted: <somme> tokens sent and received over <n> calls
+(limit <limite>)`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation,
+enfants) rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`.
 
 ## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
 
