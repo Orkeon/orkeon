@@ -39,6 +39,7 @@
     "Orkeon:TokenCounter",
     "Orkeon:Tools:Drive",
     "Orkeon:Tools:Email",
+    "Orkeon:Tools:GitHub",
     "Orkeon:Tools:ResultLimits",
     "Orkeon:Tools:Shell",
     "PathSecurity",

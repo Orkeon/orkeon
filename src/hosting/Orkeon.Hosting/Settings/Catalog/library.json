@@ -314,6 +314,13 @@
       "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
     },
     {
+      "path": "Orkeon:Tools:GitHub",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonWebTools",
+      "description": "The `Orkeon:Tools:GitHub` section: where the `github` tool finds its token, read once when the tool is registered. Without a token every call is anonymous, and `create_issue` and `create_pr` are refused by GitHub."
+    },
+    {
       "path": "Orkeon:Tools:ResultLimits",
       "category": "tools",
       "hosts": [],
@@ -2389,6 +2396,20 @@
       "type": "boolean",
       "default": false,
       "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
+    },
+    {
+      "path": "Orkeon:Tools:GitHub:Token",
+      "section": "Orkeon:Tools:GitHub",
+      "type": "string",
+      "secret": true,
+      "description": "GitHub personal access token the tool sends as a bearer. Keep it out of a committed file (`appsettings.local.json`, or the environment variable instead). Not set: the variable named by `TokenVariable`, then `GH_TOKEN`."
+    },
+    {
+      "path": "Orkeon:Tools:GitHub:TokenVariable",
+      "section": "Orkeon:Tools:GitHub",
+      "type": "string",
+      "default": "GITHUB_TOKEN",
+      "description": "Name of the environment variable holding the token when `Token` is empty; `GH_TOKEN` is read after it."
     },
     {
       "path": "Orkeon:Tools:ResultLimits:Limits:<name>",

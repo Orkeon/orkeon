@@ -288,6 +288,8 @@
     "Orkeon:Tools:Email:CredentialsDirectory": "Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages par utilisateur n'est pas le bon (un compte de service). Lu par l'hôte, pas par les outils.",
     "Orkeon:Tools:Email:DefaultAccount": "Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte.",
     "Orkeon:Tools:Email:Screening:WithholdRejected": "À true, le corps d'un message que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut : le détecteur a été réglé sur des pages web, et les lettres d'information le déclenchent.",
+    "Orkeon:Tools:GitHub:Token": "Jeton d'accès personnel GitHub que l'outil envoie comme bearer. Le garder hors d'un fichier versionné (`appsettings.local.json`, ou plutôt la variable d'environnement). Non renseigné : la variable que nomme `TokenVariable`, puis `GH_TOKEN`.",
+    "Orkeon:Tools:GitHub:TokenVariable": "Nom de la variable d'environnement qui contient le jeton quand `Token` est vide ; `GH_TOKEN` est lue après elle.",
     "Orkeon:Tools:ResultLimits:Limits:<name>": "La coupe en caractères, par nom d'outil (insensible à la casse).",
     "Orkeon:Tools:ResultLimits:MaxParallelToolCalls": "Le plus grand nombre d'appels d'un même lot qui s'exécutent en même temps.",
     "Orkeon:Tools:Shell:AllowedCommands": "Un remplacement complet de l'allowlist par défaut, tel quel ; il annule `AllowInterpreters` et rétablit la restriction de git à la lecture seule. Vide garde l'allowlist par défaut.",

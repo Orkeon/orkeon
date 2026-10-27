@@ -150,6 +150,15 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         return action is not null && ReadActions.Contains(action.Trim()) ? ToolAccess.Read : ToolAccess.Execute;
     }
 
+    /// <summary>What the description adds when the tool holds no token, so a refusal tells the operator what to set.</summary>
+    internal const string NoTokenNotice =
+        " No token is configured: write operations (create_issue, create_pr) need one, set " +
+        "Orkeon:Tools:GitHub:Token or the GITHUB_TOKEN environment variable.";
+
+    /// <inheritdoc />
+    public override string Description =>
+        string.IsNullOrWhiteSpace(_personalAccessToken) ? base.Description + NoTokenNotice : base.Description;
+
     /// <summary>Initializes a new instance of <see cref="GitHubTool"/>.</summary>
     /// <param name="personalAccessToken">Optional GitHub personal access token for authenticated requests.</param>
     /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for HTTP requests.</param>
@@ -222,7 +231,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
             try
             {
 #pragma warning disable CA1308 // request.Action is normalized to the lowercase switch keys ("list_issues", ...), a required match form, not a comparison normalization
-                return request.Action.ToLowerInvariant() switch
+                return Redacted(request.Action.ToLowerInvariant() switch
 #pragma warning restore CA1308
                 {
                     "list_issues" => await ListIssuesAsync(request, cancellationToken).ConfigureAwait(false),
@@ -237,20 +246,30 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
                         Action = request.Action,
                         Error = $"Unsupported action: {request.Action}"
                     }
-                };
+                });
             }
             catch (HttpRequestException ex)
             {
-                LogGitHubRequestFailed(ex, request.Action);
-                return new GitHubResponse
+                LogGitHubRequestFailed(request.Action, ex.GetType().Name, Redact(ex.Message));
+                return Redacted(new GitHubResponse
                 {
                     Success = false,
                     Action = request.Action,
                     Error = $"GitHub API request failed: {ex.Message}"
-                };
+                });
             }
         }
     }
+
+    // The token never reaches the model: an error that quotes it (an echoing proxy, a failed request
+    // carrying the header) is shown with the token masked.
+    private GitHubResponse Redacted(GitHubResponse response) =>
+        response.Error is { } error ? response with { Error = Redact(error) } : response;
+
+    private string Redact(string text) =>
+        string.IsNullOrWhiteSpace(_personalAccessToken)
+            ? text
+            : text.Replace(_personalAccessToken, "***", StringComparison.Ordinal);
 
     private void ConfigureDefaultHeaders()
     {
@@ -523,7 +542,8 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         Message = "GitHub API: {Action} on {Owner}/{Repo} returned {Count} items")]
     private partial void LogGitHubAction(string action, string owner, string repo, int count);
 
+    // The exception object stays out of the log: its message is logged with the token masked.
     [LoggerMessage(Level = LogLevel.Error,
-        Message = "GitHub API request failed for action {Action}")]
-    private partial void LogGitHubRequestFailed(Exception ex, string action);
+        Message = "GitHub API request failed for action {Action}: {ExceptionType}: {Reason}")]
+    private partial void LogGitHubRequestFailed(string action, string exceptionType, string reason);
 }
