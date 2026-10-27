@@ -435,4 +435,19 @@ public sealed class LlmPresetsTests
         Assert.Equal(LlmPresets.Custom, LlmPresets.CardOf(Setting(null, baseUrl, "m")));
         Assert.False(LlmPresets.NeedsApiKey(baseUrl));
     }
+
+    [Fact]
+    public void Every_cloud_card_names_the_key_variable_of_the_provider_catalogue()
+    {
+        var checkedCards = 0;
+        foreach (var preset in LlmPresets.ProviderCatalogFor(EnglishStudioStrings.Instance).Where(p => p.Kind == LlmPresetKind.Cloud))
+        {
+            var provider = ModelProviderCatalog.Find(preset.Name);
+            Assert.NotNull(provider);
+            Assert.Equal(provider.ApiKeyVariable, preset.DefaultApiKeyEnv);
+            checkedCards++;
+        }
+
+        Assert.True(checkedCards > 0);
+    }
 }
