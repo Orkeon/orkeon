@@ -595,7 +595,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 crew.ManagerAgentId,
                 stringVariables,
                 cancellationToken).ConfigureAwait(false),
-            "Autonomous" => await processStrategy.ExecuteAutonomousAsync(crew, AgentExecutionBudget.Permissive, stringVariables, cancellationToken).ConfigureAwait(false),
+            "Autonomous" => await processStrategy.ExecuteAutonomousAsync(crew, crew.Budget.ToExecutionBudget(), stringVariables, cancellationToken).ConfigureAwait(false),
             _ => throw new NotSupportedException($"Process type {crew.ProcessType} not supported")
         };
     }

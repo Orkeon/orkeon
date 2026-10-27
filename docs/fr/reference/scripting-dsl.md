@@ -85,7 +85,7 @@ déduit.
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
-| `budget` | ✅ | ❌ ignoré |
+| `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; ❌ ignoré (averti) avec un autre process |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
@@ -336,7 +336,7 @@ limites de conception, chacune dite plutôt que silencieuse.
 
 | Limite | Comportement |
 |---|---|
-| `budget()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. Le budget ne borne que la forme procédurale (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
+| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). Avec un autre process il est ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |

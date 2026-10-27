@@ -32,6 +32,7 @@ memory: bool              # default: false. true : la crew range le résultat de
 memoryProvider: string    # Exige memory: true (refusé sinon). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …). Absent : le magasin par défaut de l'hôte (Memory:Provider)
 planning: bool            # default: false. true : avant la première tâche, un planificateur (le profil par défaut de l'hôte) écrit un plan pas à pas par tâche, que la tâche lit dans son prompt, dans chaque mode ; il ne change ni l'ordre ni les agents
 maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour toute la crew, tous ses agents et son manager confondus (vagues parallèles comprises) ; une de plus attend son tour. Le max_rpm de CrewAI (max_rpm: est accepté). 0 ou moins fait échouer le chargement
+budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement — voir Budget autonome plus bas ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un des agents de la crew (tout autre nom fait échouer le chargement, en les listant). Hiérarchique : le manager — requis (omis, le chargement échoue) ; il assigne et revoit sur son propre bloc llm:, profil et modèle. Consensual : l'arbitre du repli ManagerDecision (inactif, avec un avertissement au début du run, sous un autre repli). Tout autre process : refusé au chargement
 graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
 
@@ -289,21 +290,28 @@ run de graphe, c'est `graphConfig` (ci-dessus). Le moteur générique de machine
 `CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
 servent (voir [FSM](../orchestration/fsm.md)).
 
-## Configuration Autonomous Budget
+## Budget autonome
 
-> **⚠️ Non implémenté en YAML.** Il n'existe **aucune clé `autonomousBudget`**
-> dans le schéma YAML aujourd'hui : le loader n'en parse pas, et aucun modèle
-> YAML correspondant n'existe. Avec `process: "autonomous"`,
-> `AgentExecutionBudget.Permissive` est toujours utilisé (50 appels d'outils,
-> profondeur 4, 15 min, 64 000 tokens, 10 spawns). Le budget
-> multi-dimensions se configure **uniquement via l'API C#** — presets
-> `AgentExecutionBudget.Strict` / `.Default` / `.Permissive` ou valeurs
-> personnalisées (voir le
-> [guide de l'orchestration Autonomous](../orchestration/autonomous.md)) :
->
-> - **Strict** : MaxToolCalls=8, MaxDelegationDepth=1, MaxWallTime=2min, MaxTokens=8000, MaxSpawns=1
-> - **Default** : MaxToolCalls=15, MaxDelegationDepth=2, MaxWallTime=5min, MaxTokens=16000, MaxSpawns=3
-> - **Permissive** : MaxToolCalls=50, MaxDelegationDepth=4, MaxWallTime=15min, MaxTokens=64000, MaxSpawns=10
+`budget:` borne le run d'une crew `process: autonomous` (#218) :
+
+```yaml
+process: autonomous
+budget:
+  tokens: 400000          # somme courante prompt + complétion de chaque appel ; aucune par défaut
+  wallTimeSeconds: 1800   # aucune par défaut
+  toolCalls: 80           # tâches distribuées ; 50 par défaut
+  delegationDepth: 2      # délégations du run ; 4 par défaut
+  spawnedAgents: 3        # agents créés via spawn_agent ; 10 par défaut
+```
+
+Chaque clé est facultative, et une clé omise prend son défaut : une crew sans `budget:` n'a ni
+plafond de tokens ni temps mural, si bien qu'une crew ordinaire n'est jamais écourtée par un chiffre
+qu'elle n'a pas choisi. Une limite de 0 ou moins, ou un `budget:` sur une crew d'un autre process — le
+seul qui le dépense est `autonomous` — fait échouer le chargement, en nommant la crew. L'export
+réécrit le bloc, la durée en secondes entières. Le même budget est
+`CrewBuilder.Budget(new CrewBudget { ... })` en C# et
+`crewBuilder().budget({ tokens, wallTime, toolCalls, delegationDepth, spawnedAgents })` en `.ork.ts`
+(voir le [guide de l'orchestration Autonomous](../orchestration/autonomous.md)).
 
 ## Export
 

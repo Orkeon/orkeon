@@ -331,6 +331,11 @@ public class CrewYamlConfig
     /// </summary>
     public int? MaxRpm { get; set; }
     /// <summary>
+    /// Gets or sets what one run of an autonomous crew may spend (<c>budget:</c>, #218); unset, no token
+    /// cap and no wall time. Refused on any other process, and a limit of zero or less is refused at load.
+    /// </summary>
+    public CrewBudgetYamlConfig? Budget { get; set; }
+    /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): the hierarchical
     /// manager — required there — or the consensual crew's arbiter of the <c>ManagerDecision</c>
     /// fallback. The four other processes have none, and a key that names no agent fails the load
@@ -398,6 +403,8 @@ public class CrewSettingsYamlConfig
     public bool? Planning { get; set; }
     /// <summary>Gets or sets the crew's model requests per minute — see <see cref="CrewYamlConfig.MaxRpm"/>.</summary>
     public int? MaxRpm { get; set; }
+    /// <summary>Gets or sets what one autonomous run may spend - see <see cref="CrewYamlConfig.Budget"/>.</summary>
+    public CrewBudgetYamlConfig? Budget { get; set; }
     /// <summary>
     /// Gets or sets the key of the crew's manager agent (<c>managerAgent:</c>): Hierarchical (required)
     /// and Consensual (the <c>ManagerDecision</c> arbiter) only — see <see cref="CrewYamlConfig.ManagerAgent"/>.
@@ -419,3 +426,22 @@ public class CrewSettingsYamlConfig
 }
 
 #pragma warning restore CA2227 // Collection properties should be read only
+
+/// <summary>
+/// The <c>budget:</c> block of an autonomous crew (#218): what one run may spend, its manager, the agents
+/// it delegates to and the agents they spawn together. A key left out keeps its default: no token cap,
+/// no wall time, 50 tool calls, a delegation depth of 4, 10 spawned agents.
+/// </summary>
+public sealed class CrewBudgetYamlConfig
+{
+    /// <summary>Gets or sets the running sum of tokens (prompts plus completions) a run may spend (<c>tokens:</c>).</summary>
+    public int? Tokens { get; set; }
+    /// <summary>Gets or sets the seconds a run may last (<c>wallTimeSeconds:</c>).</summary>
+    public int? WallTimeSeconds { get; set; }
+    /// <summary>Gets or sets the tool calls a run may make (<c>toolCalls:</c>).</summary>
+    public int? ToolCalls { get; set; }
+    /// <summary>Gets or sets how deep delegation may go (<c>delegationDepth:</c>).</summary>
+    public int? DelegationDepth { get; set; }
+    /// <summary>Gets or sets the agents a run may spawn (<c>spawnedAgents:</c>).</summary>
+    public int? SpawnedAgents { get; set; }
+}

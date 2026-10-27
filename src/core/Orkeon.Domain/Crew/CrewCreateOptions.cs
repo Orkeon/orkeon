@@ -1,3 +1,4 @@
+using Orkeon.Domain.Crew.ValueObjects;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Configuration;
@@ -46,6 +47,14 @@ public sealed class CrewCreateOptions
     /// less is refused.
     /// </summary>
     public int? MaxRpm { get; init; }
+
+    /// <summary>
+    /// What one run of the crew may spend (<see cref="Crew.Budget"/>, #218); null - the default - leaves
+    /// every limit at its default. Read by the Autonomous process only:
+    /// <see cref="Crew.Create(CrewCreateOptions)"/> refuses it in the five others, and refuses a limit of
+    /// zero or less.
+    /// </summary>
+    public CrewBudget? Budget { get; init; }
 
     /// <summary>
     /// Optional provider the crew's manager runs on (C# <c>WithManagerLlm</c>): read by the

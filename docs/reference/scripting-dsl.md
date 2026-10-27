@@ -81,7 +81,7 @@ inferred.
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
-| `budget` | ✅ | ❌ ignored |
+| `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; ❌ ignored (warned) with another process |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
@@ -320,7 +320,7 @@ each of them stated rather than silent.
 
 | Limit | Behaviour |
 |---|---|
-| `budget()` in the declarative shape | Ignored, and said so: the run logs a warning naming the method. The budget bounds the procedural shape only (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
+| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). With another process it is ignored, and said so: the run logs a warning naming the method. |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |

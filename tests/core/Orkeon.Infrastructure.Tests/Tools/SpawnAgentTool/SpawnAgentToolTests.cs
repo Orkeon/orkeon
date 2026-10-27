@@ -260,6 +260,41 @@ public class SpawnAgentToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldChargeTheParentsChargedBudgetOnce_WhenTheSpawnedAgentReportsTokens()
+    {
+        // Arrange: the parent charges a crew budget, which its child budget carries too
+        var crew = new AgentExecutionBudget { MaxToolCalls = 100, MaxTokensConsumed = 100_000, MaxSpawnedAgents = 10 };
+        var parentBudget = new AgentExecutionBudget
+        {
+            MaxToolCalls = 10, MaxDelegationDepth = 3, MaxTokensConsumed = 10_000, MaxSpawnedAgents = 5,
+            MaxWallTime = TimeSpan.FromMinutes(10), ChargedTo = crew,
+        };
+        var factoryMock = CreateCapturingFactoryMock(out _);
+        var execution = new CapturingExecutionService
+        {
+            ResultToReturn = new AppTaskResult(
+                Success: true, Output: "ok", StructuredOutput: null, ToolsUsed: [],
+                ExecutionTime: TimeSpan.FromMilliseconds(5), TokensUsed: 123)
+        };
+        using var tool = new Orkeon.Infrastructure.Tools.SpawnAgentTool(
+            factoryMock, _parentAgentId, _parentCrewId, parentBudget, executionService: execution);
+        var request = new ProtocolToolCallRequest(
+            ToolName: "spawn_agent",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["role"] = "summariser", ["goal"] = "Summarise", ["task"] = "5 bullets", ["wait_for_result"] = true
+            });
+
+        // Act
+        await tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(123, parentBudget.CurrentTokensConsumed);
+        Assert.Equal(123, crew.CurrentTokensConsumed);
+    }
+
+    [Fact]
     public async Task ShouldRecordSpawnAgainstParentBudget_WhenInvoked()
     {
         // Arrange

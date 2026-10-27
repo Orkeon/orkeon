@@ -29,6 +29,7 @@ memory: bool              # default: false. true: the crew stores the result of 
 memoryProvider: string    # Requires memory: true (refused otherwise). "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …). Unset: the host's default store (Memory:Provider)
 planning: bool            # default: false. true: before the first task, a planner (the host's default profile) writes a step-by-step plan per task, which the task reads in its prompt, in every mode; it changes neither the order nor the agents
 maxRpm: int               # default: none — at most N model requests per minute for the whole crew, all its agents and its manager together (parallel waves included); one more waits its turn. CrewAI's max_rpm (max_rpm: is accepted). 0 or less fails the load
+budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only — see Autonomous budget below; default: no token or time cap, 50 / 4 / 10
 managerAgent: string      # The key of one of the crew's agents (any other name fails the load, listing them). Hierarchical: the manager — required (omitted, the load fails); it assigns and reviews on its own llm: block, profile and model. Consensual: the arbiter of the ManagerDecision fallback (idle, with a warning at the start of the run, under another fallback). Any other process: refused at load
 graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 
@@ -274,19 +275,27 @@ consecutive tool errors, and the output-validation retries. What bounds a graph 
 `graphConfig` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
 Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
 
-## Autonomous Budget configuration
+## Autonomous budget
 
-> **⚠️ Not implemented in YAML.** There is **no `autonomousBudget` key** in the
-> YAML schema today: the loader does not parse one, and no corresponding YAML
-> model exists. With `process: "autonomous"`, `AgentExecutionBudget.Permissive`
-> is always used (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns). The multi-dimensional budget is configurable **through the
-> C# API only** — `AgentExecutionBudget.Strict` / `.Default` / `.Permissive`
-> presets or custom values (see the
-> [Autonomous orchestration guide](../orchestration/autonomous.md)):
->
-> - **Strict**: MaxToolCalls=8, MaxDelegationDepth=1, MaxWallTime=2min, MaxTokens=8000, MaxSpawns=1
-> - **Default**: MaxToolCalls=15, MaxDelegationDepth=2, MaxWallTime=5min, MaxTokens=16000, MaxSpawns=3
-> - **Permissive**: MaxToolCalls=50, MaxDelegationDepth=4, MaxWallTime=15min, MaxTokens=64000, MaxSpawns=10
+`budget:` bounds the run of a `process: autonomous` crew (#218):
+
+```yaml
+process: autonomous
+budget:
+  tokens: 400000          # running sum of prompt + completion of every call; none by default
+  wallTimeSeconds: 1800   # none by default
+  toolCalls: 80           # tasks handed out; 50 by default
+  delegationDepth: 2      # delegations in the run; 4 by default
+  spawnedAgents: 3        # agents spawned through spawn_agent; 10 by default
+```
+
+Every key is optional, and a key left out takes its default: a crew without `budget:` has no token
+cap and no wall time, so an ordinary crew is never cut short by a figure it did not choose. A limit of
+0 or less, or a `budget:` on a crew of another process — the only one that spends it is
+`autonomous` — fails the load, naming the crew. The export writes the block back, the wall time in
+whole seconds. The same budget is `CrewBuilder.Budget(new CrewBudget { ... })` in C# and
+`crewBuilder().budget({ tokens, wallTime, toolCalls, delegationDepth, spawnedAgents })` in `.ork.ts`
+(see the [Autonomous orchestration guide](../orchestration/autonomous.md)).
 
 ## Export
 

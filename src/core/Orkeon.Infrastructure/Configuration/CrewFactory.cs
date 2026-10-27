@@ -425,6 +425,10 @@ public partial class CrewFactory : ICrewFactory
         if (config.MaxRpm is { } maxRpm)
             builder.MaxRpm(maxRpm);
 
+        // The budget one autonomous run of the crew spends (#218).
+        if (config.Budget is not null)
+            builder.Budget(config.Budget);
+
         // The graph config is a crew-definition setting that must survive to execution time —
         // the GraphProcessStrategy reads it off the domain crew (P2-O-01).
         if (config.GraphConfig is not null)

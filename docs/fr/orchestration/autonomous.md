@@ -75,7 +75,7 @@ Task<CrewOutput> ExecuteAutonomousAsync(
 | Endroit | Rôle |
 |--------|-------------|
 | `ProcessStrategyFactory` | `"Autonomous"` → `AutonomousProcessStrategy` |
-| `SequentialCrewOrchestrator` | Dirige `"Autonomous"` vers `ExecuteAutonomousAsync` avec `AgentExecutionBudget.Permissive` |
+| `SequentialCrewOrchestrator` | Dirige `"Autonomous"` vers `ExecuteAutonomousAsync` avec le budget de la crew (`crew.Budget.ToExecutionBudget()`) |
 | `AddOrkeonInfrastructure()` | Enregistre `AutonomousProcessStrategy` et `IAgentChannel` → `InMemoryAgentChannel` (scoped) |
 
 ## Flux d'exécution
@@ -106,7 +106,7 @@ Les détails qui comptent pour dimensionner un run :
 - **L'assignation** passe par `IManagerAgent` (`LlmBasedManager`), qui appelle le LLM manager de la crew, résolu une fois par run comme en mode Hierarchical : le fournisseur que pose `CrewBuilder.WithManagerLlm` (C#), sinon le profil par défaut de l'hôte — une crew autonome n'a pas d'agent manager : `managerAgent:` (`.manager(agent)` en `.ork.ts`, `.WithManager(agent)` en C#) est refusé au chargement ou à la construction de la crew. L'`agent:` d'une tâche n'est pas consulté. Une erreur du LLM retombe sur le premier agent.
 - **Appels d'outils** : la stratégie enregistre **un** `RecordToolCall()` par tâche distribuée (l'assignation) ; les appels d'outils de l'agent dans sa boucle ne sont pas imputés au budget. `MaxToolCalls` borne donc le nombre de tâches tentées.
 - **Profondeur de délégation** : `RecordDelegation()` incrémente un compteur commun à la crew qui n'est jamais décrémenté, si bien que `MaxDelegationDepth` se comporte comme le nombre de délégations permises dans le run. Le délégué est le **premier autre agent** dans l'ordre de la crew ; il reprend la tâche elle-même — son plan aussi, quand la crew planifie (GAP-31) —, dans le contexte de la tentative échouée, dérivé de lui (GAP-21) : l'id et la portée mémoire de la crew, les variables d'entrée du run et les sorties déjà produites, plus `delegation_context` et `autonomous_child_budget_snapshot`. Il rappelle la mémoire de la crew comme toute exécution qui répond à une tâche, sa sortie — quand elle réussit — est le résultat de la tâche, rangée une fois sous le pair avec `memory: true`, et il ne délègue pas plus loin. L'agent qui a échoué fait échouer la tâche (`AgentFailedTaskEvent`), la tâche est assignée au pair, et se termine sous lui ([Événements](../architecture/domain-events.md)).
-- **Tokens** : `MaxTokensConsumed` couvre tout le run. Les tokens d'une exécution directe sont imputés au budget de la crew à son retour, ceux d'une tentative échouée compris ; ceux d'une exécution déléguée au budget enfant et au budget parent, si bien que chaque exécution est comptée une fois sur celui de la crew. Un travail dont les tokens dépassent le budget, direct ou délégué, garde sa sortie : la tâche est consignée avec elle, puis le run s'arrête sur le budget comme pour tout autre épuisement. Une tentative directe échouée qui a épuisé le budget n'est pas confiée à un pair. Le refus se lit `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
+- **Tokens** : `MaxTokensConsumed` couvre tout le run. Les tokens d'une exécution directe sont imputés au budget de la crew à son retour, ceux d'une tentative échouée compris ; ceux d'une exécution déléguée une fois sur chaque budget de la chaîne de l'enfant et de celle de la crew (`RecordChildTokens`) : un budget commun aux deux chaînes est compté une fois, si bien que chaque token compte une fois par budget. Un travail dont les tokens dépassent le budget, direct ou délégué, garde sa sortie : la tâche est consignée avec elle, puis le run s'arrête sur le budget comme pour tout autre épuisement. Une tentative directe échouée qui a épuisé le budget n'est pas confiée à un pair. Le refus se lit `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
 - **Résultat** : la sortie de la crew concatène les sorties des tâches. Une tâche en échec — directement, sans pair à qui déléguer, ou déléguée à un pair qui échoue aussi — **fait échouer la crew**, et les tâches qui en dépendent sont sautées sans être réclamées. Un budget épuisé fait aussi échouer la crew, son erreur commençant par `Execution budget exhausted: <dimension>` et nommant chaque tâche qu'il n'a pas atteinte ; `ICrewExecutionHook` reçoit `Failed` avec cette raison (`Canceled` reste réservé à une vraie annulation). `orkeon run` sort en 2 dans les deux cas.
 
 ## Budget multi-dimensionnel
@@ -128,7 +128,7 @@ Le budget contrôle 5 dimensions indépendantes. Chaque dimension a un compteur 
 // Production : limites conservatrices
 var strict = AgentExecutionBudget.Strict;
 
-// Développement : limites larges — ce qu'ICrewOrchestrationService utilise toujours
+// Développement : limites larges
 var permissive = AgentExecutionBudget.Permissive;
 
 // Personnalisé
@@ -141,13 +141,13 @@ var custom = new AgentExecutionBudget
     MaxSpawnedAgents = 5
 };
 
-// Un budget autre que Permissive : appeler la stratégie directement
+// Un budget construit en code plutôt que celui de la crew : appeler la stratégie directement
 var strategy = serviceProvider.GetRequiredService<AutonomousProcessStrategy>();
 var output = await strategy.ExecuteAutonomousAsync(crew, custom, inputVariables: null, ct);
 #pragma warning restore ORKEXP002
 ```
 
-`KickoffAsync` ne prend pas de budget : une crew exécutée via `ICrewOrchestrationService` (le runner, l'hôte, Studio) reçoit toujours `Permissive`. Appeler `ExecuteAutonomousAsync` directement contourne ce que l'orchestrateur ajoute autour d'un run (planification, checkpointing, transitions d'état de la crew).
+`KickoffAsync` ne prend pas de budget : une crew exécutée via `ICrewOrchestrationService` (le runner, l'hôte, Studio) dépense son propre budget — `budget:` en YAML ([schéma](../architecture/yaml-schema.md)), `crewBuilder().budget({...})` en `.ork.ts`, `CrewBuilder.Budget(new CrewBudget { ... })` en C#. Une crew qui n'en fixe aucun tourne sans plafond de tokens ni de temps mural, sous les limites structurelles de 50 tâches distribuées, 4 délégations et 10 spawns (`CrewBudget.DefaultToolCalls`, `DefaultDelegationDepth`, `DefaultSpawnedAgents`) : tokens et durée ne sont bornés que si l'auteur le demande, si bien qu'une crew ordinaire n'est jamais écourtée par un chiffre qu'elle n'a pas choisi. Une clé omise prend le même défaut. Un budget donné à une crew d'un autre process est refusé au chargement ou à la construction de la crew, comme une limite inférieure à 1. Appeler `ExecuteAutonomousAsync` directement contourne ce que l'orchestrateur ajoute autour d'un run (planification, checkpointing, transitions d'état de la crew).
 
 ### Budgets enfants
 
@@ -285,7 +285,7 @@ agents:
 
 `spawn_agent` n'est pas listé : le loader YAML résout les noms d'outils dans le registre d'outils, où aucun `SpawnAgentTool` n'est enregistré par défaut (un nom inconnu est ignoré avec un avertissement, ou fait échouer le chargement en mode strict des outils).
 
-> **Note** : il n'existe pas de clé YAML `autonomousBudget` — le loader n'en parse aucune. Dans les crews YAML, le mode Autonomous tourne toujours avec `AgentExecutionBudget.Permissive` (50 appels d'outils, profondeur 4, 15 min, 64 000 tokens, 10 spawns). Dans le DSL de scripting, `crewBuilder().budget({...})` ne borne que la forme procédurale (`await crew.run()`) ; la forme déclarative l'ignore avec un avertissement.
+> **Note** : le budget de la crew est `budget:` en YAML (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`) ; dans le DSL de scripting, `crewBuilder().budget({...})` le fixe dans les deux formes — la forme déclarative d'une crew `process("autonomous")`, la forme procédurale (`await crew.run()`) — et la forme déclarative d'un autre process l'ignore avec un avertissement. Les défauts sont sous [Presets](#presets).
 
 > **Délégation** : la stratégie autonome délègue via l'`IAgentChannel` ; il n'existe pas de service de délégation de tâches.
 
@@ -309,7 +309,7 @@ Le mode Autonomous est le moins déterministe. Pour les charges de production se
 | `Orkeon.Domain.Tests/Autonomous/AgentExecutionBudgetTimeProviderTests.cs` | Budget de durée avec une horloge contrôlable |
 | `Orkeon.Infrastructure.Tests/Communication/CovStubs_InMemoryAgentChannelTests.cs` | Requête/réponse, timeout, handler absent, broadcast |
 | `Orkeon.Infrastructure.Tests/Tools/SpawnAgentTool/SpawnAgentToolTests.cs` | Spawn imputé au budget parent, propagation du budget enfant (métadonnées, variables de contexte), décompte des tokens |
-| `Orkeon.Infrastructure.Tests/Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | Aiguillage des six modes (Autonomous avec le budget Permissive) |
+| `Orkeon.Infrastructure.Tests/Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | Aiguillage des six modes (Autonomous sous le budget de la crew, sans plafond quand elle n'en fixe aucun) |
 
 ---
 

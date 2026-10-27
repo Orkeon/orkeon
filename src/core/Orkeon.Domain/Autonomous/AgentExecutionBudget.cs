@@ -24,7 +24,7 @@ public sealed class AgentExecutionBudget
 
     /// <summary>
     /// Maximum running sum of tokens the agent may consume: the prompt plus the completion of every
-    /// call recorded through <see cref="RecordTokens"/>. A call that resends its whole context counts
+    /// call recorded through <see cref="RecordTokens"/> or <see cref="RecordChildTokens"/>. A call that resends its whole context counts
     /// that context again, so a conversation of n calls pays its context about n times.
     /// </summary>
     public int MaxTokensConsumed { get; init; } = 16_000;
@@ -181,18 +181,62 @@ public sealed class AgentExecutionBudget
     }
 
     /// <summary>
-    /// Records the tokens of one call (its prompt plus its completion) and throws if the running sum
-    /// passes the token budget. The tokens stay recorded when it throws.
+    /// Records the tokens of one call (its prompt plus its completion) here and on every budget this one
+    /// charges, then throws if a running sum passes its token budget - the farthest charged budget's
+    /// refusal first - or, when none does, if the wall time is spent. The tokens stay recorded whatever
+    /// it throws: they were sent and received, and the answer they paid for is kept.
     /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
-    public void RecordTokens(int tokens)
+    public void RecordTokens(int tokens) => RecordTokensOn(ChainOf(this), tokens);
+
+    /// <summary>
+    /// Records the tokens a child budget's agent reported (<see cref="CreateChildBudget"/>) on the child,
+    /// on this budget and on every budget either charges, once each: a budget the two chains share - the
+    /// child carries this one's charge - counts the tokens once. Throws as <see cref="RecordTokens"/>
+    /// does, this chain's refusals before the child's; the tokens stay recorded whatever it throws.
+    /// </summary>
+    /// <exception cref="BudgetExhaustedException"/>
+    public void RecordChildTokens(AgentExecutionBudget child, int tokens)
     {
-        AssertWallTime();
-        var consumed = Interlocked.Add(ref _tokensConsumed, tokens);
-        var calls = Interlocked.Increment(ref _tokenCalls);
-        ChargedTo?.RecordTokens(tokens);
-        if (consumed > MaxTokensConsumed)
-            throw TokensExhausted(consumed, calls);
+        ArgumentNullException.ThrowIfNull(child);
+        var budgets = ChainOf(this);
+        foreach (var budget in ChainOf(child))
+        {
+            if (!budgets.Contains(budget))
+                budgets.Add(budget);
+        }
+        RecordTokensOn(budgets, tokens);
+    }
+
+    /// <summary>
+    /// <paramref name="budget"/> and every budget it charges, transitively, the farthest charged first.
+    /// </summary>
+    private static List<AgentExecutionBudget> ChainOf(AgentExecutionBudget budget)
+    {
+        var chain = new List<AgentExecutionBudget>();
+        for (var current = budget; current is not null; current = current.ChargedTo)
+            chain.Insert(0, current);
+        return chain;
+    }
+
+    /// <summary>
+    /// Adds <paramref name="tokens"/> and one call to each of <paramref name="budgets"/>, then throws the
+    /// first token refusal among them, else the first spent wall time.
+    /// </summary>
+    private static void RecordTokensOn(List<AgentExecutionBudget> budgets, int tokens)
+    {
+        BudgetExhaustedException? refusal = null;
+        foreach (var budget in budgets)
+        {
+            var consumed = Interlocked.Add(ref budget._tokensConsumed, tokens);
+            var calls = Interlocked.Increment(ref budget._tokenCalls);
+            if (consumed > budget.MaxTokensConsumed)
+                refusal ??= budget.TokensExhausted(consumed, calls);
+        }
+        if (refusal is not null)
+            throw refusal;
+        foreach (var budget in budgets)
+            budget.AssertOwnWallTime();
     }
 
     /// <summary>The refusal of a spent token budget, naming what it counted.</summary>
@@ -264,12 +308,18 @@ public sealed class AgentExecutionBudget
     /// <exception cref="BudgetExhaustedException"/>
     public void AssertWallTime()
     {
+        AssertOwnWallTime();
+        ChargedTo?.AssertWallTime();
+    }
+
+    /// <summary>Throws when this budget's own wall time is spent, whatever the budget it charges says.</summary>
+    private void AssertOwnWallTime()
+    {
         var elapsed = Elapsed;
         if (elapsed >= MaxWallTime)
             throw new BudgetExhaustedException(
                 BudgetDimension.WallTime,
                 $"Wall time exceeded ({elapsed:g} >= {MaxWallTime:g}).");
-        ChargedTo?.AssertWallTime();
     }
 
     /// <summary>

@@ -32,6 +32,11 @@ public sealed record CrewConfiguration
     /// (<c>maxRpm:</c>, GAP-38); null — the default — sets no limit of its own.
     /// </summary>
     public int? MaxRpm { get; init; }
+    /// <summary>
+    /// Gets what one run of the crew may spend (<c>budget:</c>, #218); null - the default - leaves every
+    /// limit at its default. Autonomous crews only.
+    /// </summary>
+    public Orkeon.Domain.Crew.ValueObjects.CrewBudget? Budget { get; init; }
     /// <summary>Gets the identifier of the manager agent, or null for no manager.</summary>
     public AgentId? ManagerAgentId { get; init; }
     /// <summary>Gets the graph-specific configuration (only used when Process is Graph), or null for defaults.</summary>

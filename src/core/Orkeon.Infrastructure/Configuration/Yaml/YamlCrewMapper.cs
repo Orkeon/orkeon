@@ -65,6 +65,7 @@ public sealed partial class YamlCrewMapper
             MemoryProvider = settings.MemoryProvider,
             Planning = settings.Planning ?? false,
             MaxRpm = settings.MaxRpm,
+            Budget = MapBudget(settings.Budget),
             Agents = mappedAgents,
             Tasks = mappedTasks,
             ManagerAgentId = managerAgentId,
@@ -74,6 +75,19 @@ public sealed partial class YamlCrewMapper
             Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
         };
     }
+
+    /// <summary>The <c>budget:</c> block as the crew's budget (#218); the validator refuses a limit of zero or less.</summary>
+    private static Orkeon.Domain.Crew.ValueObjects.CrewBudget? MapBudget(CrewBudgetYamlConfig? yaml) =>
+        yaml is null
+            ? null
+            : new Orkeon.Domain.Crew.ValueObjects.CrewBudget
+            {
+                Tokens = yaml.Tokens,
+                WallTime = yaml.WallTimeSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : null,
+                ToolCalls = yaml.ToolCalls,
+                DelegationDepth = yaml.DelegationDepth,
+                SpawnedAgents = yaml.SpawnedAgents,
+            };
 
     /// <summary>
     /// Maps the <c>mounts:</c> block (VFS-90). Strict, unlike <see cref="MapLinks"/>: an item
@@ -954,6 +968,9 @@ public sealed record CrewMappingSettings
 
     /// <summary>The crew's model requests per minute (<c>crew.maxRpm</c>, GAP-38); null for no limit of its own.</summary>
     public int? MaxRpm { get; init; }
+
+    /// <summary>What one autonomous run may spend (<c>crew.budget</c>, #218); null for the defaults.</summary>
+    public CrewBudgetYamlConfig? Budget { get; init; }
 
     /// <summary>
     /// Key of the crew's manager agent (<c>crew.managerAgent</c>): Hierarchical and Consensual only,

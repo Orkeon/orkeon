@@ -218,11 +218,11 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
 
                 // Account for any tokens consumed by the spawned execution on BOTH
                 // budgets: the child's own copy (so its snapshot reflects reality)
-                // and the parent's (so the overall cap stays coherent).
+                // and the parent's (so the overall cap stays coherent), once on each budget
+                // the two charge.
                 if (result.TokensUsed > 0)
                 {
-                    childBudget.RecordTokens(result.TokensUsed);
-                    _budget.RecordTokens(result.TokensUsed);
+                    _budget.RecordChildTokens(childBudget, result.TokensUsed);
                 }
 
                 return new SpawnAgentResponse

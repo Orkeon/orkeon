@@ -1,0 +1,34 @@
+# Round-trip witness (GAP-39), with sequential.yaml and hierarchical.yaml — see the header of
+# sequential.yaml. An autonomous crew: the one mode that spends a budget, so budget: lives here with
+# every key it reads (#218).
+name: market-scan
+goal: Scan the market for new suppliers and shortlist them
+process: autonomous
+
+budget:
+  tokens: 400000
+  wallTimeSeconds: 1800
+  toolCalls: 80
+  delegationDepth: 2
+  spawnedAgents: 3
+
+agents:
+  scout:
+    role: Scout
+    goal: Find new suppliers
+
+  analyst:
+    role: Analyst
+    goal: Shortlist the suppliers worth a call
+
+tasks:
+  scan:
+    description: Find the suppliers that entered the market this quarter.
+    expectedOutput: A list of suppliers, each with its website.
+    agent: scout
+
+  shortlist:
+    description: Shortlist the suppliers worth a call.
+    expectedOutput: Three suppliers, each with the reason it made the list.
+    agent: analyst
+    dependencies: [scan]

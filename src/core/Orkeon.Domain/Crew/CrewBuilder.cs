@@ -6,6 +6,7 @@ using Orkeon.Domain.Agent;
 using Orkeon.Domain.Task;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Orkeon.Domain.Constants.Crew;
+using Orkeon.Domain.Crew.ValueObjects;
 
 namespace Orkeon.Domain.Crew;
 
@@ -21,6 +22,7 @@ public sealed class CrewBuilder
     private bool _verbose;
     private bool _planning;
     private int? _maxRpm;
+    private CrewBudget? _budget;
     private ILlmProvider? _managerLlm;
     private AgentId? _managerAgentId;
     private DomainAgent? _managerAgent;
@@ -184,6 +186,17 @@ public sealed class CrewBuilder
     public CrewBuilder MaxRpm(int maxRpm)
     {
         _maxRpm = maxRpm;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets what one run of an autonomous crew may spend (#218): each run gets a fresh budget of these
+    /// limits. Not called, the run has no token cap and no wall time. Refused on any other process.
+    /// </summary>
+    public CrewBuilder Budget(CrewBudget budget)
+    {
+        ArgumentNullException.ThrowIfNull(budget);
+        _budget = budget;
         return this;
     }
 
@@ -382,6 +395,7 @@ public sealed class CrewBuilder
             Verbose = _verbose,
             Planning = _planning,
             MaxRpm = _maxRpm,
+            Budget = _budget,
             ManagerLlm = _managerLlm,
             ManagerAgentId = _managerAgentId,
             PlanningLlm = _planningLlm,

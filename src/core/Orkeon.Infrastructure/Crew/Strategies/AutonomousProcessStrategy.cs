@@ -408,16 +408,13 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
             // Account for the tokens consumed by the delegated task on
             // both the child budget (so its snapshot reflects reality)
-            // and the parent budget (so the overall cap is honoured).
+            // and the parent budget (so the overall cap is honoured),
+            // once on each budget the two charge.
             // A token budget the delegated work passes keeps that work (#218): the tokens are
-            // recorded on both budgets, the output goes back, and the takeover carries the
-            // exhaustion so the run stops after this task.
+            // recorded, the output goes back, and the takeover carries the exhaustion so the run
+            // stops after this task.
             if (result.TokensUsed > 0)
-            {
-                var childSpent = RecordFinishedWorkTokens(childBudget, result.TokensUsed);
-                var crewSpent = RecordFinishedWorkTokens(budget, result.TokensUsed);
-                takeover.TokensExhausted = crewSpent ?? childSpent;
-            }
+                takeover.TokensExhausted = RecordFinishedWorkTokens(() => budget.RecordChildTokens(childBudget, result.TokensUsed));
 
             // Crew-level telemetry: delegated executions cost real tokens
             // even though only their payload travels back over the channel.
@@ -438,11 +435,18 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// <paramref name="budget"/>, and returns the refusal when the token budget is passed instead of
     /// throwing it: the work is done and kept.
     /// </summary>
-    private static BudgetExhaustedException? RecordFinishedWorkTokens(AgentExecutionBudget budget, int tokens)
+    private static BudgetExhaustedException? RecordFinishedWorkTokens(AgentExecutionBudget budget, int tokens) =>
+        RecordFinishedWorkTokens(() => budget.RecordTokens(tokens));
+
+    /// <summary>
+    /// Runs <paramref name="record"/>, which records the tokens of finished work, and returns the token
+    /// refusal it throws instead of throwing it.
+    /// </summary>
+    private static BudgetExhaustedException? RecordFinishedWorkTokens(Action record)
     {
         try
         {
-            budget.RecordTokens(tokens);
+            record();
             return null;
         }
         catch (BudgetExhaustedException ex) when (ex.Dimension == BudgetDimension.Tokens)

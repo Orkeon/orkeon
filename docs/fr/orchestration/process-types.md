@@ -35,7 +35,7 @@ IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, I
      ├── ParallelProcessStrategy        ← ExecuteParallelAsync
      ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync
      ├── GraphProcessStrategy           ← ExecuteSequentialAsync
-     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
+     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(crew.Budget)
 ```
 
 `IProcessStrategy` (Domain) a quatre points d'entrée — `ExecuteSequentialAsync`, `ExecuteHierarchicalAsync`, `ExecuteParallelAsync`, `ExecuteAutonomousAsync`. `SequentialCrewOrchestrator` choisit le point d'entrée d'après `ProcessType.Value` ; Graph et Consensual réutilisent le point d'entrée séquentiel, et une stratégie lève `NotSupportedException` sur ceux qu'elle ne sert pas. Les stratégies sont enregistrées en scoped par `AddOrkeonInfrastructure()` (Consensual via `AddOrkeonConsensus()`, qu'il appelle).
@@ -88,7 +88,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Dépendances entre tâches** | Ordre + saut sur échec | Ordre + saut sur échec | Vagues + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec |
 | **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ après ses retries (dépendantes sautées) | ✅ (dépendantes sautées ; un budget épuisé aussi) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mécanismes | — |
-| **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
+| **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (`budget:` de la crew) |
 | **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
 | **`asyncExecution: true` d'une tâche** | ✅ Tourne pendant les tâches suivantes | Refusé au chargement | Accepté, sans effet propre | Refusé au chargement | Refusé au chargement | Refusé au chargement |
 | **Manager** (`managerAgent:` ; `WithManagerLlm` en C#) | Refusé au chargement | ✅ Un agent (requis) ou, en C#, un LLM : il assigne et relit | Refusé au chargement | ✅ Un agent : l'arbitre de `ManagerDecision` (un LLM est refusé) | Refusé au chargement | Un LLM seulement : le profil par défaut, ou `WithManagerLlm` en C# (un agent est refusé) |
@@ -624,7 +624,7 @@ pour chaque tâche : Manager (LLM) ── assigne ──→ Agent A ── exéc
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents créés via `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Durée d'exécution maximale |
 
-`ICrewOrchestrationService` exécute toujours ce mode avec **`AgentExecutionBudget.Permissive`** ; un autre budget exige d'appeler directement `AutonomousProcessStrategy.ExecuteAutonomousAsync(crew, budget, …)`.
+`ICrewOrchestrationService` exécute ce mode sous le budget de la crew (`budget:` en YAML) ; une crew qui n'en fixe aucun n'a ni plafond de tokens ni temps mural, et garde les limites structurelles de 50 tâches distribuées, 4 délégations et 10 spawns.
 
 **Budgets enfants** : `CreateChildBudget()` donne au délégué l'allocation **restante** du parent sur chaque axe (un niveau de délégation en moins, au moins 1 appel d'outil et 100 tokens). Chaque budget enfant est une copie indépendante : deux délégués reçoivent chacun la totalité du reste.
 
@@ -650,17 +650,17 @@ await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 name: "research-team"
 goal: "Démo autonome"
 process: autonomous
-# Il n'existe PAS de clé de budget autonome en YAML : une crew autonome YAML
-# tourne toujours sous AgentExecutionBudget.Permissive (50 appels d'outils,
-# profondeur 4, 15 min, 64 000 tokens, 10 spawns) — voir le guide Autonomous
-# et yaml-schema.md.
+budget:                   # facultatif ; chaque clé facultative, chacune 1 ou plus
+  tokens: 400000          # somme courante prompt + complétion ; aucune par défaut
+  wallTimeSeconds: 1800   # aucune par défaut
+  toolCalls: 80           # tâches distribuées ; 50 par défaut
 ```
 
 ### Avantages
 
 - **Assignation pilotée par LLM** : le manager associe chaque tâche à un agent
 - **Deuxième chance** : une tâche échouée est confiée à un pair
-- **Terminaison garantie** : le budget et sa durée bornent le run
+- **Terminaison garantie** : le budget borne le run — les tâches distribuées toujours, tokens et durée quand la crew les fixe
 - **Télémétrie du budget** : les métadonnées de la crew portent la consommation de chaque axe
 
 ### Inconvénients
@@ -668,7 +668,7 @@ process: autonomous
 - **Expérimental** : `ORKEXP002`, la sémantique peut encore bouger
 - **Non déterministe** : les choix du manager varient d'une exécution à l'autre
 - **Budget épuisé = run écourté** : les tâches restantes ne sont pas exécutées, et la crew échoue en nommant la dimension épuisée et chaque tâche qu'elle n'a pas atteinte
-- **Budget fixe** via l'orchestrateur (Permissive)
+- **Aucun plafond de tokens ni de durée par défaut** : une crew qui doit tenir une dépense fixe `budget:`
 
 ### Quand l'utiliser
 

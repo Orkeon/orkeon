@@ -87,6 +87,8 @@ public static class JsCrewConfigurationAdapter
             Memory = crew.Memory,
             Planning = crew.Planning,
             MaxRpm = crew.MaxRpm,
+            // The budget bounds an autonomous run (#218); any other process says it ignores it.
+            Budget = process == ProcessType.Autonomous ? JsBudgetBridge.ToCrewBudget(crew.Budget) : null,
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,
@@ -423,13 +425,12 @@ public static class JsCrewConfigurationAdapter
         ArgumentNullException.ThrowIfNull(crew);
         var ignored = new List<string>();
 
-        if (crew.Budget.Count > 0)
+        if (crew.Budget.Count > 0 && !IsAutonomous(crew))
         {
             ignored.Add(
-                "crewBuilder().budget({...}) is ignored: the budget bounds the procedural agent "
-                + "loop, and this crew runs its tasks through the orchestration pipeline. To bound "
-                + "a run here, cap .maxIterations per agent; to use the budget, write the crew in "
-                + "the procedural shape (process(\"autonomous\") + .body(), ending with await crew.run()).");
+                $"crewBuilder().budget({{...}}) is ignored: .process(\"{crew.Process}\") spends no budget. To bound "
+                + "a run here, cap .maxIterations per agent; to use the budget, use .process(\"autonomous\") - its "
+                + "manager, the agents it delegates to and the agents they spawn spend it together.");
         }
 
         if (IsSet(crew._onCrewStart) || IsSet(crew._onCrewComplete) || IsSet(crew._onCrewError))
@@ -578,6 +579,9 @@ public static class JsCrewConfigurationAdapter
     /// an error naming what it does. One list, in the value object — a second copy here is how
     /// a sixth mode gets added to the domain and silently ignored by a script.
     /// </summary>
+    private static bool IsAutonomous(JsCrew crew) =>
+        crew.Process is { } process && ProcessType.TryFrom(process.Trim(), out var type) && type == ProcessType.Autonomous;
+
     private static ProcessType ParseProcessType(string? processStr)
     {
         if (string.IsNullOrWhiteSpace(processStr))
