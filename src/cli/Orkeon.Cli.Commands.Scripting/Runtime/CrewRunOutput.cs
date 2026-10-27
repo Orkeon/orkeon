@@ -19,9 +19,9 @@ public sealed class CrewRunOutput
     public object? artifacts { get; init; }
 
     /// <summary>
-    /// True when the turn that produced <see cref="summary"/> already streamed inline to the console (#228),
-    /// so the script need not print it again. False when streaming is off, and for the turns written as whole
-    /// prefixed lines: a crew task's (<c>[task] </c>), a background run's (<c>[t2] </c>).
+    /// True when any turn of this run was written to the console in the foreground (#228), so the script need
+    /// not print <see cref="summary"/> again. Background and labelled output report false: streaming off, the
+    /// turns written as whole prefixed lines - a crew task's (<c>[task] </c>), a background run's (<c>[t2] </c>).
     /// </summary>
     public bool streamed { get; init; }
 

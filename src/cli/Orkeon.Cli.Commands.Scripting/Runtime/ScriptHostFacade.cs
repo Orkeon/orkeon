@@ -173,7 +173,8 @@ public sealed partial class ScriptHostFacade
                     success: output.ok,
                     payload: output.summary ?? string.Empty,
                     error: output.error)
-                { streamed = output.streamed };
+                // A background run writes nothing in the foreground: the completed callback prints the payload.
+                { streamed = false };
             });
         }
         catch (ChainDepthExceededException refused)
@@ -236,7 +237,7 @@ public sealed partial class ScriptHostFacade
         var validation = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
         var physicalPath = validation.IsAllowed ? validation.ResolvedPath : null;
 
-        // The crew's flow: a turn of it that streams inline to the console marks the run as streamed (#228).
+        // The crew's flow: a turn of it written unprefixed on the console marks the run as streamed (#228).
         var receipt = Streaming.InlineStreamReceipt.Open();
         try
         {
@@ -316,7 +317,7 @@ public sealed partial class ScriptHostFacade
         return crewName.Length > 0 ? crewName : null;
     }
 
-    private static CrewRunOutput MapResult(object? result, bool streamed)
+    internal static CrewRunOutput MapResult(object? result, bool streamed)
     {
         if (result is null)
             return new CrewRunOutput { ok = true, summary = null, streamed = streamed };

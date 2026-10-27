@@ -33,11 +33,11 @@ public sealed class CommandResponse
     public string payload { get; }
 
     /// <summary>
-    /// True when the turn that produced <see cref="payload"/> already streamed inline to the console (#228):
-    /// the foreground answer, written token by token while it arrived, so the script skips its own print.
-    /// False when console streaming is off, when the agent did not stream, and for a background instance
-    /// (<c>post</c>, <c>runCrewAsync</c>): its turns are written as whole lines prefixed with the ticket
-    /// (<c>[t2] </c>), not inline.
+    /// True when any turn of this request was written to the console in the foreground (#228): streamed inline,
+    /// or as whole unprefixed lines when another turn held the inline claim, so the script skips its own print of
+    /// <see cref="payload"/>. Background and labelled output report false: console streaming off, an agent that
+    /// did not stream, and a background instance (<c>post</c>, <c>runCrewAsync</c>), whose turns are written as
+    /// whole lines prefixed with the ticket (<c>[t2] </c>).
     /// </summary>
     public bool streamed { get; init; }
 

@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
 that then printed the payload printed it twice. `CommandResponse` (the value of `commands.request`, the `result` of
-`completed`) and `CrewRunOutput` (`script-host.runCrew`) now carry `streamed: boolean`: true only when the turn that
-produced the payload streamed inline, so the script skips its own print. A background instance (`post`,
-`runCrewAsync`) and a crew task write whole lines prefixed with their ticket or task and report false. The dispatch
-opens one receipt per agent request and per crew run in that work's async flow, and `ConsoleLlmDeltaSink` records
-each turn's inline decision into it, so commands running at once each read their own.
+`completed`) and `CrewRunOutput` (`script-host.runCrew`) now carry `streamed: boolean`: true when any turn of the
+request was written to the console in the foreground (inline, or as whole unprefixed lines when another turn held the
+inline claim), so the script skips its own print. A background instance (`post`, `runCrewAsync`) and a crew task
+write whole lines prefixed with their ticket or task and report false. The dispatch opens one receipt per agent
+request and per crew run in that work's async flow, and `ConsoleLlmDeltaSink` records into it whether each turn was
+shown; the receipt never goes back to false within a request, so commands running at once each read their own and
+concurrent turns of one request do not race on it.
 
 ### Added — `budget({ contextTokens })`: a token budget that counts the context once (#224)
 

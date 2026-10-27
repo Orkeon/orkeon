@@ -292,9 +292,10 @@ dispatch asynchrone d'arrière-plan l'invoque.
 Une `defineCommand` normale qui attend l'agent. `request` bloque jusqu'à ce que
 l'agent réponde et retourne la `CommandResponse` (de sorte qu'un `await` dessus se
 résout en la valeur — une commande sync est faite pour bloquer). Son `streamed` est
-vrai quand la réponse a déjà été streamée en ligne sur la console
-(`Orkeon:Cli:ConsoleStreaming:Enabled`) : n'imprimez `payload` que s'il est faux,
-sinon la réponse s'affiche deux fois (#228) :
+vrai quand un tour quelconque de la requête a été écrit sur la console au premier plan
+(`Orkeon:Cli:ConsoleStreaming:Enabled`) ; une sortie en arrière-plan ou étiquetée
+rapporte faux. N'imprimez `payload` que s'il est faux, sinon la réponse s'affiche
+deux fois (#228) :
 
 ```typescript
 defineCommand({
@@ -303,13 +304,14 @@ defineCommand({
   args: { text: { type: "string", required: true } },
   handler(args, ctx) {
     const res = ctx.services.get("commands").request("echo", "run", args.text);
-    return res.success ? ctx.continue("→ " + res.payload)
-                       : ctx.continue("agent error: " + res.error);
+    if (!res.success) return ctx.continue("agent error: " + res.error);
+    // The console already showed a streamed answer: print it only when it did not.
+    return res.streamed ? ctx.continue() : ctx.continue("→ " + res.payload);
   },
 });
 ```
 
-`request(agent, intent, payload)` retourne `{ agent, intent, success, payload, error? }`.
+`request(agent, intent, payload)` retourne `{ agent, intent, success, payload, streamed, error? }`.
 
 ### Dispatch asynchrone — `defineAsyncCommand`
 

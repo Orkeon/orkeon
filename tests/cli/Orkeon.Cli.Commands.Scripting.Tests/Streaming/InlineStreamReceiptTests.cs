@@ -3,6 +3,7 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.Commands.Scripting.Streaming;
+using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 using Orkeon.Domain.Common;
 using Orkeon.Infrastructure.Communication;
@@ -10,9 +11,9 @@ using Orkeon.Infrastructure.Communication;
 namespace Orkeon.Cli.Commands.Scripting.Tests.Streaming;
 
 /// <summary>
-/// A script learns whether the answer it holds already streamed inline to the console (#228): the
-/// receipt the flow opened records whether the turn that produced the payload was the inline one, and
-/// <see cref="CommandResponse.streamed"/> carries it.
+/// A script learns whether the answer it holds was already shown on the console (#228): the receipt the
+/// flow opened records whether any turn of it was written unprefixed on the main console - inline, or as
+/// whole lines when another turn held the inline claim - and <see cref="CommandResponse.streamed"/> carries it.
 /// </summary>
 public sealed class InlineStreamReceiptTests
 {
@@ -54,9 +55,27 @@ public sealed class InlineStreamReceiptTests
     }
 
     [Fact]
-    public async Task ShouldRecordOnlyTheInlineTurn_WhenTwoUnlabelledTurnsStreamAtOnce()
+    public async Task ShouldRecordNotStreamed_WhenABackgroundTurnWritesOnItsOwnThread()
     {
-        var sink = new ConsoleLlmDeltaSink(new ScriptedTestConsole());
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        var instance = new CommandInstance("t3", "review", CommandInstanceKind.Async, "agent", "intent", Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        var receipt = await RunInOwnFlow(() =>
+        {
+            ProgressAmbient.CurrentInstance = instance;
+            StreamTurn(sink, label: null, "answer");
+        });
+
+        Assert.False(receipt.Streamed);
+        Assert.Contains(("t3", "answer"), console.Lines);
+    }
+
+    [Fact]
+    public async Task ShouldRecordBothTurnsShown_WhenTwoUnlabelledTurnsStreamAtOnce()
+    {
+        var console = new ScriptedTestConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
         var firstOpened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -74,11 +93,14 @@ public sealed class InlineStreamReceiptTests
         secondDone.SetResult();
 
         Assert.True((await first).Streamed);
-        Assert.False(second.Streamed);
+        // The second turn lost the inline claim, yet its whole line reached the console unprefixed.
+        Assert.True(second.Streamed);
+        Assert.Contains("second answer", console.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("] second answer", console.Output, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ShouldRecordTheLastTurn_WhenTheFlowStreamsSeveralTurns()
+    public async Task ShouldStayStreamed_WhenALabelledTurnFollowsAShownOne()
     {
         var sink = new ConsoleLlmDeltaSink(new ScriptedTestConsole());
 
@@ -87,6 +109,44 @@ public sealed class InlineStreamReceiptTests
             StreamTurn(sink, label: null, "thinking");
             StreamTurn(sink, label: "t1", "answer");
         });
+
+        Assert.True(receipt.Streamed);
+    }
+
+    [Fact]
+    public async Task ShouldRecordStreamed_WhenAShownTurnFollowsALabelledOne()
+    {
+        var sink = new ConsoleLlmDeltaSink(new ScriptedTestConsole());
+
+        var receipt = await RunInOwnFlow(() =>
+        {
+            StreamTurn(sink, label: "t1", "thinking");
+            StreamTurn(sink, label: null, "answer");
+        });
+
+        Assert.True(receipt.Streamed);
+    }
+
+    [Fact]
+    public async Task ShouldRecordNotStreamed_WhenEveryTurnOfTheFlowIsLabelled()
+    {
+        var sink = new ConsoleLlmDeltaSink(new ScriptedTestConsole());
+
+        var receipt = await RunInOwnFlow(() =>
+        {
+            StreamTurn(sink, label: "research", "notes");
+            StreamTurn(sink, label: "write", "answer");
+        });
+
+        Assert.False(receipt.Streamed);
+    }
+
+    [Fact]
+    public async Task ShouldRecordNotStreamed_WhenAnUnlabelledTurnWritesNoText()
+    {
+        var sink = new ConsoleLlmDeltaSink(new ScriptedTestConsole());
+
+        var receipt = await RunInOwnFlow(() => sink.BeginTurn(null).OnTurnCompleted());
 
         Assert.False(receipt.Streamed);
     }

@@ -5,8 +5,13 @@ using Jint.Native;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Runtime;
+using Orkeon.Cli.Commands.Scripting.Streaming;
+using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
+using Orkeon.Domain.Tools;
+using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Infrastructure.Communication;
 using Orkeon.Scripting;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
@@ -44,10 +49,10 @@ public sealed class ScriptHostFacadeTests : IDisposable
         File.WriteAllText(Path.Combine(dir, "crew.ork.ts"), body);
     }
 
-    private ScriptHostFacade BuildFacade(CommandDispatchService? dispatch = null, TimeSpan? runCrewTimeout = null)
+    private ScriptHostFacade BuildFacade(CommandDispatchService? dispatch = null, TimeSpan? runCrewTimeout = null, IBaseTool? tool = null)
     {
         var fs = new DiskBackedFileSystemService(_tempDir, virtualRoot: "/crews");
-        var host = new ScriptHost(fs, new JsEngineFactory(), NullLogger<ScriptHost>.Instance);
+        var host = new ScriptHost(fs, new JsEngineFactory(builtInTools: tool is null ? null : [tool]), NullLogger<ScriptHost>.Instance);
         var facadeOptions = new ScriptHostFacadeOptions
         {
             CrewDirectories = ImmutableArray.Create("/crews"),
@@ -165,6 +170,93 @@ public sealed class ScriptHostFacadeTests : IDisposable
 
         Assert.True(result.ok);
         Assert.Equal("prompt-output", result.summary);
+    }
+
+    /// <summary>A tool whose call streams one turn of <paramref name="text"/> to <paramref name="sink"/>, in the caller's flow.</summary>
+    private static StubBaseTool StreamingTool(ConsoleLlmDeltaSink sink, string? label, string text)
+        => new StubBaseTool("stream_turn").RespondWith(_ =>
+        {
+            var turn = sink.BeginTurn(label);
+            turn.OnDelta(text);
+            turn.OnTurnCompleted();
+            return new ToolCallResponse(true, "ok", null);
+        });
+
+    [Fact]
+    public void RunCrew_reports_streamed_when_a_turn_of_the_crew_reached_the_console_unprefixed()
+    {
+        WriteCrew("talk", "tools.streamTurn({}); \"the answer\";");
+        var console = new ScriptedTestConsole();
+        var facade = BuildFacade(tool: StreamingTool(new ConsoleLlmDeltaSink(console), label: null, "the answer"));
+
+        var result = facade.runCrew("talk");
+
+        Assert.True(result.ok, result.error);
+        Assert.Equal("the answer", result.summary);
+        Assert.True(result.streamed);
+        Assert.StartsWith("the answer", console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RunCrew_reports_not_streamed_when_the_crew_turns_are_labelled()
+    {
+        WriteCrew("talk", "tools.streamTurn({}); \"the answer\";");
+        var console = new ScriptedTestConsole();
+        var facade = BuildFacade(tool: StreamingTool(new ConsoleLlmDeltaSink(console), label: "write", "the answer"));
+
+        var result = facade.runCrew("talk");
+
+        Assert.True(result.ok, result.error);
+        Assert.False(result.streamed);
+        Assert.Contains("[write] the answer", console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RunCrew_reports_not_streamed_when_nothing_streamed()
+    {
+        WriteCrew("echo", "\"hello-from-crew\";");
+        var facade = BuildFacade();
+
+        var result = facade.runCrew("echo");
+
+        Assert.True(result.ok);
+        Assert.False(result.streamed);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MapResult_carries_streamed_onto_every_result_shape(bool streamed)
+    {
+        Assert.Equal(streamed, ScriptHostFacade.MapResult(null, streamed).streamed);
+        Assert.Equal(streamed, ScriptHostFacade.MapResult("text", streamed).streamed);
+        Assert.Equal(streamed, ScriptHostFacade.MapResult(new { finalOutput = "done" }, streamed).streamed);
+    }
+
+    [Fact]
+    public async Task RunCrewAsync_completes_with_streamed_false_even_when_a_crew_turn_streamed()
+    {
+        WriteCrew("talk", "tools.streamTurn({}); \"the answer\";");
+        var dispatch = NewDispatch();
+        var facade = BuildFacade(dispatch, tool: StreamingTool(new ConsoleLlmDeltaSink(new ScriptedTestConsole()), label: null, "the answer"));
+
+        string ticket;
+        using (dispatch.BeginCommand("assistant", CancellationToken.None))
+        {
+            ticket = facade.runCrewAsync("talk");
+        }
+
+        var instance = dispatch.Registry.Get(ticket);
+        Assert.NotNull(instance);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (!instance!.IsTerminal && DateTime.UtcNow < deadline)
+            await Task.Delay(25, TestContext.Current.CancellationToken);
+
+        Assert.True(instance.IsTerminal, "runCrewAsync instance never reached a terminal state.");
+        var view = instance.Snapshot();
+        Assert.Equal("done", view.state);
+        Assert.Equal("the answer", view.result?.payload);
+        Assert.False(view.result?.streamed);
     }
 
     [Fact]

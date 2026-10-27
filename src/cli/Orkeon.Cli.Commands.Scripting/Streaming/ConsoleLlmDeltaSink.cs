@@ -141,7 +141,8 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
 
     /// <summary>
     /// One turn: inline when it is the only unprefixed one, else a line buffer flushed line by line. Its end
-    /// tells the receipt of the flow that opened it (<see cref="InlineStreamReceipt"/>) which of the two it was.
+    /// tells the receipt of the flow that opened it (<see cref="InlineStreamReceipt"/>) whether its text was
+    /// shown unprefixed on the main console (inline, or as whole unprefixed lines) or carried a prefix or thread.
     /// </summary>
     private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible, InlineStreamReceipt? receipt) : ILlmDeltaSink
     {
@@ -175,8 +176,10 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
         {
             lock (_gate)
             {
-                if (_inline is { } inline)
-                    receipt?.Record(inline);
+                // A turn that wrote text tells its receipt whether the user saw it: an inline turn, and an
+                // eligible one that lost the inline claim, both write unprefixed on the main console.
+                if (_inline is not null)
+                    receipt?.Record(inlineEligible);
                 if (_inline == true)
                 {
                     owner.EndInline(this);

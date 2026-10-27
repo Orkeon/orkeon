@@ -286,9 +286,10 @@ lock, so it is safe even when a background async dispatch invokes it.
 
 A normal `defineCommand` that awaits the agent. `request` blocks until the agent
 responds and returns the `CommandResponse` (so `await` on it resolves to the
-value — a sync command is meant to block). Its `streamed` is true when the answer
-already streamed inline to the console (`Orkeon:Cli:ConsoleStreaming:Enabled`):
-print `payload` only when it is false, or the answer shows twice (#228):
+value — a sync command is meant to block). Its `streamed` is true when any turn of
+the request was written to the console in the foreground
+(`Orkeon:Cli:ConsoleStreaming:Enabled`); background and labelled output report false.
+Print `payload` only when it is false, or the answer shows twice (#228):
 
 ```typescript
 defineCommand({
@@ -297,13 +298,14 @@ defineCommand({
   args: { text: { type: "string", required: true } },
   handler(args, ctx) {
     const res = ctx.services.get("commands").request("echo", "run", args.text);
-    return res.success ? ctx.continue("→ " + res.payload)
-                       : ctx.continue("agent error: " + res.error);
+    if (!res.success) return ctx.continue("agent error: " + res.error);
+    // The console already showed a streamed answer: print it only when it did not.
+    return res.streamed ? ctx.continue() : ctx.continue("→ " + res.payload);
   },
 });
 ```
 
-`request(agent, intent, payload)` returns `{ agent, intent, success, payload, error? }`.
+`request(agent, intent, payload)` returns `{ agent, intent, success, payload, streamed, error? }`.
 
 ### Asynchronous dispatch — `defineAsyncCommand`
 
