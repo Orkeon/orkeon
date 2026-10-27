@@ -192,7 +192,8 @@ declare global {
         /**
          * The most tokens the run may spend with its context counted once (#224): each call's
          * completion, plus the part of its prompt the provider's cache did not serve when the
-         * provider reports cache hits, else what the prompt grew by since the run's previous call. A
+         * provider reports cache hits, else what the prompt grew by since the same conversation's previous call (each
+         * `ctx.llm.act` is its own conversation, its first call counting its whole prompt). A
          * turn of n calls on a context of c tokens spends about c plus its completions, not n times
          * c. A call whose provider reports no prompt and completion counts whole, as for `tokens`.
          * Set alone, it leaves `tokens` uncapped; set both, the first spent ends the run. Its end is

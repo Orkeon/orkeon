@@ -1408,7 +1408,7 @@ Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, 
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.CurrentContextTokens.get -> int
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.MaxContextTokens.get -> int
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.MaxContextTokens.init -> void
-[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.RecordTokens(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens) -> void
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.RecordTokens(int tokens, int contextTokens) -> void
 Orkeon.Domain.Tools.IBaseTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
 Orkeon.Domain.Configuration.CrewConfiguration.Budget.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget?
 Orkeon.Domain.Configuration.CrewConfiguration.Budget.init -> void

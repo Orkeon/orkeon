@@ -167,7 +167,9 @@ used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Informatio
 
 `budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus,
 quand le fournisseur rapporte des hits de cache (`cacheHitTokens`), la part de son prompt que le cache n'a
-pas servie, sinon ce dont son prompt a crû depuis l'appel précédent de l'exécution (jamais moins que zéro :
+pas servie, sinon ce dont son prompt a crû depuis l'appel précédent de la même conversation : chaque
+`ctx.llm.act` est sa propre conversation, dont le premier appel compte tout son prompt, si bien que des acts
+à la suite ou en même temps sur un même budget paient chacun leur propre contexte (jamais moins que zéro :
 un contexte compacté n'ajoute rien). Un tour de n appels sur un contexte de c tokens dépense environ c plus
 ses complétions. Un fournisseur qui ne rapporte ni prompt ni complétion compte l'appel en entier, comme
 `tokens`. Seul, il laisse `tokens` sans plafond ; posé avec lui, le premier épuisé termine l'act, de la même

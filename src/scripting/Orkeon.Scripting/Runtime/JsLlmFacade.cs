@@ -711,6 +711,12 @@ public sealed partial class JsLlmFacade
         private JsValue? _deltasJs;
         private volatile bool _aborted;
 
+        /// <summary>
+        /// The prompt size of this conversation's previous model call, 0 before the first: what the next
+        /// prompt's growth is read against (<see cref="ContextShare"/>).
+        /// </summary>
+        internal int PreviousPromptTokens;
+
         public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas)
         {
             // What the agent's .tools([...]) names is what the loop offers (GAP-27): a name the
@@ -1096,7 +1102,7 @@ public sealed partial class JsLlmFacade
                     ? session.Config
                     : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
                 var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
-                RecordCallTokens(resp);
+                RecordCallTokens(resp, session);
 
                 var (calls, assistantTurn) = ReadToolCalls(resp);
                 // A token budget this very call spent runs none of the tools it asked for: the act
@@ -1169,15 +1175,18 @@ public sealed partial class JsLlmFacade
     /// <summary>
     /// Records the tokens of one call of the act loop and logs the running sum next to the limit. A
     /// spent budget - tokens or wall time - does not throw here: the tokens are recorded whatever the
-    /// budget says, the answer in hand is kept, and the gates that follow end the act.
+    /// budget says, the answer in hand is kept, and the gates that follow end the act. The call's share of
+    /// the context counted once (#224) is read on <paramref name="session"/>, the conversation it belongs
+    /// to: the budget is shared by every act of a run, in a row or at once.
     /// </summary>
-    private void RecordCallTokens(LlmResponse resp)
+    private void RecordCallTokens(LlmResponse resp, ActSession session)
     {
         if (_budget is null) return;
         var tokens = resp.TokensUsed;
+        var context = ContextShare(tokens, resp.PromptTokens, resp.CompletionTokens, resp.CacheHitTokens, ref session.PreviousPromptTokens);
         try
         {
-            _budget.RecordTokens(tokens, resp.PromptTokens, resp.CompletionTokens, resp.CacheHitTokens);
+            _budget.RecordTokens(tokens, context);
         }
         catch (Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
@@ -1194,6 +1203,23 @@ public sealed partial class JsLlmFacade
                     LogActCallContextTokens(_logger, _agentName, _budget.CurrentContextTokens, _budget.MaxContextTokens);
             }
         }
+    }
+
+    /// <summary>
+    /// One call's share of the context counted once (#224): its completion plus, when the provider
+    /// reports cache hits, the part of its prompt the cache did not serve, else what its prompt grew by
+    /// since the conversation's previous call - <paramref name="previousPrompt"/>, which this updates; the
+    /// first call (0) counts its whole prompt, and a prompt that shrank (compaction) counts nothing.
+    /// Without a prompt or a completion count the call counts <paramref name="tokens"/> whole.
+    /// </summary>
+    internal static int ContextShare(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens, ref int previousPrompt)
+    {
+        if (promptTokens is not { } prompt || completionTokens is not { } completion)
+            return tokens;
+        var previous = previousPrompt;
+        previousPrompt = prompt;
+        var uncached = cacheHitTokens is > 0 ? prompt - cacheHitTokens.Value : prompt - previous;
+        return Math.Max(0, uncached) + Math.Max(0, completion);
     }
 
     /// <summary>
@@ -1247,7 +1273,7 @@ public sealed partial class JsLlmFacade
             }
         }
 
-        RecordCallTokens(resp);
+        RecordCallTokens(resp, session);
         var answer = RenderAnswer(resp);
         if (string.IsNullOrWhiteSpace(answer) || ProviderErrorOf(resp) is not null)
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(spent);

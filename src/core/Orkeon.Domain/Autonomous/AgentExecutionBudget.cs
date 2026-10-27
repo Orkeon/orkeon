@@ -31,9 +31,9 @@ public sealed class AgentExecutionBudget
 
     /// <summary>
     /// Maximum tokens the agent may consume with its context counted once (#224): for each call recorded
-    /// through <see cref="RecordTokens(int, int?, int?, int?)"/>, its completion plus, when the provider
-    /// reports cache hits, the part of its prompt the cache did not serve, else what its prompt grew by
-    /// since this budget's previous call. A turn of n calls on a context of c tokens spends about c plus
+    /// through <see cref="RecordTokens(int, int)"/>, its completion plus, when the provider reports cache
+    /// hits, the part of its prompt the cache did not serve, else what its prompt grew by since the same
+    /// conversation's previous call (the first call of a conversation counts its whole prompt). A turn of n calls on a context of c tokens spends about c plus
     /// its completions, not n times c. A call recorded without that breakdown counts whole, as in
     /// <see cref="MaxTokensConsumed"/>. Exhaustion is reported on <see cref="BudgetDimension.Tokens"/>, as
     /// the running sum's. Default: no limit.
@@ -75,7 +75,6 @@ public sealed class AgentExecutionBudget
     private int _tokensConsumed;
     private int _tokenCalls;
     private int _contextTokens;
-    private int _lastPromptTokens;
     private int _spawnedAgents;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
     private readonly long _startTimestamp = TimeProvider.System.GetTimestamp();
@@ -208,26 +207,15 @@ public sealed class AgentExecutionBudget
 
     /// <summary>
     /// Records one call as <see cref="RecordTokens(int)"/> does - <paramref name="tokens"/>, its prompt plus
-    /// its completion, on the running sum - and its share of the context counted once
-    /// (<see cref="MaxContextTokens"/>): <paramref name="completionTokens"/> plus the uncached part of
-    /// <paramref name="promptTokens"/> when <paramref name="cacheHitTokens"/> is more than zero, else what
-    /// the prompt grew by since this budget's previous call. The growth is read on this budget alone, the
-    /// one the conversation records on; every budget it charges is charged the same share. Without a
-    /// prompt or a completion count the call counts <paramref name="tokens"/> whole. Throws as
-    /// <see cref="RecordTokens(int)"/> does.
+    /// its completion, on the running sum - and <paramref name="contextTokens"/>, its share of the context
+    /// counted once (<see cref="MaxContextTokens"/>), here and on every budget this one charges. The share
+    /// is computed by the conversation the call belongs to, which alone knows its previous prompt: one
+    /// budget is shared by every conversation of a run, so the growth of a prompt cannot be read on it.
+    /// A negative share counts as zero. Throws as <see cref="RecordTokens(int)"/> does.
     /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
-    public void RecordTokens(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens)
-    {
-        var context = tokens;
-        if (promptTokens is { } prompt && completionTokens is { } completion)
-        {
-            var previous = Interlocked.Exchange(ref _lastPromptTokens, prompt);
-            var counted = cacheHitTokens is > 0 ? prompt - cacheHitTokens.Value : prompt - previous;
-            context = Math.Max(0, counted) + Math.Max(0, completion);
-        }
-        RecordTokensOn(ChainOf(this), tokens, context);
-    }
+    public void RecordTokens(int tokens, int contextTokens) =>
+        RecordTokensOn(ChainOf(this), tokens, Math.Max(0, contextTokens));
 
     /// <summary>
     /// Records the tokens a child budget's agent reported (<see cref="CreateChildBudget"/>) on the child,
@@ -406,11 +394,24 @@ public sealed class AgentExecutionBudget
         MaxDelegationDepth = Math.Max(0, MaxDelegationDepth - _delegationDepth - 1),
         MaxWallTime = RemainingWallTime(),
         MaxTokensConsumed = Math.Max(100, Remaining(static b => b.MaxTokensConsumed - b._tokensConsumed)),
-        MaxContextTokens = Math.Max(100, Remaining(static b => b.MaxContextTokens - b._contextTokens)),
+        MaxContextTokens = UnboundedContextChain()
+            ? int.MaxValue
+            : Math.Max(100, Remaining(static b => b.MaxContextTokens == int.MaxValue ? int.MaxValue : b.MaxContextTokens - b._contextTokens)),
         MaxSpawnedAgents = Math.Max(0, Remaining(static b => b.MaxSpawnedAgents - b._spawnedAgents)),
         TimeProvider = _timeProvider,
         ChargedTo = ChargedTo
     };
+
+    /// <summary>True when no budget of the chain, this one included, sets <see cref="MaxContextTokens"/>.</summary>
+    private bool UnboundedContextChain()
+    {
+        for (var budget = this; budget is not null; budget = budget.ChargedTo)
+        {
+            if (budget.MaxContextTokens != int.MaxValue)
+                return false;
+        }
+        return true;
+    }
 
     /// <summary>The smallest of <paramref name="left"/> over this budget and every budget it charges, transitively.</summary>
     private int Remaining(Func<AgentExecutionBudget, int> left)

@@ -164,8 +164,9 @@ calls`, Information).
 
 `budget({ contextTokens })` counts the context once (#224): each call adds its completion plus, when the
 provider reports cache hits (`cacheHitTokens`), the part of its prompt the cache did not serve, else what
-its prompt grew by since the run's previous call (never less than zero: a compacted context adds
-nothing). A turn of n calls on a context of c tokens spends about c plus its completions. A provider that
+its prompt grew by since the same conversation's previous call: each `ctx.llm.act` is its own
+conversation, its first call counting its whole prompt, so acts in a row or at once on one budget each pay
+their own context (never less than zero: a compacted context adds nothing). A turn of n calls on a context of c tokens spends about c plus its completions. A provider that
 reports no prompt and completion counts the call whole, as `tokens` does. Set alone, it leaves `tokens`
 uncapped; set with it, the first one spent ends the act, the same way. Each call also logs `act: agent
 '<name>' context counted once <sum>/<limit> contextTokens` when it is set.
