@@ -6,6 +6,7 @@ using Orkeon.Domain.Configuration;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Scripting.Builders;
+using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Adapters;
@@ -40,6 +41,7 @@ public static class JsCrewConfigurationAdapter
         var process = ParseProcessType(crew.Process);
         RefuseAsyncExecutionTheModeIgnores(process, crew);
         RefuseManagerTheModeHasNoneOf(process, crew);
+        RefuseBudgetTheModeNeverSpends(process, crew);
 
         var agentMap = new Dictionary<JsAgent, AgentId>(ReferenceEqualityComparer.Instance);
         var agentConfigs = new List<AgentConfiguration>();
@@ -87,8 +89,8 @@ public static class JsCrewConfigurationAdapter
             Memory = crew.Memory,
             Planning = crew.Planning,
             MaxRpm = crew.MaxRpm,
-            // The budget bounds an autonomous run (#218); any other process says it ignores it.
-            Budget = process == ProcessType.Autonomous ? JsBudgetBridge.ToCrewBudget(crew.Budget) : null,
+            // The budget bounds an autonomous run (#218); any other process refused it above.
+            Budget = JsBudgetBridge.ToCrewBudget(crew.Budget),
             ManagerAgentId = managerId,
             Agents = agentConfigs,
             Tasks = taskConfigs,
@@ -425,14 +427,6 @@ public static class JsCrewConfigurationAdapter
         ArgumentNullException.ThrowIfNull(crew);
         var ignored = new List<string>();
 
-        if (crew.Budget.Count > 0 && !IsAutonomous(crew))
-        {
-            ignored.Add(
-                $"crewBuilder().budget({{...}}) is ignored: .process(\"{crew.Process}\") spends no budget. To bound "
-                + "a run here, cap .maxIterations per agent; to use the budget, use .process(\"autonomous\") - its "
-                + "manager, the agents it delegates to and the agents they spawn spend it together.");
-        }
-
         if (IsSet(crew._onCrewStart) || IsSet(crew._onCrewComplete) || IsSet(crew._onCrewError))
         {
             ignored.Add(
@@ -516,6 +510,22 @@ public static class JsCrewConfigurationAdapter
     }
 
     /// <summary>
+    /// The YAML and C# rule (#218, GAP-33), in the script's own words: <c>crewBuilder().budget({...})</c>
+    /// bounds a run of <c>.process("autonomous")</c> alone. On another process it would bound nothing, so
+    /// the crew is refused rather than run with a budget that bounds nothing.
+    /// </summary>
+    private static void RefuseBudgetTheModeNeverSpends(ProcessType process, JsCrew crew)
+    {
+        if (crew.Budget.Count == 0 || process == ProcessType.Autonomous)
+            return;
+
+        throw new InvalidScriptException(
+            $"Crew '{crew.name}': crewBuilder().budget({{...}}) - the {(string.IsNullOrWhiteSpace(crew.Process) ? "sequential" : crew.Process.Trim())} process spends no budget: its limits "
+            + "would bound nothing. Remove .budget(...), or use .process(\"autonomous\") - its manager, the agents it "
+            + "delegates to and the agents they spawn spend it together.");
+    }
+
+    /// <summary>
     /// The YAML rule (GAP-33), in the script's own words: <c>crewBuilder().manager(agent)</c> means
     /// something in <c>.process("hierarchical")</c> — the manager assigns each task and reviews its
     /// output — and <c>.process("consensual")</c> — it arbitrates the vote under the ManagerDecision
@@ -579,9 +589,6 @@ public static class JsCrewConfigurationAdapter
     /// an error naming what it does. One list, in the value object — a second copy here is how
     /// a sixth mode gets added to the domain and silently ignored by a script.
     /// </summary>
-    private static bool IsAutonomous(JsCrew crew) =>
-        crew.Process is { } process && ProcessType.TryFrom(process.Trim(), out var type) && type == ProcessType.Autonomous;
-
     private static ProcessType ParseProcessType(string? processStr)
     {
         if (string.IsNullOrWhiteSpace(processStr))

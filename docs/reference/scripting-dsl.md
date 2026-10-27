@@ -81,7 +81,7 @@ inferred.
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
-| `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; ❌ ignored (warned) with another process |
+| `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; refused with another process, as is a limit that is not 1 or more, when the run adapts the crew |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
@@ -221,12 +221,12 @@ under its semaphore and its `onError` policy. Neither gives the run a budget unl
 same `budget` in `crew.runAgent`'s options) bounds that run with the keys and values of
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` in seconds or as `"5m"`,
 `delegationDepth`, `spawnedAgents`). `tokens` is a running sum of the prompt and completion of every
-call, the context counted again on each; once it is reached, `ctx.llm.act` makes one last call with no
-tools and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
+call, the context counted again on each; once it is reached, `ctx.llm.act` makes one last call that may
+call no tool and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
 A spent dimension ends the run with `BudgetExhaustedError`,
 the error a crew's budget gives, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`) derives
 its budget from the run's. An unknown key, a count that is not a whole number of 1 or more, or an
-unreadable `wallTime` is refused when the run opens, where `crewBuilder().budget(...)` skips it.
+unreadable `wallTime` is refused when the run opens, where the procedural `crewBuilder().budget(...)` skips it.
 `charge: "crew"`, beside `budget`, counts what the run spends (tool calls, tokens, spawns; its wall
 clock runs with the caller's) against the budget of the run it is called from as well — the crew's,
 from an agent body of `crew.run` — so runs started at once never spend more than the crew allows.

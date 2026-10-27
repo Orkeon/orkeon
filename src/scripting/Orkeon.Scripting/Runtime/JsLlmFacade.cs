@@ -1159,8 +1159,8 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// What the act tells the model when its token budget is spent: the last call it gets, with no
-    /// tools, asks for the answer it can give from what it has.
+    /// What the act tells the model when its token budget is spent: the last call it gets, which may
+    /// call no tool, asks for the answer it can give from what it has.
     /// </summary>
     internal const string WrapUpNote =
         "Your token budget for this task is spent: this is your last turn, and no tool can be called. "

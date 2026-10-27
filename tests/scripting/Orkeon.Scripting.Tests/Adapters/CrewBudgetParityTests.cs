@@ -1,12 +1,13 @@
 using Jint;
 using Orkeon.Scripting.Adapters;
+using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Scripting.Tests.Adapters;
 
 /// <summary>
 /// #218 - <c>crewBuilder().budget(...)</c> on a declarative autonomous crew bounds its run, as the YAML
-/// <c>budget:</c> block does; any other process still says it ignores the budget.
+/// <c>budget:</c> block does; any other process, and a limit that is not 1 or more, is refused as YAML refuses it.
 /// </summary>
 public sealed class CrewBudgetParityTests
 {
@@ -46,14 +47,33 @@ public sealed class CrewBudgetParityTests
 
     [Fact]
     [Trait("BR", "CH-218")]
-    public void ShouldStillSayTheBudgetIsIgnored_WhenTheProcessIsNotAutonomous()
+    public void ShouldRefuseTheBudget_WhenTheProcessIsNotAutonomous()
     {
         var crew = Crew("sequential", ".budget({ tokens: 300000 })");
 
-        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+        var error = Assert.Throws<InvalidScriptException>(() => JsCrewConfigurationAdapter.ToConfiguration(crew));
 
-        Assert.Null(config.Budget);
-        Assert.Contains(JsCrewConfigurationAdapter.CollectIgnoredFeatures(crew),
+        Assert.Contains("crewBuilder().budget", error.Message, StringComparison.Ordinal);
+        Assert.Contains("sequential process spends no budget", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(JsCrewConfigurationAdapter.CollectIgnoredFeatures(crew),
             line => line.Contains("budget", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-218")]
+    [InlineData("{ tokens: 0 }", "budget.tokens: 0")]
+    [InlineData("{ toolCalls: -1 }", "budget.toolCalls: -1")]
+    [InlineData("{ delegationDepth: 1.5 }", "budget.delegationDepth: 1.5")]
+    [InlineData("{ spawnedAgents: \"many\" }", "budget.spawnedAgents: \"many\"")]
+    [InlineData("{ wallTime: 0 }", "budget.wallTime: 0")]
+    [InlineData("{ wallTime: \"soon\" }", "budget.wallTime: \"soon\"")]
+    public void ShouldRefuseTheBudget_WhenALimitIsInvalid(string spec, string named)
+    {
+        var crew = Crew("autonomous", $".budget({spec})");
+
+        var error = Assert.Throws<InvalidScriptException>(() => JsCrewConfigurationAdapter.ToConfiguration(crew));
+
+        Assert.Contains(named, error.Message, StringComparison.Ordinal);
+        Assert.Contains("every limit of a crew's budget is 1 or more", error.Message, StringComparison.Ordinal);
     }
 }

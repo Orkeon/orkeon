@@ -285,7 +285,7 @@ agents:
 
 `spawn_agent` n'est pas listé : le loader YAML résout les noms d'outils dans le registre d'outils, où aucun `SpawnAgentTool` n'est enregistré par défaut (un nom inconnu est ignoré avec un avertissement, ou fait échouer le chargement en mode strict des outils).
 
-> **Note** : le budget de la crew est `budget:` en YAML (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`) ; dans le DSL de scripting, `crewBuilder().budget({...})` le fixe dans les deux formes — la forme déclarative d'une crew `process("autonomous")`, la forme procédurale (`await crew.run()`) — et la forme déclarative d'un autre process l'ignore avec un avertissement. Les défauts sont sous [Presets](#presets).
+> **Note** : le budget de la crew est `budget:` en YAML (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`) ; dans le DSL de scripting, `crewBuilder().budget({...})` le fixe dans les deux formes — la forme déclarative d'une crew `process("autonomous")`, la forme procédurale (`await crew.run()`) — et la forme déclarative d'un autre process le refuse, comme le YAML, ainsi qu'une limite inférieure à 1. Les défauts sont sous [Presets](#presets).
 
 > **Délégation** : la stratégie autonome délègue via l'`IAgentChannel` ; il n'existe pas de service de délégation de tâches.
 

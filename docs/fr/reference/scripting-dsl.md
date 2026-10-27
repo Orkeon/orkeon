@@ -85,7 +85,7 @@ déduit.
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
-| `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; ❌ ignoré (averti) avec un autre process |
+| `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; refusé avec un autre process, comme une limite qui n'est pas d'au moins 1, quand le run adapte la crew |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
@@ -232,12 +232,12 @@ même `budget` dans les options de `crew.runAgent`) borne cette exécution avec 
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` en secondes ou sous la forme `"5m"`,
 `delegationDepth`, `spawnedAgents`). `tokens` est une somme courante du prompt et de la complétion de
 chaque appel, le contexte compté de nouveau à chacun ; une fois atteinte, `ctx.llm.act` fait un dernier
-appel sans outils et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
+appel qui ne peut appeler aucun outil et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
 Une dimension épuisée termine l'exécution par
 `BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
 (`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. Une clé inconnue, un compte qui
 n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,
-là où `crewBuilder().budget(...)` l'ignore. `charge: "crew"`, à côté de `budget`, compte ce que
+là où le `crewBuilder().budget(...)` procédural l'ignore. `charge: "crew"`, à côté de `budget`, compte ce que
 l'exécution dépense (appels d'outils, tokens, enfants ; son horloge murale court avec celle de
 l'appelant) aussi sur le budget de l'exécution d'où elle est appelée — celui de la crew, depuis un
 `body` d'agent de `crew.run` — si bien que des exécutions lancées ensemble ne dépensent jamais plus

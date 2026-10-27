@@ -50,12 +50,22 @@ internal static class JsBudgetBridge
 
     /// <summary>
     /// The <c>crewBuilder().budget({...})</c> spec of a declarative autonomous crew as the crew's budget
-    /// (#218), read as <see cref="FromSpec"/> reads it: a dimension left out, or one it cannot read, keeps
-    /// the crew's default - no token cap and no wall time. Null when the spec carries no dimension.
+    /// (#218): a dimension left out keeps the crew's default - no token cap and no wall time. A limit that
+    /// is not 1 or more - zero, a negative or fractional count, a wall time it cannot read - is refused
+    /// with an <see cref="InvalidScriptException"/>, as YAML <c>budget:</c> and C# <c>Crew.Create</c>
+    /// refuse it, instead of leaving the run unbounded. Null when the spec carries no dimension.
     /// </summary>
     internal static CrewBudget? ToCrewBudget(IReadOnlyDictionary<string, object?>? spec)
     {
         if (spec is null || spec.Count == 0) return null;
+
+        foreach (var key in Dimensions)
+        {
+            if (spec.TryGetValue(key, out var raw) && raw is not null && !IsValidLimit(key, raw))
+                throw new InvalidScriptException(
+                    $"crewBuilder().budget({{...}}) budget.{key}: {Show(raw)} - every limit of a crew's budget is 1 or more "
+                    + "(a whole number; wallTime in seconds or a duration such as \"90s\" or \"5m\"). Leave the key out for its default.");
+        }
 
         var budget = new CrewBudget
         {
@@ -91,21 +101,27 @@ internal static class JsBudgetBridge
             if (Array.IndexOf(Dimensions, key) < 0)
                 throw new InvalidScriptException(
                     $"{Where} budget.{key} is not a budget dimension; expected one of {string.Join(", ", Dimensions)}.");
-            var number = AsNumber(raw);
+            if (raw is not null && IsValidLimit(key, raw))
+                continue;
             if (key == "wallTime")
-            {
-                var valid = raw is string text ? ParseDuration(text) is not null : number is { } seconds && double.IsFinite(seconds) && seconds > 0;
-                if (!valid)
-                    throw new InvalidScriptException(
-                        $"{Where} budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got {Show(raw)}.");
-            }
-            else if (number is not { } count || !double.IsFinite(count) || count < 1 || Math.Floor(count) != count)
-            {
-                throw new InvalidScriptException($"{Where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
-            }
+                throw new InvalidScriptException(
+                    $"{Where} budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got {Show(raw)}.");
+            throw new InvalidScriptException($"{Where} budget.{key} must be a whole number of 1 or more; got {Show(raw)}.");
         }
 
         return FromSpec(fields.ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal), chargedTo);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="raw"/> is a valid limit for <paramref name="key"/>: a whole number of 1 or
+    /// more, or for <c>wallTime</c> a positive number of seconds or a duration <see cref="ParseDuration"/> reads.
+    /// </summary>
+    private static bool IsValidLimit(string key, object raw)
+    {
+        var number = AsNumber(raw);
+        if (key == "wallTime")
+            return raw is string text ? ParseDuration(text) is not null : number is { } seconds && double.IsFinite(seconds) && seconds > 0;
+        return number is { } count && double.IsFinite(count) && count >= 1 && Math.Floor(count) == count;
     }
 
     private static double? AsNumber(object? raw) => raw switch
