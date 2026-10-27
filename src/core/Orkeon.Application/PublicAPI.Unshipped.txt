@@ -2749,3 +2749,4 @@ virtual Orkeon.Application.Decision.DTOs.DecisionAnswer.PrintMembers(System.Text
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.PrintMembers(System.Text.StringBuilder! builder) -> bool
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Decision = "decision" -> string!

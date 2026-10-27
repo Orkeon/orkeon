@@ -233,3 +233,27 @@ Orkeon.Infrastructure.Tools.TokenBudgetByKind.Tool.get -> int
 Orkeon.Infrastructure.Tools.TokenBudgetByKind.Tool.set -> void
 Orkeon.Infrastructure.Tools.TokenBudgetByKind.Other.get -> int
 Orkeon.Infrastructure.Tools.TokenBudgetByKind.Other.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.ListModelsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Orkeon.Application.Decision.DTOs.DecisionModelDto!>!>!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.Name.get -> string!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.TypeSafeDecisionModel(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel!>! logger, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? policy = null) -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKey.get -> string?
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKey.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKeyEnvVar.get -> string!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.ApiKeyEnvVar.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.BaseUrl.get -> System.Uri!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.BaseUrl.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.MaxRetries.get -> int
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.MaxRetries.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Model.get -> string!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Model.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TimeoutSeconds.get -> int
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TimeoutSeconds.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.TypeSafeOptions() -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions
+const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.ImagesHeader = "TypeSafe-Danger-Zone-Images" -> string!
+const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeDecisionModel.LongContextHeader = "TypeSafe-Danger-Zone-Long-Context" -> string!
+const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName = "Orkeon:TypeSafe" -> string!
+static Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions.AddOrkeonTypeSafe(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
