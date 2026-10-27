@@ -55,6 +55,26 @@ public class TerminalGuiConsoleAdapterTests
     }
 
     [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldReadAmbientThread_WhenAdapterWritesPlainLine()
+    {
+        var (adapter, repl) = Create();
+        var previous = ConsoleThread.Current;
+        try
+        {
+            ConsoleThread.Current = "T1";
+            adapter.WriteLine("from task");
+        }
+        finally
+        {
+            ConsoleThread.Current = previous;
+        }
+
+        Assert.Equal("from task", repl.ThreadText("T1").TrimEnd('\n'));
+        Assert.Equal(string.Empty, repl.CurrentHistory);
+    }
+
+    [Fact]
     public void Clear_empties_history()
     {
         var (adapter, repl) = Create();

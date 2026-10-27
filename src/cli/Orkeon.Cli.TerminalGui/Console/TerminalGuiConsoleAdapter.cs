@@ -25,7 +25,7 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole
 {
     private readonly ReplPaneView _repl;
 
@@ -46,6 +46,12 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter
     }
 
     public void WriteLine(string text) => _repl.AppendOutputLine(text);
+
+    public bool SeparatesThreads => true;
+
+    public void WriteLine(string? thread, string text) => _repl.AppendThreadLine(thread, text);
+
+    public void WriteAttention(string? thread, string text) => _repl.AppendAttentionLine(thread, text);
 
     // Assumed-blocking by design — audited (ANT-007/ANT-010, round-02); see docs/architecture/scripting.md.
     public string? ReadLine()

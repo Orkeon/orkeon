@@ -81,7 +81,7 @@ public static class GlobalKeyBindings
         toplevel.Agents.RowActivated += (_, e) =>
         {
             var detail = SafeDescribe(integration, e.Ticket);
-            toplevel.Repl.AppendOutputLine(detail ?? $"[{e.Ticket}] no detail available.");
+            toplevel.Repl.AppendThreadLine(toplevel.Repl.DisplayedThread, detail ?? $"[{e.Ticket}] no detail available.");
         };
         toplevel.Repl.InterruptRequested += (_, _) => OnInterruptRequested(toplevel, integration);
         toplevel.Agents.SelectionExited += (_, _) => toplevel.Repl.Input?.SetFocus();

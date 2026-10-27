@@ -112,3 +112,6 @@ static Orkeon.Cli.TerminalGui.Layout.AcceptHandlers.OnAccept(this Terminal.Gui.V
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval!>!>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.set -> void
 static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.ComposeApproval(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.Abstractions.Runners.PendingToolApproval! first, int waiting) -> string!
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.SeparatesThreads.get -> bool
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteAttention(string? thread, string! text) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteLine(string? thread, string! text) -> void
