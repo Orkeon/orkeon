@@ -71,7 +71,9 @@ internal sealed class BubblewrapShellSandbox(
     /// The start of <c>bwrap &lt;view&gt; -- /bin/sh</c>, without starting it. With the network, the
     /// sockets of the operator's session follow (#216): each socket path that exists and is no
     /// directory is bound read-write at its own path, and their variables are propagated; without the
-    /// network, neither, since the credential they lead to only serves a remote.
+    /// network, neither, since the credential they lead to only serves a remote. The variables the
+    /// operator added pass whatever the network, and no path they name is bound: only a socket needs
+    /// the network, and the view stays what the VFS and <c>ReadOnlyPaths</c> say.
     /// </summary>
     internal ProcessStartInfo PrepareStartInfo(ShellSessionView view, string executablePath)
     {
@@ -83,7 +85,7 @@ internal sealed class BubblewrapShellSandbox(
         foreach (var argument in BubblewrapCommandLine.Build(view.Paths, view.ReadOnlyPaths, view.AllowNetwork, "/", sockets))
             info.ArgumentList.Add(argument);
         info.ArgumentList.Add(UnconfinedShellSandbox.PosixShell);
-        ShellEnvironment.ConfigureRestricted(info, readEnvironment, includeSessionSockets: view.AllowNetwork);
+        ShellEnvironment.ConfigureRestricted(info, readEnvironment, includeSessionSockets: view.AllowNetwork, view.PropagatedVariables);
         return info;
     }
 }

@@ -101,4 +101,18 @@ public sealed class BubblewrapShellSandboxTests
 
         Assert.DoesNotContain("OPENAI_API_KEY", info.Environment.Keys);
     }
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldPassAnAddedVariableWithoutBindingThePathItNames_WhateverTheNetwork(bool allowNetwork)
+    {
+        var environment = OperatorSession();
+        environment.Variables["SSL_CERT_DIR"] = "/opt/certs/bundle";
+        var view = View(allowNetwork) with { PropagatedVariables = ["SSL_CERT_DIR"] };
+
+        var info = Sandbox(environment).PrepareStartInfo(view, Bwrap);
+
+        Assert.Equal("/opt/certs/bundle", info.Environment["SSL_CERT_DIR"]);
+        Assert.DoesNotContain("/opt/certs/bundle", info.ArgumentList);
+    }
 }

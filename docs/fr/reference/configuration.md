@@ -200,13 +200,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 73 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 28 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-71 sections, 387 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+71 sections, 388 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1418,6 +1418,13 @@ dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait éc
 avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
 par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
 ([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
+`Environment:Propagate` nomme des variables de l'hôte remises à la session shell et au bac à sable
+de code en plus de la liste blanche intégrée, comme `HTTPS_PROXY`. Le filtre des secrets l'emporte :
+un nom qui commence par `ORKEON_`, contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`,
+`CREDENTIAL` ou `AUTH` (sans casse), vide, ou qui porte `=` ou un NUL est écarté avec un
+avertissement dans le journal, et l'hôte démarre quand même ; un nom intégré (`SSH_AUTH_SOCK`,
+`PATH`) est ignoré. Sous bubblewrap, une variable ajoutée passe quoi que dise `AllowNetwork`, et
+aucun chemin qu'elle nomme n'est monté dans la vue.
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1429,6 +1436,7 @@ par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoire
 | `Confinement:AllowNetwork` | booléen | `false` |  | Laisse le processus confiné atteindre le réseau. Faux par défaut : il a son propre espace de noms réseau, avec la seule boucle locale. |
 | `Confinement:Mode` | énumération | `"Auto"` | `None`, `Bubblewrap`, `Auto`, `Seatbelt`, `AppContainer` | Comment le processus est confiné. `Auto` (défaut) choisit le moteur de la plateforme : `Bubblewrap` sous Linux, `Seatbelt` sous macOS, `AppContainer` sous Windows, et aucun confinement quand l'hôte tourne dans un conteneur (le conteneur est la frontière). `None` lance le processus sur l'hôte, sous l'utilisateur de l'hôte. `Bubblewrap` le lance sous `bwrap` (Linux) : chaque montage lié à son chemin virtuel, en lecture seule quand il n'a pas Write, les répertoires système en lecture seule, rien d'autre de l'hôte, le réseau coupé. Quand le moteur est indisponible (autre OS, pas de `bwrap`, espaces de noms refusés), l'appel échoue avec la raison et la commande ne tourne pas. |
 | `Confinement:ReadOnlyPaths` | liste de chaînes | `[]` |  | Répertoires absolus de l'hôte liés en lecture seule à leur propre chemin, en plus des répertoires système (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), pour un programme installé ailleurs, comme `/opt/node` ou un dossier `.dotnet`. |
+| `Environment:Propagate` | liste de chaînes | `[]` |  | Noms de variables supplémentaires propagés depuis l'environnement du runner, comme `HTTPS_PROXY`. Un nom vide, qui contient `=` ou un NUL, commence par `ORKEON_` ou contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse) est écarté avec un avertissement ; un nom déjà intégré est ignoré. Sous bubblewrap, la valeur passe quel que soit le réseau, mais aucun chemin qu'elle nomme n'est lié dans la vue. |
 | `ExtraAllowedCommands` | liste de chaînes | `[]` |  | Commandes ajoutées à l'allowlist par défaut (ou de remplacement), comme `make`. |
 <!-- /settings -->
 
@@ -2106,8 +2114,9 @@ une socket de la session de l'opérateur et ne portent aucun secret elles-mêmes
 `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (le trousseau que lit un assistant d'identifiants
 comme `gh auth git-credential`) et `SSH_AUTH_SOCK` (l'agent ssh). Sous bubblewrap, ces trois ne
 suivent que si `Confinement:AllowNetwork` vaut true ([sécurité](../architecture/security.md)). Le
-bac à sable de code bâtit un environnement plus réduit encore, les trois sockets comprises : ni
-l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là — `OPENAI_API_KEY`,
+bac à sable de code bâtit un environnement plus réduit encore, les trois sockets comprises. Tous
+deux ajoutent les noms de `Orkeon:Tools:Shell:Environment:Propagate` qui passent son filtre des
+secrets. Ni l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là — `OPENAI_API_KEY`,
 `ORKEON_*` et toute autre variable restent derrière. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
 dernier, et Orkeon Studio l'exécutable `orkeon` ; `HOME` est lue quand le système ne nomme aucun
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous

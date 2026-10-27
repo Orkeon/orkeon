@@ -31,4 +31,7 @@ public sealed class ShellToolOptions
 
     /// <summary>How the process is confined; the backend of the platform by default (<c>Auto</c>).</summary>
     public ShellConfinementOptions Confinement { get; } = new();
+
+    /// <summary>The environment variables added to a session's allow-list (<c>Environment:Propagate</c>).</summary>
+    public ShellEnvironmentOptions Environment { get; } = new();
 }

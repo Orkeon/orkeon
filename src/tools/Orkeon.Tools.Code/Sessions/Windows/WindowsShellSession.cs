@@ -71,8 +71,9 @@ internal sealed class WindowsShellSession : IShellSession
     }
 
     /// <summary>An unconfined session: the host's user, the restricted environment, a job of its own.</summary>
-    public static WindowsShellSession OpenUnconfined()
-        => new(JobObject.Create(), null, [], ShellEnvironment.RestrictedVariables(), null, null);
+    /// <param name="propagated">The variable names the operator added, already filtered.</param>
+    public static WindowsShellSession OpenUnconfined(IReadOnlyList<string>? propagated = null)
+        => new(JobObject.Create(), null, [], ShellEnvironment.RestrictedVariables(propagated), null, null);
 
     /// <summary>The session's job (the tests read its processes).</summary>
     internal JobObject Job => _job;

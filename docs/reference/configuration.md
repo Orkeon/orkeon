@@ -188,13 +188,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 73 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 28 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-71 sections, 387 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+71 sections, 388 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1365,6 +1365,12 @@ host runs in a container; `None` turns it off. A backend that cannot run fails t
 reason, rather than run it unconfined. `AllowNetwork` opens the network (off by default) and
 `ReadOnlyPaths` lends a toolchain outside the system directories
 ([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
+`Environment:Propagate` names extra host variables handed to the shell session and to the code
+sandbox on top of the built-in allow-list, such as `HTTPS_PROXY`. The secret filter wins: a name
+starting with `ORKEON_`, containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL`
+or `AUTH` (without case), blank, or holding `=` or a NUL is dropped with a warning in the log,
+and the host still starts; a built-in name (`SSH_AUTH_SOCK`, `PATH`) is ignored. Under bubblewrap
+an added variable passes whatever `AllowNetwork` says, and no path it names is bound into the view.
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1376,6 +1382,7 @@ reason, rather than run it unconfined. `AllowNetwork` opens the network (off by 
 | `Confinement:AllowNetwork` | boolean | `false` |  | Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only (under AppContainer: no network capability, hence no network at all). |
 | `Confinement:Mode` | enum | `"Auto"` | `None`, `Bubblewrap`, `Auto`, `Seatbelt`, `AppContainer` | How the process is confined. `Auto` (default) picks the backend of the platform: `Bubblewrap` on Linux, `Seatbelt` on macOS, `AppContainer` on Windows, and no confinement when the host runs in a container (the container is the boundary). `None` runs the process on the host, as the user of the host. `Bubblewrap` runs it under `bwrap` (Linux): each mount bound at its virtual path, read-only when it lacks Write, the system directories read-only, nothing else of the host, the network off. When the backend is unavailable (another OS, no `bwrap`, namespaces refused) the call fails with the reason and the command does not run. |
 | `Confinement:ReadOnlyPaths` | list of string | `[]` |  | Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. Under AppContainer (Windows) they are fully qualified host directories the container may read and execute, such as a tool installed under the user profile. |
+| `Environment:Propagate` | list of string | `[]` |  | Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY`. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case) is dropped with a warning; a built-in name is ignored. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view. |
 | `ExtraAllowedCommands` | list of string | `[]` |  | Commands added on top of the default (or replacement) allowlist, such as `make`. |
 <!-- /settings -->
 
@@ -2043,7 +2050,8 @@ of the operator's session and hold no secret themselves: `DBUS_SESSION_BUS_ADDRE
 `XDG_RUNTIME_DIR` (the keyring a credential helper such as `gh auth git-credential` reads) and
 `SSH_AUTH_SOCK` (the ssh agent). Under bubblewrap these three follow only when
 `Confinement:AllowNetwork` is true ([security](../architecture/security.md)). The code sandbox
-builds a smaller environment still, the three sockets included: neither reads them as settings,
+builds a smaller environment still, the three sockets included. Both add the names of
+`Orkeon:Tools:Shell:Environment:Propagate` that pass its secret filter. Neither reads them as settings,
 and no key travels that way — `OPENAI_API_KEY`, `ORKEON_*` and every other variable stay behind. `PATH`
 is also where a `.ork.ts` script looks for esbuild last, and Orkeon Studio for `orkeon`; `HOME` is
 read when the system names no profile folder, to place the per-user settings. The variables

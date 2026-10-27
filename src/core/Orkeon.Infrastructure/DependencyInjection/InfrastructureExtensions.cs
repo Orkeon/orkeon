@@ -711,10 +711,17 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<IOptions<SandboxOptions>>(),
             sp.GetRequiredService<IOptions<DockerSandboxOptions>>(),
             PrivilegedFileSystem(sp)));
-        services.TryAddSingleton(sp => new HostProcessRunner(
-            sp.GetRequiredService<ILogger<HostProcessRunner>>(),
-            sp.GetRequiredService<IOptions<SandboxOptions>>(),
-            PrivilegedFileSystem(sp)));
+        // The child receives the same extra variables as a shell session: the shell's key, read by
+        // its path, filtered by the twin of the shell's filter (a refused name is warned about once).
+        services.TryAddSingleton(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<HostProcessRunner>>();
+            var configured = sp.GetService<IConfiguration>()?.GetSection(HostProcessRunner.PropagateConfigurationKey).Get<string[]>() ?? [];
+            return new HostProcessRunner(logger, sp.GetRequiredService<IOptions<SandboxOptions>>(), PrivilegedFileSystem(sp))
+            {
+                PropagatedVariables = HostProcessRunner.SelectPropagatedVariables(configured, logger),
+            };
+        });
 
         // ICodeSandbox default: prefer the OS-isolating DockerSandbox when available.
         // R10.3 (ORG-012): this factory is pure synchronous wiring — the Docker availability

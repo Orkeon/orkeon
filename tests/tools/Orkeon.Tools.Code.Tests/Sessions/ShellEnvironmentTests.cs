@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tools.Code.Sessions;
 using Orkeon.Tools.Code.Tests.Doubles;
 
@@ -137,5 +139,95 @@ public sealed class ShellEnvironmentTests
 
         Assert.Equal(["/run/user/1000/ssh-agent.socket", "/run/user/1000/bus"], paths);
         Assert.DoesNotContain("/run/user/1000", paths);
+    }
+    [Fact]
+    public void ShouldPropagateAnAddedName_WhenTheOperatorConfiguresIt()
+    {
+        var environment = OperatorSession();
+        environment.Variables["HTTPS_PROXY"] = "http://proxy.local:3128";
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY"], logger);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, includeSessionSockets: true, propagated);
+
+        Assert.Equal(["HTTPS_PROXY"], propagated);
+        Assert.Equal("http://proxy.local:3128", variables["HTTPS_PROXY"]);
+        Assert.Empty(logger.Entries);
+    }
+
+    [Theory]
+    [InlineData("ORKEON_Llm__Model")]
+    [InlineData("orkeon_anything")]
+    public void ShouldRefuseAnOrkeonName_WithAWarning(string name)
+    {
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated([name], logger);
+
+        Assert.Empty(propagated);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains(name, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("GH_TOKEN")]
+    [InlineData("OPENAI_API_KEY")]
+    [InlineData("my_secret_dir")]
+    [InlineData("DB_PASSWORD")]
+    [InlineData("SMB_PASSWD")]
+    [InlineData("AWS_CREDENTIALS_FILE")]
+    [InlineData("PROXY_AUTH")]
+    public void ShouldRefuseASecretWordName_WithAWarning(string name)
+    {
+        var environment = OperatorSession();
+        environment.Variables[name] = "secret";
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated([name], logger);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, includeSessionSockets: true, [name]);
+
+        Assert.Empty(propagated);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains(name, StringComparison.Ordinal));
+        Assert.DoesNotContain(name, variables.Keys);
+    }
+
+    [Theory]
+    [InlineData("SSH_AUTH_SOCK")]
+    [InlineData("PATH")]
+    [InlineData("path")]
+    [InlineData("DBUS_SESSION_BUS_ADDRESS")]
+    [InlineData("DOTNET_NOLOGO")]
+    public void ShouldIgnoreADuplicateOfABuiltInName_WithoutAWarning(string name)
+    {
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated([name], logger);
+
+        Assert.Empty(propagated);
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level >= LogLevel.Warning);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("A=B")]
+    [InlineData("A<NUL>B")]
+    public void ShouldRefuseAnInvalidName_WithAWarning(string name)
+    {
+        // The NUL is spelled out in the data, so the theory serializes plainly.
+        name = name.Replace("<NUL>", "\0", StringComparison.Ordinal);
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated([name], logger);
+
+        Assert.Empty(propagated);
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public void ShouldKeepEachAddedNameOnce_WhenTheOperatorRepeatsIt()
+    {
+        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY", "https_proxy", "NO_PROXY"], new RecordingLogger());
+
+        Assert.Equal(["HTTPS_PROXY", "NO_PROXY"], propagated);
     }
 }

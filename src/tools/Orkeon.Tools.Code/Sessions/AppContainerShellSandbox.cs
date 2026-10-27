@@ -167,7 +167,7 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
 
             AclGrants.Apply(plan, profile.Sid);
 
-            var environment = ShellEnvironment.RestrictedVariables();
+            var environment = ShellEnvironment.RestrictedVariables(view.PropagatedVariables);
             var folder = profile.FolderPath();
             if (folder is not null)
             {

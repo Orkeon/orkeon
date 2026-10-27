@@ -1,9 +1,10 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Orkeon.Tools.Code.Sessions;
 
 /// <summary>The environment a shell session, and every command it runs, starts with.</summary>
-internal static class ShellEnvironment
+internal static partial class ShellEnvironment
 {
     /// <summary>
     /// The only environment variables handed to the session. Everything else the runner holds is
@@ -46,12 +47,80 @@ internal static class ShellEnvironment
         ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK"];
 
     /// <summary>
-    /// Replaces the inherited environment of <paramref name="startInfo"/> with the propagated
-    /// variables of the process environment, the session sockets included, so a command the
-    /// allowlist permits can read its own environment without reading the runner's secrets.
+    /// The words a name the operator adds may not contain (<c>Orkeon:Tools:Shell:Environment:Propagate</c>),
+    /// compared without case: such a variable most likely holds a secret, and the secret filter wins
+    /// over the operator's list. A built-in name is checked before them, so <c>SSH_AUTH_SOCK</c> is
+    /// merely a duplicate. Twin of <c>HostProcessRunner.SecretWords</c>.
     /// </summary>
-    public static void ConfigureRestricted(ProcessStartInfo startInfo)
-        => ConfigureRestricted(startInfo, Environment.GetEnvironmentVariable, includeSessionSockets: true);
+    internal static readonly IReadOnlyList<string> SecretWords =
+        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH"];
+
+    /// <summary>The prefix of the runner's own variables, its LLM API keys among them; never added.</summary>
+    internal const string ReservedPrefix = "ORKEON_";
+
+    // The two variables RestrictedVariables sets rather than propagates.
+    private static readonly string[] s_setVariables = ["DOTNET_CLI_TELEMETRY_OPTOUT", "DOTNET_NOLOGO"];
+
+    /// <summary>
+    /// The names the operator added (<c>Orkeon:Tools:Shell:Environment:Propagate</c>) that a session
+    /// may receive, in their order, each once. A name that is invalid (blank, holding <c>=</c> or a
+    /// NUL), starts with <c>ORKEON_</c> or contains one of the <see cref="SecretWords"/> is refused
+    /// with a warning; a name already built in is ignored, since it changes nothing.
+    /// </summary>
+    /// <param name="configured">The names as configured.</param>
+    /// <param name="logger">Receives one warning per refused name; null logs nothing.</param>
+    public static IReadOnlyList<string> SelectPropagated(IEnumerable<string> configured, ILogger? logger)
+    {
+        ArgumentNullException.ThrowIfNull(configured);
+        var accepted = new List<string>();
+        foreach (var name in configured)
+        {
+            if (RefusalOf(name) is { } reason)
+            {
+                if (logger is not null)
+                    LogNameRefused(logger, name.Replace("\0", "\\0", StringComparison.Ordinal), reason);
+                continue;
+            }
+
+            if (!IsBuiltIn(name) && !accepted.Contains(name, StringComparer.OrdinalIgnoreCase))
+                accepted.Add(name);
+        }
+
+        return accepted;
+    }
+
+    // Why an added name is refused, or null when it may pass (a built-in name passes here).
+    private static string? RefusalOf(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Contains('=', StringComparison.Ordinal) || name.Contains('\0', StringComparison.Ordinal))
+            return "a variable name may not be blank nor hold '=' or a NUL";
+        if (IsBuiltIn(name))
+            return null;
+        if (name.StartsWith(ReservedPrefix, StringComparison.OrdinalIgnoreCase))
+            return "the ORKEON_ variables are the runner's own and carry its secrets";
+        if (SecretWords.FirstOrDefault(word => name.Contains(word, StringComparison.OrdinalIgnoreCase)) is { } word)
+            return $"it contains '{word}', which names a secret";
+        return null;
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Orkeon:Tools:Shell:Environment:Propagate: '{Name}' is not propagated: {Reason}.")]
+    private static partial void LogNameRefused(ILogger logger, string name, string reason);
+
+    private static bool IsBuiltIn(string name)
+        => s_propagatedEnvironmentVariables.Contains(name, StringComparer.OrdinalIgnoreCase)
+           || SessionSocketVariables.Contains(name, StringComparer.OrdinalIgnoreCase)
+           || s_setVariables.Contains(name, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Replaces the inherited environment of <paramref name="startInfo"/> with the propagated
+    /// variables of the process environment, the session sockets and the names the operator added
+    /// included, so a command the allowlist permits can read its own environment without reading the
+    /// runner's secrets.
+    /// </summary>
+    /// <param name="startInfo">The start of the session or of one of its jobs.</param>
+    /// <param name="propagated">The names the operator added, as <see cref="SelectPropagated"/> kept them.</param>
+    public static void ConfigureRestricted(ProcessStartInfo startInfo, IReadOnlyList<string>? propagated = null)
+        => ConfigureRestricted(startInfo, Environment.GetEnvironmentVariable, includeSessionSockets: true, propagated);
 
     /// <summary>
     /// Replaces the inherited environment of <paramref name="startInfo"/> with the propagated
@@ -60,33 +129,44 @@ internal static class ShellEnvironment
     /// <param name="startInfo">The start of the session or of one of its jobs.</param>
     /// <param name="read">Reads one variable of the parent environment; null when it is unset.</param>
     /// <param name="includeSessionSockets">Whether the <see cref="SessionSocketVariables"/> follow.</param>
-    public static void ConfigureRestricted(ProcessStartInfo startInfo, Func<string, string?> read, bool includeSessionSockets)
+    /// <param name="propagated">The names the operator added; they follow whatever <paramref name="includeSessionSockets"/> says.</param>
+    public static void ConfigureRestricted(
+        ProcessStartInfo startInfo, Func<string, string?> read, bool includeSessionSockets, IReadOnlyList<string>? propagated = null)
     {
         ArgumentNullException.ThrowIfNull(startInfo);
         startInfo.Environment.Clear();
-        foreach (var (name, value) in RestrictedVariables(read, includeSessionSockets))
+        foreach (var (name, value) in RestrictedVariables(read, includeSessionSockets, propagated))
             startInfo.Environment[name] = value;
     }
 
     /// <summary>
     /// The variables a session starts with, read from the process environment, the session sockets
-    /// included. The keys compare without case, as Windows does.
+    /// and the names the operator added included. The keys compare without case, as Windows does.
     /// </summary>
-    public static Dictionary<string, string> RestrictedVariables()
-        => RestrictedVariables(Environment.GetEnvironmentVariable, includeSessionSockets: true);
+    /// <param name="propagated">The names the operator added, as <see cref="SelectPropagated"/> kept them.</param>
+    public static Dictionary<string, string> RestrictedVariables(IReadOnlyList<string>? propagated = null)
+        => RestrictedVariables(Environment.GetEnvironmentVariable, includeSessionSockets: true, propagated);
 
     /// <summary>
     /// The variables a session starts with: the propagated ones <paramref name="read"/> answers, the
-    /// session sockets when <paramref name="includeSessionSockets"/>, then the two that keep
-    /// <c>dotnet</c> quiet. The keys compare without case, as Windows does.
+    /// session sockets when <paramref name="includeSessionSockets"/>, the names the operator added,
+    /// then the two that keep <c>dotnet</c> quiet. An added name the filter of
+    /// <see cref="SelectPropagated"/> refuses is dropped here too, silently. The keys compare without
+    /// case, as Windows does.
     /// </summary>
-    public static Dictionary<string, string> RestrictedVariables(Func<string, string?> read, bool includeSessionSockets)
+    /// <param name="read">Reads one variable of the parent environment; null when it is unset.</param>
+    /// <param name="includeSessionSockets">Whether the <see cref="SessionSocketVariables"/> follow.</param>
+    /// <param name="propagated">The names the operator added; they follow whatever <paramref name="includeSessionSockets"/> says.</param>
+    public static Dictionary<string, string> RestrictedVariables(
+        Func<string, string?> read, bool includeSessionSockets, IReadOnlyList<string>? propagated = null)
     {
         ArgumentNullException.ThrowIfNull(read);
         var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var names = includeSessionSockets
             ? s_propagatedEnvironmentVariables.Concat(SessionSocketVariables)
             : s_propagatedEnvironmentVariables;
+        // Defence in depth: whoever built the list, a refused name never reaches the session.
+        names = names.Concat((propagated ?? []).Where(name => RefusalOf(name) is null && !IsBuiltIn(name)));
         foreach (var name in names)
         {
             var value = read(name);

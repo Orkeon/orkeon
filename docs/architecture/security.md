@@ -78,6 +78,14 @@ agent's **shell session**, which the operating system confines
   bind: an abstract socket follows the network namespace, which `AllowNetwork` shares. Without the
   network neither the variables nor the binds are given. Every other variable, the LLM API keys
   first, stays dropped.
+- **Added variables.** `Orkeon:Tools:Shell:Environment:Propagate` adds host variables to the
+  allow-list, for the shell session and the code sandbox alike. The secret filter wins over it: a
+  name starting with `ORKEON_`, containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`,
+  `CREDENTIAL` or `AUTH` (without case), blank, or holding `=` or a NUL is dropped with a warning;
+  a built-in name is ignored. Under bubblewrap an added variable passes with or without the
+  network, since only a socket needs it, and **no path it names is bound**: the view stays what
+  the mounts and `ReadOnlyPaths` make it, so a variable naming a host directory points at nothing
+  inside unless that directory is lent another way.
 - **Paths.** Under bubblewrap the arguments are checked and passed virtual. Under Seatbelt,
   AppContainer and `None` they are translated virtual→physical, and physical paths in the output
   come back virtual.

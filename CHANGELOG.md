@@ -50,6 +50,10 @@ The shell's environment allow-list passes `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTI
 `gh`'s keyring credential helper and the ssh agent work from a command; the process-isolation twin list follows.
 Under Bubblewrap this happens only with `Confinement:AllowNetwork`, and only the socket files themselves are bound
 (never the whole runtime directory). LLM API keys and every other variable stay dropped.
+The optional `Orkeon:Tools:Shell:Environment:Propagate` list adds variable names to both lists (shell and code sandbox);
+a name starting with `ORKEON_`, containing a secret word (`KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL`,
+`AUTH`) or invalid is dropped with a warning, a built-in one is ignored, and under Bubblewrap an added value passes
+whatever the network while no path it names is bound.
 
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 

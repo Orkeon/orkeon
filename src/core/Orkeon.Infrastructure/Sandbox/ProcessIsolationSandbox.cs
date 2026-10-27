@@ -249,7 +249,7 @@ public partial class HostProcessRunner : ICodeSandbox
         return string.Join('\n', lines.Select(l => indent + l.TrimEnd('\r')));
     }
 
-    private static async Task<(int ExitCode, string? Output, string? Error)> RunDotnetCommandAsync(
+    private async Task<(int ExitCode, string? Output, string? Error)> RunDotnetCommandAsync(
         string command, string workingDir, TimeSpan timeout, CancellationToken ct)
     {
         using var process = new SysProcess();
@@ -321,7 +321,7 @@ public partial class HostProcessRunner : ICodeSandbox
         }
     }
 
-    private static SysProcess CreateExecutionProcess(string dllPath, SandboxExecutionRequest request)
+    private SysProcess CreateExecutionProcess(string dllPath, SandboxExecutionRequest request)
     {
         var process = new SysProcess();
         process.StartInfo = new ProcessStartInfo
@@ -350,15 +350,94 @@ public partial class HostProcessRunner : ICodeSandbox
     private static readonly string[] s_sessionSocketVariables =
         ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK"];
 
-    private static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
-        => ConfigureRestrictedEnvironment(startInfo, Environment.GetEnvironmentVariable);
+    /// <summary>
+    /// The configuration key of the operator's extra variables, the same list the shell sessions
+    /// receive: <c>ShellToolOptions.Environment.Propagate</c> (<c>src/tools/Orkeon.Tools.Code</c>), read
+    /// here by its path since Infrastructure may not reference a tool project.
+    /// </summary>
+    internal const string PropagateConfigurationKey = "Orkeon:Tools:Shell:Environment:Propagate";
+
+    /// <summary>
+    /// The words an added name may not contain, compared without case. Twin of
+    /// <c>ShellEnvironment.SecretWords</c> (<c>src/tools/Orkeon.Tools.Code/Sessions</c>).
+    /// </summary>
+    internal static readonly IReadOnlyList<string> SecretWords =
+        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH"];
+
+    // Every name ConfigureRestrictedEnvironment sets or propagates on its own: an added one is a duplicate.
+    private static readonly string[] s_builtInVariables =
+    [
+        "PATH", "HOME", "USERPROFILE", "TEMP", "TMP", "DOTNET_CLI_TELEMETRY_OPTOUT", "DOTNET_NOLOGO", "DOTNET_ROOT",
+        "SystemRoot", "SystemDrive", "APPDATA", "LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)", "NUGET_PACKAGES",
+        "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK",
+    ];
+
+    /// <summary>
+    /// The variable names the operator added (<see cref="PropagateConfigurationKey"/>), already
+    /// filtered by <see cref="SelectPropagatedVariables"/>. Set by <c>AddOrkeonCodeSandbox</c>.
+    /// </summary>
+    internal IReadOnlyList<string> PropagatedVariables { get; init; } = [];
+
+    /// <summary>
+    /// The added names the child may receive, in their order, each once: a name that is invalid
+    /// (blank, holding <c>=</c> or a NUL), starts with <c>ORKEON_</c> or contains one of the
+    /// <see cref="SecretWords"/> is refused with a warning; a built-in name is ignored. Twin of
+    /// <c>ShellEnvironment.SelectPropagated</c>.
+    /// </summary>
+    /// <param name="configured">The names as configured.</param>
+    /// <param name="logger">Receives one warning per refused name; null logs nothing.</param>
+    internal static IReadOnlyList<string> SelectPropagatedVariables(IEnumerable<string> configured, ILogger? logger)
+    {
+        ArgumentNullException.ThrowIfNull(configured);
+        var accepted = new List<string>();
+        foreach (var name in configured)
+        {
+            if (PropagationRefusal(name) is { } reason)
+            {
+                if (logger is not null)
+                    LogPropagatedNameRefused(logger, name.Replace("\0", "\\0", StringComparison.Ordinal), reason);
+                continue;
+            }
+
+            if (!IsBuiltInVariable(name) && !accepted.Contains(name, StringComparer.OrdinalIgnoreCase))
+                accepted.Add(name);
+        }
+
+        return accepted;
+    }
+
+    // Why an added name is refused, or null when it may pass (a built-in name passes here).
+    private static string? PropagationRefusal(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Contains('=', StringComparison.Ordinal) || name.Contains('\0', StringComparison.Ordinal))
+            return "a variable name may not be blank nor hold '=' or a NUL";
+        if (IsBuiltInVariable(name))
+            return null;
+        if (name.StartsWith("ORKEON_", StringComparison.OrdinalIgnoreCase))
+            return "the ORKEON_ variables are the runner's own and carry its secrets";
+        if (SecretWords.FirstOrDefault(word => name.Contains(word, StringComparison.OrdinalIgnoreCase)) is { } word)
+            return $"it contains '{word}', which names a secret";
+        return null;
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Orkeon:Tools:Shell:Environment:Propagate: '{Name}' is not propagated to the code sandbox: {Reason}.")]
+    private static partial void LogPropagatedNameRefused(ILogger logger, string name, string reason);
+
+    private static bool IsBuiltInVariable(string name)
+        => s_builtInVariables.Contains(name, StringComparer.OrdinalIgnoreCase);
+
+    private void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
+        => ConfigureRestrictedEnvironment(startInfo, Environment.GetEnvironmentVariable, PropagatedVariables);
 
     /// <summary>
     /// Replaces the inherited environment of <paramref name="startInfo"/> with the allow-list, read
     /// through <paramref name="read"/>: every other variable of the runner, its LLM API keys first,
-    /// is dropped.
+    /// is dropped. The names in <paramref name="propagated"/> follow, bar any the filter of
+    /// <see cref="SelectPropagatedVariables"/> refuses (dropped here silently, defence in depth).
     /// </summary>
-    internal static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo, Func<string, string?> read)
+    internal static void ConfigureRestrictedEnvironment(
+        ProcessStartInfo startInfo, Func<string, string?> read, IReadOnlyList<string>? propagated = null)
     {
         startInfo.Environment.Clear();
         startInfo.Environment["PATH"] = GetMinimalPath();
@@ -367,6 +446,11 @@ public partial class HostProcessRunner : ICodeSandbox
         PropagateEnvVar(startInfo, "DOTNET_ROOT", read);
         foreach (var name in s_sessionSocketVariables)
             PropagateEnvVar(startInfo, name, read);
+        foreach (var name in propagated ?? [])
+        {
+            if (PropagationRefusal(name) is null && !IsBuiltInVariable(name))
+                PropagateEnvVar(startInfo, name, read);
+        }
 
         if (OperatingSystem.IsWindows())
         {

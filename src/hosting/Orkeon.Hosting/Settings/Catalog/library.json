@@ -2446,6 +2446,13 @@
       "description": "Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. Under AppContainer (Windows) they are fully qualified host directories the container may read and execute, such as a tool installed under the user profile."
     },
     {
+      "path": "Orkeon:Tools:Shell:Environment:Propagate",
+      "section": "Orkeon:Tools:Shell",
+      "type": "list of string",
+      "default": [],
+      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY`. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case) is dropped with a warning; a built-in name is ignored. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view."
+    },
+    {
       "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",

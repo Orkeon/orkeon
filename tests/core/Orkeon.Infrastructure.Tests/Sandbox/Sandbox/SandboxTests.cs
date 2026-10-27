@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Tools.Protocol;
 using Microsoft.Extensions.DependencyInjection;
@@ -749,6 +751,50 @@ public sealed class ProcessIsolationSandboxTests : IDisposable
 
         Assert.DoesNotContain("OPENAI_API_KEY", startInfo.Environment.Keys);
         Assert.DoesNotContain("ORKEON_Llm__ApiKey", startInfo.Environment.Keys);
+    }
+
+    [Fact]
+    public void ShouldPropagateTheConfiguredNames_WhenConfiguringTheRestrictedEnvironment()
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
+        var session = new Dictionary<string, string>(s_operatorSession, StringComparer.Ordinal) { ["HTTPS_PROXY"] = "http://proxy.local:3128" };
+
+        HostProcessRunner.ConfigureRestrictedEnvironment(startInfo, name => session.GetValueOrDefault(name), ["HTTPS_PROXY", "OPENAI_API_KEY"]);
+
+        Assert.Equal("http://proxy.local:3128", startInfo.Environment["HTTPS_PROXY"]);
+        Assert.DoesNotContain("OPENAI_API_KEY", startInfo.Environment.Keys);
+    }
+
+    [Fact]
+    public void ShouldApplyTheShellFilter_WhenSelectingThePropagatedNames()
+    {
+        var logger = new Orkeon.Tests.Shared.Doubles.RecordingLogger();
+
+        var propagated = HostProcessRunner.SelectPropagatedVariables(
+            ["HTTPS_PROXY", "ORKEON_Llm__Model", "GH_TOKEN", "SSH_AUTH_SOCK", "A=B", "", "https_proxy"], logger);
+
+        Assert.Equal(["HTTPS_PROXY"], propagated);
+        Assert.Equal(4, logger.Entries.Count(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Warning));
+    }
+
+    [Fact]
+    public void ShouldReadTheShellKey_WhenTheCodeSandboxIsRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Tools:Shell:Environment:Propagate:0"] = "HTTPS_PROXY",
+                ["Orkeon:Tools:Shell:Environment:Propagate:1"] = "GH_TOKEN",
+            })
+            .Build());
+        services.AddSingleton<Orkeon.Domain.FileSystem.IFileSystemService>(new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService());
+        services.AddOrkeonCodeSandbox();
+
+        var runner = services.BuildServiceProvider().GetRequiredService<HostProcessRunner>();
+
+        Assert.Equal(["HTTPS_PROXY"], runner.PropagatedVariables);
     }
 
     public void Dispose()

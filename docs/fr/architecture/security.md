@@ -82,6 +82,14 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
   montage : une socket abstraite suit l'espace de noms réseau, que `AllowNetwork` partage. Sans le
   réseau, ni les variables ni les montages ne sont donnés. Toute autre variable, les clés d'API des
   LLM en tête, reste écartée.
+- **Variables ajoutées.** `Orkeon:Tools:Shell:Environment:Propagate` ajoute des variables de l'hôte
+  à la liste blanche, pour la session shell comme pour le bac à sable de code. Le filtre des secrets
+  l'emporte : un nom qui commence par `ORKEON_`, contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`,
+  `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse), vide, ou qui porte `=` ou un NUL est écarté avec
+  un avertissement ; un nom intégré est ignoré. Sous bubblewrap, une variable ajoutée passe avec ou
+  sans réseau, puisque seule une socket en a besoin, et **aucun chemin qu'elle nomme n'est monté** :
+  la vue reste ce qu'en font les montages et `ReadOnlyPaths`, si bien qu'une variable qui nomme un
+  répertoire de l'hôte ne désigne rien à l'intérieur tant que ce répertoire n'est pas prêté autrement.
 - **Chemins.** Sous bubblewrap, les arguments sont vérifiés et passés virtuels. Sous Seatbelt,
   AppContainer et `None`, ils sont traduits virtuel→physique, et les chemins physiques de la
   sortie reviennent virtuels.
