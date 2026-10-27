@@ -295,6 +295,49 @@ public class SpawnAgentToolTests
     }
 
     [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ShouldKeepTheSubAgentsOutputAndSpendTheParentsBudget_WhenItsTokensPassTheBudget()
+    {
+        // Arrange: the sub-agent finishes, but its tokens pass the parent's budget
+        var parentBudget = new AgentExecutionBudget
+        {
+            MaxToolCalls = 10, MaxDelegationDepth = 3, MaxTokensConsumed = 100, MaxSpawnedAgents = 5,
+            MaxWallTime = TimeSpan.FromMinutes(10),
+        };
+        var execution = new CapturingExecutionService
+        {
+            ResultToReturn = new AppTaskResult(
+                Success: true, Output: "the finished summary", StructuredOutput: null, ToolsUsed: [],
+                ExecutionTime: TimeSpan.FromMilliseconds(5), TokensUsed: 500)
+        };
+        using var tool = new Orkeon.Infrastructure.Tools.SpawnAgentTool(
+            CreateCapturingFactoryMock(out _), _parentAgentId, _parentCrewId, parentBudget, executionService: execution);
+        var request = new ProtocolToolCallRequest(
+            ToolName: "spawn_agent",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["role"] = "summariser", ["goal"] = "Summarise", ["task"] = "5 bullets", ["wait_for_result"] = true
+            });
+
+        // Act
+        var response = await tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert: the work done is the result, the message names the exhaustion, the parent is spent
+        Assert.True(response.Success, response.Error);
+        var fields = Assert.IsType<Dictionary<string, object>>(response.Result);
+        string Field(string name) =>
+            Convert.ToString(fields.Single(f => string.Equals(f.Key, name, StringComparison.OrdinalIgnoreCase)).Value,
+                System.Globalization.CultureInfo.InvariantCulture) ?? "";
+        Assert.Equal("the finished summary", Field("result"));
+        Assert.Equal("True", Field("success"));
+        Assert.Contains("budget", Field("message"), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Tokens", Field("message"), StringComparison.Ordinal);
+        Assert.Equal(500, parentBudget.CurrentTokensConsumed);
+        Assert.True(parentBudget.IsExhausted);
+        Assert.Throws<BudgetExhaustedException>(parentBudget.ThrowIfExhausted);
+    }
+
+    [Fact]
     public async Task ShouldRecordSpawnAgainstParentBudget_WhenInvoked()
     {
         // Arrange
