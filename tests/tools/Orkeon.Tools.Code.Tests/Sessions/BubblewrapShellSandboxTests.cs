@@ -27,7 +27,7 @@ public sealed class BubblewrapShellSandboxTests
     private static BubblewrapShellSandbox Sandbox(StubEnvironment environment, Func<string, ConfinedAccess?>? kindOf = null)
         => new(() => BubblewrapAvailability.Available(Bwrap), environment.Read, kindOf ?? (_ => ConfinedAccess.HiddenFile));
 
-    private static ShellSessionView View(bool allowNetwork) => new([], [], allowNetwork);
+    private static ShellSessionView View(bool allowNetwork, bool sessionBus = false) => new([], [], allowNetwork) { SessionBus = sessionBus };
 
     private static int IndexOf(IList<string> arguments, params string[] sequence)
     {
@@ -41,9 +41,9 @@ public sealed class BubblewrapShellSandboxTests
     }
 
     [Fact]
-    public void ShouldBindTheSocketPathsReadWriteAndPropagateTheVariables_WhenTheNetworkIsAllowed()
+    public void ShouldBindTheSocketPathsReadWriteAndPropagateTheVariables_WhenTheNetworkAndTheSessionBusAreAllowed()
     {
-        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: true), Bwrap);
+        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: true, sessionBus: true), Bwrap);
 
         Assert.True(IndexOf(info.ArgumentList, "--bind-try", "/run/user/1000/ssh-agent.socket", "/run/user/1000/ssh-agent.socket") >= 0);
         Assert.True(IndexOf(info.ArgumentList, "--bind-try", "/run/user/1000/bus", "/run/user/1000/bus") >= 0);
@@ -55,7 +55,7 @@ public sealed class BubblewrapShellSandboxTests
     [Fact]
     public void ShouldNeverBindTheRuntimeDirectory()
     {
-        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: true), Bwrap);
+        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: true, sessionBus: true), Bwrap);
 
         Assert.DoesNotContain("/run/user/1000", info.ArgumentList);
     }
@@ -63,7 +63,7 @@ public sealed class BubblewrapShellSandboxTests
     [Fact]
     public void ShouldNeitherBindNorPropagateTheSockets_WhenTheNetworkIsNotAllowed()
     {
-        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: false), Bwrap);
+        var info = Sandbox(OperatorSession()).PrepareStartInfo(View(allowNetwork: false, sessionBus: true), Bwrap);
 
         Assert.DoesNotContain("/run/user/1000/ssh-agent.socket", info.ArgumentList);
         Assert.DoesNotContain("/run/user/1000/bus", info.ArgumentList);
@@ -75,10 +75,29 @@ public sealed class BubblewrapShellSandboxTests
     [Fact]
     public void ShouldBindNothingForAnAbstractBus_AndStillPropagateItsAddress()
     {
-        var info = Sandbox(OperatorSession("unix:abstract=/tmp/dbus-abc,guid=0123")).PrepareStartInfo(View(allowNetwork: true), Bwrap);
+        var info = Sandbox(OperatorSession("unix:abstract=/tmp/dbus-abc,guid=0123")).PrepareStartInfo(View(allowNetwork: true, sessionBus: true), Bwrap);
 
         Assert.DoesNotContain("/tmp/dbus-abc", info.ArgumentList);
         Assert.Equal("unix:abstract=/tmp/dbus-abc,guid=0123", info.Environment["DBUS_SESSION_BUS_ADDRESS"]);
+    }
+
+    [Theory]
+    [InlineData("unix:path=/run/user/1000/bus,guid=0123")]
+    [InlineData("unix:abstract=/tmp/dbus-abc,guid=0123")]
+    public void ShouldNeitherBindNorPropagateTheBus_ButKeepTheAgent_WhenTheSessionBusIsNotEnabled(string busAddress)
+    {
+        var info = Sandbox(OperatorSession(busAddress)).PrepareStartInfo(View(allowNetwork: true), Bwrap);
+
+        Assert.DoesNotContain("/run/user/1000/bus", info.ArgumentList);
+        Assert.DoesNotContain("DBUS_SESSION_BUS_ADDRESS", info.Environment.Keys);
+        Assert.True(IndexOf(info.ArgumentList, "--bind-try", "/run/user/1000/ssh-agent.socket", "/run/user/1000/ssh-agent.socket") >= 0);
+        Assert.Equal("/run/user/1000/ssh-agent.socket", info.Environment["SSH_AUTH_SOCK"]);
+    }
+
+    [Fact]
+    public void ShouldTellTwoViewsApart_WhenOnlyTheSessionBusDiffers()
+    {
+        Assert.NotEqual(View(allowNetwork: true).Fingerprint, View(allowNetwork: true, sessionBus: true).Fingerprint);
     }
 
     [Fact]

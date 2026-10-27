@@ -200,6 +200,13 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// </summary>
     internal IReadOnlyList<string> PropagatedVariables { get; init; } = [];
 
+    /// <summary>
+    /// Whether a confined session receives the operator's session bus
+    /// (<c>Orkeon:Tools:Shell:Environment:SessionBus</c>). Set by the dependency injection
+    /// registration and the tests.
+    /// </summary>
+    internal bool SessionBus { get; init; }
+
     /// <summary>Whether bubblewrap works here; probed once per process. Replaced by the tests.</summary>
     internal Func<BubblewrapAvailability> Bubblewrap { get; init; } = BubblewrapProbe.Current;
 
@@ -758,6 +765,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var view = new ShellSessionView(confinedPaths, [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork)
         {
             PropagatedVariables = PropagatedVariables,
+            SessionBus = SessionBus,
         };
 
         if (detached)

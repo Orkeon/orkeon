@@ -2471,7 +2471,14 @@
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
       "default": [],
-      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY`. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case) is dropped with a warning; a built-in name is ignored. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view."
+      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:Environment:SessionBus",
+      "section": "Orkeon:Tools:Shell",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a confined shell session (bubblewrap, Seatbelt, AppContainer) receives the operator's session bus: `DBUS_SESSION_BUS_ADDRESS` and, under bubblewrap with the network, its socket. False by default. The bus lets a command leave the sandbox (`systemd-run --user`) and read every keyring secret (`secret-tool`), so turning it on is logged as a warning. An unconfined session and the code sandbox, which no jail holds, always receive it."
     },
     {
       "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",

@@ -72,21 +72,39 @@ confie à la **session shell** de l'agent, que le système d'exploitation confin
 - **Pas de réseau** sauf `Confinement:AllowNetwork = true` : un espace de noms réseau limité au
   loopback sous bubblewrap, `(deny network*)` sous Seatbelt, aucune capacité réseau sous
   AppContainer.
-- **Sockets de session.** La liste blanche d'environnement du shell porte
-  `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` et `SSH_AUTH_SOCK` quand l'hôte les a : elles
-  nomment le bus de session (le trousseau de `gh` et de `git-credential-libsecret`) et l'agent ssh,
-  jamais un secret. Sous bubblewrap elles ne suivent qu'avec `AllowNetwork = true`, et seuls les
-  fichiers de socket sont alors montés en lecture-écriture à leur propre chemin — le chemin de
+- **Sockets de session.** La liste blanche d'environnement du shell porte `XDG_RUNTIME_DIR` et
+  `SSH_AUTH_SOCK` quand l'hôte les a, et `DBUS_SESSION_BUS_ADDRESS` à la condition ci-dessous.
+  Chacune porte une adresse plutôt qu'un secret, mais ce à quoi elle mène est puissant : l'agent ssh
+  signe avec toutes les clés qu'il détient, et le bus de session atteint tous les services de la
+  session de l'opérateur. Sous bubblewrap elles ne suivent qu'avec `AllowNetwork = true`, et seuls
+  les fichiers de socket sont alors montés en lecture-écriture à leur propre chemin — le chemin de
   `SSH_AUTH_SOCK` et un bus `unix:path=` — quand ils existent et ne sont pas un répertoire ;
-  `XDG_RUNTIME_DIR` lui-même n'est jamais monté. Un bus `unix:abstract=` n'a besoin d'aucun
-  montage : une socket abstraite suit l'espace de noms réseau, que `AllowNetwork` partage. Sans le
-  réseau, ni les variables ni les montages ne sont donnés. Toute autre variable, les clés d'API des
-  LLM en tête, reste écartée.
+  `XDG_RUNTIME_DIR` lui-même n'est jamais monté. Sans le réseau, ni les variables ni les montages
+  ne sont donnés. Toute autre variable, les clés d'API des LLM en tête, reste écartée.
+- **Le bus de session est sur option.** Par le bus, une commande lance `systemd-run --user sh -c …`
+  (ou appelle `org.freedesktop.systemd1` avec `gdbus`) et **s'exécute donc hors du bac à sable**,
+  et `secret-tool search --all` lit tous les secrets du trousseau. Une session confinée
+  (bubblewrap, Seatbelt, AppContainer) ne reçoit donc ni `DBUS_SESSION_BUS_ADDRESS` ni, sous
+  bubblewrap, la socket du bus, sauf si `Orkeon:Tools:Shell:Environment:SessionBus = true`, ce que
+  l'hôte journalise comme un avertissement à son démarrage. Ne l'activez que pour un agent de
+  confiance qui a besoin d'un assistant d'identifiants adossé au trousseau (`gh auth
+  git-credential`, `git-credential-libsecret`) ; un dépôt distant ssh, ou un identifiant que
+  l'opérateur remet autrement, n'a pas besoin du bus. Un bus `unix:abstract=` est l'exception que
+  bubblewrap ne peut fermer : une socket abstraite appartient à l'espace de noms réseau, que
+  `AllowNetwork` partage, si bien qu'elle reste joignable par une commande qui trouve son nom,
+  variable ou non. Une session non confinée (`Mode = None`, un conteneur) et le bac à sable de code
+  reçoivent toujours le bus : aucune prison ne les retient, et ils atteignent sa socket dans
+  `XDG_RUNTIME_DIR` sans la variable.
 - **Variables ajoutées.** `Orkeon:Tools:Shell:Environment:Propagate` ajoute des variables de l'hôte
   à la liste blanche, pour la session shell comme pour le bac à sable de code. Le filtre des secrets
   l'emporte : un nom qui commence par `ORKEON_`, contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`,
   `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse), vide, ou qui porte `=` ou un NUL est écarté avec
-  un avertissement ; un nom intégré est ignoré. Sous bubblewrap, une variable ajoutée passe avec ou
+  un avertissement, de même qu'une variable dont la valeur porte des identifiants d'URL
+  (`http://user:password@proxy:3128`, `https://<jeton>@hôte`), l'avertissement nommant la variable
+  et jamais sa valeur ; un nom intégré est ignoré. Les noms se comparent avec la casse (`http_proxy`
+  et `HTTP_PROXY` sont deux variables), sauf sous Windows. Le filtre ne lit que les noms et les
+  identifiants d'URL : une valeur qui porte un secret sous une autre forme passe, donc ne listez que
+  des variables dont la valeur n'est pas un secret. Sous bubblewrap, une variable ajoutée passe avec ou
   sans réseau, puisque seule une socket en a besoin, et **aucun chemin qu'elle nomme n'est monté** :
   la vue reste ce qu'en font les montages et `ReadOnlyPaths`, si bien qu'une variable qui nomme un
   répertoire de l'hôte ne désigne rien à l'intérieur tant que ce répertoire n'est pas prêté autrement.

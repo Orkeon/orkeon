@@ -69,20 +69,36 @@ agent's **shell session**, which the operating system confines
   (`Mode = None`); the command never falls back to running unconfined.
 - **No network** unless `Confinement:AllowNetwork = true`: a network namespace with loopback only
   under bubblewrap, `(deny network*)` under Seatbelt, no network capability under AppContainer.
-- **Session sockets.** The shell's environment allow-list carries `DBUS_SESSION_BUS_ADDRESS`,
-  `XDG_RUNTIME_DIR` and `SSH_AUTH_SOCK` when the host has them: they name the session bus (the
-  keyring of `gh` and `git-credential-libsecret`) and the ssh agent, never a secret. Under
-  bubblewrap they follow only with `AllowNetwork = true`, and then only the socket files are bound
-  read-write at their own path — the `SSH_AUTH_SOCK` path and a `unix:path=` bus — when they exist
-  and are no directory; `XDG_RUNTIME_DIR` itself is never bound. A `unix:abstract=` bus needs no
-  bind: an abstract socket follows the network namespace, which `AllowNetwork` shares. Without the
-  network neither the variables nor the binds are given. Every other variable, the LLM API keys
-  first, stays dropped.
+- **Session sockets.** The shell's environment allow-list carries `XDG_RUNTIME_DIR` and
+  `SSH_AUTH_SOCK` when the host has them, and `DBUS_SESSION_BUS_ADDRESS` under the condition below.
+  Each holds an address rather than a secret, but what it leads to is powerful: the ssh agent signs
+  with every key it holds, and the session bus reaches every service of the operator's session.
+  Under bubblewrap they follow only with `AllowNetwork = true`, and then only the socket files are
+  bound read-write at their own path — the `SSH_AUTH_SOCK` path and a `unix:path=` bus — when they
+  exist and are no directory; `XDG_RUNTIME_DIR` itself is never bound. Without the network neither
+  the variables nor the binds are given. Every other variable, the LLM API keys first, stays
+  dropped.
+- **The session bus is opt-in.** Through the bus a command runs `systemd-run --user sh -c …` (or
+  calls `org.freedesktop.systemd1` with `gdbus`) and so **executes outside the sandbox**, and
+  `secret-tool search --all` reads every secret of the keyring. A confined session (bubblewrap,
+  Seatbelt, AppContainer) therefore receives neither `DBUS_SESSION_BUS_ADDRESS` nor, under
+  bubblewrap, the bus socket unless `Orkeon:Tools:Shell:Environment:SessionBus = true`, which the
+  host logs as a warning when it starts. Turn it on only for a trusted agent that needs a
+  keyring-backed credential helper (`gh auth git-credential`, `git-credential-libsecret`); an
+  ssh remote or a credential the operator hands over another way needs no bus. A `unix:abstract=`
+  bus is the exception bubblewrap cannot close: an abstract socket belongs to the network namespace,
+  which `AllowNetwork` shares, so it stays reachable to a command that finds its name, variable or
+  not. An unconfined session (`Mode = None`, a container) and the code sandbox always receive the
+  bus: no jail holds them, and they reach its socket in `XDG_RUNTIME_DIR` without the variable.
 - **Added variables.** `Orkeon:Tools:Shell:Environment:Propagate` adds host variables to the
   allow-list, for the shell session and the code sandbox alike. The secret filter wins over it: a
   name starting with `ORKEON_`, containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`,
-  `CREDENTIAL` or `AUTH` (without case), blank, or holding `=` or a NUL is dropped with a warning;
-  a built-in name is ignored. Under bubblewrap an added variable passes with or without the
+  `CREDENTIAL` or `AUTH` (without case), blank, or holding `=` or a NUL is dropped with a warning,
+  and so is one whose value carries URL credentials (`http://user:password@proxy:3128`,
+  `https://<token>@host`), the warning naming the variable and never its value; a built-in name is
+  ignored. Names compare with case (`http_proxy` and `HTTP_PROXY` are two variables), except on
+  Windows. The filter reads names and URL userinfo only: a value carrying a credential in another
+  shape passes, so list only variables whose value is no secret. Under bubblewrap an added variable passes with or without the
   network, since only a socket needs it, and **no path it names is bound**: the view stays what
   the mounts and `ReadOnlyPaths` make it, so a variable naming a host directory points at nothing
   inside unless that directory is lent another way.

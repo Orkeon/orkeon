@@ -28,7 +28,7 @@ public sealed class ShellEnvironmentTests
     [Fact]
     public void ShouldPropagateTheSessionSockets_WhenTheParentHasThem()
     {
-        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, includeSessionSockets: true);
+        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, ShellSessionSockets.All);
 
         Assert.Equal("unix:path=/run/user/1000/bus", variables["DBUS_SESSION_BUS_ADDRESS"]);
         Assert.Equal("/run/user/1000", variables["XDG_RUNTIME_DIR"]);
@@ -39,7 +39,7 @@ public sealed class ShellEnvironmentTests
     [Fact]
     public void ShouldStillDropTheSecrets_WhenTheSessionSocketsArePropagated()
     {
-        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, includeSessionSockets: true);
+        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, ShellSessionSockets.All);
 
         Assert.DoesNotContain("OPENAI_API_KEY", variables.Keys);
         Assert.DoesNotContain("ORKEON_Llm__ApiKey", variables.Keys);
@@ -50,7 +50,7 @@ public sealed class ShellEnvironmentTests
     [Fact]
     public void ShouldLeaveTheSessionSocketsOut_WhenAsked()
     {
-        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, includeSessionSockets: false);
+        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, ShellSessionSockets.None);
 
         Assert.DoesNotContain("DBUS_SESSION_BUS_ADDRESS", variables.Keys);
         Assert.DoesNotContain("XDG_RUNTIME_DIR", variables.Keys);
@@ -64,7 +64,7 @@ public sealed class ShellEnvironmentTests
         var environment = new StubEnvironment();
         environment.Variables["PATH"] = "/usr/bin";
 
-        var variables = ShellEnvironment.RestrictedVariables(environment.Read, includeSessionSockets: true);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, ShellSessionSockets.All);
 
         Assert.DoesNotContain("DBUS_SESSION_BUS_ADDRESS", variables.Keys);
         Assert.DoesNotContain("SSH_AUTH_SOCK", variables.Keys);
@@ -76,7 +76,7 @@ public sealed class ShellEnvironmentTests
         var startInfo = new System.Diagnostics.ProcessStartInfo("/bin/sh");
         startInfo.Environment["OPENAI_API_KEY"] = "sk-inherited";
 
-        ShellEnvironment.ConfigureRestricted(startInfo, OperatorSession().Read, includeSessionSockets: true);
+        ShellEnvironment.ConfigureRestricted(startInfo, OperatorSession().Read, ShellSessionSockets.All);
 
         Assert.DoesNotContain("OPENAI_API_KEY", startInfo.Environment.Keys);
         Assert.Equal("/run/user/1000/ssh-agent.socket", startInfo.Environment["SSH_AUTH_SOCK"]);
@@ -93,7 +93,7 @@ public sealed class ShellEnvironmentTests
         var environment = new StubEnvironment();
         environment.Variables["DBUS_SESSION_BUS_ADDRESS"] = address;
 
-        Assert.Equal([expected], ShellEnvironment.SessionSocketPaths(environment.Read));
+        Assert.Equal([expected], ShellEnvironment.SessionSocketPaths(environment.Read, includeBus: true));
     }
 
     [Theory]
@@ -108,7 +108,7 @@ public sealed class ShellEnvironmentTests
         var environment = new StubEnvironment();
         environment.Variables["DBUS_SESSION_BUS_ADDRESS"] = address;
 
-        Assert.Empty(ShellEnvironment.SessionSocketPaths(environment.Read));
+        Assert.Empty(ShellEnvironment.SessionSocketPaths(environment.Read, includeBus: true));
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class ShellEnvironmentTests
         var environment = new StubEnvironment();
         environment.Variables["SSH_AUTH_SOCK"] = "/tmp/ssh-XXXX/agent.42";
 
-        Assert.Equal(["/tmp/ssh-XXXX/agent.42"], ShellEnvironment.SessionSocketPaths(environment.Read));
+        Assert.Equal(["/tmp/ssh-XXXX/agent.42"], ShellEnvironment.SessionSocketPaths(environment.Read, includeBus: true));
     }
 
     [Theory]
@@ -129,13 +129,13 @@ public sealed class ShellEnvironmentTests
         var environment = new StubEnvironment();
         environment.Variables["SSH_AUTH_SOCK"] = value;
 
-        Assert.Empty(ShellEnvironment.SessionSocketPaths(environment.Read));
+        Assert.Empty(ShellEnvironment.SessionSocketPaths(environment.Read, includeBus: true));
     }
 
     [Fact]
     public void ShouldNeverNameTheRuntimeDirectoryAsASocketPath()
     {
-        var paths = ShellEnvironment.SessionSocketPaths(OperatorSession().Read);
+        var paths = ShellEnvironment.SessionSocketPaths(OperatorSession().Read, includeBus: true);
 
         Assert.Equal(["/run/user/1000/ssh-agent.socket", "/run/user/1000/bus"], paths);
         Assert.DoesNotContain("/run/user/1000", paths);
@@ -148,7 +148,7 @@ public sealed class ShellEnvironmentTests
         var logger = new RecordingLogger();
 
         var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY"], logger);
-        var variables = ShellEnvironment.RestrictedVariables(environment.Read, includeSessionSockets: true, propagated);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, ShellSessionSockets.All, propagated);
 
         Assert.Equal(["HTTPS_PROXY"], propagated);
         Assert.Equal("http://proxy.local:3128", variables["HTTPS_PROXY"]);
@@ -176,6 +176,8 @@ public sealed class ShellEnvironmentTests
     [InlineData("SMB_PASSWD")]
     [InlineData("AWS_CREDENTIALS_FILE")]
     [InlineData("PROXY_AUTH")]
+    [InlineData("gh_token")]
+    [InlineData("Proxy_Password")]
     public void ShouldRefuseASecretWordName_WithAWarning(string name)
     {
         var environment = OperatorSession();
@@ -183,7 +185,7 @@ public sealed class ShellEnvironmentTests
         var logger = new RecordingLogger();
 
         var propagated = ShellEnvironment.SelectPropagated([name], logger);
-        var variables = ShellEnvironment.RestrictedVariables(environment.Read, includeSessionSockets: true, [name]);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, ShellSessionSockets.All, [name]);
 
         Assert.Empty(propagated);
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains(name, StringComparison.Ordinal));
@@ -193,7 +195,6 @@ public sealed class ShellEnvironmentTests
     [Theory]
     [InlineData("SSH_AUTH_SOCK")]
     [InlineData("PATH")]
-    [InlineData("path")]
     [InlineData("DBUS_SESSION_BUS_ADDRESS")]
     [InlineData("DOTNET_NOLOGO")]
     public void ShouldIgnoreADuplicateOfABuiltInName_WithoutAWarning(string name)
@@ -226,8 +227,118 @@ public sealed class ShellEnvironmentTests
     [Fact]
     public void ShouldKeepEachAddedNameOnce_WhenTheOperatorRepeatsIt()
     {
-        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY", "https_proxy", "NO_PROXY"], new RecordingLogger());
+        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY", "HTTPS_PROXY", "NO_PROXY"], new RecordingLogger());
 
         Assert.Equal(["HTTPS_PROXY", "NO_PROXY"], propagated);
+    }
+
+    [Fact]
+    public void ShouldLeaveTheBusOut_ButKeepTheAgent_WhenTheSocketsComeWithoutTheBus()
+    {
+        var variables = ShellEnvironment.RestrictedVariables(OperatorSession().Read, ShellSessionSockets.WithoutBus);
+
+        Assert.DoesNotContain("DBUS_SESSION_BUS_ADDRESS", variables.Keys);
+        Assert.Equal("/run/user/1000/ssh-agent.socket", variables["SSH_AUTH_SOCK"]);
+        Assert.Equal("/run/user/1000", variables["XDG_RUNTIME_DIR"]);
+    }
+
+    [Fact]
+    public void ShouldNameOnlyTheAgentSocketPath_WhenTheBusIsLeftOut()
+    {
+        Assert.Equal(["/run/user/1000/ssh-agent.socket"], ShellEnvironment.SessionSocketPaths(OperatorSession().Read, includeBus: false));
+    }
+
+    [Fact]
+    public void ShouldKeepTwoNamesDifferingByCase_ExceptOnWindows()
+    {
+        var environment = OperatorSession();
+        environment.Variables["http_proxy"] = "http://lower.local:3128";
+        environment.Variables["HTTP_PROXY"] = "http://upper.local:3128";
+
+        var propagated = ShellEnvironment.SelectPropagated(["http_proxy", "HTTP_PROXY"], environment.Read, new RecordingLogger());
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, ShellSessionSockets.All, propagated);
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(["http_proxy"], propagated);
+        }
+        else
+        {
+            Assert.Equal(["http_proxy", "HTTP_PROXY"], propagated);
+            Assert.Equal("http://lower.local:3128", variables["http_proxy"]);
+            Assert.Equal("http://upper.local:3128", variables["HTTP_PROXY"]);
+        }
+    }
+
+    [Fact]
+    public void ShouldTakeALowerCaseBuiltInNameForAnotherVariable_ExceptOnWindows()
+    {
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated(["path"], logger);
+
+        Assert.Equal(OperatingSystem.IsWindows() ? [] : ["path"], propagated);
+        Assert.DoesNotContain(logger.Entries, entry => entry.Level >= LogLevel.Warning);
+    }
+
+    [Theory]
+    [InlineData("http://user:s3cr3t@proxy.local:3128")]
+    [InlineData("https://s3cr3t@github.com/org/repo")]
+    [InlineData("socks5://u:s3cr3t@proxy.local:1080")]
+    [InlineData("http://proxy.local:3128,http://u:s3cr3t@other.local")]
+    public void ShouldDropAnAddedVariable_WithAWarningThatHidesTheValue_WhenItsValueCarriesUrlCredentials(string value)
+    {
+        var environment = OperatorSession();
+        environment.Variables["HTTPS_PROXY"] = value;
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY"], environment.Read, logger);
+        var variables = ShellEnvironment.RestrictedVariables(environment.Read, ShellSessionSockets.All, ["HTTPS_PROXY"]);
+
+        Assert.Empty(propagated);
+        Assert.DoesNotContain("HTTPS_PROXY", variables.Keys);
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("HTTPS_PROXY", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("s3cr3t", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("http://proxy.local:3128")]
+    [InlineData("/opt/certs")]
+    [InlineData("operator@example.com")]
+    public void ShouldKeepAnAddedVariable_WhenItsValueCarriesNoUrlCredentials(string value)
+    {
+        var environment = OperatorSession();
+        environment.Variables["HTTPS_PROXY"] = value;
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated(["HTTPS_PROXY"], environment.Read, logger);
+
+        Assert.Equal(["HTTPS_PROXY"], propagated);
+        Assert.Empty(logger.Entries);
+    }
+
+    [Fact]
+    public void ShouldWarnThatTheBusLeavesTheSandbox_WhenTheSessionBusIsEnabled()
+    {
+        var options = new ShellEnvironmentOptions { SessionBus = true };
+        var logger = new RecordingLogger();
+
+        var selected = ShellPropagatedVariables.From(options, new StubEnvironment().Read, logger);
+
+        Assert.True(selected.SessionBus);
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("SessionBus", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldLeaveTheSessionBusOffWithoutAWarning_ByDefault()
+    {
+        var logger = new RecordingLogger();
+
+        var selected = ShellPropagatedVariables.From(new ShellEnvironmentOptions(), new StubEnvironment().Read, logger);
+
+        Assert.False(selected.SessionBus);
+        Assert.Empty(logger.Entries);
     }
 }

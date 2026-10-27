@@ -771,10 +771,52 @@ public sealed class ProcessIsolationSandboxTests : IDisposable
         var logger = new Orkeon.Tests.Shared.Doubles.RecordingLogger();
 
         var propagated = HostProcessRunner.SelectPropagatedVariables(
-            ["HTTPS_PROXY", "ORKEON_Llm__Model", "GH_TOKEN", "SSH_AUTH_SOCK", "A=B", "", "https_proxy"], logger);
+            ["HTTPS_PROXY", "ORKEON_Llm__Model", "GH_TOKEN", "SSH_AUTH_SOCK", "A=B", "", "HTTPS_PROXY", "gh_token"], name => null, logger);
 
         Assert.Equal(["HTTPS_PROXY"], propagated);
-        Assert.Equal(4, logger.Entries.Count(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Warning));
+        Assert.Equal(5, logger.Entries.Count(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Warning));
+    }
+
+    [Fact]
+    public void ShouldKeepTwoNamesDifferingByCase_ExceptOnWindows_WhenSelectingThePropagatedNames()
+    {
+        var session = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["http_proxy"] = "http://lower.local:3128",
+            ["HTTP_PROXY"] = "http://upper.local:3128",
+        };
+        var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
+
+        var propagated = HostProcessRunner.SelectPropagatedVariables(["http_proxy", "HTTP_PROXY", "path"], name => session.GetValueOrDefault(name), null);
+        HostProcessRunner.ConfigureRestrictedEnvironment(startInfo, name => session.GetValueOrDefault(name), propagated);
+
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(["http_proxy"], propagated);
+        }
+        else
+        {
+            Assert.Equal(["http_proxy", "HTTP_PROXY", "path"], propagated);
+            Assert.Equal("http://lower.local:3128", startInfo.Environment["http_proxy"]);
+            Assert.Equal("http://upper.local:3128", startInfo.Environment["HTTP_PROXY"]);
+        }
+    }
+
+    [Fact]
+    public void ShouldDropAnAddedVariableWithUrlCredentials_WithAWarningThatHidesTheValue()
+    {
+        var session = new Dictionary<string, string>(StringComparer.Ordinal) { ["HTTPS_PROXY"] = "http://user:s3cr3t@proxy.local:3128" };
+        var logger = new Orkeon.Tests.Shared.Doubles.RecordingLogger();
+        var startInfo = new System.Diagnostics.ProcessStartInfo("dotnet");
+
+        var propagated = HostProcessRunner.SelectPropagatedVariables(["HTTPS_PROXY"], name => session.GetValueOrDefault(name), logger);
+        HostProcessRunner.ConfigureRestrictedEnvironment(startInfo, name => session.GetValueOrDefault(name), ["HTTPS_PROXY"]);
+
+        Assert.Empty(propagated);
+        Assert.DoesNotContain("HTTPS_PROXY", startInfo.Environment.Keys);
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("HTTPS_PROXY", warning.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("s3cr3t", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]

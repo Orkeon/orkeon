@@ -205,4 +205,19 @@ public sealed class CodeToolExtensionsTests
 
         Assert.Equal(["HTTPS_PROXY"], tool.PropagatedVariables);
     }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("false", false)]
+    [InlineData("true", true)]
+    public void ShouldHandTheToolTheSessionBusSwitch_OffByDefault(string? configured, bool expected)
+    {
+        var settings = new Dictionary<string, string?>();
+        if (configured is not null)
+            settings["Orkeon:Tools:Shell:Environment:SessionBus"] = configured;
+
+        var tool = (ShellCommandTool)ResolveShellTool(settings);
+
+        Assert.Equal(expected, tool.SessionBus);
+    }
 }

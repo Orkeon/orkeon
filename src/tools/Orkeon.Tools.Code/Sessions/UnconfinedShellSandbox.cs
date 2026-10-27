@@ -38,14 +38,14 @@ internal sealed class UnconfinedShellSandbox : IShellSandbox
 
         var startInfo = new ProcessStartInfo(PosixShell);
         startInfo.ArgumentList.Add("-s");
-        ShellEnvironment.ConfigureRestricted(startInfo, view.PropagatedVariables);
+        ShellEnvironment.ConfigureRestricted(startInfo, ShellSessionSockets.All, view.PropagatedVariables);
         return await PosixShellSession.StartAsync(startInfo, WatchedHostPid, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, cancellationToken, new PosixShellSession.DetachedLaunch(Prepare))
             .ConfigureAwait(false);
 
         ProcessStartInfo Prepare()
         {
             var info = new ProcessStartInfo(PosixShell);
-            ShellEnvironment.ConfigureRestricted(info, view.PropagatedVariables);
+            ShellEnvironment.ConfigureRestricted(info, ShellSessionSockets.All, view.PropagatedVariables);
             return info;
         }
     }

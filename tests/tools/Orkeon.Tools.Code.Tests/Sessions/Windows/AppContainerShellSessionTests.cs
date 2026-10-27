@@ -213,7 +213,7 @@ public sealed class AppContainerShellSessionTests : IDisposable
     public async Task ShouldRunABatchFileFromPath_WhenUnconfined()
     {
         var tools = Folder("tools", ("greet.cmd", "@echo off\r\necho hello %1\r\n"));
-        var environment = new Dictionary<string, string>(ShellEnvironment.RestrictedVariables(), StringComparer.OrdinalIgnoreCase)
+        var environment = new Dictionary<string, string>(ShellEnvironment.RestrictedVariables(ShellSessionSockets.All), StringComparer.OrdinalIgnoreCase)
         {
             ["PATH"] = tools + ";" + Environment.SystemDirectory,
         };
