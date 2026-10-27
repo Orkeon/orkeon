@@ -534,10 +534,18 @@ No attribute carries an id of a crew, task or agent.
 - **Declarative classification**: tools can self-declare their class via
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — a declaration wins
   over the gate's name tables; `Unspecified` (the default) falls back to the tables.
+  A tool whose class depends on the operation asked overrides `IBaseTool.AccessFor(arguments)`
+  (default: `Access`), which the gate reads for each call: `github` is `Read` for
+  `list_issues`, `get_pr`, `search_repos` and `get_repo`, `Execute` for `create_issue`,
+  `create_pr` and any unknown or missing action; `http_api` is `Read` for `GET`, `HEAD` and
+  `OPTIONS` (a missing method is its default `GET`), `Execute` for any other method. Their
+  static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
-  `scrape_element`, `rag_search`), `file_write` and `rag_ingest` (Edit: it writes into the
-  knowledge index, never into the workspace) and `shell_command`/`http_api` (Execute) all
-  declare themselves. `BuiltInToolAccessTests` lists the built-in tools still left at
+  `scrape_element`, `rag_search`, `rag_eval`, `web_search`), `file_write` and `rag_ingest`
+  (Edit: it writes into the knowledge index, never into the workspace) and `shell_command`
+  (Execute) all declare themselves. An MCP tool takes its class from the server's
+  `annotations` (`readOnlyHint: true` → `Read`, other annotations → `Execute`, none →
+  `Unspecified`). `BuiltInToolAccessTests` lists the built-in tools still left at
   `Unspecified`.
 - **Backward-compatible default**: flag absent → no gate registered → `act`
   behaves exactly as before. Scripts opt into a mode per call via the

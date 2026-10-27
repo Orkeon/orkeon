@@ -66,6 +66,47 @@ public class McpToolDefinition
     /// <summary>Gets or sets the JSON Schema describing the tool's input parameters.</summary>
     [JsonPropertyName("inputSchema")]
     public JsonElement? InputSchema { get; set; }
+
+    /// <summary>
+    /// Gets or sets the behaviour hints the server declares for the tool (the MCP <c>annotations</c>);
+    /// <see langword="null"/> when the server sends none.
+    /// </summary>
+    [JsonPropertyName("annotations")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public McpToolAnnotations? Annotations { get; set; }
+}
+
+/// <summary>
+/// Behaviour hints of an MCP tool (<c>annotations</c> of the MCP specification). Each hint is
+/// <see langword="null"/> when the server leaves it out; they are hints, not guarantees.
+/// </summary>
+[Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+public class McpToolAnnotations
+{
+    /// <summary>Gets or sets a human-readable title for the tool.</summary>
+    [JsonPropertyName("title")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Title { get; set; }
+
+    /// <summary>Gets or sets whether the tool does not modify its environment.</summary>
+    [JsonPropertyName("readOnlyHint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ReadOnlyHint { get; set; }
+
+    /// <summary>Gets or sets whether the tool may perform destructive updates.</summary>
+    [JsonPropertyName("destructiveHint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? DestructiveHint { get; set; }
+
+    /// <summary>Gets or sets whether repeating a call with the same arguments has no further effect.</summary>
+    [JsonPropertyName("idempotentHint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? IdempotentHint { get; set; }
+
+    /// <summary>Gets or sets whether the tool reaches an open world of external entities.</summary>
+    [JsonPropertyName("openWorldHint")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? OpenWorldHint { get; set; }
 }
 
 /// <summary>

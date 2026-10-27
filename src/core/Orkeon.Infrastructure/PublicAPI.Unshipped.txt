@@ -177,3 +177,18 @@ static Orkeon.Infrastructure.FileSystem.WorkingDirectoryDesignation.CarryForward
 Orkeon.Infrastructure.Configuration.PathSecurityOptions.BlockReadsOfBlockedExtensions.get -> bool
 Orkeon.Infrastructure.Configuration.PathSecurityOptions.BlockReadsOfBlockedExtensions.set -> void
 Orkeon.Infrastructure.Security.PathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.Access.get -> Orkeon.Domain.Tools.ToolAccess
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Annotations.get -> Orkeon.Infrastructure.MCP.McpToolAnnotations?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Annotations.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.McpToolAnnotations() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.Title.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.Title.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.ReadOnlyHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.ReadOnlyHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.DestructiveHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.DestructiveHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.IdempotentHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.IdempotentHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.OpenWorldHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.OpenWorldHint.set -> void

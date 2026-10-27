@@ -26,6 +26,19 @@ public class McpToolAdapter : IBaseTool
     /// <inheritdoc />
     public ToolSchema Schema => _schema;
 
+    /// <summary>
+    /// The access class the server's annotations give the tool: <see cref="ToolAccess.Read"/> for
+    /// <c>readOnlyHint: true</c>, <see cref="ToolAccess.Execute"/> for annotations without it, and
+    /// <see cref="ToolAccess.Unspecified"/> when the server sends no annotations, so the permission
+    /// gate keeps its fail-closed classification.
+    /// </summary>
+    public ToolAccess Access => _definition.Annotations switch
+    {
+        null => ToolAccess.Unspecified,
+        { ReadOnlyHint: true } => ToolAccess.Read,
+        _ => ToolAccess.Execute,
+    };
+
     /// <summary>Initializes a new instance of <see cref="McpToolAdapter"/>.</summary>
     /// <param name="definition">The MCP tool definition.</param>
     /// <param name="client">The MCP client used to invoke the tool.</param>

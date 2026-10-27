@@ -177,6 +177,7 @@ Trois autres propriétés virtuelles méritent d'être déclarées :
 | Propriété | Défaut | Qui la lit |
 |---|---|---|
 | `Access` | `ToolAccess.Unspecified` | La permission gate par appel (`Read` / `Edit` / `Execute`) ; non spécifié est classé en fail-closed |
+| `AccessFor(arguments)` | `Access` | La classe d'un appel, pour un outil dont les opérations diffèrent (`github`, `http_api`) ; renvoyer la classe la plus restrictive pour des arguments non reconnus |
 | `Category` | la `Category` du contrat, sinon `"General"` (`"File Operations"` / `"Web Operations"` pour les deux bases spécialisées) | Catalogues et listes |
 | `RequiresHumanApproval` | `false` | Les appelants qui gèrent une approbation |
 

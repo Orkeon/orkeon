@@ -5,3 +5,7 @@ Orkeon.Tools.Web.GitHubRequest.Base.get -> string?
 Orkeon.Tools.Web.GitHubRequest.Base.init -> void
 Orkeon.Tools.Web.GitHubRequest.Head.get -> string?
 Orkeon.Tools.Web.GitHubRequest.Head.init -> void
+override Orkeon.Tools.Web.GitHubTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.GitHubTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.HttpApiTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.WebSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess

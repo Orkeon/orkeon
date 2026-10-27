@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
 
@@ -122,7 +123,32 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         "list_issues", "create_issue", "create_pr", "get_pr", "get_repo"
     };
 
+    // The actions that only read GitHub; every other action, a missing one included, creates something.
+    private static readonly HashSet<string> ReadActions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "list_issues", "get_pr", "search_repos", "get_repo"
+    };
+
     private readonly string? _personalAccessToken;
+
+    /// <summary>
+    /// The most restrictive class the tool can take (<c>create_issue</c>, <c>create_pr</c>); a gate
+    /// reads the class of each call from <see cref="AccessFor"/>.
+    /// </summary>
+    public override ToolAccess Access => ToolAccess.Execute;
+
+    /// <summary>
+    /// <see cref="ToolAccess.Read"/> for <c>list_issues</c>, <c>get_pr</c>, <c>search_repos</c> and
+    /// <c>get_repo</c>; <see cref="ToolAccess.Execute"/> for <c>create_issue</c>, <c>create_pr</c> and
+    /// any unknown or missing action (fail-closed).
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <returns>The access class of this call.</returns>
+    public override ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments)
+    {
+        var action = StringArgument(arguments, "action", out _);
+        return action is not null && ReadActions.Contains(action.Trim()) ? ToolAccess.Read : ToolAccess.Execute;
+    }
 
     /// <summary>Initializes a new instance of <see cref="GitHubTool"/>.</summary>
     /// <param name="personalAccessToken">Optional GitHub personal access token for authenticated requests.</param>

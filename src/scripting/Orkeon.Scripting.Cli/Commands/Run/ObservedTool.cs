@@ -58,6 +58,9 @@ internal sealed class ObservedTool : IBaseTool, IDisposable
     public ToolAccess Access => _inner.Access;
 
     /// <inheritdoc />
+    public ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) => _inner.AccessFor(arguments);
+
+    /// <inheritdoc />
     [SuppressMessage("Minor Code Smell", "S2737:\"catch\" clauses should do more than rethrow", Justification = "The catch clause exists only to carry its exception filter: ReportFailure emits the tool-returned event during the first pass and always returns false, so the body is never entered and the exception keeps travelling untouched. Removing the rethrow-only clause would remove the reporting with it.")]
     public async Task<global::Orkeon.Domain.Tools.Protocol.ToolCallResponse> CallAsync(
         global::Orkeon.Domain.Tools.Protocol.ToolCallRequest request, CancellationToken cancellationToken = default)

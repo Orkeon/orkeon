@@ -73,6 +73,44 @@ public abstract partial class ToolBase : IBaseTool
     public virtual ToolAccess Access => ToolAccess.Unspecified;
 
     /// <summary>
+    /// Access classification of one call, decided from its arguments; defaults to <see cref="Access"/>.
+    /// Override it in a tool whose class depends on the operation asked, returning the most
+    /// restrictive class for arguments it does not recognise (fail-closed).
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <returns>The access class of this call.</returns>
+    public virtual ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) => Access;
+
+    /// <summary>
+    /// Reads the string argument <paramref name="name"/> (key matched case-insensitively) whether it
+    /// arrived as a <see cref="string"/> or as a JSON string element; <see langword="null"/> when it is
+    /// absent, null or of another kind.
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <param name="name">The argument's name.</param>
+    /// <param name="present">Whether an argument of that name exists, whatever its value.</param>
+    /// <returns>The argument's string value, or <see langword="null"/>.</returns>
+    protected static string? StringArgument(IReadOnlyDictionary<string, object?> arguments, string name, out bool present)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        foreach (var (key, value) in arguments)
+        {
+            if (!string.Equals(key, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            present = true;
+            return value switch
+            {
+                string text => text,
+                System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element => element.GetString(),
+                _ => null,
+            };
+        }
+
+        present = false;
+        return null;
+    }
+
+    /// <summary>
     /// Gets the tool category. Defaults to [ToolContract].Category or "General".
     /// Override to customize.
     /// </summary>

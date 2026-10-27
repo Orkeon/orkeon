@@ -1348,8 +1348,8 @@ public sealed partial class JsLlmFacade
         var toolName = call.ToolName;
         var toolArgs = call.Arguments;
         var permissionMode = session.PermissionMode;
-        // Resolved before the gate so the tool's self-declared access class
-        // (IBaseTool.Access) informs the verdict.
+        // Resolved before the gate so the tool's self-declared access class for this call
+        // (IBaseTool.AccessFor, which defaults to IBaseTool.Access) informs the verdict.
         var tool = FindTool(session, toolName);
         // A tool this call does not offer could never run: refused at once, before the gate
         // and onToolCall, so no operator is asked to approve it (#193).
@@ -1358,7 +1358,7 @@ public sealed partial class JsLlmFacade
             activity?.SetTag("orkeon.llm.act.permission", "unavailable");
             return new(call, null, toolArgs, NotAvailable(toolName));
         }
-        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.Access).ConfigureAwait(false);
+        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.AccessFor(toolArgs)).ConfigureAwait(false);
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
             // Deny (an operator's refusal included, when an approval channel answered) and an
@@ -1471,7 +1471,7 @@ public sealed partial class JsLlmFacade
             if (input.ValueKind != JsonValueKind.Object)
                 return new(NoValidVerdict, toolArgs);
             var rewritten = JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!;
-            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
+            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.AccessFor(rewritten) ?? ToolAccess.Unspecified).ConfigureAwait(false);
             return new(DenialOf(regated, toolName, session.PermissionMode), rewritten);
         }
         if (root.TryGetProperty("context", out _))

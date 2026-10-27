@@ -150,3 +150,4 @@ virtual Orkeon.Tools.Rag.RagEvalResponse.PrintMembers(System.Text.StringBuilder!
 *REMOVED*Orkeon.Tools.Rag.RagEvalTool.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
 *REMOVED*Orkeon.Tools.Rag.RagEvalTool.ValidateInput(string! input) -> bool
 override Orkeon.Tools.Rag.RagEvalTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
+override Orkeon.Tools.Rag.RagEvalTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
