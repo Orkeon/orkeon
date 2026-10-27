@@ -132,8 +132,10 @@ declare global {
         manager(agent: Agent<unknown, unknown>): this;
         /**
          * The crew's budget. Declarative shape: YAML `budget:`, spent by `process("autonomous")`
-         * alone; another process ignores it with a warning. A key left out takes its default: no
-         * token cap, no wall time, 50 tool calls (tasks handed out), 4 delegations, 10 spawns.
+         * alone; another process is refused when the run adapts the crew, as YAML and `CrewBuilder`
+         * refuse it, and so is a limit that is not 1 or more (zero, a negative or fractional count,
+         * an unreadable `wallTime`). A key left out takes its default: no token cap, no wall time,
+         * 50 tool calls (tasks handed out), 4 delegations, 10 spawns.
          * Procedural shape: bounds `await crew.run()`.
          */
         budget(opts: ExecutionBudget): this;

@@ -105,4 +105,46 @@ public class PathValidatorBlockedExtensionReadTests
 
         Assert.False(result.IsAllowed);
     }
+
+    [Theory]
+    [InlineData("/workspace/src/run.sh ")]
+    [InlineData("/workspace/src/run.sh.")]
+    [InlineData("/workspace/src/run.sh. .")]
+    [InlineData("/workspace/src/RUN.SH ")]
+    public void A_write_of_a_script_extension_hidden_by_trailing_dots_or_spaces_is_refused(string path)
+    {
+        var result = CreateValidator().ValidatePath(path, FileAccessRights.Write);
+
+        Assert.False(result.IsAllowed);
+        Assert.Contains(".sh", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("/workspace/bin/app.exe ")]
+    [InlineData("/workspace/bin/app.exe.")]
+    public void A_read_of_a_binary_extension_hidden_by_trailing_dots_or_spaces_is_refused(string path)
+    {
+        var result = CreateValidator().ValidatePath(path, FileAccessRights.Read);
+
+        Assert.False(result.IsAllowed);
+    }
+
+    [Theory]
+    [InlineData("/workspace/src/run.sh ")]
+    [InlineData("/workspace/src/run.sh.")]
+    public void A_read_of_a_script_extension_hidden_by_trailing_dots_or_spaces_follows_the_option(string path)
+    {
+        Assert.True(CreateValidator().ValidatePath(path, FileAccessRights.Read).IsAllowed);
+        Assert.False(CreateValidator(blockReads: true).ValidatePath(path, FileAccessRights.Read).IsAllowed);
+    }
+
+    [Theory]
+    [InlineData(FileAccessRights.Read)]
+    [InlineData(FileAccessRights.Write)]
+    public void A_configured_extension_hidden_by_a_trailing_dot_is_refused(FileAccessRights rights)
+    {
+        var result = CreateValidator(false, ".pem").ValidatePath("/workspace/keys/server.pem.", rights);
+
+        Assert.False(result.IsAllowed);
+    }
 }

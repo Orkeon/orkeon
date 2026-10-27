@@ -57,9 +57,11 @@ directory). LLM API keys and every other variable stay dropped; variable names c
 Windows.
 The optional `Orkeon:Tools:Shell:Environment:Propagate` list adds variable names to both lists (shell and code sandbox);
 a name starting with `ORKEON_`, containing a secret word (`KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL`,
-`AUTH`), invalid, or whose value carries URL credentials (`scheme://user:pass@`) is dropped with a warning that never
-shows the value, a built-in one is ignored, and under Bubblewrap an added value passes
-whatever the network while no path it names is bound.
+`AUTH`, `PASS`, or `PAT` as a whole segment, so `GITHUB_PAT` is dropped while `PATH` and `PYTHONPATH` pass),
+invalid, or whose value carries URL credentials (`scheme://user:pass@`, `user:pass@host` without a scheme, a password
+holding a `/`; `https://host:4873/@scope` is refused too) is dropped with a warning that never shows the value, a
+built-in one is ignored, and under Bubblewrap an added value passes whatever the network while no path it names is
+bound. The code sandbox reads `Propagate` from configuration only.
 
 ### Changed — a spent token budget ends `act` with a last answer instead of losing the turn (#218)
 
@@ -71,16 +73,28 @@ such, and its message reads `Token budget exhausted: <sum> tokens sent and recei
 Each act call logs the running sum next to the limit; a wrap-up that ends past the wall time keeps its answer.
 `ToolMode.None` sends the tools with `tool_choice: none` on Anthropic, and no tools to Ollama. An autonomous crew
 spends its own budget, set by YAML `budget:` (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`,
-`spawnedAgents`), `crewBuilder().budget()` or `CrewBuilder.Budget` — no token or wall-time cap by default, a budget
-on another process refused — and charges its direct executions to it as it does delegated work, keeping the output
-of the work that passes it; a child's tokens count once per budget.
+`spawnedAgents`), `crewBuilder().budget()` or `CrewBuilder.Budget` — no token or wall-time cap by default; an
+invalid limit and a budget on another process are refused by all three — and charges its direct executions to it as
+it does delegated work. Work that finishes keeps its output whatever budget dimension its recording spends (tokens,
+wall time, tool calls), `spawn_agent` included, which returns the output and names the exhaustion; a child's tokens
+count once per budget.
 
 ### Fixed — `github`, `http_api`, `rag_eval`, `web_search` and MCP tools declare their access (#219)
 
 `IBaseTool.AccessFor(arguments)` gives the access class per call, defaulting to `Access`. The `github` read actions
-and `http_api`'s `GET`, `HEAD` and `OPTIONS` are reads, allowed in `plan` mode; their writes stay `Execute`.
-`rag_eval` and `web_search` are reads. An MCP tool follows its server's `readOnlyHint` annotation, and stays
-`Unspecified` (fail-closed) when the server sends none.
+and `http_api`'s `GET`, `HEAD` and `OPTIONS` are reads, allowed in `plan` mode, so an outbound `GET` runs there
+without a prompt; their writes stay `Execute`, as does a read method that carries a body or a method-override header
+(`X-HTTP-Method-Override`, `X-HTTP-Method`, `X-Method-Override`). `web_search` is a read; `rag_eval`, which ingests
+its corpus and writes its reports, is an edit. An MCP tool follows its server's `readOnlyHint` annotation only when the server's
+configuration sets `TrustAnnotations: true` (default false); otherwise, or when the server sends none, it stays
+`Unspecified` (fail-closed). `github` validates `owner` and `repo` (`^[A-Za-z0-9_.-]+$`, never `.` or `..`) and
+escapes them in the request path. `McpToolProvider.ConnectServerAsync(id, transport, trustAnnotations = false, ct)`
+takes the trust flag.
+
+### Fixed — trailing dots and spaces no longer hide a blocked extension
+
+`PathValidator` looked up the extension of `run.sh.` or `tool.exe ` as is, missing the block list; it now strips
+trailing dots and spaces first, as Windows does when it opens the file.
 
 ### Added — the `github` tool receives a token (#222)
 
@@ -102,6 +116,14 @@ instance's depth, and the refusal reads `chain depth N reached (MaxChainDepth N,
 counts in the depth too (one level per post, refused at the limit with the same catchable error), and a command
 replays only the completions of its own instances: a sibling command of the same file no longer runs another
 command's `completed`.
+
+| Before | After |
+|---|---|
+| `ScriptHostFacade.runCrewAsync(name, input)` | `runCrewAsync(name, input, options)`, `options` optional |
+| `CommandDispatchService.postWork(label, target, work)` | `postWork(label, target, work, continueChain = false)` |
+| `CompletionDrainQueue.DrainAll()` | removed: `DrainFor(name)` drains one command's completions |
+| `McpToolProvider.ConnectServerAsync(serverId, transport, ct)` | `ConnectServerAsync(serverId, transport, trustAnnotations = false, ct)`: pass `ct:` by name |
+| `new McpToolAdapter(definition, client)` | `new McpToolAdapter(definition, client, trustAnnotations = false)` |
 
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 

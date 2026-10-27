@@ -10,13 +10,14 @@ namespace Orkeon.Infrastructure.Tests.MCP;
 /// </summary>
 internal static class McpDiscoveryTransport
 {
-    public static MockMcpTransport Exposing(params string[] toolNames)
+    public static MockMcpTransport Exposing(params string[] toolNames) =>
+        Exposing(toolNames.Select(n => new McpToolDefinition { Name = n, Description = $"{n} (MCP)" }).ToArray());
+
+    public static MockMcpTransport Exposing(params McpToolDefinition[] definitions)
     {
         var transport = new MockMcpTransport();
         transport.SetConnected(true);
-        var tools = toolNames
-            .Select(n => new McpToolDefinition { Name = n, Description = $"{n} (MCP)" })
-            .ToList();
+        var tools = definitions.ToList();
 
         transport.SetSendRequestFunc((req, _) =>
         {

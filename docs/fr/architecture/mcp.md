@@ -11,10 +11,14 @@ L'intégration MCP fonctionne dans les deux sens :
 - **Client** — `McpClient` parle JSON-RPC à un serveur MCP externe ;
   `McpToolProvider` se connecte à un nombre quelconque de serveurs, liste leurs outils et
   enregistre chacun dans l'`IToolRegistry` d'Orkeon sous forme d'`McpToolAdapter`
-  (`IBaseTool`). Le `ToolAccess` de l'adaptateur vient des `annotations` MCP de l'outil :
-  `Read` pour `readOnlyHint: true`, `Execute` pour des annotations qui ne le portent pas,
-  `Unspecified` (la classification fail-closed de la permission gate) quand le serveur n'en
-  envoie aucune. `DisconnectServerAsync` les désenregistre. Un agent de crew liste un tel
+  (`IBaseTool`). Le `ToolAccess` de l'adaptateur ne vient des `annotations` MCP de l'outil
+  que pour un serveur auquel l'opérateur fait confiance
+  (`MCP:Servers:<name>:TrustAnnotations = true`) : `Read` pour `readOnlyHint: true`,
+  `Execute` pour des annotations qui ne le portent pas. Un serveur est non fiable par défaut :
+  n'importe quel serveur peut étiqueter en lecture seule un outil destructeur, que le mode
+  `plan` laisserait alors passer ; ses outils restent donc `Unspecified` (la classification
+  fail-closed de la permission gate) quoi que disent leurs indications — comme ceux d'un
+  serveur qui n'envoie aucune annotation. `DisconnectServerAsync` les désenregistre. Un agent de crew liste un tel
   outil par son nom, comme n'importe quel autre — voir [Outils MCP et crews](#outils-mcp-et-crews).
 - **Serveur** — `McpServer` expose les outils de l'`IToolRegistry` d'Orkeon aux clients
   MCP externes (`tools/list` / `tools/call`, avec conversion `ToolSchema` → JSON Schema),

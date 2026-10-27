@@ -9,6 +9,7 @@ using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Communication;
 using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Tests.Shared.Timing;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainCrew = Orkeon.Domain.Crew.Crew;
 using DomainCrewOutput = Orkeon.Domain.Crew.CrewOutput;
@@ -419,6 +420,69 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         Assert.StartsWith("Execution budget exhausted: Tokens", result.Error, StringComparison.Ordinal);
         Assert.Equal(1, _execService.ExecuteTaskCallCount);
         Assert.Equal(0, budget.CurrentDelegationDepth);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_DirectWorkFinishingAfterTheWallTime_KeepsItsOutputAndStopsTheRun()
+    {
+        // Arrange: the first task's direct answer comes back once the wall time is spent
+        var clock = new ManualTimeProvider();
+        var agent = CreateAgent("worker");
+        var task1 = CreateTask("first");
+        var task2 = CreateTask("second");
+        var crew = BuildCrew([agent], [task1, task2]);
+        _manager.SetAssignResult(new TaskAssignment(task1.Id, agent.Id, "only", DateTime.UtcNow));
+        _execService.SetExecuteFunc((_, _, _, _) =>
+        {
+            clock.Advance(TimeSpan.FromMinutes(2));
+            return new TaskResult(true, "first answered", null, [], TimeSpan.Zero, TokensUsed: 30);
+        });
+        var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromMinutes(1), TimeProvider = clock };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: the answer is kept, its tokens recorded, the run fails on the wall time
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: WallTime", result.Error, StringComparison.Ordinal);
+        Assert.Contains("first answered", result.Output);
+        Assert.DoesNotContain("BUDGET EXHAUSTED", result.Output, StringComparison.Ordinal);
+        Assert.Equal(1, _execService.ExecuteTaskCallCount);
+        Assert.Equal(30, budget.CurrentTokensConsumed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task ExecuteAutonomousAsync_DelegatedWorkFinishingAfterTheWallTime_KeepsItsOutputAndStopsTheRun()
+    {
+        // Arrange: the helper's takeover comes back once the wall time is spent
+        var clock = new ManualTimeProvider();
+        var delegator = CreateAgent("delegator", allowDelegation: true);
+        var helper = CreateAgent("helper");
+        var task1 = CreateTask("hard task");
+        var task2 = CreateTask("later task");
+        var crew = BuildCrew([delegator, helper], [task1, task2]);
+        _manager.SetAssignResult(new TaskAssignment(task1.Id, delegator.Id, "lead", DateTime.UtcNow));
+        _execService.SetExecuteFunc((agent, _, _, _) =>
+        {
+            if (agent.Id == delegator.Id)
+                return new TaskResult(false, "", null, [], TimeSpan.Zero, "needs help");
+            clock.Advance(TimeSpan.FromMinutes(2));
+            return new TaskResult(true, "helper solved it", null, [], TimeSpan.Zero, TokensUsed: 42);
+        });
+        var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromMinutes(1), TimeProvider = clock };
+
+        // Act
+        var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert: the takeover's answer is kept, and no later task runs
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: WallTime", result.Error, StringComparison.Ordinal);
+        Assert.Contains("helper solved it", result.Output);
+        Assert.DoesNotContain("DELEGATION FAILED", result.Output, StringComparison.Ordinal);
+        Assert.Equal(2, _execService.ExecuteTaskCallCount);
+        Assert.Equal(42, budget.CurrentTokensConsumed);
     }
 
     [Fact]

@@ -122,10 +122,18 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
         "GET", "HEAD", "OPTIONS"
     };
 
+    // The headers a server may read as the method to apply in place of the one on the wire.
+    private static readonly HashSet<string> MethodOverrideHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override"
+    };
+
     /// <summary>
     /// <see cref="ToolAccess.Read"/> for <c>GET</c>, <c>HEAD</c> and <c>OPTIONS</c> (any case), and for a
     /// missing or null method, which the tool sends as <c>GET</c>; <see cref="ToolAccess.Execute"/> for
-    /// any other method.
+    /// any other method, and for a read method that carries a body or a method-override header
+    /// (<c>X-HTTP-Method-Override</c>, <c>X-HTTP-Method</c>, <c>X-Method-Override</c>, any case), with
+    /// which a server may apply a write.
     /// </summary>
     /// <param name="arguments">Arguments the model supplied for the call.</param>
     /// <returns>The access class of this call.</returns>
@@ -134,7 +142,46 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
         var method = StringArgument(arguments, "method", out var present);
         if (!present || IsNull(arguments, "method"))
             method = HttpApiDefaults.DefaultMethod;
-        return method is not null && ReadMethods.Contains(method) ? ToolAccess.Read : ToolAccess.Execute;
+        if (method is null || !ReadMethods.Contains(method))
+            return ToolAccess.Execute;
+        return HasBody(arguments) || HasMethodOverride(arguments) ? ToolAccess.Execute : ToolAccess.Read;
+    }
+
+    // Whether a non-null body argument is present: the tool sends any such body, whatever the method.
+    private static bool HasBody(IReadOnlyDictionary<string, object?> arguments) =>
+        arguments.Any(pair => string.Equals(pair.Key, "body", StringComparison.OrdinalIgnoreCase)
+            && pair.Value is not (null or JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined }));
+
+    // Whether the headers argument names a method-override header, in any of the shapes the tool accepts.
+    private static bool HasMethodOverride(IReadOnlyDictionary<string, object?> arguments) =>
+        arguments
+            .Where(pair => string.Equals(pair.Key, "headers", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(pair => HeaderNames(pair.Value))
+            .Any(MethodOverrideHeaders.Contains);
+
+    private static IEnumerable<string> HeaderNames(object? headers) => headers switch
+    {
+        JsonElement { ValueKind: JsonValueKind.Object } element => element.EnumerateObject().Select(p => p.Name).ToList(),
+        JsonElement { ValueKind: JsonValueKind.String } element => HeaderNames(element.GetString()),
+        string text when !string.IsNullOrWhiteSpace(text) => HeaderNamesOfJson(text),
+        System.Collections.IDictionary dictionary => dictionary.Keys.Cast<object?>().Select(k => k?.ToString() ?? "").ToList(),
+        _ => [],
+    };
+
+    // The property names of a JSON object string; none for a text the tool would not send as headers.
+    private static List<string> HeaderNamesOfJson(string text)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? document.RootElement.EnumerateObject().Select(p => p.Name).ToList()
+                : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     // Whether the argument of that name holds null (a C# null or a JSON null), the tool's default case.

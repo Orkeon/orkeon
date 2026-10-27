@@ -11,9 +11,12 @@ The MCP integration works in both directions:
 - **Client** — `McpClient` speaks JSON-RPC to an external MCP server;
   `McpToolProvider` connects to any number of servers, lists their tools and registers
   each one in the Orkeon `IToolRegistry` as an `McpToolAdapter` (`IBaseTool`).
-  The adapter's `ToolAccess` comes from the tool's MCP `annotations`: `Read` for
-  `readOnlyHint: true`, `Execute` for annotations without it, `Unspecified` (the permission
-  gate's fail-closed classification) when the server sends none.
+  The adapter's `ToolAccess` comes from the tool's MCP `annotations` only for a server the
+  operator trusts (`MCP:Servers:<name>:TrustAnnotations = true`): `Read` for
+  `readOnlyHint: true`, `Execute` for annotations without it. A server is untrusted by default:
+  any server can label a destructive tool read-only, which `plan` mode would then let run, so
+  its tools stay `Unspecified` (the permission gate's fail-closed classification) whatever their
+  hints say — as do the tools of a server that sends no annotations.
   `DisconnectServerAsync` unregisters them. A crew agent lists such a tool by name, like any
   other — see [MCP tools and crews](#mcp-tools-and-crews).
 - **Server** — `McpServer` exposes the tools of the Orkeon `IToolRegistry` to external

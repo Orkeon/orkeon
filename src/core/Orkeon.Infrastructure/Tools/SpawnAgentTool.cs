@@ -220,18 +220,23 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
                 // budgets: the child's own copy (so its snapshot reflects reality)
                 // and the parent's (so the overall cap stays coherent), once on each budget
                 // the two charge.
-                if (result.TokensUsed > 0)
-                {
-                    _budget.RecordChildTokens(childBudget, result.TokensUsed);
-                }
+                var spent = result.TokensUsed > 0 ? RecordFinishedWorkTokens(childBudget, result.TokensUsed) : null;
+
+                var message = result.Success
+                    ? $"Sub-agent '{request.Role}' completed successfully."
+                    : $"Sub-agent '{request.Role}' failed: {result.Error}";
+
+                // The sub-agent's finished work is its result even when recording it spends the
+                // budget (#218): the tokens stay recorded, so the parent's budget is spent and its
+                // next call is refused - the message says why.
+                if (spent is not null)
+                    message += $" The execution budget is now exhausted ({spent.Dimension}): {spent.Message}";
 
                 return new SpawnAgentResponse
                 {
                     SpawnedAgentId = spawnedAgent.Id.ToString(),
                     SpawnedAgentRole = request.Role,
-                    Message = result.Success
-                        ? $"Sub-agent '{request.Role}' completed successfully."
-                        : $"Sub-agent '{request.Role}' failed: {result.Error}",
+                    Message = message,
                     Success = result.Success,
                     Result = result.Output,
                     ExecutionTimeMs = sw.ElapsedMilliseconds
@@ -250,6 +255,24 @@ public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResp
                     ExecutionTimeMs = sw.ElapsedMilliseconds
                 };
             }
+        }
+    }
+
+    /// <summary>
+    /// Records the tokens of the sub-agent's finished work on its child budget, on the parent's and on
+    /// every budget either charges, and returns the refusal it throws - the token budget passed, or the
+    /// wall time spent while the sub-agent ran - instead of throwing it: the tokens stay recorded.
+    /// </summary>
+    private BudgetExhaustedException? RecordFinishedWorkTokens(AgentExecutionBudget childBudget, int tokens)
+    {
+        try
+        {
+            _budget.RecordChildTokens(childBudget, tokens);
+            return null;
+        }
+        catch (BudgetExhaustedException ex)
+        {
+            return ex;
         }
     }
 

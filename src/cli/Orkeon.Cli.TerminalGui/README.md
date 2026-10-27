@@ -247,12 +247,13 @@ From top to bottom, under the transcript:
 **One screen per thread.** The transcript is not one stream: `main` and every task
 have a screen of their own, each a transcript of `ReplTranscriptCapacity` lines, and
 the recipient's screen is the one displayed. A line a task writes (its streamed text,
-its completion lines, its tool-call questions) lands on that task's screen, opened at
-its first line, and carries no `[t1]` ticket prefix in the split-pane console: the
+its tool-call questions) lands on that task's screen, opened at its first line, and carries no `[t1]` ticket prefix in the split-pane console: the
 screen says whose it is; a crew label (`[<taskId>] `) stays, since it tells the agents
 of one crew apart inside the screen. The plain console keeps the `[t1] ` prefix.
 The `main` screen holds the prompt's turns and the lifecycle lines below, never a
-task's output. The selection displays that thread's screen, as the recipient: moving
+task's output. A task's end line (`  ✓ [t1] ask-bg → echo: done`) and what its
+command's `completed` writes go to `main`, the end line keeping its ticket, which
+names the task there. The selection displays that thread's screen, as the recipient: moving
 the selection with `↑` / `↓` switches the screen, `main` shows the main one; copy, the
 mouse selection and word wrap (one state for every screen) act on the displayed screen;
 `Esc Esc` still interrupts the prompt's turn whatever screen is displayed, its

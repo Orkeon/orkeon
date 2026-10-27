@@ -2051,6 +2051,13 @@
       "description": "Transport type to use."
     },
     {
+      "path": "MCP:Servers:<name>:TrustAnnotations",
+      "section": "MCP",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the permission gate takes this server's tool annotations at their word: a tool marked readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could label a destructive tool read-only, so its tools stay classified fail-closed."
+    },
+    {
       "path": "MCP:Servers:<name>:Url",
       "section": "MCP",
       "type": "uri",
@@ -2471,7 +2478,7 @@
       "section": "Orkeon:Tools:Shell",
       "type": "list of string",
       "default": [],
-      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view."
+      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `PASS`, `CREDENTIAL` or `AUTH` or the word `PAT` on its own (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`, `user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view. The code sandbox reads this list from configuration only: one set in code (`Configure<ShellToolOptions>`) reaches the shell alone."
     },
     {
       "path": "Orkeon:Tools:Shell:Environment:SessionBus",

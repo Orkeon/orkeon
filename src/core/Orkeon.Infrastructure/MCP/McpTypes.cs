@@ -47,6 +47,13 @@ public class McpServerConfig
     /// Transport type to use.
     /// </summary>
     public McpTransportType Transport { get; set; } = McpTransportType.Stdio;
+
+    /// <summary>
+    /// Whether the permission gate takes this server's tool annotations at their word: a tool marked
+    /// readOnlyHint is then a read, which plan mode lets run. Off by default: an untrusted server could
+    /// label a destructive tool read-only, so its tools stay classified fail-closed.
+    /// </summary>
+    public bool TrustAnnotations { get; set; }
 }
 
 /// <summary>

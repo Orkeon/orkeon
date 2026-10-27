@@ -410,11 +410,11 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // both the child budget (so its snapshot reflects reality)
             // and the parent budget (so the overall cap is honoured),
             // once on each budget the two charge.
-            // A token budget the delegated work passes keeps that work (#218): the tokens are
-            // recorded, the output goes back, and the takeover carries the exhaustion so the run
-            // stops after this task.
+            // A budget the delegated work spends - its tokens, or the wall time it ran past - keeps
+            // that work (#218): the tokens are recorded, the output goes back, and the takeover
+            // carries the exhaustion so the run stops after this task.
             if (result.TokensUsed > 0)
-                takeover.TokensExhausted = RecordFinishedWorkTokens(() => budget.RecordChildTokens(childBudget, result.TokensUsed));
+                takeover.Exhausted = RecordFinishedWorkTokens(() => budget.RecordChildTokens(childBudget, result.TokensUsed));
 
             // Crew-level telemetry: delegated executions cost real tokens
             // even though only their payload travels back over the channel.
@@ -432,15 +432,16 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
     /// <summary>
     /// Records the tokens of finished work - a direct execution or a peer's takeover - on
-    /// <paramref name="budget"/>, and returns the refusal when the token budget is passed instead of
-    /// throwing it: the work is done and kept.
+    /// <paramref name="budget"/>, and returns the refusal when a budget is spent instead of throwing
+    /// it: the work is done and kept, whatever dimension ran out.
     /// </summary>
     private static BudgetExhaustedException? RecordFinishedWorkTokens(AgentExecutionBudget budget, int tokens) =>
         RecordFinishedWorkTokens(() => budget.RecordTokens(tokens));
 
     /// <summary>
-    /// Runs <paramref name="record"/>, which records the tokens of finished work, and returns the token
-    /// refusal it throws instead of throwing it.
+    /// Runs <paramref name="record"/>, which records the tokens of finished work, and returns the
+    /// refusal it throws - the token budget passed, or the wall time spent while the work ran -
+    /// instead of throwing it. The tokens stay recorded either way.
     /// </summary>
     private static BudgetExhaustedException? RecordFinishedWorkTokens(Action record)
     {
@@ -449,7 +450,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             record();
             return null;
         }
-        catch (BudgetExhaustedException ex) when (ex.Dimension == BudgetDimension.Tokens)
+        catch (BudgetExhaustedException ex)
         {
             return ex;
         }
@@ -484,8 +485,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     /// </summary>
     private sealed record Takeover(CrewTask Task, SimpleExecutionContext Context)
     {
-        /// <summary>The token budget the peer's finished work passed, if it did (#218).</summary>
-        public BudgetExhaustedException? TokensExhausted { get; set; }
+        /// <summary>The budget the peer's finished work spent while it was recorded, if it did (#218).</summary>
+        public BudgetExhaustedException? Exhausted { get; set; }
     }
 
     /// <summary>
@@ -535,16 +536,16 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             tokenTally.Record(result);
 
             // Its tokens are spent from the crew's budget too, once, as a delegated execution's
-            // are (#218): a direct answer that passes the budget is kept, and the run stops after
-            // this task.
-            var tokensSpent = result.TokensUsed > 0 ? RecordFinishedWorkTokens(budget, result.TokensUsed) : null;
+            // are (#218): a direct answer that passes the token budget, or comes back after the
+            // wall time, is kept, and the run stops after this task.
+            var budgetSpent = result.TokensUsed > 0 ? RecordFinishedWorkTokens(budget, result.TokensUsed) : null;
 
             var error = result.Error ?? result.LastError;
 
             // A failed task is handed to a peer when the agent may delegate and the budget
-            // allows it - a spent token budget pays for no takeover. With no peer in the crew,
+            // allows it - a spent budget pays for no takeover. With no peer in the crew,
             // the failure stands — it used to throw out of the strategy instead.
-            if (!result.Success && tokensSpent is null && agent.AllowDelegation
+            if (!result.Success && budgetSpent is null && agent.AllowDelegation
                 && budget.CurrentDelegationDepth < budget.MaxDelegationDepth)
             {
                 if (agents.Exists(a => a.Id != agent.Id))
@@ -558,7 +559,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 BuildAppTaskOutput(task, agent, result),
                 agent.Role.Value,
                 error,
-                tokensSpent);
+                budgetSpent);
         }
         catch (BudgetExhaustedException ex)
         {
@@ -639,7 +640,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         return new ExecutedTask(
             output, appOutput, delegateAgent.Role.Value,
             response.Success ? null : $"delegated to {delegateAgent.Role}, who failed: {response.Error}",
-            takeover.TokensExhausted);
+            takeover.Exhausted);
     }
 
     /// <summary>

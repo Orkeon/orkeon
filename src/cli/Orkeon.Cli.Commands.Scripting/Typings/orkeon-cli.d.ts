@@ -58,8 +58,9 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
    * (`done` or `failed`), and a launch made before the rejection still runs and drains.
    *
    *   completed: async (result, ctx) => {
-   *     const rules = await ctx.services.get("permissions").list();
-   *     ctx.writeLine(`${rules.length} rule(s) in force`);
+   *     // A host service of the application whose method returns a Task, which the script sees as a promise.
+   *     const mode = await ctx.services.get("session").readMode();
+   *     ctx.writeLine(`mode: ${mode}`);
    *     ctx.services.get("script-host").runCrewAsync("next-step", { previous: result.payload });
    *   },
    */

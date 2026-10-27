@@ -35,10 +35,11 @@ public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
     public override string Name => "rag_eval";
 
     /// <summary>
-    /// Declared access class for permission gates: the evaluation reads the index and the golden set;
-    /// the reports it writes are its own output, never the user's files.
+    /// Declared access class for permission gates: <see cref="ToolAccess.Edit"/>. Every call writes —
+    /// it ingests the dataset's corpus into the collection (<c>reindex</c> rebuilds it) and writes
+    /// its markdown/JSON reports through the VFS — so no call is a read <c>plan</c> mode lets through.
     /// </summary>
-    public override ToolAccess Access => ToolAccess.Read;
+    public override ToolAccess Access => ToolAccess.Edit;
 
     /// <inheritdoc />
     public override string Description =>

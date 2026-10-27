@@ -81,6 +81,20 @@ public sealed class GitHubToolTokenTests
         Assert.Contains("write operations", tool.Description, StringComparison.Ordinal);
     }
 
+    // #222 review: the notice names every source the registration reads, in its order.
+    [Fact]
+    public void ShouldNameEveryTokenSourceInOrder_WhenTheToolHasNone()
+    {
+        using var tool = new GitHubTool(personalAccessToken: null);
+        var description = tool.Description;
+
+        var setting = description.IndexOf("Orkeon:Tools:GitHub:Token", StringComparison.Ordinal);
+        var variable = description.IndexOf("Orkeon:Tools:GitHub:TokenVariable", StringComparison.Ordinal);
+        var primary = description.IndexOf(Primary, StringComparison.Ordinal);
+        var fallback = description.IndexOf(Fallback, StringComparison.Ordinal);
+        Assert.True(setting >= 0 && variable > setting && primary > variable && fallback > primary, description);
+    }
+
     [Fact]
     public void ShouldNotMentionAMissingCredentialNorQuoteIt_WhenTheToolHasOne()
     {

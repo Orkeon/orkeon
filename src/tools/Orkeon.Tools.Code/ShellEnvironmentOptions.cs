@@ -13,10 +13,13 @@ public sealed class ShellEnvironmentOptions
     /// Extra variable names propagated from the runner's environment, such as <c>HTTPS_PROXY</c> when
     /// the proxy needs no credential. A name that is blank, holds <c>=</c> or a NUL, starts with
     /// <c>ORKEON_</c> or contains <c>KEY</c>, <c>TOKEN</c>, <c>SECRET</c>, <c>PASSWORD</c>,
-    /// <c>PASSWD</c>, <c>CREDENTIAL</c> or <c>AUTH</c> (without case), or whose value carries URL
-    /// credentials (<c>http://user:password@proxy:3128</c>), is dropped with a warning that never
-    /// quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under
-    /// bubblewrap the value passes whatever the network, but no path it names is bound into the view.
+    /// <c>PASSWD</c>, <c>PASS</c>, <c>CREDENTIAL</c> or <c>AUTH</c> or the word <c>PAT</c> on its own
+    /// (without case), or whose value carries URL credentials (<c>http://user:password@proxy:3128</c>,
+    /// <c>user:password@proxy:3128</c>), is dropped with a warning that never quotes the value; a
+    /// built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value
+    /// passes whatever the network, but no path it names is bound into the view. The code sandbox
+    /// reads this list from configuration only: one set in code (<c>Configure&lt;ShellToolOptions&gt;</c>)
+    /// reaches the shell alone.
     /// </summary>
     public Collection<string> Propagate { get; } = [];
 

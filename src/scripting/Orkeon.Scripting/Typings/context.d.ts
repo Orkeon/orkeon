@@ -202,8 +202,9 @@ declare global {
         readonly exhausted?: true;
         /**
          * Set when the token budget (`budget({ tokens })`) ran out during the loop: the act then
-         * made one last call with no tools, telling the model its budget was spent, and `output` is
-         * that answer, cut short. When that last call fails or answers nothing, the act rejects with
+         * made one last call that may call no tool (the loop's tools stay declared under
+         * `ToolMode.None`; a tool call it returns is never run), telling the model its budget was
+         * spent, and `output` is that answer, cut short. When that last call fails or answers nothing, the act rejects with
          * `BudgetExhaustedError` instead.
          */
         readonly budgetExhausted?: true;

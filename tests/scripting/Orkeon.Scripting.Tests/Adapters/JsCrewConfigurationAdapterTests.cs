@@ -583,7 +583,6 @@ public sealed class JsCrewConfigurationAdapterTests
                 .name("lossy")
                 .goal("Declares both halves of the DSL")
                 .process("sequential")
-                .budget({ toolCalls: 10 })
                 .onCrewComplete(() => {})
                 .withAgent(runner)
                 .withTask(work)
@@ -602,7 +601,6 @@ public sealed class JsCrewConfigurationAdapterTests
             && w.Contains("'runner'", StringComparison.Ordinal));
         Assert.Contains(ignored, w => w.Contains(".onAgentStart", StringComparison.Ordinal)
             && w.Contains("'runner'", StringComparison.Ordinal));
-        Assert.Contains(ignored, w => w.Contains("budget(", StringComparison.Ordinal));
         Assert.Contains(ignored, w => w.Contains("onCrewComplete", StringComparison.Ordinal));
     }
 

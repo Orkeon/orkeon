@@ -71,7 +71,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         await using var provider = new McpToolProviderSut(_mockRegistry);
 
         // Act
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Assert - search and fetch should be registered
         Assert.True(_mockRegistry.RegisterToolCallCount >= 2);
@@ -83,7 +83,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         // Arrange
         SetupTransportForToolDiscovery();
         await using var provider = new McpToolProviderSut(_mockRegistry);
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Act
         await provider.DisconnectServerAsync("server1");
@@ -101,7 +101,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         // Arrange
         SetupTransportForToolDiscovery();
         await using var provider = new McpToolProviderSut(_mockRegistry);
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Act
         var statuses = provider.GetServerStatuses();
@@ -120,7 +120,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         // Arrange
         SetupTransportForToolDiscovery();
         await using var provider = new McpToolProviderSut(_mockRegistry);
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Create a second mock transport for the duplicate attempt
         await using var mockTransport2 = new MockMcpTransport();
@@ -152,7 +152,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         await using var provider = new McpToolProviderSut(_mockRegistry);
 
         // Act
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(0, _mockRegistry.RegisterToolCallCount);
@@ -164,7 +164,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         // Arrange
         SetupTransportForToolDiscovery();
         var provider = new McpToolProviderSut(_mockRegistry);
-        await provider.ConnectServerAsync("server1", _mockTransport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("server1", _mockTransport, ct: TestContext.Current.CancellationToken);
 
         // Act
         await provider.DisposeAsync();
@@ -187,7 +187,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         using var logs = new RecordingLoggerFactory();
         await using var provider = new McpToolProviderSut(registry, logs);
 
-        await provider.ConnectServerAsync("x", transport, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("x", transport, ct: TestContext.Current.CancellationToken);
 
         Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read"));
         Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("search_issues"));
@@ -210,9 +210,9 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         await using var second = McpDiscoveryTransport.Exposing("search", "fetch");
         await using var provider = new McpToolProviderSut(registry);
 
-        await provider.ConnectServerAsync("one", first, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("one", first, ct: TestContext.Current.CancellationToken);
         var owner = await registry.GetToolByNameAsync("search");
-        await provider.ConnectServerAsync("two", second, TestContext.Current.CancellationToken);
+        await provider.ConnectServerAsync("two", second, ct: TestContext.Current.CancellationToken);
 
         Assert.NotNull(owner);
         Assert.Same(owner, await registry.GetToolByNameAsync("search"));
@@ -222,6 +222,29 @@ public sealed class McpToolProviderTests : IAsyncDisposable
 
         Assert.Same(owner, await registry.GetToolByNameAsync("search"));
         Assert.Null(await registry.GetToolByNameAsync("fetch"));
+    }
+
+    // #219 review: a server's readOnlyHint is a claim; the registered tool keeps the gate's
+    // fail-closed class unless the operator trusts that server.
+    [Theory]
+    [InlineData(true, Orkeon.Domain.Tools.ToolAccess.Read)]
+    [InlineData(false, Orkeon.Domain.Tools.ToolAccess.Unspecified)]
+    public async Task ShouldHonourTheReadOnlyHintOnlyForATrustedServer(bool trusted, Orkeon.Domain.Tools.ToolAccess expected)
+    {
+        var registry = new Orkeon.Infrastructure.Tools.ToolRegistry([]);
+        await using var transport = McpDiscoveryTransport.Exposing(new McpToolDefinition
+        {
+            Name = "drop_table",
+            Description = "d",
+            Annotations = new McpToolAnnotations { ReadOnlyHint = true },
+        });
+        await using var provider = new McpToolProviderSut(registry);
+
+        await provider.ConnectServerAsync("db", transport, trusted, ct: TestContext.Current.CancellationToken);
+
+        var tool = await registry.GetToolByNameAsync("drop_table");
+        Assert.NotNull(tool);
+        Assert.Equal(expected, tool.Access);
     }
 
     public async ValueTask DisposeAsync()

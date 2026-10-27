@@ -89,6 +89,66 @@ public sealed class WebToolAccessTests
         Assert.Equal(ToolAccess.Execute, tool.Access);
     }
 
+    // #219 review: a read method that carries a method-override header or a body can change state on
+    // the server (a GET tunnelling a DELETE), so the call is not a read.
+    [Theory]
+    [InlineData("X-HTTP-Method-Override")]
+    [InlineData("x-http-method")]
+    [InlineData("X-Method-Override")]
+    [InlineData("X-HTTP-METHOD-OVERRIDE")]
+    public void HttpApiShouldClassifyAReadMethodWithAMethodOverrideHeaderAsExecute(string header)
+    {
+        using var http = new HttpApiTool();
+        IBaseTool tool = http;
+        var dictionaryHeaders = new Dictionary<string, object?>
+        {
+            ["method"] = "GET",
+            ["headers"] = new Dictionary<string, object> { [header] = "DELETE" },
+        };
+        var jsonHeaders = new Dictionary<string, object?>
+        {
+            ["method"] = JsonSerializer.SerializeToElement("GET"),
+            ["headers"] = JsonSerializer.SerializeToElement(new Dictionary<string, string> { [header] = "DELETE" }),
+        };
+        var stringHeaders = new Dictionary<string, object?>
+        {
+            ["headers"] = JsonSerializer.Serialize(new Dictionary<string, string> { [header] = "DELETE" }),
+        };
+
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(dictionaryHeaders));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(jsonHeaders));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(stringHeaders));
+    }
+
+    [Fact]
+    public void HttpApiShouldKeepAReadMethodWithOrdinaryHeadersARead()
+    {
+        using var http = new HttpApiTool();
+        IBaseTool tool = http;
+        var args = new Dictionary<string, object?>
+        {
+            ["method"] = "GET",
+            ["headers"] = JsonSerializer.SerializeToElement(new Dictionary<string, string> { ["Accept"] = "application/json" }),
+            ["body"] = null,
+        };
+
+        Assert.Equal(ToolAccess.Read, tool.AccessFor(args));
+    }
+
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("HEAD")]
+    [InlineData("OPTIONS")]
+    public void HttpApiShouldClassifyAReadMethodWithABodyAsExecute(string method)
+    {
+        using var http = new HttpApiTool();
+        IBaseTool tool = http;
+
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?> { ["method"] = method, ["body"] = "{\"drop\":true}" }));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?> { ["method"] = method, ["body"] = JsonSerializer.SerializeToElement("x") }));
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?> { ["body"] = "x" }));
+    }
+
     [Fact]
     public void WebSearchShouldDeclareRead()
     {

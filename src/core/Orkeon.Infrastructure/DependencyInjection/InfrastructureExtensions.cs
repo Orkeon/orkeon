@@ -713,6 +713,9 @@ public static class InfrastructureExtensions
             PrivilegedFileSystem(sp)));
         // The child receives the same extra variables as a shell session: the shell's key, read by
         // its path, filtered by the twin of the shell's filter (a refused name is warned about once).
+        // Infrastructure does not reference Orkeon.Tools.Code (ADR-002 allows Tools.Abstractions only),
+        // so IOptions<ShellToolOptions> is out of reach: a list set in code with
+        // Configure<ShellToolOptions> reaches the shell alone, as the option's documentation says.
         services.TryAddSingleton(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<HostProcessRunner>>();

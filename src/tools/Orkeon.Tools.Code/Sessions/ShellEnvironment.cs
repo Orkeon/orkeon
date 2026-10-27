@@ -84,10 +84,11 @@ internal static partial class ShellEnvironment
     /// The words a name the operator adds may not contain (<c>Orkeon:Tools:Shell:Environment:Propagate</c>),
     /// compared without case: such a variable most likely holds a secret, and the secret filter wins
     /// over the operator's list. A built-in name is checked before them, so <c>SSH_AUTH_SOCK</c> is
-    /// merely a duplicate. Twin of <c>HostProcessRunner.SecretWords</c>.
+    /// merely a duplicate. A name holding the word <c>PAT</c> on its own (<c>GITHUB_PAT</c>) is refused
+    /// too, without matching <c>PATH</c>. Twin of <c>HostProcessRunner.SecretWords</c>.
     /// </summary>
     internal static readonly IReadOnlyList<string> SecretWords =
-        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH"];
+        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "PASS", "CREDENTIAL", "AUTH"];
 
     /// <summary>The prefix of the runner's own variables, its LLM API keys among them; never added.</summary>
     internal const string ReservedPrefix = "ORKEON_";
@@ -109,7 +110,7 @@ internal static partial class ShellEnvironment
     /// may receive, in their order, each once (<see cref="NameComparer"/>). A name that is invalid
     /// (blank, holding <c>=</c> or a NUL), starts with <c>ORKEON_</c> or contains one of the
     /// <see cref="SecretWords"/>, or whose value carries URL credentials
-    /// (<c>scheme://user:password@host</c>), is refused with a warning that never quotes the value;
+    /// (<c>scheme://user:password@host</c>, <c>user:password@host</c>), is refused with a warning that never quotes the value;
     /// a name already built in is ignored, since it changes nothing.
     /// </summary>
     /// <param name="configured">The names as configured.</param>
@@ -145,7 +146,8 @@ internal static partial class ShellEnvironment
 
     /// <summary>
     /// Whether <paramref name="value"/> carries the userinfo of a URL (<c>scheme://user:password@host</c>,
-    /// or a lone user standing for a token): a proxy or remote address that embeds its credential.
+    /// a lone user standing for a token, or a schemeless <c>user:password@host</c>, the password possibly
+    /// holding <c>/</c>): a proxy or remote address that embeds its credential.
     /// </summary>
     internal static bool CarriesUrlCredentials(string value) => UrlUserInfo().IsMatch(value);
 
@@ -155,8 +157,11 @@ internal static partial class ShellEnvironment
             ? "its value carries URL credentials (scheme://user:password@host)"
             : null;
 
-    // A scheme, '//', then an authority part that ends with '@' before any '/', '?', '#', blank or list separator.
-    [GeneratedRegex(@"[A-Za-z][A-Za-z0-9+.\-]*://[^/?#@\s,;]+@", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    // Userinfo ended by '@', in two shapes curl and git both accept. With a scheme: '//', a user
+    // without '/', ':' or a separator, then an optional ':password' that may hold '/' (a lone user
+    // stands for a token). Without one, at the start of the value or of a list item: 'user:password@',
+    // the password not starting with '//' (that is a scheme). A blank, ',' or ';' ends either shape.
+    [GeneratedRegex(@"(?:[A-Za-z][A-Za-z0-9+.\-]*://[^/?#@\s,;:]*(?::[^?#@\s,;]*)?|(?<![^\s,;])[^/?#@\s,;:]+:(?!//)[^?#@\s,;]*)@", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
     private static partial Regex UrlUserInfo();
 
     // Why an added name is refused, or null when it may pass (a built-in name passes here).
@@ -170,8 +175,15 @@ internal static partial class ShellEnvironment
             return "the ORKEON_ variables are the runner's own and carry its secrets";
         if (SecretWords.FirstOrDefault(word => name.Contains(word, StringComparison.OrdinalIgnoreCase)) is { } word)
             return $"it contains '{word}', which names a secret";
+        if (HoldsPatWord(name))
+            return "it contains the word 'PAT', which names a secret";
         return null;
     }
+
+    // Whether one segment of the name, split on '_', '-' or '.', is "PAT" (a personal access token,
+    // GITHUB_PAT): the word alone, so PATH, MANPATH or PYTHONPATH pass.
+    private static bool HoldsPatWord(string name)
+        => name.Split(['_', '-', '.']).Any(segment => segment.Equals("PAT", StringComparison.OrdinalIgnoreCase));
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Orkeon:Tools:Shell:Environment:Propagate: '{Name}' is not propagated: {Reason}.")]
     private static partial void LogNameRefused(ILogger logger, string name, string reason);

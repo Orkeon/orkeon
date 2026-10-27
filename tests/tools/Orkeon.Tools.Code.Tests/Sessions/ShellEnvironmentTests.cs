@@ -178,6 +178,9 @@ public sealed class ShellEnvironmentTests
     [InlineData("PROXY_AUTH")]
     [InlineData("gh_token")]
     [InlineData("Proxy_Password")]
+    [InlineData("PROXY_PASS")]
+    [InlineData("GITHUB_PAT")]
+    [InlineData("gh_pat_file")]
     public void ShouldRefuseASecretWordName_WithAWarning(string name)
     {
         var environment = OperatorSession();
@@ -190,6 +193,20 @@ public sealed class ShellEnvironmentTests
         Assert.Empty(propagated);
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Message.Contains(name, StringComparison.Ordinal));
         Assert.DoesNotContain(name, variables.Keys);
+    }
+
+    [Theory]
+    [InlineData("MANPATH")]
+    [InlineData("LIBRARY_PATH")]
+    [InlineData("PYTHONPATH")]
+    public void ShouldKeepANameThatOnlyContainsPat_WithoutAWarning(string name)
+    {
+        var logger = new RecordingLogger();
+
+        var propagated = ShellEnvironment.SelectPropagated([name], _ => "value", logger);
+
+        Assert.Equal([name], propagated);
+        Assert.Empty(logger.Entries);
     }
 
     [Theory]
@@ -286,6 +303,10 @@ public sealed class ShellEnvironmentTests
     [InlineData("https://s3cr3t@github.com/org/repo")]
     [InlineData("socks5://u:s3cr3t@proxy.local:1080")]
     [InlineData("http://proxy.local:3128,http://u:s3cr3t@other.local")]
+    [InlineData("user:s3cr3t@proxy.local:3128")]
+    [InlineData("proxy.local,user:s3cr3t@other.local")]
+    [InlineData("http://u:a/s3cr3t@proxy.local")]
+    [InlineData("u:a/s3cr3t@proxy.local:3128")]
     public void ShouldDropAnAddedVariable_WithAWarningThatHidesTheValue_WhenItsValueCarriesUrlCredentials(string value)
     {
         var environment = OperatorSession();
@@ -306,6 +327,9 @@ public sealed class ShellEnvironmentTests
     [InlineData("http://proxy.local:3128")]
     [InlineData("/opt/certs")]
     [InlineData("operator@example.com")]
+    [InlineData("git@github.com:org/repo.git")]
+    [InlineData("https://registry.example.com/@scope/pkg")]
+    [InlineData("proxy.local:3128")]
     public void ShouldKeepAnAddedVariable_WhenItsValueCarriesNoUrlCredentials(string value)
     {
         var environment = OperatorSession();

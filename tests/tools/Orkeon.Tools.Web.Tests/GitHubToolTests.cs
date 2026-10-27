@@ -328,6 +328,38 @@ public sealed class GitHubToolTests : IDisposable
         Assert.Contains("action", result.Error, StringComparison.OrdinalIgnoreCase);
     }
 
+    // #219 review: owner and repo are path segments; a value that is not one would retarget the
+    // request, token included, to another endpoint.
+    [Theory]
+    [InlineData("list_issues", "octocat", "user/repos?")]
+    [InlineData("get_repo", "octocat", "..")]
+    [InlineData("get_repo", ".", "hello")]
+    [InlineData("create_issue", "octo%2Fcat", "hello")]
+    [InlineData("get_pr", "octocat", "hello#frag")]
+    [InlineData("list_issues", "../users", "x")]
+    [InlineData("get_repo", "octo cat", "hello")]
+    public async Task ShouldRefuseAnOwnerOrRepoThatIsNotOnePathSegment(string action, string owner, string repo)
+    {
+        SetupResponse(HttpStatusCode.OK, "[]");
+
+        var result = await CallToolAsync(action, owner: owner, repo: repo, number: 1, title: "t");
+
+        Assert.False(result.Success);
+        Assert.Contains("must match", result.Error, StringComparison.Ordinal);
+        Assert.Equal(0, _mockHandler.SendCallCount);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptOwnerAndRepoWithDotsDashesAndUnderscores()
+    {
+        SetupResponse(HttpStatusCode.OK, "[]");
+
+        await CallToolAsync("list_issues", owner: "my-org_1", repo: "repo.name-2_x");
+
+        Assert.Equal("https://api.github.com/repos/my-org_1/repo.name-2_x/issues",
+            _mockHandler.LastRequest?.RequestUri?.ToString());
+    }
+
     [Fact]
     public async Task ShouldReturnError_WhenActionIsInvalid()
     {
