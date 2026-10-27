@@ -285,12 +285,13 @@ s'exécute et se draine quand même.
 ```typescript
 defineAsyncCommand({
   name: "step",
-  description: "Run a crew, then the next one, reading the session's rules at each hop.",
+  description: "Run a crew, then the next one, reading the session's mode at each hop.",
   dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
   completed: async (result, ctx) => {
-    const rules = await ctx.services.get("permissions").list();   // les règles en vigueur maintenant
-    ctx.writeLine(`plan done, ${rules.length} rule(s) in force`);
-    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
+    // « session » : un service hôte de l'application dont readMode() rend une Task, ici une promesse
+    const mode = await ctx.services.get("session").readMode();
+    ctx.writeLine(`plan done, mode ${mode}`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload, mode });
   },
 });
 ```
