@@ -24,7 +24,7 @@ internal sealed record ShellSessionView(
 
     /// <summary>
     /// The variable names the operator added to the environment allow-list, already filtered
-    /// (<see cref="ShellEnvironment.SelectPropagated"/>). Their values pass; no path they name is bound.
+    /// (<see cref="ShellEnvironment.SelectPropagated(System.Collections.Generic.IEnumerable{string}, System.Func{string, string?}, Microsoft.Extensions.Logging.ILogger?)"/>). Their values pass; no path they name is bound.
     /// </summary>
     public IReadOnlyList<string> PropagatedVariables { get; init; } = [];
 
