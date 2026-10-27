@@ -218,3 +218,17 @@ Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.set -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerConfig.TrustAnnotations.set -> void
 Orkeon.Infrastructure.Session.FileSessionBufferService.LoadFromAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Session.FileSessionBufferService.SessionFilePath.get -> string?
+Orkeon.Infrastructure.Tools.TokenBudgetResponse.UsedTokensByKind.get -> Orkeon.Infrastructure.Tools.TokenBudgetByKind!
+Orkeon.Infrastructure.Tools.TokenBudgetResponse.UsedTokensByKind.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.TokenBudgetByKind() -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.System.get -> int
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.System.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.User.get -> int
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.User.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Assistant.get -> int
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Assistant.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Tool.get -> int
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Tool.set -> void
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Other.get -> int
+Orkeon.Infrastructure.Tools.TokenBudgetByKind.Other.set -> void

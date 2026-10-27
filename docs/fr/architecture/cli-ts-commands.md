@@ -243,9 +243,11 @@ La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `f
 plus bas), `script-host` (lancement de crews depuis une commande — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
 (les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
-attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas) ;
-pour ces six-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`,
-`PendingApprovals`, `SessionFacade` et `RuntimeInfo` sans argument de type. `configuration` n'est
+attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas),
+et `usage` (la consommation LLM de la session par modèle et par commande, plus bas) là où l'hôte tient
+un gestionnaire de coûts ou des instances de commande ; pour ces sept-là, les typings rendent
+`CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade`,
+`RuntimeInfo` et `SessionUsage` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -680,6 +682,26 @@ le canal `unknown`.
 ```typescript
 const runtime = ctx.services.get("runtime");
 ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
+```
+
+**Consommation de la session.** Une commande lit la consommation LLM de la session par
+`ctx.services.get("usage")`, présent quand l'hôte tient un gestionnaire de coûts
+(`ICostBudgetManager`) ou des instances de commande (le REPL tient les deux). Il est en lecture
+seule : `report()` rend les chiffres de l'instant, `{ promptTokens, completionTokens,
+cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, cost, byModel, byCommand }`.
+Les comptes de cache sont une part du prompt, le raisonnement une part de la complétion (rapporté
+par Z.AI et OpenRouter, 0 ailleurs). `byModel` a une ligne par modèle, tirée du rapport du
+gestionnaire de coûts ; `byCommand` une ligne par instance de commande que la session garde (un crew
+lancé par `runCrewAsync` compris, la plus récente d'abord), tirée de ce que
+`InstanceAttributingUsageSink` lui a crédité, avec son `ticket`, son `name`, son `state` et ses
+`calls`. Un `cost` est ce que le fournisseur a facturé, sinon le prix que le registre connaît pour le
+modèle (`Orkeon:CostTracking`), et null quand aucun des deux n'est connu : une commande `/usage`
+distingue ainsi un appel gratuit d'un appel sans prix.
+
+```typescript
+const usage = ctx.services.get("usage").report();
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
 ## Matrice de support TypeScript (esbuild → Jint)

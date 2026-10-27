@@ -13,7 +13,7 @@ namespace Orkeon.Cli.Commands.Scripting.Progress;
 /// <remarks>
 /// Foreground commands run with no ambient instance — their usage then only feeds the
 /// session total, which is the correct attribution. Thread-safe: the cost manager guards
-/// itself and <see cref="Dispatch.CommandInstance.AddTokens(long)"/> is interlocked.
+/// itself and <see cref="Dispatch.CommandInstance.AddUsage"/> is lock-free.
 /// </remarks>
 public sealed class InstanceAttributingUsageSink : ILlmUsageSink
 {
@@ -27,7 +27,8 @@ public sealed class InstanceAttributingUsageSink : ILlmUsageSink
     public void Record(CostUsageEvent usage)
     {
         ArgumentNullException.ThrowIfNull(usage);
-        _costManager?.RecordUsage(usage);
-        ProgressAmbient.CurrentInstance?.AddTokens(usage.PromptTokens + (long)usage.CompletionTokens);
+        // The cost the session settled (vendor charge, else registry price); without a manager, the vendor's charge.
+        var cost = _costManager is null ? usage.Cost : _costManager.RecordUsage(usage).Cost;
+        ProgressAmbient.CurrentInstance?.AddUsage(usage, cost);
     }
 }

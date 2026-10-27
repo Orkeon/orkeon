@@ -2477,3 +2477,12 @@ const Orkeon.Application.Constants.Orchestration.LoggingDefaults.MaxLlmResponseL
 Orkeon.Application.Agent.AgentWorkingRoot
 static Orkeon.Application.Agent.AgentWorkingRoot.NormalizeMounted(string? root, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>! mounts) -> string?
 Orkeon.Application.Interfaces.Ports.ILlmDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.ReasoningTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.ReasoningTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.get -> long
+Orkeon.Application.Interfaces.Ports.ModelUsage.ReasoningTokens.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.Priced.get -> bool
+Orkeon.Application.Interfaces.Ports.ModelUsage.Priced.init -> void
+Orkeon.Application.Interfaces.Ports.CostBudgetCheckResult.Cost.get -> decimal?
+Orkeon.Application.Interfaces.Ports.CostBudgetCheckResult.Cost.init -> void
+const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.ReasoningTokens = "reasoning_tokens" -> string!

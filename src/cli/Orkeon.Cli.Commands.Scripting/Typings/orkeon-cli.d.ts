@@ -234,7 +234,8 @@ export interface ServiceLocator {
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
    *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
    *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
-   *   `"session"` → {@link SessionFacade} (save the persisted session now, load a saved one, in `orkeon-repl`).
+   *   `"session"` → {@link SessionFacade} (save the persisted session now, load a saved one, in `orkeon-repl`),
+   *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
@@ -245,6 +246,7 @@ export interface ServiceLocator {
   get(name: "approvals"): PendingApprovals;
   get(name: "session"): SessionFacade;
   get(name: "runtime"): RuntimeInfo;
+  get(name: "usage"): SessionUsage;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -371,6 +373,63 @@ export interface RuntimeInfo {
    * `homebrew`, `source`…, `"unknown"` when nothing names one (a build tree, an installation older than the marker).
    */
   readonly channel: string;
+}
+
+/**
+ * The session's LLM usage — `ctx.services.get("usage")`, present when the host keeps a cost manager or
+ * command instances (`orkeon-repl`). Read-only. Each `report()` reads the figures of that moment.
+ */
+export interface SessionUsage {
+  /** The session's usage now: its totals, one row per model, one row per command instance. */
+  report(): SessionUsageReport;
+}
+
+/** The token split every usage row carries. The cache counts are a part of the prompt, the reasoning a part of the completion. */
+export interface UsageTokens {
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  /** Prompt tokens served from the provider's cache; 0 when the provider reports none. */
+  readonly cacheHitTokens: number;
+  /** Prompt tokens written to the provider's cache; 0 when the provider reports none. */
+  readonly cacheWriteTokens: number;
+  /** Completion tokens spent reasoning (Z.AI, OpenRouter report them); 0 when the provider reports none. */
+  readonly reasoningTokens: number;
+}
+
+/** What {@link SessionUsage.report} returns. */
+export interface SessionUsageReport extends UsageTokens {
+  /** `promptTokens + completionTokens`. */
+  readonly totalTokens: number;
+  /** The LLM calls of the session. */
+  readonly calls: number;
+  /** The session's cost (USD for the registry's prices); null when no price is known for any model it used. */
+  readonly cost: number | null;
+  /** One row per model, by name. */
+  readonly byModel: readonly ModelUsageRow[];
+  /** One row per command instance the session keeps (a crew run with `runCrewAsync` included), the newest first. */
+  readonly byCommand: readonly CommandUsageRow[];
+}
+
+/** The usage of one model. */
+export interface ModelUsageRow extends UsageTokens {
+  /** The model, as the provider named it in its answer. */
+  readonly model: string;
+  /** The model's cost; null when the vendor billed nothing and no price is configured for it. */
+  readonly cost: number | null;
+}
+
+/** The usage of one command instance. */
+export interface CommandUsageRow extends UsageTokens {
+  /** The instance's ticket (`t1`). */
+  readonly ticket: string;
+  /** The command's name. */
+  readonly name: string;
+  /** The instance's state. */
+  readonly state: CommandInstanceState;
+  /** The LLM calls of the instance. */
+  readonly calls: number;
+  /** The instance's cost; null while none of its calls was priced. */
+  readonly cost: number | null;
 }
 
 /** Result of a crew run launched via {@link ScriptHostFacade}. */

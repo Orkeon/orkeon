@@ -241,9 +241,10 @@ optional `llm`, `logger`, `commands` (the dispatch façade — see below), `scri
 (crew launching from a command — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
 session's tool-call rules, below), `approvals` (the tool approvals waiting, below) and `session`
-(save the persisted session, load a saved one, below); the typings return `CommandsFacade`,
-`ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade` and `RuntimeInfo` for
-those six without a type argument. `configuration` is deliberately
+(save the persisted session, load a saved one, below), and `usage` (the session's LLM usage by model
+and by command, below) where the host keeps a cost manager or command instances; the typings return
+`CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade`,
+`RuntimeInfo` and `SessionUsage` for those seven without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -653,6 +654,24 @@ version and the channel `unknown`.
 ```typescript
 const runtime = ctx.services.get("runtime");
 ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
+```
+
+**Session usage.** A command reads the session's LLM usage through `ctx.services.get("usage")`,
+present when the host keeps a cost manager (`ICostBudgetManager`) or command instances (the REPL
+keeps both). It is read-only: `report()` returns the figures of that moment, `{ promptTokens,
+completionTokens, cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, cost,
+byModel, byCommand }`. The cache counts are a part of the prompt, the reasoning a part of the
+completion (reported by Z.AI and OpenRouter, 0 elsewhere). `byModel` has one row per model, from the
+cost manager's report; `byCommand` one row per command instance the session keeps (a crew launched
+with `runCrewAsync` included, the newest first), from what `InstanceAttributingUsageSink` credited
+it, with its `ticket`, `name`, `state` and `calls`. A `cost` is the vendor's charge, else the price
+the registry knows for the model (`Orkeon:CostTracking`), and null when neither is known: a
+`/usage` command can tell a free call from an unpriced one.
+
+```typescript
+const usage = ctx.services.get("usage").report();
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
 ## TypeScript support matrix (esbuild → Jint)

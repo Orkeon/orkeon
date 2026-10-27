@@ -345,4 +345,35 @@ public sealed class SessionBufferAndToolsTests
 
         Assert.Equal(32_000, Convert.ToInt32(ResultDict(resp)["context_window_tokens"]));
     }
+
+    /// <summary>#226 - token_budget says what fills the window, by kind of buffer entry.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public async Task TokenBudget_splits_the_used_tokens_by_kind_of_entry()
+    {
+        var buffer = new InMemorySessionBufferService();
+        buffer.ReplaceMessages(new[]
+        {
+            Msg("system", new string('s', 396)),
+            Msg("user", new string('u', 796)),
+            Msg("assistant", new string('a', 1191)),
+            Msg("tool", new string('t', 1596)),
+            Msg("tool", new string('t', 396)),
+            Msg("note", new string('n', 396)),
+        });
+        using var tool = new TokenBudgetTool(buffer, configuration: null);
+
+        var resp = await tool.CallAsync(new ToolCallRequest("token_budget", new Dictionary<string, object?>()), TestContext.Current.CancellationToken);
+
+        Assert.True(resp.Success, resp.Error);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(resp.Result));
+        var used = doc.RootElement.GetProperty("used_tokens").GetInt32();
+        var byKind = doc.RootElement.GetProperty("used_tokens_by_kind");
+        Assert.Equal(100, byKind.GetProperty("system").GetInt32());
+        Assert.Equal(200, byKind.GetProperty("user").GetInt32());
+        Assert.Equal(300, byKind.GetProperty("assistant").GetInt32());
+        Assert.Equal(500, byKind.GetProperty("tool").GetInt32());
+        Assert.Equal(100, byKind.GetProperty("other").GetInt32());
+        Assert.Equal(used, byKind.EnumerateObject().Sum(p => p.Value.GetInt32()));
+    }
 }

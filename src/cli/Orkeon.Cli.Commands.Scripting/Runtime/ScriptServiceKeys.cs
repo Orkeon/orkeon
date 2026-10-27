@@ -52,4 +52,11 @@ public static class ScriptServiceKeys
     /// (<see cref="ScriptRuntimeInfo"/>): its version, commit and install channel. Always present.
     /// </summary>
     public const string Runtime = "runtime";
+
+    /// <summary>
+    /// Optional: the session's LLM usage by model and by command instance, with its cost when a price is
+    /// known — <c>ctx.services.get("usage")</c> (<see cref="ScriptSessionUsage"/>). Read-only; present when
+    /// the host keeps a cost manager or command instances.
+    /// </summary>
+    public const string Usage = "usage";
 }

@@ -68,6 +68,22 @@ options (`SettingsPath`, `Mounts`, `MountIds`, `AllowExternalMounts`, `LlmProfil
 need `orkeon-host` instead is in `docs/architecture/service-host.md` §8. `scripts/check-package-closure.py` now checks
 a package against everything its lineup dependencies provide, not the umbrella alone.
 
+### Added — the session's usage by model and by command for scripts; `token_budget` by kind of entry (#226)
+
+A `*.cmd.ts` reads the session's LLM usage through `ctx.services.get("usage")` (`ScriptServiceKeys.Usage`, an
+optional entry of the default whitelist, present when the host keeps an `ICostBudgetManager` or a
+`CommandInstanceRegistry`). `report()` returns the prompt, completion, cache-hit, cache-write and reasoning tokens of
+the session, its calls and cost, one row per model (`byModel`) and one per command instance (`byCommand`, a crew
+launched with `runCrewAsync` included). A cost is the vendor's charge, else the registry's price for the model, and
+null when neither is known. The typings declare `SessionUsage`, `SessionUsageReport`, `ModelUsageRow` and
+`CommandUsageRow`. To feed it, a command instance keeps the split of its usage (`CommandInstance.AddUsage`,
+`CommandInstance.Usage`, `CommandInstanceUsage`) instead of a bare total, `CostBudgetCheckResult.Cost` answers the
+cost `RecordUsage` settled (null for a call nobody priced), `ModelUsage` carries `ReasoningTokens` and `Priced`, and
+`CostUsageEvent.ReasoningTokens` carries the reasoning tokens a provider reports in its metadata
+(`LlmUsageMetadataKeys.ReasoningTokens`, `reasoning_tokens`: Z.AI, OpenRouter). The `token_budget` tool keeps its
+fields and adds `used_tokens_by_kind` (`system`, `user`, `assistant`, `tool`, `other`), which adds up to
+`used_tokens`.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

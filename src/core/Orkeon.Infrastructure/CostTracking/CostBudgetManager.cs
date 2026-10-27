@@ -16,6 +16,8 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     private readonly ConcurrentDictionary<string, BudgetLimit> _crewBudgets = new();
     private readonly ConcurrentDictionary<string, BudgetLimit> _agentBudgets = new();
     private readonly ConcurrentBag<BudgetAlert> _alerts = [];
+    // The models at least one call of which was priced (billed by the vendor or priced from the registry).
+    private readonly ConcurrentDictionary<string, byte> _pricedModels = new(StringComparer.Ordinal);
     private readonly IModelPricingRegistry _pricingRegistry;
     private readonly ILogger<CostBudgetManager> _logger;
     private readonly CostTrackingOptions _options;
@@ -46,6 +48,9 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         // reading 0 as "not provided" charged the registry price for a call that cost nothing.
         // Only a call nobody priced (null) is estimated, for this manager's accounting alone.
         var cost = usageEvent.Cost ?? EstimateCost(usageEvent);
+        var priced = usageEvent.Cost is not null || _pricingRegistry.TryGetPricing(usageEvent.Model) is not null;
+        if (priced && !string.IsNullOrEmpty(usageEvent.Model))
+            _pricedModels.TryAdd(usageEvent.Model, 0);
 
         // Store the event (with its cost settled)
         var eventWithCost = usageEvent with { Cost = cost };
@@ -54,7 +59,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         LogRecordedUsageCrewAgentModel(usageEvent.CrewId ?? "", usageEvent.AgentId ?? "", usageEvent.Model ?? "", usageEvent.PromptTokens + usageEvent.CompletionTokens, cost);
 
         // Check budgets
-        return CheckBudgets(eventWithCost);
+        return CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
     }
 
     private decimal EstimateCost(CostUsageEvent usageEvent)
@@ -81,7 +86,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     public CostReport GetReport(string? crewId = null, string? agentId = null)
     {
         var events = FilterEvents(crewId, agentId);
-        return BuildReport(events);
+        return BuildReport(events, _pricedModels);
     }
 
     /// <inheritdoc />
@@ -94,7 +99,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             events = events.Where(e => e.CrewId == crewId);
 
         var list = events.ToList();
-        var report = BuildReport(list);
+        var report = BuildReport(list, _pricedModels);
 
         return report with { PeriodStart = from, PeriodEnd = toDate };
     }
@@ -298,7 +303,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         return events;
     }
 
-    private static CostReport BuildReport(IEnumerable<CostUsageEvent> events)
+    private static CostReport BuildReport(IEnumerable<CostUsageEvent> events, ConcurrentDictionary<string, byte> pricedModels)
     {
         var list = events.ToList();
 
@@ -344,6 +349,8 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
                     CompletionTokens = g.Sum(e => (long)e.CompletionTokens),
                     CacheWriteTokens = g.Sum(e => e.CacheWriteTokens ?? 0L),
                     CacheReadTokens = g.Sum(e => e.CacheHitTokens ?? 0L),
+                    ReasoningTokens = g.Sum(e => e.ReasoningTokens ?? 0L),
+                    Priced = pricedModels.ContainsKey(g.Key),
                     Cost = g.Sum(e => e.Cost ?? 0m),
                 });
 

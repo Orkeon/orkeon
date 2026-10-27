@@ -1,13 +1,13 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
-using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Infrastructure.Session;
 using Orkeon.Scripting;
 
@@ -59,7 +59,14 @@ public static class DefaultScriptServiceWhitelist
             // Optional: the persisted session (Orkeon:Cli:Session:Persist), saved now or swapped for a saved one (#227).
             .AddOptional(ScriptServiceKeys.Session, sp => sp.GetService<ISessionBufferService>() is FileSessionBufferService session
                 ? new SessionFacade(session)
-                : null);
+                : null)
+            // Optional, read-only: the session's usage by model (the cost manager's report) and by command
+            // instance (what InstanceAttributingUsageSink credited each one) — present when either is kept.
+            .AddOptional(ScriptServiceKeys.Usage, sp =>
+                (sp.GetService<ICostBudgetManager>(), sp.GetService<CommandInstanceRegistry>()) is var (cost, instances)
+                && (cost is not null || instances is not null)
+                    ? new ScriptSessionUsage(cost, instances)
+                    : null);
     }
 
     /// <summary>

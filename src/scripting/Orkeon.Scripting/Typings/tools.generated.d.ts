@@ -1373,12 +1373,13 @@ declare global {
             readonly virtual_file_path: string;
         }>;
 
-        /** `token_budget` - Return the current model's context window size, used tokens, and available budget. */
+        /** `token_budget` - Return the current model's context window size, used tokens (split by kind: system, user, assistant, tool, other), and available budget. */
         tokenBudget(input?: Record<string, never>, ctx?: ExecutionContext): Promise<{
             readonly available_tokens: number;
             readonly context_window_tokens: number;
             readonly model: string;
             readonly used_tokens: number;
+            readonly used_tokens_by_kind: Record<string, unknown>;
         }>;
 
         /** `txt_search` - Perform semantic search within plain text (.txt) files using RAG embeddings. */
