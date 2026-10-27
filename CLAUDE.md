@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 119 built-in tool classes. Version `1.0.0-rc.5` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
+Orkeon is a C# framework (.NET 10) for teams of AI agents that collaborate on tasks through LLMs: crews of agents, tasks and tools, run in six orchestration modes over 16 LLM providers with 120 built-in tool classes. Version `1.0.0-rc.5` is in preparation. `git tag` is the authority on what is tagged: never assert tag state in prose.
 Start from `docs/INDEX.md` (`docs/fr/` is its full French mirror). Known gaps between what ships and what is wired are in `docs/reference/limitations.md`, tracked in `backstage/tasks/GAP-00-PLAN.md`: check there before assuming a registered surface is invoked.
 Decisions live in `docs/adr/`; breaking changes and migration tables in `CHANGELOG.md`.
 

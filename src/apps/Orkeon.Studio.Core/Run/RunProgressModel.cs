@@ -107,9 +107,12 @@ public static class RunCostOperations
     /// <summary>An LLM judge grading an output.</summary>
     public const string Judge = "judge";
 
+    /// <summary>A decision model answering typed questions: a route, a guard, a verification, a rerank.</summary>
+    public const string Decision = "decision";
+
     private static readonly HashSet<string> Machinery = new(StringComparer.Ordinal)
     {
-        Manager, Planning, Rag, Memory, Judge,
+        Manager, Planning, Rag, Memory, Judge, Decision,
     };
 
     /// <summary>

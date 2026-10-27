@@ -41,12 +41,15 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [`orkeon drive` commands](./reference/cli.md#orkeon-drive) | `accounts`, `check` (find the root folder and list it), `login` / `logout` — options and exit codes |
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |
 | [ADR-014 — shell confinement by default](./adr/ADR-014-shell-confinement-by-default.md) | Why `shell_command` is confined per platform by default, off in containers, and runs one shell session per agent run |
+| [ADR-015 — model provider categories and decision stages](./adr/ADR-015-model-provider-categories-and-decision-stages.md) | Why model providers come in categories (generation, embedding, reranking, decision), why TypeSafe has its own `IDecisionModel` port, and why a decision stage judges an LLM call without rewriting it |
 
 ### Architecture
 
 | File | Description |
 |------|-------------|
 | [LLM providers](./architecture/llm-providers.md) | 16 providers (OpenAI, Anthropic, Azure, Grok, Ollama, the OpenRouter and Mammouth aggregators, etc.), capabilities and dialect seams, provider resolution, decorators and LLM exchange logging, real-API campaign kit |
+| [Model providers](./architecture/model-providers.md) | The four categories of model providers (generation, embedding, reranking, decision), their contracts and the `ModelProviderCatalog` |
+| [Decision models](./architecture/decision-models.md) | TypeSafe's Jev behind `IDecisionModel`: typed questions, decision profiles that block, route or escalate an LLM call (cascade, router), the input guard, the `decision` reranker and `system_one_decide` |
 | [Memory system](./architecture/memory-system.md) | 5 memory types, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), cognitive memory |
 | [Events, CQRS and observability](./architecture/domain-events.md) | 23 domain events — the tasks' and agents' as a run goes, the crew's at the end of each kickoff, and by the CQRS commands —, the CQRS pipeline, 2 observation surfaces (`ICrewExecutionHook`, `ICallbackHandler` with a step per tool call) |
 | [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, the in-memory adapter and its five middleware stages (the shipped hosts wire only the ACL), the agent tools; SQLite persistence and sleep/wake are specified, not built yet |
@@ -80,7 +83,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 119 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 120 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides

@@ -41,12 +41,15 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Commandes `orkeon drive`](./reference/cli.md#orkeon-drive) | `accounts`, `check` (trouver le dossier racine et le lister), `login` / `logout` — options et codes de sortie |
 | [ADR-013 — la famille d'outils drive](./adr/ADR-013-drive-tool-family.md) | Pourquoi une famille d'outils plutôt qu'un montage VFS, et la couche OAuth que partagent les deux familles cloud |
 | [ADR-014 — le confinement du shell par défaut](./adr/ADR-014-shell-confinement-by-default.md) | Pourquoi `shell_command` est confiné par plateforme par défaut, coupé dans les conteneurs, et tourne dans une session shell par exécution d'agent |
+| [ADR-015 — les catégories de fournisseurs de modèles et les étapes de décision](./adr/ADR-015-model-provider-categories-and-decision-stages.md) | Pourquoi les fournisseurs de modèles se rangent en catégories (génération, embedding, reranking, décision), pourquoi TypeSafe a son propre port `IDecisionModel`, et pourquoi une étape de décision juge un appel au LLM sans le réécrire |
 
 ### Architecture
 
 | Fichier | Description |
 |---------|-------------|
 | [Fournisseurs LLM](./architecture/llm-providers.md) | 16 providers (OpenAI, Anthropic, Azure, Grok, Ollama, les agrégateurs OpenRouter et Mammouth, etc.), capacités et points d'extension du dialecte, résolution du provider, décorateurs et journalisation des échanges LLM, kit de campagnes sur API réelle |
+| [Fournisseurs de modèles](./architecture/model-providers.md) | Les quatre catégories de fournisseurs de modèles (génération, embedding, reranking, décision), leurs contrats et le `ModelProviderCatalog` |
+| [Modèles de décision](./architecture/decision-models.md) | Le Jev de TypeSafe derrière `IDecisionModel` : questions typées, profils de décision qui bloquent, routent ou escaladent un appel au LLM (cascade, routeur), la garde d'entrée, le reranker `decision` et `system_one_decide` |
 | [Système de mémoire](./architecture/memory-system.md) | 5 types de mémoire, 6 providers (InMemory, Redis, SQLite, ChromaDB, Pinecone, LanceDB), mémoire cognitive |
 | [Événements, CQRS et observabilité](./architecture/domain-events.md) | 23 domain events — ceux des tâches et des agents au fil du run, ceux de la crew en fin de kickoff, et par les commandes CQRS —, pipeline CQRS, 2 surfaces d'observation (`ICrewExecutionHook`, `ICallbackHandler` avec une étape par appel d'outil) |
 | [EventHub et cycle de vie des crews](./architecture/event-hub-and-crew-lifecycle.md) | Spécification de référence du messaging inter-agents et inter-crews (EventHub) et de la mise en sommeil/réveil des crews — ports Application, l'adaptateur en mémoire et ses cinq étages de middleware (les hôtes livrés ne câblent que l'ACL), les outils agents ; la persistance SQLite et le sommeil/réveil sont spécifiés, pas encore construits |
@@ -80,7 +83,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 
 | Fichier | Description |
 |---------|-------------|
-| [Inventaire des outils](./tools/inventory.md) | 119 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
+| [Inventaire des outils](./tools/inventory.md) | 120 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
 | [Créer un nouvel outil](./tools/new-tool-pattern.md) | Pipeline typé, attributs FieldSchema/ReturnSchema, pattern composition, enregistrement |
 
 ### Guides

@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **119 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **120 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -63,6 +63,12 @@ celui ci-dessus — est ce que le YAML référence.
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
 | `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
 | `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
+
+## Tool de décision (`Orkeon.Infrastructure`) — `AddOrkeonTypeSafe(configuration)`
+
+| Tool | Classe | Cas d'usage | Exemple d'appel |
+|-------|--------|-------------|-----------------|
+| `system_one_decide` | `SystemOneDecideTool` | Poser au modèle de décision configuré (Jev de TypeSafe, voir [Modèles de décision](../architecture/decision-models.md)) des questions typées sur un état : `choice`, `score` ou `noul`, chaque réponse avec ses probabilités calibrées et une confiance ; les questions `box` sont refusées (les images ne passent pas par un appel de tool) et la clé d'API n'apparaît jamais dans la requête | `{ "state": { "ticket": "Refund not received" }, "questions": { "urgent": { "type": "noul", "instructions": "Does the customer need an answer today?", "criteria": { "true": "An answer is needed today", "false": "It can wait" } } } }` |
 
 ## Tools fichiers (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`
 
@@ -272,7 +278,7 @@ Vingt-huit tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 119 classes de tools intégrées :
+Délibérément **hors** des 120 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -298,13 +304,13 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 28 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
-| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
+| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`) | 13 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **119** |
+| **Total** | **120** |
 
 ## Disponibilité par racine de composition
 
@@ -518,6 +524,7 @@ correspondance alphabétique complète :
 | `sub_graph` | `SubGraphTool` | `Orkeon.Tools.Analysis` |
 | `symbol_detail` | `SymbolDetailTool` | `Orkeon.Tools.Analysis` |
 | `symbol_source` | `SymbolSourceTool` | `Orkeon.Tools.Analysis` |
+| `system_one_decide` | `SystemOneDecideTool` | `Orkeon.Infrastructure` (opt-in, `AddOrkeonTypeSafe`) |
 | `token_budget` | `TokenBudgetTool` | `Orkeon.Infrastructure` |
 | `txt_search` | `TxtSearchTool` | `Orkeon.Tools.Data` |
 | `wait_for_event` | `WaitForEventTool` | `Orkeon.Tools.EventHub` |

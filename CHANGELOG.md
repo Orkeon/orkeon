@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — model provider categories and TypeSafe decision models (ADR-015)
+
+Model providers now come in four categories (`ModelProviderCategory`: `Generation`, `Embedding`, `Reranking`,
+`Decision`), listed with their key variable and endpoint in `ModelProviderCatalog` (`Orkeon.Constants.Llm`). The new
+`Decision` category has its own port, `IDecisionModel` (`Orkeon.Application`), with typed `choice`, `score`, `noul` and
+`box` questions and their answers; `AddOrkeonTypeSafe(configuration)` binds `Orkeon:TypeSafe` and serves TypeSafe's Jev
+(`jev-latest`, key in `TYPESAFE_API_KEY`, 429 and 529 retried, usage metered as `decision`). TypeSafe is not an LLM
+provider: the count stays at 16. `AddOrkeonDecisionProfiles(configuration)` reads `Orkeon:Decision:Profiles` and
+registers each one as an LLM profile wrapped in `DecisionLlmProvider`, whose `route`, `guard` and `verify` stages block,
+route or escalate a call before and after it, without rewriting the messages or the response (fail-open by default,
+`FailClosed` to block). Also opt-in: the agent input guard `TypeSafeInputGuard` (`Orkeon:TypeSafe:Guard:Enabled`), the
+RAG reranker `rerank.kind: decision` (alias `typesafe`) and the tool `system_one_decide` (120 tool classes). See
+[Decision models](docs/architecture/decision-models.md).
+
 ### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command

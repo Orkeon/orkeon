@@ -2,6 +2,8 @@
 
 # Fournisseurs LLM
 
+Les fournisseurs de cette page servent la catégorie `Generation`. Les fournisseurs d'embedding, de reranking et de décision (TypeSafe) sont listés dans [Fournisseurs de modèles](./model-providers.md) ; un modèle de décision juge un appel au LLM à travers un profil de décision ([Modèles de décision](./decision-models.md)).
+
 `HttpLlmProviderBase` (`Orkeon.Infrastructure.LLMs.Base`) fournit la base abstraite pour tous les fournisseurs LLM. Elle intègre la gestion HTTP (`IHttpClientFactory`), les politiques de retry Polly, et la sérialisation JSON.
 
 **Budget de retry.** `Llm:MaxRetries` (10 par défaut) couvre les échecs qui reviennent en quelques secondes — erreurs de requête, 5xx, 429. Un appel bufferisé qui atteint `Llm:TimeoutSeconds` est réessayé **une fois** (`ResilienceDefaults.LlmTimeoutRetries` : chaque tentative coûte le délai entier), puis le provider répond par un échec qui nomme le réglage et les deux issues (un délai plus long, la réflexion coupée) ; une annulation de l'appelant n'est jamais réessayée. Un appel échoué voyage en `LlmResponse.Error` et, à travers l'adaptateur de chat client, en exception — il n'est jamais confondu avec une réponse vide, si bien que la boucle agent fait échouer la tâche immédiatement avec la raison du provider au lieu de relancer sans outils (LLM-11).

@@ -94,6 +94,8 @@ public static class SettingsCategories
             ["Orkeon:CostTracking"] = Models,
             ["Orkeon:TokenCounter"] = Models,
             ["Evaluation"] = Models,
+            ["Orkeon:TypeSafe"] = Models,
+            ["Orkeon:Decision"] = Models,
 
             ["RateLimiting"] = RateAndBudgets,
             ["ToolRateLimiting"] = RateAndBudgets,
