@@ -77,6 +77,8 @@ public sealed partial class LlmProviderMeteringGuardTests
         [nameof(MeteredLlmProvider)] = "The meter itself.",
         [nameof(TracedLlmProvider)] = "The chat span of a call, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (CH-08).",
         [nameof(RateLimitedLlmProvider)] = "The host's limiter, applied with the meter by LlmProviderEntrance to a provider already obtained on the path (GAP-38).",
+        ["DecisionLlmProvider"] = "A decision profile: it forwards each call to profiles the registry resolved, already metered, "
+            + "and is itself registered through AddOrkeonLlmProfile; the meter nearest the model counts the call once.",
     };
 
     /// <summary>

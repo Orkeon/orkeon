@@ -342,3 +342,44 @@ const Orkeon.Infrastructure.LLMs.Decision.Stages.VerifyDecisionStage.Question = 
 static Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.Decision.Stages.GuardDecisionStage.AssessAsync(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! risks, System.Text.Json.Nodes.JsonNode! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<(string! Risk, double Probability)>!>!
 Orkeon.Infrastructure.LLMs.Decision.DecisionProfileOptions.Stages.get -> System.Collections.Generic.IList<Orkeon.Infrastructure.LLMs.Decision.DecisionStageOptions!>!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.BlockThreshold.get -> double
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.BlockThreshold.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Enabled.get -> bool
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Enabled.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.FailClosed.get -> bool
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.FailClosed.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Risks.get -> System.Collections.Generic.Dictionary<string!, string!>!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.Risks.init -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.TypeSafeGuardOptions() -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.WarnThreshold.get -> double
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions.WarnThreshold.set -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.Enabled.get -> bool
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.TypeSafeInputGuard(Orkeon.Application.Interfaces.Ports.IDecisionModel! model, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard!>! logger) -> void
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Guard.get -> Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeGuardOptions!
+Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.Guard.init -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Model.get -> string?
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Model.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Questions.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.Questions.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.State.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.State.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideRequest.SystemOneDecideRequest() -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Answers.get -> System.Text.Json.Nodes.JsonNode?
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Answers.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Error.get -> string?
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Error.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Model.get -> string?
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Model.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Success.get -> bool
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.Success.set -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideResponse.SystemOneDecideResponse() -> void
+Orkeon.Infrastructure.Tools.SystemOneDecideTool
+Orkeon.Infrastructure.Tools.SystemOneDecideTool.SystemOneDecideTool(Orkeon.Application.Interfaces.Ports.IDecisionModel! model) -> void
+const Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.GuardName = "typesafe" -> string!
+override Orkeon.Infrastructure.Tools.SystemOneDecideTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+static readonly Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeInputGuard.DefaultRisks -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
