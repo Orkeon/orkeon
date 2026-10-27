@@ -337,7 +337,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
             // A completed() may launch more async work (runCrewAsync): give it an ambient scope of
             // this command so the new instances are captured and wired to drain like any dispatch.
-            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth) : null;
+            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth, parentCommand: item.Instance.Name) : null;
             try
             {
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });

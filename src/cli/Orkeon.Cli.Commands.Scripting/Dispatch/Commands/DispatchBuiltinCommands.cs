@@ -100,13 +100,15 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
         if (string.IsNullOrWhiteSpace(ticket))
             return Task.FromResult(CommandResult.Fail("Usage: inspect --ticket=<ticket>"));
 
-        var view = registry.Get(ticket)?.Snapshot();
-        if (view is null)
+        var instance = registry.Get(ticket);
+        if (instance is null)
             return Task.FromResult(CommandResult.Fail($"Unknown ticket '{ticket}'."));
 
+        var view = instance.Snapshot();
         var c = context.Console;
         c.WriteLine($"ticket    : {view.ticket}");
         c.WriteLine($"command   : {view.name} ({view.kind})");
+        c.WriteLine($"depth     : {instance.Depth}");
         c.WriteLine($"agent     : {view.targetAgent}");
         c.WriteLine($"intent    : {view.intent}");
         c.WriteLine($"state     : {view.state}");

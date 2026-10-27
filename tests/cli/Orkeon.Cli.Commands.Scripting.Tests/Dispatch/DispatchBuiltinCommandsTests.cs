@@ -62,6 +62,19 @@ public sealed class DispatchBuiltinCommandsTests
     }
 
     [Fact]
+    [Trait("BR", "#221")]
+    public async Task ShouldShowTheChainDepth_WhenInspectReadsATicket()
+    {
+        var instance = _registry.Register("dev-batches", CommandInstanceKind.Async, "script-host", "dev-implement", Guid.NewGuid());
+        instance.Depth = 3;
+
+        var result = await Run(new InspectCommand(_registry), "--ticket=" + instance.Ticket);
+
+        Assert.False(result.Failed);
+        Assert.Contains("depth     : 3", _console.Output.Split('\n').Select(l => l.TrimEnd('\r')));
+    }
+
+    [Fact]
     public async Task ShouldNotFail_WhenResultReportsAFailedTicket()
     {
         var instance = _registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());

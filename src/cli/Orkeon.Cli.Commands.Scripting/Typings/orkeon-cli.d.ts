@@ -253,11 +253,25 @@ export interface ScriptHostFacade {
    * `result.payload` carries the crew summary. Use for long workflows. It may be called from a
    * `completed` handler: the second crew's completion drains to its own command (the same command
    * name). The chain is bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
-   * a deeper call is refused with `ChainDepthExceededException` (depth and limit in the message).
+   * a deeper call throws `chain depth 8 reached (MaxChainDepth 8, /<command>)`. A driver relaunching
+   * itself passes `{ chain: "continue" }` (see {@link CrewLaunchOptions}) to keep the parent's depth.
    */
-  runCrewAsync(name: string, input?: Record<string, unknown>): string;
+  runCrewAsync(name: string, input?: Record<string, unknown>, options?: CrewLaunchOptions): string;
   /** The discovered crew names. */
   listCrews(): readonly string[];
+}
+
+/** Options of {@link ScriptHostFacade.runCrewAsync}. */
+export interface CrewLaunchOptions {
+  /**
+   * `"continue"`: called from a `completed`, the new instance takes the chain depth of the instance whose
+   * `completed` runs instead of that depth plus one, so a driver that relaunches its own work after each
+   * cycle (command -> crew -> the same command's `completed` -> crew) is not stopped by `MaxChainDepth`.
+   * Honoured only when the parent instance belongs to the same command the launch is chained to; for
+   * another command it is ignored (a warning in the host log) and the depth climbs, so recursion between
+   * two commands stays bounded. Outside a `completed` it changes nothing. Any other value throws.
+   */
+  chain?: "continue";
 }
 
 /**

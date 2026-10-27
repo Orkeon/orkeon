@@ -79,10 +79,16 @@ public sealed partial class CommandDispatchService
     /// in this so <c>request</c>/<c>post</c> can read the command name + token and record the
     /// async instances created during <c>dispatch</c>.
     /// </summary>
-    public CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0)
+    /// <param name="commandName">The command whose handler, <c>dispatch</c> or <c>completed</c> runs in the scope.</param>
+    /// <param name="ct">The cooperative cancellation token of the scope.</param>
+    /// <param name="timeout">The per-request timeout, or <see langword="null"/> for the channel default.</param>
+    /// <param name="promptLine">The line the operator typed, when the scope is the one of a prompt.</param>
+    /// <param name="parentDepth">The chain depth of the instance whose <c>completed</c> runs in the scope; 0 at a prompt.</param>
+    /// <param name="parentCommand">The command owning that instance; <see langword="null"/> at a prompt.</param>
+    public CommandDispatchScope BeginCommand(string commandName, CancellationToken ct, TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0, string? parentCommand = null)
     {
         var previous = _ambient.Value;
-        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner, parentDepth);
+        var scope = new CommandDispatchScope(commandName ?? string.Empty, timeout, () => _ambient.Value = previous, ct, promptLine is not null, previous?.PromptOwner, parentDepth, parentCommand);
         if (promptLine is not null) _promptScope = scope;
         _ambient.Value = scope;
         return scope;
@@ -186,17 +192,33 @@ public sealed partial class CommandDispatchService
     /// <param name="label">Logical name for the instance (e.g. the crew name). Used as the intent.</param>
     /// <param name="target">Target label (e.g. "crew:project-init"). Cosmetic — for ps/inspect.</param>
     /// <param name="work">The host work; receives the per-ticket cancellation token.</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
     public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work)
+        => postWork(label, target, work, continueChain: false);
+
+    /// <summary>
+    /// <see cref="postWork(string, string, Func{CancellationToken, Task{CommandResponse}})"/>, with the choice of the
+    /// chain depth the new instance takes (#221). Without <paramref name="continueChain"/> it is the parent's depth
+    /// plus one, refused at <c>MaxChainDepth</c>. With it, a launch from the <c>completed</c> of an instance of the
+    /// same command (the driver relaunching itself) takes the parent's depth, so a loop that comes back to its
+    /// starting command does not climb; the request is ignored, with a warning, when the parent instance belongs to
+    /// another command, and has no effect outside a <c>completed</c> (the first hop of a chain is depth 1 either way).
+    /// </summary>
+    /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
+    public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain)
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
         var depth = scope?.Depth ?? 0;
-        if (depth >= _maxChainDepth) throw new ChainDepthExceededException(depth, _maxChainDepth);
+        var command = scope?.CommandName ?? label ?? "postWork";
+        var keepDepth = continueChain && scope?.ParentCommand is { } parent && string.Equals(parent, command, StringComparison.Ordinal);
+        if (continueChain && !keepDepth && scope?.ParentCommand is { } other)
+            LogChainContinueIgnored(command, other);
+        if (!keepDepth && depth >= _maxChainDepth) throw new ChainDepthExceededException(depth, _maxChainDepth, command);
         var correlationId = Guid.NewGuid();
         var instance = _registry.Register(
-            scope?.CommandName ?? label ?? "postWork", CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, correlationId);
-        instance.Depth = depth + 1;
+            command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, correlationId);
+        instance.Depth = keepDepth ? depth : depth + 1;
         scope?.Capture(instance);
 
         var cts = scope?.Timeout is { } t ? new CancellationTokenSource(t) : new CancellationTokenSource();
@@ -327,5 +349,9 @@ public sealed partial class CommandDispatchService
     [LoggerMessage(EventId = 3, Level = LogLevel.Error,
         Message = "Async host work '{Label}' (ticket {Ticket}) failed")]
     partial void LogAsyncHostWorkFailed(Exception ex, string? label, string ticket);
+
+    [LoggerMessage(EventId = 4, Level = LogLevel.Warning,
+        Message = "chain: \"continue\" ignored: '{Command}' was launched from the completed() of '{Parent}', another command; the depth climbs")]
+    partial void LogChainContinueIgnored(string command, string parent);
 }
 #pragma warning restore IDE1006

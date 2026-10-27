@@ -54,16 +54,82 @@ public sealed class CommandDispatchChainDepthTests : IDisposable
         await WaitUntil(() => console.Output.Contains("refused:", StringComparison.Ordinal) || console.Output.Contains("chained:", StringComparison.Ordinal));
 
         Assert.DoesNotContain("chained:", console.Output, StringComparison.Ordinal);
-        var line = console.Output.Split('\n').Single(l => l.Contains("refused:", StringComparison.Ordinal));
-        Assert.Contains("depth 1", line, StringComparison.Ordinal);
-        Assert.Contains("limit 1", line, StringComparison.Ordinal);
+        var line = console.Output.Split('\n').Single(l => l.Contains("refused:", StringComparison.Ordinal)).TrimEnd('\r');
+        Assert.Equal("refused:chain depth 1 reached (MaxChainDepth 1, /chain-async)", line);
     }
 
-    private static CommandDispatchService NewService()
+    [Fact]
+    [Trait("BR", "#221")]
+    public async Task ShouldContinuePastTheLimit_WhenTheDriverRelaunchesItselfWithChainContinue()
+    {
+        var service = NewService(maxChainDepth: 2);
+        var cmd = LoadLoop(service);
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(Ctx("loop-async continue", "continue", console), CancellationToken.None);
+        await WaitUntil(() => console.Output.Contains("loop-done:", StringComparison.Ordinal) || console.Output.Contains("refused:", StringComparison.Ordinal));
+
+        Assert.DoesNotContain("refused:", console.Output, StringComparison.Ordinal);
+        Assert.Contains("loop-done:6", console.Output, StringComparison.Ordinal);
+        var hops = service.Registry.List(CommandInstanceFilter.All);
+        Assert.Equal(6, hops.Count);
+        Assert.All(hops, h => Assert.Equal(1, service.Registry.Get(h.ticket)!.Depth));
+    }
+
+    [Fact]
+    [Trait("BR", "#221")]
+    public async Task ShouldRefuseAtTheLimitNamingIt_WhenTheSameLoopRelaunchesWithoutChainContinue()
+    {
+        var service = NewService(maxChainDepth: 2);
+        var cmd = LoadLoop(service);
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(Ctx("loop-async climb", "climb", console), CancellationToken.None);
+        await WaitUntil(() => console.Output.Contains("loop-done:", StringComparison.Ordinal) || console.Output.Contains("refused:", StringComparison.Ordinal));
+
+        Assert.DoesNotContain("loop-done:", console.Output, StringComparison.Ordinal);
+        var line = console.Output.Split('\n').Single(l => l.Contains("refused:", StringComparison.Ordinal)).TrimEnd('\r');
+        Assert.Equal("refused:chain depth 2 reached (MaxChainDepth 2, /loop-async)", line);
+    }
+
+    [Fact]
+    [Trait("BR", "#221")]
+    public void ShouldStillClimb_WhenChainContinueIsAskedFromTheCompletedOfAnotherCommand()
+    {
+        var service = NewService(maxChainDepth: 2);
+        static Task<CommandResponse> Work(CancellationToken _) => Task.FromResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
+
+        string ticket;
+        using (service.BeginCommand("pair-b", CancellationToken.None, parentDepth: 1, parentCommand: "pair-a"))
+            ticket = service.postWork("crew", "crew:x", Work, continueChain: true);
+        Assert.Equal(2, service.Registry.Get(ticket)!.Depth);
+
+        using var scope = service.BeginCommand("pair-b", CancellationToken.None, parentDepth: 2, parentCommand: "pair-a");
+        var refused = Assert.Throws<ChainDepthExceededException>(() => service.postWork("crew", "crew:x", Work, continueChain: true));
+        Assert.Equal("chain depth 2 reached (MaxChainDepth 2, /pair-b)", refused.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "#221")]
+    public void ShouldKeepTheParentDepth_WhenChainContinueIsAskedFromTheCompletedOfTheSameCommand()
+    {
+        var service = NewService(maxChainDepth: 2);
+        static Task<CommandResponse> Work(CancellationToken _) => Task.FromResult(new CommandResponse("a", "i", success: true, payload: "p", error: null));
+
+        using var scope = service.BeginCommand("dev-batches", CancellationToken.None, parentDepth: 2, parentCommand: "dev-batches");
+        var ticket = service.postWork("crew", "crew:x", Work, continueChain: true);
+
+        Assert.Equal(2, service.Registry.Get(ticket)!.Depth);
+    }
+
+    private static CommandDispatchService NewService(int maxChainDepth = 1)
         => new(new InMemoryAgentChannel(NullLogger<InMemoryAgentChannel>.Instance),
                new AgentCommandDirectory(),
                new CommandInstanceRegistry(),
-               maxChainDepth: 1);
+               maxChainDepth: maxChainDepth);
+
+    private IInteractiveCommand LoadLoop(CommandDispatchService service)
+        => ChainHarness.Load(service, _tempDir, _crewsDir, "loop-async.cmd.ts", "loop-async");
 
     private IInteractiveCommand Load(CommandDispatchService service) => ChainHarness.Load(service, _tempDir, _crewsDir);
 

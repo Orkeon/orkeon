@@ -149,8 +149,11 @@ public sealed partial class ScriptHostFacade
     /// Posts <c>crews/&lt;name&gt;/crew.ork.ts</c> on a pool thread and returns a ticket immediately.
     /// The completion is drained onto the engine thread → a <c>defineAsyncCommand</c>'s
     /// <c>completed(result)</c>. The <c>result.payload</c> is the crew's summary. For long workflows.
+    /// <paramref name="options"/> may carry <c>{ chain: "continue" }</c>: from the <c>completed</c> of the same
+    /// command, the new instance keeps the parent's chain depth instead of climbing one
+    /// (<see cref="CommandDispatchService.postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool)"/>).
     /// </summary>
-    public string runCrewAsync(string name, JsValue? input = null)
+    public string runCrewAsync(string name, JsValue? input = null, JsValue? options = null)
     {
         if (_dispatch is null)
             throw new InvalidOperationException(
@@ -158,9 +161,10 @@ public sealed partial class ScriptHostFacade
 
         var safeName = SanitizeName(name);
         var inputsJson = ToInputsJson(input);
+        var continueChain = ReadContinueChain(options);
         try
         {
-            return _dispatch.postWork(safeName, $"crew:{safeName}", async ct =>
+            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, work: async ct =>
             {
                 var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
                 return new CommandResponse(
@@ -184,6 +188,21 @@ public sealed partial class ScriptHostFacade
         => ListCrewsCoreAsync(CancellationToken.None).GetAwaiter().GetResult();
 
     // ---- internals ------------------------------------------------------------------------
+
+    /// <summary>Reads <c>options.chain</c>: absent, or <c>"continue"</c>; any other value is a script error.</summary>
+    private static bool ReadContinueChain(JsValue? options)
+    {
+        if (options is null || options.IsUndefined() || options.IsNull())
+            return false;
+        if (!options.IsObject())
+            throw new Jint.Runtime.JavaScriptException(new JsString("script-host.runCrewAsync: options must be an object, e.g. { chain: \"continue\" }."));
+        var chain = options.AsObject().Get("chain");
+        if (chain.IsUndefined() || chain.IsNull())
+            return false;
+        if (chain.IsString() && string.Equals(chain.AsString(), "continue", StringComparison.Ordinal))
+            return true;
+        throw new Jint.Runtime.JavaScriptException(new JsString($"script-host.runCrewAsync: unknown chain mode '{chain}' (expected \"continue\")."));
+    }
 
     /// <summary>
     /// Observes a timed-out run so a late fault never surfaces as an unobserved task exception.

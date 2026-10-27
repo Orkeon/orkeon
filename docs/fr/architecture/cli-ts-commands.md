@@ -337,8 +337,20 @@ defineAsyncCommand({
   commande (le même nom de commande), dont le `completed` s'exécute à son tour. La
   chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
   la profondeur compte combien de sauts `completed` séparent une instance de son
-  lancement. Un `runCrewAsync` plus profond est refusé par une `ChainDepthExceededException`,
-  dont le message donne la profondeur et la limite.
+  lancement (`inspect` l'affiche). Un `runCrewAsync` plus profond est refusé par une
+  `ChainDepthExceededException`, levée en JS, dont le message nomme la profondeur, la
+  limite et la commande : `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
+- **Un pilote qui boucle : `{ chain: "continue" }`.** Une commande qui relance son propre
+  travail après chaque cycle terminé (un plan exécuté lot après lot) passe
+  `runCrewAsync(name, input, { chain: "continue" })` : la nouvelle instance prend la
+  profondeur de l'instance dont le `completed` s'exécute au lieu de cette profondeur plus
+  un, si bien que la boucle commande → crew → `completed` de la même commande → crew dure
+  autant qu'il le faut. L'option n'est honorée que si l'instance parente appartient à la
+  commande à laquelle le nouveau lancement est chaîné (le même nom de commande) ; sinon
+  elle est ignorée avec un avertissement dans le log de l'hôte et la profondeur monte, si
+  bien qu'une récursion entre deux commandes différentes reste bornée. Hors d'un
+  `completed` elle ne change rien (un premier saut est de profondeur 1). Toute autre valeur
+  de `chain` est une erreur de script.
 
 ### Quota d'admission — `maxConcurrent`
 
@@ -366,7 +378,7 @@ pendant que le travail async tourne en arrière-plan) :
 | Commande                   | Effet                                                         |
 |----------------------------|---------------------------------------------------------------|
 | `ps [--state=…]`           | Liste les instances. État : `running` (défaut), `done`, `failed`, `cancelled`, `rejected`, `all`. |
-| `inspect --ticket=<t>`     | Détail complet d'une instance (état, agent, durée écoulée, résultat, progression). Un ticket nu fonctionne aussi : `/inspect t3`. |
+| `inspect --ticket=<t>`     | Détail complet d'une instance (état, agent, profondeur de chaîne, durée écoulée, résultat, progression). Un ticket nu fonctionne aussi : `/inspect t3`. |
 | `result --ticket=<t>`      | Imprime le payload résultat (sondage). Signale « still running » si pas terminé. |
 | `cancel --ticket=<t>`      | Demande l'annulation d'un ticket en vol.                      |
 

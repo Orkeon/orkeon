@@ -332,9 +332,20 @@ defineAsyncCommand({
   returns a ticket at once, and the second crew's completion drains to its own
   command (the same command name), whose `completed` runs in turn. The chain is
   bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
-  the depth counts how many `completed` hops deep an instance was launched. A deeper
-  `runCrewAsync` is refused with `ChainDepthExceededException`, whose message gives
-  the depth and the limit.
+  the depth counts how many `completed` hops deep an instance was launched (`inspect`
+  shows it). A deeper `runCrewAsync` is refused with `ChainDepthExceededException`, as a
+  JS throw whose message names the depth, the limit and the command:
+  `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
+- **A driver that loops: `{ chain: "continue" }`.** A command that relaunches its own
+  work after each completed cycle (a plan run batch after batch) passes
+  `runCrewAsync(name, input, { chain: "continue" })`: the new instance takes the depth of
+  the instance whose `completed` is running instead of that depth plus one, so the loop
+  command → crew → the same command's `completed` → crew runs as long as it needs. The
+  option is honoured only when the parent instance belongs to the command the new
+  launch is chained to (the same command name); otherwise it is ignored with a warning
+  in the host log and the depth climbs, so recursion between two different commands is
+  still bounded. Outside a `completed` it changes nothing (a first hop is depth 1). Any
+  other `chain` value is a script error.
 
 ### Admission quota — `maxConcurrent`
 
@@ -362,7 +373,7 @@ runs in the background):
 | Command                    | Effect                                                        |
 |----------------------------|---------------------------------------------------------------|
 | `ps [--state=…]`           | List instances. State: `running` (default), `done`, `failed`, `cancelled`, `rejected`, `all`. |
-| `inspect --ticket=<t>`     | Full detail of one instance (state, agent, elapsed, result, progress). A bare ticket works too: `/inspect t3`. |
+| `inspect --ticket=<t>`     | Full detail of one instance (state, agent, chain depth, elapsed, result, progress). A bare ticket works too: `/inspect t3`. |
 | `result --ticket=<t>`      | Print the result payload (poll). Reports "still running" if not done. |
 | `cancel --ticket=<t>`      | Request cancellation of an in-flight ticket.                  |
 
