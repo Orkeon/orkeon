@@ -71,7 +71,18 @@ Console.WriteLine(output.Succeeded ? output.FinalOutput : output.Error);
 - **Ce qui revient.** Le `CrewOutput` de l'orchestrateur : un crew qui a tourné et échoué est une
   sortie avec `Succeeded == false` et son `Error`. Une exécution qui ne peut pas démarrer — une
   cible absente, un setting ou un montage que l'hôte refuse, un crew qui ne se charge pas — lève
-  `CrewScriptRunException` avec la ligne qu'`orkeon run` aurait imprimée.
+  `CrewScriptRunException` avec la ligne qu'`orkeon run` aurait imprimée. Un `cancellationToken`
+  annulé lève `OperationCanceledException`, avant que le crew démarre ou pendant qu'il tourne —
+  jamais une sortie en échec.
+- **Les chemins sont ceux du processus.** Le chemin du crew, `SettingsPath` et les dossiers de
+  `Mounts` se résolvent contre le répertoire de travail du processus quand ils sont relatifs, comme
+  pour `orkeon run` ; un crew hors de ce répertoire est refusé sauf si `AllowExternalMounts` est
+  posé. Un service dont le répertoire de travail n'est pas sa racine de contenu passe des chemins
+  absolus.
+- **Une configuration par conteneur.** `AddOrkeonScripting` enregistre le runner par `TryAdd` :
+  le premier appel l'emporte, et un second appel — avec d'autres options ou aucune — est ignoré.
+  Une seconde configuration est un `new CrewScriptRunner(options)`. Les exécutions d'un même
+  runner peuvent avancer en même temps ; chacune construit son propre hôte.
 - **La forme du script.** Un `.ork.ts` doit remettre son crew (`globalThis.crew = crew`), la forme
   déclarative qu'`orkeon run` envoie dans le même pipeline. Un script procédural (qui pilote des
   agents lui-même, sans remise) n'est pas une définition de crew : exécutez-le avec `orkeon run`.

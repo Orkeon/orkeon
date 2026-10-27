@@ -28,7 +28,7 @@ using var provider = services.BuildServiceProvider();
 var output = await provider.GetRequiredService<ICrewScriptRunner>().RunAsync("crew.ork.ts");
 ```
 
-The script hands its crew off with `globalThis.crew = crew`; a run that cannot start throws `CrewScriptRunException`. Details: [Hosting — running a crew in-process](https://github.com/Orkeon/orkeon/blob/main/docs/reference/hosting.md#running-a-crew-in-process).
+The script hands its crew off with `globalThis.crew = crew`; a run that cannot start throws `CrewScriptRunException`, a cancelled one `OperationCanceledException`. Relative paths (the crew, `SettingsPath`, the mounts) resolve against the process working directory, and only the first `AddOrkeonScripting` call of a container is kept. Details: [Hosting — running a crew in-process](https://github.com/Orkeon/orkeon/blob/main/docs/reference/hosting.md#running-a-crew-in-process).
 
 ## Documentation
 

@@ -19,7 +19,10 @@ public interface ICrewScriptRunner
     /// the settings, mounts, built-in tools, permission gate and LLM provider <c>orkeon run</c>
     /// composes, built for this run and disposed when it ends.
     /// </summary>
-    /// <param name="crewPath">The crew target on disk: a <c>.ork.ts</c>, a <c>.yaml</c> or a crew directory.</param>
+    /// <param name="crewPath">
+    /// The crew target on disk: a <c>.ork.ts</c>, a <c>.yaml</c> or a crew directory. A relative
+    /// path resolves against the process working directory, as <c>orkeon run</c> resolves it.
+    /// </param>
     /// <param name="input">The crew's input - its variables and initial context; empty when null.</param>
     /// <param name="cancellationToken">Stops the run; the crew is cancelled, not abandoned.</param>
     /// <returns>
@@ -29,29 +32,44 @@ public interface ICrewScriptRunner
     /// <exception cref="CrewScriptRunException">
     /// The run could not start: a missing target, a setting or a mount the host refuses.
     /// </exception>
-    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> was cancelled - before the crew started or while it ran.
+    /// </exception>
+    /// <remarks>
+    /// The process working directory is the run's: the crew path, <see cref="CrewScriptRunnerOptions.SettingsPath"/>
+    /// and the <see cref="CrewScriptRunnerOptions.Mounts"/> resolve against it when relative, and a
+    /// crew outside it is refused unless <see cref="CrewScriptRunnerOptions.AllowExternalMounts"/> is set. Several runs may proceed at once; each builds its own host.
+    /// </remarks>
     Task<CrewOutput> RunAsync(string crewPath, CrewInput? input = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
 /// What every run of a <see cref="CrewScriptRunner"/> is built over: the <c>orkeon run</c>
-/// options an embedding application sets in code rather than on a command line.
+/// options an embedding application sets in code rather than on a command line. Relative paths
+/// resolve against the process working directory, as they do for <c>orkeon run</c>.
 /// </summary>
 public sealed class CrewScriptRunnerOptions
 {
     /// <summary>
     /// The settings file (<c>--settings</c>). Null resolves it as <c>orkeon run</c> does: an
-    /// <c>appsettings.json</c> next to the crew, then the folders above it.
+    /// <c>appsettings.json</c> next to the crew, then the folders above it. A relative path
+    /// resolves against the process working directory.
     /// </summary>
     public string? SettingsPath { get; set; }
 
-    /// <summary>Extra VFS mounts, in the <c>--mount</c> syntax (<c>&lt;dir&gt;:/output:rw</c>).</summary>
+    /// <summary>
+    /// Extra VFS mounts, in the <c>--mount</c> syntax (<c>&lt;dir&gt;:/output:rw</c>). A relative
+    /// directory resolves against the process working directory.
+    /// </summary>
     public IList<string> Mounts { get; } = [];
 
     /// <summary>Mounts of the settings selected by id (<c>--mount-id</c>).</summary>
     public IList<string> MountIds { get; } = [];
 
-    /// <summary>Lets a mount reach a folder outside the working directory (<c>--allow-external-mounts</c>).</summary>
+    /// <summary>
+    /// Lets the run reach a folder outside the process working directory - the crew's own, a mount
+    /// (<c>--allow-external-mounts</c>).
+    /// </summary>
     public bool AllowExternalMounts { get; set; }
 
     /// <summary>The host LLM profile the run takes as its default (<c>--llm-profile</c>).</summary>
@@ -163,7 +181,13 @@ public sealed class CrewScriptRunner : ICrewScriptRunner
         }
 
         var orchestrator = scope.ServiceProvider.GetRequiredService<ICrewOrchestrationService>();
-        return await orchestrator.KickoffAsync(crew.Id, input ?? CrewInput.Empty(), cancellationToken).ConfigureAwait(false);
+        var output = await orchestrator.KickoffAsync(crew.Id, input ?? CrewInput.Empty(), cancellationToken).ConfigureAwait(false);
+
+        // The orchestrator reports a run cancelled once the crew started as a failed output, in
+        // every process mode (its kickoff catches the cancellation like any failure). The runner's
+        // contract is an OperationCanceledException: a cancelled run is not a crew that failed.
+        cancellationToken.ThrowIfCancellationRequested();
+        return output;
     }
 
     private static string LastErrorLine(string errors)
@@ -237,10 +261,12 @@ public static class CrewScriptRunnerServiceCollectionExtensions
     /// Registers <see cref="ICrewScriptRunner"/>: a .NET application resolves it and calls
     /// <see cref="ICrewScriptRunner.RunAsync"/> to run a <c>crew.ork.ts</c> without starting a
     /// process. Each run builds its own runner host - Orkeon's services stay out of the
-    /// application's container.
+    /// application's container. The registration is a <c>TryAdd</c>: the first call wins, and a
+    /// second call - with other options or none - is ignored; a second configuration is a
+    /// <see cref="CrewScriptRunner"/> built directly with its own options.
     /// </summary>
     /// <param name="services">The application's services.</param>
-    /// <param name="configure">Sets the options every run is built over.</param>
+    /// <param name="configure">Sets the options every run is built over; not invoked when a runner is already registered.</param>
     /// <returns><paramref name="services"/>.</returns>
     public static IServiceCollection AddOrkeonScripting(
         this IServiceCollection services, Action<CrewScriptRunnerOptions>? configure = null)

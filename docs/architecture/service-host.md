@@ -363,6 +363,8 @@ A .NET application can run a crew inside its own process: the `Orkeon.Scripting`
 `ICrewScriptRunner` ([Hosting — running a crew in-process](../reference/hosting.md#running-a-crew-in-process))
 builds the runner host of `orkeon run` for one run, returns the crew's output and disposes it.
 That covers a crew the application calls and waits for: a request handler, a batch job, a test.
+Its relative paths — the crew, the settings file, the mounts — resolve against the process working
+directory, as for `orkeon run`; a cancelled run throws `OperationCanceledException`.
 
 A crew needs `orkeon-host` instead when it must outlive a call:
 

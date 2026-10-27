@@ -369,6 +369,9 @@ paquet `Orkeon.Scripting` ([Hosting — exécuter un crew dans le processus](../
 construit l'hôte de runner d'`orkeon run` pour une exécution, rend la sortie du crew et le libère.
 Cela couvre un crew que l'application appelle et attend : un gestionnaire de requête, un traitement
 par lots, un test.
+Ses chemins relatifs — le crew, le fichier de settings, les montages — se résolvent contre le
+répertoire de travail du processus, comme pour `orkeon run` ; une exécution annulée lève
+`OperationCanceledException`.
 
 Un crew a besoin d'`orkeon-host` à la place quand il doit survivre à un appel :
 

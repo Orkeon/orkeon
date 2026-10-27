@@ -102,13 +102,12 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Project Structure
 
-The solution has **48 src projects across 14 zones** and **36 test projects**. Thirty-four
+The solution has **50 src projects across 14 zones** and **38 test projects**. Thirty-six
 src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
 up the other two test projects. Fourteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
 resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Analysis.Tests`,
-`Orkeon.Generators` is covered by the consuming projects' compilation, and the six
-`src/packaging/` projects are packaging-only:
+and the seven `src/packaging/` projects are packaging-only:
 
 ```
 src/
@@ -129,7 +128,7 @@ src/
 ├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)
 ├── packaging/   # NuGet packaging projects (PUB-25): Orkeon (the framework in one nupkg), Orkeon.Tools,
 │                #   + the Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework / Hosting.Aspire
-│                #   wrappers depending on the Orkeon umbrella
+│                #   / Scripting wrappers depending on the Orkeon umbrella
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 104 bundled examples (9 categories + showcases) — own solution

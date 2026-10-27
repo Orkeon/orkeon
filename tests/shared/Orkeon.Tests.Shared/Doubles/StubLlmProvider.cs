@@ -54,6 +54,14 @@ public sealed class StubLlmProvider : ILlmProvider
         return this;
     }
 
+    /// <summary>Configures the response returned by <see cref="ChatAsync"/>.</summary>
+    public StubLlmProvider RespondToChat(Func<LlmMessage[], LlmResponse> responder)
+    {
+        ArgumentNullException.ThrowIfNull(responder);
+        _chatResponder = responder;
+        return this;
+    }
+
     /// <inheritdoc />
     public Task<LlmResponse> GenerateAsync(
         string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default)

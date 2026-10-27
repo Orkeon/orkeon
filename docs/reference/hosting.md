@@ -68,7 +68,16 @@ Console.WriteLine(output.Succeeded ? output.FinalOutput : output.Error);
 - **What comes back.** The orchestrator's `CrewOutput`: a crew that ran and failed is an output
   with `Succeeded == false` and its `Error`. A run that cannot start — a missing target, a setting
   or a mount the host refuses, a crew that does not load — throws `CrewScriptRunException` with
-  the line `orkeon run` would have printed.
+  the line `orkeon run` would have printed. A cancelled `cancellationToken` throws
+  `OperationCanceledException`, before the crew starts or while it runs — never a failed output.
+- **Paths are the process's.** The crew path, `SettingsPath` and the `Mounts` directories resolve
+  against the process working directory when relative, as for `orkeon run`; a crew outside that
+  directory is refused unless `AllowExternalMounts` is set. A service whose working directory is
+  not its content root passes absolute paths.
+- **One configuration per container.** `AddOrkeonScripting` registers the runner with `TryAdd`:
+  the first call wins, and a second call — with other options or none — is ignored. A second
+  configuration is a `new CrewScriptRunner(options)`. Runs of one runner may proceed at once; each
+  builds its own host.
 - **The script shape.** A `.ork.ts` must hand its crew off (`globalThis.crew = crew`), the
   declarative shape `orkeon run` sends through the same pipeline. A procedural script (one that
   drives agents itself, with no handoff) is not a crew definition: run it with `orkeon run`.

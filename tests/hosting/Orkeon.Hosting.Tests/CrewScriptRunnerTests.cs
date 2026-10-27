@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Hosting.Tests.Doubles;
 
 namespace Orkeon.Hosting.Tests;
@@ -78,5 +79,81 @@ public sealed class CrewScriptRunnerTests : IDisposable
             Path.Combine(_root, "absent.ork.ts"), cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.StartsWith("config file not found:", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldThrowOperationCanceled_WhenTheRunIsCancelledOnceTheCrewStarted()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var models = new RecordingLlmProviderFactory
+        {
+            Responder = () =>
+            {
+                // The crew reached its model: it started, then the application cancels it.
+                cts.Cancel();
+                return new LlmResponse { Content = "Final answer: too late." };
+            },
+        };
+        var runner = RunnerOver(models);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(
+            Path.Combine(_root, "crew.ork.ts"), cancellationToken: cts.Token));
+
+        Assert.NotEmpty(models.Built);
+    }
+
+    [Fact]
+    public async Task ShouldReturnAFailedOutput_WhenTheCrewFailsWithoutBeingCancelled()
+    {
+        var models = new RecordingLlmProviderFactory
+        {
+            Responder = () => throw new InvalidOperationException("the model is down"),
+        };
+        var runner = RunnerOver(models);
+
+        var output = await runner.RunAsync(
+            Path.Combine(_root, "crew.ork.ts"), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(output.Succeeded);
+        Assert.False(string.IsNullOrEmpty(output.Error));
+    }
+
+    [Fact]
+    public async Task ShouldCompleteEachRunWithItsOwnOutput_WhenTwoRunsProceedAtOnce()
+    {
+        var second = Path.Combine(_root, "second");
+        Directory.CreateDirectory(second);
+        File.Copy(Path.Combine(_root, "crew.ork.ts"), Path.Combine(second, "crew.ork.ts"));
+        var ct = TestContext.Current.CancellationToken;
+        await File.WriteAllTextAsync(Path.Combine(second, "appsettings.json"), """
+            { "RaggableTree": { "Enabled": false },
+              "Llm": { "Model": "second-model", "ApiKey": "sk-test" } }
+            """, ct);
+        var models = new RecordingLlmProviderFactory { Answer = "Final answer: the note." };
+        var runner = RunnerOver(models);
+
+        var outputs = await Task.WhenAll(
+            runner.RunAsync(Path.Combine(_root, "crew.ork.ts"), cancellationToken: ct),
+            runner.RunAsync(Path.Combine(second, "crew.ork.ts"), cancellationToken: ct));
+
+        Assert.All(outputs, output => Assert.True(output.Succeeded, output.Error));
+        Assert.NotSame(outputs[0], outputs[1]);
+        var first = models.For("embedded-model");
+        var other = models.For("second-model");
+        Assert.NotNull(first);
+        Assert.NotNull(other);
+        Assert.True(first.ChatCalls.Count + first.GenerateCalls.Count > 0, "the first run never reached its model");
+        Assert.True(other.ChatCalls.Count + other.GenerateCalls.Count > 0, "the second run never reached its model");
+    }
+
+    private CrewScriptRunner RunnerOver(RecordingLlmProviderFactory models)
+    {
+        var options = new CrewScriptRunnerOptions
+        {
+            AllowExternalMounts = true,
+            ConfigureServices = (_, s) => s.AddSingleton<ILlmProviderFactory>(models),
+        };
+        options.Mounts.Add($"{_outDir}:/output:rw");
+        return new CrewScriptRunner(options);
     }
 }
