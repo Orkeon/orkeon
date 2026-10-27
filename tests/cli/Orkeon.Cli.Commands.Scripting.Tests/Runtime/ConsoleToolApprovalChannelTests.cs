@@ -382,9 +382,9 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
 
         _ = channel.RequestAsync(Request(), Ct);
 
-        Assert.Equal(
+        Assert.Equal<(string? Thread, string Text)>(
             [
-                ((string?)"t1", ""),
+                ("t1", ""),
                 ("t1", $"  ? [t1] dev-batches: {Reason}"),
                 ("t1", "    shell_command {\"command\":\"npm test\"}"),
             ],
@@ -402,9 +402,9 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
 
         _ = channel.RequestAsync(Request(), Ct);
 
-        Assert.Equal(
+        Assert.Equal<(string? Thread, string Text)>(
             [
-                ((string?)null, ""),
+                (null, ""),
                 (null, $"  ? {Reason}"),
                 (null, "    shell_command {\"command\":\"npm test\"}"),
             ],
@@ -438,9 +438,9 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
 
         Assert.Empty(console.Attentions);
         Assert.Equal(0, console.ThreadedCalls);
-        Assert.Equal(
+        Assert.Equal<(string? Thread, string Text)>(
             [
-                ((string?)null, ""),
+                (null, ""),
                 (null, $"  ? [t1] dev-batches: {Reason}"),
                 (null, "    shell_command {\"command\":\"npm test\"}"),
                 (null, Hint),

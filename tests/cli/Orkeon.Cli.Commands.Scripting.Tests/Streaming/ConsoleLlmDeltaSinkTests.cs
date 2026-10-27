@@ -216,7 +216,7 @@ public sealed class ConsoleLlmDeltaSinkTests
         turn.OnDelta("a\n");
         turn.OnTurnCompleted();
 
-        Assert.Equal([((string?)null, "[task-1] a")], console.Lines);
+        Assert.Equal<(string? Thread, string Text)>([(null, "[task-1] a")], console.Lines);
         Assert.Equal(1, console.ThreadedCalls);
     }
 
@@ -230,7 +230,7 @@ public sealed class ConsoleLlmDeltaSinkTests
         turn.OnDelta("one\n");
         turn.OnTurnCompleted();
 
-        Assert.Equal([((string?)null, "[t1] one")], console.Lines);
+        Assert.Equal<(string? Thread, string Text)>([(null, "[t1] one")], console.Lines);
         Assert.Equal(0, console.ThreadedCalls);
     }
 

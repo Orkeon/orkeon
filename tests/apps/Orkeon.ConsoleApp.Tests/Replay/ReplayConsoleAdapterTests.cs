@@ -415,16 +415,14 @@ public sealed class ReplayConsoleAdapterTests : IDisposable
     public void ShouldForwardThreadedLines_WhenReplayDecoratesThreadedConsole()
     {
         var threaded = new FakeThreadedConsole { SeparatesThreads = true };
-        var over = (object)new ReplayConsoleAdapter(threaded, _gate) as IThreadedConsole;
-        var plain = (object)new ReplayConsoleAdapter(new FakeConsoleAdapter(), _gate) as IThreadedConsole;
+        var over = Assert.IsType<IThreadedConsole>(new ReplayConsoleAdapter(threaded, _gate), exactMatch: false);
+        var plain = Assert.IsType<IThreadedConsole>(new ReplayConsoleAdapter(new FakeConsoleAdapter(), _gate), exactMatch: false);
 
-        Assert.NotNull(over);
         Assert.True(over.SeparatesThreads);
         over.WriteLine("t1", "x");
         over.WriteAttention("t1", "y");
         Assert.Equal([("t1", "x")], threaded.Lines);
         Assert.Equal([("t1", "y")], threaded.Attentions);
-        Assert.NotNull(plain);
         Assert.False(plain.SeparatesThreads);
     }
 
