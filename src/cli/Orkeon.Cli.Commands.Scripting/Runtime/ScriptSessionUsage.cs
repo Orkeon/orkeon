@@ -8,7 +8,8 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// <summary>
 /// The session's LLM usage, as a command reads it: <c>ctx.services.get("usage")</c>. Read-only. Each
 /// <see cref="report"/> reads the figures of that moment: the session's totals and each model from the
-/// session's <see cref="ICostBudgetManager"/>, each command instance (a crew launched with <c>runCrewAsync</c>
+/// session's <see cref="ICostBudgetManager"/> (the totals over every call, a call whose provider named no model
+/// included, so they may exceed the sum of the model rows), each command instance (a crew launched with <c>runCrewAsync</c>
 /// included) from what <see cref="Progress.InstanceAttributingUsageSink"/> credited it.
 /// </summary>
 public sealed class ScriptSessionUsage
@@ -34,18 +35,21 @@ public sealed class ScriptSessionUsage
             .OrderByDescending(i => i.StartedAt)
             .Select(ScriptCommandUsage.From)
             .ToArray() ?? [];
+        // Every recorded call, the ones whose provider named no model included: never the sum of the model rows.
+        var total = session?.TotalUsage ?? new ModelUsage();
         var totalCost = session?.TotalCost ?? 0m;
 
         return new ScriptUsageReport
         {
-            promptTokens = models.Sum(m => m.promptTokens),
-            completionTokens = models.Sum(m => m.completionTokens),
-            cacheHitTokens = models.Sum(m => m.cacheHitTokens),
-            cacheWriteTokens = models.Sum(m => m.cacheWriteTokens),
-            reasoningTokens = models.Sum(m => m.reasoningTokens),
-            totalTokens = models.Sum(m => m.promptTokens + m.completionTokens),
+            promptTokens = total.PromptTokens,
+            completionTokens = total.CompletionTokens,
+            cacheHitTokens = total.CacheReadTokens,
+            cacheWriteTokens = total.CacheWriteTokens,
+            reasoningTokens = total.ReasoningTokens,
+            totalTokens = total.PromptTokens + total.CompletionTokens,
             calls = session?.TotalCalls ?? 0,
-            cost = models.Any(m => m.cost is not null) || totalCost != 0m ? (double)totalCost : null,
+            unpricedCalls = total.UnpricedCalls,
+            cost = total.Priced || totalCost != 0m ? (double)totalCost : null,
             byModel = models,
             byCommand = commands,
         };
@@ -76,10 +80,16 @@ public sealed class ScriptUsageReport
     /// <summary>The LLM calls of the session.</summary>
     public int calls { get; init; }
 
-    /// <summary>The session's cost; null when no price is known for any model it used.</summary>
+    /// <summary>The calls nobody priced: <see cref="cost"/> counts them as 0, so it is a lower bound while this is not 0.</summary>
+    public int unpricedCalls { get; init; }
+
+    /// <summary>The session's cost; null when no price is known for any call it made.</summary>
     public double? cost { get; init; }
 
-    /// <summary>One row per model, by name.</summary>
+    /// <summary>
+    /// One row per model, by name. A call whose provider named no model has no row: the session's totals count it,
+    /// so they may exceed the sum of these rows.
+    /// </summary>
     public required IReadOnlyList<ScriptModelUsage> byModel { get; init; }
 
     /// <summary>One row per command instance the session keeps, the newest first.</summary>
@@ -107,11 +117,19 @@ public sealed class ScriptModelUsage
     /// <summary>Completion tokens spent reasoning.</summary>
     public long reasoningTokens { get; init; }
 
+    /// <summary>The LLM calls of the model.</summary>
+    public int calls { get; init; }
+
+    /// <summary>The calls nobody priced: <see cref="cost"/> counts them as 0.</summary>
+    public int unpricedCalls { get; init; }
+
     /// <summary>The model's cost; null when the vendor billed nothing and no price is configured for it.</summary>
     public double? cost { get; init; }
 
     internal static ScriptModelUsage From(string model, ModelUsage usage) => new()
     {
+        calls = usage.Calls,
+        unpricedCalls = usage.UnpricedCalls,
         model = model,
         promptTokens = usage.PromptTokens,
         completionTokens = usage.CompletionTokens,
@@ -152,6 +170,9 @@ public sealed class ScriptCommandUsage
     /// <summary>The LLM calls of the instance.</summary>
     public int calls { get; init; }
 
+    /// <summary>The calls nobody priced: <see cref="cost"/> counts them as 0.</summary>
+    public int unpricedCalls { get; init; }
+
     /// <summary>The instance's cost; null while none of its calls was priced.</summary>
     public double? cost { get; init; }
 
@@ -169,6 +190,7 @@ public sealed class ScriptCommandUsage
             cacheWriteTokens = usage.CacheWriteTokens,
             reasoningTokens = usage.ReasoningTokens,
             calls = usage.Calls,
+            unpricedCalls = usage.UnpricedCalls,
             cost = usage.Cost is { } cost ? (double)cost : null,
         };
     }

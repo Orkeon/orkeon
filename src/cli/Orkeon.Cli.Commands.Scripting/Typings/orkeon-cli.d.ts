@@ -407,9 +407,14 @@ export interface SessionUsageReport extends UsageTokens {
   readonly totalTokens: number;
   /** The LLM calls of the session. */
   readonly calls: number;
-  /** The session's cost (USD for the registry's prices); null when no price is known for any model it used. */
+  /** The calls nobody priced (no vendor charge, no registry price): `cost` counts them as 0, a lower bound while this is not 0. */
+  readonly unpricedCalls: number;
+  /** The session's cost (USD for the registry's prices); null when no price is known for any call it made. */
   readonly cost: number | null;
-  /** One row per model, by name. */
+  /**
+   * One row per model, by name. A call whose provider named no model has no row: the session's totals count it,
+   * so they may exceed the sum of these rows.
+   */
   readonly byModel: readonly ModelUsageRow[];
   /** One row per command instance the session keeps (a crew run with `runCrewAsync` included), the newest first. */
   readonly byCommand: readonly CommandUsageRow[];
@@ -419,6 +424,10 @@ export interface SessionUsageReport extends UsageTokens {
 export interface ModelUsageRow extends UsageTokens {
   /** The model, as the provider named it in its answer. */
   readonly model: string;
+  /** The LLM calls of the model. */
+  readonly calls: number;
+  /** The calls nobody priced: `cost` counts them as 0. */
+  readonly unpricedCalls: number;
   /** The model's cost; null when the vendor billed nothing and no price is configured for it. */
   readonly cost: number | null;
 }
@@ -433,6 +442,8 @@ export interface CommandUsageRow extends UsageTokens {
   readonly state: CommandInstanceState;
   /** The LLM calls of the instance. */
   readonly calls: number;
+  /** The calls nobody priced: `cost` counts them as 0. */
+  readonly unpricedCalls: number;
   /** The instance's cost; null while none of its calls was priced. */
   readonly cost: number | null;
 }

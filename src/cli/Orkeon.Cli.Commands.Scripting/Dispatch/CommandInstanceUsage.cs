@@ -29,6 +29,9 @@ public sealed class CommandInstanceUsage
     /// <summary>The LLM calls credited.</summary>
     public int Calls { get; init; }
 
+    /// <summary>The calls nobody priced, a part of <see cref="Calls"/>: <see cref="Cost"/> leaves them out.</summary>
+    public int UnpricedCalls { get; init; }
+
     /// <summary>The cost of the priced calls; null while none of the calls was priced.</summary>
     public decimal? Cost { get; init; }
 
@@ -44,6 +47,7 @@ public sealed class CommandInstanceUsage
             CacheWriteTokens = CacheWriteTokens + Math.Max(0, usage.CacheWriteTokens ?? 0),
             ReasoningTokens = ReasoningTokens + Math.Max(0, usage.ReasoningTokens ?? 0),
             Calls = Calls + 1,
+            UnpricedCalls = cost is null ? UnpricedCalls + 1 : UnpricedCalls,
             Cost = cost is null ? Cost : (Cost ?? 0m) + cost.Value,
         };
     }

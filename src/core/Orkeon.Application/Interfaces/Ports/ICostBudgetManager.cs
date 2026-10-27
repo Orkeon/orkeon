@@ -188,6 +188,15 @@ public sealed record ModelUsage
     /// priced from the registry. False, <see cref="Cost"/> is 0 because no price is known, not because the calls were free.
     /// </summary>
     public bool Priced { get; init; }
+
+    /// <summary>The LLM calls counted.</summary>
+    public int Calls { get; init; }
+
+    /// <summary>
+    /// The calls nobody priced (no vendor charge and no registry price): <see cref="Cost"/> counts them as 0,
+    /// so a cost with unpriced calls is a lower bound.
+    /// </summary>
+    public int UnpricedCalls { get; init; }
 }
 
 /// <summary>
@@ -210,7 +219,13 @@ public record CostReport
     /// <summary>Cost breakdown by model.</summary>
     public IReadOnlyDictionary<string, decimal> ByModel { get; init; } = new Dictionary<string, decimal>();
 
-    /// <summary>Token usage breakdown by model.</summary>
+    /// <summary>
+    /// Token usage of every recorded call, a call whose provider named no model included: its tokens, calls and
+    /// unpriced calls may exceed the sum of <see cref="ModelUsageByModel"/>, which keeps the named models only.
+    /// </summary>
+    public ModelUsage TotalUsage { get; init; } = new();
+
+    /// <summary>Token usage breakdown by model; a call whose provider named no model is counted in <see cref="TotalUsage"/> only.</summary>
     public IReadOnlyDictionary<string, ModelUsage> ModelUsageByModel { get; init; } = new Dictionary<string, ModelUsage>();
 
     /// <summary>Cost breakdown by operation type.</summary>

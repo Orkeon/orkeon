@@ -13,10 +13,11 @@ public sealed class ScriptSessionUsageTests
     {
         TotalCost = 0.75m,
         TotalCalls = 3,
+        TotalUsage = new() { PromptTokens = 1010, CompletionTokens = 205, CacheReadTokens = 600, CacheWriteTokens = 50, ReasoningTokens = 30, Calls = 3, UnpricedCalls = 1, Cost = 0.75m, Priced = true },
         ModelUsageByModel = new Dictionary<string, ModelUsage>
         {
-            ["gpt-4o"] = new() { PromptTokens = 1000, CompletionTokens = 200, CacheReadTokens = 600, CacheWriteTokens = 50, ReasoningTokens = 30, Cost = 0.75m, Priced = true },
-            ["local-model"] = new() { PromptTokens = 10, CompletionTokens = 5 },
+            ["gpt-4o"] = new() { PromptTokens = 1000, CompletionTokens = 200, CacheReadTokens = 600, CacheWriteTokens = 50, ReasoningTokens = 30, Calls = 2, Cost = 0.75m, Priced = true },
+            ["local-model"] = new() { PromptTokens = 10, CompletionTokens = 5, Calls = 1, UnpricedCalls = 1 },
         },
     };
 
@@ -35,6 +36,7 @@ public sealed class ScriptSessionUsageTests
         Assert.Equal(30, report.reasoningTokens);
         Assert.Equal(1215, report.totalTokens);
         Assert.Equal(3, report.calls);
+        Assert.Equal(1, report.unpricedCalls);
         Assert.Equal(0.75, report.cost);
 
         Assert.Equal(["gpt-4o", "local-model"], report.byModel.Select(m => m.model));
@@ -45,7 +47,53 @@ public sealed class ScriptSessionUsageTests
         Assert.Equal(50, priced.cacheWriteTokens);
         Assert.Equal(30, priced.reasoningTokens);
         Assert.Equal(0.75, priced.cost);
+        Assert.Equal(2, priced.calls);
+        Assert.Equal(0, priced.unpricedCalls);
         Assert.Null(report.byModel[1].cost);
+        Assert.Equal(1, report.byModel[1].unpricedCalls);
+    }
+
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_totals_come_from_every_call_not_from_the_sum_of_the_model_rows()
+    {
+        // A provider that named no model: its call is in the report's totals and in no model row.
+        var report = new ScriptSessionUsage(new MockCostBudgetManager
+        {
+            Report = new CostReport
+            {
+                TotalCalls = 2,
+                TotalUsage = new() { PromptTokens = 140, CompletionTokens = 28, CacheReadTokens = 9, CacheWriteTokens = 4, ReasoningTokens = 3, Calls = 2, UnpricedCalls = 2 },
+                ModelUsageByModel = new Dictionary<string, ModelUsage> { ["local-model"] = new() { PromptTokens = 100, CompletionTokens = 20, Calls = 1, UnpricedCalls = 1 } },
+            },
+        }, instances: null).report();
+
+        Assert.Equal(140, report.promptTokens);
+        Assert.Equal(28, report.completionTokens);
+        Assert.Equal(9, report.cacheHitTokens);
+        Assert.Equal(4, report.cacheWriteTokens);
+        Assert.Equal(3, report.reasoningTokens);
+        Assert.Equal(168, report.totalTokens);
+        Assert.Equal(2, report.calls);
+        Assert.Equal(2, report.unpricedCalls);
+        Assert.Null(report.cost);
+    }
+
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void A_command_counts_its_unpriced_calls()
+    {
+        var registry = new CommandInstanceRegistry();
+        var crew = registry.Register("assistant", CommandInstanceKind.Async, "crew:main-loop", "main-loop", Guid.NewGuid());
+        crew.AddUsage(new CostUsageEvent { Model = "gpt-4o", PromptTokens = 100, CompletionTokens = 20 }, 0.1m);
+        crew.AddUsage(new CostUsageEvent { Model = "local-model", PromptTokens = 10, CompletionTokens = 5 }, cost: null);
+        crew.AddUsage(new CostUsageEvent { Model = "local-model", PromptTokens = 10, CompletionTokens = 5 }, cost: null);
+
+        var row = Assert.Single(new ScriptSessionUsage(costManager: null, registry).report().byCommand);
+
+        Assert.Equal(3, row.calls);
+        Assert.Equal(2, row.unpricedCalls);
+        Assert.Equal(0.1, row.cost);
     }
 
     [Trait("BR", "CH-226")]

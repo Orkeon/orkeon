@@ -695,15 +695,20 @@ ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` 
 `ctx.services.get("usage")`, présent quand l'hôte tient un gestionnaire de coûts
 (`ICostBudgetManager`) ou des instances de commande (le REPL tient les deux). Il est en lecture
 seule : `report()` rend les chiffres de l'instant, `{ promptTokens, completionTokens,
-cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, cost, byModel, byCommand }`.
-Les comptes de cache sont une part du prompt, le raisonnement une part de la complétion (rapporté
-par Z.AI et OpenRouter, 0 ailleurs). `byModel` a une ligne par modèle, tirée du rapport du
-gestionnaire de coûts ; `byCommand` une ligne par instance de commande que la session garde (un crew
-lancé par `runCrewAsync` compris, la plus récente d'abord), tirée de ce que
-`InstanceAttributingUsageSink` lui a crédité, avec son `ticket`, son `name`, son `state` et ses
-`calls`. Un `cost` est ce que le fournisseur a facturé, sinon le prix que le registre connaît pour le
-modèle (`Orkeon:CostTracking`), et null quand aucun des deux n'est connu : une commande `/usage`
-distingue ainsi un appel gratuit d'un appel sans prix.
+cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, unpricedCalls, cost, byModel,
+byCommand }`. Les comptes de cache sont une part du prompt, le raisonnement une part de la complétion
+(rapporté par Z.AI et OpenRouter, 0 ailleurs). Les totaux comptent chaque appel que le gestionnaire
+de coûts a enregistré (`CostReport.TotalUsage`) ; `byModel` a une ligne par modèle nommé dans la
+réponse du fournisseur, avec ses `calls` : un appel dont le fournisseur ne nomme aucun modèle est
+dans les totaux et dans aucune ligne, les totaux peuvent donc dépasser la somme de `byModel`.
+`byCommand` a une ligne par instance de commande que la session garde (un crew lancé par
+`runCrewAsync` compris, la plus récente d'abord), tirée de ce que `InstanceAttributingUsageSink` lui
+a crédité, avec son `ticket`, son `name`, son `state` et ses `calls`. Un `cost` est ce que le
+fournisseur a facturé, sinon le prix que le registre connaît pour le modèle (`Orkeon:CostTracking`),
+et null quand aucun des deux n'est connu pour aucun de ses appels : une commande `/usage` distingue
+ainsi un appel gratuit d'un appel sans prix. Chaque ligne et les totaux portent `unpricedCalls`, les
+appels que personne n'a tarifés, que `cost` compte pour 0 : tant qu'il n'est pas nul, le `cost` est
+un minorant.
 
 ```typescript
 const usage = ctx.services.get("usage").report();

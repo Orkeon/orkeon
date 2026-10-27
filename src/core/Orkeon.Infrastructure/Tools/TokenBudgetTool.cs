@@ -109,7 +109,8 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     {
         var contextWindow = _contextWindow;
         var model = _configuration?["Llm:Model"] ?? "unknown";
-        var used = _buffer.EstimateTokenCount();
+        // One snapshot of the buffer feeds both the total and its split, so the kinds always add up to it.
+        var (used, byKind) = Measure(_buffer.GetMessages());
 
         return Task.FromResult(new TokenBudgetResponse
         {
@@ -117,20 +118,23 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
             UsedTokens = used,
             AvailableTokens = Math.Max(0, contextWindow - used),
             Model = model,
-            UsedTokensByKind = ByKind(_buffer.GetMessages(), used),
+            UsedTokensByKind = byKind,
         });
     }
 
     /// <summary>
-    /// Splits <paramref name="used"/> by kind of entry with the buffer's heuristic (characters / 4); <c>other</c>
-    /// takes what the named kinds leave, so the kinds add up to <paramref name="used"/>.
+    /// The used tokens of <paramref name="messages"/> with the buffer's heuristic (characters of the role and the
+    /// content, divided by 4, as <see cref="ISessionBufferService.EstimateTokenCount"/> counts them), and their split
+    /// by kind of entry; <c>other</c> takes what the named kinds leave, so the kinds add up to the used tokens.
     /// </summary>
-    private static TokenBudgetByKind ByKind(IReadOnlyList<SessionMessage> messages, int used)
+    internal static (int Used, TokenBudgetByKind ByKind) Measure(IReadOnlyList<SessionMessage> messages)
     {
-        long system = 0, user = 0, assistant = 0, tool = 0;
+        ArgumentNullException.ThrowIfNull(messages);
+        long total = 0, system = 0, user = 0, assistant = 0, tool = 0;
         foreach (var m in messages)
         {
             var chars = (long)(m.Role?.Length ?? 0) + (m.Content?.Length ?? 0);
+            total += chars;
             switch (m.Role)
             {
                 case "system": system += chars; break;
@@ -147,8 +151,9 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
             Assistant = Tokens(assistant),
             Tool = Tokens(tool),
         };
-        byKind.Other = Math.Max(0, used - byKind.System - byKind.User - byKind.Assistant - byKind.Tool);
-        return byKind;
+        var used = Tokens(total);
+        byKind.Other = (int)Math.Max(0L, (long)used - byKind.System - byKind.User - byKind.Assistant - byKind.Tool);
+        return (used, byKind);
 
         static int Tokens(long chars) => (int)Math.Min(int.MaxValue, chars / 4);
     }

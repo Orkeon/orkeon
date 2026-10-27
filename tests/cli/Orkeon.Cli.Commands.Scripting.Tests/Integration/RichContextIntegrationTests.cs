@@ -205,10 +205,11 @@ public sealed class RichContextIntegrationTests : IDisposable
             {
                 TotalCost = 0.0125m,
                 TotalCalls = 2,
+                TotalUsage = new() { PromptTokens = 910, CompletionTokens = 105, CacheReadTokens = 600, ReasoningTokens = 40, Calls = 2, UnpricedCalls = 1, Cost = 0.0125m, Priced = true },
                 ModelUsageByModel = new Dictionary<string, Orkeon.Application.Interfaces.Ports.ModelUsage>
                 {
-                    ["gpt-4o"] = new() { PromptTokens = 900, CompletionTokens = 100, CacheReadTokens = 600, ReasoningTokens = 40, Cost = 0.0125m, Priced = true },
-                    ["local-model"] = new() { PromptTokens = 10, CompletionTokens = 5 },
+                    ["gpt-4o"] = new() { PromptTokens = 900, CompletionTokens = 100, CacheReadTokens = 600, ReasoningTokens = 40, Calls = 1, Cost = 0.0125m, Priced = true },
+                    ["local-model"] = new() { PromptTokens = 10, CompletionTokens = 5, Calls = 1, UnpricedCalls = 1 },
                 },
             },
         };
@@ -231,10 +232,10 @@ public sealed class RichContextIntegrationTests : IDisposable
         var console = new ScriptedTestConsole();
         await command.ExecuteAsync(new CommandContext { RawInput = "/usage", Args = [], Console = console, Scope = services }, ct);
 
-        Assert.Contains("total 1015 tokens, 2 calls, $0.0125", console.Output, StringComparison.Ordinal);
-        Assert.Contains("model gpt-4o in=900 out=100 cache=600 reasoning=40 $0.0125", console.Output, StringComparison.Ordinal);
-        Assert.Contains("model local-model in=10 out=5 cache=0 reasoning=0 n/a", console.Output, StringComparison.Ordinal);
-        Assert.Contains($"command {crew.Ticket} dev-batches in=900 out=100 cache=600 calls=1 $0.0125", console.Output, StringComparison.Ordinal);
+        Assert.Contains("total 1015 tokens, 2 calls (1 unpriced), $0.0125", console.Output, StringComparison.Ordinal);
+        Assert.Contains("model gpt-4o in=900 out=100 cache=600 reasoning=40 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
+        Assert.Contains("model local-model in=10 out=5 cache=0 reasoning=0 unpriced=1 n/a", console.Output, StringComparison.Ordinal);
+        Assert.Contains($"command {crew.Ticket} dev-batches in=900 out=100 cache=600 calls=1 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
     }
 
     private sealed class TestRunner : InteractiveRunnerBase

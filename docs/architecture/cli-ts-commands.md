@@ -666,14 +666,18 @@ ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` 
 **Session usage.** A command reads the session's LLM usage through `ctx.services.get("usage")`,
 present when the host keeps a cost manager (`ICostBudgetManager`) or command instances (the REPL
 keeps both). It is read-only: `report()` returns the figures of that moment, `{ promptTokens,
-completionTokens, cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, cost,
-byModel, byCommand }`. The cache counts are a part of the prompt, the reasoning a part of the
-completion (reported by Z.AI and OpenRouter, 0 elsewhere). `byModel` has one row per model, from the
-cost manager's report; `byCommand` one row per command instance the session keeps (a crew launched
-with `runCrewAsync` included, the newest first), from what `InstanceAttributingUsageSink` credited
-it, with its `ticket`, `name`, `state` and `calls`. A `cost` is the vendor's charge, else the price
-the registry knows for the model (`Orkeon:CostTracking`), and null when neither is known: a
-`/usage` command can tell a free call from an unpriced one.
+completionTokens, cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls,
+unpricedCalls, cost, byModel, byCommand }`. The cache counts are a part of the prompt, the reasoning a
+part of the completion (reported by Z.AI and OpenRouter, 0 elsewhere). The totals count every call
+the cost manager recorded (`CostReport.TotalUsage`); `byModel` has one row per model named in the
+provider's answer, with its `calls`, so a call whose provider named no model is in the totals and in
+no row: the totals may exceed the sum of `byModel`. `byCommand` has one row per command instance the
+session keeps (a crew launched with `runCrewAsync` included, the newest first), from what
+`InstanceAttributingUsageSink` credited it, with its `ticket`, `name`, `state` and `calls`. A `cost`
+is the vendor's charge, else the price the registry knows for the model (`Orkeon:CostTracking`), and
+null when neither is known for any of its calls: a `/usage` command can tell a free call from an
+unpriced one. Every row and the totals carry `unpricedCalls`, the calls nobody priced, which `cost`
+counts as 0: while it is not 0, the `cost` is a lower bound.
 
 ```typescript
 const usage = ctx.services.get("usage").report();

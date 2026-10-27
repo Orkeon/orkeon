@@ -261,6 +261,57 @@ public class CostBudgetManagerTests
         Assert.False(unpriced.Priced);
     }
 
+    /// <summary>
+    /// #226 - the report's totals count every call, one whose provider named no model included, though the
+    /// per-model rows leave it out.
+    /// </summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_total_usage_counts_a_call_whose_provider_named_no_model()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500, CacheHitTokens = 200, ReasoningTokens = 20 });
+        _sut.RecordUsage(new CostUsageEvent { Model = string.Empty, PromptTokens = 40, CompletionTokens = 8, CacheHitTokens = 10, CacheWriteTokens = 5, ReasoningTokens = 2 });
+
+        var report = _sut.GetReport();
+
+        Assert.Equal([ModelGpt4o], report.ModelUsageByModel.Keys);
+        var total = report.TotalUsage;
+        Assert.Equal(2, report.TotalCalls);
+        Assert.Equal(2, total.Calls);
+        Assert.Equal(1040, total.PromptTokens);
+        Assert.Equal(508, total.CompletionTokens);
+        Assert.Equal(210, total.CacheReadTokens);
+        Assert.Equal(5, total.CacheWriteTokens);
+        Assert.Equal(22, total.ReasoningTokens);
+        Assert.Equal(1, total.UnpricedCalls);
+        Assert.True(total.Priced);
+    }
+
+    /// <summary>#226 - the report counts the calls nobody priced, in each model and in the totals.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_report_counts_the_unpriced_calls_of_a_mix_of_priced_and_unpriced_models()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 10, CompletionTokens = 5 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 10, CompletionTokens = 5 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "vendor/model", PromptTokens = 10, CompletionTokens = 5, Cost = 0.01m });
+        _sut.RecordUsage(new CostUsageEvent { Model = "vendor/model", PromptTokens = 10, CompletionTokens = 5 });
+
+        var report = _sut.GetReport();
+
+        Assert.Equal(0, report.ModelUsageByModel[ModelGpt4o].UnpricedCalls);
+        Assert.Equal(1, report.ModelUsageByModel[ModelGpt4o].Calls);
+        Assert.Equal(2, report.ModelUsageByModel["local-unpriced-model"].UnpricedCalls);
+        Assert.False(report.ModelUsageByModel["local-unpriced-model"].Priced);
+        var vendor = report.ModelUsageByModel["vendor/model"];
+        Assert.Equal(2, vendor.Calls);
+        Assert.Equal(1, vendor.UnpricedCalls);
+        Assert.True(vendor.Priced);
+        Assert.Equal(5, report.TotalUsage.Calls);
+        Assert.Equal(3, report.TotalUsage.UnpricedCalls);
+    }
+
     /// <summary>#226 - a vendor charge prices the model, 0 included: a free model is priced at 0.</summary>
     [Trait("BR", "CH-226")]
     [Fact]

@@ -78,16 +78,20 @@ a package against everything its lineup dependencies provide, not the umbrella a
 A `*.cmd.ts` reads the session's LLM usage through `ctx.services.get("usage")` (`ScriptServiceKeys.Usage`, an
 optional entry of the default whitelist, present when the host keeps an `ICostBudgetManager` or a
 `CommandInstanceRegistry`). `report()` returns the prompt, completion, cache-hit, cache-write and reasoning tokens of
-the session, its calls and cost, one row per model (`byModel`) and one per command instance (`byCommand`, a crew
-launched with `runCrewAsync` included). A cost is the vendor's charge, else the registry's price for the model, and
-null when neither is known. The typings declare `SessionUsage`, `SessionUsageReport`, `ModelUsageRow` and
+the session, its calls, unpriced calls and cost, one row per model (`byModel`) and one per command instance
+(`byCommand`, a crew launched with `runCrewAsync` included). The totals count every call, one whose provider named no
+model included (`CostReport.TotalUsage`), so they may exceed the sum of `byModel`. A cost is the vendor's charge, else
+the registry's price for the model, and null when neither is known; every row and the totals carry `unpricedCalls`,
+the calls nobody priced, which the cost counts as 0. The typings declare `SessionUsage`, `SessionUsageReport`, `ModelUsageRow` and
 `CommandUsageRow`. To feed it, a command instance keeps the split of its usage (`CommandInstance.AddUsage`,
 `CommandInstance.Usage`, `CommandInstanceUsage`) instead of a bare total, `CostBudgetCheckResult.Cost` answers the
-cost `RecordUsage` settled (null for a call nobody priced), `ModelUsage` carries `ReasoningTokens` and `Priced`, and
+cost `RecordUsage` settled (null for a call nobody priced), `ModelUsage` carries `ReasoningTokens`, `Priced`, `Calls` and `UnpricedCalls`, `CommandInstanceUsage.UnpricedCalls`
+counts an instance's unpriced calls, and
 `CostUsageEvent.ReasoningTokens` carries the reasoning tokens a provider reports in its metadata
 (`LlmUsageMetadataKeys.ReasoningTokens`, `reasoning_tokens`: Z.AI, OpenRouter). The `token_budget` tool keeps its
 fields and adds `used_tokens_by_kind` (`system`, `user`, `assistant`, `tool`, `other`), which adds up to
-`used_tokens`.
+`used_tokens`, both read from one snapshot of the buffer. `tools.generated.d.ts` types a nested record of a tool's result
+by its members (`used_tokens_by_kind`, `range`, `filter_stats`...) instead of `Record<string, unknown>`.
 
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 

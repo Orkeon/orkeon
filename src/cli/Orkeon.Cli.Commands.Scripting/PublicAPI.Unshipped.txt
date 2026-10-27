@@ -168,3 +168,13 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.init -
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.init -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CommandInstanceUsage() -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.UnpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.UnpricedCalls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.unpricedCalls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.calls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.calls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.unpricedCalls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.unpricedCalls.init -> void

@@ -2486,3 +2486,9 @@ Orkeon.Application.Interfaces.Ports.ModelUsage.Priced.init -> void
 Orkeon.Application.Interfaces.Ports.CostBudgetCheckResult.Cost.get -> decimal?
 Orkeon.Application.Interfaces.Ports.CostBudgetCheckResult.Cost.init -> void
 const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.ReasoningTokens = "reasoning_tokens" -> string!
+Orkeon.Application.Interfaces.Ports.ModelUsage.Calls.get -> int
+Orkeon.Application.Interfaces.Ports.ModelUsage.Calls.init -> void
+Orkeon.Application.Interfaces.Ports.ModelUsage.UnpricedCalls.get -> int
+Orkeon.Application.Interfaces.Ports.ModelUsage.UnpricedCalls.init -> void
+Orkeon.Application.Interfaces.Ports.CostReport.TotalUsage.get -> Orkeon.Application.Interfaces.Ports.ModelUsage!
+Orkeon.Application.Interfaces.Ports.CostReport.TotalUsage.init -> void

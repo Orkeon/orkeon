@@ -19,7 +19,7 @@ declare global {
             roots?: readonly string[] | null;
         }, ctx?: ExecutionContext): Promise<{
             readonly errors: readonly string[];
-            readonly report?: Record<string, unknown>;
+            readonly report?: { readonly cost: { readonly lambdas: number; readonly loops: number; readonly memory_filters: number; readonly reads: number; readonly writes: number; }; readonly members: readonly { readonly cost: { readonly lambdas: number; readonly loops: number; readonly memory_filters: number; readonly reads: number; readonly writes: number; }; readonly in_memory_filters: readonly { readonly line: number; readonly method: string; }[]; readonly member: string; readonly port_calls: readonly { readonly in_lambda: boolean; readonly in_loop: boolean; readonly line: number; readonly method: string; readonly receiver: string; }[]; }[]; };
         }>;
 
         /** `affected_tests` - Test projects and classes reached through the graph by changed files. */
@@ -105,7 +105,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly entries: readonly { readonly children_count?: number; readonly cyclomatic?: number; readonly fqn: string; readonly kind: string; readonly language?: string; readonly lo_c?: number; readonly name: string; }[];
             readonly level: string;
-            readonly totals: Record<string, unknown>;
+            readonly totals: { readonly module_count: number; readonly node_count: number; readonly package_count: number; readonly symbol_count: number; };
             readonly truncated: boolean;
         }>;
 
@@ -212,7 +212,7 @@ declare global {
             readonly dot?: string;
             readonly edges: readonly { readonly from: string; readonly kind: string; readonly to: string; }[];
             readonly mermaid_flowchart?: string;
-            readonly metrics: Record<string, unknown>;
+            readonly metrics: { readonly avg_fan_in: number; readonly avg_fan_out: number; readonly cycle_count: number; readonly edge_count: number; readonly node_count: number; };
             readonly nodes: readonly { readonly fqn: string; readonly is_seed: boolean; readonly kind: string; readonly level: string; readonly name: string; }[];
             readonly truncated: boolean;
         }>;
@@ -588,10 +588,10 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly edge_count: number;
             readonly elapsed: string;
-            readonly embedding_stats?: Record<string, unknown>;
+            readonly embedding_stats?: { readonly dimensions: number; readonly elapsed: string; readonly model: string; readonly nodes_embedded: number; readonly nodes_skipped: number; readonly provider: string; };
             readonly errors: readonly string[];
             readonly file_count: number;
-            readonly filter_stats: Record<string, unknown>;
+            readonly filter_stats: { readonly excluded_by_exclude_set: number; readonly excluded_by_gitignore: number; readonly excluded_by_language: number; readonly excluded_by_policy: number; readonly excluded_by_policy_paths: readonly string[]; readonly excluded_by_suffix: number; readonly physical_entries_probe: number; readonly physical_root: string; readonly total_enumerated: number; readonly vfs_file_entries_yielded: number; };
             readonly index_id: string;
             readonly node_count: number;
             readonly statement_count: number;
@@ -609,10 +609,10 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly edge_count: number;
             readonly elapsed: string;
-            readonly embedding_stats?: Record<string, unknown>;
+            readonly embedding_stats?: { readonly dimensions: number; readonly elapsed: string; readonly model: string; readonly nodes_embedded: number; readonly nodes_skipped: number; readonly provider: string; };
             readonly errors: readonly string[];
             readonly file_count: number;
-            readonly filter_stats: Record<string, unknown>;
+            readonly filter_stats: { readonly excluded_by_exclude_set: number; readonly excluded_by_gitignore: number; readonly excluded_by_language: number; readonly excluded_by_policy: number; readonly excluded_by_policy_paths: readonly string[]; readonly excluded_by_suffix: number; readonly physical_entries_probe: number; readonly physical_root: string; readonly total_enumerated: number; readonly vfs_file_entries_yielded: number; };
             readonly index_id: string;
             readonly node_count: number;
             readonly statement_count: number;
@@ -855,7 +855,7 @@ declare global {
         }, ctx?: ExecutionContext): Promise<{
             readonly applied: boolean;
             readonly new_hash: string;
-            readonly range: Record<string, unknown>;
+            readonly range: { readonly end_byte: number; readonly end_line: number; readonly start_byte: number; readonly start_line: number; };
         }>;
 
         /** `node_insert` - Inserts text relative to an anchor node: position 'inside' appends to a type or namespace body (after the last member of an indented or end-closed body; an enum member or a JSON pair gets its separating comma) or to the end of a Markdown section, 'before' puts it above the anchor's leading comments and attributes, 'after' below the anchor. There is no expected_hash: no anchor hash is required for before/after, the anchor is only a location. The text is re-indented line by line to the siblings' indentation (tabs or spaces as the file does); the insert is refused when it introduces a parse error that was not there before, the file is then untouched. */
@@ -870,7 +870,7 @@ declare global {
             text: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly new_hash: string;
-            readonly range: Record<string, unknown>;
+            readonly range: { readonly end_byte: number; readonly end_line: number; readonly start_byte: number; readonly start_line: number; };
         }>;
 
         /** `node_outline` - Outline of a file's members. */
@@ -911,7 +911,7 @@ declare global {
             text: string;
         }, ctx?: ExecutionContext): Promise<{
             readonly new_hash: string;
-            readonly range: Record<string, unknown>;
+            readonly range: { readonly end_byte: number; readonly end_line: number; readonly start_byte: number; readonly start_line: number; };
         }>;
 
         /** `package_summary` - Details about a package (L1): file count, symbol count, exports, dependencies. */
@@ -1089,7 +1089,7 @@ declare global {
             /** Wait indefinitely (mutually exclusive with timeout_ms) */
             wait_forever?: boolean;
         }, ctx?: ExecutionContext): Promise<{
-            readonly message?: Record<string, unknown>;
+            readonly message?: { readonly correlation_id?: string; readonly message_id: string; readonly metadata: Record<string, string>; readonly payload?: unknown; readonly published_at: string; readonly source_agent_id?: string; readonly source_crew_id: string; readonly topic: string; };
             readonly timed_out: boolean;
         }>;
 
@@ -1336,7 +1336,7 @@ declare global {
             include_signature?: boolean;
             max_children?: number;
         }, ctx?: ExecutionContext): Promise<{
-            readonly body?: Record<string, unknown>;
+            readonly body?: { readonly await_count: number; readonly branch_count: number; readonly call_count: number; readonly closure_count: number; readonly cyclomatic_complexity: number; readonly early_return_count: number; readonly is_partial: boolean; readonly loop_count: number; readonly max_depth: number; readonly statement_count: number; readonly try_catch_count: number; };
             readonly doc_comment?: string;
             readonly extends: readonly string[];
             readonly fqn: string;
@@ -1379,7 +1379,7 @@ declare global {
             readonly context_window_tokens: number;
             readonly model: string;
             readonly used_tokens: number;
-            readonly used_tokens_by_kind: Record<string, unknown>;
+            readonly used_tokens_by_kind: { readonly assistant: number; readonly other: number; readonly system: number; readonly tool: number; readonly user: number; };
         }>;
 
         /** `txt_search` - Perform semantic search within plain text (.txt) files using RAG embeddings. */
@@ -1413,7 +1413,7 @@ declare global {
             /** Wait indefinitely (mutually exclusive with timeout_ms) */
             wait_forever?: boolean;
         }, ctx?: ExecutionContext): Promise<{
-            readonly message?: Record<string, unknown>;
+            readonly message?: { readonly correlation_id?: string; readonly message_id: string; readonly metadata: Record<string, string>; readonly payload?: unknown; readonly published_at: string; readonly source_agent_id?: string; readonly source_crew_id: string; readonly topic: string; };
             readonly timed_out: boolean;
         }>;
 
