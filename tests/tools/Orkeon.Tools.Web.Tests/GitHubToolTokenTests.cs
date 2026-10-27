@@ -138,6 +138,29 @@ public sealed class GitHubToolTokenTests
         Assert.NotEmpty(logger.Entries);
     }
 
+    [Fact]
+    [Trait("BR", "CH-222")]
+    public async Task ShouldSendTheCredentialOnTheRequestAlone_WhenTheClientIsShared()
+    {
+        // The client may be shared with other tools (HttpToolBase's static fallback): a header set on
+        // it would reach every host those tools call.
+        using var handler = new MockHttpMessageHandler();
+        handler.SetResponse(HttpStatusCode.OK, "[]");
+        using var client = new HttpClient(handler, disposeHandler: false);
+        using var tool = new GitHubTool(Marker, client);
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "github",
+            Parameters: new Dictionary<string, object?> { ["action"] = "list_issues", ["owner"] = "octocat", ["repo"] = "hello" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal($"Bearer {Marker}", handler.LastRequest?.Headers.Authorization?.ToString());
+        Assert.Contains(handler.LastRequest!.Headers.Accept, a => a.MediaType == "application/vnd.github.v3+json");
+        Assert.Null(client.DefaultRequestHeaders.Authorization);
+        Assert.Empty(client.DefaultRequestHeaders.Accept);
+    }
+
     private static void AssertMarkerAbsent(ToolCallResponse result, RecordingLogger logger)
     {
         Assert.DoesNotContain(Marker, result.Error ?? "", StringComparison.Ordinal);

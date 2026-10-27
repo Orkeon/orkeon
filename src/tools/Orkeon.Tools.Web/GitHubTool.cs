@@ -226,8 +226,6 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
 
         async Task<GitHubResponse> ExecuteTypedCoreAsync()
         {
-            ConfigureDefaultHeaders();
-
             try
             {
 #pragma warning disable CA1308 // request.Action is normalized to the lowercase switch keys ("list_issues", ...), a required match form, not a comparison normalization
@@ -271,29 +269,34 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
             ? text
             : text.Replace(_personalAccessToken, "***", StringComparison.Ordinal);
 
-    private void ConfigureDefaultHeaders()
+    // The headers go on each request, never on the client: the client may be shared with other tools
+    // (HttpToolBase's static fallback), and a credential set on it would reach every host they call.
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
+        Justification = "A request message holds no unmanaged resource: it and its content are left to the GC once sent, as HttpClient.PostAsync leaves its own.")]
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, string url, CancellationToken ct, HttpContent? content = null)
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd("Orkeon");
+        var message = new HttpRequestMessage(method, new Uri(url)) { Content = content };
+        message.Headers.UserAgent.TryParseAdd("Orkeon");
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+        if (!string.IsNullOrWhiteSpace(_personalAccessToken))
+            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _personalAccessToken);
 
-        if (!_httpClient.DefaultRequestHeaders.Accept.Any(a =>
-                a.MediaType == "application/vnd.github.v3+json"))
-        {
-            _httpClient.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
-        }
+        return await _httpClient.SendAsync(message, ct).ConfigureAwait(false);
+    }
 
-        if (!string.IsNullOrWhiteSpace(_personalAccessToken) &&
-            _httpClient.DefaultRequestHeaders.Authorization is null)
-        {
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _personalAccessToken);
-        }
+    /// <summary>Sends a GET and reads the body, throwing <see cref="HttpRequestException"/> on a failure status.</summary>
+    private async Task<string> GetStringAsync(string url, CancellationToken ct)
+    {
+        using var response = await SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
     }
 
     private async Task<GitHubResponse> ListIssuesAsync(GitHubRequest request, CancellationToken ct)
     {
         var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/issues";
-        var json = await _httpClient.GetStringAsync(new Uri(url), ct).ConfigureAwait(false);
+        var json = await GetStringAsync(url, ct).ConfigureAwait(false);
         var items = ParseItemArray(json);
 
         LogGitHubAction("list_issues", request.Owner, request.Repo, items.Count);
@@ -308,14 +311,14 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
     }
 
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
-        Justification = "Request content ownership is transferred to HttpClient.PostAsync.")]
+        Justification = "The content is owned by the request message SendAsync sends.")]
     private async Task<GitHubResponse> CreateIssueAsync(GitHubRequest request, CancellationToken ct)
     {
         var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/issues";
         var payload = new Dictionary<string, string?> { ["title"] = request.Title, ["body"] = request.Body };
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync(new Uri(url), content, ct).ConfigureAwait(false);
+        using var response = await SendAsync(HttpMethod.Post, url, ct, content).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
@@ -342,7 +345,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
     }
 
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
-        Justification = "Request content ownership is transferred to HttpClient.PostAsync.")]
+        Justification = "The content is owned by the request message SendAsync sends.")]
     private async Task<GitHubResponse> CreatePullRequestAsync(GitHubRequest request, CancellationToken ct)
     {
         var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/pulls";
@@ -355,7 +358,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         };
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync(new Uri(url), content, ct).ConfigureAwait(false);
+        using var response = await SendAsync(HttpMethod.Post, url, ct, content).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
@@ -385,7 +388,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
     {
         var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}/pulls/{request.Number}";
 
-        var response = await _httpClient.GetAsync(new Uri(url), ct).ConfigureAwait(false);
+        using var response = await SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
@@ -416,7 +419,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
         var encodedQuery = Uri.EscapeDataString(request.Query!);
         var url = $"{BaseUrl}/search/repositories?q={encodedQuery}";
 
-        var json = await _httpClient.GetStringAsync(new Uri(url), ct).ConfigureAwait(false);
+        var json = await GetStringAsync(url, ct).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
@@ -446,7 +449,7 @@ public partial class GitHubTool : HttpToolBase<GitHubRequest, GitHubResponse>
     {
         var url = $"{BaseUrl}/repos/{request.Owner}/{request.Repo}";
 
-        var response = await _httpClient.GetAsync(new Uri(url), ct).ConfigureAwait(false);
+        using var response = await SendAsync(HttpMethod.Get, url, ct).ConfigureAwait(false);
         var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
