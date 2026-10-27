@@ -242,9 +242,10 @@ La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `f
 `tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
 plus bas), `script-host` (lancement de crews depuis une commande — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
-(les règles d'appels d'outils de la session, plus bas) et `approvals` (les approbations d'outils en
-attente, plus bas) ; pour ces quatre-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`,
-`PermissionRulesFacade` et `PendingApprovals` sans argument de type. `configuration` n'est
+(les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
+attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas) ;
+pour ces cinq-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`,
+`PendingApprovals` et `SessionFacade` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -642,6 +643,28 @@ bloquée sur l'opérateur d'une tâche qui tourne.
 ```typescript
 const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
 for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
+```
+
+**Enregistrer et charger la session.** `orkeon-repl` conserve sa session par projet
+(`Orkeon:Cli:Session:Persist`, actif sauf si les réglages le désactivent) : elle est enregistrée après
+chaque tour et à la sortie dans `<SessionsDirectory>/<projet>/last.json`, et rechargée au démarrage.
+Tant qu'elle est conservée, `ctx.services.get("session")` sert deux appels. `save()` écrit ce fichier
+tout de suite, sous la même forme, et se résout en son chemin virtuel. `load(path)` lit un fichier que
+le REPL a enregistré, à un chemin virtuel, et remplace le tampon de conversation et le sac d'état (les
+deux choses que `/clear` remet à zéro), avec l'identifiant et le titre de la session, par les siens ;
+il se résout en le nombre de messages chargés, et le tour suivant poursuit cette conversation. Les
+instances de commandes en cours (`commands.list`) ne sont pas touchées, et la session continue de
+s'enregistrer dans son propre fichier. Le fichier est jugé en entier avant tout changement : un
+fichier absent, illisible ou sans la forme qu'écrit le REPL (`SessionId`, `Messages` avec chacun un
+`Role` et un `Content`, `State`) rejette la promesse, et la session reste telle qu'elle était. Les
+deux passent par le système de fichiers virtuel : un chemin hors d'un montage, ou sans droit de
+lecture, est refusé de la même façon.
+
+```typescript
+const session = ctx.services.get("session");
+const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
+const count = await session.load("/workspace/saved/review.json");
+ctx.writeLine(`loaded ${count} messages`);
 ```
 
 ## Matrice de support TypeScript (esbuild → Jint)

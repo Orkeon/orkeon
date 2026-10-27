@@ -6,6 +6,8 @@ using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Infrastructure.Session;
 using Orkeon.Scripting;
 
 namespace Orkeon.Cli.Commands.Scripting.Runtime;
@@ -48,6 +50,10 @@ public static class DefaultScriptServiceWhitelist
             // them (AddConsoleToolApproval registers IToolApprovalWatch).
             .AddOptional(ScriptServiceKeys.Approvals, sp => sp.GetService<IToolApprovalWatch>() is { } watch
                 ? new ScriptPendingApprovals(watch)
+                : null)
+            // Optional: the persisted session (Orkeon:Cli:Session:Persist), saved now or swapped for a saved one (#227).
+            .AddOptional(ScriptServiceKeys.Session, sp => sp.GetService<ISessionBufferService>() is FileSessionBufferService session
+                ? new SessionFacade(session)
                 : null);
     }
 

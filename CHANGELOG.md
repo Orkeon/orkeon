@@ -31,6 +31,18 @@ finished task's tokens, refuses the key. `AgentExecutionBudget` gains `MaxContex
 `RecordTokens(tokens, promptTokens, completionTokens, cacheHitTokens)`. The refusal of an unknown run-option key now
 lists `contextTokens` among the dimensions.
 
+### Added — a command saves the REPL's session now, or loads a saved one (#227)
+
+The `session` service of `*.cmd.ts` (`ctx.services.get("session")`, `SessionFacade`), served in `orkeon-repl` while
+the session is persisted (`Orkeon:Cli:Session:Persist`, the REPL's default), gains `save()` and `load(path)`.
+`save()` writes the session now to the file and in the shape the REPL writes at exit
+(`<SessionsDirectory>/<project>/last.json`) and resolves to its virtual path. `load(path)` reads a session file the
+REPL saved, through the virtual file system, and swaps the conversation buffer and the state bag (with the session's
+id and title) for its own, so the next turn continues the loaded conversation; the running command instances are
+untouched and the session goes on saving to its own file. A missing file, or one without the shape the REPL writes,
+is refused whole: the promise rejects and the session stays as it was. `FileSessionBufferService` gains
+`SessionFilePath` and `LoadFromAsync(path)`.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

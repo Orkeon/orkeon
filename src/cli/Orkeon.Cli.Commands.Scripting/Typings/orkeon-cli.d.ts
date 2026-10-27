@@ -232,7 +232,8 @@ export interface ServiceLocator {
    *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
    *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
-   *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`).
+   *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
+   *   `"session"` → {@link SessionFacade} (save the persisted session now, load a saved one, in `orkeon-repl`).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
@@ -241,6 +242,7 @@ export interface ServiceLocator {
   get(name: "script-host"): ScriptHostFacade;
   get(name: "permissions"): PermissionRulesFacade;
   get(name: "approvals"): PendingApprovals;
+  get(name: "session"): SessionFacade;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -319,6 +321,26 @@ export interface PermissionRulesFacade {
 export interface PendingApprovals {
   /** The approvals waiting, the one the next answer settles first; empty when none waits. */
   list(): readonly PendingApproval[];
+}
+
+/**
+ * The REPL's persisted session — `ctx.services.get("session")`, in `orkeon-repl` while
+ * `Orkeon:Cli:Session:Persist` is on (the REPL's default). Paths are virtual (`/workspace/...`).
+ */
+export interface SessionFacade {
+  /**
+   * Writes the session now to its file — the file and the shape the REPL writes at exit
+   * (`<SessionsDirectory>/<project>/last.json`) — and resolves to that file's virtual path.
+   */
+  save(): Promise<string>;
+  /**
+   * Swaps the conversation buffer and the state bag (with the session's id and title) for those of a
+   * file the REPL saved, and resolves to the number of messages loaded: the next turn continues the
+   * loaded conversation. The running command instances (`commands.list`) are untouched, and the
+   * session goes on saving to its own file. A missing file, or one not of the shape the REPL writes,
+   * rejects and leaves the session as it was.
+   */
+  load(path: string): Promise<number>;
 }
 
 /** One tool approval waiting for the operator. */

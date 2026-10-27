@@ -31,20 +31,55 @@ public sealed class FileSessionBufferService : ISessionBufferService
         ArgumentNullException.ThrowIfNull(projectKey);
         _projectKey = projectKey;
         var json = await _fileSystem.TryReadAllTextAsync(FilePath(projectKey), cancellationToken).ConfigureAwait(false);
-        if (json is null) return;
+        if (json is null || Parse(json) is not { Session: { } saved }) return;
+        _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
+    }
 
+    /// <summary>
+    /// The project's file the session is saved to - <c>&lt;SessionsDirectory&gt;/&lt;project slug&gt;/last.json</c>,
+    /// the file <see cref="SaveAsync"/> writes - or null before <see cref="LoadAsync"/> named the project.
+    /// </summary>
+    public string? SessionFilePath => _projectKey is null ? null : FilePath(_projectKey);
+
+    /// <summary>
+    /// Swaps the conversation buffer, the state bag, the id and the title for those of a file this service saved,
+    /// read at the virtual <paramref name="path"/>. The file is judged whole before anything changes: a refused file
+    /// leaves the session as it was. The session keeps saving to <see cref="SessionFilePath"/>.
+    /// </summary>
+    /// <exception cref="FileNotFoundException">No file at <paramref name="path"/>.</exception>
+    /// <exception cref="InvalidDataException">The file is not a session this service saved.</exception>
+    /// <exception cref="FileAccessDeniedException">The path is outside any mount or lacks read rights.</exception>
+    public async Task LoadFromAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var json = await _fileSystem.TryReadAllTextAsync(path, cancellationToken).ConfigureAwait(false)
+            ?? throw new FileNotFoundException($"No session file at '{path}'; the session is unchanged.");
+        var (saved, problem) = Parse(json);
+        if (saved is null)
+            throw new InvalidDataException($"'{path}' is not a session the REPL saved ({problem}); the session is unchanged.");
+        _inner.Restore(saved.SessionId!, saved.Title, saved.Messages!, saved.State!);
+    }
+
+    /// <summary>The session a file holds when it has the shape <see cref="SaveAsync"/> writes, else what is wrong with it.</summary>
+    private static (PersistedSession? Session, string? Problem) Parse(string json)
+    {
         PersistedSession? saved;
         try
         {
             saved = JsonSerializer.Deserialize<PersistedSession>(json);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            return;
+            return (null, $"unreadable JSON: {ex.Message}");
         }
 
-        if (saved?.SessionId is null || saved.Messages is null || saved.State is null) return;
-        _inner.Restore(saved.SessionId, saved.Title, saved.Messages, saved.State);
+        if (saved is null) return (null, "empty document");
+        if (string.IsNullOrWhiteSpace(saved.SessionId)) return (null, "no SessionId");
+        if (saved.Messages is null) return (null, "no Messages");
+        if (saved.State is null) return (null, "no State");
+        if (saved.Messages.Any(m => m is null || m.Role is null || m.Content is null))
+            return (null, "a message without Role or Content");
+        return (saved, null);
     }
 
     /// <summary>Writes the buffer, state bag, id and title to the project's file.</summary>

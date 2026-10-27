@@ -239,9 +239,10 @@ The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus
 optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
 (crew launching from a command — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
-session's tool-call rules, below) and `approvals` (the tool approvals waiting, below); the typings
-return `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade` and `PendingApprovals` for those
-four without a type argument. `configuration` is deliberately
+session's tool-call rules, below), `approvals` (the tool approvals waiting, below) and `session`
+(save the persisted session, load a saved one, below); the typings return `CommandsFacade`,
+`ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals` and `SessionFacade` for those five
+without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -617,6 +618,26 @@ task, the tool's name, and the call's input as the status line shows it, its JSO
 ```typescript
 const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
 for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
+```
+
+**Saving and loading the session.** `orkeon-repl` persists its session per project
+(`Orkeon:Cli:Session:Persist`, on unless the settings turn it off): it is saved after each turn and
+at exit to `<SessionsDirectory>/<project>/last.json`, and reloaded at start. While it is persisted,
+`ctx.services.get("session")` serves two calls. `save()` writes that file now, in the same shape,
+and resolves to its virtual path. `load(path)` reads a file the REPL saved, at a virtual path, and
+swaps the conversation buffer and the state bag (the two things `/clear` resets), with the session's
+id and title, for its own; it resolves to the number of messages loaded, and the next turn continues
+that conversation. The running command instances (`commands.list`) are untouched, and the session
+goes on saving to its own file. The file is judged whole before anything changes: a missing file, an
+unreadable one, or one without the shape the REPL writes (`SessionId`, `Messages` with a `Role` and a
+`Content` each, `State`) rejects the promise, and the session stays as it was. Both go through the
+virtual file system: a path outside a mount, or without read rights, is refused the same way.
+
+```typescript
+const session = ctx.services.get("session");
+const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
+const count = await session.load("/workspace/saved/review.json");
+ctx.writeLine(`loaded ${count} messages`);
 ```
 
 ## TypeScript support matrix (esbuild → Jint)

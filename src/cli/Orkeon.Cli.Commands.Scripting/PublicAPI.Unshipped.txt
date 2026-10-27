@@ -73,3 +73,7 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.get -> bool
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.load(string! path) -> System.Threading.Tasks.Task<int>!
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.save() -> System.Threading.Tasks.Task<string!>!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Session = "session" -> string!
