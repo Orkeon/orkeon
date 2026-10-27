@@ -2750,3 +2750,31 @@ virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.EqualityContract.get -
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.Equals(Orkeon.Application.Decision.DTOs.DecisionQuestion? other) -> bool
 virtual Orkeon.Application.Decision.DTOs.DecisionQuestion.PrintMembers(System.Text.StringBuilder! builder) -> bool
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Decision = "decision" -> string!
+Orkeon.Application.Decision.DecisionVerdict
+Orkeon.Application.Decision.DecisionVerdict.<Clone>$() -> Orkeon.Application.Decision.DecisionVerdict!
+Orkeon.Application.Decision.DecisionVerdict.DecisionVerdict() -> void
+Orkeon.Application.Decision.DecisionVerdict.Equals(Orkeon.Application.Decision.DecisionVerdict? other) -> bool
+Orkeon.Application.Decision.DecisionVerdict.Kind.get -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdict.Kind.init -> void
+Orkeon.Application.Decision.DecisionVerdict.Profile.get -> string?
+Orkeon.Application.Decision.DecisionVerdict.Profile.init -> void
+Orkeon.Application.Decision.DecisionVerdict.Reason.get -> string?
+Orkeon.Application.Decision.DecisionVerdict.Reason.init -> void
+Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdictKind.Block = 1 -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdictKind.Continue = 0 -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdictKind.Escalate = 3 -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdictKind.Route = 2 -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Interfaces.Ports.IDecisionStage
+Orkeon.Application.Interfaces.Ports.IDecisionStage.Name.get -> string!
+Orkeon.Application.Interfaces.Ports.IDecisionStage.OnRequestAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
+Orkeon.Application.Interfaces.Ports.IDecisionStage.OnResponseAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DecisionVerdict!>!
+override Orkeon.Application.Decision.DecisionVerdict.Equals(object? obj) -> bool
+override Orkeon.Application.Decision.DecisionVerdict.GetHashCode() -> int
+override Orkeon.Application.Decision.DecisionVerdict.ToString() -> string!
+static Orkeon.Application.Decision.DecisionVerdict.Block(string! reason) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Continue.get -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Escalate(string! profile, string? reason = null) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.Route(string! profile, string? reason = null) -> Orkeon.Application.Decision.DecisionVerdict!
+static Orkeon.Application.Decision.DecisionVerdict.operator !=(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
+static Orkeon.Application.Decision.DecisionVerdict.operator ==(Orkeon.Application.Decision.DecisionVerdict? left, Orkeon.Application.Decision.DecisionVerdict? right) -> bool
