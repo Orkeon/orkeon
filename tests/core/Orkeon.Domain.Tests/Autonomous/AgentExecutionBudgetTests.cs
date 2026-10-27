@@ -304,4 +304,105 @@ public class AgentExecutionBudgetTests
         Assert.Equal("Token budget exhausted: 650 tokens sent and received over 2 calls (limit 500)", ex.Message);
         Assert.Equal(200, child.CurrentTokensConsumed);
     }
+
+    // -- the context measure: contextTokens counts a turn's context once (#224) --
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheContextOnce_WhenEveryCallOfATurnResendsIt()
+    {
+        // Arrange: a turn of 10 calls on a context of 10 000 tokens that grows by 100 a call
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+
+        // Act
+        for (var i = 0; i < 10; i++)
+            budget.RecordTokens(10_000 + (100 * i) + 50, promptTokens: 10_000 + (100 * i), completionTokens: 50, cacheHitTokens: null);
+
+        // Assert: the context once, its growth and every completion; the sum pays it ten times
+        Assert.Equal(10_000 + 900 + (10 * 50), budget.CurrentContextTokens);
+        Assert.Equal(105_000, budget.CurrentTokensConsumed);
+        Assert.Equal(10, budget.CurrentTokenCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheUncachedPrompt_WhenTheProviderReportsCacheHits()
+    {
+        // Arrange
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+
+        // Act: the first call finds no cache, the second reads all but 300 tokens of its prompt from it
+        budget.RecordTokens(10_050, promptTokens: 10_000, completionTokens: 50, cacheHitTokens: 0);
+        budget.RecordTokens(10_350, promptTokens: 10_300, completionTokens: 50, cacheHitTokens: 10_000);
+
+        // Assert
+        Assert.Equal(10_050 + 300 + 50, budget.CurrentContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheWholeCall_WhenTheProviderReportsNoBreakdown()
+    {
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+
+        budget.RecordTokens(400);
+        budget.RecordTokens(500, promptTokens: null, completionTokens: null, cacheHitTokens: null);
+
+        Assert.Equal(900, budget.CurrentContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldNameTheContextMeasure_WhenTheContextBudgetIsPassed()
+    {
+        // Arrange
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = 1_000 };
+        budget.RecordTokens(950, promptTokens: 900, completionTokens: 50, cacheHitTokens: null);
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(
+            () => budget.RecordTokens(1_050, promptTokens: 1_000, completionTokens: 50, cacheHitTokens: null));
+
+        // Assert: the dimension a script and the act's wrap-up read is the same as the sum's
+        Assert.Equal(BudgetDimension.Tokens, ex.Dimension);
+        Assert.Equal(
+            "Token budget exhausted: 1100 context tokens (the growth or the uncached part of each prompt, plus every completion) over 2 calls (limit 1000 contextTokens)",
+            ex.Message);
+        Assert.Equal(1_100, budget.CurrentContextTokens);
+        Assert.True(budget.IsExhausted);
+        var gate = Assert.Throws<BudgetExhaustedException>(budget.ThrowIfExhausted);
+        Assert.Equal(ex.Message, gate.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldChargeEachRunsOwnGrowth_WhenTwoRunsChargeOneBudget()
+    {
+        // Arrange: two conversations of different sizes charge one crew budget
+        var crew = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+        var big = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue, ChargedTo = crew };
+        var small = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue, ChargedTo = crew };
+
+        // Act: interleaved calls; a growth read across runs would charge the big context again
+        big.RecordTokens(10_010, promptTokens: 10_000, completionTokens: 10, cacheHitTokens: null);
+        small.RecordTokens(110, promptTokens: 100, completionTokens: 10, cacheHitTokens: null);
+        big.RecordTokens(10_110, promptTokens: 10_100, completionTokens: 10, cacheHitTokens: null);
+
+        // Assert
+        Assert.Equal(10_010 + 110, big.CurrentContextTokens);
+        Assert.Equal(110, small.CurrentContextTokens);
+        Assert.Equal(10_010 + 110 + 110, crew.CurrentContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldLeaveTheChildWhatTheContextBudgetHasLeft_WhenCreatingAChildBudget()
+    {
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = 5_000 };
+        budget.RecordTokens(1_200, promptTokens: 1_000, completionTokens: 200, cacheHitTokens: null);
+
+        var child = budget.CreateChildBudget();
+
+        Assert.Equal(3_800, child.MaxContextTokens);
+    }
 }

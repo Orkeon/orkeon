@@ -229,9 +229,13 @@ contexte, sous son sémaphore et sa politique `onError`. Ni l'un ni l'autre ne d
 l'exécution sans qu'on le demande :
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (et le
 même `budget` dans les options de `crew.runAgent`) borne cette exécution avec les clés et valeurs de
-`crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` en secondes ou sous la forme `"5m"`,
+`crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` en secondes ou sous la forme `"5m"`,
 `delegationDepth`, `spawnedAgents`). `tokens` est une somme courante du prompt et de la complétion de
-chaque appel, le contexte compté de nouveau à chacun ; une fois atteinte, `ctx.llm.act` fait un dernier
+chaque appel, le contexte compté de nouveau à chacun. `contextTokens` compte le contexte une fois : la
+complétion de chaque appel plus la part de son prompt que le cache n'a pas servie quand le fournisseur
+rapporte des hits de cache, sinon ce dont le prompt a crû depuis l'appel précédent, si bien qu'un tour de
+n appels sur un contexte de c tokens dépense environ c plus ses complétions, pas n × c ; seul, il laisse
+`tokens` sans plafond, et une crew autonome déclarative le refuse. Une fois l'un ou l'autre atteint, `ctx.llm.act` fait un dernier
 appel qui ne peut appeler aucun outil et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
 Une dimension épuisée termine l'exécution par
 `BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
@@ -336,7 +340,7 @@ limites de conception, chacune dite plutôt que silencieuse.
 
 | Limite | Comportement |
 |---|---|
-| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). Avec un autre process il est ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. |
+| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime` ; `contextTokens` y est refusé, la stratégie comptant les tokens de chaque tâche terminée, pas le prompt de chaque appel). Avec un autre process il est ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |

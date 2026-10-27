@@ -1096,7 +1096,7 @@ public sealed partial class JsLlmFacade
                     ? session.Config
                     : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
                 var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
-                RecordCallTokens(resp.TokensUsed);
+                RecordCallTokens(resp);
 
                 var (calls, assistantTurn) = ReadToolCalls(resp);
                 // A token budget this very call spent runs none of the tools it asked for: the act
@@ -1171,12 +1171,13 @@ public sealed partial class JsLlmFacade
     /// spent budget - tokens or wall time - does not throw here: the tokens are recorded whatever the
     /// budget says, the answer in hand is kept, and the gates that follow end the act.
     /// </summary>
-    private void RecordCallTokens(int tokens)
+    private void RecordCallTokens(LlmResponse resp)
     {
         if (_budget is null) return;
+        var tokens = resp.TokensUsed;
         try
         {
-            _budget.RecordTokens(tokens);
+            _budget.RecordTokens(tokens, resp.PromptTokens, resp.CompletionTokens, resp.CacheHitTokens);
         }
         catch (Orkeon.Domain.Autonomous.BudgetExhaustedException)
         {
@@ -1189,6 +1190,8 @@ public sealed partial class JsLlmFacade
                 var calls = _budget.CurrentTokenCalls;
                 LogActCallTokens(_logger, _agentName, tokens, _budget.CurrentTokensConsumed, _budget.MaxTokensConsumed,
                     calls, calls == 1 ? "call" : "calls");
+                if (_budget.MaxContextTokens != int.MaxValue)
+                    LogActCallContextTokens(_logger, _agentName, _budget.CurrentContextTokens, _budget.MaxContextTokens);
             }
         }
     }
@@ -1244,7 +1247,7 @@ public sealed partial class JsLlmFacade
             }
         }
 
-        RecordCallTokens(resp.TokensUsed);
+        RecordCallTokens(resp);
         var answer = RenderAnswer(resp);
         if (string.IsNullOrWhiteSpace(answer) || ProviderErrorOf(resp) is not null)
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(spent);
@@ -1259,6 +1262,12 @@ public sealed partial class JsLlmFacade
         Message = "act: agent '{Agent}' call used {Tokens} tokens, running sum {Sum}/{Limit} tokens over {Calls} {CallWord}")]
     static partial void LogActCallTokens(
         Microsoft.Extensions.Logging.ILogger logger, string agent, int tokens, int sum, int limit, int calls, string callWord);
+
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 5, Level = Microsoft.Extensions.Logging.LogLevel.Information,
+        Message = "act: agent '{Agent}' context counted once {Sum}/{Limit} contextTokens")]
+    static partial void LogActCallContextTokens(
+        Microsoft.Extensions.Logging.ILogger logger, string agent, int sum, int limit);
 
     [Microsoft.Extensions.Logging.LoggerMessage(
         EventId = 4, Level = Microsoft.Extensions.Logging.LogLevel.Warning,

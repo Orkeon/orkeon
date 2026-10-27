@@ -366,6 +366,71 @@ public sealed class JsLlmFacadeBudgetTests
         }
     }
 
+    // -- contextTokens: the context of a turn counted once (#224) --
+
+    private static LlmResponse ReadCall(string text, int prompt, int completion) => new()
+    {
+        Content = "",
+        RawResponseBody = ToolCallBody("echo_tool", "{\"text\":\"" + text + "\"}"),
+        PromptTokens = prompt,
+        CompletionTokens = completion,
+        TokensUsed = prompt + completion,
+    };
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public async Task ShouldSpendTheContextOncePlusTheCompletions_WhenATurnOfManyCallsRunsUnderContextTokens()
+    {
+        // Arrange: N = 6 calls on a context of C = 20 000 tokens, each read adding 100 to it
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var responses = new List<LlmResponse>();
+        for (var i = 0; i < 5; i++)
+            responses.Add(ReadCall("r" + i, 20_000 + (100 * i), 40));
+        responses.Add(new LlmResponse { Content = "Done.", RawResponseBody = null, PromptTokens = 20_500, CompletionTokens = 40, TokensUsed = 20_540 });
+        var provider = new SequencedProvider(responses.ToArray());
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = int.MaxValue, MaxContextTokens = 25_000 };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert: about C + the completions, not N x C - which a sum of 25 000 would have cut short
+        Assert.Equal("Done.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").IsUndefined());
+        Assert.Equal(6, provider.ChatCalls);
+        Assert.Equal(20_000 + 500 + (6 * 40), budget.CurrentContextTokens);
+        Assert.Equal(121_740, budget.CurrentTokensConsumed);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-224")]
+    [InlineData(100, int.MaxValue)]
+    [InlineData(int.MaxValue, 70)]
+    public async Task ShouldWrapUpTheSameWay_WhicheverMeasureSpendsTheBudget(int tokens, int contextTokens)
+    {
+        // Arrange: two reads, the second spending the sum (60 + 80 > 100) or the context (60 + 20 + 10 > 70)
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var provider = new SequencedProvider(new[]
+        {
+            ReadCall("a", 50, 10),
+            ReadCall("b", 70, 10),
+            new LlmResponse { Content = "Here is what the reads found.", RawResponseBody = null, PromptTokens = 90, CompletionTokens = 10, TokensUsed = 100 },
+        });
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = tokens, MaxContextTokens = contextTokens };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Equal("Here is what the reads found.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(3, provider.ChatCalls);
+        Assert.Equal(1, tool.CallCount);
+    }
+
     private sealed class RecordingTool : IBaseTool
     {
         public RecordingTool(string name) => Name = name;

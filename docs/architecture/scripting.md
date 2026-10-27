@@ -162,7 +162,15 @@ the size of the conversation nor what a provider bills with its cache. Each call
 next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
 calls`, Information).
 
-When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
+`budget({ contextTokens })` counts the context once (#224): each call adds its completion plus, when the
+provider reports cache hits (`cacheHitTokens`), the part of its prompt the cache did not serve, else what
+its prompt grew by since the run's previous call (never less than zero: a compacted context adds
+nothing). A turn of n calls on a context of c tokens spends about c plus its completions. A provider that
+reports no prompt and completion counts the call whole, as `tokens` does. Set alone, it leaves `tokens`
+uncapped; set with it, the first one spent ends the act, the same way. Each call also logs `act: agent
+'<name>' context counted once <sum>/<limit> contextTokens` when it is set.
+
+When the sum, or the context counted once, reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
 a final answer is returned as it is. The tool calls it asks for do not run: once the budget is spent no
 other tool runs, on the last iteration too, and the act ends with one last chat call that may call no
 tool, after a user turn telling the model its budget is spent and asking it to answer now with what it
@@ -173,7 +181,9 @@ are; Ollama, which has no such switch, is sent no tools. That answer is the act'
 no other wrap-up, and it is kept even when it ends after the wall-time limit. A warning logs that the
 budget ran out. When that last call fails, or answers nothing, the act rejects with
 `BudgetExhaustedError`, whose message names what it counted: `Token budget exhausted: <sum> tokens sent
-and received over <n> calls (limit <limit>)`. The other dimensions (tool calls, wall time, delegation
+and received over <n> calls (limit <limit>)`, or under `contextTokens` `Token budget exhausted: <n> context
+tokens (the growth or the uncached part of each prompt, plus every completion) over <n> calls (limit <limit>
+contextTokens)`; both are on the `tokens` dimension. The other dimensions (tool calls, wall time, delegation
 depth, spawns) still reject at the gate, and `maxIterations` still ends with `exhausted: true`.
 
 ## Child agents: `spawn_agent` and `ctx.spawnBackground`

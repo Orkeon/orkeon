@@ -219,9 +219,13 @@ assistant turn.
 under its semaphore and its `onError` policy. Neither gives the run a budget unless asked:
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (and the
 same `budget` in `crew.runAgent`'s options) bounds that run with the keys and values of
-`crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` in seconds or as `"5m"`,
+`crewBuilder().budget(...)` (`toolCalls`, `tokens`, `contextTokens`, `wallTime` in seconds or as `"5m"`,
 `delegationDepth`, `spawnedAgents`). `tokens` is a running sum of the prompt and completion of every
-call, the context counted again on each; once it is reached, `ctx.llm.act` makes one last call that may
+call, the context counted again on each. `contextTokens` counts the context once: each call's
+completion plus the uncached part of its prompt when the provider reports cache hits, else what the
+prompt grew by since the previous call, so a turn of n calls on a context of c tokens spends about c plus
+its completions, not n × c; set alone it leaves `tokens` uncapped, and a declarative autonomous crew
+refuses it. Once either is reached, `ctx.llm.act` makes one last call that may
 call no tool and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
 A spent dimension ends the run with `BudgetExhaustedError`,
 the error a crew's budget gives, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`) derives
@@ -320,7 +324,7 @@ each of them stated rather than silent.
 
 | Limit | Behaviour |
 |---|---|
-| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). With another process it is ignored, and said so: the run logs a warning naming the method. |
+| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`; `contextTokens` is refused there, the strategy counting each finished task's tokens, not each call's prompt). With another process it is ignored, and said so: the run logs a warning naming the method. |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |

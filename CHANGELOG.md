@@ -17,6 +17,20 @@ produced the payload streamed inline, so the script skips its own print. A backg
 opens one receipt per agent request and per crew run in that work's async flow, and `ConsoleLlmDeltaSink` records
 each turn's inline decision into it, so commands running at once each read their own.
 
+### Added — `budget({ contextTokens })`: a token budget that counts the context once (#224)
+
+`budget({ tokens })` sums the prompt and the completion of every call, so a turn pays its whole context again at each
+call. `contextTokens`, a new key beside it (`crewBuilder().budget(...)` of a scripted run, the `budget` option of
+`crew.runAgent` and `ctx.delegate`), counts each call's completion plus, when the provider reports cache hits, the
+uncached part of its prompt, else what the prompt grew by since the run's previous call: a turn of n calls on a context
+of c tokens spends about c plus its completions, not n × c. `tokens` keeps its meaning and stays the default; set
+alone, `contextTokens` leaves it uncapped. Its exhaustion is that of `tokens` — the `tokens` dimension, the #218
+wrap-up with `budgetExhausted: true` — and its message names the measure: `Token budget exhausted: <n> context tokens
+(...) over <n> calls (limit <limit> contextTokens)`. A declarative `process("autonomous")` crew, which counts each
+finished task's tokens, refuses the key. `AgentExecutionBudget` gains `MaxContextTokens`, `CurrentContextTokens` and
+`RecordTokens(tokens, promptTokens, completionTokens, cacheHitTokens)`. The refusal of an unknown run-option key now
+lists `contextTokens` among the dimensions.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

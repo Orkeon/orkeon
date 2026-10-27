@@ -24,10 +24,21 @@ public sealed class AgentExecutionBudget
 
     /// <summary>
     /// Maximum running sum of tokens the agent may consume: the prompt plus the completion of every
-    /// call recorded through <see cref="RecordTokens"/> or <see cref="RecordChildTokens"/>. A call that resends its whole context counts
+    /// call recorded through <see cref="RecordTokens(int)"/> or <see cref="RecordChildTokens"/>. A call that resends its whole context counts
     /// that context again, so a conversation of n calls pays its context about n times.
     /// </summary>
     public int MaxTokensConsumed { get; init; } = 16_000;
+
+    /// <summary>
+    /// Maximum tokens the agent may consume with its context counted once (#224): for each call recorded
+    /// through <see cref="RecordTokens(int, int?, int?, int?)"/>, its completion plus, when the provider
+    /// reports cache hits, the part of its prompt the cache did not serve, else what its prompt grew by
+    /// since this budget's previous call. A turn of n calls on a context of c tokens spends about c plus
+    /// its completions, not n times c. A call recorded without that breakdown counts whole, as in
+    /// <see cref="MaxTokensConsumed"/>. Exhaustion is reported on <see cref="BudgetDimension.Tokens"/>, as
+    /// the running sum's. Default: no limit.
+    /// </summary>
+    public int MaxContextTokens { get; init; } = int.MaxValue;
 
     /// <summary>Maximum sub-agents this agent may spawn.</summary>
     public int MaxSpawnedAgents { get; init; } = 3;
@@ -63,6 +74,8 @@ public sealed class AgentExecutionBudget
     private int _delegationDepth;
     private int _tokensConsumed;
     private int _tokenCalls;
+    private int _contextTokens;
+    private int _lastPromptTokens;
     private int _spawnedAgents;
     private readonly TimeProvider _timeProvider = TimeProvider.System;
     private readonly long _startTimestamp = TimeProvider.System.GetTimestamp();
@@ -80,7 +93,10 @@ public sealed class AgentExecutionBudget
     /// <summary>Current tokens consumed.</summary>
     public int CurrentTokensConsumed => _tokensConsumed;
 
-    /// <summary>Number of calls recorded through <see cref="RecordTokens"/>.</summary>
+    /// <summary>Current tokens consumed with the context counted once (<see cref="MaxContextTokens"/>).</summary>
+    public int CurrentContextTokens => _contextTokens;
+
+    /// <summary>Number of calls recorded through <see cref="RecordTokens(int)"/>.</summary>
     public int CurrentTokenCalls => _tokenCalls;
 
     /// <summary>Current number of spawned agents.</summary>
@@ -151,6 +167,7 @@ public sealed class AgentExecutionBudget
         _toolCalls >= MaxToolCalls ||
         _delegationDepth > MaxDelegationDepth ||
         _tokensConsumed >= MaxTokensConsumed ||
+        _contextTokens >= MaxContextTokens ||
         _spawnedAgents >= MaxSpawnedAgents ||
         Elapsed >= MaxWallTime ||
         ChargedTo?.IsExhausted == true;
@@ -187,12 +204,35 @@ public sealed class AgentExecutionBudget
     /// it throws: they were sent and received, and the answer they paid for is kept.
     /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
-    public void RecordTokens(int tokens) => RecordTokensOn(ChainOf(this), tokens);
+    public void RecordTokens(int tokens) => RecordTokensOn(ChainOf(this), tokens, tokens);
+
+    /// <summary>
+    /// Records one call as <see cref="RecordTokens(int)"/> does - <paramref name="tokens"/>, its prompt plus
+    /// its completion, on the running sum - and its share of the context counted once
+    /// (<see cref="MaxContextTokens"/>): <paramref name="completionTokens"/> plus the uncached part of
+    /// <paramref name="promptTokens"/> when <paramref name="cacheHitTokens"/> is more than zero, else what
+    /// the prompt grew by since this budget's previous call. The growth is read on this budget alone, the
+    /// one the conversation records on; every budget it charges is charged the same share. Without a
+    /// prompt or a completion count the call counts <paramref name="tokens"/> whole. Throws as
+    /// <see cref="RecordTokens(int)"/> does.
+    /// </summary>
+    /// <exception cref="BudgetExhaustedException"/>
+    public void RecordTokens(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens)
+    {
+        var context = tokens;
+        if (promptTokens is { } prompt && completionTokens is { } completion)
+        {
+            var previous = Interlocked.Exchange(ref _lastPromptTokens, prompt);
+            var counted = cacheHitTokens is > 0 ? prompt - cacheHitTokens.Value : prompt - previous;
+            context = Math.Max(0, counted) + Math.Max(0, completion);
+        }
+        RecordTokensOn(ChainOf(this), tokens, context);
+    }
 
     /// <summary>
     /// Records the tokens a child budget's agent reported (<see cref="CreateChildBudget"/>) on the child,
     /// on this budget and on every budget either charges, once each: a budget the two chains share - the
-    /// child carries this one's charge - counts the tokens once. Throws as <see cref="RecordTokens"/>
+    /// child carries this one's charge - counts the tokens once. Throws as <see cref="RecordTokens(int)"/>
     /// does, this chain's refusals before the child's; the tokens stay recorded whatever it throws.
     /// </summary>
     /// <exception cref="BudgetExhaustedException"/>
@@ -205,7 +245,7 @@ public sealed class AgentExecutionBudget
             if (!budgets.Contains(budget))
                 budgets.Add(budget);
         }
-        RecordTokensOn(budgets, tokens);
+        RecordTokensOn(budgets, tokens, tokens);
     }
 
     /// <summary>
@@ -220,18 +260,22 @@ public sealed class AgentExecutionBudget
     }
 
     /// <summary>
-    /// Adds <paramref name="tokens"/> and one call to each of <paramref name="budgets"/>, then throws the
-    /// first token refusal among them, else the first spent wall time.
+    /// Adds <paramref name="tokens"/> to the running sum, <paramref name="context"/> to the context counted
+    /// once, and one call to each of <paramref name="budgets"/>, then throws the first token refusal among
+    /// them, else the first spent wall time.
     /// </summary>
-    private static void RecordTokensOn(List<AgentExecutionBudget> budgets, int tokens)
+    private static void RecordTokensOn(List<AgentExecutionBudget> budgets, int tokens, int context)
     {
         BudgetExhaustedException? refusal = null;
         foreach (var budget in budgets)
         {
             var consumed = Interlocked.Add(ref budget._tokensConsumed, tokens);
+            var counted = Interlocked.Add(ref budget._contextTokens, context);
             var calls = Interlocked.Increment(ref budget._tokenCalls);
             if (consumed > budget.MaxTokensConsumed)
                 refusal ??= budget.TokensExhausted(consumed, calls);
+            else if (counted > budget.MaxContextTokens)
+                refusal ??= budget.ContextTokensExhausted(counted, calls);
         }
         if (refusal is not null)
             throw refusal;
@@ -243,6 +287,11 @@ public sealed class AgentExecutionBudget
     private BudgetExhaustedException TokensExhausted(int consumed, int calls) => new(
         BudgetDimension.Tokens,
         $"Token budget exhausted: {consumed} tokens sent and received over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxTokensConsumed})");
+
+    /// <summary>The refusal of a spent context budget (<see cref="MaxContextTokens"/>), naming what it counted.</summary>
+    private BudgetExhaustedException ContextTokensExhausted(int counted, int calls) => new(
+        BudgetDimension.Tokens,
+        $"Token budget exhausted: {counted} context tokens (the growth or the uncached part of each prompt, plus every completion) over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxContextTokens} contextTokens)");
 
     /// <summary>Records a sub-agent spawn and throws if the spawn limit is exceeded.</summary>
     /// <exception cref="BudgetExhaustedException"/>
@@ -290,6 +339,8 @@ public sealed class AgentExecutionBudget
                 $"Tool-call budget exhausted ({_toolCalls}/{MaxToolCalls}).");
         if (_tokensConsumed >= MaxTokensConsumed)
             throw TokensExhausted(_tokensConsumed, _tokenCalls);
+        if (_contextTokens >= MaxContextTokens)
+            throw ContextTokensExhausted(_contextTokens, _tokenCalls);
         if (_delegationDepth > MaxDelegationDepth)
             throw new BudgetExhaustedException(
                 BudgetDimension.DelegationDepth,
@@ -355,6 +406,7 @@ public sealed class AgentExecutionBudget
         MaxDelegationDepth = Math.Max(0, MaxDelegationDepth - _delegationDepth - 1),
         MaxWallTime = RemainingWallTime(),
         MaxTokensConsumed = Math.Max(100, Remaining(static b => b.MaxTokensConsumed - b._tokensConsumed)),
+        MaxContextTokens = Math.Max(100, Remaining(static b => b.MaxContextTokens - b._contextTokens)),
         MaxSpawnedAgents = Math.Max(0, Remaining(static b => b.MaxSpawnedAgents - b._spawnedAgents)),
         TimeProvider = _timeProvider,
         ChargedTo = ChargedTo

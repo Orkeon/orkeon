@@ -1405,6 +1405,10 @@ Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!
 [ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.CurrentTokenCalls.get -> int
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.CurrentContextTokens.get -> int
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.MaxContextTokens.get -> int
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.MaxContextTokens.init -> void
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.RecordTokens(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens) -> void
 Orkeon.Domain.Tools.IBaseTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
 Orkeon.Domain.Configuration.CrewConfiguration.Budget.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget?
 Orkeon.Domain.Configuration.CrewConfiguration.Budget.init -> void
