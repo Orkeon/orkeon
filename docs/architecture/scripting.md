@@ -397,7 +397,9 @@ and from the binary), then `PATH`. When nothing is found the error lists every p
 after `dotnet tool install -g Orkeon.Scripting.Cli` a `.ork.ts` script runs only once esbuild is
 on the machine: `npm install -g esbuild` (it lands on `PATH`), or a binary you point
 `ORKEON_ESBUILD_PATH` or `EsbuildPath` at. Nothing is downloaded on first run. YAML crews never
-need it.
+need it. The `Orkeon.Scripting` NuGet package, which runs a crew in a .NET application's own
+process ([Hosting — running a crew in-process](../reference/hosting.md#running-a-crew-in-process)),
+does not ship it either and finds it the same way.
 
 A script may open with `/// <reference orkeon-script="1.0" />`, or with `// @orkeon-script 1.0`,
 the form `tsc` accepts: it rejects the reference form (TS1084) and then skips its semantic pass, so a

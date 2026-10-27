@@ -461,9 +461,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    en-tête ; après le pack, il exécute aussi `scripts/check-package-closure.py` sur les
    nupkgs eux-mêmes.
 7. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **les neuf paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pousse **les dix paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
+   `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
    `Orkeon.Hosting.Aspire`, l'ombrelle en premier puisque les autres en dépendent, via
    Trusted Publishing — et chaque projet packable sur GitHub Packages, les paquets et un
    SBOM CycloneDX couverts par une attestation de provenance de build ; voir

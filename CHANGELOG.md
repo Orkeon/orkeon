@@ -53,6 +53,21 @@ entry assembly's version with the channel `unknown`. `orkeon-cli.d.ts` declares 
 `orkeon typings` writes it. The reader of the install channel moved from the `orkeon` tool to `Orkeon.Hosting`, where
 both `orkeon doctor` and `orkeon-repl` read it.
 
+### Added — the `Orkeon.Scripting` package runs a `crew.ork.ts` inside a .NET application (#229)
+
+`Orkeon.Scripting` is published again, as an opt-in of the NuGet.org lineup (ten packages). Its wrapper
+(`src/packaging/Orkeon.Scripting/`) embeds `Orkeon.Scripting` (the Jint host, the esbuild bundler driver, the DSL
+typings), `Orkeon.Hosting` and `Orkeon.Constants.Cli`, and depends on `Orkeon`, `Orkeon.Tools` and
+`Orkeon.Tools.Embeddings.Local`; it stays out of the umbrella for that weight. `Orkeon.Hosting` gains the entry point:
+`services.AddOrkeonScripting(options => ...)` registers `ICrewScriptRunner`, whose `RunAsync(path, input, ct)` runs a
+crew definition (a `.ork.ts` that hands its crew off, a `crew.yaml`, a crew directory) on the runner bootstrap of
+`orkeon run` (`RunnerExecution`) and returns its `CrewOutput`; a run that cannot start throws
+`CrewScriptRunException` with the line `orkeon run` would print. `CrewScriptRunnerOptions` carries the `orkeon run`
+options (`SettingsPath`, `Mounts`, `MountIds`, `AllowExternalMounts`, `LlmProfile`) plus `ConfigureServices`,
+`ConfigureLogging` and `Diagnostics`. esbuild is not shipped: it is found as the `orkeon` tool finds it. Which crews
+need `orkeon-host` instead is in `docs/architecture/service-host.md` §8. `scripts/check-package-closure.py` now checks
+a package against everything its lineup dependencies provide, not the umbrella alone.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

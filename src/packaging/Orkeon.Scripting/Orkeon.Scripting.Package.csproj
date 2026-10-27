@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- #229 wrapper: packs the scripting layer as the public `Orkeon.Scripting` package, so a
+       .NET application runs a crew.ork.ts in its own process (ICrewScriptRunner,
+       services.AddOrkeonScripting()) instead of starting the `orkeon` tool.
+
+       Embedded: Orkeon.Scripting (the Jint host, the esbuild bundler driver, the DSL typings as
+       the embedded resource Orkeon.Scripting.Typings.orkeon.d.ts), Orkeon.Hosting (the runner
+       bootstrap `orkeon run` and orkeon-host build on, and the in-process runner) and
+       Orkeon.Constants.Cli, which Hosting references and no other package carries.
+
+       Kept out of the `Orkeon` umbrella for the reason every opt-in is: what it forces on a
+       consumer. Orkeon.Hosting composes every built-in tool family, so it depends on
+       `Orkeon.Tools` (database drivers, MailKit, PDF and spreadsheet libraries) and on
+       `Orkeon.Tools.Embeddings.Local` (a pre-release SmartComponents dependency), plus Jint,
+       Microsoft.Extensions.Hosting and CommandLineParser. Those three lineup packages are
+       nuspec dependencies, not embedded copies: a consumer adding `Orkeon.Scripting` restores
+       them, a consumer of `Orkeon` alone never does. esbuild itself is not shipped - the same
+       stance as the `orkeon` tool (docs/architecture/scripting.md). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Run Orkeon crews written in the TypeScript DSL (crew.ork.ts) inside a .NET application: the Jint scripting host, the esbuild bundler driver, the DSL typings and the runner bootstrap of `orkeon run` - services.AddOrkeonScripting() then ICrewScriptRunner.RunAsync(path). esbuild must be on the machine (PATH, ORKEON_ESBUILD_PATH or Orkeon:Scripting:Toolchain:EsbuildPath).</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Scripting;DSL;TypeScript;Jint</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssemblies</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\scripting\Orkeon.Scripting\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Cli\Orkeon.Constants.Cli.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+    <ProjectReference Include="..\Orkeon.Tools\Orkeon.Tools.csproj" />
+    <!-- The wrapped project, not its wrapper: a nuspec dependency takes the restore name of the
+         project referenced, and the wrapper's is Orkeon.Tools.Embeddings.Local.Package (its
+         public id is applied at pack time only). The wrapped project restores as
+         Orkeon.Tools.Embeddings.Local, the id the lineup publishes - scripts/check-package-closure.py
+         accepts this reference for that reason. -->
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the embedded assemblies that none of the three dependencies carries.
+       Kept in sync by scripts/check-package-closure.py. -->
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" />
+    <PackageReference Include="Jint" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssemblies" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And ('%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Scripting'
+                                      Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Hosting'
+                                      Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Constants.Cli')" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The public PackageId is the wrapped assembly's name, which is also the real project's
+       restore name: two projects may not share a restore identity in one solution, so the id
+       is applied at pack time only. -->
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Scripting</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

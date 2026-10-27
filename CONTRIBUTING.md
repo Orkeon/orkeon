@@ -438,9 +438,9 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    whose `PublicAPI.Unshipped.txt` files are not header-only; after packing, it also runs
    `scripts/check-package-closure.py` against the nupkgs themselves.
 7. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
-   pushes the **nine-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pushes the **ten-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
+   `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
    `Orkeon.Hosting.Aspire`, the umbrella first because the others depend on it, through
    Trusted Publishing — and every packable to GitHub Packages, the packages and a
    CycloneDX SBOM covered by a build-provenance attestation; see

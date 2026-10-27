@@ -416,7 +416,10 @@ endroit essayé ; `orkeon doctor` le signale dans la vérification `esbuild`.
 après `dotnet tool install -g Orkeon.Scripting.Cli`, un script `.ork.ts` ne tourne qu'une fois
 esbuild présent sur la machine — `npm install -g esbuild` (il arrive sur le `PATH`), ou un
 binaire désigné par `ORKEON_ESBUILD_PATH` ou `EsbuildPath`. Rien n'est téléchargé au premier
-lancement. Les crews YAML n'en ont jamais besoin.
+lancement. Les crews YAML n'en ont jamais besoin. Le paquet NuGet `Orkeon.Scripting`, qui exécute
+un crew dans le processus d'une application .NET
+([Hosting — exécuter un crew dans le processus](../reference/hosting.md#exécuter-un-crew-dans-le-processus)),
+ne le livre pas non plus et le trouve de la même façon.
 
 Un script peut commencer par `/// <reference orkeon-script="1.0" />`, ou par
 `// @orkeon-script 1.0`, la forme que `tsc` accepte : il rejette la forme référence (TS1084) puis

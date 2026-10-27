@@ -34,6 +34,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Tools` | The eight built-in tool families (`Analysis`, `Code`, `Data`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) in one nupkg. Separate from `Orkeon` **only for dependency weight**: the Data tools pull database drivers, PDF and spreadsheet libraries, the e-mail tools MailKit and MimeKit — dependencies a consumer who never uses them should not inherit. Depends on `Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
+| `Orkeon.Scripting` | Runs a `crew.ork.ts` inside a .NET application, without starting a process (#229): `services.AddOrkeonScripting()` then `ICrewScriptRunner.RunAsync(path)` — see [Orkeon.Hosting](hosting.md#running-a-crew-in-process). Embeds `Orkeon.Scripting` (the Jint host, the esbuild bundler driver, the DSL typings as an embedded resource), `Orkeon.Hosting` (the runner bootstrap `orkeon run` and `orkeon-host` share) and `Orkeon.Constants.Cli`. Separate from `Orkeon` because the runner host composes every built-in tool family: it depends on `Orkeon`, `Orkeon.Tools` and `Orkeon.Tools.Embeddings.Local` (so on their database drivers, MailKit and the SmartComponents pre-release), plus Jint, `Microsoft.Extensions.Hosting` and `CommandLineParser`. esbuild is not shipped, as for the tool. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
 | `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11 and pushed there with `1.0.0-rc.4`: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
@@ -41,11 +42,14 @@ runtimes, a pre-release upstream).
 
 ### How the packaging projects are built
 
-- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — six
+- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — seven
   of them: the `Orkeon` and `Orkeon.Tools` umbrellas, plus the `Orkeon.Rag.Onnx.Package`,
-  `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package` and
-  `Orkeon.Hosting.Aspire.Package` **wrappers**, which pack the four opt-in assemblies with a
-  nuspec dependency on the `Orkeon` umbrella. The remaining lineup packages are packed
+  `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package`,
+  `Orkeon.Hosting.Aspire.Package` and `Orkeon.Scripting.Package` **wrappers**, which pack the
+  opt-in assemblies with a nuspec dependency on the `Orkeon` umbrella — and, for
+  `Orkeon.Scripting`, on `Orkeon.Tools` and `Orkeon.Tools.Embeddings.Local` too. A dependency on
+  a wrapper is spelled by referencing the project it wraps, whose restore name is the public id
+  (the wrapper's own is `<id>.Package`); the closure gate accepts exactly that reference. The remaining lineup packages are packed
   straight from their own project: `Orkeon.Rag.Onnx.Model` (`src/rag/`), the `orkeon` tool
   (`src/scripting/Orkeon.Scripting.Cli`) and the analyzer (`src/analyzers/Orkeon.Compliance.Vfs`).
   The embedded library projects themselves
@@ -76,8 +80,10 @@ The following PackageIds are **no longer packed** (`IsPackable=false`): `Orkeon.
 `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Abstractions`,
 `Orkeon.Tools.Abstractions` and the eight `Orkeon.Tools.<family>` projects, `Orkeon.Cli`,
 `Orkeon.Cli.Abstractions`, `Orkeon.Cli.Commands.Scripting`, `Orkeon.Cli.TerminalGui`,
-`Orkeon.Scripting`, `Orkeon.Hosting`, `Orkeon.Plugins`. Those that the `Orkeon` and
-`Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id.
+`Orkeon.Hosting`, `Orkeon.Plugins`. Those that the `Orkeon` and
+`Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id;
+`Orkeon.Hosting` ships inside the `Orkeon.Scripting` package. The `Orkeon.Scripting` id itself is
+in the lineup again since #229, as the opt-in that carries the scripting layer.
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and

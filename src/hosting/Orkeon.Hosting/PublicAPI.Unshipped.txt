@@ -36,3 +36,30 @@ static Orkeon.Hosting.RunnerExecution.EnsureReservedRootsAreFree(System.Collecti
 static Orkeon.Hosting.RunnerExecution.EnsureVirtualRootsAreUnique(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, System.IO.TextWriter! error) -> bool
 static Orkeon.Hosting.RunnerExecution.RegisterGracefulShutdown(System.Threading.CancellationTokenSource! cts, System.IO.TextWriter! error) -> System.IDisposable!
 static Orkeon.Hosting.RunnerSettings.ResolveSettingsPath(string? explicitPath, string! configDir, System.IO.TextWriter? warnings) -> string?
+Orkeon.Hosting.CrewScriptRunException
+Orkeon.Hosting.CrewScriptRunException.CrewScriptRunException() -> void
+Orkeon.Hosting.CrewScriptRunException.CrewScriptRunException(string! message) -> void
+Orkeon.Hosting.CrewScriptRunException.CrewScriptRunException(string! message, System.Exception! innerException) -> void
+Orkeon.Hosting.CrewScriptRunner
+Orkeon.Hosting.CrewScriptRunner.CrewScriptRunner(Orkeon.Hosting.CrewScriptRunnerOptions? options = null) -> void
+Orkeon.Hosting.CrewScriptRunner.RunAsync(string! crewPath, Orkeon.Application.Interfaces.Services.CrewInput? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
+Orkeon.Hosting.CrewScriptRunnerOptions
+Orkeon.Hosting.CrewScriptRunnerOptions.AllowExternalMounts.get -> bool
+Orkeon.Hosting.CrewScriptRunnerOptions.AllowExternalMounts.set -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.ConfigureLogging.get -> System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>?
+Orkeon.Hosting.CrewScriptRunnerOptions.ConfigureLogging.set -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.ConfigureServices.get -> System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>?
+Orkeon.Hosting.CrewScriptRunnerOptions.ConfigureServices.set -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.CrewScriptRunnerOptions() -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.Diagnostics.get -> System.IO.TextWriter?
+Orkeon.Hosting.CrewScriptRunnerOptions.Diagnostics.set -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.LlmProfile.get -> string?
+Orkeon.Hosting.CrewScriptRunnerOptions.LlmProfile.set -> void
+Orkeon.Hosting.CrewScriptRunnerOptions.MountIds.get -> System.Collections.Generic.IList<string!>!
+Orkeon.Hosting.CrewScriptRunnerOptions.Mounts.get -> System.Collections.Generic.IList<string!>!
+Orkeon.Hosting.CrewScriptRunnerOptions.SettingsPath.get -> string?
+Orkeon.Hosting.CrewScriptRunnerOptions.SettingsPath.set -> void
+Orkeon.Hosting.CrewScriptRunnerServiceCollectionExtensions
+Orkeon.Hosting.ICrewScriptRunner
+Orkeon.Hosting.ICrewScriptRunner.RunAsync(string! crewPath, Orkeon.Application.Interfaces.Services.CrewInput? input = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Services.CrewOutput!>!
+static Orkeon.Hosting.CrewScriptRunnerServiceCollectionExtensions.AddOrkeonScripting(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Orkeon.Hosting.CrewScriptRunnerOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
