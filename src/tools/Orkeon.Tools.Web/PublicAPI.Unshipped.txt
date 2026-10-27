@@ -5,3 +5,18 @@ Orkeon.Tools.Web.GitHubRequest.Base.get -> string?
 Orkeon.Tools.Web.GitHubRequest.Base.init -> void
 Orkeon.Tools.Web.GitHubRequest.Head.get -> string?
 Orkeon.Tools.Web.GitHubRequest.Head.init -> void
+override Orkeon.Tools.Web.GitHubTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.GitHubTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.HttpApiTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+override Orkeon.Tools.Web.WebSearchTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Tools.Web.GitHubToolOptions
+Orkeon.Tools.Web.GitHubToolOptions.GitHubToolOptions() -> void
+Orkeon.Tools.Web.GitHubToolOptions.Token.get -> string?
+Orkeon.Tools.Web.GitHubToolOptions.Token.set -> void
+Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.get -> string!
+Orkeon.Tools.Web.GitHubToolOptions.TokenVariable.set -> void
+const Orkeon.Tools.Web.GitHubToolOptions.SectionName = "Orkeon:Tools:GitHub" -> string!
+const Orkeon.Tools.Web.GitHubToolOptions.DefaultTokenVariable = "GITHUB_TOKEN" -> string!
+const Orkeon.Tools.Web.GitHubToolOptions.FallbackTokenVariable = "GH_TOKEN" -> string!
+static Orkeon.Tools.Web.GitHubToolOptions.ResolveToken(Microsoft.Extensions.Configuration.IConfiguration? configuration, System.Func<string!, string?>! readEnvironment) -> string?
+override Orkeon.Tools.Web.GitHubTool.Description.get -> string!

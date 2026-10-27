@@ -132,3 +132,11 @@ static Orkeon.Analysis.Abstractions.Interfaces.BuildValidation.operator ==(Orkeo
 Orkeon.Analysis.Abstractions.Editing.FileEditLocks
 static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.Release(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId) -> void
 static Orkeon.Analysis.Abstractions.Editing.FileEditLocks.TryAcquire(System.Collections.Generic.IReadOnlyList<string!>! paths, string! holderId, out string? heldPath) -> bool
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicy.get -> int
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicy.init -> void
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicyPaths.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.DTOs.Tools.IndexFilterStats.ExcludedByPolicyPaths.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicy.get -> int
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicy.init -> void
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicyPaths.get -> System.Collections.Immutable.ImmutableArray<string!>
+Orkeon.Analysis.Abstractions.Interfaces.DiscoveryFilterStats.ExcludedByPolicyPaths.init -> void

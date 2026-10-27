@@ -33,12 +33,24 @@ internal static class RegisteredTools
     /// <summary>
     /// A fresh folder with an empty <c>appsettings.json</c>: RaggableTree stays on, as by default, so
     /// the analysis tools are registered; nothing resolves its embedding model until a tool runs.
+    /// The github tool is handed a stand-in credential so its description, which names a missing one,
+    /// does not depend on the GITHUB_TOKEN or GH_TOKEN of the machine that runs the test.
     /// </summary>
     internal static string CreateRoot(string prefix)
     {
         var root = Path.Combine(Path.GetTempPath(), prefix + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        File.WriteAllText(Path.Combine(root, "appsettings.json"), "{ }");
+        File.WriteAllText(Path.Combine(root, "appsettings.json"), GitHubStandInSettings());
         return root;
+    }
+
+    private static string GitHubStandInSettings()
+    {
+        var github = new Dictionary<string, string> { [nameof(Orkeon.Tools.Web.GitHubToolOptions.Token)] = "typings-stand-in" };
+        var tree = new Dictionary<string, object>
+        {
+            ["Orkeon"] = new Dictionary<string, object> { ["Tools"] = new Dictionary<string, object> { ["GitHub"] = github } },
+        };
+        return System.Text.Json.JsonSerializer.Serialize(tree);
     }
 }

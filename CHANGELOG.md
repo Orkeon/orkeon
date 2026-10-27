@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — one screen per thread in the split-pane console; ended tasks stay listed
+
+The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each
+task have a screen of their own, and the recipient's screen is the one displayed: selecting a task in the list
+switches the screen, a line a task writes lands on its own screen, opened at its first line, and a tool-call
+question shows on the displayed screen and is recorded once in the asking task's screen. The `[t1] ` ticket prefix is
+gone from the split-pane console (the screen says whose line it is; a crew label stays) and is kept in plain mode,
+which is unchanged. A task's end line (`✓ [t1] …`, which names the task) and the output of its command's `completed`
+land on `main`. Ended tasks are no longer dropped at once: they stay listed, after the live tasks, with their
+outcome and their screen until the host forgets them (retention), and a recipient that ends stays the recipient;
+`@<task> finished · recipient is main` is printed only when the host forgets that task. `Enter` on a task row still
+prints the task's detail, now on the displayed screen, and sends nothing. The public `IThreadedConsole` interface
+and the `ConsoleThread` ambient of `Orkeon.Cli.Abstractions` carry the thread to a console that separates threads; a
+console that does not implement it gets today's output.
+
+### Added — scripted commands carry a group, and `/help` prints one block per group (#214)
+
+`defineCommand` and `defineAsyncCommand` take an optional `group` (`^[a-z][a-z0-9-]*$`); when it is absent, the
+group is the folder holding the `*.cmd.ts` (`/cli-commands/session/clear.cmd.ts` → `session`), none at the mount
+root of the configured directory that found it. `/help` prints one `[<group>]` block per group in registration order, `(no group)` last; the runner's own
+commands (`ps`, `inspect`, `result`, `cancel`, `help-cmd`) are in `[runner]`, and `help-cmd <name>` names the group
+on its first line. `IInteractiveCommand` gains a default member `string? Group => null`, `ValidationFailure` gains
+`InvalidGroup`.
+
+### Changed — a built-in script extension is readable; writes and execution stay refused (#215)
+
+A plain read (`FileAccessRights.Read`) of `.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs` and `.wsf` is allowed:
+`file_read`, `node_read`, `grep` and the index read the project's scripts as they read its sources. Writes,
+creations, deletions and command targets on them stay refused; binaries (`.exe`, `.dll`, …) and the extensions of
+`AdditionalBlockedExtensions` still refuse reads. `PathSecurity:BlockReadsOfBlockedExtensions: true` restores the
+old refusal. New `IPathValidator.ValidatePath(path, requiredRight, workspaceRoot)` overload, strict by default for
+any other implementer.
+
+### Fixed — one refused file no longer fails `index_codebase` (#215)
+
+The discovery skips a file the VFS refuses instead of failing the whole index; the skipped files are reported in
+`filter_stats.excluded_by_policy` and `excluded_by_policy_paths`.
+
+### Fixed — `shell_command` reaches a private git remote through the keyring and the ssh agent (#216)
+
+The shell's environment allow-list passes `XDG_RUNTIME_DIR` and `SSH_AUTH_SOCK` on, so the ssh agent works from a
+command; the process-isolation twin list follows. The session bus (`DBUS_SESSION_BUS_ADDRESS`, which `gh`'s keyring
+credential helper needs) reaches an unconfined shell and the code sandbox, but a confined one (Bubblewrap, Seatbelt,
+AppContainer) only with `Orkeon:Tools:Shell:Environment:SessionBus: true`, logged as a warning at start: through the
+bus a command can start a process outside the sandbox and read every keyring secret. Under Bubblewrap this happens
+only with `Confinement:AllowNetwork`, and only the socket files themselves are bound (never the whole runtime
+directory). LLM API keys and every other variable stay dropped; variable names compare case-sensitively except on
+Windows.
+The optional `Orkeon:Tools:Shell:Environment:Propagate` list adds variable names to both lists (shell and code sandbox);
+a name starting with `ORKEON_`, containing a secret word (`KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL`,
+`AUTH`), invalid, or whose value carries URL credentials (`scheme://user:pass@`) is dropped with a warning that never
+shows the value, a built-in one is ignored, and under Bubblewrap an added value passes
+whatever the network while no path it names is bound.
+
+### Changed — a spent token budget ends `act` with a last answer instead of losing the turn (#218)
+
+A spent `budget({ tokens })` ends `ctx.llm.act` with one last call that declares the tools under `ToolMode.None` (no tool runs once the budget is
+spent, on the last iteration too) and whose answer resolves with
+`budgetExhausted: true`, instead of rejecting and dropping the turn; a failing wrap-up still rejects with
+`BudgetExhaustedError`. The budget stays a running sum of prompt plus completion of every call, now documented as
+such, and its message reads `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
+Each act call logs the running sum next to the limit; a wrap-up that ends past the wall time keeps its answer.
+`ToolMode.None` sends the tools with `tool_choice: none` on Anthropic, and no tools to Ollama. An autonomous crew
+spends its own budget, set by YAML `budget:` (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`,
+`spawnedAgents`), `crewBuilder().budget()` or `CrewBuilder.Budget` — no token or wall-time cap by default, a budget
+on another process refused — and charges its direct executions to it as it does delegated work, keeping the output
+of the work that passes it; a child's tokens count once per budget.
+
+### Fixed — `github`, `http_api`, `rag_eval`, `web_search` and MCP tools declare their access (#219)
+
+`IBaseTool.AccessFor(arguments)` gives the access class per call, defaulting to `Access`. The `github` read actions
+and `http_api`'s `GET`, `HEAD` and `OPTIONS` are reads, allowed in `plan` mode; their writes stay `Execute`.
+`rag_eval` and `web_search` are reads. An MCP tool follows its server's `readOnlyHint` annotation, and stays
+`Unspecified` (fail-closed) when the server sends none.
+
+### Added — the `github` tool receives a token (#222)
+
+The tool reads its token at registration from `Orkeon:Tools:GitHub:Token`, then from the variable
+`Orkeon:Tools:GitHub:TokenVariable` names (default `GITHUB_TOKEN`), then `GH_TOKEN`. The token is masked in results,
+errors and logs, and set on each request, never on the HTTP client the web tools share; without one, the tool's description says where to set it.
+
+### Fixed — an async `completed()` is typed `void | Promise<void>` (#220)
+
+The drain of `defineAsyncCommand` already awaited a returned promise; the typings and the scripting guide now say so,
+and that a rejection prints `Error in completed('<name>'): …` and reports a completion failure.
+
+### Added — a self-relaunching driver keeps its chain depth (#221)
+
+`runCrewAsync(name, input, { chain: "continue" })`, called from a command's own `completed`, keeps the new instance
+at its parent's depth, so a driver that loops batch after batch is no longer stopped by `MaxChainDepth`; outside a
+`completed` the option has no effect. `inspect` shows an
+instance's depth, and the refusal reads `chain depth N reached (MaxChainDepth N, /<command>)`. `commands.post` now
+counts in the depth too (one level per post, refused at the limit with the same catchable error), and a command
+replays only the completions of its own instances: a sibling command of the same file no longer runs another
+command's `completed`.
+
 ### Fixed — a mouse selection in the TUI's transcript scrolls when dragged past an edge
 
 Dragging a selection to the top or bottom of the transcript stopped at the visible edge, the rows beyond out of reach.

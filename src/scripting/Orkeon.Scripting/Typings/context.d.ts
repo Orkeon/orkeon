@@ -200,6 +200,13 @@ declare global {
         readonly interrupted?: true;
         /** Set when `maxIterations` was reached without a final answer. */
         readonly exhausted?: true;
+        /**
+         * Set when the token budget (`budget({ tokens })`) ran out during the loop: the act then
+         * made one last call with no tools, telling the model its budget was spent, and `output` is
+         * that answer, cut short. When that last call fails or answers nothing, the act rejects with
+         * `BudgetExhaustedError` instead.
+         */
+        readonly budgetExhausted?: true;
     }
 
     interface Message {

@@ -541,6 +541,24 @@ public class InputNavigationStateMachineTests
         Assert.Null(machine.OnRowsChanged([Main, Beta]).DepartedRecipient);
     }
 
+    [Theory]
+    [Trait("BR", "BR-12")]
+    [InlineData(TaskRowState.Done)]
+    [InlineData(TaskRowState.Failed)]
+    [InlineData(TaskRowState.Cancelled)]
+    public void ShouldKeepRecipient_WhenRowStateTurnsEnded(TaskRowState ended)
+    {
+        var machine = InList();
+        machine.Handle(InputNavigationKey.Down, Ctx(rows: Tasks));
+        machine.Handle(InputNavigationKey.Escape, Ctx(rows: Tasks));
+        Assert.Equal("T-1", machine.RecipientTicket);
+
+        var action = machine.OnRowsChanged([Main, new AgentRowInfo { Name = "alpha@crew", Ticket = "T-1", State = ended }, Beta]);
+
+        Assert.Equal("T-1", machine.RecipientTicket);
+        Assert.Null(action.DepartedRecipient);
+    }
+
     [Fact]
     public void A_list_emptied_under_a_task_recipient_names_it_and_under_main_names_nothing()
     {

@@ -81,6 +81,25 @@ public static class CrewDefinitionValidator
                 "more. Leave maxRpm: out for no limit of its own.");
         }
 
+        // budget: bounds an autonomous run (#218): elsewhere it would bound nothing, and a limit of zero
+        // or less would stop the run before its first call.
+        if (config.Budget is { } budget)
+        {
+            if (config.Process != ProcessType.Autonomous)
+            {
+                errors.Add(
+                    $"Crew '{config.Name}' budget: the {config.Process.Value} process spends no budget. Remove budget:, " +
+                    "or use process: autonomous.");
+            }
+
+            if (budget.FirstInvalidLimit() is { } invalid)
+            {
+                errors.Add(
+                    $"Crew '{config.Name}' {invalid.Replace("budget.wallTime", "budget.wallTimeSeconds", StringComparison.Ordinal)} " +
+                    "- every limit of a crew's budget must be 1 or more. Leave the key out for its default.");
+            }
+        }
+
         // memory: decides whether the crew remembers, memoryProvider: where (GAP-30): a provider
         // named for a crew without memory would hold nothing.
         if (!config.Memory && !string.IsNullOrWhiteSpace(config.MemoryProvider))

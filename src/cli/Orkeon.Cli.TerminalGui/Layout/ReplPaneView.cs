@@ -23,8 +23,11 @@ namespace Orkeon.Cli.TerminalGui.Layout;
 /// </remarks>
 public sealed class ReplPaneView : View, ITaskListNavigator
 {
-    private readonly TranscriptView _history;
-    private readonly AppendCoalescer<string?> _transcriptWrites;
+    private readonly ThreadScreens _screens;
+    private readonly AppendCoalescer<TranscriptWrite> _transcriptWrites;
+
+    // A write to a thread's screen; a null Text is a clear of that screen.
+    private readonly record struct TranscriptWrite(string? Thread, string? Text, bool Attention = false);
     private readonly Label _promptLabel;
     private readonly Label _placeholder;
     private readonly MouseClipboardTextView _input;
@@ -90,21 +93,21 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         // dispatch per burst. Display-only soft-wrap when enabled: the model keeps the source lines,
         // so copy/paste returns the text with no injected line break; the horizontal scrollbar shows
         // only while the wrap is off.
-        _history = new TranscriptView(options.ReplTranscriptCapacity)
+        _screens = new ThreadScreens(options.ReplTranscriptCapacity, screen =>
         {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(1 + BandRows + BelowRows),
-            WordWrap = options.ReplWordWrap,
+            screen.X = 0;
+            screen.Y = 0;
+            screen.Width = Dim.Fill();
+            screen.Height = Dim.Fill(1 + BandRows + BelowRows);
+            screen.WordWrap = options.ReplWordWrap;
             // Read-only display only — kept out of the focus cycle so Tab and the initial
             // focus go straight to the prompt input field. Mouse selection still works
             // (Terminal.Gui v2 raises OnMouseEvent on non-focusable views), and auto-copy
             // hooks via TranscriptView regardless of focus state.
-            CanFocus = false,
-        };
-        _transcriptWrites = new AppendCoalescer<string?>(dispatcher, ApplyTranscriptWrites);
-        _history.SetScheme(SchemeFactory.Pane());
+            screen.CanFocus = false;
+            screen.SetScheme(SchemeFactory.Pane());
+        });
+        _transcriptWrites = new AppendCoalescer<TranscriptWrite>(dispatcher, ApplyTranscriptWrites);
 
         // The two bands of the interactive cluster, in the captures' order: status
         // line, then the rule carrying the right-aligned context chip, then the prompt.
@@ -194,7 +197,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         };
         _placeholder.SetScheme(SchemeFactory.Uniform(SchemeFactory.Attr(PaletteRole.Dim, italic: true)));
 
-        Add(_history, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
+        Add(_screens.Main, _statusLine, _ruleChip, _promptLabel, _input, _placeholder, _bottomRule);
 
         // Force initial focus on the input field once the view is laid out, otherwise
         // Terminal.Gui defaults to the first focusable child (which would skip past
@@ -228,30 +231,48 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     public void AppendOutput(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        _transcriptWrites.Post(text);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, text));
     }
 
-    // UI thread: applies a burst of transcript writes in posting order (null is a clear). The view
-    // follows the tail on its own while it sticks to the end; a user who scrolled up stays put.
-    private void ApplyTranscriptWrites(IReadOnlyList<string?> writes)
+    // UI thread: applies a burst of transcript writes in posting order, each to its thread's screen
+    // (a null Text is a clear of that screen). A view follows the tail on its own while it sticks to
+    // the end; a user who scrolled up stays put.
+    private void ApplyTranscriptWrites(IReadOnlyList<TranscriptWrite> writes)
     {
-        var pending = new System.Text.StringBuilder();
+        var pending = new Dictionary<TranscriptView, System.Text.StringBuilder>();
         foreach (var write in writes)
         {
-            if (write is null)
+            var screen = _screens.For(write.Thread);
+            if (write.Text is null)
             {
-                pending.Clear();
-                _history.Clear();
+                if (pending.TryGetValue(screen, out var cleared)) cleared.Clear();
+                screen.Clear();
+                continue;
             }
-            else
-            {
-                pending.Append(write);
-            }
+            Enqueue(screen, write.Text);
+            if (write.Attention && !ReferenceEquals(screen, _screens.Displayed))
+                Enqueue(_screens.Displayed, write.Text);
         }
-        if (pending.Length > 0) _history.Append(pending.ToString());
+        foreach (var (screen, builder) in pending)
+            if (builder.Length > 0) screen.Append(builder.ToString());
+
+        void Enqueue(TranscriptView target, string text)
+        {
+            if (!pending.TryGetValue(target, out var builder))
+                pending[target] = builder = new System.Text.StringBuilder();
+            builder.Append(text);
+        }
     }
 
     public void AppendOutputLine(string text) => AppendOutput((text ?? string.Empty) + "\n");
+
+    /// <summary>Writes <paramref name="text"/> as a line of <paramref name="thread"/>'s screen (null is main).</summary>
+    internal void AppendThreadLine(string? thread, string text)
+        => _transcriptWrites.Post(new TranscriptWrite(thread, (text ?? string.Empty) + "\n"));
+
+    /// <summary>Writes an attention line on the displayed screen and in <paramref name="thread"/>'s own, once when they are the same.</summary>
+    internal void AppendAttentionLine(string? thread, string text)
+        => _transcriptWrites.Post(new TranscriptWrite(thread, (text ?? string.Empty) + "\n", Attention: true));
 
     /// <summary>
     /// Receives the runner's prompt prefix (heuristically routed by the console adapter)
@@ -308,6 +329,24 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         _placeholder.Text = RecipientPlaceholder(_navigation.RecipientName, _basePlaceholder, _glyphs);
         _ruleChip.SetLabel(_navigation.RecipientName);
         SyncPlaceholder();
+        ShowRecipientScreen();
+    }
+
+    private void ShowRecipientScreen()
+    {
+        var previous = _screens.Displayed;
+        if (!_screens.Show(_navigation.RecipientTicket)) return;
+        SwapDisplayed(previous);
+    }
+
+    private void SwapDisplayed(TranscriptView previous)
+    {
+        Remove(previous);
+        var screen = _screens.Displayed;
+        screen.Height = Dim.Fill(_inputRows + BandRows + BelowRows);
+        Add(screen);
+        screen.SetRelativeLayout(GetContentSize());
+        screen.MoveEnd();
     }
 
     private void SyncPlaceholder()
@@ -330,7 +369,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     public void Clear()
     {
         // Through the coalescer, so a clear stays ordered with the writes posted around it.
-        _transcriptWrites.Post(null);
+        _transcriptWrites.Post(new TranscriptWrite(ConsoleThread.Current, null));
     }
 
     public void FocusPrompt()
@@ -342,10 +381,10 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// Toggles word wrap on the history pane: enabling it hides the horizontal scrollbar and wraps
     /// long lines (display-only, copy/paste preserved); disabling it restores the horizontal scrollbar.
     /// </summary>
-    public void ToggleWrap() => _dispatcher.Invoke(() => _history.WordWrap = !_history.WordWrap);
+    public void ToggleWrap() => _dispatcher.Invoke(_screens.ToggleWordWrap);
 
     /// <summary>Current wrap state (true ⇒ wrapping, no horizontal scrollbar).</summary>
-    public bool IsWordWrapEnabled => _history.WordWrap;
+    public bool IsWordWrapEnabled => _screens.WordWrap;
 
     /// <summary>
     /// Forcibly completes any pending <see cref="ReadLineAsync"/> with <c>null</c>.
@@ -550,7 +589,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
                 SendToTask(action.Ticket!, action.Text ?? string.Empty);
                 break;
             case InputNavigationActionKind.RecipientUnsupported:
-                AppendOutputLine($"Sending to a task is not supported yet: nothing was sent to @{_navigation.RecipientName}, the text stays in the field.");
+                AppendThreadLine(_screens.DisplayedThread, $"Sending to a task is not supported yet: nothing was sent to @{_navigation.RecipientName}, the text stays in the field.");
                 break;
             case InputNavigationActionKind.FocusList:
                 _tasks?.ShowSelection(action.Ticket);
@@ -622,7 +661,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     /// host's copy key falls back to it when the focused view has no selection of its own.
     /// </summary>
     /// <returns>True when the transcript had a selection.</returns>
-    internal bool CopyTranscriptSelection() => PaneClipboard.CopySelection(_history);
+    internal bool CopyTranscriptSelection() => PaneClipboard.CopySelection(_screens.Displayed);
 
     bool ITaskListNavigator.HandleListKey(Key key)
     {
@@ -686,10 +725,16 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         // Polled at 1 Hz: apply (and refresh the hint bar) only when something moved.
         var recipient = _navigation.RecipientTicket;
         var action = _navigation.OnRowsChanged(rows);
-        if (action.DepartedRecipient is { } departed)
-            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
         if (action.Kind != InputNavigationActionKind.None || !string.Equals(recipient, _navigation.RecipientTicket, StringComparison.Ordinal))
             Apply(action);
+        var previous = _screens.Displayed;
+        if (_screens.DiscardAbsent([.. rows.Select(row => row.Ticket).OfType<string>()]))
+        {
+            SwapDisplayed(previous);
+            previous.Dispose();
+        }
+        if (action.DepartedRecipient is { } departed && recipient is not null && !_screens.Tickets.Contains(recipient, StringComparer.Ordinal))
+            AppendOutputLine(DepartedRecipientLine(_glyphs, departed));
     }
 
     /// <summary><c>@alpha finished · recipient is main</c>: the recipient task left the list.</summary>
@@ -716,7 +761,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
         if (rows == _inputRows) return;
         _inputRows = rows;
 
-        _history.Height = Dim.Fill(rows + BandRows + BelowRows);
+        _screens.Displayed.Height = Dim.Fill(rows + BandRows + BelowRows);
         _statusLine.Y = Pos.AnchorEnd(rows + BandRows + BelowRows);
         _ruleChip.Y = Pos.AnchorEnd(rows + 1 + BelowRows);
         _promptLabel.Y = Pos.AnchorEnd(rows + BelowRows);
@@ -907,13 +952,19 @@ public sealed class ReplPaneView : View, ITaskListNavigator
     internal string CurrentPlaceholder => _placeholder.Text;
 
     /// <summary>Test-only accessor for the history text.</summary>
-    internal string CurrentHistory => _history.TranscriptText;
+    internal string CurrentHistory => _screens.Displayed.TranscriptText;
+
+    /// <summary>Test-only accessor for the text of a thread's screen.</summary>
+    internal string ThreadText(string? thread) => _screens.For(thread).TranscriptText;
+
+    /// <summary>The displayed screen's ticket; null for main.</summary>
+    internal string? DisplayedThread => _screens.DisplayedThread;
 
     /// <summary>Test-only accessor for the transcript model (line count, wrap work).</summary>
-    internal TranscriptBuffer Transcript => _history.Buffer;
+    internal TranscriptBuffer Transcript => _screens.Displayed.Buffer;
 
     /// <summary>Test-only accessor for the transcript view (its viewport and follow state).</summary>
-    internal TranscriptView HistoryView => _history;
+    internal TranscriptView HistoryView => _screens.Displayed;
 
     /// <summary>Test-only: simulate a key press on the input field.</summary>
     internal void RaiseKeyDown(Key key) => OnInputKeyDown(this, key);
@@ -927,7 +978,7 @@ public sealed class ReplPaneView : View, ITaskListNavigator
             // IsDisposed guard makes these explicit calls idempotent no-ops, so disposing
             // here keeps the owned fields released even if a future refactor stops Add()-ing them.
             _pendingReadCancellation.Dispose();
-            _history.Dispose();
+            _screens.DisposeScreens();
             _statusLine.Dispose();
             _ruleChip.Dispose();
             _bottomRule.Dispose();

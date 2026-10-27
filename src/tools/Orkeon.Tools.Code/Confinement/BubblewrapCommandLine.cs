@@ -45,14 +45,20 @@ internal static class BubblewrapCommandLine
     /// <param name="readOnlyPaths">Extra absolute host directories bound read-only at their own path.</param>
     /// <param name="allowNetwork">Whether the process shares the host's network.</param>
     /// <param name="workingDirectory">The virtual directory the process starts in.</param>
+    /// <param name="socketPaths">
+    /// Host sockets of the operator's session (the ssh agent, the session bus) bound read-write at
+    /// their own path, after the mounts; ignored when <paramref name="allowNetwork"/> is false.
+    /// </param>
     public static IReadOnlyList<string> Build(
         IEnumerable<ConfinedPath> paths,
         IEnumerable<string> readOnlyPaths,
         bool allowNetwork,
-        string workingDirectory)
+        string workingDirectory,
+        IEnumerable<string> socketPaths)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(readOnlyPaths);
+        ArgumentNullException.ThrowIfNull(socketPaths);
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
 
         // Every namespace bwrap can unshare: user, ipc, pid, net, uts, cgroup. The process dies with
@@ -68,6 +74,14 @@ internal static class BubblewrapCommandLine
         // A parent is bound before what it contains, so a sub path's own rights cover the parent's.
         foreach (var path in paths.OrderBy(p => Depth(p.Destination)).ThenBy(p => p.Destination, StringComparer.Ordinal))
             arguments.AddRange(Bind(path));
+
+        // The sockets alone, never the directory that holds them, and only alongside the network the
+        // credential they lead to is used over. Last, so a mount over their parent does not cover them.
+        if (allowNetwork)
+        {
+            foreach (var socket in socketPaths.Distinct(StringComparer.Ordinal))
+                arguments.AddRange(["--bind-try", socket, socket]);
+        }
 
         // The host's HOME and TMPDIR name directories the view does not hold.
         arguments.AddRange(["--setenv", "HOME", "/tmp", "--setenv", "TMPDIR", "/tmp", "--chdir", workingDirectory, "--"]);

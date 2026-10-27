@@ -62,6 +62,19 @@ public sealed class DispatchBuiltinCommandsTests
     }
 
     [Fact]
+    [Trait("BR", "#221")]
+    public async Task ShouldShowTheChainDepth_WhenInspectReadsATicket()
+    {
+        var instance = _registry.Register("dev-batches", CommandInstanceKind.Async, "script-host", "dev-implement", Guid.NewGuid());
+        instance.Depth = 3;
+
+        var result = await Run(new InspectCommand(_registry), "--ticket=" + instance.Ticket);
+
+        Assert.False(result.Failed);
+        Assert.Contains("depth     : 3", _console.Output.Split('\n').Select(l => l.TrimEnd('\r')));
+    }
+
+    [Fact]
     public async Task ShouldNotFail_WhenResultReportsAFailedTicket()
     {
         var instance = _registry.Register("ask", CommandInstanceKind.Async, "echo", "run", Guid.NewGuid());
@@ -80,6 +93,15 @@ public sealed class DispatchBuiltinCommandsTests
 
         Assert.Equal("usage: help-cmd <command-name>", Failed(await Run(help)));
         Assert.StartsWith("No scripted command found for 'nope'.", Failed(await Run(help, "nope")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldBelongToTheRunnerGroup_ForEveryBuiltIn()
+    {
+        IInteractiveCommand[] builtIns =
+            [new PsCommand(_registry), new InspectCommand(_registry), new ResultCommand(_registry), Cancel(), new ScriptHelpCommand(() => [])];
+
+        Assert.All(builtIns, c => Assert.Equal("runner", c.Group));
     }
 
     private static string? Failed(CommandResult result)

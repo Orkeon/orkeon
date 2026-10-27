@@ -41,6 +41,7 @@ memory: bool              # default: false. true : range le résultat de chaque 
 memoryProvider: string    # exige memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — le type ; la section hôte (Orkeon:Redis, …) donne la connexion ; absent : le magasin par défaut de l'hôte
 planning: bool            # default: false. true : un plan pas à pas par tâche, écrit avant la première et lu par chaque tâche dans son prompt ; ne réordonne jamais les tâches
 maxRpm: int               # default: aucun — au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus ; une de plus attend son tour
+budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous seulement ; default: aucun plafond de tokens ni de durée, 50 / 4 / 10
 managerAgent: string      # La clé d'un agent. Requis si process = "hierarchical" : le manager, sur son propre bloc llm: ; facultatif si "consensual" : l'arbitre de ManagerDecision ; refusé par les autres process
 mounts: [string]          # Racines virtuelles utilisées par la crew ("/output", ou "<id>|/output" pour épingler une entrée des settings)
 

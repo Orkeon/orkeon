@@ -12,9 +12,10 @@ public sealed class CommandDispatchScope : IDisposable
     private readonly List<CommandInstance> _captured = new();
     private readonly List<CommandInstance> _turn = new();
 
-    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0)
+    internal CommandDispatchScope(string commandName, TimeSpan? timeout, Action onDispose, CancellationToken cancellationToken, bool isPrompt = false, CommandDispatchScope? promptOwner = null, int depth = 0, bool fromCompleted = false)
     {
         Depth = depth;
+        FromCompleted = fromCompleted;
         PromptOwner = isPrompt ? this : promptOwner;
         CommandName = commandName;
         CancellationToken = cancellationToken;
@@ -24,6 +25,13 @@ public sealed class CommandDispatchScope : IDisposable
 
     /// <summary>Chain depth of this scope.</summary>
     public int Depth { get; }
+
+    /// <summary>
+    /// Whether a <c>completed</c> runs in this scope. The instance it completes is always one of
+    /// <see cref="CommandName"/> (a command drains only its own completions), so a launch asking to continue the chain
+    /// keeps <see cref="Depth"/> here and climbs everywhere else.
+    /// </summary>
+    internal bool FromCompleted { get; }
 
     /// <summary>Name of the command currently executing.</summary>
     public string CommandName { get; }

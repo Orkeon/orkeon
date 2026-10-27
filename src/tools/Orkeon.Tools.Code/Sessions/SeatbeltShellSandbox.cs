@@ -99,7 +99,7 @@ internal sealed class SeatbeltShellSandbox : IShellSandbox
                      ["-c", Launcher, LauncherName, ShellScript.WatchdogScript,
                       WatchedHostPid.ToString(CultureInfo.InvariantCulture), profile, scratch])
                 startInfo.ArgumentList.Add(argument);
-            ShellEnvironment.ConfigureRestricted(startInfo);
+            ShellEnvironment.ConfigureRestricted(startInfo, view.ConfinedSockets, view.PropagatedVariables);
             // The host's HOME and TMPDIR lie outside the profile: the scratch directory stands in.
             startInfo.Environment["HOME"] = scratch;
             startInfo.Environment["TMPDIR"] = scratch;
@@ -110,7 +110,7 @@ internal sealed class SeatbeltShellSandbox : IShellSandbox
                 var info = new ProcessStartInfo(SeatbeltProbe.SandboxExec) { WorkingDirectory = scratch };
                 foreach (var argument in (string[])["-p", profile, UnconfinedShellSandbox.PosixShell])
                     info.ArgumentList.Add(argument);
-                ShellEnvironment.ConfigureRestricted(info);
+                ShellEnvironment.ConfigureRestricted(info, view.ConfinedSockets, view.PropagatedVariables);
                 info.Environment["HOME"] = scratch;
                 info.Environment["TMPDIR"] = scratch;
                 return info;

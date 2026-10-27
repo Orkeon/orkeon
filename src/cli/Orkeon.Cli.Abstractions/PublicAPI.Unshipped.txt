@@ -63,3 +63,11 @@ static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(Orkeon
 static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(string? arguments) -> string!
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.get -> long
 Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.init -> void
+Orkeon.Cli.Abstractions.Console.IThreadedConsole
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.SeparatesThreads.get -> bool
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.WriteAttention(string? thread, string! text) -> void
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.WriteLine(string? thread, string! text) -> void
+Orkeon.Cli.Abstractions.Console.ConsoleThread
+static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.get -> string?
+static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.set -> void
+Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Group.get -> string?

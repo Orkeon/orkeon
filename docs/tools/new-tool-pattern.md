@@ -173,6 +173,7 @@ Three more virtual properties are worth declaring:
 | Property | Default | What reads it |
 |---|---|---|
 | `Access` | `ToolAccess.Unspecified` | The per-call permission gate (`Read` / `Edit` / `Execute`); unspecified is classified fail-closed |
+| `AccessFor(arguments)` | `Access` | The class of one call, for a tool whose operations differ (`github`, `http_api`); return the most restrictive class for arguments it does not recognise |
 | `Category` | the contract's `Category`, else `"General"` (`"File Operations"` / `"Web Operations"` for the two specialized bases) | Catalogues and listings |
 | `RequiresHumanApproval` | `false` | Approval-aware callers |
 

@@ -85,7 +85,7 @@ déduit.
 | `memory` | ❌ | ✅ |
 | `planning` — le `planning: true` du YAML : un plan pas à pas par tâche, lu dans le prompt de la tâche (coupé par défaut ; sur le profil par défaut de l'hôte) | ❌ (avertit) | ✅ |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour la crew, tous ses agents et son manager confondus (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit) | ✅ |
-| `budget` | ✅ | ❌ ignoré |
+| `budget` | ✅ | ✅ avec `process("autonomous")` — le budget de la crew, comme `budget:` en YAML ; ❌ ignoré (averti) avec un autre process |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
@@ -230,7 +230,10 @@ l'exécution sans qu'on le demande :
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (et le
 même `budget` dans les options de `crew.runAgent`) borne cette exécution avec les clés et valeurs de
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` en secondes ou sous la forme `"5m"`,
-`delegationDepth`, `spawnedAgents`). Une dimension épuisée termine l'exécution par
+`delegationDepth`, `spawnedAgents`). `tokens` est une somme courante du prompt et de la complétion de
+chaque appel, le contexte compté de nouveau à chacun ; une fois atteinte, `ctx.llm.act` fait un dernier
+appel sans outils et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).
+Une dimension épuisée termine l'exécution par
 `BudgetExhaustedError`, l'erreur que donne le budget d'une crew, et un enfant qu'elle lance
 (`spawn_agent`, `ctx.spawnBackground`) dérive son budget du sien. Une clé inconnue, un compte qui
 n'est pas un entier d'au moins 1 ou un `wallTime` illisible est refusé à l'ouverture de l'exécution,
@@ -333,7 +336,7 @@ limites de conception, chacune dite plutôt que silencieuse.
 
 | Limite | Comportement |
 |---|---|
-| `budget()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. Le budget ne borne que la forme procédurale (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
+| `budget()` en forme déclarative | Le budget de la crew quand le process est `"autonomous"`, le seul process qui le dépense (clés `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). Avec un autre process il est ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. |
 | `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche un avertissement sur stderr au lieu de perdre l'option en silence. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |

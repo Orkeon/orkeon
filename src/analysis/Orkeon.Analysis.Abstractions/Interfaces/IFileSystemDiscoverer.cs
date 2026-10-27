@@ -57,6 +57,13 @@ public sealed record DiscoveryFilterStats
     public int ExcludedByGitignore { get; init; }
     public int ExcludedByLanguage { get; init; }
     public int ExcludedBySuffix { get; init; }
+    /// <summary>
+    /// Number of files the file system policy refused to read (a mount right, a blocked
+    /// extension): left out of <see cref="DiscoveryResult.Files"/> instead of failing the discovery.
+    /// </summary>
+    public int ExcludedByPolicy { get; init; }
+    /// <summary>Virtual paths of the files counted by <see cref="ExcludedByPolicy"/>, in discovery order.</summary>
+    public ImmutableArray<string> ExcludedByPolicyPaths { get; init; } = [];
     public int TotalEnumerated { get; init; }
     /// <summary>
     /// Number of file entries the VFS <c>IFileSystemService.EnumerateFilesAsync</c>

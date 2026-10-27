@@ -1078,8 +1078,17 @@ public sealed partial class JsLlmFacade
                     messages.AddRange(_background.Drain().Select(m => new LlmMessage { Role = "user", Content = m }));
                 // Pre-flight gate: refuse to pay for another LLM turn once any budget
                 // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
-                // host via JsCrew.TryUnwrapTypedHostException).
-                _budget?.ThrowIfExhausted();
+                // host via JsCrew.TryUnwrapTypedHostException), except a spent token budget,
+                // which ends the act with one last call that may call no tool (#218).
+                try
+                {
+                    _budget?.ThrowIfExhausted();
+                }
+                catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
+                    when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
+                {
+                    return await WrapUpAsync(session, messages, spent, i).ConfigureAwait(false);
+                }
                 using var activity = StartChatActivity("act");
                 activity?.SetTag("orkeon.llm.act.iteration", i);
 
@@ -1087,9 +1096,13 @@ public sealed partial class JsLlmFacade
                     ? session.Config
                     : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
                 var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
-                _budget?.RecordTokens(resp.TokensUsed);
+                RecordCallTokens(resp.TokensUsed);
 
                 var (calls, assistantTurn) = ReadToolCalls(resp);
+                // A token budget this very call spent runs none of the tools it asked for: the act
+                // ends with the wrap-up, whatever iteration this is (#218).
+                if (assistantTurn is not null && TokenBudgetSpent() is { } spentByThisCall)
+                    return await WrapUpAsync(session, messages, spentByThisCall, i + 1).ConfigureAwait(false);
                 if (assistantTurn is null)
                 {
                     var answer = RenderAnswer(resp);
@@ -1144,6 +1157,113 @@ public sealed partial class JsLlmFacade
             exhausted = true,
         };
     }
+
+    /// <summary>
+    /// What the act tells the model when its token budget is spent: the last call it gets, with no
+    /// tools, asks for the answer it can give from what it has.
+    /// </summary>
+    internal const string WrapUpNote =
+        "Your token budget for this task is spent: this is your last turn, and no tool can be called. "
+        + "Answer now with what you have, saying briefly what you could not finish.";
+
+    /// <summary>
+    /// Records the tokens of one call of the act loop and logs the running sum next to the limit. A
+    /// spent budget - tokens or wall time - does not throw here: the tokens are recorded whatever the
+    /// budget says, the answer in hand is kept, and the gates that follow end the act.
+    /// </summary>
+    private void RecordCallTokens(int tokens)
+    {
+        if (_budget is null) return;
+        try
+        {
+            _budget.RecordTokens(tokens);
+        }
+        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException)
+        {
+            // Recorded already: the gate after this call, or before the next one, sees it.
+        }
+        finally
+        {
+            if (_logger is not null)
+            {
+                var calls = _budget.CurrentTokenCalls;
+                LogActCallTokens(_logger, _agentName, tokens, _budget.CurrentTokensConsumed, _budget.MaxTokensConsumed,
+                    calls, calls == 1 ? "call" : "calls");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The token refusal of the budget when its tokens are spent, else null. Any other spent dimension
+    /// throws, as the gate before each call does.
+    /// </summary>
+    private Orkeon.Domain.Autonomous.BudgetExhaustedException? TokenBudgetSpent()
+    {
+        try
+        {
+            _budget?.ThrowIfExhausted();
+            return null;
+        }
+        catch (Orkeon.Domain.Autonomous.BudgetExhaustedException spent)
+            when (spent.Dimension == Orkeon.Domain.Autonomous.BudgetDimension.Tokens)
+        {
+            return spent;
+        }
+    }
+
+    /// <summary>
+    /// The end of an act whose token budget is spent (#218): one last chat call that may call no tool, told
+    /// the budget is spent, whose answer is the act's result marked <c>budgetExhausted</c>. The
+    /// session's tools stay in the request - a provider refuses a history of tool calls when the request
+    /// defines no tool - with <see cref="ToolCallMode.None"/>, and a tool call the model returns anyway
+    /// is never run: only its text is the answer. Its tokens are recorded but never start another
+    /// wrap-up, and a wall time it outlasts keeps its answer. When it fails or answers nothing, the act
+    /// rejects with the budget's own error, as before.
+    /// </summary>
+    private async Task<object> WrapUpAsync(
+        ActSession session, List<LlmMessage> messages, Orkeon.Domain.Autonomous.BudgetExhaustedException spent, int iteration)
+    {
+        if (_logger is not null)
+            LogTokenBudgetSpent(_logger, _agentName, spent.Message);
+
+        messages.Add(new LlmMessage { Role = "user", Content = WrapUpNote });
+        LlmResponse resp;
+        using (var activity = StartChatActivity("act"))
+        {
+            activity?.SetTag("orkeon.llm.act.iteration", iteration);
+            activity?.SetTag("orkeon.llm.act.budget_exhausted", true);
+            var cfg = session.Config with { Tools = session.ToolSchemas ?? session.Config.Tools, ToolMode = ToolCallMode.None };
+            try
+            {
+                resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(spent);
+                throw;
+            }
+        }
+
+        RecordCallTokens(resp.TokensUsed);
+        var answer = RenderAnswer(resp);
+        if (string.IsNullOrWhiteSpace(answer) || ProviderErrorOf(resp) is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(spent);
+
+        messages.Add(new LlmMessage { Role = "assistant", Content = answer });
+        KeepTranscript(messages, interrupted: false);
+        return new { output = answer, iterations = iteration + 1, budgetExhausted = true };
+    }
+
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 3, Level = Microsoft.Extensions.Logging.LogLevel.Information,
+        Message = "act: agent '{Agent}' call used {Tokens} tokens, running sum {Sum}/{Limit} tokens over {Calls} {CallWord}")]
+    static partial void LogActCallTokens(
+        Microsoft.Extensions.Logging.ILogger logger, string agent, int tokens, int sum, int limit, int calls, string callWord);
+
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 4, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "act: agent '{Agent}' ran out of budget - {Reason}; one last call that may call no tool asks for its answer")]
+    static partial void LogTokenBudgetSpent(Microsoft.Extensions.Logging.ILogger logger, string agent, string reason);
 
     /// <summary>
     /// The end of an <c>act</c> call, whatever ended it — return, interrupt, throw or cancellation:
@@ -1252,8 +1372,8 @@ public sealed partial class JsLlmFacade
         var toolName = call.ToolName;
         var toolArgs = call.Arguments;
         var permissionMode = session.PermissionMode;
-        // Resolved before the gate so the tool's self-declared access class
-        // (IBaseTool.Access) informs the verdict.
+        // Resolved before the gate so the tool's self-declared access class for this call
+        // (IBaseTool.AccessFor, which defaults to IBaseTool.Access) informs the verdict.
         var tool = FindTool(session, toolName);
         // A tool this call does not offer could never run: refused at once, before the gate
         // and onToolCall, so no operator is asked to approve it (#193).
@@ -1262,7 +1382,7 @@ public sealed partial class JsLlmFacade
             activity?.SetTag("orkeon.llm.act.permission", "unavailable");
             return new(call, null, toolArgs, NotAvailable(toolName));
         }
-        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.Access).ConfigureAwait(false);
+        var verdict = await GateAsync(toolName, toolArgs, permissionMode, tool.AccessFor(toolArgs)).ConfigureAwait(false);
         if (verdict is not null && verdict.Action != Orkeon.Application.Interfaces.Security.PermissionAction.Allow)
         {
             // Deny (an operator's refusal included, when an approval channel answered) and an
@@ -1375,7 +1495,7 @@ public sealed partial class JsLlmFacade
             if (input.ValueKind != JsonValueKind.Object)
                 return new(NoValidVerdict, toolArgs);
             var rewritten = JsonSerializer.Deserialize<Dictionary<string, object?>>(input.GetRawText())!;
-            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.Access ?? ToolAccess.Unspecified).ConfigureAwait(false);
+            var regated = await GateAsync(toolName, rewritten, session.PermissionMode, tool?.AccessFor(rewritten) ?? ToolAccess.Unspecified).ConfigureAwait(false);
             return new(DenialOf(regated, toolName, session.PermissionMode), rewritten);
         }
         if (root.TryGetProperty("context", out _))

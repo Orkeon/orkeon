@@ -98,7 +98,7 @@ public sealed partial class FileSystemService : IFileSystemService
         }
 
         // Step 2: Defense-in-depth — run through IPathValidator
-        var pathValidation = _pathValidator.ValidatePath(physicalPath);
+        var pathValidation = _pathValidator.ValidatePath(physicalPath, requiredRight);
         if (!pathValidation.IsAllowed)
         {
             LogAccessDeniedByPathValidator(virtualPath);

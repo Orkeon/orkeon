@@ -28,6 +28,11 @@ declare global {
 export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = undefined> {
   name: string;
   aliases?: readonly string[];
+  /**
+   * Group `/help` lists the command under (`^[a-z][a-z0-9-]*$`). When omitted, the name of the folder
+   * holding the `*.cmd.ts` (none for a file at the root of the commands mount).
+   */
+  group?: string;
   description: string;
   /** Typed args spec. When omitted, `dispatch` receives `{ raw: string[] }`. */
   args?: TArgs;
@@ -38,8 +43,27 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
   maxConcurrent?: number;
   /** Launches the work and returns immediately (do not block). Typically returns `{ ticket }`. */
   dispatch: (args: ParsedArgs<TArgs>, ctx: CommandRuntimeContext) => unknown;
-  /** Replayed on the engine thread when the agent responds. */
-  completed?: (result: CommandResponse, ctx: CommandRuntimeContext) => void;
+  /**
+   * Replayed on the engine thread, under the script's engine lock, when the agent (or the crew of a
+   * `runCrewAsync`) responds. It may be `async`: when it returns a promise the drain awaits it before
+   * going on (to the next completion, to the next command of the same script), so its whole body,
+   * every `await` included, must settle there — a host read (`ctx.services.get(...)`), then a
+   * `runCrewAsync`, is the intended use. Work left pending past the promise (a promise not awaited)
+   * is not waited for, and a launch it makes is not chained to this command.
+   *
+   * A rejection, or a throw, does not stop the drain: the console shows
+   * `Error in completed('<name>'): <first line of the reason>`, the host log keeps the whole error,
+   * and the registry reports a completion failure for the instance (`ReportCompletionFailure`;
+   * `orkeon-repl --replay` stops on the line that launched it). The instance keeps its own state
+   * (`done` or `failed`), and a launch made before the rejection still runs and drains.
+   *
+   *   completed: async (result, ctx) => {
+   *     const rules = await ctx.services.get("permissions").list();
+   *     ctx.writeLine(`${rules.length} rule(s) in force`);
+   *     ctx.services.get("script-host").runCrewAsync("next-step", { previous: result.payload });
+   *   },
+   */
+  completed?: (result: CommandResponse, ctx: CommandRuntimeContext) => void | Promise<void>;
 }
 
 /**
@@ -49,7 +73,12 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
 export interface CommandsFacade {
   /** Dispatch to an agent and return its response (a sync command blocks until it arrives). */
   request(agent: string, intent: string, payload: string): CommandResponse;
-  /** Dispatch to an agent in the background; returns a ticket immediately. */
+  /**
+   * Dispatch to an agent in the background; returns a ticket immediately. Its completion drains to the
+   * `completed` of the command that posted it. Called from a `completed`, the new instance is one hop deeper
+   * in the chain, bounded by `MaxChainDepth` like {@link ScriptHostFacade.runCrewAsync}: at the limit it throws
+   * `chain depth 8 reached (MaxChainDepth 8, /<command>)`.
+   */
   post(agent: string, intent: string, payload: string): string;
   /** List in-flight / recent instances, optionally filtered. */
   list(filter?: CommandInstanceFilter | string): readonly CommandInstanceView[];
@@ -102,6 +131,11 @@ export interface CommandDescriptor<TArgs extends ArgsSchema | undefined = undefi
   name: string;
   /** Alternate identifiers; must not duplicate `name`. */
   aliases?: readonly string[];
+  /**
+   * Group `/help` lists the command under (`^[a-z][a-z0-9-]*$`). When omitted, the name of the folder
+   * holding the `*.cmd.ts` (none for a file at the root of the commands mount).
+   */
+  group?: string;
   /** Single-line description (≤ 200 chars, no newline). */
   description: string;
   /** Typed args spec. When omitted, the handler receives `{ raw: string[] }`. */
@@ -224,11 +258,26 @@ export interface ScriptHostFacade {
    * `result.payload` carries the crew summary. Use for long workflows. It may be called from a
    * `completed` handler: the second crew's completion drains to its own command (the same command
    * name). The chain is bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
-   * a deeper call is refused with `ChainDepthExceededException` (depth and limit in the message).
+   * a deeper call throws `chain depth 8 reached (MaxChainDepth 8, /<command>)`. A driver relaunching
+   * itself passes `{ chain: "continue" }` (see {@link CrewLaunchOptions}) to keep the parent's depth.
    */
-  runCrewAsync(name: string, input?: Record<string, unknown>): string;
+  runCrewAsync(name: string, input?: Record<string, unknown>, options?: CrewLaunchOptions): string;
   /** The discovered crew names. */
   listCrews(): readonly string[];
+}
+
+/** Options of {@link ScriptHostFacade.runCrewAsync}. */
+export interface CrewLaunchOptions {
+  /**
+   * `"continue"`: called from a `completed`, the new instance takes the chain depth of the instance whose
+   * `completed` runs instead of that depth plus one, so a driver that relaunches its own work after each
+   * cycle (command -> crew -> the same command's `completed` -> crew) is not stopped by `MaxChainDepth`.
+   * The parent is always an instance of the same command: a command runs only the `completed` of its own
+   * instances, and what that `completed` launches is keyed to it. Outside a `completed` (a `dispatch`, a
+   * handler) it changes nothing: the launch takes the depth it takes without it (a first hop is depth 1).
+   * Any other value throws.
+   */
+  chain?: "continue";
 }
 
 /**

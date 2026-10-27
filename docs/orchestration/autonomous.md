@@ -75,7 +75,7 @@ Task<CrewOutput> ExecuteAutonomousAsync(
 | Place | Role |
 |--------|-------------|
 | `ProcessStrategyFactory` | `"Autonomous"` → `AutonomousProcessStrategy` |
-| `SequentialCrewOrchestrator` | Dispatches `"Autonomous"` to `ExecuteAutonomousAsync` with `AgentExecutionBudget.Permissive` |
+| `SequentialCrewOrchestrator` | Dispatches `"Autonomous"` to `ExecuteAutonomousAsync` with the crew's budget (`crew.Budget.ToExecutionBudget()`) |
 | `AddOrkeonInfrastructure()` | Registers `AutonomousProcessStrategy` and `IAgentChannel` → `InMemoryAgentChannel` (scoped) |
 
 ## Execution flow
@@ -106,7 +106,7 @@ Details that matter when sizing a run:
 - **Assignment** goes through `IManagerAgent` (`LlmBasedManager`), which calls the crew's manager LLM, resolved once per run as in the Hierarchical mode: the provider `CrewBuilder.WithManagerLlm` sets (C#), else the host's default profile — an autonomous crew has no manager agent: `managerAgent:` (`.manager(agent)` in `.ork.ts`, `.WithManager(agent)` in C#) is refused when the crew is loaded or built. A task's `agent:` is not consulted. An LLM error falls back to the first agent.
 - **Tool calls**: the strategy records **one** `RecordToolCall()` per task handed out (the assignment); the agent's own tool calls inside its loop are not counted against the budget. `MaxToolCalls` therefore bounds the number of tasks attempted.
 - **Delegation depth**: `RecordDelegation()` increments a crew-wide counter that is never decremented, so `MaxDelegationDepth` behaves as the number of delegations allowed in the run. The delegate is the **first other agent** in the crew's order; it takes the task itself over — its plan too, when the crew plans (GAP-31) —, in the context of the attempt that failed, derived from it (GAP-21): the crew's id and memory scope, the run's input variables and the outputs so far, plus `delegation_context` and `autonomous_child_budget_snapshot`. It recalls the crew's memory like any execution that answers a task, its output — when it succeeds — is the task's result, stored once under the peer with `memory: true`, and it does not delegate further. The agent that failed fails the task (`AgentFailedTaskEvent`), the task is assigned to the peer, and completes under it ([Events](../architecture/domain-events.md)).
-- **Tokens**: the tokens of a delegated execution are recorded on both the child and the parent budget; the direct executions feed the crew's token telemetry but not `MaxTokensConsumed`.
+- **Tokens**: `MaxTokensConsumed` covers the whole run. The tokens of a direct execution are recorded on the crew's budget when it returns, a failed attempt's included; those of a delegated execution once on each budget of the child's chain and of the crew's (`RecordChildTokens`): a budget both chains share is counted once, so each token counts once per budget. Work whose tokens pass the budget, direct or delegated, keeps its output: the task is recorded with it, then the run stops on the budget like any other exhaustion. A failed direct attempt that spent the budget is not handed to a peer. The refusal reads `Token budget exhausted: <sum> tokens sent and received over <n> calls (limit <limit>)`.
 - **Outcome**: the crew output concatenates the task outputs. A task that failed — directly, with no peer to delegate to, or delegated to a peer who failed too — **fails the crew**, and the tasks that depend on it are skipped without being claimed. An exhausted budget fails the crew too, its error opening with `Execution budget exhausted: <dimension>` and naming every task it never reached; `ICrewExecutionHook` receives `Failed` with that reason (`Canceled` is kept for an actual cancellation). `orkeon run` exits 2 in both cases.
 
 ## Multi-dimensional budget
@@ -118,7 +118,7 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 | MaxToolCalls | 15 | 8 | 50 | Maximum number of tool calls |
 | MaxDelegationDepth | 2 | 1 | 4 | Maximum delegation depth (A→B→C = 2) |
 | MaxWallTime | 5 min | 2 min | 15 min | Maximum wall-clock time |
-| MaxTokensConsumed | 16,000 | 8,000 | 64,000 | Total tokens (prompt + completion) |
+| MaxTokensConsumed | 16,000 | 8,000 | 64,000 | Running sum of tokens (prompt + completion of every call recorded) |
 | MaxSpawnedAgents | 3 | 1 | 10 | Maximum number of spawned sub-agents |
 
 ### Presets
@@ -128,7 +128,7 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 // Production: conservative limits
 var strict = AgentExecutionBudget.Strict;
 
-// Development: loose limits — what ICrewOrchestrationService always uses
+// Development: loose limits
 var permissive = AgentExecutionBudget.Permissive;
 
 // Custom
@@ -141,13 +141,13 @@ var custom = new AgentExecutionBudget
     MaxSpawnedAgents = 5
 };
 
-// A budget other than Permissive: call the strategy directly
+// A budget built in code rather than the crew's: call the strategy directly
 var strategy = serviceProvider.GetRequiredService<AutonomousProcessStrategy>();
 var output = await strategy.ExecuteAutonomousAsync(crew, custom, inputVariables: null, ct);
 #pragma warning restore ORKEXP002
 ```
 
-`KickoffAsync` does not take a budget: a crew run through `ICrewOrchestrationService` (the runner, the host, Studio) always gets `Permissive`. Calling `ExecuteAutonomousAsync` directly skips what the orchestrator adds around a run (planning, checkpointing, the crew's state transitions).
+`KickoffAsync` does not take a budget: a crew run through `ICrewOrchestrationService` (the runner, the host, Studio) spends the crew's own budget — YAML `budget:` ([schema](../architecture/yaml-schema.md)), `crewBuilder().budget({...})` in `.ork.ts`, `CrewBuilder.Budget(new CrewBudget { ... })` in C#. A crew that sets none runs with no token cap and no wall time, under the structural limits of 50 tasks handed out, 4 delegations and 10 spawns (`CrewBudget.DefaultToolCalls`, `DefaultDelegationDepth`, `DefaultSpawnedAgents`): tokens and time are bounded only when the author asks, so an ordinary crew is never cut short by a figure it did not choose. A key left out takes the same default. A budget given to a crew of another process is refused when the crew is loaded or built, as is a limit below 1. Calling `ExecuteAutonomousAsync` directly skips what the orchestrator adds around a run (planning, checkpointing, the crew's state transitions).
 
 ### Child budgets
 
@@ -285,7 +285,7 @@ agents:
 
 `spawn_agent` is not listed: the YAML loader resolves tool names against the tool registry, where no `SpawnAgentTool` is registered by default (an unknown name is skipped with a warning, or fails the load in strict-tools mode).
 
-> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Permissive` (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns). In the scripting DSL, `crewBuilder().budget({...})` bounds only the procedural shape (`await crew.run()`); the declarative shape ignores it with a warning.
+> **Note**: the crew's budget is YAML `budget:` (`tokens`, `wallTimeSeconds`, `toolCalls`, `delegationDepth`, `spawnedAgents`); in the scripting DSL, `crewBuilder().budget({...})` sets it in both shapes — the declarative shape of a `process("autonomous")` crew, the procedural shape (`await crew.run()`) — and the declarative shape of another process ignores it with a warning. Defaults are under [Presets](#presets).
 
 > **Delegation**: the autonomous strategy delegates through the `IAgentChannel`; there is no task delegator service.
 
@@ -309,7 +309,7 @@ The Autonomous mode is the least deterministic. For sensitive production workloa
 | `Orkeon.Domain.Tests/Autonomous/AgentExecutionBudgetTimeProviderTests.cs` | Wall-time budget with a controllable clock |
 | `Orkeon.Infrastructure.Tests/Communication/CovStubs_InMemoryAgentChannelTests.cs` | Request/response, timeout, missing handler, broadcast |
 | `Orkeon.Infrastructure.Tests/Tools/SpawnAgentTool/SpawnAgentToolTests.cs` | Spawn recorded on the parent budget, child budget propagation (metadata, context variables), token accounting |
-| `Orkeon.Infrastructure.Tests/Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | Dispatch of the six modes (Autonomous with the Permissive budget) |
+| `Orkeon.Infrastructure.Tests/Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | Dispatch of the six modes (Autonomous under the crew's budget, uncapped when it sets none) |
 
 ---
 

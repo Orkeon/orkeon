@@ -16,14 +16,14 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// <summary>
 /// GAP-39: a crew loaded, exported and loaded again is the same crew — everything the loader reads, under the
 /// keys its author wrote, and no key nobody set. The configurations are compared by
-/// <see cref="CrewConfigurationProjection"/>. Two witnesses (<c>TestData/round-trip/</c>) set every key of the
+/// <see cref="CrewConfigurationProjection"/>. Three witnesses (<c>TestData/round-trip/</c>) set every key of the
 /// YAML models between them — the completeness guard holds them to it, so a key added to a model fails here
 /// until a witness sets it, and the round trip then makes the export write it —; every crew of
 /// <c>examples/</c> makes the trip too.
 /// </summary>
 public partial class YamlCrewExportRoundTripTests
 {
-    private static readonly string[] WitnessFiles = ["sequential.yaml", "hierarchical.yaml"];
+    private static readonly string[] WitnessFiles = ["sequential.yaml", "hierarchical.yaml", "autonomous.yaml"];
 
     private readonly YamlDotNetSerializer _serializer = new();
     private readonly FakeFileSystemService _fs = new();
@@ -63,7 +63,7 @@ public partial class YamlCrewExportRoundTripTests
         Assert.True(
             missing.Count == 0,
             "No round-trip witness sets " + string.Join(", ", missing) + ". Set each key in "
-            + "TestData/round-trip/sequential.yaml or hierarchical.yaml: the round trip then proves the export writes it.");
+            + "TestData/round-trip/sequential.yaml, hierarchical.yaml or autonomous.yaml: the round trip then proves the export writes it.");
     }
 
     /// <summary>

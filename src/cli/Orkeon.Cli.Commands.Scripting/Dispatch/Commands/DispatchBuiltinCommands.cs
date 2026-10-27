@@ -10,6 +10,9 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch.Commands;
 /// </summary>
 public static class DispatchBuiltinCommands
 {
+    /// <summary>Group the runner's own commands are listed under by <c>help</c>.</summary>
+    internal const string RunnerGroup = "runner";
+
     /// <summary>Builds the four built-ins over <paramref name="dispatch"/>.</summary>
     public static IReadOnlyList<IInteractiveCommand> Create(CommandDispatchService dispatch)
     {
@@ -43,6 +46,7 @@ public static class DispatchBuiltinCommands
 internal sealed class PsCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "ps";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "List in-flight (or filtered) dispatched commands.";
 
@@ -86,6 +90,7 @@ internal sealed class PsCommand(CommandInstanceRegistry registry) : IInteractive
 internal sealed class InspectCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "inspect";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Show details of a dispatched command by its ticket.";
 
@@ -95,13 +100,15 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
         if (string.IsNullOrWhiteSpace(ticket))
             return Task.FromResult(CommandResult.Fail("Usage: inspect --ticket=<ticket>"));
 
-        var view = registry.Get(ticket)?.Snapshot();
-        if (view is null)
+        var instance = registry.Get(ticket);
+        if (instance is null)
             return Task.FromResult(CommandResult.Fail($"Unknown ticket '{ticket}'."));
 
+        var view = instance.Snapshot();
         var c = context.Console;
         c.WriteLine($"ticket    : {view.ticket}");
         c.WriteLine($"command   : {view.name} ({view.kind})");
+        c.WriteLine($"depth     : {instance.Depth}");
         c.WriteLine($"agent     : {view.targetAgent}");
         c.WriteLine($"intent    : {view.intent}");
         c.WriteLine($"state     : {view.state}");
@@ -119,6 +126,7 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
 internal sealed class ResultCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "result";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Print the result payload of a dispatched command by ticket.";
 
@@ -145,6 +153,7 @@ internal sealed class ResultCommand(CommandInstanceRegistry registry) : IInterac
 internal sealed class CancelCommand(CommandDispatchService dispatch) : IInteractiveCommand
 {
     public string Name => "cancel";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Cancel an in-flight dispatched command by ticket.";
 

@@ -147,6 +147,16 @@ public partial class YamlCrewExporter
             MemoryProvider = config.MemoryProvider,
             Planning = config.Planning ? true : null,
             MaxRpm = config.MaxRpm,
+            Budget = config.Budget is { } budget
+                ? new CrewBudgetYamlConfig
+                {
+                    Tokens = budget.Tokens,
+                    WallTimeSeconds = budget.WallTime is { } wallTime ? (int)Math.Ceiling(wallTime.TotalSeconds) : null,
+                    ToolCalls = budget.ToolCalls,
+                    DelegationDepth = budget.DelegationDepth,
+                    SpawnedAgents = budget.SpawnedAgents,
+                }
+                : null,
             ManagerAgent = config.ManagerAgentId is { } manager ? names.Of(manager) : null,
             GraphConfig = MapGraphConfig(config.GraphConfig),
             Rag = MapRag(config.Rag),

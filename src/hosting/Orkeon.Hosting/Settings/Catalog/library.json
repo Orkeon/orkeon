@@ -314,6 +314,13 @@
       "description": "The `Orkeon:Tools:Email` section, bound by `EmailOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken e-mail section never breaks a crew that sends no mail."
     },
     {
+      "path": "Orkeon:Tools:GitHub",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonWebTools",
+      "description": "The `Orkeon:Tools:GitHub` section: where the `github` tool finds its token, read once when the tool is registered. Without a token every call is anonymous, and `create_issue` and `create_pr` are refused by GitHub."
+    },
+    {
       "path": "Orkeon:Tools:ResultLimits",
       "category": "tools",
       "hosts": [],
@@ -1724,6 +1731,13 @@
       "description": "Additional file extensions to block beyond the built-in list."
     },
     {
+      "path": "PathSecurity:BlockReadsOfBlockedExtensions",
+      "section": "PathSecurity",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a plain read of a built-in script extension (`.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.wsf`) is refused too. Default: `false`: reading a script is not executing it, so a read passes while a write, a creation, a deletion or a command target on it is refused. Built-in binary extensions and `AdditionalBlockedExtensions` refuse reads whatever this says."
+    },
+    {
       "path": "PathSecurity:DefaultWorkspaceRoot",
       "section": "PathSecurity",
       "type": "string",
@@ -2384,6 +2398,20 @@
       "description": "When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it."
     },
     {
+      "path": "Orkeon:Tools:GitHub:Token",
+      "section": "Orkeon:Tools:GitHub",
+      "type": "string",
+      "secret": true,
+      "description": "GitHub personal access token the tool sends as a bearer. Keep it out of a committed file (`appsettings.local.json`, or the environment variable instead). Not set: the variable named by `TokenVariable`, then `GH_TOKEN`."
+    },
+    {
+      "path": "Orkeon:Tools:GitHub:TokenVariable",
+      "section": "Orkeon:Tools:GitHub",
+      "type": "string",
+      "default": "GITHUB_TOKEN",
+      "description": "Name of the environment variable holding the token when `Token` is empty; `GH_TOKEN` is read after it."
+    },
+    {
       "path": "Orkeon:Tools:ResultLimits:Limits:<name>",
       "section": "Orkeon:Tools:ResultLimits",
       "type": "integer",
@@ -2437,6 +2465,20 @@
       "type": "list of string",
       "default": [],
       "description": "Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. Under AppContainer (Windows) they are fully qualified host directories the container may read and execute, such as a tool installed under the user profile."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:Environment:Propagate",
+      "section": "Orkeon:Tools:Shell",
+      "type": "list of string",
+      "default": [],
+      "description": "Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view."
+    },
+    {
+      "path": "Orkeon:Tools:Shell:Environment:SessionBus",
+      "section": "Orkeon:Tools:Shell",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a confined shell session (bubblewrap, Seatbelt, AppContainer) receives the operator's session bus: `DBUS_SESSION_BUS_ADDRESS` and, under bubblewrap with the network, its socket. False by default. The bus lets a command leave the sandbox (`systemd-run --user`) and read every keyring secret (`secret-tool`), so turning it on is logged as a warning. An unconfined session and the code sandbox, which no jail holds, always receive it."
     },
     {
       "path": "Orkeon:Tools:Shell:ExtraAllowedCommands",

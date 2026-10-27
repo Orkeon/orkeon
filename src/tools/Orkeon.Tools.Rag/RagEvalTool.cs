@@ -34,6 +34,12 @@ public class RagEvalTool : ToolBase<RagEvalRequest, RagEvalResponse>
     /// <inheritdoc />
     public override string Name => "rag_eval";
 
+    /// <summary>
+    /// Declared access class for permission gates: the evaluation reads the index and the golden set;
+    /// the reports it writes are its own output, never the user's files.
+    /// </summary>
+    public override ToolAccess Access => ToolAccess.Read;
+
     /// <inheritdoc />
     public override string Description =>
         "Evaluate a RAG knowledge collection against a golden dataset (YAML): recall@k, precision@k, MRR, " +

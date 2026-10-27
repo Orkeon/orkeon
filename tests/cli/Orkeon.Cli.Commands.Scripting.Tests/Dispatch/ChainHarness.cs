@@ -20,6 +20,12 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Dispatch;
 internal static class ChainHarness
 {
     internal static IInteractiveCommand Load(CommandDispatchService service, string tempDir, string crewsDir)
+        => Load(service, tempDir, crewsDir, "chain-async.cmd.ts", "chain-async");
+
+    /// <summary>Loads <paramref name="command"/> from <paramref name="fixture"/>, <paramref name="extra"/> adding services to the whitelist.</summary>
+    internal static IInteractiveCommand Load(
+        CommandDispatchService service, string tempDir, string crewsDir, string fixture, string command,
+        Func<ScriptServiceWhitelist, ScriptServiceWhitelist>? extra = null)
     {
         foreach (var crew in new[] { "one", "two" })
         {
@@ -34,9 +40,15 @@ internal static class ChainHarness
             service,
             NullLogger<ScriptHostFacade>.Instance);
 
-        const string fixture = "chain-async.cmd.ts";
+        var builder = new ScriptServiceWhitelist().AddOptional("script-host", _ => facade);
+        return LoadAll(service, tempDir, fixture, extra is null ? builder : extra(builder)).Single(c => c.Name == command);
+    }
+
+    /// <summary>Loads every command of <paramref name="fixture"/>, the scripts seeing the services of <paramref name="whitelist"/>.</summary>
+    internal static IReadOnlyList<IInteractiveCommand> LoadAll(
+        CommandDispatchService service, string tempDir, string fixture, ScriptServiceWhitelist whitelist)
+    {
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", fixture), Path.Combine(tempDir, fixture));
-        var whitelist = new ScriptServiceWhitelist().AddOptional("script-host", _ => facade).Build();
         var loader = new ScriptCommandLoader(
             new DiskBackedFileSystemService(tempDir, virtualRoot: "/cmd"),
             PassThroughTranspiler.Instance,
@@ -49,11 +61,11 @@ internal static class ChainHarness
             new ScriptCommandLoaderDependencies
             {
                 LoggerFactory = null,
-                Services = new ScriptServiceLocator(whitelist, EmptyProvider.Instance),
+                Services = new ScriptServiceLocator(whitelist.Build(), EmptyProvider.Instance),
                 Dispatch = service,
             });
         var (registry, _) = loader.LoadAndRegisterAsync(CancellationToken.None).GetAwaiter().GetResult();
-        return registry.ScriptCommands.Single(c => c.Name == "chain-async");
+        return registry.ScriptCommands.ToList();
     }
 
     internal static CommandContext Ctx(string raw, string arg, IConsoleAdapter console) => new()

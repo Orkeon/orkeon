@@ -156,6 +156,31 @@ au début de l'appel (une `ActSession` par appel) :
 Les deux rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; la porte de permission passe toujours en premier.
 
+## Le budget de tokens d'act
+
+`budget({ tokens })` est une somme courante : chaque appel de chat de la boucle ajoute son prompt et sa
+complétion (le total du fournisseur). Chaque appel renvoie tout le contexte, si bien que le contexte est
+compté de nouveau à chaque appel : un tour de n appels dont le contexte croît régulièrement le paie
+environ n fois, et le chiffre ne borne ni la taille de la conversation ni ce qu'un fournisseur facture
+avec son cache. Chaque appel journalise la somme courante à côté de la limite (`act: agent '<nom>' call
+used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
+
+Quand la somme atteint la limite, l'act n'échoue pas. Un appel dont les tokens la dépassent garde sa
+réponse : une réponse finale est rendue telle quelle. Les appels d'outils qu'il demande ne s'exécutent
+pas : une fois le budget épuisé aucun autre outil ne tourne, à la dernière itération aussi, et l'act se
+termine par un dernier appel de chat qui ne peut appeler aucun outil, après un tour utilisateur qui dit
+au modèle que son budget est épuisé et lui demande de répondre maintenant avec ce qu'il a. Cet appel
+garde les outils de la boucle déclarés avec `ToolMode.None` — un historique qui contient des appels
+d'outils les exige chez Anthropic, qui reçoit `tool_choice: none`, comme les providers compatibles
+OpenAI ; Ollama, qui n'a pas ce réglage, ne reçoit aucun outil. Cette réponse est le résultat de l'act,
+avec `budgetExhausted: true` ; un appel d'outil qu'elle rend malgré tout n'est jamais exécuté, ses
+tokens sont comptés mais ne lancent aucune autre conclusion, et elle est gardée même quand elle se
+termine après la limite de temps mural. Un avertissement journalise que le budget est épuisé. Quand ce
+dernier appel échoue, ou ne répond rien, l'act rejette avec `BudgetExhaustedError`, dont le message
+nomme ce qu'il a compté : `Token budget exhausted: <somme> tokens sent and received over <n> calls
+(limit <limite>)`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation,
+enfants) rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`.
+
 ## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
 
 - **`spawn_agent`** est un outil appelable par le modèle, toujours proposé dans `act`. Il exécute un
@@ -241,7 +266,34 @@ ANT-007/ANT-010, « bloquants assumés ») :
 La voie nominale pour le travail long est le cycle à ticket : `runCrewAsync(name, input?)`
 (adossé à `CommandDispatchService.postWork`, même mécanisme que `commands.post`)
 retourne un ticket immédiatement et livre le résumé du crew au callback
-`completed(result)` d'un `defineAsyncCommand`.
+`completed(result, ctx)` d'un `defineAsyncCommand`.
+
+`completed` peut être `async` (`(result, ctx) => void | Promise<void>` dans
+`orkeon-cli.d.ts`). Quand il retourne une promesse, le drain l'attend avant de passer à la
+complétion suivante ou à la commande suivante du script, la même règle qu'un `async dispatch` :
+tout son corps, chaque `await` compris, s'y règle. Une lecture de l'hôte faite à chaque saut
+(les règles de la session, `inspect`) voit donc ce que l'opérateur a changé entre deux sauts,
+et un `runCrewAsync` fait après un `await` est chaîné à la commande comme un lancement fait
+avant. Une promesse que le handler n'attend pas n'est pas attendue, et un lancement fait
+depuis elle n'est pas chaîné. Un rejet ou une exception n'arrête pas le drain : la console
+affiche `Error in completed('<name>'): <première ligne de la raison>`, le log de l'hôte garde
+l'erreur entière, et le registre signale un échec de complétion pour l'instance
+(`CommandInstanceRegistry.ReportCompletionFailure`, qui arrête un `orkeon-repl --replay` sur la
+ligne qui l'a lancée). L'instance garde son propre état, et un crew lancé avant le rejet
+s'exécute et se draine quand même.
+
+```typescript
+defineAsyncCommand({
+  name: "step",
+  description: "Run a crew, then the next one, reading the session's rules at each hop.",
+  dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
+  completed: async (result, ctx) => {
+    const rules = await ctx.services.get("permissions").list();   // les règles en vigueur maintenant
+    ctx.writeLine(`plan done, ${rules.length} rule(s) in force`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
+  },
+});
+```
 
 ## Modèle de threading
 

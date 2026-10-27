@@ -30,6 +30,16 @@ public interface IBaseTool
     ToolAccess Access => ToolAccess.Unspecified;
 
     /// <summary>
+    /// Access classification of one call, decided from its <paramref name="arguments"/>, for a tool
+    /// whose class depends on the operation asked (a read action and a write action behind one name).
+    /// Permission gates use it in place of <see cref="Access"/>. Defaults to <see cref="Access"/>; an
+    /// override returns the most restrictive class for arguments it does not recognise (fail-closed).
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <returns>The access class of this call.</returns>
+    ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments) => Access;
+
+    /// <summary>
     /// Executes the tool with the given request.
     /// </summary>
     /// <param name="request">The tool call request with parameters.</param>

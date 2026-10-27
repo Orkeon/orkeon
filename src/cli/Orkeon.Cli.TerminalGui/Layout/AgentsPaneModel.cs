@@ -37,15 +37,20 @@ public static class AgentsPaneModel
         ArgumentNullException.ThrowIfNull(row);
         if (width <= 0) return [];
 
-        var metrics = TerminalText.Truncate(ComposeMetrics(glyphs, row), Math.Max(0, width - LeadWidth), glyphs.Ellipsis);
+        var ended = row.State is TaskRowState.Done or TaskRowState.Failed or TaskRowState.Cancelled;
+        var metricsText = ended
+            ? (row.Elapsed is { } final ? StatusLineFormatter.FormatElapsed(final) : string.Empty)
+            : ComposeMetrics(glyphs, row);
+        var metrics = TerminalText.Truncate(metricsText, Math.Max(0, width - LeadWidth), glyphs.Ellipsis);
         var metricsColumns = TerminalText.Columns(metrics);
         var reserved = metricsColumns > 0 ? metricsColumns + ColumnGap : 0;
         var nameRoom = Math.Max(0, width - LeadWidth - reserved);
         var name = TerminalText.Truncate(row.Name, nameRoom, glyphs.Ellipsis);
         var nameColumns = TerminalText.Columns(name);
         var phraseRoom = width - LeadWidth - nameColumns - NameGap.Length - reserved;
-        var phrase = phraseRoom > 0 && !string.IsNullOrWhiteSpace(row.Description)
-            ? NameGap + TerminalText.Truncate(row.Description.Trim(), phraseRoom, glyphs.Ellipsis)
+        var phraseText = ended ? Outcome(glyphs, row.State) : row.Description?.Trim();
+        var phrase = phraseRoom > 0 && !string.IsNullOrWhiteSpace(phraseText)
+            ? NameGap + TerminalText.Truncate(phraseText, phraseRoom, glyphs.Ellipsis)
             : string.Empty;
 
         var segments = new List<RowSegment>(8)
@@ -55,7 +60,7 @@ public static class AgentsPaneModel
             new(recipient ? glyphs.Bullet : glyphs.BulletHollow, StateRole(row.State)),
             new(" ", PaletteRole.Normal),
             new(name, PaletteRole.Normal, Bold: true),
-            new(phrase, PaletteRole.Normal),
+            new(phrase, ended ? PaletteRole.Dim : PaletteRole.Normal),
         };
         var used = LeadWidth + nameColumns + TerminalText.Columns(phrase);
         var padding = width - used - metricsColumns;
@@ -67,6 +72,34 @@ public static class AgentsPaneModel
     /// <summary>The plain text of a row (see <see cref="Segments"/>).</summary>
     internal static string FormatRow(GlyphSet glyphs, AgentRowInfo row, int width, bool cursor = false, bool recipient = false)
         => RowSegment.Concat(Segments(glyphs, row, width, cursor, recipient));
+
+    /// <summary>
+    /// The rows of the list: main, the live tasks, then the ended ones absent from the live rows. When no task is live
+    /// and ended ones remain, main is added here, running while <paramref name="promptTurnRunning"/> says the prompt's
+    /// turn runs, as the host's live rows state it otherwise.
+    /// </summary>
+    public static IReadOnlyList<AgentRowInfo> ComposeListRows(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended, bool promptTurnRunning = false)
+    {
+        ArgumentNullException.ThrowIfNull(live);
+        ArgumentNullException.ThrowIfNull(ended);
+
+        var liveTickets = live.Where(r => r.Ticket is not null).Select(r => r.Ticket!).ToHashSet(StringComparer.Ordinal);
+        var kept = ended
+            .Where(r => r.Ticket is null || !liveTickets.Contains(r.Ticket))
+            .OrderBy(r => r.Ticket?.Length ?? 0)
+            .ThenBy(r => r.Ticket, StringComparer.Ordinal);
+        var rows = live.ToList();
+        if (rows.Count == 0 && kept.Any()) rows.Add(new AgentRowInfo { Name = "main", IsActive = true, State = promptTurnRunning ? TaskRowState.Running : TaskRowState.Idle });
+        rows.AddRange(kept);
+        return rows;
+    }
+
+    private static string Outcome(GlyphSet glyphs, TaskRowState state) => state switch
+    {
+        TaskRowState.Failed => $"{glyphs.Cross} failed",
+        TaskRowState.Cancelled => $"{glyphs.Slashed} cancelled",
+        _ => $"{glyphs.Check} finished",
+    };
 
     /// <summary>The bullet's role for a state: green running, red failed or cancelled, dim otherwise.</summary>
     internal static PaletteRole StateRole(TaskRowState state) => state switch

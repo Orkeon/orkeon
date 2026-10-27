@@ -153,6 +153,29 @@ the call starts (one `ActSession` per call):
 Both callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); the permission gate always comes first.
 
+## The token budget of act
+
+`budget({ tokens })` is a running sum: each chat call of the loop adds its prompt plus its completion
+(the provider's total). Every call resends the whole context, so the context is counted again on each
+call: a turn of n calls whose context grows evenly pays it about n times, and the figure bounds neither
+the size of the conversation nor what a provider bills with its cache. Each call logs the running sum
+next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
+calls`, Information).
+
+When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
+a final answer is returned as it is. The tool calls it asks for do not run: once the budget is spent no
+other tool runs, on the last iteration too, and the act ends with one last chat call that may call no
+tool, after a user turn telling the model its budget is spent and asking it to answer now with what it
+has. That call keeps the tools of the loop declared with `ToolMode.None` — a history that holds tool
+calls needs them on Anthropic, which is sent `tool_choice: none`, as the OpenAI-compatible providers
+are; Ollama, which has no such switch, is sent no tools. That answer is the act's result, with
+`budgetExhausted: true`; a tool call it returns anyway is never run, its tokens are recorded but start
+no other wrap-up, and it is kept even when it ends after the wall-time limit. A warning logs that the
+budget ran out. When that last call fails, or answers nothing, the act rejects with
+`BudgetExhaustedError`, whose message names what it counted: `Token budget exhausted: <sum> tokens sent
+and received over <n> calls (limit <limit>)`. The other dimensions (tool calls, wall time, delegation
+depth, spawns) still reject at the gate, and `maxIterations` still ends with `exhausted: true`.
+
 ## Child agents: `spawn_agent` and `ctx.spawnBackground`
 
 - **`spawn_agent`** is a model-callable tool, always offered in `act`. It runs a named crew agent as a
@@ -231,7 +254,34 @@ ANT-007/ANT-010, "assumed blocking by design"):
 The nominal path for long work is the ticket cycle: `runCrewAsync(name, input?)`
 (backed by `CommandDispatchService.postWork`, same mechanism as `commands.post`)
 returns a ticket immediately and delivers the crew summary to a
-`defineAsyncCommand`'s `completed(result)` callback.
+`defineAsyncCommand`'s `completed(result, ctx)` callback.
+
+`completed` may be `async` (`(result, ctx) => void | Promise<void>` in
+`orkeon-cli.d.ts`). When it returns a promise, the drain awaits it before going on to the
+next completion or the next command of the script, the same rule as an `async dispatch`:
+its whole body, every `await` included, settles there. A host read made at each hop (the
+session's rules, `inspect`) therefore sees what the operator changed between two hops, and
+a `runCrewAsync` made after an `await` is chained to the command like one made before it.
+A promise the handler does not await is not waited for, and a launch made from it is not
+chained. A rejection or a throw does not stop the drain: the console shows
+`Error in completed('<name>'): <first line of the reason>`, the host log keeps the whole
+error, and the registry reports a completion failure for the instance
+(`CommandInstanceRegistry.ReportCompletionFailure`, which stops an `orkeon-repl --replay` on
+the line that launched it). The instance keeps its own state, and a crew launched before
+the rejection still runs and drains.
+
+```typescript
+defineAsyncCommand({
+  name: "step",
+  description: "Run a crew, then the next one, reading the session's rules at each hop.",
+  dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
+  completed: async (result, ctx) => {
+    const rules = await ctx.services.get("permissions").list();   // the rules in force now
+    ctx.writeLine(`plan done, ${rules.length} rule(s) in force`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
+  },
+});
+```
 
 ## Threading model
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.Constants.Security;
@@ -249,7 +250,7 @@ public partial class HostProcessRunner : ICodeSandbox
         return string.Join('\n', lines.Select(l => indent + l.TrimEnd('\r')));
     }
 
-    private static async Task<(int ExitCode, string? Output, string? Error)> RunDotnetCommandAsync(
+    private async Task<(int ExitCode, string? Output, string? Error)> RunDotnetCommandAsync(
         string command, string workingDir, TimeSpan timeout, CancellationToken ct)
     {
         using var process = new SysProcess();
@@ -321,7 +322,7 @@ public partial class HostProcessRunner : ICodeSandbox
         }
     }
 
-    private static SysProcess CreateExecutionProcess(string dllPath, SandboxExecutionRequest request)
+    private SysProcess CreateExecutionProcess(string dllPath, SandboxExecutionRequest request)
     {
         var process = new SysProcess();
         process.StartInfo = new ProcessStartInfo
@@ -342,15 +343,149 @@ public partial class HostProcessRunner : ICodeSandbox
         return process;
     }
 
-    private static void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
+    /// <summary>
+    /// The variables that name a socket of the operator's session (#216): the session bus, the
+    /// runtime directory, the ssh agent. Twin of <c>ShellEnvironment.SessionSocketVariables</c>
+    /// (<c>src/tools/Orkeon.Tools.Code/Sessions</c>). The child is held by no jail, so it receives the
+    /// bus whatever <c>Orkeon:Tools:Shell:Environment:SessionBus</c> says: it could reach the bus's
+    /// socket in the operator's runtime directory without the variable.
+    /// </summary>
+    private static readonly string[] s_sessionSocketVariables =
+        ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK"];
+
+    /// <summary>
+    /// The configuration key of the operator's extra variables, the same list the shell sessions
+    /// receive: <c>ShellToolOptions.Environment.Propagate</c> (<c>src/tools/Orkeon.Tools.Code</c>), read
+    /// here by its path since Infrastructure may not reference a tool project.
+    /// </summary>
+    internal const string PropagateConfigurationKey = "Orkeon:Tools:Shell:Environment:Propagate";
+
+    /// <summary>
+    /// The words an added name may not contain, compared without case. Twin of
+    /// <c>ShellEnvironment.SecretWords</c> (<c>src/tools/Orkeon.Tools.Code/Sessions</c>).
+    /// </summary>
+    internal static readonly IReadOnlyList<string> SecretWords =
+        ["KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH"];
+
+    // Every name ConfigureRestrictedEnvironment sets or propagates on its own: an added one is a duplicate.
+    private static readonly string[] s_builtInVariables =
+    [
+        "PATH", "HOME", "USERPROFILE", "TEMP", "TMP", "DOTNET_CLI_TELEMETRY_OPTOUT", "DOTNET_NOLOGO", "DOTNET_ROOT",
+        "SystemRoot", "SystemDrive", "APPDATA", "LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)", "NUGET_PACKAGES",
+        "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK",
+    ];
+
+    /// <summary>
+    /// The variable names the operator added (<see cref="PropagateConfigurationKey"/>), already
+    /// filtered by <c>SelectPropagatedVariables</c>. Set by <c>AddOrkeonCodeSandbox</c>.
+    /// </summary>
+    internal IReadOnlyList<string> PropagatedVariables { get; init; } = [];
+
+    /// <summary>
+    /// How two variable names compare: case-sensitively, except on Windows, whose environment ignores
+    /// case. Twin of <c>ShellEnvironment.NameComparer</c>.
+    /// </summary>
+    internal static StringComparer VariableNameComparer { get; } = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+    /// <summary>The added names the child may receive, read from the process environment.</summary>
+    /// <param name="configured">The names as configured.</param>
+    /// <param name="logger">Receives one warning per refused name; null logs nothing.</param>
+    internal static IReadOnlyList<string> SelectPropagatedVariables(IEnumerable<string> configured, ILogger? logger)
+        => SelectPropagatedVariables(configured, Environment.GetEnvironmentVariable, logger);
+
+    /// <summary>
+    /// The added names the child may receive, in their order, each once (<see cref="VariableNameComparer"/>):
+    /// a name that is invalid (blank, holding <c>=</c> or a NUL), starts with <c>ORKEON_</c> or
+    /// contains one of the <see cref="SecretWords"/>, or whose value carries URL credentials
+    /// (<c>scheme://user:password@host</c>), is refused with a warning that never quotes the value; a
+    /// built-in name is ignored. Twin of <c>ShellEnvironment.SelectPropagated</c>.
+    /// </summary>
+    /// <param name="configured">The names as configured.</param>
+    /// <param name="read">Reads one variable of the parent environment; null when it is unset.</param>
+    /// <param name="logger">Receives one warning per refused name; null logs nothing.</param>
+    internal static IReadOnlyList<string> SelectPropagatedVariables(IEnumerable<string> configured, Func<string, string?> read, ILogger? logger)
+    {
+        ArgumentNullException.ThrowIfNull(configured);
+        ArgumentNullException.ThrowIfNull(read);
+        var accepted = new List<string>();
+        foreach (var name in configured)
+        {
+            if ((PropagationRefusal(name) ?? ValueRefusal(name, read)) is { } reason)
+            {
+                if (logger is not null)
+                    LogPropagatedNameRefused(logger, name.Replace("\0", "\\0", StringComparison.Ordinal), reason);
+                continue;
+            }
+
+            if (!IsBuiltInVariable(name) && !accepted.Contains(name, VariableNameComparer))
+                accepted.Add(name);
+        }
+
+        return accepted;
+    }
+
+    // Why an added name is refused, or null when it may pass (a built-in name passes here).
+    private static string? PropagationRefusal(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Contains('=', StringComparison.Ordinal) || name.Contains('\0', StringComparison.Ordinal))
+            return "a variable name may not be blank nor hold '=' or a NUL";
+        if (IsBuiltInVariable(name))
+            return null;
+        if (name.StartsWith("ORKEON_", StringComparison.OrdinalIgnoreCase))
+            return "the ORKEON_ variables are the runner's own and carry its secrets";
+        if (SecretWords.FirstOrDefault(word => name.Contains(word, StringComparison.OrdinalIgnoreCase)) is { } word)
+            return $"it contains '{word}', which names a secret";
+        return null;
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "Orkeon:Tools:Shell:Environment:Propagate: '{Name}' is not propagated to the code sandbox: {Reason}.")]
+    private static partial void LogPropagatedNameRefused(ILogger logger, string name, string reason);
+
+    private static bool IsBuiltInVariable(string name)
+        => s_builtInVariables.Contains(name, VariableNameComparer);
+
+    // Why an added name is refused for its value, or null when the value may pass (an unset one does).
+    private static string? ValueRefusal(string name, Func<string, string?> read)
+        => !IsBuiltInVariable(name) && read(name) is { } value && CarriesUrlCredentials(value)
+            ? "its value carries URL credentials (scheme://user:password@host)"
+            : null;
+
+    /// <summary>
+    /// Whether <paramref name="value"/> carries the userinfo of a URL (<c>scheme://user:password@host</c>,
+    /// or a lone user standing for a token). Twin of <c>ShellEnvironment.CarriesUrlCredentials</c>.
+    /// </summary>
+    internal static bool CarriesUrlCredentials(string value) => UrlUserInfo().IsMatch(value);
+
+    // A scheme, '//', then an authority part that ends with '@' before any '/', '?', '#', blank or list separator.
+    [GeneratedRegex(@"[A-Za-z][A-Za-z0-9+.\-]*://[^/?#@\s,;]+@", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex UrlUserInfo();
+
+    private void ConfigureRestrictedEnvironment(ProcessStartInfo startInfo)
+        => ConfigureRestrictedEnvironment(startInfo, Environment.GetEnvironmentVariable, PropagatedVariables);
+
+    /// <summary>
+    /// Replaces the inherited environment of <paramref name="startInfo"/> with the allow-list, read
+    /// through <paramref name="read"/>: every other variable of the runner, its LLM API keys first,
+    /// is dropped. The names in <paramref name="propagated"/> follow, bar any the filter of
+    /// <c>SelectPropagatedVariables</c> refuses or whose value carries URL credentials (dropped here
+    /// silently, defence in depth).
+    /// </summary>
+    internal static void ConfigureRestrictedEnvironment(
+        ProcessStartInfo startInfo, Func<string, string?> read, IReadOnlyList<string>? propagated = null)
     {
         startInfo.Environment.Clear();
         startInfo.Environment["PATH"] = GetMinimalPath();
         startInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         startInfo.Environment["DOTNET_NOLOGO"] = "1";
-        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        if (!string.IsNullOrEmpty(dotnetRoot))
-            startInfo.Environment["DOTNET_ROOT"] = dotnetRoot;
+        PropagateEnvVar(startInfo, "DOTNET_ROOT", read);
+        foreach (var name in s_sessionSocketVariables)
+            PropagateEnvVar(startInfo, name, read);
+        foreach (var name in propagated ?? [])
+        {
+            if (PropagationRefusal(name) is null && !IsBuiltInVariable(name) && !(read(name) is { } value && CarriesUrlCredentials(value)))
+                PropagateEnvVar(startInfo, name, read);
+        }
 
         if (OperatingSystem.IsWindows())
         {
@@ -364,13 +499,13 @@ public partial class HostProcessRunner : ICodeSandbox
             startInfo.Environment["TMP"] = Path.GetTempPath(); // NOSONAR — required for dotnet CLI; sandbox dir itself is Guid-scoped
 
             // Required for dotnet SDK resolution and NuGet package cache
-            PropagateEnvVar(startInfo, "SystemRoot");
-            PropagateEnvVar(startInfo, "SystemDrive");
-            PropagateEnvVar(startInfo, "APPDATA");
-            PropagateEnvVar(startInfo, "LOCALAPPDATA");
-            PropagateEnvVar(startInfo, "ProgramFiles");
-            PropagateEnvVar(startInfo, "ProgramFiles(x86)");
-            PropagateEnvVar(startInfo, "NUGET_PACKAGES");
+            PropagateEnvVar(startInfo, "SystemRoot", read);
+            PropagateEnvVar(startInfo, "SystemDrive", read);
+            PropagateEnvVar(startInfo, "APPDATA", read);
+            PropagateEnvVar(startInfo, "LOCALAPPDATA", read);
+            PropagateEnvVar(startInfo, "ProgramFiles", read);
+            PropagateEnvVar(startInfo, "ProgramFiles(x86)", read);
+            PropagateEnvVar(startInfo, "NUGET_PACKAGES", read);
         }
         else
         {
@@ -378,9 +513,9 @@ public partial class HostProcessRunner : ICodeSandbox
         }
     }
 
-    private static void PropagateEnvVar(ProcessStartInfo startInfo, string name)
+    private static void PropagateEnvVar(ProcessStartInfo startInfo, string name, Func<string, string?> read)
     {
-        var value = Environment.GetEnvironmentVariable(name);
+        var value = read(name);
         if (!string.IsNullOrEmpty(value))
             startInfo.Environment[name] = value;
     }

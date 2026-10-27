@@ -8,6 +8,7 @@ using Orkeon.Cli.Commands.Scripting.Args;
 using Orkeon.Cli.Commands.Scripting.Bindings;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Loading;
+using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.Commands.Scripting.Telemetry;
 using Orkeon.Scripting.Telemetry;
 
@@ -75,6 +76,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// <inheritdoc />
     public string Description => _descriptor.Description;
 
+    /// <inheritdoc />
+    public string? Group => _descriptor.EffectiveGroup;
+
     /// <summary>Virtual path of the source script — used by telemetry and diagnostics.</summary>
     public string SourceVirtualPath => _descriptor.SourceVirtualPath;
 
@@ -94,8 +98,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         await _engineLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Pump point: replay any async completions that settled since the last invocation
-            // on this engine (design §4.3) — under the lock, on the engine thread.
+            // Pump point: replay this command's async completions that settled since its last
+            // invocation (design §4.3) — under the lock, on the engine thread.
             await DrainCompletionsAsync(context.Console).ConfigureAwait(false);
 
             // Parse args once; both sync handlers and async dispatch receive the same shape.
@@ -230,20 +234,36 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             {
                 _drainQueue.Enqueue(_descriptor.Completed, settled);
 
-                // Immediate host-side feedback so the operator sees something without waiting
-                // for the next pump (design §4.3). Thread-safe vs the engine: console only.
-                var view = settled.Snapshot();
-                var mark = view.state == "done" ? "✓" : "✗";
-                console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
+                // The callback runs at the end of the task's own flow, whose ambient still names the task
+                // (ConsoleThread, ProgressAmbient). The end line and the completed() drain belong to the main
+                // thread (split-pane console: the main screen carries the lifecycle lines and the results), so
+                // both run with that ambient cleared, restored once the drain is started.
+                var task = ProgressAmbient.CurrentInstance;
+                var thread = ConsoleThread.Current;
+                ProgressAmbient.CurrentInstance = null;
+                try
+                {
+                    // Immediate host-side feedback so the operator sees something without waiting
+                    // for the next pump (design §4.3). Thread-safe vs the engine: console only. On main,
+                    // the ticket names the task the line is about.
+                    var view = settled.Snapshot();
+                    var mark = view.state == "done" ? "✓" : "✗";
+                    console.WriteLine($"  {mark} [{view.ticket}] {view.name} → {view.targetAgent}: {view.state}");
 
-                // Push-render: run the JS completed(result) callback now, instead of deferring
-                // it to this command's next invocation. Off the pool thread, serialised on the
-                // engine lock. Without this, an async reply (e.g. /assistant) stays invisible
-                // until the user happens to re-run the same command — other commands pump only
-                // their own queue, and built-ins don't pump at all.
-                // The drain is work in flight until it ends, so a replay of the REPL waits for it (and for every
-                // launch it makes, registered before the handle is released).
-                _ = PushDrainAsync(console, _dispatch?.Registry.BeginWork());
+                    // Push-render: run the JS completed(result) callback now, instead of deferring
+                    // it to this command's next invocation. Off the pool thread, serialised on the
+                    // engine lock. Without this, an async reply (e.g. /assistant) stays invisible
+                    // until the user happens to re-run the same command - other commands pump only
+                    // their own queue, and built-ins don't pump at all.
+                    // The drain is work in flight until it ends, so a replay of the REPL waits for it (and for every
+                    // launch it makes, registered before the handle is released). It captures the cleared ambient.
+                    _ = PushDrainAsync(console, _dispatch?.Registry.BeginWork());
+                }
+                finally
+                {
+                    ProgressAmbient.CurrentInstance = task;
+                    ConsoleThread.Current = thread;
+                }
             });
         }
     }
@@ -275,8 +295,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
     }
 
-    // Static: the commands of one file share a drain queue, so whichever command drains an
-    // item must find the count of the invocation that launched it.
+    // Static: keyed by instance, so the drain finds the count of the invocation that launched it
+    // whichever ScriptCommand object of the file wired it.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CommandInstance, AdmissionCount> _admissionOf = new();
 
     /// <summary>Instances of one invocation still unsettled; the slot is released when it reaches zero.</summary>
@@ -302,7 +322,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     private async Task DrainCompletionsAsync(IConsoleAdapter console)
     {
-        var pending = _drainQueue.DrainAll();
+        // Only this command's completions: a sibling of the same file pumps its own (they share the queue).
+        var pending = _drainQueue.DrainFor(_descriptor.Name);
         if (pending.Count == 0) return;
 
         var next = 0;
@@ -313,7 +334,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
         finally
         {
-            // Items taken by DrainAll but not reached (an engine limit escaped) still free their slot.
+            // Items taken by DrainFor but not reached (an engine limit escaped) still free their slot.
             for (; next < pending.Count; next++)
                 if (_admissionOf.TryGetValue(pending[next].Instance, out var skipped)) skipped.Settle();
         }
@@ -334,7 +355,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
             // A completed() may launch more async work (runCrewAsync): give it an ambient scope of
             // this command so the new instances are captured and wired to drain like any dispatch.
-            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth) : null;
+            using var scope = _dispatch is not null ? _dispatch.BeginCommand(_descriptor.Name, CancellationToken.None, parentDepth: item.Instance.Depth, fromCompleted: true) : null;
             try
             {
                 var r = _engine.Invoke(item.Completed, new[] { resultVal, ctxObj });

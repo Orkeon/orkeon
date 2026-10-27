@@ -43,7 +43,7 @@ public sealed class CommandDescriptorCollector
     /// </summary>
     public void Add(JsValue descRaw)
     {
-        var (obj, name, description, aliases, argsSchemaJson) = ParseCommon(descRaw, "defineCommand");
+        var (obj, name, description, aliases, argsSchemaJson, group) = ParseCommon(descRaw, "defineCommand");
 
         var handler = obj.Get("handler");
         if (handler.IsUndefined() || handler.IsNull())
@@ -56,6 +56,7 @@ public sealed class CommandDescriptorCollector
             SourceVirtualPath = _sourceVirtualPath,
             Name = name,
             Aliases = aliases,
+            Group = group,
             Description = description,
             Kind = CommandKind.Sync,
             Handler = handler,
@@ -70,7 +71,7 @@ public sealed class CommandDescriptorCollector
     /// </summary>
     public void AddAsync(JsValue descRaw)
     {
-        var (obj, name, description, aliases, argsSchemaJson) = ParseCommon(descRaw, "defineAsyncCommand");
+        var (obj, name, description, aliases, argsSchemaJson, group) = ParseCommon(descRaw, "defineAsyncCommand");
 
         var dispatch = obj.Get("dispatch");
         if (dispatch.IsUndefined() || dispatch.IsNull())
@@ -104,6 +105,7 @@ public sealed class CommandDescriptorCollector
             SourceVirtualPath = _sourceVirtualPath,
             Name = name,
             Aliases = aliases,
+            Group = group,
             Description = description,
             Kind = CommandKind.Async,
             Dispatch = dispatch,
@@ -114,7 +116,7 @@ public sealed class CommandDescriptorCollector
     }
 
     /// <summary>Parses the fields common to both command shapes: name, description, aliases, args.</summary>
-    private (Jint.Native.Object.ObjectInstance Obj, string Name, string Description, System.Collections.Immutable.ImmutableArray<string> Aliases, JsValue? ArgsSchemaJson)
+    private (Jint.Native.Object.ObjectInstance Obj, string Name, string Description, System.Collections.Immutable.ImmutableArray<string> Aliases, JsValue? ArgsSchemaJson, string? Group)
         ParseCommon(JsValue descRaw, string globalName)
     {
         if (_frozen)
@@ -144,7 +146,16 @@ public sealed class CommandDescriptorCollector
         var argsRaw = obj.Get("args");
         JsValue? argsSchemaJson = argsRaw.IsUndefined() || argsRaw.IsNull() ? null : argsRaw;
 
-        return (obj, name, description, aliases, argsSchemaJson);
+        string? group = null;
+        var groupVal = obj.Get("group");
+        if (!groupVal.IsUndefined() && !groupVal.IsNull())
+        {
+            if (!groupVal.IsString())
+                throw new ArgumentException($"{globalName}({{name:'{name}'}}) in {_sourceVirtualPath}: 'group' must be a string.");
+            group = groupVal.AsString();
+        }
+
+        return (obj, name, description, aliases, argsSchemaJson, group);
     }
 
     /// <summary>Parses the optional <c>aliases</c> array, validating every element is a string.</summary>

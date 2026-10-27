@@ -198,15 +198,15 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
-| [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 32 |
+| [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 76 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 28 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-71 sections, 386 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+72 sections, 391 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1178,6 +1178,7 @@ Validation des chemins physiques. Liée par `AddOrkeonInfrastructure()` (`IPathV
 |---|---|---|---|
 | `AdditionalAllowedDirectories` | liste de chaînes | `[]` | Répertoires supplémentaires autorisés au-delà de la racine de l'espace de travail. |
 | `AdditionalBlockedExtensions` | liste de chaînes | `[]` | Extensions de fichier supplémentaires à bloquer, en plus de la liste intégrée. |
+| `BlockReadsOfBlockedExtensions` | booléen | `false` | Si une simple lecture d'une extension de script intégrée (`.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.wsf`) est refusée elle aussi. Défaut : `false` : lire un script n'est pas l'exécuter, la lecture passe tandis qu'une écriture, une création, une suppression ou une cible de commande y est refusée. Les extensions binaires intégrées et `AdditionalBlockedExtensions` refusent la lecture quoi que dise cette option. |
 | `DefaultWorkspaceRoot` | chaîne | — | Le répertoire racine de l'espace de travail par défaut. À null, c'est le répertoire de travail courant. |
 | `MaxFileSizeBytes` | entier | `52428800` | Taille de fichier maximale autorisée, en octets. Défaut : 50 Mo. |
 | `ResolveSymlinks` | booléen | `true` | S'il faut résoudre les liens symboliques et vérifier que la cible est dans l'espace de travail. Défaut : true. |
@@ -1417,6 +1418,18 @@ dans un conteneur ; `None` le coupe. Un backend qui ne peut pas tourner fait éc
 avec la raison, plutôt que de le lancer hors confinement. `AllowNetwork` ouvre le réseau (coupé
 par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoires système
 ([Confinement du shell](../architecture/security.md#confinement-du-shell), [limites](./limitations.md)).
+`Environment:Propagate` nomme des variables de l'hôte remises à la session shell et au bac à sable
+de code en plus de la liste blanche intégrée, comme `HTTPS_PROXY` quand le proxy ne demande aucun
+identifiant. Le filtre des secrets l'emporte : un nom qui commence par `ORKEON_`, contient `KEY`,
+`TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse), vide, ou qui porte
+`=` ou un NUL, ou dont la valeur porte des identifiants d'URL (`http://user:password@proxy:3128`),
+est écarté avec un avertissement dans le journal qui ne cite jamais la valeur, et l'hôte démarre
+quand même ; un nom intégré (`SSH_AUTH_SOCK`, `PATH`) est ignoré. Les noms se comparent avec la
+casse, sauf sous Windows. Sous bubblewrap, une variable ajoutée passe quoi que dise `AllowNetwork`,
+et aucun chemin qu'elle nomme n'est monté dans la vue. `Environment:SessionBus` (coupé par défaut)
+remet à une session confinée le bus de session de l'opérateur, par lequel une commande peut sortir
+du bac à sable et lire le trousseau : l'hôte journalise un avertissement quand il est activé
+([le bus de session est sur option](../architecture/security.md#confinement-du-shell)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1428,6 +1441,8 @@ par défaut) et `ReadOnlyPaths` prête une chaîne d'outils hors des répertoire
 | `Confinement:AllowNetwork` | booléen | `false` |  | Laisse le processus confiné atteindre le réseau. Faux par défaut : il a son propre espace de noms réseau, avec la seule boucle locale. |
 | `Confinement:Mode` | énumération | `"Auto"` | `None`, `Bubblewrap`, `Auto`, `Seatbelt`, `AppContainer` | Comment le processus est confiné. `Auto` (défaut) choisit le moteur de la plateforme : `Bubblewrap` sous Linux, `Seatbelt` sous macOS, `AppContainer` sous Windows, et aucun confinement quand l'hôte tourne dans un conteneur (le conteneur est la frontière). `None` lance le processus sur l'hôte, sous l'utilisateur de l'hôte. `Bubblewrap` le lance sous `bwrap` (Linux) : chaque montage lié à son chemin virtuel, en lecture seule quand il n'a pas Write, les répertoires système en lecture seule, rien d'autre de l'hôte, le réseau coupé. Quand le moteur est indisponible (autre OS, pas de `bwrap`, espaces de noms refusés), l'appel échoue avec la raison et la commande ne tourne pas. |
 | `Confinement:ReadOnlyPaths` | liste de chaînes | `[]` |  | Répertoires absolus de l'hôte liés en lecture seule à leur propre chemin, en plus des répertoires système (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), pour un programme installé ailleurs, comme `/opt/node` ou un dossier `.dotnet`. |
+| `Environment:Propagate` | liste de chaînes | `[]` |  | Noms de variables supplémentaires propagés depuis l'environnement du runner, comme `HTTPS_PROXY` quand le proxy ne demande aucun identifiant. Un nom vide, qui contient `=` ou un NUL, commence par `ORKEON_` ou contient `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` ou `AUTH` (sans casse), ou dont la valeur porte des identifiants d'URL (`http://user:password@proxy:3128`), est écarté avec un avertissement qui ne cite jamais la valeur ; un nom déjà intégré est ignoré. Les noms se comparent avec la casse, sauf sous Windows. Sous bubblewrap, la valeur passe quel que soit le réseau, mais aucun chemin qu'elle nomme n'est lié dans la vue. |
+| `Environment:SessionBus` | booléen | `false` |  | Indique si une session shell confinée (bubblewrap, Seatbelt, AppContainer) reçoit le bus de session de l'opérateur : `DBUS_SESSION_BUS_ADDRESS` et, sous bubblewrap avec le réseau, son socket. Faux par défaut. Le bus permet à une commande de sortir du bac à sable (`systemd-run --user`) et de lire tous les secrets du trousseau (`secret-tool`) : l'activer est journalisé comme un avertissement. Une session non confinée et le bac à sable de code, qu'aucune prison ne retient, le reçoivent toujours. |
 | `ExtraAllowedCommands` | liste de chaînes | `[]` |  | Commandes ajoutées à l'allowlist par défaut (ou de remplacement), comme `make`. |
 <!-- /settings -->
 
@@ -1537,6 +1552,24 @@ lue comme celles de l'e-mail. Parcours et outils : [Outils drive](../guides/driv
 | `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages de l'utilisateur ne convient pas (un compte de service). Lu par l'hôte, pas par les outils. |
 | `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |
 | `Screening:WithholdRejected` | booléen | `false` |  | Si vrai, le texte d'un fichier que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut, comme pour l'e-mail : le détecteur signale ; les droits et le dossier racine bornent l'agent. |
+<!-- /settings -->
+
+### `Orkeon:Tools:GitHub`
+
+Lue une fois par `AddOrkeonWebTools` quand l'outil `github` est enregistré. Le jeton est la première
+valeur non vide parmi `Token`, la variable d'environnement que nomme `TokenVariable` (par défaut
+`GITHUB_TOKEN`), puis `GH_TOKEN`. Sans jeton, chaque appel est anonyme : les actions de lecture
+fonctionnent dans la limite de débit anonyme de GitHub, `create_issue` et `create_pr` sont refusées,
+et la description de l'outil dit où poser le jeton. Le jeton est masqué (`***`) dans les erreurs et
+les journaux de l'outil.
+
+<!-- settings:Orkeon:Tools:GitHub -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `Token` | chaîne, secret | — | Jeton d'accès personnel GitHub que l'outil envoie comme bearer. Le garder hors d'un fichier versionné (`appsettings.local.json`, ou plutôt la variable d'environnement). Non renseigné : la variable que nomme `TokenVariable`, puis `GH_TOKEN`. |
+| `TokenVariable` | chaîne | `"GITHUB_TOKEN"` | Nom de la variable d'environnement qui contient le jeton quand `Token` est vide ; `GH_TOKEN` est lue après elle. |
 <!-- /settings -->
 
 ### `MCP`
@@ -2100,9 +2133,18 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 
 **Transmises, pas lues.** L'outil `shell_command` remet à la commande qu'il lance une liste fixe
 de variables de l'hôte — `PATH`, `HOME`, la locale, les dossiers temporaires, `DOTNET_ROOT`,
-`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, et le bac à sable de code
-bâtit un environnement plus réduit encore : ni l'un ni l'autre ne les lit comme des réglages, et
-aucune clé ne passe par là. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
+`NUGET_PACKAGES` et ce qu'il faut à Windows pour lancer un programme —, plus les trois qui nomment
+une socket de la session de l'opérateur : `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (le
+trousseau que lit un assistant d'identifiants comme `gh auth git-credential`) et `SSH_AUTH_SOCK`
+(l'agent ssh). Elles portent une adresse, pas un secret, mais le bus permet à une commande de
+sortir d'un bac à sable et de lire le trousseau : une session confinée ne reçoit
+`DBUS_SESSION_BUS_ADDRESS` que si `Orkeon:Tools:Shell:Environment:SessionBus` vaut true, et sous
+bubblewrap les sockets ne suivent que si `Confinement:AllowNetwork` vaut true
+([sécurité](../architecture/security.md)). Le bac à sable de code bâtit un environnement plus
+réduit encore, les trois sockets comprises. Tous
+deux ajoutent les noms de `Orkeon:Tools:Shell:Environment:Propagate` qui passent son filtre des
+secrets. Ni l'un ni l'autre ne les lit comme des réglages, et aucune clé ne passe par là — `OPENAI_API_KEY`,
+`ORKEON_*` et toute autre variable restent derrière. `PATH` est aussi l'endroit où un script `.ork.ts` cherche esbuild en
 dernier, et Orkeon Studio l'exécutable `orkeon` ; `HOME` est lue quand le système ne nomme aucun
 dossier de profil, pour placer les réglages par utilisateur. Les variables écrites sous
 `MCP:Servers:<nom>:Env` sont celles de l'opérateur : Orkeon les remet au serveur qu'il lance et

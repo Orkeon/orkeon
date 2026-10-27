@@ -1,3 +1,4 @@
+using Orkeon.Cli.Abstractions.Console;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 
 namespace Orkeon.Cli.Commands.Scripting.Progress;
@@ -23,6 +24,10 @@ public static class ProgressAmbient
     public static CommandInstance? CurrentInstance
     {
         get => _current.Value;
-        set => _current.Value = value;
+        set
+        {
+            _current.Value = value;
+            ConsoleThread.Current = value?.Ticket;
+        }
     }
 }

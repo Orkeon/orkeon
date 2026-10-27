@@ -40,3 +40,9 @@ override Orkeon.Tools.Code.ShellCommandTool.ValidateParameters(System.Collection
 Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null, Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null) -> void
 Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.get -> bool
 Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.init -> void
+Orkeon.Tools.Code.ShellEnvironmentOptions
+Orkeon.Tools.Code.ShellEnvironmentOptions.Propagate.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellEnvironmentOptions.SessionBus.get -> bool
+Orkeon.Tools.Code.ShellEnvironmentOptions.SessionBus.set -> void
+Orkeon.Tools.Code.ShellEnvironmentOptions.ShellEnvironmentOptions() -> void
+Orkeon.Tools.Code.ShellToolOptions.Environment.get -> Orkeon.Tools.Code.ShellEnvironmentOptions!

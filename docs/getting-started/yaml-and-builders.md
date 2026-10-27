@@ -40,6 +40,7 @@ memory: bool              # default: false. true: stores each task's result and 
 memoryProvider: string    # needs memory: true. "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection; unset: the host's default store
 planning: bool            # default: false. true: a step-by-step plan per task, written before the first one and read by each task in its prompt; never reorders the tasks
 maxRpm: int               # default: none — at most N model requests per minute for the crew, all its agents and its manager together; one more waits its turn
+budget: {tokens, wallTimeSeconds, toolCalls, delegationDepth, spawnedAgents}  # process: autonomous only; default: no token or time cap, 50 / 4 / 10
 managerAgent: string      # An agent's key. Required when process = "hierarchical": the manager, on its own llm: block; optional when "consensual": the ManagerDecision arbiter; refused by the other processes
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 

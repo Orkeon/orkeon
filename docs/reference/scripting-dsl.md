@@ -81,7 +81,7 @@ inferred.
 | `memory` | ❌ | ✅ |
 | `planning` — YAML `planning: true`: a step-by-step plan per task, read in the task's prompt (off by default; on the host's default profile) | ❌ (warned) | ✅ |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for the crew, all its agents and its manager together (none by default; 0 or less refused at `build()`) | ❌ (warned) | ✅ |
-| `budget` | ✅ | ❌ ignored |
+| `budget` | ✅ | ✅ with `process("autonomous")` — the crew's budget, as YAML `budget:`; ❌ ignored (warned) with another process |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
 
 Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
@@ -220,7 +220,10 @@ under its semaphore and its `onError` policy. Neither gives the run a budget unl
 `ctx.delegate(agent, input, { budget: { toolCalls: 20, tokens: 50000, wallTime: 300 } })` (and the
 same `budget` in `crew.runAgent`'s options) bounds that run with the keys and values of
 `crewBuilder().budget(...)` (`toolCalls`, `tokens`, `wallTime` in seconds or as `"5m"`,
-`delegationDepth`, `spawnedAgents`). A spent dimension ends the run with `BudgetExhaustedError`,
+`delegationDepth`, `spawnedAgents`). `tokens` is a running sum of the prompt and completion of every
+call, the context counted again on each; once it is reached, `ctx.llm.act` makes one last call with no
+tools and resolves with `budgetExhausted: true` ([the token budget of act](../architecture/scripting.md#the-token-budget-of-act)).
+A spent dimension ends the run with `BudgetExhaustedError`,
 the error a crew's budget gives, and a child it spawns (`spawn_agent`, `ctx.spawnBackground`) derives
 its budget from the run's. An unknown key, a count that is not a whole number of 1 or more, or an
 unreadable `wallTime` is refused when the run opens, where `crewBuilder().budget(...)` skips it.
@@ -317,7 +320,7 @@ each of them stated rather than silent.
 
 | Limit | Behaviour |
 |---|---|
-| `budget()` in the declarative shape | Ignored, and said so: the run logs a warning naming the method. The budget bounds the procedural shape only (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). |
+| `budget()` in the declarative shape | The crew's budget when the process is `"autonomous"`, the one process that spends it (keys `toolCalls`, `tokens`, `delegationDepth`, `spawnedAgents`, `wallTime`). With another process it is ignored, and said so: the run logs a warning naming the method. |
 | `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script prints a warning on stderr instead of dropping the flag in silence. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |

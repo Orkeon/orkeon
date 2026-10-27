@@ -291,6 +291,6 @@ public sealed class ScriptHostFacadeTests : IDisposable
 
         Assert.Equal(2, ex.Depth);
         Assert.Equal(2, ex.Limit);
-        Assert.Contains("2", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("chain depth 2 reached (MaxChainDepth 2, /assistant)", ex.Message);
     }
 }

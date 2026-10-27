@@ -318,7 +318,8 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
     }
 
     [Fact]
-    public async Task KickoffAsync_Autonomous_DispatchesAutonomousWithPermissiveBudget()
+    [Trait("BR", "CH-218")]
+    public async Task KickoffAsync_Autonomous_DispatchesAutonomousWithNoTokenCap_WhenTheCrewSetsNoBudget()
     {
         var h = Build();
         var crew = MakeCrew(ProcessType.Autonomous);
@@ -327,7 +328,32 @@ public sealed class CovAutonomous_SequentialCrewOrchestratorTests
         await h.Orchestrator.KickoffAsync(crew.Id, Input(), TestContext.Current.CancellationToken);
 
         Assert.True(h.Factory.Strategy.AutonomousCalled);
-        Assert.NotNull(h.Factory.Strategy.LastBudget);
+        var budget = Assert.IsType<AgentExecutionBudget>(h.Factory.Strategy.LastBudget);
+        Assert.Equal(int.MaxValue, budget.MaxTokensConsumed);
+        Assert.Equal(TimeSpan.MaxValue, budget.MaxWallTime);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public async Task KickoffAsync_Autonomous_BoundsTheRunByTheCrewsBudget()
+    {
+        var h = Build();
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "goal",
+            ProcessType = ProcessType.Autonomous,
+            Budget = new CrewBudget { Tokens = 250_000, WallTime = TimeSpan.FromMinutes(10), ToolCalls = 70 },
+        });
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
+
+        await h.Orchestrator.KickoffAsync(crew.Id, Input(), TestContext.Current.CancellationToken);
+
+        var budget = Assert.IsType<AgentExecutionBudget>(h.Factory.Strategy.LastBudget);
+        Assert.Equal(250_000, budget.MaxTokensConsumed);
+        Assert.Equal(TimeSpan.FromMinutes(10), budget.MaxWallTime);
+        Assert.Equal(70, budget.MaxToolCalls);
     }
 
     [Fact]

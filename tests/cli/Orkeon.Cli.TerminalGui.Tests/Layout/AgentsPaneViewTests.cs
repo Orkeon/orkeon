@@ -75,6 +75,106 @@ public class AgentsPaneViewTests
         Assert.Equal(["● quick", "  ⎿  Backgrounded agent (↓ tasks)", "✗ Agent \"quick\" failed · 2s"], lines);
     }
 
+    private static AgentRowInfo EndedRow(string name, string ticket, TaskRowState state = TaskRowState.Done, int seconds = 135)
+        => new() { Name = name, Ticket = ticket, Elapsed = TimeSpan.FromSeconds(seconds), State = state };
+
+    private static AgentsPaneView PaneWith(IReadOnlyList<AgentRowInfo> live, IReadOnlyList<AgentRowInfo> ended)
+    {
+        var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        pane.Bind(new TuiIntegration { AgentRows = () => live, FinishedAgentRows = () => ended });
+        pane.Refresh();
+        return pane;
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    [Trait("BR", "A5")]
+    public void ShouldListEndedTaskAfterLiveOnes_WhenHostRetainsIt()
+    {
+        using var pane = PaneWith(
+            [new AgentRowInfo { Name = "main", IsActive = true }, new AgentRowInfo { Name = "live", Ticket = "T-2" }],
+            [EndedRow("done", "T-1")]);
+
+        Assert.Equal(["main", "live", "done"], pane.Rows.Select(r => r.Name).ToArray());
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    [Trait("BR", "A5")]
+    public void ShouldListMainRow_WhenOnlyEndedTasksRemain()
+    {
+        using var pane = PaneWith([], [EndedRow("done", "T-1")]);
+
+        Assert.Equal(["main", "done"], pane.Rows.Select(r => r.Name).ToArray());
+    }
+
+    [Theory]
+    [Trait("BR", "BR-07")]
+    [InlineData(true, TaskRowState.Running)]
+    [InlineData(false, TaskRowState.Idle)]
+    public void ShouldGiveMainThePromptTurnState_WhenOnlyEndedTasksRemain(bool turnRunning, TaskRowState expected)
+    {
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        pane.Bind(new TuiIntegration
+        {
+            AgentRows = () => [],
+            FinishedAgentRows = () => [EndedRow("done", "T-1")],
+            PromptTurnRunning = () => turnRunning,
+        });
+        pane.Refresh();
+
+        Assert.Equal(expected, pane.Rows.Single(r => r.Name == "main").State);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    [Trait("BR", "UC-05")]
+    public void ShouldShowOutcomeAndFinalDuration_WhenRowHasEnded()
+    {
+        var segments = AgentsPaneModel.Segments(GlyphSet.Unicode, EndedRow("done", "T-1"), 60);
+
+        var text = RowSegment.Concat(segments);
+        Assert.Contains("✔ finished", text, StringComparison.Ordinal);
+        Assert.Contains("2m 15s", text, StringComparison.Ordinal);
+        Assert.Contains(segments, s => s.Text.Contains("✔ finished", StringComparison.Ordinal) && s.Role == PaletteRole.Dim);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-08")]
+    public void ShouldKeepEndedRowsOfLastRead_WhenEndedFeedFaults()
+    {
+        var fail = false;
+        using var pane = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        pane.Bind(new TuiIntegration
+        {
+            AgentRows = () => [new AgentRowInfo { Name = "main", IsActive = true }],
+            FinishedAgentRows = () => fail ? throw new InvalidOperationException("feed gone") : [EndedRow("done", "T-1")],
+        });
+        pane.Refresh();
+        Assert.Equal(["main", "done"], pane.Rows.Select(r => r.Name).ToArray());
+
+        fail = true;
+        pane.Refresh();
+
+        Assert.Equal(["main", "done"], pane.Rows.Select(r => r.Name).ToArray());
+
+        using var unwired = new AgentsPaneView(new TerminalGuiOptions(), InlineDispatcher.Instance);
+        unwired.Bind(new TuiIntegration { AgentRows = () => [new AgentRowInfo { Name = "main", IsActive = true }] });
+        unwired.Refresh();
+        Assert.Equal(["main"], unwired.Rows.Select(r => r.Name).ToArray());
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    [Trait("BR", "UC-05")]
+    public void ShouldListTaskAndKeepItsScreen_WhenItStartedAndEndedBetweenPolls()
+    {
+        using var pane = PaneWith([new AgentRowInfo { Name = "main", IsActive = true }], [EndedRow("quick", "T-9", seconds: 2)]);
+
+        var row = Assert.Single(pane.Rows, r => r.Ticket == "T-9");
+        Assert.Equal(TaskRowState.Done, row.State);
+    }
+
     [Fact]
     public void The_rows_follow_the_width_of_the_pane_down_to_a_tiny_one()
     {

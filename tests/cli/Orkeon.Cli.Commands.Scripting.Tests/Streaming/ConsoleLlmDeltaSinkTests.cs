@@ -6,6 +6,7 @@ using Orkeon.Cli.Commands.Scripting.DependencyInjection;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Cli.Commands.Scripting.Progress;
 using Orkeon.Cli.Commands.Scripting.Streaming;
+using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Streaming;
@@ -145,6 +146,127 @@ public sealed class ConsoleLlmDeltaSinkTests
         bare.OnTurnCompleted();
 
         Assert.Equal("[t2] a" + NL + "[t2 task-1] b" + NL + "c\n" + NL, console.Output);
+    }
+
+    private static ILlmDeltaSink BeginUnderTicket(ConsoleLlmDeltaSink sink, string? label)
+    {
+        var instance = new CommandInstance("t1", "review", CommandInstanceKind.Async, "agent", "intent", Guid.NewGuid(), DateTimeOffset.UtcNow);
+        ProgressAmbient.CurrentInstance = instance;
+        try
+        {
+            return sink.BeginTurn(label);
+        }
+        finally
+        {
+            ProgressAmbient.CurrentInstance = null;
+        }
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldWriteTaskLinesToTheirThreadUnprefixed_WhenConsoleSeparatesThreads()
+    {
+        var console = new FakeThreadedConsole();
+        var turn = BeginUnderTicket(new ConsoleLlmDeltaSink(console), null);
+
+        turn.OnDelta("one\r\ntwo");
+        turn.OnTurnCompleted();
+
+        Assert.Equal([("t1", "one"), ("t1", "two")], console.Lines);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldKeepCrewLabelPrefix_WhenTaskTurnIsLabelled()
+    {
+        var console = new FakeThreadedConsole();
+        var turn = BeginUnderTicket(new ConsoleLlmDeltaSink(console), "task-1");
+
+        turn.OnDelta("a\n");
+        turn.OnTurnCompleted();
+
+        Assert.Equal([("t1", "[task-1] a")], console.Lines);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldRouteHeldLinesToTheirOwnThread_WhenInlineTurnReleasesThem()
+    {
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        var main = sink.BeginTurn(null);
+        var task = BeginUnderTicket(sink, null);
+
+        main.OnDelta("Hello wor");
+        task.OnDelta("x\n");
+        main.OnDelta("ld\n");
+        main.OnTurnCompleted();
+        task.OnTurnCompleted();
+
+        Assert.Equal([("t1", "x")], console.Lines.Where(l => l.Thread == "t1").ToList());
+    }
+
+    [Fact]
+    [Trait("BR", "A3")]
+    public void ShouldWriteLinesOnMain_WhenNoTaskOwnsTheTurn()
+    {
+        var console = new FakeThreadedConsole();
+        var turn = new ConsoleLlmDeltaSink(console).BeginTurn("task-1");
+
+        turn.OnDelta("a\n");
+        turn.OnTurnCompleted();
+
+        Assert.Equal<(string? Thread, string Text)>([(null, "[task-1] a")], console.Lines);
+        Assert.Equal(1, console.ThreadedCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldPrefixTicket_WhenConsoleDoesNotSeparateThreads()
+    {
+        var console = new FakeThreadedConsole { SeparatesThreads = false };
+        var turn = BeginUnderTicket(new ConsoleLlmDeltaSink(console), null);
+
+        turn.OnDelta("one\n");
+        turn.OnTurnCompleted();
+
+        Assert.Equal<(string? Thread, string Text)>([(null, "[t1] one")], console.Lines);
+        Assert.Equal(0, console.ThreadedCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public void ShouldBufferWholeLines_WhenUnlabelledTaskTurnRunsOnThreadedConsole()
+    {
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        var task = BeginUnderTicket(sink, null);
+
+        task.OnDelta("par");
+        Assert.Equal(string.Empty, console.Output);
+        Assert.Empty(console.Lines);
+
+        task.OnDelta("t\n");
+        Assert.Equal([("t1", "part")], console.Lines);
+
+        sink.BeginTurn(null).OnDelta("x");
+        Assert.Equal("x", console.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-02")]
+    [Trait("BR", "BR-09")]
+    public void ShouldWriteOtherThreadLineAtOnce_WhenMainTurnIsMidLine()
+    {
+        var console = new FakeThreadedConsole();
+        var sink = new ConsoleLlmDeltaSink(console);
+        var main = sink.BeginTurn(null);
+        var task = BeginUnderTicket(sink, null);
+
+        main.OnDelta("Hello wor");
+        task.OnDelta("x\n");
+
+        Assert.Equal([("t1", "x")], console.Lines);
     }
 
     [Fact]

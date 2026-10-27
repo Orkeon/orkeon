@@ -26,3 +26,5 @@ const Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.PathRequiredMe
 static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Absolutize(string! path, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string!
 static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Current(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string?
 Orkeon.Tools.Abstractions.Base.FileToolBase.AbsolutizePath(string! path) -> string!
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+static Orkeon.Tools.Abstractions.Base.ToolBase.StringArgument(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, string! name, out bool present) -> string?

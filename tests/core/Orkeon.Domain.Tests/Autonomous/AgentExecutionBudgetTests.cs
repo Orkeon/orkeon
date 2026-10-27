@@ -45,7 +45,7 @@ public class AgentExecutionBudgetTests
 
         // Assert
         Assert.Equal(BudgetDimension.Tokens, ex.Dimension);
-        Assert.Contains("(100/100)", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("Token budget exhausted: 100 tokens sent and received over 2 calls (limit 100)", ex.Message);
         Assert.True(second.IsExhausted);
         Assert.False(new AgentExecutionBudget { MaxTokensConsumed = 1_000 }.IsExhausted);
     }
@@ -221,5 +221,87 @@ public class AgentExecutionBudgetTests
         Assert.True(snapshot.Charged.IsExhausted);
         Assert.Equal(1, snapshot.Charged.MaxToolCalls);
         Assert.Null(crew.ToSnapshot().Charged);
+    }
+
+    [Fact]
+    public void ShouldNameTheRunningSumAndTheCalls_WhenTheTokenBudgetIsPassed()
+    {
+        // Arrange
+        var run = new AgentExecutionBudget { MaxTokensConsumed = 400_000 };
+        run.RecordTokens(200_000);
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(() => run.RecordTokens(225_303));
+
+        // Assert: the tokens stay recorded, and the message says what it summed
+        Assert.Equal(BudgetDimension.Tokens, ex.Dimension);
+        Assert.Equal("Token budget exhausted: 425303 tokens sent and received over 2 calls (limit 400000)", ex.Message);
+        Assert.Equal(425_303, run.CurrentTokensConsumed);
+        Assert.Equal(2, run.CurrentTokenCalls);
+    }
+
+    [Fact]
+    public void ShouldSayOneCall_WhenASingleCallSpendsTheTokenBudget()
+    {
+        // Arrange
+        var run = new AgentExecutionBudget { MaxTokensConsumed = 100 };
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(() => run.RecordTokens(150));
+
+        // Assert
+        Assert.Equal("Token budget exhausted: 150 tokens sent and received over 1 call (limit 100)", ex.Message);
+    }
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public void ShouldKeepTheTokens_WhenTheWallTimeHasPassed()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.FromMinutes(5), TimeProvider = clock };
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(() => budget.RecordTokens(40));
+
+        // Assert: the call happened and was paid, so its tokens count
+        Assert.Equal(BudgetDimension.WallTime, ex.Dimension);
+        Assert.Equal(40, budget.CurrentTokensConsumed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public void ShouldCountAChildsTokensOncePerBudget_WhenRecordedOnTheChildAndItsParent()
+    {
+        // Arrange: the child carries the run's charge, the crew, as the run does
+        var crew = new AgentExecutionBudget { MaxTokensConsumed = 10_000 };
+        var run = new AgentExecutionBudget { MaxTokensConsumed = 10_000, ChargedTo = crew };
+        var child = run.CreateChildBudget();
+
+        // Act
+        run.RecordChildTokens(child, 100);
+
+        // Assert
+        Assert.Equal(100, child.CurrentTokensConsumed);
+        Assert.Equal(100, run.CurrentTokensConsumed);
+        Assert.Equal(100, crew.CurrentTokensConsumed);
+        Assert.Equal(1, crew.CurrentTokenCalls);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-218")]
+    public void ShouldThrowTheParentsRefusal_WhenAChildsTokensPassBothBudgets()
+    {
+        // Arrange
+        var crew = new AgentExecutionBudget { MaxTokensConsumed = 500 };
+        crew.RecordTokens(450);
+        var child = crew.CreateChildBudget();
+
+        // Act
+        var ex = Assert.Throws<BudgetExhaustedException>(() => crew.RecordChildTokens(child, 200));
+
+        // Assert: both budgets kept the tokens; the refusal is the crew's
+        Assert.Equal("Token budget exhausted: 650 tokens sent and received over 2 calls (limit 500)", ex.Message);
+        Assert.Equal(200, child.CurrentTokensConsumed);
     }
 }

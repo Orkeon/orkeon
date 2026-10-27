@@ -96,6 +96,14 @@ public sealed class Crew : AggregateRoot<CrewId>
     public int? MaxRpm { get; private set; }
 
     /// <summary>
+    /// Gets what one run of the crew may spend (YAML <c>budget:</c>, <c>crewBuilder().budget(...)</c>,
+    /// <c>CrewBuilder.Budget</c>, #218): each autonomous run spends a fresh budget of these limits.
+    /// <see cref="CrewBudget.Unset"/> when the crew sets none - no token cap and no wall time. Set only
+    /// on an autonomous crew (<see cref="ProcessType.Autonomous"/>, GAP-33).
+    /// </summary>
+    public CrewBudget Budget { get; private set; } = CrewBudget.Unset;
+
+    /// <summary>
     /// Gets the provider the crew's manager runs on (C# <c>WithManagerLlm</c>, CrewAI's
     /// <c>manager_llm</c>): the hierarchical manager assigns and reviews on it, and the autonomous
     /// one hands the tasks out on it, in place of the manager agent's <c>llm:</c> profile or the
@@ -192,6 +200,13 @@ public sealed class Crew : AggregateRoot<CrewId>
         if (options.ManagerLlm is not null && !options.ProcessType.AcceptsManagerLlm)
             throw new ArgumentException(ManagerLlmTheModeNeverCalls(options.ProcessType), nameof(options));
 
+        // A budget where the mode spends one, never elsewhere (GAP-33): kept, it would be ignored.
+        if (options.Budget is not null && options.ProcessType != ProcessType.Autonomous)
+            throw new ArgumentException(BudgetTheModeNeverSpends(options.ProcessType), nameof(options));
+
+        if (options.Budget?.FirstInvalidLimit() is { } invalidLimit)
+            throw new ArgumentException($"{invalidLimit} - every limit of a crew's budget is 1 or more.", nameof(options));
+
         var crew = new Crew(CrewId.Create())
         {
             Goal = CrewGoal.From(options.Goal),
@@ -201,6 +216,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             Planning = options.Planning,
             Status = CrewStatus.Idle,
             MaxRpm = options.MaxRpm is null or > 0 ? options.MaxRpm : throw new ArgumentException("options.MaxRpm must be positive.", nameof(options)),
+            Budget = options.Budget ?? CrewBudget.Unset,
             ManagerLlm = options.ManagerLlm,
             ManagerAgentId = options.ManagerAgentId,
             PlanningLlm = options.PlanningLlm,
@@ -426,6 +442,15 @@ public sealed class Crew : AggregateRoot<CrewId>
         $"The {processType.Value} process reads no manager LLM, yet the crew is given one (CrewBuilder.WithManagerLlm): " +
         "its provider would never be called. Remove it, or use the Hierarchical process — the manager assigns and " +
         "reviews on it — or the Autonomous one — the manager hands the tasks out on it.";
+
+    /// <summary>
+    /// The refusal of a budget given to a crew whose mode never spends one (#218, GAP-33): only the
+    /// Autonomous process runs on a budget.
+    /// </summary>
+    private static string BudgetTheModeNeverSpends(ProcessType processType) =>
+        $"The {processType.Value} process spends no budget, yet the crew is given one (budget): its limits would " +
+        "bound nothing. Remove it, or use the Autonomous process - its manager, the agents it delegates to and the " +
+        "agents they spawn spend it together.";
 
     /// <summary>
     /// Validates the crew configuration.

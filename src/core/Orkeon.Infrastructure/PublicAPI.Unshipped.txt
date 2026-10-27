@@ -174,3 +174,39 @@ Orkeon.Infrastructure.Configuration.FileSystemOptions.WriteDirectory.set -> void
 Orkeon.Infrastructure.FileSystem.FileSystemService.WriteDirectory.get -> string?
 Orkeon.Infrastructure.FileSystem.WorkingDirectoryDesignation
 static Orkeon.Infrastructure.FileSystem.WorkingDirectoryDesignation.CarryForward(Orkeon.Domain.FileSystem.FileSystemRegistry! boot, Orkeon.Domain.FileSystem.FileSystemRegistry! execution) -> void
+Orkeon.Infrastructure.Configuration.PathSecurityOptions.BlockReadsOfBlockedExtensions.get -> bool
+Orkeon.Infrastructure.Configuration.PathSecurityOptions.BlockReadsOfBlockedExtensions.set -> void
+Orkeon.Infrastructure.Security.PathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAdapter.Access.get -> Orkeon.Domain.Tools.ToolAccess
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Annotations.get -> Orkeon.Infrastructure.MCP.McpToolAnnotations?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolDefinition.Annotations.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.McpToolAnnotations() -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.Title.get -> string?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.Title.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.ReadOnlyHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.ReadOnlyHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.DestructiveHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.DestructiveHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.IdempotentHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.IdempotentHint.set -> void
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.OpenWorldHint.get -> bool?
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolAnnotations.OpenWorldHint.set -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.CrewBudgetYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.DelegationDepth.get -> int?
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.DelegationDepth.set -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.SpawnedAgents.get -> int?
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.SpawnedAgents.set -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.Tokens.get -> int?
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.Tokens.set -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.ToolCalls.get -> int?
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.ToolCalls.set -> void
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.WallTimeSeconds.get -> int?
+Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig.WallTimeSeconds.set -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Budget.get -> Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Budget.init -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Budget.get -> Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Budget.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.get -> Orkeon.Infrastructure.Configuration.CrewBudgetYamlConfig?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Budget.set -> void

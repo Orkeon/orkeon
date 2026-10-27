@@ -41,8 +41,8 @@ This project is no longer distributed as a NuGet package — reference it from s
 | `↑` / `↓` / `Home` / `End` (tasks list) | Move the selection (no wrap); `↑` on the first row returns to the prompt |
 | `Esc` / `F4` / `Tab` (tasks list) | Return to the prompt, text and caret restored; after `Esc` only (not `F4` or `Tab`), a second `Esc` right after it interrupts the prompt's turn |
 | `Ctrl+V` / right-click (tasks list) | Return to the prompt and paste at the restored caret |
-| click / double-click (tasks list row) | Focus the list on that row / and print its detail |
-| `Enter` (tasks list) | Print the selected task's detail; sends nothing |
+| click / double-click (tasks list row) | Focus the list on that row / and print its detail on the displayed screen |
+| `Enter` (tasks list) | Print the selected task's detail, on the displayed screen; sends nothing |
 | printable key (tasks list) | Return to the prompt with the character typed |
 | `Home` / `End`, `Ctrl+Home` / `Ctrl+End` (prompt) | Start / end of the line, of the text |
 | `Ctrl+Q` | Quit (with confirmation dialog if a command or the prompt's turn is running) |
@@ -196,7 +196,10 @@ interrupt is `Esc Esc` on the prompt, and it targets the prompt's turn only:
   the list and keeps the current text.
 - **The selected task is the recipient** of the next message: the placeholder
   reads `Message @<task>…` and the separator above the prompt ends with
-  `── <task> ─`; selecting `main` gives the default recipient back. Sending to a task goes through
+  `── <task> ─`; selecting `main` gives the default recipient back. The transcript
+  keeps **one screen per thread** (`main` and each task): the selection displays that
+  thread's screen at once, scrolled to its end, and only the displayed screen is
+  visible (see "Bottom area"). Sending to a task goes through
   `TuiIntegration.SendToTask` (`(ticket, text) → bool`); while the host leaves it
   null, `Enter` prints that sending to a task is not supported yet and keeps the
   text in the field.
@@ -225,10 +228,14 @@ From top to bottom, under the transcript:
   `bypassPermissions`, `dontAsk` and `acceptEdits`, dim otherwise), the hints,
   then `↓ tasks` while a task other than `main` exists; from the list it reads
   `↑/↓ select · enter view` alone. The model witness stays right-aligned;
-- a blank line, then the tasks list: `main` first, then creation order. Column 0
+- a blank line, then the tasks list: `main` first, then the live tasks in creation
+  order, then the ended tasks in creation order (see below). `main` stays listed while
+  any task, live or ended, is listed. Column 0
   holds the accent `❯` while the list has focus; column 2 holds `●` for the
   recipient and `◯` for the others:
   - green while running, red when failed or cancelled, dim otherwise;
+  - an ended row is dim, its activity phrase reads the outcome (`✔ finished`,
+    `✗ failed`, `⊘ cancelled`) and its metrics the final duration;
 
   then the name in bold, the activity phrase cut with `…`, and right-aligned, dim,
   `<duration> · ↓ <tokens> tokens` (the task's total tokens, ticking with the
@@ -237,6 +244,30 @@ From top to bottom, under the transcript:
   the name, then the metrics, and a resize rebuilds the rows at the new width.
   The list grows up to 6 rows, then scrolls with the cursor.
 
+**One screen per thread.** The transcript is not one stream: `main` and every task
+have a screen of their own, each a transcript of `ReplTranscriptCapacity` lines, and
+the recipient's screen is the one displayed. A line a task writes (its streamed text,
+its completion lines, its tool-call questions) lands on that task's screen, opened at
+its first line, and carries no `[t1]` ticket prefix in the split-pane console: the
+screen says whose it is; a crew label (`[<taskId>] `) stays, since it tells the agents
+of one crew apart inside the screen. The plain console keeps the `[t1] ` prefix.
+The `main` screen holds the prompt's turns and the lifecycle lines below, never a
+task's output. The selection displays that thread's screen, as the recipient: moving
+the selection with `↑` / `↓` switches the screen, `main` shows the main one; copy, the
+mouse selection and word wrap (one state for every screen) act on the displayed screen;
+`Esc Esc` still interrupts the prompt's turn whatever screen is displayed, its
+`Interrupted` line landing on `main`. A line that needs the operator's attention (a tool-call
+question) shows on the displayed screen whichever task asks, and is recorded once in
+the asking task's screen.
+
+**Ended tasks.** In the split-pane console, ended tasks stay listed with their outcome
+until the host forgets them, after the live tasks, and so does their screen: a task
+that ends keeps its row, its screen and, when it was the recipient, the recipient.
+The row and the screen leave together when the host no longer retains the task
+(`TuiIntegration.FinishedAgentRows` no longer returns it). A poll whose ended feed
+fails keeps the ended rows of the last successful read: a fault is not the host
+forgetting a task. Only tasks of the feed (async tasks) get an ended row.
+
 The transcript records the list's changes from one poll to the next: a new task
 prints `● <name>(<intent>)` then `  ⎿  Backgrounded agent (↓ tasks)`; a task
 that ends prints `● Agent "<name>" finished · <duration>`,
@@ -244,8 +275,9 @@ that ends prints `● Agent "<name>" finished · <duration>`,
 The final state comes from `TuiIntegration.FinishedAgentRows` (the ended tasks
 the host retains), so a task that starts and ends between two polls still gets
 both lines, in order; without it, a task that leaves the list reads as finished.
-A recipient that ends while the prompt has focus prints
-`@<task> finished · recipient is main`. A poll whose row provider throws writes
+These lifecycle lines go to the `main` screen. The recipient stays on a task that
+ends; `@<task> finished · recipient is main` is printed, and the recipient goes back
+to `main`, only when the host forgets the recipient task, while the prompt has focus. A poll whose row provider throws writes
 nothing and leaves the rows, the list and the recipient as they were. `Esc Esc` prints `  ⎿  Interrupted · What should Orkeon do instead?`.
 With `--glyphs ascii` the glyphs `❯ ● ◯ ✔ ✗ ⊘ ⏵ ⎿ ※ ─ ↑ ↓ …` become
 `> * o v x - > | * - ^ v ...`, the hint bar's `↑/↓` and the cut phrase included.

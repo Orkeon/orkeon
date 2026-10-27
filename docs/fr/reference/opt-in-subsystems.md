@@ -548,10 +548,18 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 - **Classification déclarative** : les outils peuvent auto-déclarer leur classe via
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — une déclaration
   l'emporte sur les tables de noms de la barrière ; `Unspecified` (le défaut) se
-  replie sur les tables. Les outils de lecture intégrés
-  (file/directory/session/memory/analysis, `web_scrape`, `scrape_element`, `rag_search`),
-  `file_write` et `rag_ingest` (Edit : il écrit dans l'index de connaissances, jamais dans
-  l'espace de travail) et `shell_command`/`http_api` (Execute) se déclarent tous.
+  replie sur les tables. Un outil dont la classe dépend de l'opération demandée surcharge
+  `IBaseTool.AccessFor(arguments)` (défaut : `Access`), que la barrière lit à chaque appel :
+  `github` est `Read` pour `list_issues`, `get_pr`, `search_repos` et `get_repo`, `Execute`
+  pour `create_issue`, `create_pr` et toute action inconnue ou absente ; `http_api` est
+  `Read` pour `GET`, `HEAD` et `OPTIONS` (une méthode absente est son défaut `GET`),
+  `Execute` pour toute autre méthode. Leur `Access` statique reste `Execute`, la classe la
+  plus restrictive qu'ils puissent prendre. Les outils de lecture intégrés
+  (file/directory/session/memory/analysis, `web_scrape`, `scrape_element`, `rag_search`,
+  `rag_eval`, `web_search`), `file_write` et `rag_ingest` (Edit : il écrit dans l'index de
+  connaissances, jamais dans l'espace de travail) et `shell_command` (Execute) se déclarent
+  tous. Un outil MCP prend sa classe des `annotations` du serveur (`readOnlyHint: true` →
+  `Read`, d'autres annotations → `Execute`, aucune → `Unspecified`).
   `BuiltInToolAccessTests` liste les outils intégrés encore laissés à `Unspecified`.
 - **Défaut rétro-compatible** : flag absent → aucune barrière enregistrée → `act` se
   comporte exactement comme avant. Les scripts optent pour un mode à l'appel via
@@ -606,7 +614,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   (`ILlmDeltaSink.BeginTurn`) — un second act qui streame en même temps, un act sous une
   instance de commande en arrière-plan, une tâche de crew — tient son propre tampon de
   ligne et écrit une ligne entière à la fois, préfixée du ticket de l'instance (`[t2] `),
-  comme les lignes de complétion, une tâche de crew ajoutant son id (`[t2 task-1] `) ;
+  comme les lignes de complétion, une tâche de crew ajoutant son id (`[t2 task-1] `) — le
+  préfixe reste en mode simple, alors que la console à volets abandonne le préfixe, montre la
+  ligne sur l'écran de la tâche et garde l'étiquette de crew (`[task-1] `) ;
   une de leurs lignes qui arrive pendant que l'act de premier plan est au milieu d'une
   ligne attend la fin de celle-ci. Ainsi deux acts qui streament en même temps — deux
   sous-exécutions `runAgent` en arrière-plan, les tâches d'une vague parallèle de crew —

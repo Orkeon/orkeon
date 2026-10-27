@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Commands.Scripting.Runtime;
+using Orkeon.Cli.Commands.Scripting.Tests.Doubles;
 using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
@@ -362,5 +363,123 @@ public sealed class ConsoleToolApprovalChannelTests : IDisposable
         Assert.False(_channel.TryConsume("/tasks"));
 
         Assert.Equal(0, raised);
+    }
+
+    // -- a console that separates threads: the question is an attention of its task's thread --
+
+    private const string Reason = "tool 'shell_command' requires approval (mode 'default').";
+    private const string Hint = "  answer y (allow once), s (allow for this session) or n (deny)";
+
+    private static ConsoleToolApprovalChannel ChannelOn(FakeThreadedConsole console, bool task = true)
+        => new(() => console, () => task ? ("t1", "dev-batches") : null);
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public void ShouldWriteQuestionAsAttentionOfItsTask_WhenConsoleSeparatesThreads()
+    {
+        var console = new FakeThreadedConsole();
+        using var channel = ChannelOn(console);
+
+        _ = channel.RequestAsync(Request(), Ct);
+
+        Assert.Equal<(string? Thread, string Text)>(
+            [
+                ("t1", ""),
+                ("t1", $"  ? [t1] dev-batches: {Reason}"),
+                ("t1", "    shell_command {\"command\":\"npm test\"}"),
+            ],
+            console.Attentions);
+        Assert.Empty(console.Lines);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    [Trait("BR", "A3")]
+    public void ShouldWriteMainQuestionAsAttentionOfMain_WhenNoTaskAsks()
+    {
+        var console = new FakeThreadedConsole();
+        using var channel = ChannelOn(console, task: false);
+
+        _ = channel.RequestAsync(Request(), Ct);
+
+        Assert.Equal<(string? Thread, string Text)>(
+            [
+                (null, ""),
+                (null, $"  ? {Reason}"),
+                (null, "    shell_command {\"command\":\"npm test\"}"),
+            ],
+            console.Attentions);
+    }
+
+    [Fact]
+    [Trait("BR", "A4")]
+    public void ShouldWriteReaskedQuestionAgain_WhenAnswerIsInvalid()
+    {
+        var console = new FakeThreadedConsole();
+        using var channel = ChannelOn(console);
+        _ = channel.RequestAsync(Request(), Ct);
+
+        Assert.True(channel.TryConsume("what is this?"));
+        Assert.True(channel.TryConsume("n"));
+
+        Assert.Equal(("t1", Hint), Assert.Single(console.Attentions, a => a.Text == Hint));
+        Assert.Equal(2, console.Attentions.Count(a => a.Thread == "t1" && a.Text == $"  ? [t1] dev-batches: {Reason}"));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-10")]
+    public void ShouldWriteQuestionUnchanged_WhenConsoleDoesNotSeparateThreads()
+    {
+        var console = new FakeThreadedConsole { SeparatesThreads = false };
+        using var channel = ChannelOn(console);
+
+        _ = channel.RequestAsync(Request(), Ct);
+        channel.TryConsume("huh");
+
+        Assert.Empty(console.Attentions);
+        Assert.Equal(0, console.ThreadedCalls);
+        Assert.Equal<(string? Thread, string Text)>(
+            [
+                (null, ""),
+                (null, $"  ? [t1] dev-batches: {Reason}"),
+                (null, "    shell_command {\"command\":\"npm test\"}"),
+                (null, Hint),
+                (null, ""),
+                (null, $"  ? [t1] dev-batches: {Reason}"),
+                (null, "    shell_command {\"command\":\"npm test\"}"),
+            ],
+            console.Lines);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public void ShouldRecordOutcomeInTaskThread_WhenQuestionIsAnswered()
+    {
+        var console = new FakeThreadedConsole();
+        using var channel = ChannelOn(console);
+        _ = channel.RequestAsync(Request(), Ct);
+
+        channel.TryConsume("y");
+
+        var outcome = Assert.Single(console.Lines);
+        Assert.Equal("t1", outcome.Thread);
+        Assert.Contains("shell_command allowed once", outcome.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public async Task ShouldRecordWithdrawalInTaskThread_WhenRunIsCancelled()
+    {
+        var console = new FakeThreadedConsole();
+        using var channel = ChannelOn(console);
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var cancelled = channel.RequestAsync(Request(), run.Token);
+
+        await run.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelled);
+        Assert.Equal(
+            ("t1", "  approval for shell_command withdrawn: its run was cancelled"),
+            Assert.Single(console.Lines));
     }
 }

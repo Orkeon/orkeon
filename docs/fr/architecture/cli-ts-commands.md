@@ -117,6 +117,7 @@ le texte libre reçoit la réponse d'une commande inconnue.
 defineCommand({
   name: "deploy",                 // ^[a-z][a-z0-9-]*$, never help / ? / h
   aliases: ["d", "ship"],         // optional, must not duplicate `name`
+  group: "release",               // optional, ^[a-z][a-z0-9-]*$; default: the folder of the file
   description: "Deploy a crew.",  // single line, ≤ 200 chars
 
   args: {
@@ -131,6 +132,18 @@ defineCommand({
   },
 });
 ```
+
+`group` (accepté aussi par `defineAsyncCommand`) est le bloc `[<group>]` sous lequel `/help` liste la
+commande. Absent, c'est le nom du dossier qui contient le `*.cmd.ts`
+(`/cli-commands/session/clear.cmd.ts` est dans `session`), pris sous le dossier de
+`Orkeon:Cli:ScriptCommands:Directories` qui a trouvé le fichier : un fichier placé directement dans ce
+dossier n'a pas de groupe, quelle que soit la profondeur du dossier dans son montage
+(`/workspace/commands/a.cmd.ts`, trouvé sous `/workspace/commands`, n'en a pas), et un nom de dossier
+qui n'est pas un nom de groupe valide n'en donne pas). `/help`
+imprime un bloc par groupe dans l'ordre d'enregistrement, `(no group)` en dernier ; les commandes
+propres au runner (`ps`, `inspect`, `result`, `cancel`, `help-cmd`) sont dans `runner`, et
+`help-cmd <name>` nomme le groupe sur sa première ligne. Un `group` invalide est refusé comme un
+nom invalide.
 
 `help`, `?` et `h` sont réservés. Un script peut délibérément prendre `exit`, `quit`, `q`,
 `clear` ou `cls` : les commandes scriptées sont résolues avant les commandes par défaut, et le
@@ -181,8 +194,8 @@ interface CommandRuntimeContext {
 ```
 
 `ctx.command.rawInput` est la ligne telle que tapée (`/deploy prod --force`) ; dans le
-`completed` d'une commande asynchrone, c'est la ligne qui a lancé ce ticket, quelle que soit la
-commande qui pompe ensuite la complétion. `ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
+`completed` d'une commande asynchrone, c'est la ligne qui a lancé ce ticket : seule la commande
+qui l'a lancé exécute les complétions de ses propres instances, même retapée depuis. `ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
 `done(label?)`. Une globale `console.log/info/debug/warn/error` renvoie vers `ctx.log`.
 
 Le `.d.ts` complet est livré dans l'outil `orkeon` : `orkeon typings` l'écrit en
@@ -320,15 +333,32 @@ defineAsyncCommand({
 - `completed(result, ctx)` n'est **pas** appelé depuis le thread d'arrière-plan
   (Jint est mono-thread). Dès que le travail aboutit, l'hôte imprime une ligne
   concise (`✓ [t1] ask-bg → echo: done`) et exécute `completed` sur le moteur du
-  script, sous son verrou — inutile de taper une autre commande.
+  script, sous son verrou — inutile de taper une autre commande. Les commandes d'un
+  même fichier partagent un moteur, mais chacune n'exécute que les fins de ses propres
+  instances (les exécutions lancées sous son nom) : une commande sœur tapée entre-temps
+  n'exécute jamais le `completed` d'une autre commande.
 - Pour une valeur à lire à la demande, sondez avec `result --ticket=…` (ci-dessous).
 - **Chaînage depuis `completed`.** `completed` peut appeler `runCrewAsync(name, input)` :
   il retourne aussitôt un ticket, et la fin du second crew est drainée vers sa propre
   commande (le même nom de commande), dont le `completed` s'exécute à son tour. La
   chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
   la profondeur compte combien de sauts `completed` séparent une instance de son
-  lancement. Un `runCrewAsync` plus profond est refusé par une `ChainDepthExceededException`,
-  dont le message donne la profondeur et la limite.
+  lancement (`inspect` l'affiche). Un `commands.post` compte de la même façon (la
+  profondeur du parent plus un ; il ne prend pas d'options). Un `runCrewAsync` ou un
+  `post` plus profond est refusé par une `ChainDepthExceededException`, levée en JS, dont
+  le message nomme la profondeur, la limite et la commande :
+  `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
+- **Un pilote qui boucle : `{ chain: "continue" }`.** Une commande qui relance son propre
+  travail après chaque cycle terminé (un plan exécuté lot après lot) passe
+  `runCrewAsync(name, input, { chain: "continue" })` : la nouvelle instance prend la
+  profondeur de l'instance dont le `completed` s'exécute au lieu de cette profondeur plus
+  un, si bien que la boucle commande → crew → `completed` de la même commande → crew dure
+  autant qu'il le faut. L'instance parente est toujours une instance de la même commande :
+  une commande n'exécute que le `completed` de ses propres instances, et ce que ce
+  `completed` lance lui est rattaché. Hors d'un `completed` (un `dispatch`, un handler)
+  l'option ne change rien : le lancement prend la profondeur qu'il prendrait sans elle (un
+  premier saut est de profondeur 1), et un `post` monte toujours. Toute autre valeur de
+  `chain` est une erreur de script.
 
 ### Quota d'admission — `maxConcurrent`
 
@@ -356,7 +386,7 @@ pendant que le travail async tourne en arrière-plan) :
 | Commande                   | Effet                                                         |
 |----------------------------|---------------------------------------------------------------|
 | `ps [--state=…]`           | Liste les instances. État : `running` (défaut), `done`, `failed`, `cancelled`, `rejected`, `all`. |
-| `inspect --ticket=<t>`     | Détail complet d'une instance (état, agent, durée écoulée, résultat, progression). Un ticket nu fonctionne aussi : `/inspect t3`. |
+| `inspect --ticket=<t>`     | Détail complet d'une instance (état, agent, profondeur de chaîne, durée écoulée, résultat, progression). Un ticket nu fonctionne aussi : `/inspect t3`. |
 | `result --ticket=<t>`      | Imprime le payload résultat (sondage). Signale « still running » si pas terminé. |
 | `cancel --ticket=<t>`      | Demande l'annulation d'un ticket en vol.                      |
 
@@ -485,15 +515,17 @@ enregistrées. Dans la liste (la barre d'aide affiche `↑/↓ select · enter v
 boucler, `↑` remonte et, sur la première ligne, revient au champ ; `Échap` revient au champ depuis
 n'importe quelle ligne, `F4` aussi, et le champ retrouve son texte et son curseur ; `Début` / `Fin`
 atteignent la première / la dernière ligne ; `Entrée` imprime le détail de la tâche sélectionnée
-dans le transcript et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
+sur l'écran affiché et n'envoie rien ; une touche imprimable revient au champ avec ce caractère tapé.
 `Tab` revient au champ comme `Échap` ; `Ctrl+V` ou un clic droit y revient et colle au curseur
 restauré. L'état suit le focus : un clic sur une ligne donne le focus à la liste sur cette ligne (un
-double-clic imprime aussi son détail), et le focus qui atteint le champ par un autre chemin quitte
+double-clic imprime aussi son détail sur l'écran affiché), et le focus qui atteint le champ par un autre chemin quitte
 la liste et garde le texte courant ; le curseur `❯` n'est jamais dessiné tant que les touches vont
 au prompt.
 La ligne sélectionnée est le destinataire du prochain message, et le reste de retour dans le champ :
 le texte indicatif affiche `Message @<tâche>…` et le filet au-dessus de l'invite se termine par `── <tâche> ─` ;
-sélectionner `main` rend le destinataire par défaut. La sélection suit sa tâche quand la liste se
+sélectionner `main` rend le destinataire par défaut. Le transcript tient **un écran par fil**, `main` et chaque tâche :
+la sélection affiche l'écran du fil, si bien que la déplacer avec `↑` / `↓` change l'écran montré, et `main`
+montre celui de main (voir « La zone du bas »). La sélection suit sa tâche quand la liste se
 retrie, et le champ reprend le focus, avec `main` pour destinataire, quand la liste se vide. Envoyer
 à une tâche demande le `TuiIntegration.SendToTask` de l'hôte (`(ticket, texte) → bool`) ; tant
 qu'aucun hôte ne le fournit, `Entrée` avec une tâche pour destinataire imprime que l'envoi à une
@@ -508,21 +540,40 @@ tâches. La barre d'état est indentée de deux colonnes et joint ses parties pa
 mode de permission (`⏵⏵ bypass permissions on (shift+tab to cycle)`, en jaune pour
 `bypassPermissions`, `dontAsk` et `acceptEdits`, atténué sinon), les aides, et `↓ tasks` tant
 qu'une tâche autre que `main` existe ; depuis la liste elle affiche `↑/↓ select · enter view` seul.
-La liste montre `main` d'abord, puis les tâches dans l'ordre de création : le `❯` de l'accent en
+La liste montre `main` d'abord, puis les tâches vivantes dans l'ordre de création, puis les tâches
+terminées dans l'ordre de création, et `main` reste listée tant que l'une des tâches, vivante ou terminée,
+est listée : le `❯` de l'accent en
 colonne 0 tant que la liste a le focus, `●` pour le destinataire et `◯` pour les autres (vert en
-cours, rouge en échec ou annulée, atténué sinon), le nom en gras, la phrase d'activité coupée par
+cours, rouge en échec ou annulée, atténué sinon ; une ligne terminée est atténuée, sa phrase d'activité
+dit l'issue, `✔ finished`, `✗ failed` ou `⊘ cancelled`, ses métriques la durée finale), le nom en gras, la phrase d'activité coupée par
 `…`, et alignés à droite et atténués `<durée> · ↓ <jetons> tokens`, le total de la tâche, mis à jour
 par le sondage à 1 Hz. Les largeurs sont des colonnes de terminal mesurées sur les graphèmes (un
 emoji ou un caractère CJK en compte deux) ; sur un volet étroit la phrase cède d'abord, puis le nom,
 puis les métriques, et un redimensionnement reconstruit les lignes à la nouvelle largeur. Elle
-grandit jusqu'à 6 lignes, puis défile avec le curseur. Entre deux sondages, une nouvelle tâche
+grandit jusqu'à 6 lignes, puis défile avec le curseur. **Un écran par fil.** `main` et chaque tâche ont leur propre écran, de
+`ReplTranscriptCapacity` lignes, et seul celui du destinataire est affiché. Une ligne qu'une tâche écrit
+(texte streamé, question d'approbation d'outil) arrive sur l'écran de cette tâche,
+ouvert à sa première ligne, et ne porte pas de préfixe de ticket `[t1]` dans la console à volets (la console
+simple le garde) ; une étiquette de crew (`[<taskId>] `) reste, elle distingue les agents d'un crew dans
+l'écran. L'écran `main` porte les tours de l'invite et les lignes de cycle de vie, jamais la sortie d'une
+tâche. La ligne de fin d'une tâche (`  ✓ [t1] ask-bg → echo: done`) et ce qu'écrit le `completed` de sa
+commande vont sur `main`, la ligne de fin gardant son ticket, qui y nomme la tâche. La copie, la sélection à la souris, le retour à la ligne (un seul état pour tous les écrans)
+agissent sur l'écran affiché ; `Échap Échap` interrompt toujours le tour de l'invite, quel que soit l'écran
+affiché, sa ligne `Interrupted` arrivant sur `main`. Une ligne d'attention, comme une question d'approbation
+d'outil, s'affiche sur l'écran affiché quelle que soit la tâche qui demande, et est enregistrée une fois
+dans l'écran de la tâche qui demande. Dans la console à volets, les tâches terminées restent listées jusqu'à ce que
+l'hôte les oublie, avec leur écran : une tâche qui se termine garde sa ligne, son écran et, si elle était
+destinataire, le destinataire ; ligne et écran partent ensemble quand `TuiIntegration.FinishedAgentRows` ne
+rend plus la tâche. Un sondage dont le flux des terminées échoue garde les lignes terminées de la
+dernière lecture réussie : une panne n'est pas l'hôte qui oublie une tâche. Entre deux sondages, une nouvelle tâche
 imprime `● <nom>(<intention>)` puis `⎿  Backgrounded agent (↓ tasks)` dans le transcript, et une
 tâche terminée `● Agent "<nom>" finished · <durée>`, `✗ Agent "<nom>" failed · <durée>` ou
 `⊘ Agent "<nom>" cancelled · <durée>` : l'état final vient du `TuiIntegration.FinishedAgentRows` de
 l'hôte (les tâches terminées qu'il conserve), si bien qu'une tâche qui démarre et finit entre deux
 sondages reçoit quand même ses deux lignes, dans l'ordre ; sans lui, une tâche qui quitte la liste
-se lit comme terminée. Un destinataire qui se termine pendant que le prompt a le focus imprime
-`@<tâche> finished · recipient is main`, et un sondage dont le fournisseur de lignes lève une
+se lit comme terminée. Ces lignes vont à l'écran `main`. Le destinataire reste sur une tâche qui se termine ; la ligne
+`@<tâche> finished · recipient is main` est imprimée, et le destinataire revient à `main`,
+seulement quand l'hôte l'oublie, tant que le prompt a le focus ; un sondage dont le fournisseur de lignes lève une
 exception n'écrit rien et laisse les lignes, la liste et le destinataire tels quels. `Échap Échap` imprime `⎿  Interrupted · What should Orkeon do instead?`. Les couleurs viennent de rôles sémantiques
 (Normal, Dim, Accent, Ok, Alert, Error) sur le fond du terminal, en 24 bits quand `COLORTERM` vaut
 `truecolor` ou `24bit` et en 16 couleurs nommées sinon. `--glyphs ascii` change

@@ -19,6 +19,15 @@ public class PathSecurityOptions
     public HashSet<string> AdditionalBlockedExtensions { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Whether a plain read of a built-in script extension (<c>.sh</c>, <c>.bash</c>, <c>.ps1</c>,
+    /// <c>.bat</c>, <c>.cmd</c>, <c>.vbs</c>, <c>.wsf</c>) is refused too. Default: <see langword="false"/>:
+    /// reading a script is not executing it, so a read passes while a write, a creation, a deletion
+    /// or a command target on it is refused. Built-in binary extensions and
+    /// <see cref="AdditionalBlockedExtensions"/> refuse reads whatever this says.
+    /// </summary>
+    public bool BlockReadsOfBlockedExtensions { get; set; }
+
+    /// <summary>
     /// Whether to resolve symlinks and verify the target is within the workspace. Default: true.
     /// </summary>
     public bool ResolveSymlinks { get; set; } = true;

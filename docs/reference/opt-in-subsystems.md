@@ -534,10 +534,18 @@ No attribute carries an id of a crew, task or agent.
 - **Declarative classification**: tools can self-declare their class via
   `IBaseTool.Access` (`ToolAccess.Read` / `Edit` / `Execute`) — a declaration wins
   over the gate's name tables; `Unspecified` (the default) falls back to the tables.
+  A tool whose class depends on the operation asked overrides `IBaseTool.AccessFor(arguments)`
+  (default: `Access`), which the gate reads for each call: `github` is `Read` for
+  `list_issues`, `get_pr`, `search_repos` and `get_repo`, `Execute` for `create_issue`,
+  `create_pr` and any unknown or missing action; `http_api` is `Read` for `GET`, `HEAD` and
+  `OPTIONS` (a missing method is its default `GET`), `Execute` for any other method. Their
+  static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
-  `scrape_element`, `rag_search`), `file_write` and `rag_ingest` (Edit: it writes into the
-  knowledge index, never into the workspace) and `shell_command`/`http_api` (Execute) all
-  declare themselves. `BuiltInToolAccessTests` lists the built-in tools still left at
+  `scrape_element`, `rag_search`, `rag_eval`, `web_search`), `file_write` and `rag_ingest`
+  (Edit: it writes into the knowledge index, never into the workspace) and `shell_command`
+  (Execute) all declare themselves. An MCP tool takes its class from the server's
+  `annotations` (`readOnlyHint: true` → `Read`, other annotations → `Execute`, none →
+  `Unspecified`). `BuiltInToolAccessTests` lists the built-in tools still left at
   `Unspecified`.
 - **Backward-compatible default**: flag absent → no gate registered → `act`
   behaves exactly as before. Scripts opt into a mode per call via the
@@ -591,7 +599,9 @@ No attribute carries an id of a crew, task or agent.
   (`ILlmDeltaSink.BeginTurn`) — a second act streaming at once, an act under a background
   command instance, a crew task — holds its own line buffer and writes one whole line at a
   time, prefixed with the instance's ticket (`[t2] `), as the completion lines are, a
-  crew task adding its id (`[t2 task-1] `); a line of theirs that arrives while the
+  crew task adding its id (`[t2 task-1] `) — the prefix stays in plain mode, while the
+  split-pane console drops the prefix, shows the line on the task's screen and keeps the crew
+  label (`[task-1] `); a line of theirs that arrives while the
   foreground act is inside a line waits for that line's end. So two acts streaming at
   once — two background `runAgent` sub-runs, the tasks of a parallel crew wave — never
   write into one another and no line is cut (#211). Turns that stream no visible

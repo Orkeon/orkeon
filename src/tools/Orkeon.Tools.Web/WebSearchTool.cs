@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Attributes;
+using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +29,9 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
     public const string TavilyApiKeySecretName = "TAVILY_API_KEY";
 
     private readonly ISecretProvider _secretProvider;
+
+    /// <summary>Declared access class for permission gates: a search only reads the web.</summary>
+    public override ToolAccess Access => ToolAccess.Read;
 
     /// <summary>Initializes a new instance of <see cref="WebSearchTool"/>.</summary>
     /// <param name="secretProvider">The secret provider used to retrieve the Tavily API key at execution time.</param>

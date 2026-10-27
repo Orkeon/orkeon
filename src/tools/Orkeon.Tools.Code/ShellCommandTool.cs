@@ -193,6 +193,20 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// </summary>
     public ShellConfinementOptions Confinement { get; init; } = new();
 
+    /// <summary>
+    /// The variable names the operator added to the session's environment
+    /// (<c>Orkeon:Tools:Shell:Environment:Propagate</c>), already filtered. Set by the dependency
+    /// injection registration and the tests.
+    /// </summary>
+    internal IReadOnlyList<string> PropagatedVariables { get; init; } = [];
+
+    /// <summary>
+    /// Whether a confined session receives the operator's session bus
+    /// (<c>Orkeon:Tools:Shell:Environment:SessionBus</c>). Set by the dependency injection
+    /// registration and the tests.
+    /// </summary>
+    internal bool SessionBus { get; init; }
+
     /// <summary>Whether bubblewrap works here; probed once per process. Replaced by the tests.</summary>
     internal Func<BubblewrapAvailability> Bubblewrap { get; init; } = BubblewrapProbe.Current;
 
@@ -748,7 +762,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
         var outboundReplacements = BuildOutboundReplacements();
         var confinedPaths = await BuildConfinedPathsAsync(cancellationToken).ConfigureAwait(false);
-        var view = new ShellSessionView(confinedPaths, [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork);
+        var view = new ShellSessionView(confinedPaths, [.. Confinement.ReadOnlyPaths], Confinement.AllowNetwork)
+        {
+            PropagatedVariables = PropagatedVariables,
+            SessionBus = SessionBus,
+        };
 
         if (detached)
             return await StartJobAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);

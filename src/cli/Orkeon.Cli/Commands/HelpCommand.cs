@@ -6,7 +6,7 @@ using Orkeon.Cli.Abstractions.Runners;
 
 namespace Orkeon.Cli.Commands;
 
-/// <summary>Lists available commands grouped by prefix. Reads the active runner registry from <see cref="RunnerContext.Current"/>.</summary>
+/// <summary>Lists available commands grouped by declared group, else by name prefix. Reads the active runner registry from <see cref="RunnerContext.Current"/>.</summary>
 public sealed class HelpCommand : IInteractiveCommand
 {
     public string Name => "help";
@@ -55,11 +55,12 @@ public sealed class HelpCommand : IInteractiveCommand
         var byGroup = specific.Commands
             .GroupBy(c =>
             {
+                if (!string.IsNullOrEmpty(c.Group)) return c.Group;
                 var idx = c.Name.IndexOf(' ', StringComparison.Ordinal);
                 return idx >= 0 ? c.Name[..idx] : "(no group)";
             }, StringComparer.OrdinalIgnoreCase)
-            // Real groups come before "(no group)"
-            .OrderBy(g => g.Key == "(no group)" ? "￿" : g.Key, StringComparer.OrdinalIgnoreCase);
+            // Registration order (GroupBy keeps first-seen order); "(no group)" comes last.
+            .OrderBy(g => g.Key == "(no group)" ? 1 : 0);
 
         foreach (var grp in byGroup)
         {

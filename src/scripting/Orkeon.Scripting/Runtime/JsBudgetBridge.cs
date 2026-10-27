@@ -1,6 +1,7 @@
 using System.Globalization;
 using Jint.Native;
 using Orkeon.Domain.Autonomous;
+using Orkeon.Domain.Crew.ValueObjects;
 using Orkeon.Scripting.Exceptions;
 
 namespace Orkeon.Scripting.Runtime;
@@ -45,6 +46,26 @@ internal static class JsBudgetBridge
             TimeProvider = chargedTo?.TimeProvider ?? TimeProvider.System,
             ChargedTo = chargedTo,
         };
+    }
+
+    /// <summary>
+    /// The <c>crewBuilder().budget({...})</c> spec of a declarative autonomous crew as the crew's budget
+    /// (#218), read as <see cref="FromSpec"/> reads it: a dimension left out, or one it cannot read, keeps
+    /// the crew's default - no token cap and no wall time. Null when the spec carries no dimension.
+    /// </summary>
+    internal static CrewBudget? ToCrewBudget(IReadOnlyDictionary<string, object?>? spec)
+    {
+        if (spec is null || spec.Count == 0) return null;
+
+        var budget = new CrewBudget
+        {
+            ToolCalls = TryReadInt(spec, "toolCalls"),
+            Tokens = TryReadInt(spec, "tokens"),
+            DelegationDepth = TryReadInt(spec, "delegationDepth"),
+            SpawnedAgents = TryReadInt(spec, "spawnedAgents"),
+            WallTime = TryReadWallTime(spec),
+        };
+        return budget == CrewBudget.Unset ? null : budget;
     }
 
     /// <summary>The keys of a budget spec, in the order a refusal names them.</summary>

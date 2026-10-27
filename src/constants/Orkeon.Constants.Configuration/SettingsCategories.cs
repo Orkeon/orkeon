@@ -133,6 +133,7 @@ public static class SettingsCategories
             ["Orkeon:Tools:Email"] = Tools,
             ["Orkeon:Tools:ResultLimits"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
+            ["Orkeon:Tools:GitHub"] = Tools,
             ["MCP"] = Tools,
             ["RaggableTree"] = Tools,
             [EnvironmentVariableNames.BraveApiKey] = Tools,

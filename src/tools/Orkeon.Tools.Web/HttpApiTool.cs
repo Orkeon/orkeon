@@ -116,6 +116,32 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Execute;
 
+    // The methods that only read; a missing method is the tool's default, GET.
+    private static readonly HashSet<string> ReadMethods = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GET", "HEAD", "OPTIONS"
+    };
+
+    /// <summary>
+    /// <see cref="ToolAccess.Read"/> for <c>GET</c>, <c>HEAD</c> and <c>OPTIONS</c> (any case), and for a
+    /// missing or null method, which the tool sends as <c>GET</c>; <see cref="ToolAccess.Execute"/> for
+    /// any other method.
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <returns>The access class of this call.</returns>
+    public override ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments)
+    {
+        var method = StringArgument(arguments, "method", out var present);
+        if (!present || IsNull(arguments, "method"))
+            method = HttpApiDefaults.DefaultMethod;
+        return method is not null && ReadMethods.Contains(method) ? ToolAccess.Read : ToolAccess.Execute;
+    }
+
+    // Whether the argument of that name holds null (a C# null or a JSON null), the tool's default case.
+    private static bool IsNull(IReadOnlyDictionary<string, object?> arguments, string name) =>
+        arguments.Any(pair => string.Equals(pair.Key, name, StringComparison.OrdinalIgnoreCase)
+            && pair.Value is null or JsonElement { ValueKind: JsonValueKind.Null });
+
     /// <summary>Initializes a new instance of <see cref="HttpApiTool"/> with SSRF protection.</summary>
     /// <param name="urlValidator">URL validator for SSRF protection.</param>
     /// <param name="headerSanitizer">Header sanitizer to prevent header injection.</param>

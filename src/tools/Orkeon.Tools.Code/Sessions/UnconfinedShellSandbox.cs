@@ -29,24 +29,24 @@ internal sealed class UnconfinedShellSandbox : IShellSandbox
     /// <inheritdoc />
     public ShellSandboxAvailability Availability => ShellSandboxAvailability.Available;
 
-    private static ProcessStartInfo Prepare()
-    {
-        var startInfo = new ProcessStartInfo(PosixShell);
-        ShellEnvironment.ConfigureRestricted(startInfo);
-        return startInfo;
-    }
-
     /// <inheritdoc />
     public async Task<IShellSession> OpenAsync(ShellSessionView view, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(view);
         if (OperatingSystem.IsWindows())
-            return Windows.WindowsShellSession.OpenUnconfined();
+            return Windows.WindowsShellSession.OpenUnconfined(view.PropagatedVariables);
 
         var startInfo = new ProcessStartInfo(PosixShell);
         startInfo.ArgumentList.Add("-s");
-        ShellEnvironment.ConfigureRestricted(startInfo);
+        ShellEnvironment.ConfigureRestricted(startInfo, ShellSessionSockets.All, view.PropagatedVariables);
         return await PosixShellSession.StartAsync(startInfo, WatchedHostPid, startOnDedicatedThread: false, hostSeesPrivateDirectory: true, cancellationToken, new PosixShellSession.DetachedLaunch(Prepare))
             .ConfigureAwait(false);
+
+        ProcessStartInfo Prepare()
+        {
+            var info = new ProcessStartInfo(PosixShell);
+            ShellEnvironment.ConfigureRestricted(info, ShellSessionSockets.All, view.PropagatedVariables);
+            return info;
+        }
     }
 }

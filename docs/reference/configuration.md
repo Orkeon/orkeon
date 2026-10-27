@@ -186,15 +186,15 @@ closed list, and what it means.
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 58 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
-| [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 32 |
+| [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 31 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 72 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 76 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence) | 16 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 28 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-71 sections, 386 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+72 sections, 391 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1128,6 +1128,7 @@ Physical path validation. Bound by `AddOrkeonInfrastructure()` (`IPathValidator`
 |---|---|---|---|
 | `AdditionalAllowedDirectories` | list of string | `[]` | Additional directories that are allowed beyond the workspace root. |
 | `AdditionalBlockedExtensions` | list of string | `[]` | Additional file extensions to block beyond the built-in list. |
+| `BlockReadsOfBlockedExtensions` | boolean | `false` | Whether a plain read of a built-in script extension (`.sh`, `.bash`, `.ps1`, `.bat`, `.cmd`, `.vbs`, `.wsf`) is refused too. Default: `false`: reading a script is not executing it, so a read passes while a write, a creation, a deletion or a command target on it is refused. Built-in binary extensions and `AdditionalBlockedExtensions` refuse reads whatever this says. |
 | `DefaultWorkspaceRoot` | string | — | The default workspace root directory. If null, defaults to the current working directory. |
 | `MaxFileSizeBytes` | integer | `52428800` | Maximum allowed file size in bytes. Default: 50 MB. |
 | `ResolveSymlinks` | boolean | `true` | Whether to resolve symlinks and verify the target is within the workspace. Default: true. |
@@ -1364,6 +1365,17 @@ host runs in a container; `None` turns it off. A backend that cannot run fails t
 reason, rather than run it unconfined. `AllowNetwork` opens the network (off by default) and
 `ReadOnlyPaths` lends a toolchain outside the system directories
 ([Shell confinement](../architecture/security.md#shell-confinement), [limits](./limitations.md)).
+`Environment:Propagate` names extra host variables handed to the shell session and to the code
+sandbox on top of the built-in allow-list, such as `HTTPS_PROXY` when the proxy needs no
+credential. The secret filter wins: a name starting with `ORKEON_`, containing `KEY`, `TOKEN`,
+`SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case), blank, or holding `=` or a
+NUL, or whose value carries URL credentials (`http://user:password@proxy:3128`), is dropped with a
+warning in the log that never quotes the value, and the host still starts; a built-in name
+(`SSH_AUTH_SOCK`, `PATH`) is ignored. Names compare with case, except on Windows. Under bubblewrap
+an added variable passes whatever `AllowNetwork` says, and no path it names is bound into the view.
+`Environment:SessionBus` (off by default) hands a confined session the operator's session bus,
+through which a command can leave the sandbox and read the keyring: the host logs a warning when it
+is on ([the session bus is opt-in](../architecture/security.md#shell-confinement)).
 
 <!-- settings:Orkeon:Tools:Shell -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1375,6 +1387,8 @@ reason, rather than run it unconfined. `AllowNetwork` opens the network (off by 
 | `Confinement:AllowNetwork` | boolean | `false` |  | Lets the confined process reach the network. Default false: it gets its own network namespace, loopback only (under AppContainer: no network capability, hence no network at all). |
 | `Confinement:Mode` | enum | `"Auto"` | `None`, `Bubblewrap`, `Auto`, `Seatbelt`, `AppContainer` | How the process is confined. `Auto` (default) picks the backend of the platform: `Bubblewrap` on Linux, `Seatbelt` on macOS, `AppContainer` on Windows, and no confinement when the host runs in a container (the container is the boundary). `None` runs the process on the host, as the user of the host. `Bubblewrap` runs it under `bwrap` (Linux): each mount bound at its virtual path, read-only when it lacks Write, the system directories read-only, nothing else of the host, the network off. When the backend is unavailable (another OS, no `bwrap`, namespaces refused) the call fails with the reason and the command does not run. |
 | `Confinement:ReadOnlyPaths` | list of string | `[]` |  | Absolute host directories bound read-only at their own path, on top of the system directories (`/usr`, `/bin`, `/sbin`, `/lib`, `/lib32`, `/lib64`, `/etc`), for a program installed elsewhere, such as `/opt/node` or a `.dotnet` folder. Under AppContainer (Windows) they are fully qualified host directories the container may read and execute, such as a tool installed under the user profile. |
+| `Environment:Propagate` | list of string | `[]` |  | Extra variable names propagated from the runner's environment, such as `HTTPS_PROXY` when the proxy needs no credential. A name that is blank, holds `=` or a NUL, starts with `ORKEON_` or contains `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `CREDENTIAL` or `AUTH` (without case), or whose value carries URL credentials (`http://user:password@proxy:3128`), is dropped with a warning that never quotes the value; a built-in name is ignored. Names compare with case, except on Windows. Under bubblewrap the value passes whatever the network, but no path it names is bound into the view. |
+| `Environment:SessionBus` | boolean | `false` |  | Whether a confined shell session (bubblewrap, Seatbelt, AppContainer) receives the operator's session bus: `DBUS_SESSION_BUS_ADDRESS` and, under bubblewrap with the network, its socket. False by default. The bus lets a command leave the sandbox (`systemd-run --user`) and read every keyring secret (`secret-tool`), so turning it on is logged as a warning. An unconfined session and the code sandbox, which no jail holds, always receive it. |
 | `ExtraAllowedCommands` | list of string | `[]` |  | Commands added on top of the default (or replacement) allowlist, such as `make`. |
 <!-- /settings -->
 
@@ -1479,6 +1493,23 @@ holds it (`Auth:ClientSecretEnvVar`), read like the e-mail ones. Walkthroughs an
 | `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
 | `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
 | `Screening:WithholdRejected` | boolean | `false` |  | When true, a file the prompt-injection detector rejects has its text withheld. Off by default, as for e-mail: the detector flags; rights and the root folder bound an agent. |
+<!-- /settings -->
+
+### `Orkeon:Tools:GitHub`
+
+Read once by `AddOrkeonWebTools` when the `github` tool is registered. The token is the first
+non-empty of `Token`, the environment variable `TokenVariable` names (default `GITHUB_TOKEN`), then
+`GH_TOKEN`. Without one every call is anonymous: the read actions work within GitHub's anonymous rate
+limit, `create_issue` and `create_pr` are refused, and the tool's description says where to set the
+token. The token is masked (`***`) in the tool's errors and logs.
+
+<!-- settings:Orkeon:Tools:GitHub -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Token` | string, secret | — | GitHub personal access token the tool sends as a bearer. Keep it out of a committed file (`appsettings.local.json`, or the environment variable instead). Not set: the variable named by `TokenVariable`, then `GH_TOKEN`. |
+| `TokenVariable` | string | `"GITHUB_TOKEN"` | Name of the environment variable holding the token when `Token` is empty; `GH_TOKEN` is read after it. |
 <!-- /settings -->
 
 ### `MCP`
@@ -2037,8 +2068,16 @@ variable itself. The list is the one the code carries — a test holds this tabl
 
 **Passed on, not read.** The `shell_command` tool hands the command it starts a fixed list of the
 host's variables — `PATH`, `HOME`, the locale, the temporary folders, `DOTNET_ROOT`,
-`NUGET_PACKAGES` and what Windows needs to start a program —, and the code sandbox builds a
-smaller environment still: neither reads them as settings, and no key travels that way. `PATH`
+`NUGET_PACKAGES` and what Windows needs to start a program —, plus the three that name a socket
+of the operator's session: `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` (the keyring a credential
+helper such as `gh auth git-credential` reads) and `SSH_AUTH_SOCK` (the ssh agent). They hold an
+address, not a secret, but the bus lets a command leave a sandbox and read the keyring: a confined
+session gets `DBUS_SESSION_BUS_ADDRESS` only when `Orkeon:Tools:Shell:Environment:SessionBus` is
+true, and under bubblewrap the sockets follow only when `Confinement:AllowNetwork` is true
+([security](../architecture/security.md)). The code sandbox builds a smaller environment still,
+the three sockets included. Both add the names of `Orkeon:Tools:Shell:Environment:Propagate` that
+pass its secret filter. Neither reads them as settings,
+and no key travels that way — `OPENAI_API_KEY`, `ORKEON_*` and every other variable stay behind. `PATH`
 is also where a `.ork.ts` script looks for esbuild last, and Orkeon Studio for `orkeon`; `HOME` is
 read when the system names no profile folder, to place the per-user settings. The variables
 written under `MCP:Servers:<name>:Env` are the operator's: Orkeon hands them to the server it

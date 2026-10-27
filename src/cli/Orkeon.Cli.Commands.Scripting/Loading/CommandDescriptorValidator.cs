@@ -37,6 +37,9 @@ public static partial class CommandDescriptorValidator
     public static readonly IReadOnlySet<string> ShadowableDefaultNames =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "exit", "quit", "q", "clear", "cls" };
 
+    /// <summary>True when <paramref name="group"/> has the shape of a group (same as a command name).</summary>
+    public static bool IsValidGroupName(string group) => NameRegex.IsMatch(group);
+
     /// <summary>Validates a single descriptor in isolation. Cross-descriptor checks live in <see cref="ValidateGlobalUniqueness"/>.</summary>
     public static ValidationResult Validate(CommandDescriptor descriptor)
     {
@@ -54,6 +57,11 @@ public static partial class CommandDescriptorValidator
             return ValidationResult.Fail(
                 ValidationFailure.NameIsBuiltin,
                 $"Command name '{descriptor.Name}' collides with the reserved built-in 'help' surface (help/?/h).");
+
+        if (descriptor.Group is not null && !IsValidGroupName(descriptor.Group))
+            return ValidationResult.Fail(
+                ValidationFailure.InvalidGroup,
+                $"Command group '{descriptor.Group}' of '{descriptor.Name}' does not match ^[a-z][a-z0-9-]*$.");
 
         var aliasVerdict = ValidateAliases(descriptor);
         if (!aliasVerdict.IsValid)
@@ -183,6 +191,7 @@ public enum ValidationFailure
     InvalidAlias,
     AliasEqualsName,
     InvalidDescription,
+    InvalidGroup,
 }
 
 /// <summary>Result of validating a <see cref="CommandDescriptor"/>.</summary>

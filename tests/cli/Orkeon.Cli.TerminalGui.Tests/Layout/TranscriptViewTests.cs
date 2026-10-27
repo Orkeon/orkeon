@@ -27,6 +27,23 @@ public class TranscriptViewTests
         Assert.Equal("a long line that wraps\nend", view.SelectedText);
     }
 
+    [Fact]
+    [Trait("BR", "BR-11")]
+    public void ShouldKeepSelectionOnItsText_WhenScreenDropsOldestLines()
+    {
+        using var view = CreateView(capacity: 3);
+        view.AppendLines(["a", "b", "c"]);
+        view.NewMouseEvent(Drag(0, 1));
+        view.NewMouseEvent(Drag(1, 1));
+        view.NewMouseEvent(Drag(1, 1, pressed: false));
+        Assert.Equal("b", view.SelectedText);
+
+        view.AppendLines(["d"]);
+
+        Assert.Equal("b\nc\nd", view.TranscriptText.TrimEnd('\n'));
+        Assert.Equal("b", view.SelectedText);
+    }
+
     // The view sits ten rows below the screen's top unless a test says otherwise.
     private static Mouse Drag(int x, int y, bool pressed = true, int screenTop = 10) => new()
     {

@@ -80,7 +80,7 @@ public abstract partial class FileToolBase : ToolBase
             return outsideRoot;
         if (result.IsAllowed && _pathValidator is not null && result.ResolvedPath is not null)
         {
-            var defenseInDepth = _pathValidator.ValidatePath(result.ResolvedPath);
+            var defenseInDepth = _pathValidator.ValidatePath(result.ResolvedPath, requiredRight);
             if (!defenseInDepth.IsAllowed)
                 return defenseInDepth;
         }

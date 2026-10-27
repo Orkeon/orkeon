@@ -316,14 +316,18 @@ public sealed class AgentsPaneView : View
         return true;
     }
 
+    private IReadOnlyList<AgentRowInfo> _lastFinished = [];
+
     /// <summary>Re-polls the rows and repaints. Also used by tests.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing row provider leaves the pane as it was, never crashes the UI timer.")]
     public void Refresh()
     {
         IReadOnlyList<AgentRowInfo> rows;
+        bool turnRunning;
         try
         {
             rows = _integration?.AgentRows?.Invoke() ?? [];
+            turnRunning = _integration?.PromptTurnRunning?.Invoke() == true;
         }
         catch
         {
@@ -333,10 +337,12 @@ public sealed class AgentsPaneView : View
             return;
         }
 
-        _rows = rows.ToList();
+        var hasFeed = TryReadFinished(out var finished);
+        if (hasFeed) _lastFinished = finished;
+        _rows = AgentsPaneModel.ComposeListRows(rows, hasFeed ? finished : _lastFinished, turnRunning).ToList();
         if (TranscriptSink is { } sink)
         {
-            foreach (var line in _tracker.Observe(_rows, TryReadFinished(out var finished) ? finished : null)) sink(line);
+            foreach (var line in _tracker.Observe(rows, hasFeed ? finished : null)) sink(line);
         }
         if (Navigator is { } navigator)
         {

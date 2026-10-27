@@ -1403,3 +1403,38 @@ Orkeon.Domain.FileSystem.IFileSystemService.WriteDirectory.get -> string?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Tools.Protocol.ParameterSchema!>?
 Orkeon.Domain.Tools.Protocol.ParameterSchema.ItemProperties.init -> void
 Orkeon.Domain.Tools.Protocol.ParameterSchema.RequiredItemProperties() -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Tools.Security.IPathValidator.ValidatePath(string! requestedPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, string? workspaceRoot = null) -> Orkeon.Domain.Tools.Security.PathValidationResult!
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.CurrentTokenCalls.get -> int
+Orkeon.Domain.Tools.IBaseTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
+Orkeon.Domain.Configuration.CrewConfiguration.Budget.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget?
+Orkeon.Domain.Configuration.CrewConfiguration.Budget.init -> void
+Orkeon.Domain.Crew.Crew.Budget.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget!
+Orkeon.Domain.Crew.CrewCreateOptions.Budget.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget?
+Orkeon.Domain.Crew.CrewCreateOptions.Budget.init -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.CrewBudget() -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.DelegationDepth.get -> int?
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.DelegationDepth.init -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.Equals(Orkeon.Domain.Crew.ValueObjects.CrewBudget? other) -> bool
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.SpawnedAgents.get -> int?
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.SpawnedAgents.init -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.Tokens.get -> int?
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.Tokens.init -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.ToolCalls.get -> int?
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.ToolCalls.init -> void
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.WallTime.get -> System.TimeSpan?
+Orkeon.Domain.Crew.ValueObjects.CrewBudget.WallTime.init -> void
+[ORKEXP002]Orkeon.Domain.Autonomous.AgentExecutionBudget.RecordChildTokens(Orkeon.Domain.Autonomous.AgentExecutionBudget! child, int tokens) -> void
+[ORKEXP002]Orkeon.Domain.Crew.ValueObjects.CrewBudget.ToExecutionBudget() -> Orkeon.Domain.Autonomous.AgentExecutionBudget!
+const Orkeon.Domain.Crew.ValueObjects.CrewBudget.DefaultDelegationDepth = 4 -> int
+const Orkeon.Domain.Crew.ValueObjects.CrewBudget.DefaultSpawnedAgents = 10 -> int
+const Orkeon.Domain.Crew.ValueObjects.CrewBudget.DefaultToolCalls = 50 -> int
+override Orkeon.Domain.Crew.ValueObjects.CrewBudget.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.CrewBudget!
+override Orkeon.Domain.Crew.ValueObjects.CrewBudget.Equals(object? obj) -> bool
+override Orkeon.Domain.Crew.ValueObjects.CrewBudget.GetHashCode() -> int
+override Orkeon.Domain.Crew.ValueObjects.CrewBudget.ToString() -> string!
+override sealed Orkeon.Domain.Crew.ValueObjects.CrewBudget.Equals(Orkeon.Domain.Common.ValueObjectRecord? other) -> bool
+static Orkeon.Domain.Crew.ValueObjects.CrewBudget.Unset.get -> Orkeon.Domain.Crew.ValueObjects.CrewBudget!
+static Orkeon.Domain.Crew.ValueObjects.CrewBudget.operator !=(Orkeon.Domain.Crew.ValueObjects.CrewBudget? left, Orkeon.Domain.Crew.ValueObjects.CrewBudget? right) -> bool
+static Orkeon.Domain.Crew.ValueObjects.CrewBudget.operator ==(Orkeon.Domain.Crew.ValueObjects.CrewBudget? left, Orkeon.Domain.Crew.ValueObjects.CrewBudget? right) -> bool
+Orkeon.Domain.Crew.CrewBuilder.Budget(Orkeon.Domain.Crew.ValueObjects.CrewBudget! budget) -> Orkeon.Domain.Crew.CrewBuilder!

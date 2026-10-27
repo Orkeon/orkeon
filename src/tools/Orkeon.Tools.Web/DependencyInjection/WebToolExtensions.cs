@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Configuration;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.Tools;
@@ -25,10 +27,13 @@ public static class WebToolExtensions
     /// HttpApiTool will use them for SSRF protection and header sanitization.
     /// Use <see cref="AddOrkeonWebSearchTool"/> to register the WebSearch tool separately (requires ISecretProvider).
     /// For Slack tools, use <see cref="AddOrkeonSlackTool"/> and <see cref="AddOrkeonSlackReadTool"/>.
+    /// The GitHub tool's token is read once, when the tool is built, from
+    /// <see cref="GitHubToolOptions.ResolveToken"/> (setting, then environment).
     /// </summary>
     public static IServiceCollection AddOrkeonWebTools(this IServiceCollection services)
     {
         RegisterWebToolsHttpClient(services);
+        services.DeclareSettingsShape(GitHubToolOptions.SectionName, typeof(GitHubToolOptions));
         services.AddTransient<IBaseTool>(CreateHttpApiTool);
         // WebScrapeTool: prefers the RAG-enabled ctor when IEmbeddingService and
         // IMemoryProvider are available. Always wires the IUrlValidator (SSRF) when
@@ -89,7 +94,7 @@ public static class WebToolExtensions
 
     private static IBaseTool CreateGitHubTool(IServiceProvider sp) =>
         new GitHubTool(
-            personalAccessToken: null,
+            GitHubToolOptions.ResolveToken(sp.GetService<IConfiguration>(), Environment.GetEnvironmentVariable),
             ResolveHttpClient(sp),
             sp.GetService<Microsoft.Extensions.Logging.ILogger<GitHubTool>>());
 

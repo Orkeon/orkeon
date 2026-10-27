@@ -167,7 +167,7 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
 
             AclGrants.Apply(plan, profile.Sid);
 
-            var environment = ShellEnvironment.RestrictedVariables();
+            var environment = ShellEnvironment.RestrictedVariables(view.ConfinedSockets, view.PropagatedVariables);
             var folder = profile.FolderPath();
             if (folder is not null)
             {
@@ -299,7 +299,7 @@ internal sealed class AppContainerShellSandbox(Func<ShellSandboxAvailability> pr
         try
         {
             var profile = AppContainerProfile.Create(name);
-            var session = new WindowsShellSession(JobObject.Create(), profile.Sid, [], ShellEnvironment.RestrictedVariables(), profile.FolderPath(), null);
+            var session = new WindowsShellSession(JobObject.Create(), profile.Sid, [], ShellEnvironment.RestrictedVariables(ShellSessionSockets.WithoutBus), profile.FolderPath(), null);
             try
             {
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));

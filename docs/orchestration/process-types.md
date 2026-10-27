@@ -35,7 +35,7 @@ IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, I
      ├── ParallelProcessStrategy        ← ExecuteParallelAsync
      ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync
      ├── GraphProcessStrategy           ← ExecuteSequentialAsync
-     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
+     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(crew.Budget)
 ```
 
 `IProcessStrategy` (Domain) has four entry points — `ExecuteSequentialAsync`, `ExecuteHierarchicalAsync`, `ExecuteParallelAsync`, `ExecuteAutonomousAsync`. `SequentialCrewOrchestrator` picks the entry point from `ProcessType.Value`; Graph and Consensual reuse the sequential one, and a strategy throws `NotSupportedException` on the entry points it does not serve. The strategies are registered as scoped services by `AddOrkeonInfrastructure()` (Consensual through `AddOrkeonConsensus()`, which it calls).
@@ -88,7 +88,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Task dependencies** | Order + skip on failure | Order + skip on failure | Waves + skip on failure | Order + skip on failure | Order + skip on failure | Order + skip on failure |
 | **A failed task fails the crew** | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ after its retries (dependents skipped) | ✅ (dependents skipped; an exhausted budget too) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mechanisms | — |
-| **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
+| **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (crew `budget:`) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
 | **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
 | **Manager** (`managerAgent:`; C# `WithManagerLlm`) | Refused at load | ✅ An agent (required) or, in C#, an LLM: it assigns and reviews | Refused at load | ✅ An agent: the `ManagerDecision` arbiter (an LLM is refused) | Refused at load | An LLM only: the default profile, or C# `WithManagerLlm` (an agent is refused) |
@@ -623,7 +623,7 @@ for each task:  Manager (LLM) ── assigns ──→ Agent A ── executes
 | `MaxSpawnedAgents` | 1 | 3 | 10 | Agents created through `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Maximum execution duration |
 
-`ICrewOrchestrationService` always runs this mode with **`AgentExecutionBudget.Permissive`**; another budget requires calling `AutonomousProcessStrategy.ExecuteAutonomousAsync(crew, budget, …)` directly.
+`ICrewOrchestrationService` runs this mode under the crew's budget (YAML `budget:`); a crew that sets none has no token cap and no wall time, and keeps the structural limits of 50 tasks handed out, 4 delegations and 10 spawns.
 
 **Child budgets**: `CreateChildBudget()` gives the delegate the parent's **remaining** allowance on each axis (one less delegation level, at least 1 tool call and 100 tokens). Each child budget is an independent copy: two delegates each receive the full remainder.
 
@@ -649,16 +649,17 @@ await channel.BroadcastAsync(analyst.Id, crew.Id, "Results available", ct);
 name: "research-team"
 goal: "Autonomous demo"
 process: autonomous
-# There is NO autonomous budget key in YAML: a YAML autonomous crew always runs
-# under AgentExecutionBudget.Permissive (50 tool calls, depth 4, 15 min,
-# 64 000 tokens, 10 spawns) — see the Autonomous guide and yaml-schema.md.
+budget:                   # optional; every key optional, each 1 or more
+  tokens: 400000          # running sum of prompt + completion; none by default
+  wallTimeSeconds: 1800   # none by default
+  toolCalls: 80           # tasks handed out; 50 by default
 ```
 
 ### Advantages
 
 - **LLM-driven assignment**: the manager matches each task to an agent
 - **Second chance**: a failed task is handed to a peer
-- **Guaranteed termination**: the budget and its wall time bound the run
+- **Guaranteed termination**: the budget bounds the run — the tasks handed out always, tokens and wall time when the crew sets them
 - **Budget telemetry**: the crew metadata carries the consumption of each axis
 
 ### Drawbacks
@@ -666,7 +667,7 @@ process: autonomous
 - **Experimental**: `ORKEXP002`, semantics may still move
 - **Non-deterministic**: the manager's choices vary between runs
 - **Budget exhausted = run cut short**: the remaining tasks are not executed, and the crew fails naming the exhausted dimension and every task it never reached
-- **Fixed budget** through the orchestrator (Permissive)
+- **No token or time cap by default**: a crew that must stay within a spend sets `budget:`
 
 ### When to use it
 

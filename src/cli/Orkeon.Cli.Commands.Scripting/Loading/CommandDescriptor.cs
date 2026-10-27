@@ -31,6 +31,40 @@ public sealed record CommandDescriptor
     /// <summary>Primary command name (validated against <c>^[a-z][a-z0-9-]*$</c>).</summary>
     public required string Name { get; init; }
 
+    /// <summary>
+    /// Group declared by the script (<c>group</c>, validated against <c>^[a-z][a-z0-9-]*$</c>), or
+    /// <see langword="null"/> when absent; the group then derives from the folder (<see cref="EffectiveGroup"/>).
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>
+    /// The loader directory that found the script (one of <c>Orkeon:Cli:ScriptCommands:Directories</c>), or
+    /// <see langword="null"/> when the descriptor was not loaded from one; the folder group is taken relative to it.
+    /// </summary>
+    public string? SourceDirectory { get; init; }
+
+    /// <summary>
+    /// The declared <see cref="Group"/>, else the name of the folder holding the script, below the
+    /// <see cref="SourceDirectory"/> that found it (<c>/cli-commands/session/clear.cmd.ts</c> found under
+    /// <c>/cli-commands</c> gives <c>session</c>), when it is a valid group name, else <see langword="null"/> (a file
+    /// directly in that directory, whatever its depth in the mount).
+    /// </summary>
+    public string? EffectiveGroup
+    {
+        get
+        {
+            if (Group is not null) return Group;
+            var root = (SourceDirectory ?? string.Empty).TrimEnd('/') + "/";
+            var relative = SourceVirtualPath.StartsWith(root, StringComparison.Ordinal)
+                ? SourceVirtualPath[root.Length..]
+                : SourceVirtualPath;
+            var segments = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length < 2) return null;
+            var folder = segments[^2];
+            return CommandDescriptorValidator.IsValidGroupName(folder) ? folder : null;
+        }
+    }
+
     /// <summary>Alternate identifiers. Must not contain <see cref="Name"/>.</summary>
     public ImmutableArray<string> Aliases { get; init; } = ImmutableArray<string>.Empty;
 

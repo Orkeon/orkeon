@@ -56,6 +56,14 @@ public static class CodeToolExtensions
         // One shell session per agent run: the manager is stateless (the sessions live in each run's
         // AgentRunScope) and the sandboxes hold no session, so all of them are singletons.
         services.TryAddSingleton<ShellSessionManager>();
+        // The operator's extra variables (Environment:Propagate) and the session bus switch
+        // (Environment:SessionBus), applied once per host: a refused name is dropped with a warning
+        // rather than refused at start, as a misconfigured Confinement:ReadOnlyPaths is reported
+        // rather than refused at start, and an enabled bus is warned about once.
+        services.TryAddSingleton(sp => ShellPropagatedVariables.From(
+            sp.GetRequiredService<IOptions<ShellToolOptions>>().Value.Environment,
+            System.Environment.GetEnvironmentVariable,
+            sp.GetService<ILoggerFactory>()?.CreateLogger(typeof(ShellEnvironment))));
         services.TryAddSingleton<UnconfinedShellSandbox>();
         services.TryAddSingleton<BubblewrapShellSandbox>();
         services.TryAddSingleton<SeatbeltShellSandbox>();
@@ -80,6 +88,8 @@ public static class CodeToolExtensions
                 limits: sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value)
             {
                 Confinement = shell.Confinement,
+                PropagatedVariables = sp.GetRequiredService<ShellPropagatedVariables>().Names,
+                SessionBus = sp.GetRequiredService<ShellPropagatedVariables>().SessionBus,
                 Sessions = sp.GetRequiredService<ShellSessionManager>(),
                 Sandbox = sp.GetRequiredService<ShellSandboxSelector>().Select(shell.Confinement.Mode),
             };
