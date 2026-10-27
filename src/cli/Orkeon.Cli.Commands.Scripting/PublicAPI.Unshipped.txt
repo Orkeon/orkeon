@@ -77,3 +77,11 @@ Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade
 Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.load(string! path) -> System.Threading.Tasks.Task<int>!
 Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.save() -> System.Threading.Tasks.Task<string!>!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Session = "session" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.Unknown = "unknown" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Runtime = "runtime" -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.channel.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.commit.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.version.get -> string!
+static Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.FromAssembly(System.Reflection.Assembly? assembly, string? channel) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo!
+static Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.FromInformationalVersion(string? informationalVersion, string? channel) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo!

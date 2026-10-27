@@ -1,4 +1,5 @@
 using Orkeon.Constants.FileSystem;
+using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli.Tests;
 

@@ -43,6 +43,16 @@ untouched and the session goes on saving to its own file. A missing file, or one
 is refused whole: the promise rejects and the session stays as it was. `FileSessionBufferService` gains
 `SessionFilePath` and `LoadFromAsync(path)`.
 
+### Added — scripted commands read the version of the runtime that runs them (#225)
+
+`ctx.services.get("runtime")` answers `{ version, commit, channel }`: the release as `orkeon doctor` prints it
+(`1.0.0-rc.6`), the commit sha of its build metadata (null when there is none), and the channel the runtime was
+installed through, read from the installation's `INSTALL-CHANNEL` marker (`unknown` when nothing names one). The key
+is always present; `orkeon-repl` registers its own `ScriptRuntimeInfo`, and a host that registers none answers its
+entry assembly's version with the channel `unknown`. `orkeon-cli.d.ts` declares it (`RuntimeInfo`), so
+`orkeon typings` writes it. The reader of the install channel moved from the `orkeon` tool to `Orkeon.Hosting`, where
+both `orkeon doctor` and `orkeon-repl` read it.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

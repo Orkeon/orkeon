@@ -227,7 +227,8 @@ export interface ProgressHandle {
 export interface ServiceLocator {
   /**
    * Resolve a whitelisted host service. Keys of the default whitelist:
-   * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[];
+   * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[],
+   *   `"runtime"` → {@link RuntimeInfo} (the version and install channel of the runtime that runs the command);
    * - present only when the host wired them (check with `has`): `"llm"` → ILlmProvider,
    *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
@@ -243,6 +244,7 @@ export interface ServiceLocator {
   get(name: "permissions"): PermissionRulesFacade;
   get(name: "approvals"): PendingApprovals;
   get(name: "session"): SessionFacade;
+  get(name: "runtime"): RuntimeInfo;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -353,6 +355,22 @@ export interface PendingApproval {
   readonly tool: string;
   /** The call's input as the status line shows it: its JSON arguments, cut at 60 characters with `…`. */
   readonly input: string;
+}
+
+/**
+ * The runtime that runs the command — `ctx.services.get("runtime")`, always present. The version and
+ * the channel are the ones `orkeon doctor` prints; `version + "+" + commit` is the full build version.
+ */
+export interface RuntimeInfo {
+  /** The release, build metadata removed (`1.0.0-rc.6`); `"unknown"` when the host carries none. */
+  readonly version: string;
+  /** The commit sha the build was made from (the metadata after `+`); null when the version carries none. */
+  readonly commit: string | null;
+  /**
+   * The channel the runtime was installed through: `dotnet-tool`, `deb`, `tarball`, `zip`, `msi`,
+   * `homebrew`, `source`…, `"unknown"` when nothing names one (a build tree, an installation older than the marker).
+   */
+  readonly channel: string;
 }
 
 /** Result of a crew run launched via {@link ScriptHostFacade}. */

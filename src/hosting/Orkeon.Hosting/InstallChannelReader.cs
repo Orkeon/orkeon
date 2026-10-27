@@ -1,7 +1,8 @@
 using System.Text;
+using Orkeon.Compliance.Vfs;
 using Orkeon.Constants.FileSystem;
 
-namespace Orkeon.Scripting.Cli;
+namespace Orkeon.Hosting;
 
 /// <summary>What <see cref="InstallChannelReader"/> found.</summary>
 /// <param name="Channel">One of the <see cref="InstallChannels"/> values; <see cref="InstallChannels.Unknown"/> when nothing names one.</param>
@@ -23,6 +24,7 @@ internal sealed record InstallChannelReading(string Channel, string? Problem = n
 /// file of ours beside it and which its path gives away.
 /// </para>
 /// </summary>
+[SuppressVfsCompliance("OUT-OF-SCOPE: probes the install directory of the running executable for the marker its packaging wrote; it sits outside every mount, and no host exists yet.")]
 internal static class InstallChannelReader
 {
     /// <summary>The package id NuGet names the tool's folder after, in the store and in the package cache.</summary>

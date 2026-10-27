@@ -46,4 +46,10 @@ public static class ScriptServiceKeys
     /// <c>save()</c> now, <c>load(path)</c> another saved session. Present when the session is persisted per project.
     /// </summary>
     public const string Session = "session";
+
+    /// <summary>
+    /// The runtime that runs the command — <c>ctx.services.get("runtime")</c>
+    /// (<see cref="ScriptRuntimeInfo"/>): its version, commit and install channel. Always present.
+    /// </summary>
+    public const string Runtime = "runtime";
 }

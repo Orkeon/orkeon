@@ -162,6 +162,33 @@ public sealed class RichContextIntegrationTests : IDisposable
         Assert.DoesNotContain("waits on", answered.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ShouldPrintTheRuntimeVersionAndChannel_WhenTheHostRegisteredThem()
+    {
+        CopyFixture("runtime-version.cmd.ts");
+        var ct = TestContext.Current.CancellationToken;
+        using var services = new ServiceCollection()
+            .AddSingleton(ScriptRuntimeInfo.FromInformationalVersion("1.0.0-rc.6+3ac6aa64", "source"))
+            .BuildServiceProvider();
+        var loader = new ScriptCommandLoader(
+            new DiskBackedFileSystemService(_tempDir, virtualRoot: "/cmd"),
+            PassThroughTranspiler.Instance,
+            new JsEngineFactory(),
+            Microsoft.Extensions.Options.Options.Create(new ScriptCommandLoaderOptions { Directories = ["/cmd"], EsbuildTranspile = false }),
+            new ScriptCommandLoaderDependencies
+            {
+                Services = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), services),
+            });
+        var (registry, _) = await loader.LoadAndRegisterAsync(ct);
+        var command = registry.ScriptCommands.Single(c => c.Name == "runtime-version");
+
+        var console = new ScriptedTestConsole();
+        await command.ExecuteAsync(new CommandContext { RawInput = "/runtime-version", Args = [], Console = console, Scope = services }, ct);
+
+        Assert.Contains("version:1.0.0-rc.6+3ac6aa64", console.Output, StringComparison.Ordinal);
+        Assert.Contains("channel:source", console.Output, StringComparison.Ordinal);
+    }
+
     private sealed class TestRunner : InteractiveRunnerBase
     {
         public TestRunner(

@@ -235,14 +235,15 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
-The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus the
+The host whitelist drives what's reachable. Default keys: `fs`, `tools` and `runtime` (the
+version of the runtime, below), plus the
 optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
 (crew launching from a command — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
 session's tool-call rules, below), `approvals` (the tool approvals waiting, below) and `session`
 (save the persisted session, load a saved one, below); the typings return `CommandsFacade`,
-`ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals` and `SessionFacade` for those five
-without a type argument. `configuration` is deliberately
+`ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade` and `RuntimeInfo` for
+those six without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -638,6 +639,20 @@ const session = ctx.services.get("session");
 const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
 const count = await session.load("/workspace/saved/review.json");
 ctx.writeLine(`loaded ${count} messages`);
+```
+
+**Runtime version.** `ctx.services.get("runtime")`, always present, answers the runtime that runs the
+command as a plain object `{ version, commit, channel }`: the release with its build metadata removed
+(`1.0.0-rc.6`), as `orkeon doctor` prints it; the commit sha that metadata carries (the part after
+`+`), null when there is none; and the channel the runtime was installed through, read from the
+installation's `INSTALL-CHANNEL` marker as [`orkeon doctor`](../reference/cli.md#orkeon-doctor) reads
+it (`deb`, `tarball`, `source`, `dotnet-tool`…), `unknown` when nothing names one. `orkeon-repl`
+registers its own (`ScriptRuntimeInfo`); a host that registers none answers its entry assembly's
+version and the channel `unknown`.
+
+```typescript
+const runtime = ctx.services.get("runtime");
+ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
 ```
 
 ## TypeScript support matrix (esbuild → Jint)

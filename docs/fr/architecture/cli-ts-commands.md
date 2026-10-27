@@ -238,14 +238,14 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
-La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs` et
-`tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
+La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs`,
+`tools` et `runtime` (la version du runtime, plus bas), plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
 plus bas), `script-host` (lancement de crews depuis une commande — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
 (les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
 attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas) ;
-pour ces cinq-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`,
-`PendingApprovals` et `SessionFacade` sans argument de type. `configuration` n'est
+pour ces six-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`,
+`PendingApprovals`, `SessionFacade` et `RuntimeInfo` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -665,6 +665,21 @@ const session = ctx.services.get("session");
 const saved = await session.save();                      // /workspace/.orkeon/sessions/app-1a2b3c4d5e6f/last.json
 const count = await session.load("/workspace/saved/review.json");
 ctx.writeLine(`loaded ${count} messages`);
+```
+
+**Version du runtime.** `ctx.services.get("runtime")`, toujours présent, décrit le runtime qui exécute
+la commande par un objet simple `{ version, commit, channel }` : la version publiée sans ses
+métadonnées de build (`1.0.0-rc.6`), telle qu'`orkeon doctor` l'imprime ; le sha du commit que portent
+ces métadonnées (la partie après `+`), null quand il n'y en a pas ; et le canal par lequel le runtime a
+été installé, lu dans le marqueur `INSTALL-CHANNEL` de l'installation comme
+[`orkeon doctor`](../reference/cli.md#orkeon-doctor) le lit (`deb`, `tarball`, `source`,
+`dotnet-tool`…), `unknown` quand rien n'en nomme. `orkeon-repl` enregistre le sien
+(`ScriptRuntimeInfo`) ; un hôte qui n'en enregistre aucun rend la version de son assembly d'entrée et
+le canal `unknown`.
+
+```typescript
+const runtime = ctx.services.get("runtime");
+ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
 ```
 
 ## Matrice de support TypeScript (esbuild → Jint)

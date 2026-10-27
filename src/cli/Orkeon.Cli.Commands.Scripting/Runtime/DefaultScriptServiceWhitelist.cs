@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
@@ -34,6 +35,10 @@ public static class DefaultScriptServiceWhitelist
             // provenance. A host that genuinely needs to expose select, non-sensitive config
             // keys must add a *filtered* view explicitly via ScriptServiceWhitelist.Add.
             .Add(ScriptServiceKeys.Tools, tools.Resolve)
+            // The runtime's version and install channel (#225): the host's own registration, else the entry
+            // assembly's version with an unknown channel.
+            .Add(ScriptServiceKeys.Runtime, sp => sp.GetService<ScriptRuntimeInfo>()
+                ?? ScriptRuntimeInfo.FromAssembly(Assembly.GetEntryAssembly(), ScriptRuntimeInfo.Unknown))
             .AddOptional(ScriptServiceKeys.Llm, sp => sp.GetService<ILlmProvider>())
             .AddOptional(ScriptServiceKeys.Logger, sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("script"))
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
