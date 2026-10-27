@@ -34,6 +34,9 @@ public sealed class ScriptHelpCommand : IInteractiveCommand
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
 
     /// <inheritdoc />
+    public string? Group => Dispatch.Commands.DispatchBuiltinCommands.RunnerGroup;
+
+    /// <inheritdoc />
     public string Description => "Show detailed help for a scripted command (usage: help-cmd <name>).";
 
     /// <inheritdoc />
@@ -58,6 +61,13 @@ public sealed class ScriptHelpCommand : IInteractiveCommand
         }
 
         var help = ArgsHelpFormatter.Format(match.Name, match.Aliases, match.Description, match.Descriptor.ArgsSchema);
+        if (match.Group is { } group)
+        {
+            var eol = help.IndexOf('\n', StringComparison.Ordinal);
+            var first = eol < 0 ? help : help[..eol].TrimEnd('\r');
+            help = $"{first} [{group}]{(eol < 0 ? "" : help[eol..])}";
+        }
+
         context.Console.WriteLine(help);
         return Task.FromResult(CommandResult.Continue());
     }

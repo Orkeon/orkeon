@@ -18,7 +18,8 @@ public sealed class CommandDescriptorValidatorTests
     private static CommandDescriptor MakeDescriptor(
         string name = "deploy",
         string description = "Deploy something.",
-        IEnumerable<string>? aliases = null)
+        IEnumerable<string>? aliases = null,
+        string? group = null)
         => new()
         {
             SourceVirtualPath = "/cmd/deploy.cmd.ts",
@@ -26,6 +27,7 @@ public sealed class CommandDescriptorValidatorTests
             Aliases = (aliases ?? Array.Empty<string>()).ToImmutableArray(),
             Description = description,
             Handler = HandlerStub,
+            Group = group,
         };
 
     [Fact]
@@ -49,6 +51,26 @@ public sealed class CommandDescriptorValidatorTests
         Assert.False(result.IsValid);
         Assert.Equal(ValidationFailure.InvalidName, result.Failure);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Session")]
+    [InlineData("1dev")]
+    [InlineData("a b")]
+    [InlineData("a/b")]
+    public void Validate_rejects_invalid_groups(string group)
+    {
+        var result = CommandDescriptorValidator.Validate(MakeDescriptor(group: group));
+        Assert.False(result.IsValid);
+        Assert.Equal(ValidationFailure.InvalidGroup, result.Failure);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("session")]
+    [InlineData("dev-flow2")]
+    public void Validate_accepts_absent_or_well_formed_groups(string? group)
+        => Assert.True(CommandDescriptorValidator.Validate(MakeDescriptor(group: group)).IsValid);
 
     [Theory]
     // "?" is unreachable here — it already fails the name regex (InvalidName) before the

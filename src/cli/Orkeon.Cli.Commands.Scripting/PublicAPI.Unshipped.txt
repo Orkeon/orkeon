@@ -54,3 +54,10 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.CommandC
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Error.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
 Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Group.get -> string?
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Group.init -> void
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.EffectiveGroup.get -> string?
+static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.IsValidGroupName(string! group) -> bool
+Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidGroup = 5 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Group.get -> string?
+Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Group.get -> string?

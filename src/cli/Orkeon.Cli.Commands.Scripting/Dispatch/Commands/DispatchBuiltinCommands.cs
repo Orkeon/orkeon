@@ -10,6 +10,9 @@ namespace Orkeon.Cli.Commands.Scripting.Dispatch.Commands;
 /// </summary>
 public static class DispatchBuiltinCommands
 {
+    /// <summary>Group the runner's own commands are listed under by <c>help</c>.</summary>
+    internal const string RunnerGroup = "runner";
+
     /// <summary>Builds the four built-ins over <paramref name="dispatch"/>.</summary>
     public static IReadOnlyList<IInteractiveCommand> Create(CommandDispatchService dispatch)
     {
@@ -43,6 +46,7 @@ public static class DispatchBuiltinCommands
 internal sealed class PsCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "ps";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "List in-flight (or filtered) dispatched commands.";
 
@@ -86,6 +90,7 @@ internal sealed class PsCommand(CommandInstanceRegistry registry) : IInteractive
 internal sealed class InspectCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "inspect";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Show details of a dispatched command by its ticket.";
 
@@ -119,6 +124,7 @@ internal sealed class InspectCommand(CommandInstanceRegistry registry) : IIntera
 internal sealed class ResultCommand(CommandInstanceRegistry registry) : IInteractiveCommand
 {
     public string Name => "result";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Print the result payload of a dispatched command by ticket.";
 
@@ -145,6 +151,7 @@ internal sealed class ResultCommand(CommandInstanceRegistry registry) : IInterac
 internal sealed class CancelCommand(CommandDispatchService dispatch) : IInteractiveCommand
 {
     public string Name => "cancel";
+    public string? Group => DispatchBuiltinCommands.RunnerGroup;
     public IReadOnlyList<string> Aliases => Array.Empty<string>();
     public string Description => "Cancel an in-flight dispatched command by ticket.";
 

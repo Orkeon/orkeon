@@ -28,6 +28,11 @@ declare global {
 export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = undefined> {
   name: string;
   aliases?: readonly string[];
+  /**
+   * Group `/help` lists the command under (`^[a-z][a-z0-9-]*$`). When omitted, the name of the folder
+   * holding the `*.cmd.ts` (none for a file at the root of the commands mount).
+   */
+  group?: string;
   description: string;
   /** Typed args spec. When omitted, `dispatch` receives `{ raw: string[] }`. */
   args?: TArgs;
@@ -102,6 +107,11 @@ export interface CommandDescriptor<TArgs extends ArgsSchema | undefined = undefi
   name: string;
   /** Alternate identifiers; must not duplicate `name`. */
   aliases?: readonly string[];
+  /**
+   * Group `/help` lists the command under (`^[a-z][a-z0-9-]*$`). When omitted, the name of the folder
+   * holding the `*.cmd.ts` (none for a file at the root of the commands mount).
+   */
+  group?: string;
   /** Single-line description (≤ 200 chars, no newline). */
   description: string;
   /** Typed args spec. When omitted, the handler receives `{ raw: string[] }`. */

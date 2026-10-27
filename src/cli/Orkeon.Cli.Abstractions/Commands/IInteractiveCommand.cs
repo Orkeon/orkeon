@@ -22,6 +22,13 @@ public interface IInteractiveCommand
     /// <summary>Single-line description shown by the help command.</summary>
     string Description { get; }
 
+    /// <summary>
+    /// Optional group the help command lists this command under (<c>[group]</c> block). <see langword="null"/>
+    /// (the default) leaves the grouping to the first token of <see cref="Name"/>. A default interface member:
+    /// existing commands compile unchanged.
+    /// </summary>
+    string? Group => null;
+
     /// <summary>Execute the command. Returns a <see cref="CommandResult"/> instructing the runner to continue or exit.</summary>
     Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken);
 }

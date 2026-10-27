@@ -75,6 +75,9 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// <inheritdoc />
     public string Description => _descriptor.Description;
 
+    /// <inheritdoc />
+    public string? Group => _descriptor.EffectiveGroup;
+
     /// <summary>Virtual path of the source script — used by telemetry and diagnostics.</summary>
     public string SourceVirtualPath => _descriptor.SourceVirtualPath;
 

@@ -117,6 +117,7 @@ le texte libre reçoit la réponse d'une commande inconnue.
 defineCommand({
   name: "deploy",                 // ^[a-z][a-z0-9-]*$, never help / ? / h
   aliases: ["d", "ship"],         // optional, must not duplicate `name`
+  group: "release",               // optional, ^[a-z][a-z0-9-]*$; default: the folder of the file
   description: "Deploy a crew.",  // single line, ≤ 200 chars
 
   args: {
@@ -131,6 +132,15 @@ defineCommand({
   },
 });
 ```
+
+`group` (accepté aussi par `defineAsyncCommand`) est le bloc `[<group>]` sous lequel `/help` liste la
+commande. Absent, c'est le nom du dossier qui contient le `*.cmd.ts`
+(`/cli-commands/session/clear.cmd.ts` est dans `session` ; un fichier à la racine du montage n'a
+pas de groupe, et un nom de dossier qui n'est pas un nom de groupe valide n'en donne pas). `/help`
+imprime un bloc par groupe dans l'ordre d'enregistrement, `(no group)` en dernier ; les commandes
+propres au runner (`ps`, `inspect`, `result`, `cancel`, `help-cmd`) sont dans `runner`, et
+`help-cmd <name>` nomme le groupe sur sa première ligne. Un `group` invalide est refusé comme un
+nom invalide.
 
 `help`, `?` et `h` sont réservés. Un script peut délibérément prendre `exit`, `quit`, `q`,
 `clear` ou `cls` : les commandes scriptées sont résolues avant les commandes par défaut, et le

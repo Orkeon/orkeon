@@ -48,6 +48,27 @@ public sealed class DefineAsyncCommandCollectorTests
     }
 
     [Fact]
+    public void defineCommand_and_defineAsyncCommand_capture_the_declared_group()
+    {
+        var (engine, collector) = NewEngine();
+        engine.Evaluate("""
+            defineCommand({ name: "s", description: "d", group: "session", handler: function() {} });
+            defineAsyncCommand({ name: "a", description: "d", group: "dev", dispatch: function() {} });
+            defineCommand({ name: "n", description: "d", handler: function() {} });
+            """);
+
+        Assert.Equal(["session", "dev", null], collector.Descriptors.Select(d => d.Group));
+    }
+
+    [Fact]
+    public void defineCommand_rejects_a_non_string_group()
+        => AssertThrows("""defineCommand({ name: "a", description: "d", group: 3, handler: function() {} });""");
+
+    [Fact]
+    public void defineAsyncCommand_rejects_a_non_string_group()
+        => AssertThrows("""defineAsyncCommand({ name: "a", description: "d", group: {}, dispatch: function() {} });""");
+
+    [Fact]
     public void defineAsyncCommand_requires_dispatch()
         => AssertThrows("""defineAsyncCommand({ name: "a", description: "d" });""");
 

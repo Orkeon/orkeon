@@ -70,3 +70,4 @@ Orkeon.Cli.Abstractions.Console.IThreadedConsole.WriteLine(string? thread, strin
 Orkeon.Cli.Abstractions.Console.ConsoleThread
 static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.get -> string?
 static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.set -> void
+Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Group.get -> string?

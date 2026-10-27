@@ -5,6 +5,7 @@ using Orkeon.Cli.Abstractions.Tests.Console;
 using Orkeon.Cli.Abstractions.Tests.Fixtures;
 using Orkeon.Cli.Commands;
 using Orkeon.Cli.Registry;
+using Orkeon.Cli.Tests.Doubles;
 
 namespace Orkeon.Cli.Tests.Commands;
 
@@ -147,5 +148,44 @@ public sealed class HelpCommandTests
 
         Assert.Contains("[Default]", output);
         Assert.Contains("(no specific runner active)", output);
+    }
+
+    [Fact]
+    public async Task Help_prints_one_block_per_declared_group_in_registration_order_and_no_group_last()
+    {
+        var (cmd, console, sp) = Build();
+        var specific = new TestCommandRegistry(
+            new StubGroupedCommand("zeta", "session", "Zeta"),
+            new StubGroupedCommand("loose", null, "Loose"),
+            new StubGroupedCommand("alpha", "dev", "Alpha"),
+            new StubGroupedCommand("beta", "session", "Beta"));
+        using var _ = RunnerContext.Push(specific);
+
+        await cmd.ExecuteAsync(MakeCtx(console, sp), CancellationToken.None);
+        var output = console.GetOutput();
+
+        var session = output.IndexOf("[session]", StringComparison.Ordinal);
+        var dev = output.IndexOf("[dev]", StringComparison.Ordinal);
+        var noGroup = output.IndexOf("[(no group)]", StringComparison.Ordinal);
+        Assert.True(session >= 0 && session < dev && dev < noGroup, output);
+        Assert.Equal(1, output.Split("[session]").Length - 1);
+        Assert.True(output.IndexOf("zeta", StringComparison.Ordinal) < output.IndexOf("beta", StringComparison.Ordinal));
+        Assert.True(output.IndexOf("beta", StringComparison.Ordinal) < output.IndexOf("alpha", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Help_prefers_the_declared_group_over_the_first_token_of_the_name()
+    {
+        var (cmd, console, sp) = Build();
+        var specific = new TestCommandRegistry(
+            new StubGroupedCommand("rag ingest", "knowledge", "Ingest"),
+            new RecordingCommand("rag query", description: "Query"));
+        using var _ = RunnerContext.Push(specific);
+
+        await cmd.ExecuteAsync(MakeCtx(console, sp), CancellationToken.None);
+        var output = console.GetOutput();
+
+        Assert.Contains("[knowledge]", output);
+        Assert.Contains("[rag]", output);
     }
 }

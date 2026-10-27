@@ -115,6 +115,7 @@ free text is answered as an unknown command.
 defineCommand({
   name: "deploy",                 // ^[a-z][a-z0-9-]*$, never help / ? / h
   aliases: ["d", "ship"],         // optional, must not duplicate `name`
+  group: "release",               // optional, ^[a-z][a-z0-9-]*$; default: the folder of the file
   description: "Deploy a crew.",  // single line, ≤ 200 chars
 
   args: {
@@ -129,6 +130,14 @@ defineCommand({
   },
 });
 ```
+
+`group` (also accepted by `defineAsyncCommand`) is the `[<group>]` block `/help` lists the command
+under. When absent it is the name of the folder holding the `*.cmd.ts`
+(`/cli-commands/session/clear.cmd.ts` is in `session`; a file at the root of the mount has no
+group, and a folder name that is not a valid group name gives none). `/help` prints one block per
+group in registration order, `(no group)` last; the runner's own commands (`ps`, `inspect`,
+`result`, `cancel`, `help-cmd`) sit in `runner`, and `help-cmd <name>` names the group on its
+first line. An invalid `group` is refused like an invalid name.
 
 `help`, `?` and `h` are reserved. A script may deliberately take `exit`, `quit`, `q`, `clear`
 or `cls`: scripted commands are resolved before the defaults, and the loader logs the

@@ -82,6 +82,15 @@ public sealed class DispatchBuiltinCommandsTests
         Assert.StartsWith("No scripted command found for 'nope'.", Failed(await Run(help, "nope")), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ShouldBelongToTheRunnerGroup_ForEveryBuiltIn()
+    {
+        IInteractiveCommand[] builtIns =
+            [new PsCommand(_registry), new InspectCommand(_registry), new ResultCommand(_registry), Cancel(), new ScriptHelpCommand(() => [])];
+
+        Assert.All(builtIns, c => Assert.Equal("runner", c.Group));
+    }
+
     private static string? Failed(CommandResult result)
     {
         Assert.True(result.Failed);
