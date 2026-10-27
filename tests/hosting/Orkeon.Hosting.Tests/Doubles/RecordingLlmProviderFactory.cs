@@ -19,6 +19,12 @@ public sealed class RecordingLlmProviderFactory : ILlmProviderFactory
     /// <summary>The fixed answer of every provider built.</summary>
     public string Answer { get; init; } = "Final answer.";
 
+    /// <summary>
+    /// Computes the answer of every call instead of <see cref="Answer"/> when set: a test cancels
+    /// the run or fails the model from inside a call.
+    /// </summary>
+    public Func<LlmResponse>? Responder { get; init; }
+
     /// <summary>Every provider built so far, in build order.</summary>
     public IReadOnlyList<StubLlmProvider> Built
     {
@@ -37,9 +43,10 @@ public sealed class RecordingLlmProviderFactory : ILlmProviderFactory
         ArgumentNullException.ThrowIfNull(config);
 
         var answer = new LlmResponse { Content = Answer };
+        var respond = Responder ?? (() => answer);
         var provider = new StubLlmProvider { Name = config.Model, BaseConfig = config }
-            .RespondWith(answer)
-            .RespondToChatWith(answer);
+            .RespondTo(_ => respond())
+            .RespondToChat(_ => respond());
         lock (_lock)
             _built.Add(provider);
         return new LlmProviderAdapter(provider);

@@ -32,6 +32,15 @@ public sealed class CommandResponse
     /// <summary>The agent's response payload (empty on failure).</summary>
     public string payload { get; }
 
+    /// <summary>
+    /// True when any turn of this request was written to the console in the foreground (#228): streamed inline,
+    /// or as whole unprefixed lines when another turn held the inline claim, so the script skips its own print of
+    /// <see cref="payload"/>. Background and labelled output report false: console streaming off, an agent that
+    /// did not stream, and a background instance (<c>post</c>, <c>runCrewAsync</c>), whose turns are written as
+    /// whole lines prefixed with the ticket (<c>[t2] </c>).
+    /// </summary>
+    public bool streamed { get; init; }
+
     /// <summary>Failure reason when <see cref="success"/> is false; otherwise <see langword="null"/>.</summary>
     public string? error { get; }
 }

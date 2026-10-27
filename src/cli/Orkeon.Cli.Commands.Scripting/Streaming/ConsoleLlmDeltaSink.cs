@@ -50,7 +50,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
         var tag = string.Join(' ', parts);
         var thread = separate && !string.IsNullOrWhiteSpace(ticket) ? ticket : null;
         var inlineEligible = tag.Length == 0 && thread is null;
-        return new TurnSink(this, tag.Length == 0 ? string.Empty : $"[{tag}] ", thread, inlineEligible);
+        return new TurnSink(this, tag.Length == 0 ? string.Empty : $"[{tag}] ", thread, inlineEligible, InlineStreamReceipt.Current);
     }
 
     /// <summary>A delta of a caller that opened no turn: it goes to one shared, unlabelled turn.</summary>
@@ -58,7 +58,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
     {
         TurnSink turn;
         lock (_lock)
-            turn = _defaultTurn ??= new TurnSink(this, string.Empty, null, true);
+            turn = _defaultTurn ??= new TurnSink(this, string.Empty, null, true, InlineStreamReceipt.Current);
         turn.OnDelta(delta);
     }
 
@@ -71,7 +71,7 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
             turn = _defaultTurn;
             _defaultTurn = null;
         }
-        (turn ?? new TurnSink(this, string.Empty, null, true)).OnTurnCompleted();
+        (turn ?? new TurnSink(this, string.Empty, null, true, InlineStreamReceipt.Current)).OnTurnCompleted();
     }
 
     /// <summary>Whether <paramref name="turn"/> may stream straight through: no other turn does.</summary>
@@ -139,8 +139,12 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
             _console.WriteLine(line);
     }
 
-    /// <summary>One turn: inline when it is the only unprefixed one, else a line buffer flushed line by line.</summary>
-    private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible) : ILlmDeltaSink
+    /// <summary>
+    /// One turn: inline when it is the only unprefixed one, else a line buffer flushed line by line. Its end
+    /// tells the receipt of the flow that opened it (<see cref="InlineStreamReceipt"/>) whether its text was
+    /// shown unprefixed on the main console (inline, or as whole unprefixed lines) or carried a prefix or thread.
+    /// </summary>
+    private sealed class TurnSink(ConsoleLlmDeltaSink owner, string prefix, string? thread, bool inlineEligible, InlineStreamReceipt? receipt) : ILlmDeltaSink
     {
         private readonly StringBuilder _line = new();
         private readonly object _gate = new();
@@ -172,6 +176,10 @@ public sealed class ConsoleLlmDeltaSink : ILlmDeltaSink
         {
             lock (_gate)
             {
+                // A turn that wrote text tells its receipt whether the user saw it: an inline turn, and an
+                // eligible one that lost the inline claim, both write unprefixed on the main console.
+                if (_inline is not null)
+                    receipt?.Record(inlineEligible);
                 if (_inline == true)
                 {
                     owner.EndInline(this);

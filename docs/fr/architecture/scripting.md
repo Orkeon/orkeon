@@ -165,7 +165,18 @@ environ n fois, et le chiffre ne borne ni la taille de la conversation ni ce qu'
 avec son cache. Chaque appel journalise la somme courante à côté de la limite (`act: agent '<nom>' call
 used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information).
 
-Quand la somme atteint la limite, l'act n'échoue pas. Un appel dont les tokens la dépassent garde sa
+`budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus,
+quand le fournisseur rapporte des hits de cache (`cacheHitTokens`), la part de son prompt que le cache n'a
+pas servie, sinon ce dont son prompt a crû depuis l'appel précédent de la même conversation : chaque
+`ctx.llm.act` est sa propre conversation, dont le premier appel compte tout son prompt, si bien que des acts
+à la suite ou en même temps sur un même budget paient chacun leur propre contexte (jamais moins que zéro :
+un contexte compacté n'ajoute rien). Un tour de n appels sur un contexte de c tokens dépense environ c plus
+ses complétions. Un fournisseur qui ne rapporte ni prompt ni complétion compte l'appel en entier, comme
+`tokens`. Seul, il laisse `tokens` sans plafond ; posé avec lui, le premier épuisé termine l'act, de la même
+façon. Chaque appel journalise aussi `act: agent '<nom>' context counted once <somme>/<limite>
+contextTokens` quand il est posé.
+
+Quand la somme, ou le contexte compté une fois, atteint la limite, l'act n'échoue pas. Un appel dont les tokens la dépassent garde sa
 réponse : une réponse finale est rendue telle quelle. Les appels d'outils qu'il demande ne s'exécutent
 pas : une fois le budget épuisé aucun autre outil ne tourne, à la dernière itération aussi, et l'act se
 termine par un dernier appel de chat qui ne peut appeler aucun outil, après un tour utilisateur qui dit
@@ -178,7 +189,9 @@ tokens sont comptés mais ne lancent aucune autre conclusion, et elle est gardé
 termine après la limite de temps mural. Un avertissement journalise que le budget est épuisé. Quand ce
 dernier appel échoue, ou ne répond rien, l'act rejette avec `BudgetExhaustedError`, dont le message
 nomme ce qu'il a compté : `Token budget exhausted: <somme> tokens sent and received over <n> calls
-(limit <limite>)`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation,
+(limit <limite>)`, ou sous `contextTokens` `Token budget exhausted: <n> context tokens (the growth or the
+uncached part of each prompt, plus every completion) over <n> calls (limit <limite> contextTokens)` ;
+les deux sont sur la dimension `tokens`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation,
 enfants) rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`.
 
 ## Agents enfants : `spawn_agent` et `ctx.spawnBackground`
@@ -285,13 +298,13 @@ s'exécute et se draine quand même.
 ```typescript
 defineAsyncCommand({
   name: "step",
-  description: "Run a crew, then the next one, reading the session's mode at each hop.",
+  description: "Run a crew, then the next one, saving the session at each hop.",
   dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
   completed: async (result, ctx) => {
-    // « session » : un service hôte de l'application dont readMode() rend une Task, ici une promesse
-    const mode = await ctx.services.get("session").readMode();
-    ctx.writeLine(`plan done, mode ${mode}`);
-    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload, mode });
+    // « session » : un service hôte de l'application dont save() rend une Task, ici une promesse
+    const saved = await ctx.services.get("session").save();
+    ctx.writeLine(`plan done, session saved to ${saved}`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
   },
 });
 ```
@@ -405,7 +418,10 @@ endroit essayé ; `orkeon doctor` le signale dans la vérification `esbuild`.
 après `dotnet tool install -g Orkeon.Scripting.Cli`, un script `.ork.ts` ne tourne qu'une fois
 esbuild présent sur la machine — `npm install -g esbuild` (il arrive sur le `PATH`), ou un
 binaire désigné par `ORKEON_ESBUILD_PATH` ou `EsbuildPath`. Rien n'est téléchargé au premier
-lancement. Les crews YAML n'en ont jamais besoin.
+lancement. Les crews YAML n'en ont jamais besoin. Le paquet NuGet `Orkeon.Scripting`, qui exécute
+un crew dans le processus d'une application .NET
+([Hosting — exécuter un crew dans le processus](../reference/hosting.md#exécuter-un-crew-dans-le-processus)),
+ne le livre pas non plus et le trouve de la même façon.
 
 Un script peut commencer par `/// <reference orkeon-script="1.0" />`, ou par
 `// @orkeon-script 1.0`, la forme que `tsc` accepte : il rejette la forme référence (TS1084) puis

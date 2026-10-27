@@ -139,4 +139,137 @@ public sealed class FileSessionBufferServiceTests
         Assert.Null(b.GetState("breaker"));
         Assert.NotEqual(a.GetMetadata().SessionId, b.GetMetadata().SessionId);
     }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldNameTheProjectFile_OnceTheProjectIsLoaded()
+    {
+        var fs = NewFs();
+        var svc = NewService(fs);
+        Assert.Null(svc.SessionFilePath);
+
+        await svc.LoadAsync(ProjectA, TestContext.Current.CancellationToken);
+        svc.ReplaceMessages([new SessionMessage { Role = "user", Content = "now" }]);
+        await svc.SaveAsync(TestContext.Current.CancellationToken);
+
+        var file = Assert.Single(await FilesAsync(fs));
+        Assert.Equal(file.VirtualPath, svc.SessionFilePath);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldSwapBufferStateAndTitle_WhenLoadingASavedFile()
+    {
+        var fs = NewFs();
+        var saved = await TurnAsync(fs, ProjectA);
+        var path = saved.SessionFilePath!;
+        var running = NewService(fs);
+        await running.LoadAsync(ProjectB, TestContext.Current.CancellationToken);
+        running.ReplaceMessages([new SessionMessage { Role = "user", Content = "other" }]);
+        running.SetState("other", "1");
+
+        var count = await running.LoadFromAsync(path, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, count);
+        Assert.Equal(["question-42", "answer-42"], running.GetMessages().Select(m => m.Content));
+        Assert.Equal("3", running.GetState("breaker"));
+        Assert.Null(running.GetState("other"));
+        Assert.Equal("My title", running.GetMetadata().Title);
+        Assert.Equal(saved.GetMetadata().SessionId, running.GetMetadata().SessionId);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldKeepSavingToItsOwnFile_AfterLoadingAnother()
+    {
+        var fs = NewFs();
+        var saved = await TurnAsync(fs, ProjectA);
+        var running = NewService(fs);
+        await running.LoadAsync(ProjectB, TestContext.Current.CancellationToken);
+        var own = running.SessionFilePath;
+
+        await running.LoadFromAsync(saved.SessionFilePath!, TestContext.Current.CancellationToken);
+        running.AppendNote("after-load");
+        await running.SaveAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(own, running.SessionFilePath);
+        var json = await fs.TryReadAllTextAsync(own!, TestContext.Current.CancellationToken);
+        Assert.Contains("after-load", json);
+        var other = await fs.TryReadAllTextAsync(saved.SessionFilePath!, TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("after-load", other);
+    }
+
+    [Theory]
+    [Trait("BR", "#227")]
+    [InlineData("{ not json ]]")]
+    [InlineData("[]")]
+    [InlineData("{\"Title\":\"t\",\"Messages\":[],\"State\":{}}")]
+    [InlineData("{\"SessionId\":\"s\",\"State\":{}}")]
+    [InlineData("{\"SessionId\":\"s\",\"Messages\":[]}")]
+    [InlineData("{\"SessionId\":\"s\",\"Messages\":[{\"Role\":\"user\"}],\"State\":{}}")]
+    [InlineData("{\"SessionId\":\"s\",\"Messages\":[null],\"State\":{}}")]
+    [InlineData("{\"SessionId\":\"s\",\"Messages\":[{\"Role\":null,\"Content\":\"c\"}],\"State\":{}}")]
+    public async Task ShouldRefuseAndLeaveTheSessionAsItWas_WhenTheFileIsNotOneTheHostSaved(string content)
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+        var before = running.GetMetadata().SessionId;
+        fs.AddFile("/workspace/foreign.json", content);
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(
+            () => running.LoadFromAsync("/workspace/foreign.json", TestContext.Current.CancellationToken));
+
+        Assert.Contains("/workspace/foreign.json", error.Message, StringComparison.Ordinal);
+        Assert.Equal(["question-42", "answer-42"], running.GetMessages().Select(m => m.Content));
+        Assert.Equal("3", running.GetState("breaker"));
+        Assert.Equal("My title", running.GetMetadata().Title);
+        Assert.Equal(before, running.GetMetadata().SessionId);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldRefuse_WhenTheFileDoesNotExist()
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+
+        var error = await Assert.ThrowsAsync<FileNotFoundException>(
+            () => running.LoadFromAsync("/workspace/missing.json", TestContext.Current.CancellationToken));
+
+        Assert.Contains("/workspace/missing.json", error.Message, StringComparison.Ordinal);
+        Assert.Equal(2, running.MessageCount);
+    }
+
+    [Fact]
+    [Trait("BR", "#227")]
+    public async Task ShouldWriteALoadableCopy_AndLeaveItsOwnFile_WhenSavingToAnotherPath()
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+        var ownBefore = await fs.TryReadAllTextAsync(running.SessionFilePath!, TestContext.Current.CancellationToken);
+        running.AppendNote("archived-only");
+
+        await running.SaveToAsync("/workspace/saved/archive.json", TestContext.Current.CancellationToken);
+
+        Assert.Equal(ownBefore, await fs.TryReadAllTextAsync(running.SessionFilePath!, TestContext.Current.CancellationToken));
+        var reader = NewService(fs);
+        await reader.LoadAsync(ProjectB, TestContext.Current.CancellationToken);
+        var count = await reader.LoadFromAsync("/workspace/saved/archive.json", TestContext.Current.CancellationToken);
+        Assert.Equal(3, count);
+        Assert.Equal(running.GetMessages().Select(m => m.Content), reader.GetMessages().Select(m => m.Content));
+        Assert.Equal("3", reader.GetState("breaker"));
+        Assert.Equal(running.GetMetadata().SessionId, reader.GetMetadata().SessionId);
+    }
+
+    [Theory]
+    [Trait("BR", "#227")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ShouldRefuseToSave_WhenTheOtherPathIsBlank(string path)
+    {
+        var fs = NewFs();
+        var running = await TurnAsync(fs, ProjectA);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => running.SaveToAsync(path, TestContext.Current.CancellationToken));
+    }
 }

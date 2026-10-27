@@ -145,7 +145,8 @@ internal static partial class BuiltInToolTypings
         {
             sb.Append("            readonly ").Append(PropertyName(name))
               .Append(ToolSchemaGenerator.InferRequired(property) ? ": " : "?: ")
-              .Append(TypeOf(property.PropertyType)).Append(";\n");
+              // A result is read, never built by the script: a nested record shows its members (#226).
+              .Append(TypeOf(property.PropertyType, expand: true, [])).Append(";\n");
         }
         sb.Append("        }");
     }
@@ -243,8 +244,9 @@ internal static partial class BuiltInToolTypings
     private static string TypeOf(Type clr) => TypeOf(clr, expand: false, []);
 
     /// <summary>
-    /// <paramref name="expand"/> renders a record type by its members - the elements of an array, and
-    /// whatever those members hold - where a bare property keeps <c>Record&lt;string, unknown&gt;</c>.
+    /// <paramref name="expand"/> renders a record type by its members - the elements of an array, a member
+    /// of a tool's result, and whatever those members hold - where a bare input property keeps
+    /// <c>Record&lt;string, unknown&gt;</c>.
     /// <paramref name="path"/> holds the records being rendered, a cycle falls back to that default;
     /// <see cref="MaxRecordDepth"/> bounds the nesting.
     /// </summary>

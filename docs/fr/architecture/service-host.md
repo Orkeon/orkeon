@@ -362,7 +362,36 @@ préfixe et `Orkeon:Host:A2A:Port`.
 
 ---
 
-## 8. Voir aussi
+## 8. Dans le processus, ou sous `orkeon-host`
+
+Une application .NET peut exécuter un crew dans son propre processus : l'`ICrewScriptRunner` du
+paquet `Orkeon.Scripting` ([Hosting — exécuter un crew dans le processus](../reference/hosting.md#exécuter-un-crew-dans-le-processus))
+construit l'hôte de runner d'`orkeon run` pour une exécution, rend la sortie du crew et le libère.
+Cela couvre un crew que l'application appelle et attend : un gestionnaire de requête, un traitement
+par lots, un test.
+Ses chemins relatifs — le crew, le fichier de settings, les montages — se résolvent contre le
+répertoire de travail du processus, comme pour `orkeon run` ; une exécution annulée lève
+`OperationCanceledException`.
+
+Un crew a besoin d'`orkeon-host` à la place quand il doit survivre à un appel :
+
+- **Il répond à un canal de chat.** La passerelle, sa liste d'autorisation, le routage
+  thread-est-run, le répondeur throttlé et les commandes `/status` / `/stop` ne vivent que dans le
+  démon.
+- **D'autres agents l'appellent.** Le serveur A2A, sa carte d'agent et son authentification sont
+  ceux du démon.
+- **Plusieurs crews partagent un service.** Le registre de crews, son plafond de concurrence, les
+  espaces de noms de mounts par crew et l'isolation par run sont ce qu'`orkeon-host` ajoute à une
+  exécution unique.
+- **Il est supervisé comme un service.** systemd, un service Windows ou l'image conteneur
+  redémarrent et journalisent le démon ; une exécution in-process vit et meurt avec son appelant.
+
+Un `.ork.ts` procédural — qui pilote des agents lui-même au lieu de remettre un crew par
+`globalThis.crew` — n'est ni l'un ni l'autre : il s'exécute avec `orkeon run`.
+
+---
+
+## 9. Voir aussi
 
 - [Le bus d'événements du run](run-event-bus.md) — le protocole qu'un processus observateur lit, et la forme sur laquelle les ports de la passerelle ont été écrits.
 - [EventHub et cycle de vie des crews](event-hub-and-crew-lifecycle.md) — le messaging inter-crews et son ACL.

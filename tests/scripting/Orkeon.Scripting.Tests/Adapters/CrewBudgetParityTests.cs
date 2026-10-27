@@ -76,4 +76,18 @@ public sealed class CrewBudgetParityTests
         Assert.Contains(named, error.Message, StringComparison.Ordinal);
         Assert.Contains("every limit of a crew's budget is 1 or more", error.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldRefuseContextTokens_WhenTheCrewIsAutonomous()
+    {
+        // The autonomous strategy records a finished task's tokens, never a call's prompt and completion:
+        // it could not count the context once, so the key is refused rather than read as the sum.
+        var crew = Crew("autonomous", ".budget({ contextTokens: 300000 })");
+
+        var error = Assert.Throws<InvalidScriptException>(() => JsCrewConfigurationAdapter.ToConfiguration(crew));
+
+        Assert.Contains("budget.contextTokens", error.Message, StringComparison.Ordinal);
+        Assert.Contains("use tokens", error.Message, StringComparison.Ordinal);
+    }
 }

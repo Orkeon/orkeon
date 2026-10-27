@@ -106,13 +106,12 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Structure du projet
 
-La solution compte **48 projets src répartis en 14 zones** et **36 projets de tests**.
-Trente-quatre projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+La solution compte **50 projets src répartis en 14 zones** et **38 projets de tests**.
+Trente-six projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
 forment les deux autres. Quatorze projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
-`Orkeon.Analysis.Tests`, `Orkeon.Generators` est couvert par la compilation des projets qui
-le consomment, et les six projets `src/packaging/` sont de pur empaquetage :
+`Orkeon.Analysis.Tests`, et les sept projets `src/packaging/` sont de pur empaquetage :
 
 ```
 src/
@@ -133,7 +132,7 @@ src/
 ├── analyzers/   # Orkeon.Compliance.Vfs (analyseur Roslyn VFS-only)
 ├── packaging/   # Projets d'empaquetage NuGet (PUB-25) : Orkeon (le framework en un nupkg), Orkeon.Tools,
 │                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework /
-│                #   Hosting.Aspire dépendant de l'ombrelle Orkeon
+│                #   Hosting.Aspire / Scripting dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 104 exemples embarqués (9 catégories + vitrines) — solution dédiée
@@ -461,9 +460,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    en-tête ; après le pack, il exécute aussi `scripts/check-package-closure.py` sur les
    nupkgs eux-mêmes.
 7. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **les neuf paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pousse **les dix paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
+   `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
    `Orkeon.Hosting.Aspire`, l'ombrelle en premier puisque les autres en dépendent, via
    Trusted Publishing — et chaque projet packable sur GitHub Packages, les paquets et un
    SBOM CycloneDX couverts par une attestation de provenance de build ; voir

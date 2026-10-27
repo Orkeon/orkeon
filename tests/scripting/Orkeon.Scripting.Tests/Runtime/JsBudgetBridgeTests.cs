@@ -145,4 +145,55 @@ public sealed class JsBudgetBridgeTests
 
         Assert.Equal("crew.runAgent / ctx.delegate options: budget.toolCalls must be a whole number of 1 or more; got -5.", ex.Message);
     }
+
+    // #224: contextTokens, the context of a turn counted once.
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void FromRunOption_maps_contextTokens_and_leaves_the_sum_uncapped()
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        var budget = JsBudgetBridge.FromRunOption(Js(engine, "{ contextTokens: 200000 }"), chargedTo: null);
+
+        Assert.NotNull(budget);
+        Assert.Equal(200_000, budget.MaxContextTokens);
+        Assert.Equal(int.MaxValue, budget.MaxTokensConsumed);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void FromSpec_keeps_both_measures_when_both_keys_are_set()
+    {
+        var spec = new Dictionary<string, object?> { ["tokens"] = 900_000d, ["contextTokens"] = 150_000d };
+
+        var budget = JsBudgetBridge.FromSpec(spec);
+
+        Assert.NotNull(budget);
+        Assert.Equal(900_000, budget.MaxTokensConsumed);
+        Assert.Equal(150_000, budget.MaxContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void FromSpec_without_contextTokens_keeps_the_context_uncapped()
+    {
+        var budget = JsBudgetBridge.FromSpec(new Dictionary<string, object?> { ["tokens"] = 500d });
+
+        Assert.NotNull(budget);
+        Assert.Equal(500, budget.MaxTokensConsumed);
+        Assert.Equal(int.MaxValue, budget.MaxContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void FromRunOption_refuses_a_contextTokens_that_is_not_a_whole_number()
+    {
+        using var engine = new Orkeon.Scripting.JsEngineFactory().Create();
+
+        var ex = Assert.Throws<Orkeon.Scripting.Exceptions.InvalidScriptException>(
+            () => JsBudgetBridge.FromRunOption(Js(engine, "{ contextTokens: 0 }"), chargedTo: null));
+
+        Assert.Equal("crew.runAgent / ctx.delegate options: budget.contextTokens must be a whole number of 1 or more; got 0.", ex.Message);
+    }
 }

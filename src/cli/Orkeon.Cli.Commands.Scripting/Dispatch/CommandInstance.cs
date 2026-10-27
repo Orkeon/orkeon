@@ -127,6 +127,29 @@ public sealed class CommandInstance
     /// <summary>Total LLM tokens attributed to this instance so far.</summary>
     public long TokensUsed => Interlocked.Read(ref _tokens);
 
+    private CommandInstanceUsage _usage = CommandInstanceUsage.Empty;
+
+    /// <summary>
+    /// Credits one LLM call to this instance, split (prompt, completion, cache, reasoning) and priced at
+    /// <paramref name="cost"/> (null when nobody priced it); its prompt and completion also move
+    /// <see cref="TokensUsed"/>. Accepted after a terminal transition, as <see cref="AddTokens"/> is.
+    /// </summary>
+    public void AddUsage(Orkeon.Application.Interfaces.Ports.CostUsageEvent usage, decimal? cost)
+    {
+        ArgumentNullException.ThrowIfNull(usage);
+        CommandInstanceUsage current, next;
+        do
+        {
+            current = Volatile.Read(ref _usage);
+            next = current.Add(usage, cost);
+        }
+        while (!ReferenceEquals(Interlocked.CompareExchange(ref _usage, next, current), current));
+        AddTokens(usage.PromptTokens + (long)usage.CompletionTokens);
+    }
+
+    /// <summary>The usage credited through <see cref="AddUsage"/> so far.</summary>
+    public CommandInstanceUsage Usage => Volatile.Read(ref _usage);
+
     /// <summary>
     /// Attaches a one-shot callback fired when (or immediately, if already) the instance
     /// reaches a terminal state. Used by the runner to release the admission slot and

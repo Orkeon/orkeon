@@ -366,6 +366,199 @@ public sealed class JsLlmFacadeBudgetTests
         }
     }
 
+    // -- contextTokens: the context of a turn counted once (#224) --
+
+    private static LlmResponse ReadCall(string text, int prompt, int completion) => new()
+    {
+        Content = "",
+        RawResponseBody = ToolCallBody("echo_tool", "{\"text\":\"" + text + "\"}"),
+        PromptTokens = prompt,
+        CompletionTokens = completion,
+        TokensUsed = prompt + completion,
+    };
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public async Task ShouldSpendTheContextOncePlusTheCompletions_WhenATurnOfManyCallsRunsUnderContextTokens()
+    {
+        // Arrange: N = 6 calls on a context of C = 20 000 tokens, each read adding 100 to it
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var responses = new List<LlmResponse>();
+        for (var i = 0; i < 5; i++)
+            responses.Add(ReadCall("r" + i, 20_000 + (100 * i), 40));
+        responses.Add(new LlmResponse { Content = "Done.", RawResponseBody = null, PromptTokens = 20_500, CompletionTokens = 40, TokensUsed = 20_540 });
+        var provider = new SequencedProvider(responses.ToArray());
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = int.MaxValue, MaxContextTokens = 25_000 };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert: about C + the completions, not N x C - which a sum of 25 000 would have cut short
+        Assert.Equal("Done.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").IsUndefined());
+        Assert.Equal(6, provider.ChatCalls);
+        Assert.Equal(20_000 + 500 + (6 * 40), budget.CurrentContextTokens);
+        Assert.Equal(121_740, budget.CurrentTokensConsumed);
+    }
+
+    [Theory]
+    [Trait("BR", "CH-224")]
+    [InlineData(100, int.MaxValue)]
+    [InlineData(int.MaxValue, 70)]
+    public async Task ShouldWrapUpTheSameWay_WhicheverMeasureSpendsTheBudget(int tokens, int contextTokens)
+    {
+        // Arrange: two reads, the second spending the sum (60 + 80 > 100) or the context (60 + 20 + 10 > 70)
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var tool = new RecordingTool("echo_tool");
+        var provider = new SequencedProvider(new[]
+        {
+            ReadCall("a", 50, 10),
+            ReadCall("b", 70, 10),
+            new LlmResponse { Content = "Here is what the reads found.", RawResponseBody = null, PromptTokens = 90, CompletionTokens = 10, TokensUsed = 100 },
+        });
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = tokens, MaxContextTokens = contextTokens };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget });
+
+        // Act
+        var result = await facade.ActAsync(engine, "read and summarise", null);
+
+        // Assert
+        Assert.Equal("Here is what the reads found.", result.Get("output").AsString());
+        Assert.True(result.Get("budgetExhausted").AsBoolean());
+        Assert.Equal(3, provider.ChatCalls);
+        Assert.Equal(1, tool.CallCount);
+    }
+
+    private static LlmResponse FinalCall(int prompt, int completion) => new()
+    {
+        Content = "Done.",
+        RawResponseBody = null,
+        PromptTokens = prompt,
+        CompletionTokens = completion,
+        TokensUsed = prompt + completion,
+    };
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public async Task ShouldChargeEachActItsOwnContext_WhenTwoActsInARowRecordOnOneBudget()
+    {
+        // Arrange: two fresh acts of 5 000 tokens of context each, one after the other on one budget
+        using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var provider = new SequencedProvider(new[] { FinalCall(5_000, 10), FinalCall(5_000, 10) });
+        var budget = new AgentExecutionBudget { MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(), new JsLlmActGuards { Budget = budget });
+
+        // Act
+        await facade.ActAsync(engine, "first", null);
+        await facade.ActAsync(engine, "second", null);
+
+        // Assert: the second act is a new conversation, its whole prompt is new
+        Assert.Equal(2 * 5_010, budget.CurrentContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public async Task ShouldChargeEachActItsOwnGrowth_WhenTwoActsRunAtOnceOnOneBudget()
+    {
+        // Arrange: a big act (8 000 then 8 300) and a small one (2 000) on one budget, at once
+        using var bigEngine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        using var smallEngine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
+        var budget = new AgentExecutionBudget { MaxToolCalls = 10, MaxTokensConsumed = int.MaxValue, MaxContextTokens = int.MaxValue };
+        var big = new JsLlmFacade(bigEngine, new SequencedProvider(new[] { ReadCall("a", 8_000, 10), FinalCall(8_300, 10) }),
+            CancellationToken.None, new IBaseTool[] { new RecordingTool("echo_tool") }, new JsLlmActGuards { Budget = budget });
+        var small = new JsLlmFacade(smallEngine, new SequencedProvider(new[] { FinalCall(2_000, 10) }),
+            CancellationToken.None, Array.Empty<IBaseTool>(), new JsLlmActGuards { Budget = budget });
+
+        // Act
+        await Task.WhenAll(big.ActAsync(bigEngine, "big", null), small.ActAsync(smallEngine, "small", null));
+
+        // Assert: whatever the interleaving, each act pays its context once plus its own growth
+        Assert.Equal(8_010 + 310 + 2_010, budget.CurrentContextTokens);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheWholePrompt_WhenTheConversationMakesItsFirstCall()
+    {
+        var previous = 0;
+
+        var share = JsLlmFacade.ContextShare(5_010, 5_000, 10, null, ref previous);
+
+        Assert.Equal(5_010, share);
+        Assert.Equal(5_000, previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldReadEachConversationsOwnGrowth_WhenCallsOfTwoConversationsInterleave()
+    {
+        // Arrange: 8 000 -> 2 000 -> 8 300 on one budget, each conversation keeping its own previous prompt
+        var big = 0;
+        var small = 0;
+
+        // Act
+        var first = JsLlmFacade.ContextShare(8_010, 8_000, 10, null, ref big);
+        var other = JsLlmFacade.ContextShare(2_010, 2_000, 10, null, ref small);
+        var second = JsLlmFacade.ContextShare(8_310, 8_300, 10, null, ref big);
+
+        // Assert: no recount of the 8 000 after the small call
+        Assert.Equal(8_010, first);
+        Assert.Equal(2_010, other);
+        Assert.Equal(310, second);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountNoGrowth_WhenThePromptShrinks()
+    {
+        // Arrange: a compaction cuts the prompt from 10 000 to 4 000
+        var previous = 10_000;
+
+        // Act
+        var share = JsLlmFacade.ContextShare(4_050, 4_000, 50, null, ref previous);
+
+        // Assert: the completion alone; the next growth is read against the compacted prompt
+        Assert.Equal(50, share);
+        Assert.Equal(4_000, previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldFallBackToTheGrowth_WhenTheProviderReportsNoCacheHit()
+    {
+        var previous = 10_000;
+
+        var share = JsLlmFacade.ContextShare(10_350, 10_300, 50, 0, ref previous);
+
+        Assert.Equal(350, share);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheUncachedPrompt_WhenTheProviderReportsCacheHits()
+    {
+        var previous = 0;
+
+        var share = JsLlmFacade.ContextShare(10_350, 10_300, 50, 10_000, ref previous);
+
+        Assert.Equal(350, share);
+        Assert.Equal(10_300, previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-224")]
+    public void ShouldCountTheWholeCall_WhenTheProviderReportsNoBreakdown()
+    {
+        var previous = 3_000;
+
+        var share = JsLlmFacade.ContextShare(500, null, null, null, ref previous);
+
+        Assert.Equal(500, share);
+        Assert.Equal(3_000, previous);
+    }
+
     private sealed class RecordingTool : IBaseTool
     {
         public RecordingTool(string name) => Name = name;

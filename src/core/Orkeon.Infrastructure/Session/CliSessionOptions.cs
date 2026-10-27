@@ -28,7 +28,12 @@ public sealed class CliSessionOptions
     /// <summary>Virtual directory holding one folder of persisted session per project.</summary>
     public string SessionsDirectory { get; set; } = "/workspace/.orkeon/sessions";
 
-    /// <summary>Whether the session is persisted per project under <see cref="SessionsDirectory"/>; off unless a host turns it on.</summary>
+    /// <summary>
+    /// Whether the session (messages, state, id and title) is persisted per project under <see cref="SessionsDirectory"/>;
+    /// off unless a host turns it on, and the REPL turns it on when the key is absent. While it is on, a <c>*.cmd.ts</c>
+    /// saves it now (<c>ctx.services.get("session").save()</c>, or <c>save(path)</c> to keep a copy elsewhere) or loads
+    /// another saved session in its place (<c>load(path)</c>).
+    /// </summary>
     public bool Persist { get; set; }
 
     /// <summary>What a host says of a context window it cannot budget against, or null when it can.</summary>

@@ -235,13 +235,16 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
-The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus the
+The host whitelist drives what's reachable. Default keys: `fs`, `tools` and `runtime` (the
+version of the runtime, below), plus the
 optional `llm`, `logger`, `commands` (the dispatch façade — see below), `script-host`
 (crew launching from a command — see
 [Driving crews from the REPL](./coding-agent-ts.md)) and, in `orkeon-repl`, `permissions` (the
-session's tool-call rules, below) and `approvals` (the tool approvals waiting, below); the typings
-return `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade` and `PendingApprovals` for those
-four without a type argument. `configuration` is deliberately
+session's tool-call rules, below), `approvals` (the tool approvals waiting, below) and `session`
+(save the persisted session, load a saved one, below), and `usage` (the session's LLM usage by model
+and by command, below) where the host keeps a cost manager or command instances; the typings return
+`CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade`,
+`RuntimeInfo` and `SessionUsage` for those seven without a type argument. `configuration` is deliberately
 **not** exposed — the configuration root carries API keys — so the typings do not declare it,
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
@@ -283,7 +286,10 @@ lock, so it is safe even when a background async dispatch invokes it.
 
 A normal `defineCommand` that awaits the agent. `request` blocks until the agent
 responds and returns the `CommandResponse` (so `await` on it resolves to the
-value — a sync command is meant to block):
+value — a sync command is meant to block). Its `streamed` is true when any turn of
+the request was written to the console in the foreground
+(`Orkeon:Cli:ConsoleStreaming:Enabled`); background and labelled output report false.
+Print `payload` only when it is false, or the answer shows twice (#228):
 
 ```typescript
 defineCommand({
@@ -292,13 +298,14 @@ defineCommand({
   args: { text: { type: "string", required: true } },
   handler(args, ctx) {
     const res = ctx.services.get("commands").request("echo", "run", args.text);
-    return res.success ? ctx.continue("→ " + res.payload)
-                       : ctx.continue("agent error: " + res.error);
+    if (!res.success) return ctx.continue("agent error: " + res.error);
+    // The console already showed a streamed answer: print it only when it did not.
+    return res.streamed ? ctx.continue() : ctx.continue("→ " + res.payload);
   },
 });
 ```
 
-`request(agent, intent, payload)` returns `{ agent, intent, success, payload, error? }`.
+`request(agent, intent, payload)` returns `{ agent, intent, success, payload, streamed, error? }`.
 
 ### Asynchronous dispatch — `defineAsyncCommand`
 
@@ -615,6 +622,67 @@ task, the tool's name, and the call's input as the status line shows it, its JSO
 ```typescript
 const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
 for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
+```
+
+**Saving and loading the session.** `orkeon-repl` persists its session per project
+(`Orkeon:Cli:Session:Persist`, on unless the settings turn it off): it is saved after each turn and
+at exit to `<SessionsDirectory>/<project>/last.json`, and reloaded at start. While it is persisted,
+`ctx.services.get("session")` serves two calls. `save()` writes that file now, in the same shape,
+and resolves to its virtual path; `save(path)` writes the session in the same shape to another
+virtual file instead, which `load` accepts back, and resolves to that path (a blank path rejects).
+`load(path)` reads a file the REPL saved, at a virtual path, and swaps the conversation buffer and
+the state bag (the two things `/clear` resets), with the session's id and title, for its own; it
+resolves to the number of messages loaded, and the next turn continues that conversation. The running
+command instances (`commands.list`) are untouched, and the session goes on saving to its own file:
+the loaded session overwrites `last.json` after the next turn, so archive the current one with
+`save(path)` before a `load`, or it is lost. The file is judged whole before anything changes: a
+missing file, an unreadable one, or one without the shape the REPL writes (`SessionId`, `Messages`
+with a `Role` and a `Content` each, `State`) rejects the promise, and the session stays as it was.
+Both go through the virtual file system: a path outside a mount, or without the read (or write)
+right, is refused the same way. A `load` while another command's turn runs is not supported: the
+last writer of the buffer wins.
+
+```typescript
+const session = ctx.services.get("session");
+const archived = await session.save("/workspace/saved/before-review.json"); // keep the current session first
+const count = await session.load("/workspace/saved/review.json");
+ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
+```
+
+**Runtime version.** `ctx.services.get("runtime")`, always present, answers the runtime that runs the
+command as a plain object `{ version, commit, channel }`: the release with its build metadata removed
+(`1.0.0-rc.6`), as `orkeon doctor` prints it; the commit sha that metadata carries (the part after
+`+`), null when there is none; and the channel the runtime was installed through, read from the
+installation's `INSTALL-CHANNEL` marker as [`orkeon doctor`](../reference/cli.md#orkeon-doctor) reads
+it (`deb`, `tarball`, `source`, `dotnet-tool`…), `unknown` when nothing names one. `orkeon-repl`
+registers its own (`ScriptRuntimeInfo`); a host that registers none answers its entry assembly's
+version and the channel `unknown`.
+
+```typescript
+const runtime = ctx.services.get("runtime");
+ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
+```
+
+**Session usage.** A command reads the session's LLM usage through `ctx.services.get("usage")`,
+present when the host keeps a cost manager (`ICostBudgetManager`) or command instances (the REPL
+keeps both). It is read-only: `report()` returns the figures of that moment, `{ promptTokens,
+completionTokens, cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls,
+unpricedCalls, cost, byModel, byCommand }`. The cache counts are a part of the prompt, the reasoning a
+part of the completion (reported by Z.AI and OpenRouter, 0 elsewhere). The totals count every call
+the cost manager recorded (`CostReport.TotalUsage`); `byModel` has one row per model named in the
+provider's answer, with its `calls`, so a call whose provider named no model is in the totals and in
+no row: the totals may exceed the sum of `byModel`. `byCommand` has one row per command instance the
+session keeps (a crew launched with `runCrewAsync` included, the newest first), from what
+`InstanceAttributingUsageSink` credited it, with its `ticket`, `name`, `state` and `calls`. A `cost`
+is the vendor's charge, else the price the registry knows for the model (`Orkeon:CostTracking`), and
+null when neither is known for any of its calls: a `/usage` command can tell a free call from an
+unpriced one. Every row and the totals carry `unpricedCalls`, the calls nobody priced, which `cost`
+counts as 0: while it is not 0, the `cost` is a lower bound.
+
+```typescript
+const usage = ctx.services.get("usage").report();
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
 ## TypeScript support matrix (esbuild → Jint)

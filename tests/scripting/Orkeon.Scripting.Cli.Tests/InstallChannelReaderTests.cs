@@ -1,4 +1,5 @@
 using Orkeon.Constants.FileSystem;
+using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -66,6 +67,21 @@ public sealed class InstallChannelReaderTests : IDisposable
         WriteMarker(_scratch.Root, InstallChannels.Deb + "\n");
 
         Assert.Equal(InstallChannels.Deb, InstallChannelReader.Read(_scratch.Root).Channel);
+    }
+
+    /// <summary>The Debian package puts the REPL in /usr/lib/orkeon-repl, with a marker of its own.</summary>
+    [Fact]
+    public void AMarkerBesideTheRepl_IsRead_TheDebianReplLayout()
+    {
+        var lib = Path.Combine(_scratch.Root, "usr", "lib");
+        var cli = Path.Combine(lib, "orkeon");
+        var repl = Path.Combine(lib, "orkeon-repl");
+        Directory.CreateDirectory(cli);
+        Directory.CreateDirectory(repl);
+        WriteMarker(cli, InstallChannels.Deb + "\n");
+        WriteMarker(repl, InstallChannels.Deb + "\n");
+
+        Assert.Equal(InstallChannels.Deb, InstallChannelReader.Read(repl).Channel);
     }
 
     [Fact]
@@ -201,6 +217,8 @@ public sealed class InstallChannelReaderTests : IDisposable
     [InlineData(".dotnet/tools/.store/orkeon.scripting.cli/1.0.0-rc.4/orkeon.scripting.cli/1.0.0-rc.4/tools/net10.0/any")]
     [InlineData(".nuget/packages/orkeon.scripting.cli/1.0.0-rc.4/tools/net10.0/any")]
     [InlineData(".nuget/packages/Orkeon.Scripting.Cli/1.0.0/tools/net10.0/any")]
+    [InlineData(".dotnet/tools/.store/orkeon.consoleapp/1.0.0-rc.5/orkeon.consoleapp/1.0.0-rc.5/tools/net10.0/any")]
+    [InlineData(".nuget/packages/orkeon.consoleapp/1.0.0-rc.5/tools/net10.0/any")]
     public void WithoutAMarker_TheToolIsKnownByItsPath(string relative)
     {
         var directory = Path.Combine([_scratch.Root, .. relative.Split('/')]);

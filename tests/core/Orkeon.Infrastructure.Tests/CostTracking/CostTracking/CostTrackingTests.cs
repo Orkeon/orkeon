@@ -242,6 +242,99 @@ public class CostBudgetManagerTests
             NullLogger<CostBudgetManager>.Instance);
     }
 
+    /// <summary>#226 - the report keeps the reasoning tokens by model and says which models carry a price.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_report_by_model_carries_reasoning_tokens_and_whether_the_model_is_priced()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500, ReasoningTokens = 120 });
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 10, CompletionTokens = 5, ReasoningTokens = 3 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 10, CompletionTokens = 5 });
+
+        var report = _sut.GetReport();
+
+        var priced = report.ModelUsageByModel[ModelGpt4o];
+        Assert.Equal(123, priced.ReasoningTokens);
+        Assert.True(priced.Priced);
+        var unpriced = report.ModelUsageByModel["local-unpriced-model"];
+        Assert.Equal(0, unpriced.ReasoningTokens);
+        Assert.False(unpriced.Priced);
+    }
+
+    /// <summary>
+    /// #226 - the report's totals count every call, one whose provider named no model included, though the
+    /// per-model rows leave it out.
+    /// </summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_total_usage_counts_a_call_whose_provider_named_no_model()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500, CacheHitTokens = 200, ReasoningTokens = 20 });
+        _sut.RecordUsage(new CostUsageEvent { Model = string.Empty, PromptTokens = 40, CompletionTokens = 8, CacheHitTokens = 10, CacheWriteTokens = 5, ReasoningTokens = 2 });
+
+        var report = _sut.GetReport();
+
+        Assert.Equal([ModelGpt4o], report.ModelUsageByModel.Keys);
+        var total = report.TotalUsage;
+        Assert.Equal(2, report.TotalCalls);
+        Assert.Equal(2, total.Calls);
+        Assert.Equal(1040, total.PromptTokens);
+        Assert.Equal(508, total.CompletionTokens);
+        Assert.Equal(210, total.CacheReadTokens);
+        Assert.Equal(5, total.CacheWriteTokens);
+        Assert.Equal(22, total.ReasoningTokens);
+        Assert.Equal(1, total.UnpricedCalls);
+        Assert.True(total.Priced);
+    }
+
+    /// <summary>#226 - the report counts the calls nobody priced, in each model and in the totals.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void The_report_counts_the_unpriced_calls_of_a_mix_of_priced_and_unpriced_models()
+    {
+        _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 10, CompletionTokens = 5 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 10, CompletionTokens = 5 });
+        _sut.RecordUsage(new CostUsageEvent { Model = "vendor/model", PromptTokens = 10, CompletionTokens = 5, Cost = 0.01m });
+        _sut.RecordUsage(new CostUsageEvent { Model = "vendor/model", PromptTokens = 10, CompletionTokens = 5 });
+
+        var report = _sut.GetReport();
+
+        Assert.Equal(0, report.ModelUsageByModel[ModelGpt4o].UnpricedCalls);
+        Assert.Equal(1, report.ModelUsageByModel[ModelGpt4o].Calls);
+        Assert.Equal(2, report.ModelUsageByModel["local-unpriced-model"].UnpricedCalls);
+        Assert.False(report.ModelUsageByModel["local-unpriced-model"].Priced);
+        var vendor = report.ModelUsageByModel["vendor/model"];
+        Assert.Equal(2, vendor.Calls);
+        Assert.Equal(1, vendor.UnpricedCalls);
+        Assert.True(vendor.Priced);
+        Assert.Equal(5, report.TotalUsage.Calls);
+        Assert.Equal(3, report.TotalUsage.UnpricedCalls);
+    }
+
+    /// <summary>#226 - a vendor charge prices the model, 0 included: a free model is priced at 0.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void A_vendor_charge_prices_a_model_the_registry_does_not_know()
+    {
+        var result = _sut.RecordUsage(new CostUsageEvent { Model = "vendor/free-model", PromptTokens = 10, CompletionTokens = 5, Cost = 0m });
+
+        Assert.Equal(0m, result.Cost);
+        Assert.True(_sut.GetReport().ModelUsageByModel["vendor/free-model"].Priced);
+    }
+
+    /// <summary>#226 - RecordUsage answers the cost it settled, so a caller can credit it elsewhere.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public void Record_usage_answers_the_settled_cost_and_null_when_nobody_priced_the_call()
+    {
+        var priced = _sut.RecordUsage(new CostUsageEvent { Model = ModelGpt4o, PromptTokens = 1000, CompletionTokens = 500 });
+        var unpriced = _sut.RecordUsage(new CostUsageEvent { Model = "local-unpriced-model", PromptTokens = 1000, CompletionTokens = 500 });
+
+        Assert.Equal(_pricingRegistry.CalculateCost(ModelGpt4o, 1000, 500), priced.Cost);
+        Assert.Null(unpriced.Cost);
+    }
+
     [Fact]
     public void A_call_nobody_priced_is_estimated_from_the_price_registry()
     {

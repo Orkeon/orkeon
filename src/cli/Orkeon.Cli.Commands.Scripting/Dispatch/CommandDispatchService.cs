@@ -291,8 +291,13 @@ public sealed partial class CommandDispatchService
         AgentId agentId, string agent, string intent, string payload, Guid correlationId, TimeSpan? timeout, CancellationToken ct)
     {
         var request = new AgentChannelRequest(correlationId, _cliAgentId, agentId, intent ?? string.Empty, payload ?? string.Empty);
+        // The agent's flow: a turn of it written unprefixed on the console marks the response as streamed (#228).
+        var receipt = Streaming.InlineStreamReceipt.Open();
         var response = await _channel.RequestAsync(request, timeout, ct).ConfigureAwait(false);
-        return new CommandResponse(agent, intent ?? string.Empty, response.Success, response.Payload, response.Error);
+        return new CommandResponse(agent, intent ?? string.Empty, response.Success, response.Payload, response.Error)
+        {
+            streamed = receipt.Streamed,
+        };
     }
 
     /// <summary>

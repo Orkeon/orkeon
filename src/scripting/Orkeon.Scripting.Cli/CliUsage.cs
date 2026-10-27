@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli;
 

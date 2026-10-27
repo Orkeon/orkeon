@@ -413,6 +413,10 @@ static class Program
         // Scripted commands (Phase 4 demo). PassThroughTranspiler when esbuild isn't available
         // is OK for the bundled fixtures which are plain JS-in-TS-syntax.
         services.AddScriptCommands(context.Configuration, cfg => ApplyScriptedOptions(cfg, scriptedOpts));
+        // ctx.services.get("runtime") (#225): this build's version and the channel its installation names,
+        // read as `orkeon doctor` reads them.
+        services.AddSingleton(Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.FromAssembly(
+            typeof(Program).Assembly, Orkeon.Hosting.InstallChannelReader.Read().Channel));
         // Bootstrap VFS mounts for --commands-dir paths (option Q7=a — explicit
         // bootstrap via PostConfigure, no in-memory configuration overlay).
         services.AddScriptCommandMounts(scriptedOpts.CommandDirs);

@@ -238,13 +238,16 @@ const tools = ctx.services.get<IBaseTool[]>("tools");
 if (ctx.services.has("llm")) { /* … */ }
 ```
 
-La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs` et
-`tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
+La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs`,
+`tools` et `runtime` (la version du runtime, plus bas), plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
 plus bas), `script-host` (lancement de crews depuis une commande — voir
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
-(les règles d'appels d'outils de la session, plus bas) et `approvals` (les approbations d'outils en
-attente, plus bas) ; pour ces quatre-là, les typings rendent `CommandsFacade`, `ScriptHostFacade`,
-`PermissionRulesFacade` et `PendingApprovals` sans argument de type. `configuration` n'est
+(les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
+attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas),
+et `usage` (la consommation LLM de la session par modèle et par commande, plus bas) là où l'hôte tient
+un gestionnaire de coûts ou des instances de commande ; pour ces sept-là, les typings rendent
+`CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade`,
+`RuntimeInfo` et `SessionUsage` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -288,7 +291,11 @@ dispatch asynchrone d'arrière-plan l'invoque.
 
 Une `defineCommand` normale qui attend l'agent. `request` bloque jusqu'à ce que
 l'agent réponde et retourne la `CommandResponse` (de sorte qu'un `await` dessus se
-résout en la valeur — une commande sync est faite pour bloquer) :
+résout en la valeur — une commande sync est faite pour bloquer). Son `streamed` est
+vrai quand un tour quelconque de la requête a été écrit sur la console au premier plan
+(`Orkeon:Cli:ConsoleStreaming:Enabled`) ; une sortie en arrière-plan ou étiquetée
+rapporte faux. N'imprimez `payload` que s'il est faux, sinon la réponse s'affiche
+deux fois (#228) :
 
 ```typescript
 defineCommand({
@@ -297,13 +304,14 @@ defineCommand({
   args: { text: { type: "string", required: true } },
   handler(args, ctx) {
     const res = ctx.services.get("commands").request("echo", "run", args.text);
-    return res.success ? ctx.continue("→ " + res.payload)
-                       : ctx.continue("agent error: " + res.error);
+    if (!res.success) return ctx.continue("agent error: " + res.error);
+    // The console already showed a streamed answer: print it only when it did not.
+    return res.streamed ? ctx.continue() : ctx.continue("→ " + res.payload);
   },
 });
 ```
 
-`request(agent, intent, payload)` retourne `{ agent, intent, success, payload, error? }`.
+`request(agent, intent, payload)` retourne `{ agent, intent, success, payload, streamed, error? }`.
 
 ### Dispatch asynchrone — `defineAsyncCommand`
 
@@ -639,6 +647,73 @@ bloquée sur l'opérateur d'une tâche qui tourne.
 ```typescript
 const approvals = ctx.services.has("approvals") ? ctx.services.get("approvals").list() : [];
 for (const a of approvals) ctx.writeLine(`[${a.taskId}] ${a.command} waits for approval of ${a.tool} ${a.input}`);
+```
+
+**Enregistrer et charger la session.** `orkeon-repl` conserve sa session par projet
+(`Orkeon:Cli:Session:Persist`, actif sauf si les réglages le désactivent) : elle est enregistrée après
+chaque tour et à la sortie dans `<SessionsDirectory>/<projet>/last.json`, et rechargée au démarrage.
+Tant qu'elle est conservée, `ctx.services.get("session")` sert deux appels. `save()` écrit ce fichier
+tout de suite, sous la même forme, et se résout en son chemin virtuel ; `save(path)` écrit la session
+sous la même forme dans un autre fichier virtuel, que `load` accepte en retour, et se résout en ce
+chemin (un chemin vide rejette la promesse). `load(path)` lit un fichier que le REPL a enregistré, à
+un chemin virtuel, et remplace le tampon de conversation et le sac d'état (les deux choses que
+`/clear` remet à zéro), avec l'identifiant et le titre de la session, par les siens ; il se résout en
+le nombre de messages chargés, et le tour suivant poursuit cette conversation. Les instances de
+commandes en cours (`commands.list`) ne sont pas touchées, et la session continue de s'enregistrer
+dans son propre fichier : la session chargée écrase `last.json` après le tour suivant, il faut donc
+archiver la session courante avec `save(path)` avant un `load`, sans quoi elle est perdue. Le fichier
+est jugé en entier avant tout changement : un fichier absent, illisible ou sans la forme qu'écrit le
+REPL (`SessionId`, `Messages` avec chacun un `Role` et un `Content`, `State`) rejette la promesse, et
+la session reste telle qu'elle était. Les deux passent par le système de fichiers virtuel : un chemin
+hors d'un montage, ou sans droit de lecture (ou d'écriture), est refusé de la même façon. Un `load`
+pendant le tour en cours d'une autre commande n'est pas pris en charge : le dernier qui écrit le
+tampon l'emporte.
+
+```typescript
+const session = ctx.services.get("session");
+const archived = await session.save("/workspace/saved/before-review.json"); // garder d'abord la session courante
+const count = await session.load("/workspace/saved/review.json");
+ctx.writeLine(`archived ${archived}, loaded ${count} messages`);
+```
+
+**Version du runtime.** `ctx.services.get("runtime")`, toujours présent, décrit le runtime qui exécute
+la commande par un objet simple `{ version, commit, channel }` : la version publiée sans ses
+métadonnées de build (`1.0.0-rc.6`), telle qu'`orkeon doctor` l'imprime ; le sha du commit que portent
+ces métadonnées (la partie après `+`), null quand il n'y en a pas ; et le canal par lequel le runtime a
+été installé, lu dans le marqueur `INSTALL-CHANNEL` de l'installation comme
+[`orkeon doctor`](../reference/cli.md#orkeon-doctor) le lit (`deb`, `tarball`, `source`,
+`dotnet-tool`…), `unknown` quand rien n'en nomme. `orkeon-repl` enregistre le sien
+(`ScriptRuntimeInfo`) ; un hôte qui n'en enregistre aucun rend la version de son assembly d'entrée et
+le canal `unknown`.
+
+```typescript
+const runtime = ctx.services.get("runtime");
+ctx.writeLine(`Orkeon ${runtime.commit ? `${runtime.version}+${runtime.commit}` : runtime.version} (${runtime.channel})`);
+```
+
+**Consommation de la session.** Une commande lit la consommation LLM de la session par
+`ctx.services.get("usage")`, présent quand l'hôte tient un gestionnaire de coûts
+(`ICostBudgetManager`) ou des instances de commande (le REPL tient les deux). Il est en lecture
+seule : `report()` rend les chiffres de l'instant, `{ promptTokens, completionTokens,
+cacheHitTokens, cacheWriteTokens, reasoningTokens, totalTokens, calls, unpricedCalls, cost, byModel,
+byCommand }`. Les comptes de cache sont une part du prompt, le raisonnement une part de la complétion
+(rapporté par Z.AI et OpenRouter, 0 ailleurs). Les totaux comptent chaque appel que le gestionnaire
+de coûts a enregistré (`CostReport.TotalUsage`) ; `byModel` a une ligne par modèle nommé dans la
+réponse du fournisseur, avec ses `calls` : un appel dont le fournisseur ne nomme aucun modèle est
+dans les totaux et dans aucune ligne, les totaux peuvent donc dépasser la somme de `byModel`.
+`byCommand` a une ligne par instance de commande que la session garde (un crew lancé par
+`runCrewAsync` compris, la plus récente d'abord), tirée de ce que `InstanceAttributingUsageSink` lui
+a crédité, avec son `ticket`, son `name`, son `state` et ses `calls`. Un `cost` est ce que le
+fournisseur a facturé, sinon le prix que le registre connaît pour le modèle (`Orkeon:CostTracking`),
+et null quand aucun des deux n'est connu pour aucun de ses appels : une commande `/usage` distingue
+ainsi un appel gratuit d'un appel sans prix. Chaque ligne et les totaux portent `unpricedCalls`, les
+appels que personne n'a tarifés, que `cost` compte pour 0 : tant qu'il n'est pas nul, le `cost` est
+un minorant.
+
+```typescript
+const usage = ctx.services.get("usage").report();
+for (const m of usage.byModel) ctx.writeLine(`${m.model}: ${m.promptTokens} in (${m.cacheHitTokens} cached), ${m.completionTokens} out, ${m.cost ?? "n/a"}`);
+for (const c of usage.byCommand) ctx.writeLine(`[${c.ticket}] ${c.name}: ${c.promptTokens + c.completionTokens} tokens, ${c.cost ?? "n/a"}`);
 ```
 
 ## Matrice de support TypeScript (esbuild → Jint)

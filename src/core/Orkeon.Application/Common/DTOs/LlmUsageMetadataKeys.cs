@@ -20,6 +20,12 @@ public static class LlmUsageMetadataKeys
     public const string CacheMissTokens = "prompt_cache_miss_tokens";
 
     /// <summary>
+    /// Completion tokens the model spent reasoning (OpenAI-compatible <c>completion_tokens_details.reasoning_tokens</c>:
+    /// Z.AI, OpenRouter), a part of the completion tokens.
+    /// </summary>
+    public const string ReasoningTokens = "reasoning_tokens";
+
+    /// <summary>
     /// What the vendor billed for the call, from its own <c>usage.cost</c> (OpenRouter): a
     /// <see cref="double"/> in the provider's metadata, a <see cref="decimal"/> once the chat
     /// client adapter has carried it onto the <c>ChatResponse</c>. Absent when the vendor

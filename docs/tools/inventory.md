@@ -61,7 +61,7 @@ what YAML references.
 | `session_snip` | `SessionSnipTool` | Immediately truncate the conversation to a minimal window |
 | `session_stats` | `SessionStatsTool` | Full session telemetry: messages, tokens, cost, call totals |
 | `session_cost` | `SessionCostTool` | Cumulative session cost in USD with a per-model breakdown |
-| `token_budget` | `TokenBudgetTool` | Context window size, used tokens, available budget |
+| `token_budget` | `TokenBudgetTool` | Context window size, used tokens and what fills them (`used_tokens_by_kind`: `system`, `user`, `assistant`, `tool`, `other`), available budget |
 | `memory_store` | `MemoryStoreTool` | List/add/delete/get typed memories (user/project/feedback/reference) |
 
 ## File tools (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`

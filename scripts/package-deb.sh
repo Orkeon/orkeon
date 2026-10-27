@@ -196,6 +196,9 @@ REPL_APPHOST="Orkeon.ConsoleApp"
 check_arch "$SRC_STAGE/libexec/$REPL_APP/$REPL_APPHOST"
 mkdir -p "$PKG_DIR/usr/lib/$REPL_APP"
 cp -R "$SRC_STAGE/libexec/$REPL_APP/." "$PKG_DIR/usr/lib/$REPL_APP/"
+# The REPL reads the same marker for `ctx.services.get("runtime").channel`, from its own
+# directory up two levels: /usr/lib/orkeon/INSTALL-CHANNEL is out of its reach.
+printf 'deb\n' > "$PKG_DIR/usr/lib/$REPL_APP/INSTALL-CHANNEL"
 
 # --- 2. Launcher --------------------------------------------------------------
 # Same contract as scripts/installer-assets/wrapper.sh.tmpl (bundled esbuild,

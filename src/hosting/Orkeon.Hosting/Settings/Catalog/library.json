@@ -2813,7 +2813,7 @@
       "section": "Orkeon:Cli:Session",
       "type": "boolean",
       "default": false,
-      "description": "Whether the session is persisted per project under `SessionsDirectory`; off unless a host turns it on."
+      "description": "Whether the session (messages, state, id and title) is persisted per project under `SessionsDirectory`; off unless a host turns it on, and the REPL turns it on when the key is absent. While it is on, a `*.cmd.ts` saves it now (`ctx.services.get(\"session\").save()`, or `save(path)` to keep a copy elsewhere) or loads another saved session in its place (`load(path)`)."
     },
     {
       "path": "Orkeon:Cli:Session:SessionsDirectory",

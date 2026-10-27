@@ -162,6 +162,82 @@ public sealed class RichContextIntegrationTests : IDisposable
         Assert.DoesNotContain("waits on", answered.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ShouldPrintTheRuntimeVersionAndChannel_WhenTheHostRegisteredThem()
+    {
+        CopyFixture("runtime-version.cmd.ts");
+        var ct = TestContext.Current.CancellationToken;
+        using var services = new ServiceCollection()
+            .AddSingleton(ScriptRuntimeInfo.FromInformationalVersion("1.0.0-rc.6+3ac6aa64", "source"))
+            .BuildServiceProvider();
+        var loader = new ScriptCommandLoader(
+            new DiskBackedFileSystemService(_tempDir, virtualRoot: "/cmd"),
+            PassThroughTranspiler.Instance,
+            new JsEngineFactory(),
+            Microsoft.Extensions.Options.Options.Create(new ScriptCommandLoaderOptions { Directories = ["/cmd"], EsbuildTranspile = false }),
+            new ScriptCommandLoaderDependencies
+            {
+                Services = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), services),
+            });
+        var (registry, _) = await loader.LoadAndRegisterAsync(ct);
+        var command = registry.ScriptCommands.Single(c => c.Name == "runtime-version");
+
+        var console = new ScriptedTestConsole();
+        await command.ExecuteAsync(new CommandContext { RawInput = "/runtime-version", Args = [], Console = console, Scope = services }, ct);
+
+        Assert.Contains("version:1.0.0-rc.6+3ac6aa64", console.Output, StringComparison.Ordinal);
+        Assert.Contains("channel:source", console.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>#226 - a command lists the session's usage by model and by command, with a cost where a price is set.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public async Task ShouldListTheSessionUsageByModelAndByCommand_WithACostWhereAPriceIsSet()
+    {
+        CopyFixture("session-usage.cmd.ts");
+        var ct = TestContext.Current.CancellationToken;
+        var instances = new Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry();
+        var crew = instances.Register("dev-batches", Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async, "crew:dev", "dev", Guid.NewGuid());
+        crew.AddUsage(new Orkeon.Application.Interfaces.Ports.CostUsageEvent { PromptTokens = 900, CompletionTokens = 100, CacheHitTokens = 600 }, 0.0125m);
+        var cost = new Doubles.MockCostBudgetManager
+        {
+            Report = new Orkeon.Application.Interfaces.Ports.CostReport
+            {
+                TotalCost = 0.0125m,
+                TotalCalls = 2,
+                TotalUsage = new() { PromptTokens = 910, CompletionTokens = 105, CacheReadTokens = 600, ReasoningTokens = 40, Calls = 2, UnpricedCalls = 1, Cost = 0.0125m, Priced = true },
+                ModelUsageByModel = new Dictionary<string, Orkeon.Application.Interfaces.Ports.ModelUsage>
+                {
+                    ["gpt-4o"] = new() { PromptTokens = 900, CompletionTokens = 100, CacheReadTokens = 600, ReasoningTokens = 40, Calls = 1, Cost = 0.0125m, Priced = true },
+                    ["local-model"] = new() { PromptTokens = 10, CompletionTokens = 5, Calls = 1, UnpricedCalls = 1 },
+                },
+            },
+        };
+        using var services = new ServiceCollection()
+            .AddSingleton<Orkeon.Application.Interfaces.Ports.ICostBudgetManager>(cost)
+            .AddSingleton(instances)
+            .BuildServiceProvider();
+        var loader = new ScriptCommandLoader(
+            new DiskBackedFileSystemService(_tempDir, virtualRoot: "/cmd"),
+            PassThroughTranspiler.Instance,
+            new JsEngineFactory(),
+            Microsoft.Extensions.Options.Options.Create(new ScriptCommandLoaderOptions { Directories = ["/cmd"], EsbuildTranspile = false }),
+            new ScriptCommandLoaderDependencies
+            {
+                Services = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), services),
+            });
+        var (registry, _) = await loader.LoadAndRegisterAsync(ct);
+        var command = registry.ScriptCommands.Single(c => c.Name == "usage");
+
+        var console = new ScriptedTestConsole();
+        await command.ExecuteAsync(new CommandContext { RawInput = "/usage", Args = [], Console = console, Scope = services }, ct);
+
+        Assert.Contains("total 1015 tokens, 2 calls (1 unpriced), $0.0125", console.Output, StringComparison.Ordinal);
+        Assert.Contains("model gpt-4o in=900 out=100 cache=600 reasoning=40 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
+        Assert.Contains("model local-model in=10 out=5 cache=0 reasoning=0 unpriced=1 n/a", console.Output, StringComparison.Ordinal);
+        Assert.Contains($"command {crew.Ticket} dev-batches in=900 out=100 cache=600 calls=1 unpriced=0 $0.0125", console.Output, StringComparison.Ordinal);
+    }
+
     private sealed class TestRunner : InteractiveRunnerBase
     {
         public TestRunner(

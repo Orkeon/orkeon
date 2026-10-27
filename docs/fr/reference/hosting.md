@@ -16,29 +16,88 @@ Dans ce dépôt, elle est consommée par `Orkeon.Scripting.Cli` (l'outil `orkeon
 
 ## Distribution
 
-**`Orkeon.Hosting` n'est pas un paquet NuGet.** Son csproj pose `IsPackable=false`, et la
-[matrice de publication](publication-matrix.md#paquets-abandonnés) la classe dans les *paquets
-abandonnés* : elle n'est poussée ni sur NuGet.org ni sur GitHub Packages, donc
-`dotnet add package Orkeon.Hosting` ne peut pas se résoudre (`NU1101`).
+**`Orkeon.Hosting` est livrée dans le paquet `Orkeon.Scripting`** (#229). Son propre csproj reste
+`IsPackable=false`, il n'existe donc d'identifiant `Orkeon.Hosting` sur aucun flux : la
+[matrice de publication](publication-matrix.md#le-lineup-nugetorg) liste l'opt-in
+`Orkeon.Scripting`, dont le wrapper (`src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj`)
+embarque `Orkeon.Hosting.dll` à côté d'`Orkeon.Scripting.dll` et d'`Orkeon.Constants.Cli.dll`.
 
-Elle n'est pas non plus embarquée dans le paquet parapluie `Orkeon`.
-`src/packaging/Orkeon/Orkeon.csproj` embarque douze assemblies — `Orkeon.Domain`,
-`Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`,
-`Orkeon.Tools.Abstractions`, `Orkeon.Analysis{,.Abstractions}`, `Orkeon.Rag{,.Abstractions}` — et
-`Orkeon.Hosting` n'en fait pas partie.
+```bash
+dotnet add package Orkeon.Scripting --prerelease
+```
+
+Elle n'est pas dans le parapluie `Orkeon` : l'hôte de runner compose toutes les familles d'outils
+intégrées, donc le paquet dépend d'`Orkeon.Tools` et d'`Orkeon.Tools.Embeddings.Local` — un poids
+qu'un consommateur du seul parapluie ne restaure jamais.
 
 | | |
 |---|---|
 | Assembly | `Orkeon.Hosting.dll` (`src/hosting/Orkeon.Hosting`) |
-| Packageable | non — `IsPackable=false`, sur aucun flux |
-| Dépend de | les bibliothèques cœur `Orkeon.*` (Domain, Application, Infrastructure, Analysis, Scripting), les satellites `Orkeon.Constants.{Cli,Configuration,FileSystem}`, et tous les projets `Orkeon.Tools.*` sauf un — Abstractions, Analysis, Code, Data, Email, Embeddings.Local, EventHub, FileSystem, Web ; `Orkeon.Tools.Rag` est volontairement absent, le RAG reste opt-in — plus `CommandLineParser` et `Microsoft.Extensions.Hosting` |
-| Livrée par | les **canaux CLI et installeurs** uniquement : l'outil dotnet `orkeon` (`Orkeon.Scripting.Cli`) et les archives d'installation / `.deb` / MSI produits par `release.yml`, où `Orkeon.Hosting.dll` est posée à côté de `orkeon` et `orkeon-host` comme assembly d'implémentation privée — jamais comme une référence qu'un consommateur ajoute |
+| Paquet | `Orkeon.Scripting` (embarquée ; le projet lui-même est `IsPackable=false`) |
+| Dépendances du paquet | `Orkeon`, `Orkeon.Tools`, `Orkeon.Tools.Embeddings.Local`, `Jint`, `Microsoft.Extensions.Hosting`, `Microsoft.Extensions.Options`, `CommandLineParser` |
+| Livrée aussi par | l'outil dotnet `orkeon` (`Orkeon.Scripting.Cli`) et les archives d'installation / `.deb` / MSI produits par `release.yml`, où `Orkeon.Hosting.dll` est posée à côté de `orkeon` et `orkeon-host` |
 
-**Construire un hôte externe contre elle** passe donc par les sources : cloner le dépôt et ajouter
-une `ProjectReference` vers `src/hosting/Orkeon.Hosting/Orkeon.Hosting.csproj`. La surface de
-paquets supportée pour les consommateurs est le parapluie `Orkeon` (plus `Orkeon.Tools` et les
-opt-ins) ; `Orkeon.Hosting` est une couche de bootstrap interne, documentée ici pour les
-appelants in-tree.
+## Exécuter un crew dans le processus
+
+Une application .NET exécute un `crew.ork.ts` — ou un `crew.yaml`, ou un dossier de crew
+multi-fichiers — sans démarrer le processus `orkeon` : `ICrewScriptRunner` est la forme
+in-process d'`orkeon run`.
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Hosting;
+
+var services = new ServiceCollection().AddOrkeonScripting(options =>
+{
+    options.SettingsPath = "appsettings.json";   // la section Llm, les montages, les outils - comme pour orkeon run
+    options.Mounts.Add("./out:/output:rw");      // --mount
+    options.Diagnostics = Console.Error;         // les lignes opérateur qu'orkeon run écrit sur stderr
+});
+using var provider = services.BuildServiceProvider();
+
+var output = await provider.GetRequiredService<ICrewScriptRunner>().RunAsync("crew.ork.ts");
+Console.WriteLine(output.Succeeded ? output.FinalOutput : output.Error);
+```
+
+`new CrewScriptRunner(options)` fait la même chose sans conteneur.
+
+- **Ce qu'est une exécution.** Chaque `RunAsync` construit son propre hôte de runner par
+  l'amorçage partagé (`RunnerExecution`, le code qu'exécute `orkeon run`) : la cible du crew est
+  résolue et montée, le fichier de settings est trouvé de la même façon, les gardes de montage
+  s'exécutent, puis `RunnerHost.Build` compose le fournisseur LLM, les outils intégrés, le VFS, la
+  porte de permissions (`Orkeon:Security`) et les serveurs MCP configurés. Le crew est chargé et
+  lancé dans un seul scope ; l'hôte est libéré à la fin de l'exécution. Seul le runner est ajouté
+  au conteneur de l'application.
+- **Ce qui revient.** Le `CrewOutput` de l'orchestrateur : un crew qui a tourné et échoué est une
+  sortie avec `Succeeded == false` et son `Error`. Une exécution qui ne peut pas démarrer — une
+  cible absente, un setting ou un montage que l'hôte refuse, un crew qui ne se charge pas — lève
+  `CrewScriptRunException` avec la ligne qu'`orkeon run` aurait imprimée. Un `cancellationToken`
+  annulé lève `OperationCanceledException`, avant que le crew démarre ou pendant qu'il tourne —
+  jamais une sortie en échec.
+- **Les chemins sont ceux du processus.** Le chemin du crew, `SettingsPath` et les dossiers de
+  `Mounts` se résolvent contre le répertoire de travail du processus quand ils sont relatifs, comme
+  pour `orkeon run` ; un crew hors de ce répertoire est refusé sauf si `AllowExternalMounts` est
+  posé. Un service dont le répertoire de travail n'est pas sa racine de contenu passe des chemins
+  absolus.
+- **Une configuration par conteneur.** `AddOrkeonScripting` enregistre le runner par `TryAdd` :
+  le premier appel l'emporte, et un second appel — avec d'autres options ou aucune — est ignoré.
+  Une seconde configuration est un `new CrewScriptRunner(options)`. Les exécutions d'un même
+  runner peuvent avancer en même temps ; chacune construit son propre hôte.
+- **La forme du script.** Un `.ork.ts` doit remettre son crew (`globalThis.crew = crew`), la forme
+  déclarative qu'`orkeon run` envoie dans le même pipeline. Un script procédural (qui pilote des
+  agents lui-même, sans remise) n'est pas une définition de crew : exécutez-le avec `orkeon run`.
+- **Options.** `SettingsPath`, `Mounts`, `MountIds`, `AllowExternalMounts` et `LlmProfile` sont les
+  options d'`orkeon run` de mêmes noms. `ConfigureServices` s'applique après les enregistrements
+  d'Orkeon, donc en remplace un (un `ILlmProviderFactory`, un fournisseur d'entrée humaine).
+  `ConfigureLogging` règle la journalisation de l'exécution ; sans lui l'exécution ne journalise
+  rien, et les lignes opérateur ne vont qu'à `Diagnostics`.
+- **esbuild.** Un `.ork.ts` est bundlé par esbuild, que le paquet ne livre pas — la position de
+  l'outil `orkeon` ([Scripting](../architecture/scripting.md)). Mettez-le dans le `PATH`
+  (`npm install -g esbuild`), ou pointez `ORKEON_ESBUILD_PATH` ou
+  `Orkeon:Scripting:Toolchain:EsbuildPath` sur un binaire. Un crew YAML n'en a jamais besoin.
+- **Pas un démon.** Un crew qui doit continuer de tourner entre les requêtes — un canal de chat,
+  A2A, plusieurs crews hébergés — relève d'`orkeon-host`
+  ([hôte de service](../architecture/service-host.md#8-dans-le-processus-ou-sous-orkeon-host)).
 
 ## `RunnerHost.Build`
 

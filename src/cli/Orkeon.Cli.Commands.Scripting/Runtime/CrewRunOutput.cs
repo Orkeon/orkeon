@@ -18,6 +18,13 @@ public sealed class CrewRunOutput
     /// <summary>The raw run result object (crew name, final output, per-task timings).</summary>
     public object? artifacts { get; init; }
 
+    /// <summary>
+    /// True when any turn of this run was written to the console in the foreground (#228), so the script need
+    /// not print <see cref="summary"/> again. Background and labelled output report false: streaming off, the
+    /// turns written as whole prefixed lines - a crew task's (<c>[task] </c>), a background run's (<c>[t2] </c>).
+    /// </summary>
+    public bool streamed { get; init; }
+
     /// <summary>The failure message when <see cref="ok"/> is <see langword="false"/>.</summary>
     public string? error { get; init; }
 

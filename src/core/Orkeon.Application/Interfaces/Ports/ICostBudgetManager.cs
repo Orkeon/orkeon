@@ -41,6 +41,13 @@ public record CostUsageEvent
     public long? CacheWriteTokens { get; init; }
 
     /// <summary>
+    /// Completion tokens the model spent reasoning, when the provider reports them
+    /// (<c>completion_tokens_details.reasoning_tokens</c>). A PART of <see cref="CompletionTokens"/>,
+    /// never additive to it. Null when the provider reported none.
+    /// </summary>
+    public long? ReasoningTokens { get; init; }
+
+    /// <summary>
     /// True when the token counts are an APPROXIMATION the runtime computed itself,
     /// because the provider returned no usage at all. Callers that display a figure must
     /// say so (Studio prefixes it with «≈»); callers that bill or budget on it are
@@ -170,8 +177,26 @@ public sealed record ModelUsage
     /// <summary>Cache-read tokens.</summary>
     public long CacheReadTokens { get; init; }
 
+    /// <summary>Reasoning tokens, a part of <see cref="CompletionTokens"/>; 0 when no provider reported them.</summary>
+    public long ReasoningTokens { get; init; }
+
     /// <summary>Cost.</summary>
     public decimal Cost { get; init; }
+
+    /// <summary>
+    /// True when at least one call of the model was priced: billed by the vendor (0 included) or
+    /// priced from the registry. False, <see cref="Cost"/> is 0 because no price is known, not because the calls were free.
+    /// </summary>
+    public bool Priced { get; init; }
+
+    /// <summary>The LLM calls counted.</summary>
+    public int Calls { get; init; }
+
+    /// <summary>
+    /// The calls nobody priced (no vendor charge and no registry price): <see cref="Cost"/> counts them as 0,
+    /// so a cost with unpriced calls is a lower bound.
+    /// </summary>
+    public int UnpricedCalls { get; init; }
 }
 
 /// <summary>
@@ -194,7 +219,13 @@ public record CostReport
     /// <summary>Cost breakdown by model.</summary>
     public IReadOnlyDictionary<string, decimal> ByModel { get; init; } = new Dictionary<string, decimal>();
 
-    /// <summary>Token usage breakdown by model.</summary>
+    /// <summary>
+    /// Token usage of every recorded call, a call whose provider named no model included: its tokens, calls and
+    /// unpriced calls may exceed the sum of <see cref="ModelUsageByModel"/>, which keeps the named models only.
+    /// </summary>
+    public ModelUsage TotalUsage { get; init; } = new();
+
+    /// <summary>Token usage breakdown by model; a call whose provider named no model is counted in <see cref="TotalUsage"/> only.</summary>
     public IReadOnlyDictionary<string, ModelUsage> ModelUsageByModel { get; init; } = new Dictionary<string, ModelUsage>();
 
     /// <summary>Cost breakdown by operation type.</summary>
@@ -220,6 +251,12 @@ public record CostBudgetCheckResult
 
     /// <summary>Associated alert if budget was exceeded or threshold reached.</summary>
     public BudgetAlert? Alert { get; init; }
+
+    /// <summary>
+    /// The cost settled for the recorded call: the vendor's charge, else the registry's price. Null when
+    /// nobody priced it (no vendor charge and no price for the model), and on a result built by hand.
+    /// </summary>
+    public decimal? Cost { get; init; }
 
     /// <summary>Creates a result indicating usage is within budget.</summary>
     public static CostBudgetCheckResult WithinBudget() => new() { IsWithinBudget = true };

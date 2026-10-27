@@ -1871,7 +1871,7 @@ La fenêtre de contexte utilisée par `token_budget` (`TokenBudgetTool`) et le T
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `ContextWindowTokens` | entier | — | La fenêtre de contexte du modèle, en tokens : un nombre supérieur à zéro. Absente, elle vaut `200000`. |
-| `Persist` | booléen | `false` | Indique si la session (messages, état, identifiant et titre) est conservée par projet sous `SessionsDirectory`. Désactivé sauf si l'hôte l'active ; le REPL l'active quand le réglage est absent. |
+| `Persist` | booléen | `false` | Indique si la session (messages, état, identifiant et titre) est conservée par projet sous `SessionsDirectory`. Désactivé sauf si l'hôte l'active ; le REPL l'active quand le réglage est absent. Tant qu'il est actif, un `*.cmd.ts` l'enregistre tout de suite (`ctx.services.get("session").save()`, ou `save(path)` pour en garder une copie ailleurs) ou charge à sa place une autre session enregistrée (`load(path)`). |
 | `SessionsDirectory` | chaîne | `"/workspace/.orkeon/sessions"` | Dossier virtuel qui contient un dossier de session conservée par projet. |
 | `StartScript` | chaîne | — | Chemin virtuel d'un script exécuté une fois au démarrage du REPL : un `.ork.ts` passe par l'hôte de scripts, tout autre fichier s'exécute comme un script shell. Sa sortie et sa source sont transmises au premier tour ; un script qui échoue ne bloque jamais le démarrage. Absent, aucun script ne s'exécute. |
 <!-- /settings -->

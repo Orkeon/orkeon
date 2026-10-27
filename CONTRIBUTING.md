@@ -102,13 +102,12 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Project Structure
 
-The solution has **48 src projects across 14 zones** and **36 test projects**. Thirty-four
+The solution has **50 src projects across 14 zones** and **38 test projects**. Thirty-six
 src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
 up the other two test projects. Fourteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
 resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Analysis.Tests`,
-`Orkeon.Generators` is covered by the consuming projects' compilation, and the six
-`src/packaging/` projects are packaging-only:
+and the seven `src/packaging/` projects are packaging-only:
 
 ```
 src/
@@ -129,7 +128,7 @@ src/
 ├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)
 ├── packaging/   # NuGet packaging projects (PUB-25): Orkeon (the framework in one nupkg), Orkeon.Tools,
 │                #   + the Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework / Hosting.Aspire
-│                #   wrappers depending on the Orkeon umbrella
+│                #   / Scripting wrappers depending on the Orkeon umbrella
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 104 bundled examples (9 categories + showcases) — own solution
@@ -438,9 +437,9 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    whose `PublicAPI.Unshipped.txt` files are not header-only; after packing, it also runs
    `scripts/check-package-closure.py` against the nupkgs themselves.
 7. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
-   pushes the **nine-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pushes the **ten-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
+   `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
    `Orkeon.Hosting.Aspire`, the umbrella first because the others depend on it, through
    Trusted Publishing — and every packable to GitHub Packages, the packages and a
    CycloneDX SBOM covered by a build-provenance attestation; see

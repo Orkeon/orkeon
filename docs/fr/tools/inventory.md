@@ -61,7 +61,7 @@ celui ci-dessus — est ce que le YAML référence.
 | `session_snip` | `SessionSnipTool` | Tronquer immédiatement la conversation à une fenêtre minimale |
 | `session_stats` | `SessionStatsTool` | Télémétrie complète de session : messages, tokens, coût, totaux d'appels |
 | `session_cost` | `SessionCostTool` | Coût cumulé de la session en USD avec ventilation par modèle |
-| `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés, budget disponible |
+| `token_budget` | `TokenBudgetTool` | Taille de la fenêtre de contexte, tokens consommés et ce qui les remplit (`used_tokens_by_kind` : `system`, `user`, `assistant`, `tool`, `other`), budget disponible |
 | `memory_store` | `MemoryStoreTool` | Lister/ajouter/supprimer/lire des mémoires typées (user/project/feedback/reference) |
 
 ## Tools fichiers (`Orkeon.Tools.FileSystem`) — `AddOrkeonFileSystemTools()`

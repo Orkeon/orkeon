@@ -1,7 +1,8 @@
 using System.Text;
+using Orkeon.Compliance.Vfs;
 using Orkeon.Constants.FileSystem;
 
-namespace Orkeon.Scripting.Cli;
+namespace Orkeon.Hosting;
 
 /// <summary>What <see cref="InstallChannelReader"/> found.</summary>
 /// <param name="Channel">One of the <see cref="InstallChannels"/> values; <see cref="InstallChannels.Unknown"/> when nothing names one.</param>
@@ -23,10 +24,15 @@ internal sealed record InstallChannelReading(string Channel, string? Problem = n
 /// file of ours beside it and which its path gives away.
 /// </para>
 /// </summary>
+[SuppressVfsCompliance("OUT-OF-SCOPE: probes the install directory of the running executable for the marker its packaging wrote; it sits outside every mount, and no host exists yet.")]
 internal static class InstallChannelReader
 {
-    /// <summary>The package id NuGet names the tool's folder after, in the store and in the package cache.</summary>
-    private const string ToolPackageId = "Orkeon.Scripting.Cli";
+    /// <summary>
+    /// The package ids NuGet names a tool's folder after, in the store and in the package cache:
+    /// the <c>orkeon</c> CLI (<c>Orkeon.Scripting.Cli</c>) and the <c>orkeon-repl</c> REPL
+    /// (<c>Orkeon.ConsoleApp</c>, whose csproj keeps the default package id, its project name).
+    /// </summary>
+    private static readonly string[] ToolPackageIds = ["Orkeon.Scripting.Cli", "Orkeon.ConsoleApp"];
 
     /// <summary>
     /// How far above the executable the marker may sit: beside it (the Debian package), one
@@ -124,9 +130,9 @@ internal static class InstallChannelReader
     }
 
     /// <summary>
-    /// Whether <paramref name="baseDirectory"/> is where NuGet unpacks the tool:
-    /// <c>…/orkeon.scripting.cli/&lt;version&gt;/tools/&lt;tfm&gt;/&lt;rid&gt;/</c>, in the global tool store as in the
-    /// package folder a local tool runs from.
+    /// Whether <paramref name="baseDirectory"/> is where NuGet unpacks one of the tools:
+    /// <c>…/orkeon.scripting.cli/&lt;version&gt;/tools/&lt;tfm&gt;/&lt;rid&gt;/</c> (or <c>orkeon.consoleapp</c>, the REPL),
+    /// in the global tool store as in the package folder a local tool runs from.
     /// </summary>
     private static bool IsDotnetTool(string baseDirectory)
     {
@@ -135,7 +141,8 @@ internal static class InstallChannelReader
 
         for (var i = 0; i + 2 < segments.Length; i++)
         {
-            if (string.Equals(segments[i], ToolPackageId, StringComparison.OrdinalIgnoreCase)
+            var segment = segments[i];
+            if (Array.Exists(ToolPackageIds, id => string.Equals(segment, id, StringComparison.OrdinalIgnoreCase))
                 && string.Equals(segments[i + 2], "tools", StringComparison.OrdinalIgnoreCase))
             {
                 return true;

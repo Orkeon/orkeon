@@ -162,7 +162,16 @@ the size of the conversation nor what a provider bills with its cache. Each call
 next to the limit (`act: agent '<name>' call used <n> tokens, running sum <sum>/<limit> tokens over <n>
 calls`, Information).
 
-When the sum reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
+`budget({ contextTokens })` counts the context once (#224): each call adds its completion plus, when the
+provider reports cache hits (`cacheHitTokens`), the part of its prompt the cache did not serve, else what
+its prompt grew by since the same conversation's previous call: each `ctx.llm.act` is its own
+conversation, its first call counting its whole prompt, so acts in a row or at once on one budget each pay
+their own context (never less than zero: a compacted context adds nothing). A turn of n calls on a context of c tokens spends about c plus its completions. A provider that
+reports no prompt and completion counts the call whole, as `tokens` does. Set alone, it leaves `tokens`
+uncapped; set with it, the first one spent ends the act, the same way. Each call also logs `act: agent
+'<name>' context counted once <sum>/<limit> contextTokens` when it is set.
+
+When the sum, or the context counted once, reaches the limit, the act does not fail. A call whose tokens pass it keeps its answer:
 a final answer is returned as it is. The tool calls it asks for do not run: once the budget is spent no
 other tool runs, on the last iteration too, and the act ends with one last chat call that may call no
 tool, after a user turn telling the model its budget is spent and asking it to answer now with what it
@@ -173,7 +182,9 @@ are; Ollama, which has no such switch, is sent no tools. That answer is the act'
 no other wrap-up, and it is kept even when it ends after the wall-time limit. A warning logs that the
 budget ran out. When that last call fails, or answers nothing, the act rejects with
 `BudgetExhaustedError`, whose message names what it counted: `Token budget exhausted: <sum> tokens sent
-and received over <n> calls (limit <limit>)`. The other dimensions (tool calls, wall time, delegation
+and received over <n> calls (limit <limit>)`, or under `contextTokens` `Token budget exhausted: <n> context
+tokens (the growth or the uncached part of each prompt, plus every completion) over <n> calls (limit <limit>
+contextTokens)`; both are on the `tokens` dimension. The other dimensions (tool calls, wall time, delegation
 depth, spawns) still reject at the gate, and `maxIterations` still ends with `exhausted: true`.
 
 ## Child agents: `spawn_agent` and `ctx.spawnBackground`
@@ -273,13 +284,13 @@ the rejection still runs and drains.
 ```typescript
 defineAsyncCommand({
   name: "step",
-  description: "Run a crew, then the next one, reading the session's mode at each hop.",
+  description: "Run a crew, then the next one, saving the session at each hop.",
   dispatch: (args, ctx) => ({ ticket: ctx.services.get("script-host").runCrewAsync("plan") }),
   completed: async (result, ctx) => {
-    // "session": a host service of the application whose readMode() returns a Task, a promise here
-    const mode = await ctx.services.get("session").readMode();
-    ctx.writeLine(`plan done, mode ${mode}`);
-    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload, mode });
+    // "session": a host service of the application whose save() returns a Task, a promise here
+    const saved = await ctx.services.get("session").save();
+    ctx.writeLine(`plan done, session saved to ${saved}`);
+    ctx.services.get("script-host").runCrewAsync("implement", { plan: result.payload });
   },
 });
 ```
@@ -387,7 +398,9 @@ and from the binary), then `PATH`. When nothing is found the error lists every p
 after `dotnet tool install -g Orkeon.Scripting.Cli` a `.ork.ts` script runs only once esbuild is
 on the machine: `npm install -g esbuild` (it lands on `PATH`), or a binary you point
 `ORKEON_ESBUILD_PATH` or `EsbuildPath` at. Nothing is downloaded on first run. YAML crews never
-need it.
+need it. The `Orkeon.Scripting` NuGet package, which runs a crew in a .NET application's own
+process ([Hosting — running a crew in-process](../reference/hosting.md#running-a-crew-in-process)),
+does not ship it either and finds it the same way.
 
 A script may open with `/// <reference orkeon-script="1.0" />`, or with `// @orkeon-script 1.0`,
 the form `tsc` accepts: it rejects the reference form (TS1084) and then skips its semantic pass, so a

@@ -16,6 +16,8 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     private readonly ConcurrentDictionary<string, BudgetLimit> _crewBudgets = new();
     private readonly ConcurrentDictionary<string, BudgetLimit> _agentBudgets = new();
     private readonly ConcurrentBag<BudgetAlert> _alerts = [];
+    // The recorded calls nobody priced (no vendor charge, no registry price), by reference: their settled cost is 0.
+    private readonly ConcurrentDictionary<CostUsageEvent, byte> _unpriced = new(ReferenceEqualityComparer.Instance);
     private readonly IModelPricingRegistry _pricingRegistry;
     private readonly ILogger<CostBudgetManager> _logger;
     private readonly CostTrackingOptions _options;
@@ -46,15 +48,18 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         // reading 0 as "not provided" charged the registry price for a call that cost nothing.
         // Only a call nobody priced (null) is estimated, for this manager's accounting alone.
         var cost = usageEvent.Cost ?? EstimateCost(usageEvent);
+        var priced = usageEvent.Cost is not null || _pricingRegistry.TryGetPricing(usageEvent.Model) is not null;
 
-        // Store the event (with its cost settled)
+        // Store the event (with its cost settled); an unpriced one is marked before the report can see it
         var eventWithCost = usageEvent with { Cost = cost };
+        if (!priced)
+            _unpriced.TryAdd(eventWithCost, 0);
         _history.Add(eventWithCost);
 
         LogRecordedUsageCrewAgentModel(usageEvent.CrewId ?? "", usageEvent.AgentId ?? "", usageEvent.Model ?? "", usageEvent.PromptTokens + usageEvent.CompletionTokens, cost);
 
         // Check budgets
-        return CheckBudgets(eventWithCost);
+        return CheckBudgets(eventWithCost) with { Cost = priced ? cost : null };
     }
 
     private decimal EstimateCost(CostUsageEvent usageEvent)
@@ -81,7 +86,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     public CostReport GetReport(string? crewId = null, string? agentId = null)
     {
         var events = FilterEvents(crewId, agentId);
-        return BuildReport(events);
+        return BuildReport(events, _unpriced);
     }
 
     /// <inheritdoc />
@@ -94,7 +99,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             events = events.Where(e => e.CrewId == crewId);
 
         var list = events.ToList();
-        var report = BuildReport(list);
+        var report = BuildReport(list, _unpriced);
 
         return report with { PeriodStart = from, PeriodEnd = toDate };
     }
@@ -298,7 +303,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         return events;
     }
 
-    private static CostReport BuildReport(IEnumerable<CostUsageEvent> events)
+    private static CostReport BuildReport(IEnumerable<CostUsageEvent> events, ConcurrentDictionary<CostUsageEvent, byte> unpriced)
     {
         var list = events.ToList();
 
@@ -338,14 +343,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             .Where(g => !string.IsNullOrEmpty(g.Key))
             .ToDictionary(
                 g => g.Key,
-                g => new ModelUsage
-                {
-                    PromptTokens = g.Sum(e => (long)e.PromptTokens),
-                    CompletionTokens = g.Sum(e => (long)e.CompletionTokens),
-                    CacheWriteTokens = g.Sum(e => e.CacheWriteTokens ?? 0L),
-                    CacheReadTokens = g.Sum(e => e.CacheHitTokens ?? 0L),
-                    Cost = g.Sum(e => e.Cost ?? 0m),
-                });
+                g => UsageOf(g.ToList(), unpriced));
 
         var byOperationType = list
             .GroupBy(e => e.OperationType)
@@ -357,12 +355,31 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
             TotalCost = list.Sum(e => e.Cost ?? 0m),
             TotalTokens = list.Sum(e => e.PromptTokens + e.CompletionTokens),
             TotalCalls = list.Count,
+            TotalUsage = UsageOf(list, unpriced),
             ByAgent = byAgent,
             ByModel = byModel,
             ModelUsageByModel = modelUsage,
             ByOperationType = byOperationType,
             PeriodStart = list.Min(e => e.Timestamp),
             PeriodEnd = list.Max(e => e.Timestamp)
+        };
+    }
+
+    /// <summary>The usage of <paramref name="events"/>: every call counted, whatever model it names.</summary>
+    private static ModelUsage UsageOf(List<CostUsageEvent> events, ConcurrentDictionary<CostUsageEvent, byte> unpriced)
+    {
+        var unpricedCalls = events.Count(unpriced.ContainsKey);
+        return new ModelUsage
+        {
+            PromptTokens = events.Sum(e => (long)e.PromptTokens),
+            CompletionTokens = events.Sum(e => (long)e.CompletionTokens),
+            CacheWriteTokens = events.Sum(e => e.CacheWriteTokens ?? 0L),
+            CacheReadTokens = events.Sum(e => e.CacheHitTokens ?? 0L),
+            ReasoningTokens = events.Sum(e => e.ReasoningTokens ?? 0L),
+            Calls = events.Count,
+            UnpricedCalls = unpricedCalls,
+            Priced = unpricedCalls < events.Count,
+            Cost = events.Sum(e => e.Cost ?? 0m),
         };
     }
 

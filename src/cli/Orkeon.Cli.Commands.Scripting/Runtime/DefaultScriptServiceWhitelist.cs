@@ -1,11 +1,14 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.Session;
 using Orkeon.Scripting;
 
 namespace Orkeon.Cli.Commands.Scripting.Runtime;
@@ -32,6 +35,10 @@ public static class DefaultScriptServiceWhitelist
             // provenance. A host that genuinely needs to expose select, non-sensitive config
             // keys must add a *filtered* view explicitly via ScriptServiceWhitelist.Add.
             .Add(ScriptServiceKeys.Tools, tools.Resolve)
+            // The runtime's version and install channel (#225): the host's own registration, else the entry
+            // assembly's version with an unknown channel.
+            .Add(ScriptServiceKeys.Runtime, sp => sp.GetService<ScriptRuntimeInfo>()
+                ?? ScriptRuntimeInfo.FromAssembly(Assembly.GetEntryAssembly(), ScriptRuntimeInfo.Unknown))
             .AddOptional(ScriptServiceKeys.Llm, sp => sp.GetService<ILlmProvider>())
             .AddOptional(ScriptServiceKeys.Logger, sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("script"))
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
@@ -48,7 +55,18 @@ public static class DefaultScriptServiceWhitelist
             // them (AddConsoleToolApproval registers IToolApprovalWatch).
             .AddOptional(ScriptServiceKeys.Approvals, sp => sp.GetService<IToolApprovalWatch>() is { } watch
                 ? new ScriptPendingApprovals(watch)
-                : null);
+                : null)
+            // Optional: the persisted session (Orkeon:Cli:Session:Persist), saved now or swapped for a saved one (#227).
+            .AddOptional(ScriptServiceKeys.Session, sp => sp.GetService<ISessionBufferService>() is FileSessionBufferService session
+                ? new SessionFacade(session)
+                : null)
+            // Optional, read-only: the session's usage by model (the cost manager's report) and by command
+            // instance (what InstanceAttributingUsageSink credited each one) — present when either is kept.
+            .AddOptional(ScriptServiceKeys.Usage, sp =>
+                (sp.GetService<ICostBudgetManager>(), sp.GetService<CommandInstanceRegistry>()) is var (cost, instances)
+                && (cost is not null || instances is not null)
+                    ? new ScriptSessionUsage(cost, instances)
+                    : null);
     }
 
     /// <summary>

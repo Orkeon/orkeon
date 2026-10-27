@@ -65,13 +65,16 @@ public static partial class RunnerExecution
     /// host with verbosity-driven logging, and wires AutoSummaryWriter when an
     /// <c>/output:rw</c> mount is present. Returns an error exit code on
     /// invalid input; the caller must check <paramref name="errorCode"/>.
+    /// <paramref name="configureLogging"/>, when given, replaces the verbosity-driven logging:
+    /// an embedding application (<see cref="CrewScriptRunner"/>) owns its own log output.
     /// </summary>
     internal static bool TryBuildHost(
         RunnerOptionsBase opts,
         string loggerCategory,
         Action<HostBuilderContext, IServiceCollection>? configureServices,
         out HostBootstrap? bootstrap,
-        out int errorCode)
+        out int errorCode,
+        Action<HostBuilderContext, ILoggingBuilder>? configureLogging = null)
     {
         ArgumentNullException.ThrowIfNull(opts);
         bootstrap = null;
@@ -143,9 +146,9 @@ public static partial class RunnerExecution
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                     LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
                 },
-                configureLogging: verbosity > 0
+                configureLogging: configureLogging ?? (verbosity > 0
                     ? (ctx, b) => ConfigureVerboseLogging(b, verbosity, ctx.Configuration)
-                    : null,
+                    : null),
                 configureServices: (ctx, services) =>
                 {
                     if (outputMountPath != null)

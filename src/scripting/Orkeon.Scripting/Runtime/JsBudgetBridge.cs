@@ -15,11 +15,14 @@ namespace Orkeon.Scripting.Runtime;
 internal static class JsBudgetBridge
 {
     /// <summary>
-    /// Recognized keys: <c>toolCalls</c>, <c>tokens</c>, <c>delegationDepth</c>,
-    /// <c>spawnedAgents</c> (integers) and <c>wallTime</c> (number = seconds, string =
+    /// Recognized keys: <c>toolCalls</c>, <c>tokens</c> (the running sum of every call's prompt and
+    /// completion), <c>contextTokens</c> (the context counted once, #224: <see cref="AgentExecutionBudget.MaxContextTokens"/>),
+    /// <c>delegationDepth</c>, <c>spawnedAgents</c> (integers) and <c>wallTime</c> (number = seconds, string =
     /// duration with unit <c>ms|s|m|h</c>). Invalid values are ignored — a script must
     /// never crash at build time because of a malformed budget field. With
-    /// <paramref name="chargedTo"/>, the budget also charges that one (#189) and reads its clock.
+    /// <paramref name="chargedTo"/>, the budget also charges that one (#189) and reads its clock. A spec
+    /// that sets <c>contextTokens</c> without <c>tokens</c> leaves the running sum uncapped: the default
+    /// sum would otherwise cut the run short of the context it asked for.
     /// </summary>
     internal static AgentExecutionBudget? FromSpec(IReadOnlyDictionary<string, object?>? spec, AgentExecutionBudget? chargedTo = null)
     {
@@ -27,11 +30,12 @@ internal static class JsBudgetBridge
 
         int? toolCalls = TryReadInt(spec, "toolCalls");
         int? tokens = TryReadInt(spec, "tokens");
+        int? contextTokens = TryReadInt(spec, ContextTokensKey);
         int? delegationDepth = TryReadInt(spec, "delegationDepth");
         int? spawnedAgents = TryReadInt(spec, "spawnedAgents");
         TimeSpan? wallTime = TryReadWallTime(spec);
 
-        if (toolCalls is null && tokens is null && delegationDepth is null &&
+        if (toolCalls is null && tokens is null && contextTokens is null && delegationDepth is null &&
             spawnedAgents is null && wallTime is null)
             return null;
 
@@ -39,7 +43,8 @@ internal static class JsBudgetBridge
         return new AgentExecutionBudget
         {
             MaxToolCalls = toolCalls ?? defaults.MaxToolCalls,
-            MaxTokensConsumed = tokens ?? defaults.MaxTokensConsumed,
+            MaxTokensConsumed = tokens ?? (contextTokens is null ? defaults.MaxTokensConsumed : int.MaxValue),
+            MaxContextTokens = contextTokens ?? defaults.MaxContextTokens,
             MaxDelegationDepth = delegationDepth ?? defaults.MaxDelegationDepth,
             MaxSpawnedAgents = spawnedAgents ?? defaults.MaxSpawnedAgents,
             MaxWallTime = wallTime ?? defaults.MaxWallTime,
@@ -58,6 +63,13 @@ internal static class JsBudgetBridge
     internal static CrewBudget? ToCrewBudget(IReadOnlyDictionary<string, object?>? spec)
     {
         if (spec is null || spec.Count == 0) return null;
+
+        // The autonomous strategy records what a finished task spent, never a call's prompt and
+        // completion: it cannot count the context once, so the key is refused rather than read as the sum.
+        if (spec.TryGetValue(ContextTokensKey, out var context) && context is not null)
+            throw new InvalidScriptException(
+                $"crewBuilder().budget({{...}}) budget.{ContextTokensKey}: an autonomous crew counts the tokens of each finished task, "
+                + "not each call's prompt and completion, so it cannot count the context once; use tokens, the running sum.");
 
         foreach (var key in Dimensions)
         {
@@ -79,7 +91,10 @@ internal static class JsBudgetBridge
     }
 
     /// <summary>The keys of a budget spec, in the order a refusal names them.</summary>
-    private static readonly string[] Dimensions = ["toolCalls", "tokens", "wallTime", "delegationDepth", "spawnedAgents"];
+    private static readonly string[] Dimensions = ["toolCalls", "tokens", ContextTokensKey, "wallTime", "delegationDepth", "spawnedAgents"];
+
+    /// <summary>The key of the token budget that counts the context once (#224).</summary>
+    private const string ContextTokensKey = "contextTokens";
 
     private const string Where = "crew.runAgent / ctx.delegate options:";
 

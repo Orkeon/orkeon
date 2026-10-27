@@ -612,6 +612,14 @@ No attribute carries an id of a crew, task or agent.
   write into one another and no line is cut (#211). Turns that stream no visible
   content (pure tool calls) emit nothing. The sink composes with a script-side `onDelta`
   (both receive every delta).
+- **Telling the script it already streamed** (#228): the `CommandResponse` a `request()`
+  returns or a `completed(result)` receives, and the `CrewRunOutput` of `runCrew`, carry
+  `streamed: boolean`, true when any turn of the request was written to the console in the
+  foreground (inline, or as whole unprefixed lines); a script prints the payload only when
+  `streamed` is false, so the answer shows once. A background instance (`post`, `runCrewAsync`) and a crew task write
+  whole prefixed lines and report false. The dispatch opens one receipt per agent request
+  and per crew run in that work's async flow; the sink's turns record into it, it never goes back
+  to false within a request, and commands running at once each read their own.
 - **Backward-compatible default**: flag absent → no sink registered → `act` keeps
   its buffered rendering (byte-identical), scripts can still stream via `onDelta`.
 

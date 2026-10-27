@@ -57,6 +57,36 @@ public sealed class MeteredLlmProviderTests
         Assert.Null(usage.Cost);
     }
 
+    /// <summary>#226 - the reasoning tokens a provider reports in its metadata reach the sink.</summary>
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public async Task The_reasoning_tokens_of_the_answer_reach_the_sink()
+    {
+        var provider = new MockLlmProvider { Name = "vendor" };
+        provider.SetChatResult(Answer(120, 30) with
+        {
+            Metadata = new Dictionary<string, object> { [LlmUsageMetadataKeys.ReasoningTokens] = 25 },
+        });
+        var sink = new MockLlmUsageSink();
+
+        await MeteredLlmProvider.Wrap(provider, sink).ChatAsync(Conversation(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(25, Assert.Single(sink.Recorded).ReasoningTokens);
+    }
+
+    [Trait("BR", "CH-226")]
+    [Fact]
+    public async Task An_answer_without_reasoning_tokens_reports_none()
+    {
+        var provider = new MockLlmProvider { Name = "vendor" };
+        provider.SetChatResult(Answer(120, 30));
+        var sink = new MockLlmUsageSink();
+
+        await MeteredLlmProvider.Wrap(provider, sink).ChatAsync(Conversation(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Null(Assert.Single(sink.Recorded).ReasoningTokens);
+    }
+
     [Trait("BR", "CH-01")]
     [Fact]
     public async Task Every_call_is_counted_once_and_only_once()

@@ -60,6 +60,7 @@ PACKAGING = {
     "Orkeon.Tools.Embeddings.Local": REPO / "src/packaging/Orkeon.Tools.Embeddings.Local/Orkeon.Tools.Embeddings.Local.Package.csproj",
     "Orkeon.Interop.AgentFramework": REPO / "src/packaging/Orkeon.Interop.AgentFramework/Orkeon.Interop.AgentFramework.Package.csproj",
     "Orkeon.Hosting.Aspire": REPO / "src/packaging/Orkeon.Hosting.Aspire/Orkeon.Hosting.Aspire.Package.csproj",
+    "Orkeon.Scripting": REPO / "src/packaging/Orkeon.Scripting/Orkeon.Scripting.Package.csproj",
 }
 NON_FLOWING = {"Microsoft.CodeAnalysis.PublicApiAnalyzers"}  # PrivateAssets=all analyzers
 
@@ -72,6 +73,7 @@ LINEUP = [
     "Orkeon.Rag.Onnx",
     "Orkeon.Rag.Onnx.Model",
     "Orkeon.Tools.Embeddings.Local",
+    "Orkeon.Scripting",
     "Orkeon.Scripting.Cli",
     "Orkeon.Compliance.Vfs",
     "Orkeon.Interop.AgentFramework",
@@ -165,6 +167,53 @@ def external_union(projects: list[Path]) -> set[str]:
     return union - NON_FLOWING
 
 
+def packaging_dependencies(packaging_csproj: Path) -> set[str]:
+    """The lineup packaging projects `packaging_csproj` takes a nuspec dependency on - its
+    ProjectReferences to another PACKAGING project without PrivateAssets="all" - and theirs,
+    transitively. `Orkeon.Scripting` depends on `Orkeon.Tools` and
+    `Orkeon.Tools.Embeddings.Local` as well as on `Orkeon` (#229)."""
+    by_path = {csproj.resolve(): pkg_id for pkg_id, csproj in PACKAGING.items()}
+    found: set[str] = set()
+    queue = [packaging_csproj]
+    while queue:
+        project = queue.pop()
+        for include, attributes in project_references(project.read_text(encoding="utf-8")):
+            if 'PrivateAssets="all"' in attributes:
+                continue
+            target = (project.parent / include.replace("\\", "/")).resolve()
+            dep = by_path.get(target) or wrapped_lineup_id(target)
+            if dep is not None and dep not in found:
+                found.add(dep)
+                queue.append(PACKAGING[dep])
+    return found
+
+
+def wrapped_lineup_id(project: Path) -> str | None:
+    """The lineup id of a wrapper whose wrapped project is `project`, else None. A wrapper's
+    public id is applied at pack time, so a nuspec dependency on it is spelled by referencing
+    the wrapped project itself, whose restore name is that id."""
+    if not project.is_file():
+        return None
+    pkg_id = package_id(project, project.read_text(encoding="utf-8"))
+    wrapper = PACKAGING.get(pkg_id)
+    if wrapper is None or wrapper.resolve() == project.resolve():
+        return None
+    return pkg_id if project in embedded_projects(wrapper) else None
+
+
+def provided_by_dependencies(packaging_csproj: Path) -> tuple[set[str], set[str]]:
+    """What the lineup packages `packaging_csproj` depends on already carry: the externals
+    they declare, and the assemblies they embed. The `Orkeon` umbrella counts for every
+    package, since each one depends on it."""
+    deps = packaging_dependencies(packaging_csproj) | {"Orkeon"}
+    externals: set[str] = set()
+    assemblies: set[str] = set()
+    for dep in deps:
+        externals |= set(csproj_refs(PACKAGING[dep], "Package"))
+        assemblies |= {p.stem for p in embedded_projects(PACKAGING[dep])}
+    return externals, assemblies
+
+
 # --- source mode: csproj-only checks, runnable on a pull request -------------------------
 
 def src_projects() -> list[Path]:
@@ -245,7 +294,7 @@ def source_errors(lineup: list[str]) -> list[str]:
             if target_text is None:
                 errors.append(f"{pkg_id}: ProjectReference {include} resolves outside src/")
                 continue
-            if not is_packable(target_text):
+            if not is_packable(target_text) and wrapped_lineup_id(target) is None:
                 errors.append(
                     f"{pkg_id}: references {target.stem} without PrivateAssets=\"all\", but that "
                     f"project is IsPackable=false -- the reference yields neither a nuspec "
@@ -263,14 +312,11 @@ def source_errors(lineup: list[str]) -> list[str]:
     #    against the union its embedded projects actually require. Same computation the
     #    artifacts mode runs against the nuspec -- the nuspec externals ARE these
     #    PackageReferences, so this half needs no nupkg.
-    provided_by_orkeon: set[str] = set()
     for pkg_id, csproj in PACKAGING.items():
         declared = set(csproj_refs(csproj, "Package"))
         union = external_union(embedded_projects(csproj))
-        if pkg_id == "Orkeon":
-            provided_by_orkeon = declared
-        else:
-            union -= provided_by_orkeon  # carried transitively via the Orkeon dependency
+        if pkg_id != "Orkeon":
+            union -= provided_by_dependencies(csproj)[0]  # carried by its lineup dependencies
         undeclared = sorted(union - declared)
         if undeclared:
             errors.append(
@@ -284,19 +330,18 @@ def source_errors(lineup: list[str]) -> list[str]:
 
     # 5. Transitive embedding closure: an assembly an embedded one reaches through its own
     #    ProjectReferences must itself ship somewhere the consumer restores -- either
-    #    embedded in the same package, or in the `Orkeon` umbrella that every other lineup
-    #    package takes a nuspec dependency on. Anything else restores fine and then throws
+    #    embedded in the same package, or in a lineup package it takes a nuspec dependency
+    #    on: the `Orkeon` umbrella for every one, `Orkeon.Tools` and the opt-ins it names. Anything else restores fine and then throws
     #    FileNotFoundException on first use. Check 3 covers the packaging projects' own
     #    references; this covers everything below them.
-    umbrella_embedded = {p.stem for p in embedded_projects(PACKAGING["Orkeon"])}
     for pkg_id, csproj in PACKAGING.items():
         own = embedded_projects(csproj)
-        shipped = {p.stem for p in own} | umbrella_embedded
+        shipped = {p.stem for p in own} | provided_by_dependencies(csproj)[1]
         orphans = sorted({p.stem for p in transitive_projects(own)} - shipped)
         if orphans:
             errors.append(
                 f"{pkg_id}: embedded assemblies reference {orphans}, which are embedded "
-                f"neither here nor in the `Orkeon` umbrella -- the assembly ships nowhere "
+                f"neither here nor in a lineup package it depends on -- the assembly ships nowhere "
                 f"(FileNotFoundException for consumers). Add it to an embedded set, or stop "
                 f"referencing it"
             )
@@ -350,7 +395,6 @@ def main() -> int:
             )
 
     # 2. Umbrella drift: nuspec externals vs recomputed union of embedded csproj
-    provided_by_orkeon: set[str] = set()
     for pkg_id, csproj in PACKAGING.items():
         if pkg_id not in nupkgs:
             continue
@@ -366,10 +410,8 @@ def main() -> int:
                 f"unexpected {sorted(actual_assemblies - expected_assemblies)}"
             )
         union = external_union(embedded)
-        if pkg_id == "Orkeon":
-            provided_by_orkeon = nuspec_deps(root)
-        else:
-            union -= provided_by_orkeon  # carried transitively via the Orkeon dependency
+        if pkg_id != "Orkeon":
+            union -= provided_by_dependencies(csproj)[0]  # carried by its lineup dependencies
         undeclared = {u for u in union if u not in deps}
         if undeclared:
             errors.append(

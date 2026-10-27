@@ -186,9 +186,23 @@ declare global {
          * no further tool runs: `ctx.llm.act` makes one last call that may call no tool (a tool call
          * it returns is never run) and resolves with `budgetExhausted: true`;
          * the error says what it counted, `Token budget exhausted: <sum> tokens sent and received
-         * over <n> calls (limit <limit>)`.
+         * over <n> calls (limit <limit>)`. Measure: the sum of every call's prompt and completion.
          */
         readonly tokens?: number;
+        /**
+         * The most tokens the run may spend with its context counted once (#224): each call's
+         * completion, plus the part of its prompt the provider's cache did not serve when the
+         * provider reports cache hits, else what the prompt grew by since the same conversation's previous call (each
+         * `ctx.llm.act` is its own conversation, its first call counting its whole prompt). A
+         * turn of n calls on a context of c tokens spends about c plus its completions, not n times
+         * c. A call whose provider reports no prompt and completion counts whole, as for `tokens`.
+         * Set alone, it leaves `tokens` uncapped; set both, the first spent ends the run. Its end is
+         * that of `tokens`: `ctx.llm.act` wraps up with `budgetExhausted: true`, the error's
+         * `dimension` is `"tokens"`, and its message starts the same, `Token budget exhausted: <n>
+         * context tokens (...) over <n> calls (limit <limit> contextTokens)`. Not for a declarative
+         * `process("autonomous")` crew, which counts the tokens of each finished task: refused there.
+         */
+        readonly contextTokens?: number;
         readonly spawnedAgents?: number;
     }
 

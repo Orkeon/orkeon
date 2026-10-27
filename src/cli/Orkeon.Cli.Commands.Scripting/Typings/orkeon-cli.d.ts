@@ -59,8 +59,8 @@ export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = u
    *
    *   completed: async (result, ctx) => {
    *     // A host service of the application whose method returns a Task, which the script sees as a promise.
-   *     const mode = await ctx.services.get("session").readMode();
-   *     ctx.writeLine(`mode: ${mode}`);
+   *     const saved = await ctx.services.get("session").save();
+   *     ctx.writeLine(`session saved to ${saved}`);
    *     ctx.services.get("script-host").runCrewAsync("next-step", { previous: result.payload });
    *   },
    */
@@ -95,6 +95,14 @@ export interface CommandResponse {
   readonly intent: string;
   readonly success: boolean;
   readonly payload: string;
+  /**
+   * True when any turn of this request was written to the console in the foreground
+   * (`Orkeon:Cli:ConsoleStreaming:Enabled`): skip your own print of `payload`, or the answer shows twice.
+   * Background and labelled output report false: streaming off, an agent that did not stream, and a
+   * background instance (`post`, `runCrewAsync`), whose turns are written as whole lines prefixed with
+   * its ticket (`[t2] `).
+   */
+  readonly streamed: boolean;
   readonly error?: string;
 }
 
@@ -220,12 +228,15 @@ export interface ProgressHandle {
 export interface ServiceLocator {
   /**
    * Resolve a whitelisted host service. Keys of the default whitelist:
-   * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[];
+   * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[],
+   *   `"runtime"` → {@link RuntimeInfo} (the version and install channel of the runtime that runs the command);
    * - present only when the host wired them (check with `has`): `"llm"` → ILlmProvider,
    *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name),
    *   `"permissions"` → {@link PermissionRulesFacade} (the session's tool-call rules, in `orkeon-repl`),
-   *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`).
+   *   `"approvals"` → {@link PendingApprovals} (the tool approvals waiting for the operator, read-only, in `orkeon-repl`),
+   *   `"session"` → {@link SessionFacade} (save the persisted session now, here or to another file, load a saved one, in `orkeon-repl`),
+   *   `"usage"` → {@link SessionUsage} (the session's LLM usage by model and by command, with its cost, read-only).
    *
    * The host configuration is deliberately not served: it carries API keys and connection
    * strings (SEC-009), so `get("configuration")` throws.
@@ -234,6 +245,9 @@ export interface ServiceLocator {
   get(name: "script-host"): ScriptHostFacade;
   get(name: "permissions"): PermissionRulesFacade;
   get(name: "approvals"): PendingApprovals;
+  get(name: "session"): SessionFacade;
+  get(name: "runtime"): RuntimeInfo;
+  get(name: "usage"): SessionUsage;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -314,6 +328,30 @@ export interface PendingApprovals {
   list(): readonly PendingApproval[];
 }
 
+/**
+ * The REPL's persisted session — `ctx.services.get("session")`, in `orkeon-repl` while
+ * `Orkeon:Cli:Session:Persist` is on (the REPL's default). Paths are virtual (`/workspace/...`).
+ */
+export interface SessionFacade {
+  /**
+   * Writes the session now and resolves to the virtual path written. Without `path`, to its own file —
+   * the file and the shape the REPL writes at exit (`<SessionsDirectory>/<project>/last.json`). With
+   * `path`, to that virtual file instead, in the same shape, so {@link SessionFacade.load} reads it back.
+   * A blank `path` rejects. The session goes on saving to its own file, so archive the current one with
+   * `save(path)` before a `load`: the loaded session overwrites the own file at the next save.
+   */
+  save(path?: string): Promise<string>;
+  /**
+   * Swaps the conversation buffer and the state bag (with the session's id and title) for those of a
+   * file the REPL saved, and resolves to the number of messages loaded: the next turn continues the
+   * loaded conversation. The running command instances (`commands.list`) are untouched, and the
+   * session goes on saving to its own file (archive the current one first with `save(path)`). A
+   * missing file, or one not of the shape the REPL writes, rejects and leaves the session as it was.
+   * A load while another command's turn runs is not supported: the last writer wins.
+   */
+  load(path: string): Promise<number>;
+}
+
 /** One tool approval waiting for the operator. */
 export interface PendingApproval {
   /** The ticket of the background task that asks (`t1`); null outside a task. */
@@ -326,12 +364,101 @@ export interface PendingApproval {
   readonly input: string;
 }
 
+/**
+ * The runtime that runs the command — `ctx.services.get("runtime")`, always present. The version and
+ * the channel are the ones `orkeon doctor` prints; `version + "+" + commit` is the full build version.
+ */
+export interface RuntimeInfo {
+  /** The release, build metadata removed (`1.0.0-rc.6`); `"unknown"` when the host carries none. */
+  readonly version: string;
+  /** The commit sha the build was made from (the metadata after `+`); null when the version carries none. */
+  readonly commit: string | null;
+  /**
+   * The channel the runtime was installed through: `dotnet-tool`, `deb`, `tarball`, `zip`, `msi`,
+   * `homebrew`, `source`…, `"unknown"` when nothing names one (a build tree, an installation older than the marker).
+   */
+  readonly channel: string;
+}
+
+/**
+ * The session's LLM usage — `ctx.services.get("usage")`, present when the host keeps a cost manager or
+ * command instances (`orkeon-repl`). Read-only. Each `report()` reads the figures of that moment.
+ */
+export interface SessionUsage {
+  /** The session's usage now: its totals, one row per model, one row per command instance. */
+  report(): SessionUsageReport;
+}
+
+/** The token split every usage row carries. The cache counts are a part of the prompt, the reasoning a part of the completion. */
+export interface UsageTokens {
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  /** Prompt tokens served from the provider's cache; 0 when the provider reports none. */
+  readonly cacheHitTokens: number;
+  /** Prompt tokens written to the provider's cache; 0 when the provider reports none. */
+  readonly cacheWriteTokens: number;
+  /** Completion tokens spent reasoning (Z.AI, OpenRouter report them); 0 when the provider reports none. */
+  readonly reasoningTokens: number;
+}
+
+/** What {@link SessionUsage.report} returns. */
+export interface SessionUsageReport extends UsageTokens {
+  /** `promptTokens + completionTokens`. */
+  readonly totalTokens: number;
+  /** The LLM calls of the session. */
+  readonly calls: number;
+  /** The calls nobody priced (no vendor charge, no registry price): `cost` counts them as 0, a lower bound while this is not 0. */
+  readonly unpricedCalls: number;
+  /** The session's cost (USD for the registry's prices); null when no price is known for any call it made. */
+  readonly cost: number | null;
+  /**
+   * One row per model, by name. A call whose provider named no model has no row: the session's totals count it,
+   * so they may exceed the sum of these rows.
+   */
+  readonly byModel: readonly ModelUsageRow[];
+  /** One row per command instance the session keeps (a crew run with `runCrewAsync` included), the newest first. */
+  readonly byCommand: readonly CommandUsageRow[];
+}
+
+/** The usage of one model. */
+export interface ModelUsageRow extends UsageTokens {
+  /** The model, as the provider named it in its answer. */
+  readonly model: string;
+  /** The LLM calls of the model. */
+  readonly calls: number;
+  /** The calls nobody priced: `cost` counts them as 0. */
+  readonly unpricedCalls: number;
+  /** The model's cost; null when the vendor billed nothing and no price is configured for it. */
+  readonly cost: number | null;
+}
+
+/** The usage of one command instance. */
+export interface CommandUsageRow extends UsageTokens {
+  /** The instance's ticket (`t1`). */
+  readonly ticket: string;
+  /** The command's name. */
+  readonly name: string;
+  /** The instance's state. */
+  readonly state: CommandInstanceState;
+  /** The LLM calls of the instance. */
+  readonly calls: number;
+  /** The calls nobody priced: `cost` counts them as 0. */
+  readonly unpricedCalls: number;
+  /** The instance's cost; null while none of its calls was priced. */
+  readonly cost: number | null;
+}
+
 /** Result of a crew run launched via {@link ScriptHostFacade}. */
 export interface CrewRunOutput {
   readonly ok: boolean;
   readonly summary?: string;
   readonly artifacts?: unknown;
   readonly error?: string;
+  /**
+   * True when any turn of this run was written to the console in the foreground; background and
+   * labelled output report false: streaming off, a crew task's lines (`[task] `), and `runCrewAsync`.
+   */
+  readonly streamed: boolean;
 }
 
 // ── Args schema: `args: { who: { type: "string" } }` gives the handler `args.who: string`. ──

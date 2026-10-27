@@ -285,7 +285,7 @@ public sealed class CrewBudgetRunTests
     [InlineData("{ budget: { toolCalls: 0 } }", "budget.toolCalls must be a whole number of 1 or more; got 0.")]
     [InlineData("{ budget: { tokens: 2.5 } }", "budget.tokens must be a whole number of 1 or more; got 2.5.")]
     [InlineData("{ budget: { tokens: \"many\" } }", "budget.tokens must be a whole number of 1 or more; got \"many\".")]
-    [InlineData("{ budget: { seconds: 30 } }", "budget.seconds is not a budget dimension; expected one of toolCalls, tokens, wallTime, delegationDepth, spawnedAgents.")]
+    [InlineData("{ budget: { seconds: 30 } }", "budget.seconds is not a budget dimension; expected one of toolCalls, tokens, contextTokens, wallTime, delegationDepth, spawnedAgents.")]
     [InlineData("{ budget: { wallTime: \"soon\" } }", "budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got \"soon\".")]
     [InlineData("{ budget: { wallTime: -1 } }", "budget.wallTime must be a positive number of seconds or a duration such as \"90s\" or \"5m\"; got -1.")]
     [InlineData("{ budget: 5 }", "budget must be an object such as { toolCalls: 20, tokens: 50000, wallTime: 300 }.")]

@@ -31,6 +31,37 @@ public sealed class TokenBudgetResponse
     /// <summary>Active model name.</summary>
     [JsonPropertyName("model")]
     public string Model { get; set; } = "";
+
+    /// <summary>What fills <see cref="UsedTokens"/>, by kind of buffer entry; the kinds add up to it.</summary>
+    [JsonPropertyName("used_tokens_by_kind")]
+    public TokenBudgetByKind UsedTokensByKind { get; set; } = new();
+}
+
+/// <summary>
+/// The tokens of the session buffer by kind of entry, estimated as <c>used_tokens</c> is (characters of the
+/// role and the content, divided by 4).
+/// </summary>
+public sealed class TokenBudgetByKind
+{
+    /// <summary>System entries (<c>system</c>).</summary>
+    [JsonPropertyName("system")]
+    public int System { get; set; }
+
+    /// <summary>The user's entries (<c>user</c>).</summary>
+    [JsonPropertyName("user")]
+    public int User { get; set; }
+
+    /// <summary>The model's answers (<c>assistant</c>).</summary>
+    [JsonPropertyName("assistant")]
+    public int Assistant { get; set; }
+
+    /// <summary>Tool results (<c>tool</c>).</summary>
+    [JsonPropertyName("tool")]
+    public int Tool { get; set; }
+
+    /// <summary>Every other entry (a <c>note</c>, a role no kind above names): the rest of <c>used_tokens</c>.</summary>
+    [JsonPropertyName("other")]
+    public int Other { get; set; }
 }
 
 /// <summary>
@@ -41,7 +72,7 @@ public sealed class TokenBudgetResponse
 /// The domain <c>ILlmProvider</c> exposes no context-window API, so the window and model name come
 /// from the settings: <c>Orkeon:Cli:Session:ContextWindowTokens</c> (<see cref="CliSessionOptions"/>,
 /// default 200000, judged at the host's start) and <c>Llm:Model</c>. Used tokens come from the
-/// buffer's heuristic.
+/// buffer's heuristic, split by kind of entry in <see cref="TokenBudgetResponse.UsedTokensByKind"/>.
 /// </remarks>
 public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetResponse>
 {
@@ -49,7 +80,7 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     public override string Name => "token_budget";
     /// <inheritdoc />
     public override string Description =>
-        "Return the current model's context window size, used tokens, and available budget.";
+        "Return the current model's context window size, used tokens (split by kind: system, user, assistant, tool, other), and available budget.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;
@@ -78,7 +109,8 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
     {
         var contextWindow = _contextWindow;
         var model = _configuration?["Llm:Model"] ?? "unknown";
-        var used = _buffer.EstimateTokenCount();
+        // One snapshot of the buffer feeds both the total and its split, so the kinds always add up to it.
+        var (used, byKind) = Measure(_buffer.GetMessages());
 
         return Task.FromResult(new TokenBudgetResponse
         {
@@ -86,6 +118,43 @@ public sealed class TokenBudgetTool : ToolBase<TokenBudgetRequest, TokenBudgetRe
             UsedTokens = used,
             AvailableTokens = Math.Max(0, contextWindow - used),
             Model = model,
+            UsedTokensByKind = byKind,
         });
+    }
+
+    /// <summary>
+    /// The used tokens of <paramref name="messages"/> with the buffer's heuristic (characters of the role and the
+    /// content, divided by 4, as <see cref="ISessionBufferService.EstimateTokenCount"/> counts them), and their split
+    /// by kind of entry; <c>other</c> takes what the named kinds leave, so the kinds add up to the used tokens.
+    /// </summary>
+    internal static (int Used, TokenBudgetByKind ByKind) Measure(IReadOnlyList<SessionMessage> messages)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        long total = 0, system = 0, user = 0, assistant = 0, tool = 0;
+        foreach (var m in messages)
+        {
+            var chars = (long)(m.Role?.Length ?? 0) + (m.Content?.Length ?? 0);
+            total += chars;
+            switch (m.Role)
+            {
+                case "system": system += chars; break;
+                case "user": user += chars; break;
+                case "assistant": assistant += chars; break;
+                case "tool": tool += chars; break;
+            }
+        }
+
+        var byKind = new TokenBudgetByKind
+        {
+            System = Tokens(system),
+            User = Tokens(user),
+            Assistant = Tokens(assistant),
+            Tool = Tokens(tool),
+        };
+        var used = Tokens(total);
+        byKind.Other = (int)Math.Max(0L, (long)used - byKind.System - byKind.User - byKind.Assistant - byKind.Tool);
+        return (used, byKind);
+
+        static int Tokens(long chars) => (int)Math.Min(int.MaxValue, chars / 4);
     }
 }

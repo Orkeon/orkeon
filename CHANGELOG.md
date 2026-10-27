@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
+
+With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
+that then printed the payload printed it twice. `CommandResponse` (the value of `commands.request`, the `result` of
+`completed`) and `CrewRunOutput` (`script-host.runCrew`) now carry `streamed: boolean`: true when any turn of the
+request was written to the console in the foreground (inline, or as whole unprefixed lines when another turn held the
+inline claim), so the script skips its own print. A background instance (`post`, `runCrewAsync`) and a crew task
+write whole lines prefixed with their ticket or task and report false. The dispatch opens one receipt per agent
+request and per crew run in that work's async flow, and `ConsoleLlmDeltaSink` records into it whether each turn was
+shown; the receipt never goes back to false within a request, so commands running at once each read their own and
+concurrent turns of one request do not race on it.
+
+### Added — `budget({ contextTokens })`: a token budget that counts the context once (#224)
+
+`budget({ tokens })` sums the prompt and the completion of every call, so a turn pays its whole context again at each
+call. `contextTokens`, a new key beside it (`crewBuilder().budget(...)` of a scripted run, the `budget` option of
+`crew.runAgent` and `ctx.delegate`), counts each call's completion plus, when the provider reports cache hits, the
+uncached part of its prompt, else what the prompt grew by since the run's previous call: a turn of n calls on a context
+of c tokens spends about c plus its completions, not n × c. `tokens` keeps its meaning and stays the default; set
+alone, `contextTokens` leaves it uncapped. Its exhaustion is that of `tokens` — the `tokens` dimension, the #218
+wrap-up with `budgetExhausted: true` — and its message names the measure: `Token budget exhausted: <n> context tokens
+(...) over <n> calls (limit <limit> contextTokens)`. A declarative `process("autonomous")` crew, which counts each
+finished task's tokens, refuses the key. `AgentExecutionBudget` gains `MaxContextTokens`, `CurrentContextTokens` and
+`RecordTokens(tokens, promptTokens, completionTokens, cacheHitTokens)`. The refusal of an unknown run-option key now
+lists `contextTokens` among the dimensions.
+
+### Added — a command saves the REPL's session now, or loads a saved one (#227)
+
+A new `session` service of `*.cmd.ts` (`ctx.services.get("session")`, `SessionFacade`), served in `orkeon-repl` while
+the session is persisted (`Orkeon:Cli:Session:Persist`, the REPL's default), offers `save(path?)` and `load(path)`.
+`save()` writes the session now to the file and in the shape the REPL writes at exit
+(`<SessionsDirectory>/<project>/last.json`) and resolves to its virtual path; `save(path)` writes it in the same shape
+to another virtual file instead (a blank path is refused), so `load` reads it back. `load(path)` reads a session file
+the REPL saved, through the virtual file system, and swaps the conversation buffer and the state bag (with the
+session's id and title) for its own, so the next turn continues the loaded conversation; it resolves to the number of
+messages loaded. The running command instances are untouched and the session goes on saving to its own file, which the
+loaded session overwrites at the next save: archive the current one with `save(path)` before `load`. A missing file,
+or one without the shape the REPL writes, is refused whole: the promise rejects and the session stays as it was. A load
+while another command's turn runs is not supported (the last writer wins). `FileSessionBufferService` gets
+`SessionFilePath`, `SaveToAsync(path)` and `LoadFromAsync(path)`, which returns the count of messages loaded.
+
+### Added — scripted commands read the version of the runtime that runs them (#225)
+
+`ctx.services.get("runtime")` answers `{ version, commit, channel }`: the release as `orkeon doctor` prints it
+(`1.0.0-rc.6`), the commit sha of its build metadata (null when there is none), and the channel the runtime was
+installed through, read from the installation's `INSTALL-CHANNEL` marker (`unknown` when nothing names one). The key
+is always present; `orkeon-repl` registers its own `ScriptRuntimeInfo`, and a host that registers none answers its
+entry assembly's version with the channel `unknown`. `orkeon-cli.d.ts` declares it (`RuntimeInfo`), so
+`orkeon typings` writes it. The reader of the install channel moved from the `orkeon` tool to `Orkeon.Hosting`, where
+both `orkeon doctor` and `orkeon-repl` read it.
+
+### Added — the `Orkeon.Scripting` package runs a `crew.ork.ts` inside a .NET application (#229)
+
+`Orkeon.Scripting` is published again, as an opt-in of the NuGet.org lineup (ten packages). Its wrapper
+(`src/packaging/Orkeon.Scripting/`) embeds `Orkeon.Scripting` (the Jint host, the esbuild bundler driver, the DSL
+typings), `Orkeon.Hosting` and `Orkeon.Constants.Cli`, and depends on `Orkeon`, `Orkeon.Tools` and
+`Orkeon.Tools.Embeddings.Local`; it stays out of the umbrella for that weight. `Orkeon.Hosting` gains the entry point:
+`services.AddOrkeonScripting(options => ...)` registers `ICrewScriptRunner`, whose `RunAsync(path, input, ct)` runs a
+crew definition (a `.ork.ts` that hands its crew off, a `crew.yaml`, a crew directory) on the runner bootstrap of
+`orkeon run` (`RunnerExecution`) and returns its `CrewOutput`; a run that cannot start throws
+`CrewScriptRunException` with the line `orkeon run` would print. `CrewScriptRunnerOptions` carries the `orkeon run`
+options (`SettingsPath`, `Mounts`, `MountIds`, `AllowExternalMounts`, `LlmProfile`) plus `ConfigureServices`,
+`ConfigureLogging` and `Diagnostics`. esbuild is not shipped: it is found as the `orkeon` tool finds it. Which crews
+need `orkeon-host` instead is in `docs/architecture/service-host.md` §8. `scripts/check-package-closure.py` now checks
+a package against everything its lineup dependencies provide, not the umbrella alone.
+
+### Added — the session's usage by model and by command for scripts; `token_budget` by kind of entry (#226)
+
+A `*.cmd.ts` reads the session's LLM usage through `ctx.services.get("usage")` (`ScriptServiceKeys.Usage`, an
+optional entry of the default whitelist, present when the host keeps an `ICostBudgetManager` or a
+`CommandInstanceRegistry`). `report()` returns the prompt, completion, cache-hit, cache-write and reasoning tokens of
+the session, its calls, unpriced calls and cost, one row per model (`byModel`) and one per command instance
+(`byCommand`, a crew launched with `runCrewAsync` included). The totals count every call, one whose provider named no
+model included (`CostReport.TotalUsage`), so they may exceed the sum of `byModel`. A cost is the vendor's charge, else
+the registry's price for the model, and null when neither is known; every row and the totals carry `unpricedCalls`,
+the calls nobody priced, which the cost counts as 0. The typings declare `SessionUsage`, `SessionUsageReport`, `ModelUsageRow` and
+`CommandUsageRow`. To feed it, a command instance keeps the split of its usage (`CommandInstance.AddUsage`,
+`CommandInstance.Usage`, `CommandInstanceUsage`) instead of a bare total, `CostBudgetCheckResult.Cost` answers the
+cost `RecordUsage` settled (null for a call nobody priced), `ModelUsage` carries `ReasoningTokens`, `Priced`, `Calls` and `UnpricedCalls`, `CommandInstanceUsage.UnpricedCalls`
+counts an instance's unpriced calls, and
+`CostUsageEvent.ReasoningTokens` carries the reasoning tokens a provider reports in its metadata
+(`LlmUsageMetadataKeys.ReasoningTokens`, `reasoning_tokens`: Z.AI, OpenRouter). The `token_budget` tool keeps its
+fields and adds `used_tokens_by_kind` (`system`, `user`, `assistant`, `tool`, `other`), which adds up to
+`used_tokens`, both read from one snapshot of the buffer. `tools.generated.d.ts` types a nested record of a tool's result
+by its members (`used_tokens_by_kind`, `range`, `filter_stats`...) instead of `Record<string, unknown>`.
+
 ### Changed — one screen per thread in the split-pane console; ended tasks stay listed
 
 The split-pane console (the TUI's REPL) no longer mixes every task's output into one transcript. `main` and each

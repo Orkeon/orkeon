@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Telemetry;
 using Orkeon.Domain.SharedKernel;
@@ -504,6 +505,7 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
             CacheHitTokens = response.CacheHitTokens,
             CacheMissTokens = response.CacheMissTokens,
             CacheWriteTokens = response.CacheWriteTokens,
+            ReasoningTokens = ReasoningTokensOf(response),
             Estimated = !counted,
             // What the vendor billed, as billed — null when it billed nothing in its answer,
             // never a price computed here (DD-1).
@@ -521,6 +523,22 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         var promptTokens = response.PromptTokens ?? 0;
         return (promptTokens, response.CompletionTokens ?? Math.Max(0, response.TokensUsed - promptTokens));
     }
+
+    /// <summary>
+    /// The reasoning tokens the provider reported in its metadata (<see cref="LlmUsageMetadataKeys.ReasoningTokens"/>);
+    /// null when it reported none or a value that is not a count.
+    /// </summary>
+    private static long? ReasoningTokensOf(LlmResponse response) =>
+        response.Metadata.TryGetValue(LlmUsageMetadataKeys.ReasoningTokens, out var value)
+            ? value switch
+            {
+                int i => i,
+                long l => l,
+                double d when d >= 0 && d <= long.MaxValue => (long)d,
+                decimal m when m >= 0 && m <= long.MaxValue => (long)m,
+                _ => null,
+            }
+            : null;
 
     /// <summary>Adds a billed cost to the meter when the vendor billed it in US dollars.</summary>
     private static void AddUsdCost(bool billed, decimal cost, string? currency)

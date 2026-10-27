@@ -357,7 +357,32 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ---
 
-## 8. See also
+## 8. In-process, or under `orkeon-host`
+
+A .NET application can run a crew inside its own process: the `Orkeon.Scripting` package's
+`ICrewScriptRunner` ([Hosting — running a crew in-process](../reference/hosting.md#running-a-crew-in-process))
+builds the runner host of `orkeon run` for one run, returns the crew's output and disposes it.
+That covers a crew the application calls and waits for: a request handler, a batch job, a test.
+Its relative paths — the crew, the settings file, the mounts — resolve against the process working
+directory, as for `orkeon run`; a cancelled run throws `OperationCanceledException`.
+
+A crew needs `orkeon-host` instead when it must outlive a call:
+
+- **It answers a chat channel.** The gateway, its allow-list, thread-is-run routing, the
+  throttled responder and the `/status` / `/stop` commands live in the daemon only.
+- **Other agents call it.** The A2A server, its agent card and its authentication are the
+  daemon's.
+- **Several crews share one service.** The crew registry, its concurrency ceiling, per-crew mount
+  namespaces and per-run isolation are what `orkeon-host` adds over a single run.
+- **It is supervised as a service.** systemd, a Windows service or the container image restart
+  and log the daemon; an in-process run lives and dies with its caller.
+
+A procedural `.ork.ts` — one that drives agents itself instead of handing a crew off through
+`globalThis.crew` — is neither: it runs with `orkeon run`.
+
+---
+
+## 9. See also
 
 - [The run event bus](run-event-bus.md) — the protocol a watching process reads, and the shape the gateway's ports were written to accommodate.
 - [EventHub and crew lifecycle](event-hub-and-crew-lifecycle.md) — inter-crew messaging and its ACL.

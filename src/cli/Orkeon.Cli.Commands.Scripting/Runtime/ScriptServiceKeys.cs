@@ -40,4 +40,24 @@ public static class ScriptServiceKeys
     /// (<see cref="ScriptPendingApprovals"/>). Read-only; present when the host watches them (the REPL).
     /// </summary>
     public const string Approvals = "approvals";
+
+    /// <summary>
+    /// Optional: the REPL's persisted session — <c>ctx.services.get("session")</c> (<see cref="SessionFacade"/>):
+    /// <c>save()</c> it now to its own file, <c>save(path)</c> to another, <c>load(path)</c> a saved one in its place.
+    /// Present when the session is persisted per project.
+    /// </summary>
+    public const string Session = "session";
+
+    /// <summary>
+    /// The runtime that runs the command — <c>ctx.services.get("runtime")</c>
+    /// (<see cref="ScriptRuntimeInfo"/>): its version, commit and install channel. Always present.
+    /// </summary>
+    public const string Runtime = "runtime";
+
+    /// <summary>
+    /// Optional: the session's LLM usage by model and by command instance, with its cost when a price is
+    /// known — <c>ctx.services.get("usage")</c> (<see cref="ScriptSessionUsage"/>). Read-only; present when
+    /// the host keeps a cost manager or command instances.
+    /// </summary>
+    public const string Usage = "usage";
 }
