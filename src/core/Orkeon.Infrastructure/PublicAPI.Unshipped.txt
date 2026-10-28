@@ -392,3 +392,29 @@ Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies.DecisionRunner.ge
 Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies.DecisionRunner.init -> void
 Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ParallelProcessStrategy(Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies! dependencies, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null, Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector? agentSelector = null) -> void
 *REMOVED*Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy.ParallelProcessStrategy(Orkeon.Domain.Task.ITaskRepository! taskRepository, Orkeon.Domain.Agent.IAgentRepository! agentRepository, Orkeon.Application.Interfaces.Services.IAgentExecutionService! executionService, Orkeon.Application.Interfaces.Ports.IMemoryScope! memoryScope, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.Strategies.ParallelProcessStrategy!>! logger, Orkeon.Application.Crew.ICrewExecutionHook? hook = null, Orkeon.Infrastructure.Crew.Strategies.TaskAgentSelector? agentSelector = null, Orkeon.Domain.SharedKernel.Events.IDomainEventDispatcher? domainEvents = null) -> void
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.Decision.get -> Orkeon.Infrastructure.Configuration.DecisionYamlConfig?
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.Decision.set -> void
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.When.get -> System.Collections.Generic.Dictionary<string!, object!>?
+Orkeon.Infrastructure.Configuration.TaskYamlConfig.When.set -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.DecisionYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.Questions.get -> System.Collections.Generic.Dictionary<string!, Orkeon.Infrastructure.Configuration.QuestionYamlConfig!>?
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.Questions.set -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.MinConfidence.get -> double?
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.MinConfidence.set -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.State.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.State.set -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.LongContext.get -> bool?
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.LongContext.set -> void
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.Fallback.get -> System.Collections.Generic.Dictionary<string!, string!>?
+Orkeon.Infrastructure.Configuration.DecisionYamlConfig.Fallback.set -> void
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.QuestionYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Choice.get -> System.Collections.Generic.Dictionary<string!, string!>?
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Choice.set -> void
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Score.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Score.set -> void
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Noul.get -> string?
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Noul.set -> void
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Instructions.get -> string?
+Orkeon.Infrastructure.Configuration.QuestionYamlConfig.Instructions.set -> void

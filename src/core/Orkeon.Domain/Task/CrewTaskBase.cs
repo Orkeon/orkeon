@@ -45,6 +45,9 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     /// </summary>
     public AgentId? AssignedAgent { get; private set; }
 
+    /// <summary>Gets the key this task was declared with, or null when it has none.</summary>
+    public string? Key { get; private set; }
+
     /// <summary>Gets the decision this task makes instead of an agent.</summary>
     public TaskDecision? Decision { get; private set; }
 
@@ -61,6 +64,8 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
 
         Decision = decision;
     }
+
+    internal void SetKey(string? key) => Key = key;
 
     internal void SetCondition(TaskCondition condition) => Condition = condition;
 

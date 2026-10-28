@@ -31,6 +31,9 @@ public sealed class JsTaskBuilder
     private JsValue? _responseSchema;
     private bool _responseSchemaStrict = true;
     private string? _profile;
+    private object? _decisionSpec;
+    private string? _whenTask;
+    private object? _whenSpec;
 
     public JsTaskBuilder name(string value) { _name = value; return this; }
     public JsTaskBuilder description(string value) { _description = value; return this; }
@@ -169,11 +172,46 @@ public sealed class JsTaskBuilder
         return this;
     }
 
+    /// <summary>
+    /// Makes this task a decision task: <c>{ questions, minConfidence, state, longContext, fallback }</c>,
+    /// the shape of the YAML <c>decision:</c> block. It needs no agent; the domain checks every rule.
+    /// </summary>
+    public JsTaskBuilder decision(JsValue spec)
+    {
+        if (spec is null || !spec.IsObject())
+            throw new InvalidScriptException(".decision(spec) expects an object literal.");
+        _decisionSpec = spec.ToObject();
+        return this;
+    }
+
+    /// <summary>
+    /// Runs this task only when the decision task named answered as asked: a clause object
+    /// (<c>{ category: ["bug"], urgency: "&gt;= 0.7", "category.bug": "&gt;= 0.25" }</c>) or the string <c>"otherwise"</c>.
+    /// </summary>
+    public JsTaskBuilder when(string decisionTask, JsValue clauses)
+    {
+        if (string.IsNullOrWhiteSpace(decisionTask))
+            throw new InvalidScriptException(".when(task, clauses) requires the name of a decision task.");
+        if (clauses is null || !(clauses.IsObject() || clauses.IsString()))
+            throw new InvalidScriptException(".when(task, clauses) expects a clause object or \"otherwise\".");
+        _whenTask = decisionTask;
+        _whenSpec = clauses.ToObject();
+        return this;
+    }
+
     public JsTask build()
     {
+        if (_decisionSpec is not null)
+        {
+            if (string.IsNullOrWhiteSpace(_name))
+                throw new InvalidScriptException("taskBuilder() decision task requires .name(...).");
+            _description ??= _name;
+            _expectedOutput ??= "decision";
+        }
+
         if (string.IsNullOrWhiteSpace(_description))
             throw new InvalidScriptException("taskBuilder() requires .description(...).");
-        if (_agent is null)
+        if (_agent is null && _decisionSpec is null)
             throw new InvalidScriptException("taskBuilder() requires .agent(...).");
         if (string.IsNullOrWhiteSpace(_expectedOutput))
             throw new InvalidScriptException("taskBuilder() requires .expectedOutput(...).");
@@ -197,6 +235,10 @@ public sealed class JsTaskBuilder
             HumanInput = _humanInput,
             AsyncExecution = _asyncExecution,
             Tools = _tools,
+            Key = _name,
+            DecisionSpec = _decisionSpec,
+            WhenTask = _whenTask,
+            WhenSpec = _whenSpec,
         });
     }
 }

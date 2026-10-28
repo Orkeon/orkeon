@@ -46,3 +46,5 @@ Orkeon.Scripting.ScriptingHostPorts.FileSystem.init -> void
 Orkeon.Scripting.Runtime.JsAgentContext.tools.get -> System.Collections.Generic.IDictionary<string!, object?>!
 *REMOVED*Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
 Orkeon.Scripting.Runtime.JsExecutionContext.delegate.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!, Jint.Native.JsValue!>!
+Orkeon.Scripting.Builders.JsTaskBuilder.decision(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsTaskBuilder!
+Orkeon.Scripting.Builders.JsTaskBuilder.when(string! decisionTask, Jint.Native.JsValue! clauses) -> Orkeon.Scripting.Builders.JsTaskBuilder!

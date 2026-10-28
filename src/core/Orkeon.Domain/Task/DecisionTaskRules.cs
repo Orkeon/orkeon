@@ -6,6 +6,10 @@ namespace Orkeon.Domain.Task;
 /// <summary>Crew-level rules of decision tasks.</summary>
 public static class DecisionTaskRules
 {
+    /// <summary>The refusal of a task that names an agent and declares a decision.</summary>
+    public static string AgentAndDecisionMessage(string taskName) =>
+        $"Task '{taskName}' declares both a decision and an agent: a decision task runs no agent, remove one of decision and agent.";
+
     /// <summary>Checks the declarations, one message per fault.</summary>
     public static IReadOnlyList<string> Check(ProcessType process, IReadOnlyList<DecisionTaskDeclaration> tasks)
     {
@@ -16,6 +20,9 @@ public static class DecisionTaskRules
 
         foreach (var task in tasks)
         {
+            if (task.Decision is not null && task.HasAgent)
+                messages.Add(AgentAndDecisionMessage(task.Name));
+
             if (!supported && (task.Decision is not null || task.Condition is not null))
                 messages.Add($"Task '{task.Name}' declares a decision or a condition, which the {process} process does not support.");
 

@@ -1500,6 +1500,7 @@ Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.DecisionQuestionSpec() -> v
 Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.DecisionQuestionSpec(Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec! original) -> void
 Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Name.get -> string!
 Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.Name.init -> void
+static Orkeon.Domain.Task.DecisionTaskRules.AgentAndDecisionMessage(string! taskName) -> string!
 Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration
 Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!
 Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration.Condition.get -> Orkeon.Domain.Task.ValueObjects.TaskCondition?
@@ -1607,3 +1608,7 @@ Orkeon.Domain.Task.CrewTaskBase<TContext>.CompleteWithoutAgent(Orkeon.Domain.Tas
 Orkeon.Domain.Task.CrewTaskBuilder.When(Orkeon.Domain.Common.TaskId! decisionTaskId, Orkeon.Domain.Task.ValueObjects.TaskCondition! condition) -> Orkeon.Domain.Task.CrewTaskBuilder!
 *REMOVED*Orkeon.Domain.Task.Events.TaskCompletedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId!
 Orkeon.Domain.Task.Events.TaskCompletedEvent.AgentId.get -> Orkeon.Domain.Common.AgentId?
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Key.get -> string?
+Orkeon.Domain.Task.CrewTaskBuilder.WithKey(string? key) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.ValueObjects.ThresholdExpression
+static Orkeon.Domain.Task.ValueObjects.ThresholdExpression.TryParse(string! text, out Orkeon.Domain.Task.ValueObjects.ConditionComparison comparison, out double value) -> bool

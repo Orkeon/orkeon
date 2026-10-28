@@ -27,9 +27,9 @@ internal static class ConditionGate
     private static (bool Run, string? Reason) Evaluate(
         CrewTask task, Domain.Task.ValueObjects.TaskCondition condition, CrewRunOutcome outcome, IReadOnlyList<CrewTask> crewTasks)
     {
-        var decisionTask = crewTasks.FirstOrDefault(t => DecisionPreflight.NameOf(t) == condition.DecisionTask);
-        if (decisionTask?.Decision is not { } decision)
-            return (true, null);
+        var decisionTask = DecisionPreflight.FindDecisionTask(crewTasks, condition.DecisionTask)
+            ?? throw new InvalidOperationException($"Task {task.Id} is conditioned on '{condition.DecisionTask}', which names no decision task of the crew.");
+        var decision = decisionTask.Decision!;
 
         if (outcome.IsConditionSkipped(decisionTask.Id))
             return (false, $"decision {condition.DecisionTask} did not run");

@@ -5,6 +5,7 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew;
+using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.FileSystem;
@@ -77,6 +78,12 @@ internal sealed class RunCommandOptions : CliOptions
                        + "the Llm section becomes that profile, whole, for every call that names no profile of its own. "
                        + "An id the settings do not define is refused, listing the ones they do.")]
         public string? LlmProfile { get; set; }
+
+        /// <summary>Switches the decision circuit off for this run, whatever the configuration says.</summary>
+        [Option("no-decision", Required = false, Default = false,
+            HelpText = "Switch the decision circuit off for this run, even when Orkeon:Decision:Enabled is true: "
+                       + "decision tasks answer from their fallback.")]
+        public bool NoDecision { get; set; }
 
         /// <summary>Verbosity level 0-2 (aligned with YAML runner).</summary>
         [Option('v', "verbose", Required = false, Default = 0,
@@ -490,10 +497,12 @@ internal static partial class RunCommand
             return await RunnerExecution.RunOneShotAsync(
                 ToRunnerOptions(console, options),
                 "orkeon",
-                configureServices: (_, services) =>
+                configureServices: (ctx, services) =>
                 {
                     services.AddSemanticSearchTool();
                     AddCliRagServices(services);
+                    ApplyDecisionSwitch(options, services);
+                    options.ConfigureTestServices?.Invoke(ctx, services);
                 })
                 .ConfigureAwait(false);
         }
@@ -512,6 +521,16 @@ internal static partial class RunCommand
     /// </summary>
     internal static void AddCliRagServices(IServiceCollection services) =>
         services.AddOrkeonOnnxReranker();
+
+    // --no-decision: the infrastructure registered the circuit with TryAdd before the
+    // host callback; the last registration wins.
+    private static void ApplyDecisionSwitch(RunCommandOptions options, IServiceCollection services)
+    {
+        if (options.NoDecision)
+        {
+            services.AddSingleton(DecisionCircuit.Off);
+        }
+    }
 
     /// <summary>
     /// The observed run (BUS-02): the same shared runner, with the event stream wired onto
@@ -535,11 +554,13 @@ internal static partial class RunCommand
         var exitCode = await RunnerExecution.RunOneShotAsync(
             ToRunnerOptions(console, options),
             "orkeon",
-            configureServices: (_, services) =>
+            configureServices: (ctx, services) =>
             {
                 services.AddSemanticSearchTool();
                 AddCliRagServices(services);
                 observed.WireServices(services);
+                ApplyDecisionSwitch(options, services);
+                options.ConfigureTestServices?.Invoke(ctx, services);
             })
             .ConfigureAwait(false);
 
@@ -700,6 +721,9 @@ internal static partial class RunCommand
                 // resolves its tools and sinks from this very host, so the decorated tools,
                 // the delta/usage observer and the hub bridge all flow into ctx.* naturally.
                 observed?.WireServices(services);
+
+                ApplyDecisionSwitch(options, services);
+
                 options.ConfigureTestServices?.Invoke(ctx, services);
             },
             llmProfile: options.LlmProfile);

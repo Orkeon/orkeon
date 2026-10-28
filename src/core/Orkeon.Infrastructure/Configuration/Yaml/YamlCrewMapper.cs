@@ -10,6 +10,8 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.EventHub;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Task;
+using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Infrastructure.Configuration;
 
@@ -54,6 +56,7 @@ public sealed partial class YamlCrewMapper
             : MapAgentsEmpty(out agentNameMap);
         var managerAgentId = ResolveManagerAgentId(settings.ManagerAgent, agentNameMap);
         var mappedTasks = tasks != null ? MapTasks(tasks, agentNameMap) : [];
+        CheckDecisionRules(process, mappedTasks);
 
         return new CrewConfiguration
         {
@@ -208,13 +211,23 @@ public sealed partial class YamlCrewMapper
             taskNameToId[kvp.Key] = TaskId.Create();
         }
 
+        var decisions = tasks
+            .Where(t => t.Value.Decision is not null)
+            .ToDictionary(t => t.Key, t => MapDecision(t.Key, t.Value.Decision!));
+
         // Second pass: build TaskConfigurations with resolved references
         var result = new List<TaskConfiguration>();
         var unknownAgents = new List<string>();
         var unknownDependencies = new List<string>();
         foreach (var kvp in tasks)
         {
-            var dependencies = ResolveDependencies(kvp.Key, kvp.Value.Dependencies, taskNameToId, unknownDependencies);
+            var when = kvp.Value.When is { Count: > 0 } ? kvp.Value.When : null;
+            var condition = when is null ? null : MapCondition(kvp.Key, when, decisions);
+            var dependencyKeys = (kvp.Value.Dependencies ?? [])
+                .Concat(kvp.Value.Decision?.State ?? [])
+                .Concat(condition is null ? [] : [condition.DecisionTask])
+                .Distinct();
+            var dependencies = ResolveDependencies(kvp.Key, dependencyKeys, taskNameToId, unknownDependencies);
             var assignedAgentId = ResolveAgent(kvp.Key, kvp.Value.Agent, agentNameMap, unknownAgents);
 
             result.Add(new TaskConfiguration
@@ -232,6 +245,8 @@ public sealed partial class YamlCrewMapper
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
                 LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
                 Guardrails = MapGuardrails($"Task '{kvp.Key}'", kvp.Value.Guardrails),
+                Decision = decisions.GetValueOrDefault(kvp.Key),
+                Condition = condition,
             });
         }
 
@@ -239,6 +254,75 @@ public sealed partial class YamlCrewMapper
             ThrowUnknownReferences(unknownAgents, unknownDependencies, agentNameMap.Keys, taskNameToId.Keys);
 
         return result;
+    }
+
+    /// <summary>Hands the declarations to the domain's crew-level rules; the boundary adds no rule of its own.</summary>
+    private static void CheckDecisionRules(ProcessType process, List<TaskConfiguration> tasks)
+    {
+        var messages = DecisionTaskRules.Check(
+            process,
+            new CrewConfiguration { Tasks = tasks }.DecisionDeclarations());
+        if (messages.Count > 0)
+            throw new InvalidOperationException("Invalid decision or when declaration: " + string.Join(" ", messages));
+    }
+
+    private static TaskCondition MapCondition(
+        string taskKey, Dictionary<string, object> when, Dictionary<string, TaskDecision> decisions)
+    {
+        try
+        {
+            var decisionTask = WhenClauseParser.DecisionTaskOf(when);
+            if (!decisions.TryGetValue(decisionTask, out var decision))
+                throw new ArgumentException($"'{decisionTask}' is not a decision task of the crew.");
+            return WhenClauseParser.Parse(when, decision);
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException)
+        {
+            throw new InvalidOperationException(
+                $"Task '{taskKey}' when ({string.Join(", ", when.Select(c => $"{c.Key}: {Render(c.Value)}"))}): {ex.Message}", ex);
+        }
+    }
+
+    private static string Render(object? value) =>
+        value is IEnumerable<object> list ? "[" + string.Join(", ", list) + "]" : value?.ToString() ?? string.Empty;
+
+    /// <summary>Maps a <c>decision:</c> block through the domain's Create, which owns every rule.</summary>
+    private static TaskDecision MapDecision(string taskKey, DecisionYamlConfig decision)
+    {
+        var questions = (decision.Questions ?? []).Select(q => MapQuestion(taskKey, q.Key, q.Value)).ToList();
+        try
+        {
+            return TaskDecision.Create(
+                questions, decision.MinConfidence, decision.State?.ToList(), decision.LongContext ?? false, decision.Fallback);
+        }
+        catch (ArgumentException ex)
+        {
+            var part = ex.ParamName == "fallback" ? "decision.fallback" : "decision";
+            throw new InvalidOperationException($"Task '{taskKey}' {part}: {ex.Message}", ex);
+        }
+    }
+
+    private static DecisionQuestionSpec MapQuestion(string taskKey, string name, QuestionYamlConfig question)
+    {
+        try
+        {
+            return MapQuestion(name, question);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"Task '{taskKey}' decision.questions.{name}: {ex.Message}", ex);
+        }
+    }
+
+    private static DecisionQuestionSpec MapQuestion(string name, QuestionYamlConfig question)
+    {
+        if (new object?[] { question.Choice, question.Score, question.Noul }.Count(k => k is not null) > 1)
+            throw new ArgumentException("declares more than one of choice, score and noul; keep one.");
+        if (question.Choice is not null)
+            return ChoiceQuestionSpec.Create(name, question.Instructions ?? string.Empty, question.Choice);
+        if (question.Score is not null)
+            return ScoreQuestionSpec.Create(name, question.Instructions ?? string.Empty, question.Score.ToList());
+        return YesNoQuestionSpec.Create(name, question.Noul ?? string.Empty);
     }
 
     /// <summary>The ids of the tasks <paramref name="taskKey"/> depends on; a key naming no task is collected.</summary>

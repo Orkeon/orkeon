@@ -62,8 +62,42 @@ declare global {
          * source is `structured_output`) validates against the inline `schema`.
          */
         deliverable(spec: TaskDeliverableSpec): this;
+        /**
+         * Makes this task a decision task: it asks the LLM the listed questions and records the
+         * answers, which later tasks branch on with `when`.
+         */
+        decision(spec: DecisionSpec): this;
+        /**
+         * Runs this task only when the named decision task's answers match `clauses`, or
+         * (`"otherwise"`) when no other task gated on that decision matches.
+         */
+        when(decisionTask: string, clauses: WhenClauses | "otherwise"): this;
         build(): Task<TIn, TOut>;
     }
+
+    /** Decision contract of a task: the questions asked, the confidence floor and the fallbacks. */
+    interface DecisionSpec {
+        questions: Record<string, QuestionSpec>;
+        /** Answers below this confidence fall back to `fallback`. */
+        minConfidence?: number;
+        /** Names of the state keys the decision reads. */
+        state?: string[];
+        longContext?: boolean;
+        /** Question name to the option taken when the answer is not confident enough. */
+        fallback?: Record<string, string>;
+    }
+
+    /** One question: a choice among described options, a score per label, or a yes/no ("noul") test. */
+    type QuestionSpec =
+        | { choice: Record<string, string> }
+        | { score: string[]; instructions?: string }
+        | { noul: string };
+
+    /**
+     * Branch clauses: `question` maps to an option list or a threshold such as `">= 0.7"`;
+     * `"question.option"` maps to a threshold such as `">= 0.25"`.
+     */
+    type WhenClauses = Record<string, string[] | string>;
 
     /**
      * Deliverable contract for a task. `schema` (inline object) is JSON-serialized

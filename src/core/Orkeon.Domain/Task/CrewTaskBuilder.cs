@@ -27,6 +27,7 @@ public sealed class CrewTaskBuilder
     private Orkeon.Domain.Agent.GuardrailsConfig? _guardrails;
     private TaskDecision? _decision;
     private TaskCondition? _condition;
+    private string? _key;
 
     /// <summary>Sets the task description from a string value.</summary>
     public CrewTaskBuilder Description(string description)
@@ -53,6 +54,13 @@ public sealed class CrewTaskBuilder
     public CrewTaskBuilder ExpectedOutput(ExpectedOutput expectedOutput)
     {
         _expectedOutput = expectedOutput;
+        return this;
+    }
+
+    /// <summary>Sets the key the task is declared with.</summary>
+    public CrewTaskBuilder WithKey(string? key)
+    {
+        _key = key;
         return this;
     }
 
@@ -276,6 +284,8 @@ public sealed class CrewTaskBuilder
         {
             task.AssignTo(_assignedAgent);
         }
+
+        task.SetKey(_key);
 
         if (_decision is not null)
         {

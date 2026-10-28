@@ -12,7 +12,11 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 internal static class DecisionPreflight
 {
     /// <summary>The name a decision task goes by in the crew's messages and in the runner's inputs.</summary>
-    internal static string NameOf(CrewTask task) => task.Description.Value;
+    internal static string NameOf(CrewTask task) => task.Key ?? task.Description.Value;
+
+    /// <summary>The decision task called <paramref name="name"/>; a plain task of that name is never taken for it.</summary>
+    internal static CrewTask? FindDecisionTask(IReadOnlyList<CrewTask> tasks, string name) =>
+        tasks.FirstOrDefault(t => t.IsDecision && string.Equals(NameOf(t), name, StringComparison.Ordinal));
 
     /// <summary>Lists the faults that stop the run, one message each; empty when it may start.</summary>
     internal static IReadOnlyList<string> Check(IReadOnlyList<CrewTask> tasks, DecisionTaskRunner? runner)
@@ -38,8 +42,7 @@ internal static class DecisionPreflight
         var faults = new List<string>();
         foreach (var task in tasks.Where(t => t.Condition is not null))
         {
-            var decision = tasks.FirstOrDefault(t => t.IsDecision
-                && string.Equals(NameOf(t), task.Condition!.DecisionTask, StringComparison.Ordinal));
+            var decision = FindDecisionTask(tasks, task.Condition!.DecisionTask);
             if (decision is null)
                 faults.Add($"task '{NameOf(task)}' is conditioned on '{task.Condition!.DecisionTask}', which names no decision task of the crew");
             else if (!task.Dependencies.Contains(decision.Id))

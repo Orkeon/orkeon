@@ -242,7 +242,7 @@ public partial class YamlCrewExportRoundTripTests
         var hierarchical = _serializer.Deserialize<CrewYamlConfig>(_exporter.ExportToString(await LoadWitnessAsync("hierarchical.yaml")));
 
         Assert.Equal(["researcher", "writer"], sequential.Agents!.Keys);
-        Assert.Equal(["collect", "report"], sequential.Tasks!.Keys);
+        Assert.Equal(["collect", "report", "triage", "followup"], sequential.Tasks!.Keys);
         Assert.Equal("researcher", sequential.Tasks["collect"].Agent);
         Assert.Equal(["collect"], sequential.Tasks["report"].Dependencies!);
         Assert.Equal("lead", hierarchical.ManagerAgent);
