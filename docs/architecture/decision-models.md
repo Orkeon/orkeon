@@ -169,6 +169,93 @@ Implement `IDecisionStage` (`Name`, `OnRequestAsync`, `OnResponseAsync`) and bui
 `DecisionLlmProvider` yourself in `AddOrkeonLlmProfile(name, sp => ...)`. `GuardDecisionStage.AssessAsync`
 asks a set of risks about any state and can be reused.
 
+## Decision tasks and conditional fan-out
+
+A decision does not have to hide inside an LLM profile: a crew can place it in its flow. A **decision
+task** is a crew task with no agent, answered by the decision model; the tasks that follow carry a
+`when` condition and run, or are skipped, according to its answers. A crew that must sort, score or
+route (a ticket to the right agent, a document to the right pipeline) does it with one typed,
+calibrated answer instead of an LLM call. The syntax is in the
+[YAML reference](./yaml-schema.md#decision-tasks-and-conditions) and, for `.ork.ts`, in the
+[scripting DSL](../reference/scripting-dsl.md#taskbuilder) (`taskBuilder().decision()` and `.when()`).
+
+### The task and its request
+
+- A decision task has no agent, no tool and no memory, and writes no text. Its output is the
+  answers as compact JSON, so that a later LLM task reads them as context: for each question the
+  `chosen` option, the `score` or the `probability` of a yes-no, the `probabilities` and the
+  `confidence`, plus `"defaulted": true` when the fallback answered.
+- The task sends its state and **all its questions in one request**. The state is the output of
+  each task it depends on that ran, labelled with the task's key, or only the tasks `state` lists.
+  The only repeats are the adapter's retries of that same request on a 429 or a 529.
+- The request is metered once, as `decision`, like every request to the model; a defaulted task
+  makes no request and counts nothing.
+- A process that retries a failed task (Graph) retries a failed decision task as a new evaluation,
+  with a new request.
+
+### Conditions and skipped tasks
+
+A condition is evaluated once its decision task has answered. All the conditions of a task must
+hold for it to run; the clauses are listed in the
+[YAML reference](./yaml-schema.md#decision-tasks-and-conditions).
+
+- **Skipped, not failed.** A task whose condition does not hold is skipped, with the reason: the
+  condition and the answers that failed it. A task is also skipped when every task it depends on was
+  skipped by a condition, and when the decision task it reads was itself skipped. The crew still
+  succeeds.
+- **No trace.** A skipped task leaves no output: no "task skipped" text reaches the context or the
+  state of a later task.
+- **Join.** A task that depends on several branches of a fan-out runs when at least one of them ran,
+  with the outputs of those that ran.
+- **Final output.** The crew's final output is the output of the last task that ran in declared
+  order, not of a skipped one.
+- **`otherwise`.** It holds exactly when no sibling condition on that decision task holds on the
+  answers, a confidence under the floor included; whether a sibling then ran or was skipped for
+  another reason does not matter.
+- A skipped task is reported by the consoles as skipped, with its reason (see
+  [the run event bus](./run-event-bus.md)).
+
+### Failure
+
+A decision the model cannot make is a **failed task**, not a skip and not a fallback: the model
+refused the request (state over its limit, key refused, rate limit or overload after the retries) or
+is unavailable. The task fails with the reason; the tasks that depend on it, `otherwise` tasks
+included, are skipped as for any failed task, and the crew's rule for a failed task applies. The
+key is in no message.
+
+### The decision circuit and the fallback
+
+The **decision circuit** says whether decision tasks ask the model. It is on when a decision model is
+configured and `Orkeon:Decision:Enabled` is `true` (its default), and off when:
+
+- no decision model is configured;
+- `Orkeon:Decision:Enabled` is `false`;
+- the run is started with `orkeon run --no-decision`, which wins over `Orkeon:Decision:Enabled=true`.
+  The option exists on `orkeon run` only; the other hosts read the setting.
+
+A failed request never turns the circuit off: that is a failed task.
+
+With the circuit off, every decision task answers by its **fallback**, without a request, and is
+marked **defaulted** (`defaulted` in the task's event). Its status stays completed.
+
+- With explicit `fallback` answers, the chosen answer carries a confidence of 1 and a probability of
+  1: the conditions on it hold as if the model had answered with full confidence. A question left out
+  of `fallback` selects no option.
+- With no fallback, the decision task selects no option and carries a confidence of 0: every option
+  condition is false, the `otherwise` task runs and the others are skipped.
+- Before the first task, a run with the circuit off is **refused**, naming the task, when a decision
+  task has neither `fallback` answers nor an `otherwise` task on it
+  (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
+- A crew without a decision task runs exactly as before, whatever the circuit.
+
+### Jev's limits and long context
+
+Jev takes 64,000 tokens per request, 32,000 per question, and 262,000 in long context. A choice holds
+up to 255 options and a score up to 10 levels (refused at load beyond). Orkeon counts no token: the
+limit is the model's refusal, which fails the task with the limit in the message, and suggests
+`longContext: true` when the task did not ask for it. Long context is requested by the task only,
+never on its own.
+
 ## Secondary uses
 
 - **Input guard** — `TypeSafeInputGuard` joins the agent's guardian pipeline in the `Input` phase
@@ -187,4 +274,11 @@ asks a set of risks about any state and can be reused.
 - Each stage phase costs one round trip to the decision model, and a re-call costs one more LLM
   call.
 - Jev's context is bounded per request and per question: a long state or many passages in the
-  reranker may need `LongContext`, which the stages and the reranker do not set.
+  reranker may need `LongContext`, which the stages and the reranker do not set. A decision task
+  sets it with `longContext: true`.
+- Decision tasks and `when` run in the Sequential, Parallel and Graph processes only; the others
+  refuse them at load.
+- A failed request to the decision model is a failed task: there is no retry beyond the adapter's
+  and no fallback. The fallback answers only when the circuit is off.
+- Decision tasks take text states and `choice`, `score` and `noul` questions; `box` questions and
+  images are not offered.

@@ -21,6 +21,20 @@ route or escalate a call before and after it, without rewriting the messages or 
 RAG reranker `rerank.kind: decision` (alias `typesafe`) and the tool `system_one_decide` (120 tool classes). See
 [Decision models](docs/architecture/decision-models.md).
 
+### Added — decision tasks and `when` conditions (ADR-016)
+
+A task can carry a `decision` block instead of an agent: it sends typed questions to the decision model in one request
+and its output is the answers. A later task carries a `when` condition naming a decision task and the answers it
+needs (an option under a confidence floor, a threshold on a probability or a score, or `otherwise`). A false
+condition skips the task, it does not fail it: the skip reason is recorded, a task whose dependencies were all skipped
+is skipped too, and a skipped task leaves nothing in a later task's context. Sequential, Parallel and Graph run them;
+Hierarchical, Consensual and Autonomous refuse them on load. `orkeon run --no-decision` switches the decision circuit
+off for one run: decision tasks answer from their `fallback`. The `task.completed` event gains `skipReason`,
+`defaulted`, `isDecision` and `decision` (the answers as compact JSON), `TaskExecutionSnapshot` gains `SkipReason`,
+`Defaulted`, `IsDecision` and `DecisionAnswers`, and the run consoles and Studio's `RunProgressModel` show the skip
+reason, the defaulted flag and the decision answers. See [ADR-016](docs/adr/ADR-016-decision-tasks-and-conditional-fan-out.md)
+and [Decision models](docs/architecture/decision-models.md).
+
 ### Changed — `TaskCompletedEvent.AgentId` is nullable; `ParallelProcessStrategy` takes `CrewStrategyDependencies` **[breaking]**
 
 `TaskCompletedEvent.AgentId` is now `AgentId?`: a decision task answered by the decision runner completes without an

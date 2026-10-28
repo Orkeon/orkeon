@@ -98,7 +98,7 @@ two script shapes actually honours each method**.
 
 | Concept | Where to look |
 |---------|---------------|
-| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
+| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` (with `.decision()` and `.when()`) / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
 | `ExecutionContext` and `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `context.d.ts` |
 | `ctx.llm.act` — the LLM ⇄ tool-call loop, and its `ActOptions` | `context.d.ts` |
 | Events (`ctx.events.queue` / `ctx.events.topic`) | `events.d.ts` |

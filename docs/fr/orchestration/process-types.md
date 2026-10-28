@@ -91,6 +91,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (`budget:` de la crew) |
 | **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
 | **`asyncExecution: true` d'une tâche** | ✅ Tourne pendant les tâches suivantes | Refusé au chargement | Accepté, sans effet propre | Refusé au chargement | Refusé au chargement | Refusé au chargement |
+| **Tâches de décision et conditions `when`** | ✅ | Refusé au chargement | ✅ | Refusé au chargement | ✅ | Refusé au chargement |
 | **Manager** (`managerAgent:` ; `WithManagerLlm` en C#) | Refusé au chargement | ✅ Un agent (requis) ou, en C#, un LLM : il assigne et relit | Refusé au chargement | ✅ Un agent : l'arbitre de `ManagerDecision` (un LLM est refusé) | Refusé au chargement | Un LLM seulement : le profil par défaut, ou `WithManagerLlm` en C# (un agent est refusé) |
 | **`planning: true` : chaque tâche lit son plan** | ✅ | ✅ Le travailleur, chaque révision | ✅ | ✅ Chaque candidate | ✅ Chaque essai | ✅ Celui qui la prend, le pair |
 | **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |

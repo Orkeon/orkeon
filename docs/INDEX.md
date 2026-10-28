@@ -42,6 +42,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |
 | [ADR-014 — shell confinement by default](./adr/ADR-014-shell-confinement-by-default.md) | Why `shell_command` is confined per platform by default, off in containers, and runs one shell session per agent run |
 | [ADR-015 — model provider categories and decision stages](./adr/ADR-015-model-provider-categories-and-decision-stages.md) | Why model providers come in categories (generation, embedding, reranking, decision), why TypeSafe has its own `IDecisionModel` port, and why a decision stage judges an LLM call without rewriting it |
+| [ADR-016 — decision tasks and conditional fan-out](./adr/ADR-016-decision-tasks-and-conditional-fan-out.md) | Why a decision task answers without an agent, why a `when` condition skips a task instead of failing it, and which processes support them |
 
 ### Architecture
 

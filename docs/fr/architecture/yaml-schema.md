@@ -140,6 +140,21 @@ tasks:
       rules: [string]
       toolRules:
         <tool_name>: [string]
+    decision:             # Fait de la tâche une tâche de décision : pas d'agent, répondue par le modèle de décision — voir Tâches de décision et conditions plus bas. Avec agent : refusé au chargement
+      questions:          # Obligatoire, au moins une ; la clé est le nom de la question
+        <question>:
+          choice: {<option>: string}  # Une option parmi 255 au plus, chacune avec sa description
+          score: [string]             # Une échelle ordonnée de 10 niveaux au plus
+          noul: string                # Une question oui/non : l'énoncé
+          instructions: string        # Optionnel, pour choice et score
+      minConfidence: float   # défaut : 0.5, dans [0, 1] — en dessous, une condition d'option ne sélectionne rien
+      state: [string]        # Clés des tâches dont le modèle juge la sortie ; défaut : les sorties des dépendances qui ont tourné
+      longContext: bool      # défaut : false — demande le contexte long du modèle
+      fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
+    when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
+      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice), ou un seuil (oui/non, score)
+      <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
+      <task>: otherwise                       # Seule : vaut quand aucune condition sœur sur cette tâche ne vaut
 ```
 
 La validation a lieu
@@ -166,6 +181,127 @@ hiérarchique font échouer le chargement, en nommant l'agent. Une tâche qui d�
 
 Un message nomme un agent ou une tâche par sa clé — `Agent 'researcher' must have a goal.` —, une
 configuration bâtie en code par son identifiant.
+
+## Tâches de décision et conditions
+
+Une tâche qui porte un bloc `decision:` est une **tâche de décision** : elle n'a pas d'agent, ne fait
+aucun appel LLM et n'écrit aucun texte. À l'exécution, elle envoie son état et toutes ses questions au
+modèle de décision en une seule requête (voir
+[Modèles de décision](./decision-models.md#tâches-de-décision-et-fan-out-conditionnel)), et sa sortie
+est l'ensemble des réponses. Une tâche qui porte un bloc `when:` ne tourne que si une tâche de décision
+a répondu comme écrit, et est sautée sinon.
+
+```yaml
+agents:
+  reader: { role: Reader, goal: Read tickets }
+  engineer: { role: Engineer, goal: Fix defects }
+  finance: { role: Finance, goal: Handle refunds }
+tasks:
+  ticket:
+    description: Read the support ticket
+    expectedOutput: A summary of the ticket
+    agent: reader
+  triage:
+    description: Sort the ticket
+    expectedOutput: The category and whether a refund is asked
+    dependencies: [ticket]
+    decision:
+      questions:
+        category:
+          choice:
+            bug: a defect in the product
+            feature: a request for a new capability
+            billing: a question about an invoice
+        refund_requested:
+          noul: the customer asks for a refund
+      minConfidence: 0.6
+  fix_bug:
+    description: Fix the defect or plan the feature
+    expectedOutput: A fix or a plan
+    agent: engineer
+    when:
+      triage.category: [bug, feature]
+  refund:
+    description: Handle the refund
+    expectedOutput: A refund decision
+    agent: finance
+    when:
+      triage.category: [billing]
+      triage.refund_requested: ">= 0.7"
+  manual_triage:
+    description: Route the ticket to a person
+    expectedOutput: A hand-over note
+    agent: reader
+    when:
+      triage: otherwise
+  summary:
+    description: Summarise what was done
+    expectedOutput: A short report
+    agent: reader
+    dependencies: [fix_bug, refund, manual_triage]
+```
+
+**Le bloc `decision:`.**
+
+- `questions` est obligatoire et compte au moins une question. Une question déclare exactement un
+  genre : `choice` (une table option vers description, 255 options au plus), `score` (une liste
+  ordonnée de 10 niveaux au plus) ou `noul` (l'énoncé d'une question oui/non, le nom que Jev lui
+  donne). `instructions` est optionnel sur un choice et un score. Les noms de questions sont uniques.
+- `minConfidence` est le seuil de confiance, un nombre dans [0, 1] ; il vaut 0,5 par défaut.
+  `min_confidence` se lit de la même façon, comme toute clé du fichier.
+- `state` liste les clés des tâches dont le modèle juge la sortie ; sans lui, le modèle lit les sorties
+  des dépendances de la tâche qui ont tourné, dans l'ordre. Une tâche listée est ajoutée aux
+  `dependencies` de la tâche si elle n'y est pas.
+- `longContext` (défaut `false`) demande le contexte long du modèle ; il n'est jamais demandé de
+  lui-même.
+- `fallback` associe une question à la réponse utilisée quand le circuit de décision est coupé : une
+  option d'un choice, un niveau d'un score, `yes` ou `no` d'un oui/non (mettez `"no"` entre guillemets,
+  que YAML lit comme un booléen). Une question sans réponse de repli ne sélectionne aucune option. Voir
+  [le repli](./decision-models.md#le-circuit-de-décision-et-le-repli).
+- Une tâche de décision exige toujours une `description` et un `expectedOutput` comme toute tâche, et
+  la crew exige toujours un agent, même si aucune tâche ne l'utilise.
+
+**Le bloc `when:`.** Un `when:` nomme une seule tâche de décision ; chaque clause s'écrit `<task>`,
+`<task>.<question>` ou `<task>.<question>.<option>`, où `<task>` est la clé de la tâche de décision.
+Plusieurs clauses s'écrivent dans un même bloc et **doivent toutes valoir**. La grammaire :
+
+| Clause | Vaut quand |
+|---|---|
+| `<task>.<question>: [a, b]` | La question est un choice, l'option choisie est dans la liste et la confiance est au moins égale à `minConfidence`. |
+| `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui) ou un score (le score du modèle) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
+| `<task>.<question>.<option>: ">= 0.25"` | La probabilité de cette option d'un choice satisfait la comparaison, même si l'option n'est pas la choisie. Le seuil de confiance ne s'applique pas. |
+| `<task>: otherwise` | Aucune condition sœur sur cette tâche de décision ne vaut, y compris quand la confiance est sous le seuil. |
+
+Un seuil est un opérateur (`>=`, `>`, `<=`, `<`) et un nombre dans [0, 1], écrit comme une chaîne entre
+guillemets. Plusieurs tâches dont les conditions valent pour une même décision tournent toutes (un
+fan-out) ; une tâche qui dépend de plusieurs branches tourne quand au moins une d'elles a tourné. La
+tâche de décision nommée par un `when:` est ajoutée aux `dependencies` de la tâche si elle n'y est pas.
+Une tâche dont la condition ne vaut pas, ou dont toutes les dépendances ont été sautées par une
+condition, est sautée : elle ne laisse aucune sortie, et la crew réussit quand même.
+
+**Où cela tourne.** Les tâches de décision et `when:` sont pris en charge avec `process: sequential`,
+`parallel` et `graph`. Les autres processus les refusent au chargement (`Task 'triage' declares a
+decision or a condition, which the Hierarchical process does not support.`).
+
+**Ce qui est refusé au chargement.** Une tâche est nommée par sa clé déclarée, la clé de la table YAML,
+dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie est `decision`,
+`decision.questions.<nom>`, `decision.fallback` ou `when`. Le chargement échoue sur :
+
+- une tâche qui a à la fois un `agent:` et un `decision:`, une décision sans question, un choice de plus
+  de 255 options, un score de plus de 10 niveaux, un `minConfidence` hors de [0, 1] ou qui n'est pas un
+  nombre, un `longContext` qui n'est pas un booléen ;
+- une question qui déclare plus d'un parmi `choice`, `score` et `noul` ;
+- un repli qui nomme une question inconnue, ou une réponse que la question n'a pas ;
+- un `when:` sur une tâche qui n'est pas une tâche de décision, ou qui nomme une question ou une option
+  inconnue, ou avec un seuil hors de [0, 1] ou qui n'est pas écrit comme un opérateur et un nombre ;
+- `otherwise` écrit à côté d'autres clauses, une seconde tâche `otherwise` sur une même tâche de
+  décision, un `otherwise` sans condition sœur sur cette tâche de décision ;
+- une clause d'option avec une liste (`triage.category.bug: [bug]`), qui n'accepte qu'une chaîne de
+  seuil ;
+- une décision ou un `when:` dans un processus autre que les trois ci-dessus.
+
+Avec le circuit de décision coupé, l'exécution est aussi refusée avant sa première tâche quand une
+tâche de décision n'a ni `fallback` ni tâche `otherwise`.
 
 ## Configuration Guardrails
 

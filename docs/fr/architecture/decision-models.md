@@ -174,6 +174,95 @@ le `DecisionLlmProvider` dans `AddOrkeonLlmProfile(name, sp => ...)`.
 `GuardDecisionStage.AssessAsync` interroge un jeu de risques sur n'importe quel état et peut se
 réutiliser.
 
+## Tâches de décision et fan-out conditionnel
+
+Une décision n'a pas à se cacher dans un profil LLM : une crew peut la placer dans son flux. Une
+**tâche de décision** est une tâche de crew sans agent, répondue par le modèle de décision ; les tâches
+qui suivent portent une condition `when` et tournent, ou sont sautées, selon ses réponses. Une crew qui
+doit trier, noter ou router (un ticket vers le bon agent, un document vers la bonne chaîne) le fait avec
+une réponse typée et calibrée au lieu d'un appel LLM. La syntaxe est dans la
+[référence YAML](./yaml-schema.md#tâches-de-décision-et-conditions) et, pour `.ork.ts`, dans le
+[DSL de script](../reference/scripting-dsl.md#taskbuilder) (`taskBuilder().decision()` et `.when()`).
+
+### La tâche et sa requête
+
+- Une tâche de décision n'a ni agent, ni outil, ni mémoire, et n'écrit aucun texte. Sa sortie est les
+  réponses en JSON compact, pour qu'une tâche LLM suivante les lise comme contexte : pour chaque
+  question, l'option `chosen`, le `score` ou la `probability` d'un oui/non, les `probabilities` et la
+  `confidence`, plus `"defaulted": true` quand le repli a répondu.
+- La tâche envoie son état et **toutes ses questions en une seule requête**. L'état est la sortie de
+  chaque tâche dont elle dépend qui a tourné, étiquetée de la clé de la tâche, ou seulement des tâches
+  que `state` liste. Les seules répétitions sont les nouvelles tentatives de l'adaptateur sur cette même
+  requête, sur un 429 ou un 529.
+- La requête est mesurée une fois, sous `decision`, comme toute requête au modèle ; une tâche en repli ne
+  fait aucune requête et ne compte rien.
+- Un processus qui rejoue une tâche échouée (Graph) rejoue une tâche de décision échouée comme une
+  nouvelle évaluation, avec une nouvelle requête.
+
+### Conditions et tâches sautées
+
+Une condition est évaluée une fois sa tâche de décision répondue. Toutes les conditions d'une tâche
+doivent valoir pour qu'elle tourne ; les clauses sont listées dans la
+[référence YAML](./yaml-schema.md#tâches-de-décision-et-conditions).
+
+- **Sautée, pas échouée.** Une tâche dont la condition ne vaut pas est sautée, avec la raison : la
+  condition et les réponses qui l'ont fait échouer. Une tâche est aussi sautée quand toutes les tâches
+  dont elle dépend ont été sautées par une condition, et quand la tâche de décision qu'elle lit a
+  elle-même été sautée. La crew réussit quand même.
+- **Aucune trace.** Une tâche sautée ne laisse aucune sortie : aucun texte « tâche sautée » n'atteint le
+  contexte ni l'état d'une tâche suivante.
+- **Jonction.** Une tâche qui dépend de plusieurs branches d'un fan-out tourne quand au moins une d'elles
+  a tourné, avec les sorties de celles qui ont tourné.
+- **Sortie finale.** La sortie finale de la crew est la sortie de la dernière tâche qui a tourné dans
+  l'ordre déclaré, jamais d'une tâche sautée.
+- **`otherwise`.** Elle vaut exactement quand aucune condition sœur sur cette tâche de décision ne vaut
+  sur les réponses, une confiance sous le seuil comprise ; qu'une sœur ait alors tourné ou été sautée
+  pour une autre raison n'y change rien.
+- Une tâche sautée est rapportée par les consoles comme sautée, avec sa raison (voir
+  [le bus d'événements de run](./run-event-bus.md)).
+
+### Échec
+
+Une décision que le modèle ne peut pas prendre est une **tâche échouée**, ni un saut ni un repli : le
+modèle a refusé la requête (état au-delà de sa limite, clé refusée, limite de débit ou surcharge après
+les nouvelles tentatives) ou est indisponible. La tâche échoue avec la raison ; les tâches qui en
+dépendent, `otherwise` comprises, sont sautées comme pour toute tâche échouée, et la règle de la crew
+pour une tâche échouée s'applique. La clé n'est dans aucun message.
+
+### Le circuit de décision et le repli
+
+Le **circuit de décision** dit si les tâches de décision interrogent le modèle. Il est actif quand un
+modèle de décision est configuré et que `Orkeon:Decision:Enabled` vaut `true` (son défaut), et coupé
+quand :
+
+- aucun modèle de décision n'est configuré ;
+- `Orkeon:Decision:Enabled` vaut `false` ;
+- l'exécution démarre avec `orkeon run --no-decision`, qui l'emporte sur `Orkeon:Decision:Enabled=true`.
+  L'option n'existe que sur `orkeon run` ; les autres hôtes lisent le réglage.
+
+Une requête échouée ne coupe jamais le circuit : c'est une tâche échouée.
+
+Circuit coupé, chaque tâche de décision répond par son **repli**, sans requête, et est marquée
+**defaulted** (`defaulted` dans l'événement de la tâche). Son statut reste terminé.
+
+- Avec des réponses `fallback` explicites, la réponse choisie porte une confiance de 1 et une
+  probabilité de 1 : les conditions dessus valent comme si le modèle avait répondu avec pleine
+  confiance. Une question absente de `fallback` ne sélectionne aucune option.
+- Sans repli, la tâche de décision ne sélectionne aucune option et porte une confiance de 0 : toute
+  condition d'option est fausse, la tâche `otherwise` tourne et les autres sont sautées.
+- Avant la première tâche, une exécution au circuit coupé est **refusée**, en nommant la tâche, quand
+  une tâche de décision n'a ni réponses `fallback` ni tâche `otherwise` sur elle
+  (`Decision task 'triage' has neither a fallback nor an otherwise task.`).
+- Une crew sans tâche de décision tourne exactement comme avant, quel que soit le circuit.
+
+### Les limites de Jev et le contexte long
+
+Jev prend 64 000 jetons par requête, 32 000 par question, et 262 000 en contexte long. Un choice compte
+255 options au plus et un score 10 niveaux au plus (refusé au chargement au-delà). Orkeon ne compte aucun
+jeton : la limite est le refus du modèle, qui fait échouer la tâche avec la limite dans le message, et
+suggère `longContext: true` quand la tâche ne l'a pas demandé. Le contexte long est demandé par la tâche
+seule, jamais de lui-même.
+
 ## Usages secondaires
 
 - **Garde d'entrée** — `TypeSafeInputGuard` rejoint le pipeline de gardiens de l'agent en phase
@@ -193,4 +282,10 @@ réutiliser.
   appel LLM de plus.
 - Le contexte de Jev est borné par requête et par question : un état long ou de nombreux passages
   dans le reranker peuvent demander `LongContext`, que ni les étapes ni le reranker ne
-  posent.
+  posent. Une tâche de décision le pose avec `longContext: true`.
+- Les tâches de décision et `when` ne tournent que dans les processus Sequential, Parallel et Graph ;
+  les autres les refusent au chargement.
+- Une requête échouée vers le modèle de décision est une tâche échouée : aucune nouvelle tentative au-delà
+  de celles de l'adaptateur, et aucun repli. Le repli ne répond que quand le circuit est coupé.
+- Les tâches de décision prennent un état texte et des questions `choice`, `score` et `noul` ; les
+  questions `box` et les images ne sont pas proposées.

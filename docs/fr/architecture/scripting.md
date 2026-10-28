@@ -99,7 +99,7 @@ de votre projet avec `orkeon typings` ([Référence](#référence)).
 
 | Concept | Où regarder |
 |---------|---------------|
-| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
+| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` (avec `.decision()` et `.when()`) / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
 | `ExecutionContext` et `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `context.d.ts` |
 | `ctx.llm.act` — la boucle LLM ⇄ appels d'outils, et ses `ActOptions` | `context.d.ts` |
 | Événements (`ctx.events.queue` / `ctx.events.topic`) | `events.d.ts` |

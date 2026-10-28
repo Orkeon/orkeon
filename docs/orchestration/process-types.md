@@ -91,6 +91,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (crew `budget:`) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
 | **A task's `asyncExecution: true`** | ✅ Runs alongside the next tasks | Refused at load | Accepted, no effect of its own | Refused at load | Refused at load | Refused at load |
+| **Decision tasks and `when` conditions** | ✅ | Refused at load | ✅ | Refused at load | ✅ | Refused at load |
 | **Manager** (`managerAgent:`; C# `WithManagerLlm`) | Refused at load | ✅ An agent (required) or, in C#, an LLM: it assigns and reviews | Refused at load | ✅ An agent: the `ManagerDecision` arbiter (an LLM is refused) | Refused at load | An LLM only: the default profile, or C# `WithManagerLlm` (an agent is refused) |
 | **`planning: true`: each task reads its plan** | ✅ | ✅ The worker, each revision | ✅ | ✅ Each candidate | ✅ Each attempt | ✅ The claimer, the peer |
 | **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |

@@ -123,10 +123,12 @@ les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
 `withResponseFormat(type)`, `withResponseSchema(name, schema, strict?)` et `withProfile(nom)` (le
 `llm_override: { profile }` du YAML : cette tâche seule tourne sur un des profils de l'hôte, sur le
 modèle propre de ce profil, et `"default"` la ramène au défaut de l'hôte ; un nom que l'hôte
-n'offre pas fait échouer le chargement en listant les profils connus). Acceptés mais sans
-effet : `name` (une configuration de tâche n'a pas de nom ; il ne sert qu'à nommer la tâche dans
-une erreur de chargement) et `expect` (consigné dans le contexte de la tâche en l'absence de
+n'offre pas fait échouer le chargement en listant les profils connus). `name` est la clé de la
+tâche : `when(...)` et le `state` d'une décision désignent une tâche par elle, et une tâche de
+décision l'exige. Accepté mais sans effet : `expect` (consigné dans le contexte de la tâche en l'absence de
 `deliverable`, jamais validé). `withTaskTool` a disparu : rien ne le lisait, et `tools` le couvre.
+
+`decision(spec)` fait de la tâche une tâche de décision : `spec` est un littéral d'objet `{ questions, minConfidence, state, longContext, fallback }`, la forme du bloc YAML `decision:`. Elle n'a pas besoin d'`agent`, et une tâche qui a les deux est refusée au chargement. `when(decisionTask, clauses)` n'exécute la tâche que si la tâche de décision nommée a répondu comme demandé : `clauses` est un objet de clauses (`{ category: ["bug"], urgency: ">= 0.7", "category.bug": ">= 0.25" }`) ou la chaîne `"otherwise"` ; `when()` ne lève une `InvalidScriptException` que pour un nom de tâche vide ou pour des `clauses` qui ne sont ni un objet ni une chaîne. Une chaîne autre que `"otherwise"`, une question ou une option inconnue, ou une clause mal formée passe le builder et est refusée au chargement. Deux tâches de décision de même `name` dans un script sont refusées au chargement (`Task '<name>' declares a decision twice.`). `state` liste les tâches dont la sortie est l'état de la décision (par défaut : chaque dépendance qui a tourné) ; circuit désactivé, ou par `--no-decision`, la tâche répond par son `fallback` (voir [Modèles de décision](../architecture/decision-models.md#le-circuit-de-décision-et-le-repli)). Les tâches de décision et les conditions ne s'exécutent que dans les processus Sequential, Parallel et Graph. Voir [Modèles de décision](../architecture/decision-models.md).
 
 `asyncExecution()` suit la règle du YAML : sous `.process("sequential")` la tâche tourne pendant
 les tâches qui la suivent, et une tâche qui la cite dans `withContext` l'attend ; sous
