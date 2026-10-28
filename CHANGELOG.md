@@ -31,6 +31,16 @@ accumulated since rc.5 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped
 across the twenty-five projects that carried them, and the `ORKCON001` analyzer rule moves
 to `AnalyzerReleases.Shipped.md` under `## Release 1.0.0`.
 
+### Fixed — the Debian smoke starts `orkeon-repl` with a mount
+
+The deb smoke's `repl-start` step started `orkeon-repl --ui plain` with no settings file and no
+mount, and expected exit 0. Since the REPL refuses a mount it cannot honour at start, as the runners
+do (GAP-50 to GAP-55, #123), a REPL with no mount at all stops at its start with exit 1 and
+`At least one file system mount must be configured in 'Orkeon:FileSystem:Mounts'.` The step was added
+after rc.5 and first ran on the rc.6 tag, where it failed on amd64 and arm64 and held the Release
+back. It now mounts its run directory at `/workspace`, as a user mounts a project
+(`scripts/smoke-onboarding/lib/smoke-common.sh`). The REPL itself is unchanged.
+
 ### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
