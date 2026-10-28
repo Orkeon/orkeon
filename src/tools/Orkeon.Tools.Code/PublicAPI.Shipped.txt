@@ -1,36 +1,80 @@
 #nullable enable
 Orkeon.Tools.Code.DependencyInjection.CodeToolExtensions
+Orkeon.Tools.Code.Sessions.ShellSessionException
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException() -> void
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message) -> void
+Orkeon.Tools.Code.Sessions.ShellSessionException.ShellSessionException(string! message, System.Exception! innerException) -> void
 Orkeon.Tools.Code.ShellCommandRequest
 Orkeon.Tools.Code.ShellCommandRequest.<Clone>$() -> Orkeon.Tools.Code.ShellCommandRequest!
+Orkeon.Tools.Code.ShellCommandRequest.Action.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.Action.init -> void
 Orkeon.Tools.Code.ShellCommandRequest.Command.get -> string!
 Orkeon.Tools.Code.ShellCommandRequest.Command.init -> void
 Orkeon.Tools.Code.ShellCommandRequest.Equals(Orkeon.Tools.Code.ShellCommandRequest? other) -> bool
+Orkeon.Tools.Code.ShellCommandRequest.JobId.get -> string!
+Orkeon.Tools.Code.ShellCommandRequest.JobId.init -> void
 Orkeon.Tools.Code.ShellCommandRequest.ShellCommandRequest() -> void
+Orkeon.Tools.Code.ShellCommandRequest.TailLines.get -> int
+Orkeon.Tools.Code.ShellCommandRequest.TailLines.init -> void
 Orkeon.Tools.Code.ShellCommandRequest.TimeoutSeconds.get -> int
 Orkeon.Tools.Code.ShellCommandRequest.TimeoutSeconds.init -> void
 Orkeon.Tools.Code.ShellCommandRequest.WorkingDirectory.get -> string!
 Orkeon.Tools.Code.ShellCommandRequest.WorkingDirectory.init -> void
 Orkeon.Tools.Code.ShellCommandResponse
 Orkeon.Tools.Code.ShellCommandResponse.<Clone>$() -> Orkeon.Tools.Code.ShellCommandResponse!
+Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.get -> bool
+Orkeon.Tools.Code.ShellCommandResponse.AlreadyBounded.init -> void
 Orkeon.Tools.Code.ShellCommandResponse.Completed.get -> bool
 Orkeon.Tools.Code.ShellCommandResponse.Completed.init -> void
 Orkeon.Tools.Code.ShellCommandResponse.Equals(Orkeon.Tools.Code.ShellCommandResponse? other) -> bool
 Orkeon.Tools.Code.ShellCommandResponse.ExitCode.get -> int
 Orkeon.Tools.Code.ShellCommandResponse.ExitCode.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.JobId.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.JobId.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.OutputPath.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.OutputPath.init -> void
 Orkeon.Tools.Code.ShellCommandResponse.ShellCommandResponse() -> void
+Orkeon.Tools.Code.ShellCommandResponse.Status.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Status.init -> void
 Orkeon.Tools.Code.ShellCommandResponse.Stderr.get -> string!
 Orkeon.Tools.Code.ShellCommandResponse.Stderr.init -> void
 Orkeon.Tools.Code.ShellCommandResponse.Stdout.get -> string!
 Orkeon.Tools.Code.ShellCommandResponse.Stdout.init -> void
+Orkeon.Tools.Code.ShellCommandResponse.Tail.get -> string!
+Orkeon.Tools.Code.ShellCommandResponse.Tail.init -> void
 Orkeon.Tools.Code.ShellCommandTool
-Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null) -> void
+Orkeon.Tools.Code.ShellCommandTool.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!
+Orkeon.Tools.Code.ShellCommandTool.Confinement.init -> void
+Orkeon.Tools.Code.ShellCommandTool.ShellCommandTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Collections.Generic.IEnumerable<string!>? allowedCommands = null, System.Collections.Generic.IEnumerable<string!>? blockedPatterns = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Code.ShellCommandTool!>? logger = null, bool allowInterpreters = false, System.Collections.Generic.IEnumerable<string!>? extraAllowedCommands = null, Orkeon.Domain.Tools.ToolResultLimitsOptions? limits = null) -> void
+Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.AppContainer = 4 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Auto = 2 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Bubblewrap = 1 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.None = 0 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementMode.Seatbelt = 3 -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementOptions
+Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.get -> bool
+Orkeon.Tools.Code.ShellConfinementOptions.AllowNetwork.set -> void
+Orkeon.Tools.Code.ShellConfinementOptions.Mode.get -> Orkeon.Tools.Code.ShellConfinementMode
+Orkeon.Tools.Code.ShellConfinementOptions.Mode.set -> void
+Orkeon.Tools.Code.ShellConfinementOptions.ReadOnlyPaths.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellConfinementOptions.ShellConfinementOptions() -> void
+Orkeon.Tools.Code.ShellEnvironmentOptions
+Orkeon.Tools.Code.ShellEnvironmentOptions.Propagate.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellEnvironmentOptions.SessionBus.get -> bool
+Orkeon.Tools.Code.ShellEnvironmentOptions.SessionBus.set -> void
+Orkeon.Tools.Code.ShellEnvironmentOptions.ShellEnvironmentOptions() -> void
 Orkeon.Tools.Code.ShellToolOptions
 Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.get -> bool
 Orkeon.Tools.Code.ShellToolOptions.AllowInterpreters.set -> void
 Orkeon.Tools.Code.ShellToolOptions.AllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
+Orkeon.Tools.Code.ShellToolOptions.Confinement.get -> Orkeon.Tools.Code.ShellConfinementOptions!
+Orkeon.Tools.Code.ShellToolOptions.Environment.get -> Orkeon.Tools.Code.ShellEnvironmentOptions!
 Orkeon.Tools.Code.ShellToolOptions.ExtraAllowedCommands.get -> System.Collections.ObjectModel.Collection<string!>!
 Orkeon.Tools.Code.ShellToolOptions.ShellToolOptions() -> void
+const Orkeon.Tools.Code.ShellCommandTool.DefaultTailLines = 50 -> int
 const Orkeon.Tools.Code.ShellCommandTool.MaxOutputLength = 10000 -> int
+const Orkeon.Tools.Code.ShellCommandTool.RunAction = "run" -> string!
 const Orkeon.Tools.Code.ShellToolOptions.SectionName = "Orkeon:Tools:Shell" -> string!
 override Orkeon.Tools.Code.ShellCommandRequest.Equals(object? obj) -> bool
 override Orkeon.Tools.Code.ShellCommandRequest.GetHashCode() -> int
@@ -40,6 +84,7 @@ override Orkeon.Tools.Code.ShellCommandResponse.GetHashCode() -> int
 override Orkeon.Tools.Code.ShellCommandResponse.ToString() -> string!
 override Orkeon.Tools.Code.ShellCommandTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Code.ShellCommandTool.ExecuteTypedAsync(Orkeon.Tools.Code.ShellCommandRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Code.ShellCommandResponse!>!
+override Orkeon.Tools.Code.ShellCommandTool.ValidateParameters(System.Collections.Generic.Dictionary<string!, object?>! parameters) -> Orkeon.Tools.Abstractions.Base.ValidationResult!
 override Orkeon.Tools.Code.ShellCommandTool.ValidateTypedRequest(Orkeon.Tools.Code.ShellCommandRequest! request) -> string?
 static Orkeon.Tools.Code.DependencyInjection.CodeToolExtensions.AddOrkeonCodeTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Tools.Code.ShellCommandRequest.operator !=(Orkeon.Tools.Code.ShellCommandRequest? left, Orkeon.Tools.Code.ShellCommandRequest? right) -> bool

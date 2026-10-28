@@ -1,5 +1,23 @@
 #nullable enable
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ReadRedirectAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowAuthorizationUrlAsync(string! account, System.Uri! authorizationUri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowDeviceCodeAsync(string! account, System.Uri! verificationUri, string! userCode, System.TimeSpan expiresIn, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction.ShowRedirectRejectedAsync(string! account, string! reason, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Abstractions.Auth.OAuthException
+Orkeon.Tools.Abstractions.Auth.OAuthException.Failure.get -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException() -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(Orkeon.Tools.Abstractions.Auth.OAuthFailure failure, string! message) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(Orkeon.Tools.Abstractions.Auth.OAuthFailure failure, string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(string! message) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthException.OAuthException(string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.AuthenticationFailed = 1 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.InvalidConfiguration = 0 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.LoginRequired = 2 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
+Orkeon.Tools.Abstractions.Auth.OAuthFailure.ServerError = 3 -> Orkeon.Tools.Abstractions.Auth.OAuthFailure
 Orkeon.Tools.Abstractions.Base.FileToolBase
+Orkeon.Tools.Abstractions.Base.FileToolBase.AbsolutizePath(string! path) -> string!
 Orkeon.Tools.Abstractions.Base.FileToolBase.EnsureDirectoryExistsAsync(string! virtualFilePath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Tools.Abstractions.Base.FileToolBase.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Tools.Abstractions.Base.FileToolBase.FileToolBase(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Domain.Tools.Security.IPathValidator! pathValidator, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
@@ -19,6 +37,7 @@ Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(Or
 Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.HttpToolBase(System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Tools.Abstractions.Base.IExpectedToolError
 Orkeon.Tools.Abstractions.Base.ToolBase
 Orkeon.Tools.Abstractions.Base.ToolBase.CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
 Orkeon.Tools.Abstractions.Base.ToolBase.CreateJsonResponse<T>(T! response) -> string!
@@ -58,6 +77,7 @@ Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy
 Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
 Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
 Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions
+Orkeon.Tools.Abstractions.Security.AgentRootGuard
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! SanitizedHeaders, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.HeaderSanitizationResult(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult! original) -> void
@@ -69,6 +89,7 @@ Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Warnings.init -> voi
 Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer
 Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer.HttpHeaderSanitizer(Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer!>? logger = null) -> void
 Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer.SanitizeHeaders(System.Collections.Generic.IDictionary<string!, string!>! headers) -> Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult!
+Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver
 Orkeon.Tools.Abstractions.Tools.ListMountsRequest
 Orkeon.Tools.Abstractions.Tools.ListMountsRequest.<Clone>$() -> Orkeon.Tools.Abstractions.Tools.ListMountsRequest!
 Orkeon.Tools.Abstractions.Tools.ListMountsRequest.Equals(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? other) -> bool
@@ -105,6 +126,7 @@ abstract Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.Execut
 abstract Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TResponse!>!
 abstract Orkeon.Tools.Abstractions.Base.ToolBase.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
 abstract Orkeon.Tools.Abstractions.Base.ToolBase<TRequest, TResponse>.ExecuteTypedAsync(TRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TResponse!>!
+const Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.PathRequiredMessage = "path is required: the absolute path of the file, e.g. /workspace/src/stats.js" -> string!
 override Orkeon.Tools.Abstractions.Base.FileToolBase.Category.get -> string!
 override Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.Schema.get -> Orkeon.Domain.Tools.Protocol.ToolSchema!
 override Orkeon.Tools.Abstractions.Base.HttpToolBase.Category.get -> string!
@@ -129,7 +151,7 @@ override Orkeon.Tools.Abstractions.Tools.ListMountsResponse.ToString() -> string
 override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Access.get -> Orkeon.Domain.Tools.ToolAccess
 override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Category.get -> string!
 override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Description.get -> string!
-override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteCoreAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.Protocol.ToolCallResponse!>!
+override Orkeon.Tools.Abstractions.Tools.ListMountsTool.ExecuteTypedAsync(Orkeon.Tools.Abstractions.Tools.ListMountsRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Abstractions.Tools.ListMountsResponse!>!
 override Orkeon.Tools.Abstractions.Tools.ListMountsTool.Name.get -> string!
 override Orkeon.Tools.Abstractions.Tools.MountInfoDto.Equals(object? obj) -> bool
 override Orkeon.Tools.Abstractions.Tools.MountInfoDto.GetHashCode() -> int
@@ -146,6 +168,7 @@ readonly Orkeon.Tools.Abstractions.Base.ToolBase._jsonOptions -> System.Text.Jso
 readonly Orkeon.Tools.Abstractions.Base.ToolBase._logger -> Microsoft.Extensions.Logging.ILogger!
 static Orkeon.Tools.Abstractions.Base.ToolBase.ExtractErrorMessage(System.Collections.Generic.Dictionary<string!, object?>! responseDict) -> string?
 static Orkeon.Tools.Abstractions.Base.ToolBase.IsValidType(object! value, string! expectedType) -> bool
+static Orkeon.Tools.Abstractions.Base.ToolBase.StringArgument(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments, string! name, out bool present) -> string?
 static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.FromYaml(string! yaml) -> Orkeon.Domain.Tools.Protocol.ToolSchema!
 static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.ToYaml(this Orkeon.Domain.Tools.Protocol.ToolSchema! schema) -> string!
 static Orkeon.Tools.Abstractions.Base.ToolSchemaYamlExtensions.ValidateParameters(this Orkeon.Domain.Tools.Protocol.ToolSchema! schema, System.Collections.Generic.Dictionary<string!, object!>! parameters) -> (bool IsValid, string? Error)
@@ -156,8 +179,11 @@ static Orkeon.Tools.Abstractions.Base.ValidationResult.operator ==(Orkeon.Tools.
 static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator !=(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
 static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator ==(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
 static Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions.AddOrkeonAbstractionTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Abstractions.Security.AgentRootGuard.Check(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, string! virtualPath) -> Orkeon.Domain.Tools.Security.PathValidationResult?
 static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator !=(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
 static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator ==(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
+static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Absolutize(string! path, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string!
+static Orkeon.Tools.Abstractions.Security.WorkingDirectoryResolver.Current(Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> string?
 static Orkeon.Tools.Abstractions.Tools.ListMountsRequest.operator !=(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? left, Orkeon.Tools.Abstractions.Tools.ListMountsRequest? right) -> bool
 static Orkeon.Tools.Abstractions.Tools.ListMountsRequest.operator ==(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? left, Orkeon.Tools.Abstractions.Tools.ListMountsRequest? right) -> bool
 static Orkeon.Tools.Abstractions.Tools.ListMountsResponse.operator !=(Orkeon.Tools.Abstractions.Tools.ListMountsResponse? left, Orkeon.Tools.Abstractions.Tools.ListMountsResponse? right) -> bool
@@ -169,6 +195,7 @@ static Orkeon.Tools.Abstractions.Tools.OverrideDto.operator ==(Orkeon.Tools.Abst
 virtual Orkeon.Tools.Abstractions.Base.FileToolBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
 virtual Orkeon.Tools.Abstractions.Base.HttpToolBase<TRequest, TResponse>.ValidateTypedRequest(TRequest! request) -> string?
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Access.get -> Orkeon.Domain.Tools.ToolAccess
+virtual Orkeon.Tools.Abstractions.Base.ToolBase.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Category.get -> string!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Description.get -> string!
 virtual Orkeon.Tools.Abstractions.Base.ToolBase.Dispose(bool disposing) -> void

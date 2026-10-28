@@ -12,6 +12,7 @@ const Orkeon.Constants.Llm.GenAiAttributes.ErrorType = "error.type" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.MetricClientOperationDuration = "gen_ai.client.operation.duration" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.MetricClientTokenUsage = "gen_ai.client.token.usage" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.OperationChat = "chat" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.OperationEmbeddings = "embeddings" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.OperationExecuteTool = "execute_tool" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.OperationInvokeAgent = "invoke_agent" -> string!
 const Orkeon.Constants.Llm.GenAiAttributes.OperationName = "gen_ai.operation.name" -> string!

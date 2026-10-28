@@ -1,8 +1,15 @@
 #nullable enable
+Orkeon.Compliance.Vfs.ConsoleUsageAnalyzer
+Orkeon.Compliance.Vfs.ConsoleUsageAnalyzer.ConsoleUsageAnalyzer() -> void
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.Reason.get -> string!
+Orkeon.Compliance.Vfs.SuppressConsoleComplianceAttribute.SuppressConsoleComplianceAttribute(string! reason) -> void
 Orkeon.Compliance.Vfs.SuppressVfsComplianceAttribute
 Orkeon.Compliance.Vfs.SuppressVfsComplianceAttribute.Reason.get -> string!
 Orkeon.Compliance.Vfs.SuppressVfsComplianceAttribute.SuppressVfsComplianceAttribute(string! reason) -> void
 Orkeon.Compliance.Vfs.SystemIoUsageAnalyzer
 Orkeon.Compliance.Vfs.SystemIoUsageAnalyzer.SystemIoUsageAnalyzer() -> void
+override Orkeon.Compliance.Vfs.ConsoleUsageAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
+override Orkeon.Compliance.Vfs.ConsoleUsageAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>
 override Orkeon.Compliance.Vfs.SystemIoUsageAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
 override Orkeon.Compliance.Vfs.SystemIoUsageAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>

@@ -1,5 +1,6 @@
 #nullable enable
 Orkeon.Constants.Cli.RunOptionNames
+Orkeon.Constants.Cli.SessionStateKeys
 const Orkeon.Constants.Cli.RunOptionNames.AllowExternalMounts = "allow-external-mounts" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Client = "client" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Events = "events" -> string!
@@ -18,4 +19,7 @@ const Orkeon.Constants.Cli.RunOptionNames.Stream = "stream" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Validate = "validate" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Var = "var" -> string!
 const Orkeon.Constants.Cli.RunOptionNames.Verbose = "verbose" -> string!
+const Orkeon.Constants.Cli.SessionStateKeys.DefaultPermissionMode = "default_permission_mode" -> string!
+const Orkeon.Constants.Cli.SessionStateKeys.SelectedModel = "selected_model" -> string!
+const Orkeon.Constants.Cli.SessionStateKeys.SessionStartOutput = "session_start_output" -> string!
 static Orkeon.Constants.Cli.RunOptionNames.Flag(string! name) -> string!

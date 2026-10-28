@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-10-28
+
+The release candidate of the agent loop and the scriptable runtime. Since `1.0.0-rc.5`:
+agents get file tools made for the loop — `edit_file`, ranged reads, `glob`, `grep` —,
+structural editing, a working root, background agents, durable memory and sessions
+(RT-01..44, #136–#179); scripted commands read the runtime that runs them — its version,
+the session's usage by model and by command, a token budget that counts the context once,
+a save and load of the REPL's session — and the `Orkeon.Scripting` package runs a
+`crew.ork.ts` inside a .NET application (#224–#229); `shell_command` runs confined by
+default — bubblewrap, Seatbelt or an AppContainer (ADR-014) —; the permission gate reads
+the session's rules and `orkeon-repl` asks the operator, connects MCP servers, loads
+plugins and replays a session; RaggableTree indexes JavaScript, Java, C, C++, PHP, Ruby
+and Bash, and the structural tools serve every grammar; agents reach Google Drive and
+OneDrive (DRIVE-01..07); the console takes a Claude-Code-like bottom area, Esc Esc
+interrupts and the split-pane view shows one screen per thread; Orkeon Studio gets one
+Launch screen with a Trial | Real switch; and a run is a trace, every model call measured
+once. Many entries below are **[breaking]**: each one says what a crew, a script or a C#
+implementer changes.
+
+The public API surface is frozen at this tag: the 2 618 additions and 3 672 removals
+accumulated since rc.5 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
+across the twenty-five projects that carried them, and the `ORKCON001` analyzer rule moves
+to `AnalyzerReleases.Shipped.md` under `## Release 1.0.0`.
+
 ### Added — `CommandResponse.streamed` tells a script its answer already streamed (#228)
 
 With `Orkeon:Cli:ConsoleStreaming:Enabled`, the foreground act streams its answer inline to the console, and a command
@@ -10548,7 +10572,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.6...HEAD
+[1.0.0-rc.6]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.5...v1.0.0-rc.6
 [1.0.0-rc.5]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...v1.0.0-rc.3
