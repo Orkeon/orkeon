@@ -14,3 +14,4 @@ ORKVFS004 | Orkeon.Vfs | Error | Path.GetFullPath on potentially user-supplied i
 ORKVFS005 | Orkeon.Vfs | Error | Direct FileSystemWatcher instantiation
 ORKVFS006 | Orkeon.Vfs | Error | Direct StreamReader/StreamWriter instantiation with a string path
 ORKVFS007 | Orkeon.Vfs | Error | Nullable IFileSystemService field/parameter in framework code
+ORKCON001 | Orkeon.Console | Error | Direct System.Console usage

@@ -6,9 +6,12 @@ Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadKey(bool intercept 
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadKeyAsync(bool intercept = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.ConsoleKeyInfo>!
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadLine() -> string?
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.ReadLineAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.SeparatesThreads.get -> bool
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.TerminalGuiConsoleAdapter(Orkeon.Cli.TerminalGui.Layout.ReplPaneView! repl) -> void
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.Write(string! text) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteAttention(string? thread, string! text) -> void
 Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteLine(string! text) -> void
+Orkeon.Cli.TerminalGui.Console.TerminalGuiConsoleAdapter.WriteLine(string? thread, string! text) -> void
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.AgentRowInfo() -> void
@@ -21,6 +24,8 @@ Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.IsActive.get -> bool
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.IsActive.init -> void
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Name.get -> string!
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Name.init -> void
+Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.State.get -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.State.init -> void
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Ticket.get -> string?
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Ticket.init -> void
 Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Tokens.get -> long?
@@ -37,15 +42,14 @@ Orkeon.Cli.TerminalGui.Hosting.BannerInfo.Tips.get -> System.Collections.Generic
 Orkeon.Cli.TerminalGui.Hosting.BannerInfo.Tips.init -> void
 Orkeon.Cli.TerminalGui.Hosting.BannerInfo.WorkspaceLine.get -> string!
 Orkeon.Cli.TerminalGui.Hosting.BannerInfo.WorkspaceLine.init -> void
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo!
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.ContextChipInfo(string! Text, bool IsAgentTarget) -> void
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Deconstruct(out string! Text, out bool IsAgentTarget) -> void
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Equals(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? other) -> bool
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.IsAgentTarget.get -> bool
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.IsAgentTarget.init -> void
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Text.get -> string!
-Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Text.init -> void
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.Diagnostics.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.IsInputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.IsOutputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.Output.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.OutputIsUtf8.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.TreatControlCAsInput.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe.TreatControlCAsInput.set -> void
 Orkeon.Cli.TerminalGui.Hosting.ProgressInfo
 Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Hosting.ProgressInfo!
 Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.Equals(Orkeon.Cli.TerminalGui.Hosting.ProgressInfo? other) -> bool
@@ -61,6 +65,20 @@ Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.Ratio.init -> void
 Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.StartedAt.get -> System.DateTimeOffset
 Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.StartedAt.init -> void
 Orkeon.Cli.TerminalGui.Hosting.ReplWrapFlagParser
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Diagnostics.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.IsInputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.IsOutputRedirected.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Output.get -> System.IO.TextWriter!
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.OutputIsUtf8.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.TreatControlCAsInput.get -> bool
+Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.TreatControlCAsInput.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Cancelled = 4 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Done = 2 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Failed = 3 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Idle = 0 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
+Orkeon.Cli.TerminalGui.Hosting.TaskRowState.Running = 1 -> Orkeon.Cli.TerminalGui.Hosting.TaskRowState
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiHost
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiHost.Initialize() -> void
@@ -90,27 +108,40 @@ Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.LogsPaneTitle.get -> string!
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.LogsPaneTitle.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.LogsVisibleAtStartup.get -> bool
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.LogsVisibleAtStartup.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplTranscriptCapacity.get -> int
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplTranscriptCapacity.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplWordWrap.get -> bool
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ReplWordWrap.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.SpinnerVerbs.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.SpinnerVerbs.init -> void
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.get -> Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe!
+Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.Terminal.init -> void
 Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.TerminalGuiOptions() -> void
+Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8
 Orkeon.Cli.TerminalGui.Hosting.TtyDetector
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AgentRows.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.AgentRows.set -> void
-Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextChip.get -> System.Func<Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo?>?
-Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ContextChip.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.CyclePermissionMode.get -> System.Action?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.CyclePermissionMode.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.DescribeAgent.get -> System.Func<string!, string?>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.DescribeAgent.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.FinishedAgentRows.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.InterruptCurrent.get -> System.Action?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.InterruptCurrent.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ModelWitness.get -> System.Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.ModelWitness.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.get -> System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval!>!>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PendingApprovals.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PermissionMode.get -> System.Func<string?>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PermissionMode.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.Progress.get -> System.Func<Orkeon.Cli.TerminalGui.Hosting.ProgressInfo?>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.Progress.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.get -> System.Func<bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.PromptTurnRunning.set -> void
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.get -> System.Func<string!, string!, bool>?
+Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SendToTask.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SessionTokens.get -> System.Func<long?>?
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SessionTokens.set -> void
 Orkeon.Cli.TerminalGui.Hosting.TuiIntegration.SpinnerVerbs.get -> System.Func<System.Collections.Generic.IReadOnlyList<string!>?>?
@@ -120,6 +151,7 @@ Orkeon.Cli.TerminalGui.Hosting.UiFlagParser
 Orkeon.Cli.TerminalGui.Hosting.UiMode
 Orkeon.Cli.TerminalGui.Hosting.UiMode.Plain = 0 -> Orkeon.Cli.TerminalGui.Hosting.UiMode
 Orkeon.Cli.TerminalGui.Hosting.UiMode.Tui = 1 -> Orkeon.Cli.TerminalGui.Hosting.UiMode
+Orkeon.Cli.TerminalGui.Layout.AcceptHandlers
 Orkeon.Cli.TerminalGui.Layout.AgentRowActivatedEventArgs
 Orkeon.Cli.TerminalGui.Layout.AgentRowActivatedEventArgs.AgentRowActivatedEventArgs(string! ticket) -> void
 Orkeon.Cli.TerminalGui.Layout.AgentRowActivatedEventArgs.Ticket.get -> string!
@@ -166,6 +198,10 @@ Orkeon.Cli.TerminalGui.Layout.GlyphSet.Dot.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Dot.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Down.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Down.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Elbow.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Elbow.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ellipsis.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Equals(Orkeon.Cli.TerminalGui.Layout.GlyphSet? other) -> bool
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.GlyphSet() -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Prompt.get -> string!
@@ -178,9 +214,11 @@ Orkeon.Cli.TerminalGui.Layout.GlyphSet.Slashed.get -> string!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.Slashed.init -> void
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SpinnerFrames.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Cli.TerminalGui.Layout.GlyphSet.SpinnerFrames.init -> void
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.get -> string!
+Orkeon.Cli.TerminalGui.Layout.GlyphSet.Up.init -> void
 Orkeon.Cli.TerminalGui.Layout.HintBarModel
 Orkeon.Cli.TerminalGui.Layout.HintBarView
-Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, bool configUsable, System.Func<bool>? agentsHasRows = null) -> void
+Orkeon.Cli.TerminalGui.Layout.HintBarView.Bind(Orkeon.Cli.Abstractions.Runners.IInteractiveRunner! runner, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration, bool agentsAvailable, System.Func<Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo?>? modelWitness, System.Func<bool>? agentsHasRows = null) -> void
 Orkeon.Cli.TerminalGui.Layout.HintBarView.HintBarView(Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions! options) -> void
 Orkeon.Cli.TerminalGui.Layout.HintBarView.Refresh() -> void
 Orkeon.Cli.TerminalGui.Layout.KeyCapturedEventArgs
@@ -192,9 +230,24 @@ Orkeon.Cli.TerminalGui.Layout.LogsPaneView.Clear() -> void
 Orkeon.Cli.TerminalGui.Layout.LogsPaneView.LineCount.get -> int
 Orkeon.Cli.TerminalGui.Layout.LogsPaneView.LogsPaneView(Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions! options) -> void
 Orkeon.Cli.TerminalGui.Layout.LogsPaneView.SetVisibleLevel(Microsoft.Extensions.Logging.LogLevel level) -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.<Clone>$() -> Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo!
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Availability.get -> Orkeon.Cli.Abstractions.ModelAvailability
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Availability.init -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Equals(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? other) -> bool
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Model.get -> string!
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Model.init -> void
+Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.ModelWitnessInfo() -> void
 Orkeon.Cli.TerminalGui.Layout.MouseClipboardBehavior
 Orkeon.Cli.TerminalGui.Layout.MouseClipboardTextView
 Orkeon.Cli.TerminalGui.Layout.MouseClipboardTextView.MouseClipboardTextView() -> void
+Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Accent = 2 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Alert = 4 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Dim = 1 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Error = 5 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Normal = 0 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
+Orkeon.Cli.TerminalGui.Layout.PaletteRole.Ok = 3 -> Orkeon.Cli.TerminalGui.Layout.PaletteRole
 Orkeon.Cli.TerminalGui.Layout.QuitConfirmDialog
 Orkeon.Cli.TerminalGui.Layout.QuitConfirmDialog.Confirmed.get -> bool
 Orkeon.Cli.TerminalGui.Layout.QuitConfirmDialog.QuitConfirmDialog(string! message) -> void
@@ -207,6 +260,7 @@ Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Clear() -> void
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ConfigureCompletion(Orkeon.Cli.Abstractions.Console.IReplInputAssist! assist) -> void
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.FocusPrompt() -> void
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.Input.get -> Terminal.Gui.Views.TextView!
+Orkeon.Cli.TerminalGui.Layout.ReplPaneView.InterruptRequested -> System.EventHandler?
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.IsWordWrapEnabled.get -> bool
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.KeyCaptured -> System.EventHandler<Orkeon.Cli.TerminalGui.Layout.KeyCapturedEventArgs!>?
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ReadLineAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string?>!
@@ -217,9 +271,9 @@ Orkeon.Cli.TerminalGui.Layout.ReplPaneView.SetPromptPrefix(string! prefix) -> vo
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.StatusLine.get -> Orkeon.Cli.TerminalGui.Layout.StatusLineView!
 Orkeon.Cli.TerminalGui.Layout.ReplPaneView.ToggleWrap() -> void
 Orkeon.Cli.TerminalGui.Layout.RuleChipView
-Orkeon.Cli.TerminalGui.Layout.RuleChipView.Bind(Orkeon.Cli.TerminalGui.Hosting.TuiIntegration! integration) -> void
 Orkeon.Cli.TerminalGui.Layout.RuleChipView.Refresh() -> void
 Orkeon.Cli.TerminalGui.Layout.RuleChipView.RuleChipView(Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions! options) -> void
+Orkeon.Cli.TerminalGui.Layout.RuleChipView.SetLabel(string? label) -> void
 Orkeon.Cli.TerminalGui.Layout.SchemeFactory
 Orkeon.Cli.TerminalGui.Layout.SplitPaneToplevel
 Orkeon.Cli.TerminalGui.Layout.SplitPaneToplevel.Agents.get -> Orkeon.Cli.TerminalGui.Layout.AgentsPaneView!
@@ -280,7 +334,7 @@ Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.Dispose() -> void
 Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.DrainSentence() -> string!
 Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.HasOpenToolCall.get -> bool
 Orkeon.Cli.TerminalGui.Telemetry.ToolActivityAggregator.ToolActivityAggregator() -> void
-const Orkeon.Cli.TerminalGui.Layout.HintBarModel.ConfigWitness = "/rc" -> string!
+const Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessMaxWidth = 24 -> int
 const Orkeon.Cli.TerminalGui.Layout.TranscriptModel.Indent = "  " -> string!
 override Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.Equals(object? obj) -> bool
 override Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.GetHashCode() -> int
@@ -288,9 +342,6 @@ override Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.ToString() -> string!
 override Orkeon.Cli.TerminalGui.Hosting.BannerInfo.Equals(object? obj) -> bool
 override Orkeon.Cli.TerminalGui.Hosting.BannerInfo.GetHashCode() -> int
 override Orkeon.Cli.TerminalGui.Hosting.BannerInfo.ToString() -> string!
-override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.Equals(object? obj) -> bool
-override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.GetHashCode() -> int
-override Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.ToString() -> string!
 override Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.Equals(object? obj) -> bool
 override Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.GetHashCode() -> int
 override Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.ToString() -> string!
@@ -300,6 +351,9 @@ override Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.ToString() -> string!
 override Orkeon.Cli.TerminalGui.Layout.GlyphSet.Equals(object? obj) -> bool
 override Orkeon.Cli.TerminalGui.Layout.GlyphSet.GetHashCode() -> int
 override Orkeon.Cli.TerminalGui.Layout.GlyphSet.ToString() -> string!
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.Equals(object? obj) -> bool
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.GetHashCode() -> int
+override Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.ToString() -> string!
 override Orkeon.Cli.TerminalGui.Logging.LogEntry.Equals(object? obj) -> bool
 override Orkeon.Cli.TerminalGui.Logging.LogEntry.GetHashCode() -> int
 override Orkeon.Cli.TerminalGui.Logging.LogEntry.ToString() -> string!
@@ -310,21 +364,23 @@ static Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.operator !=(Orkeon.Cli.Termin
 static Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo.operator ==(Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo? left, Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.BannerInfo.operator !=(Orkeon.Cli.TerminalGui.Hosting.BannerInfo? left, Orkeon.Cli.TerminalGui.Hosting.BannerInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.BannerInfo.operator ==(Orkeon.Cli.TerminalGui.Hosting.BannerInfo? left, Orkeon.Cli.TerminalGui.Hosting.BannerInfo? right) -> bool
-static Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.operator !=(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? left, Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? right) -> bool
-static Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo.operator ==(Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? left, Orkeon.Cli.TerminalGui.Hosting.ContextChipInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.operator !=(Orkeon.Cli.TerminalGui.Hosting.ProgressInfo? left, Orkeon.Cli.TerminalGui.Hosting.ProgressInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.ProgressInfo.operator ==(Orkeon.Cli.TerminalGui.Hosting.ProgressInfo? left, Orkeon.Cli.TerminalGui.Hosting.ProgressInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.ReplWrapFlagParser.Parse(string![]! args) -> bool?
 static Orkeon.Cli.TerminalGui.Hosting.ReplWrapFlagParser.ParseValue(string? value) -> bool?
+static Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe.Instance.get -> Orkeon.Cli.TerminalGui.Hosting.SystemTerminalProbe!
 static Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.operator !=(Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions? left, Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions? right) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions.operator ==(Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions? left, Orkeon.Cli.TerminalGui.Hosting.TerminalGuiOptions? right) -> bool
+static Orkeon.Cli.TerminalGui.Hosting.TerminalUtf8.IsUtf8(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty() -> bool
+static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.IsInteractiveTty(Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> bool
 static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.ResolveEffectiveMode(Orkeon.Cli.TerminalGui.Hosting.UiMode? requested) -> Orkeon.Cli.TerminalGui.Hosting.UiMode
+static Orkeon.Cli.TerminalGui.Hosting.TtyDetector.ResolveEffectiveMode(Orkeon.Cli.TerminalGui.Hosting.UiMode? requested, Orkeon.Cli.TerminalGui.Hosting.ITerminalProbe! terminal) -> Orkeon.Cli.TerminalGui.Hosting.UiMode
 static Orkeon.Cli.TerminalGui.Hosting.UiFlagParser.Parse(string![]! args) -> Orkeon.Cli.TerminalGui.Hosting.UiMode?
 static Orkeon.Cli.TerminalGui.Hosting.UiFlagParser.ParseValue(string? value) -> Orkeon.Cli.TerminalGui.Hosting.UiMode?
+static Orkeon.Cli.TerminalGui.Layout.AcceptHandlers.OnAccept(this Terminal.Gui.ViewBase.View! view, System.Action! action) -> void
+static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.ComposeListRows(System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! live, System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! ended, bool promptTurnRunning = false) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>!
 static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.ComposeMetrics(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo! row) -> string!
-static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.FormatRow(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo! row, int width, int nameColumn, bool selected = false) -> string!
-static Orkeon.Cli.TerminalGui.Layout.AgentsPaneModel.NameColumn(System.Collections.Generic.IReadOnlyList<Orkeon.Cli.TerminalGui.Hosting.AgentRowInfo!>! rows) -> int
 static Orkeon.Cli.TerminalGui.Layout.BannerComposer.Compose(Orkeon.Cli.TerminalGui.Hosting.BannerInfo! info, Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Cli.TerminalGui.Layout.GlobalKeyBindings.Install(Orkeon.Cli.TerminalGui.Layout.SplitPaneToplevel! toplevel, Orkeon.Cli.TerminalGui.Logging.TerminalGuiLoggerProvider! logProvider, Orkeon.Cli.TerminalGui.Layout.FindDialog! findDialog, Orkeon.Cli.TerminalGui.Hosting.TuiIntegration? integration = null) -> void
 static Orkeon.Cli.TerminalGui.Layout.GlyphSet.Ascii.get -> Orkeon.Cli.TerminalGui.Layout.GlyphSet!
@@ -332,19 +388,28 @@ static Orkeon.Cli.TerminalGui.Layout.GlyphSet.Resolve(Orkeon.Cli.TerminalGui.Lay
 static Orkeon.Cli.TerminalGui.Layout.GlyphSet.Unicode.get -> Orkeon.Cli.TerminalGui.Layout.GlyphSet!
 static Orkeon.Cli.TerminalGui.Layout.GlyphSet.operator !=(Orkeon.Cli.TerminalGui.Layout.GlyphSet? left, Orkeon.Cli.TerminalGui.Layout.GlyphSet? right) -> bool
 static Orkeon.Cli.TerminalGui.Layout.GlyphSet.operator ==(Orkeon.Cli.TerminalGui.Layout.GlyphSet? left, Orkeon.Cli.TerminalGui.Layout.GlyphSet? right) -> bool
-static Orkeon.Cli.TerminalGui.Layout.HintBarModel.ComposeLeft(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, System.Collections.Generic.IReadOnlyList<string!>! segments) -> string!
 static Orkeon.Cli.TerminalGui.Layout.HintBarModel.IsLoudPosture(string! permissionMode) -> bool
-static Orkeon.Cli.TerminalGui.Layout.HintBarModel.LeftSegments(string! permissionMode, bool commandRunning, bool agentsPaneAvailable) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.Witness(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? info, Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs) -> string!
+static Orkeon.Cli.TerminalGui.Layout.HintBarModel.WitnessScheme(Orkeon.Cli.Abstractions.ModelAvailability availability) -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator !=(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
+static Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo.operator ==(Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? left, Orkeon.Cli.TerminalGui.Layout.ModelWitnessInfo? right) -> bool
 static Orkeon.Cli.TerminalGui.Layout.MouseClipboardBehavior.AttachRightClickPaste(System.Func<Terminal.Gui.Views.TextView?>! getReplInput) -> System.IDisposable!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Accent() -> Terminal.Gui.Drawing.Scheme!
-static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Chip(bool agentTarget) -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Alert() -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool bold = false, bool italic = false) -> Terminal.Gui.Drawing.Attribute
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Attr(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor, bool bold, bool italic) -> Terminal.Gui.Drawing.Attribute
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Dim() -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Editable() -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Error() -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Foreground(Orkeon.Cli.TerminalGui.Layout.PaletteRole role, bool trueColor) -> Terminal.Gui.Drawing.Color
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.IsTrueColor(string? colorTerm) -> bool
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Normal() -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Ok() -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Pane() -> Terminal.Gui.Drawing.Scheme!
-static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Posture() -> Terminal.Gui.Drawing.Scheme!
-static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Rule(bool agentTarget) -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Uniform(Terminal.Gui.Drawing.Attribute attr) -> Terminal.Gui.Drawing.Scheme!
+static Orkeon.Cli.TerminalGui.Layout.SchemeFactory.Warn() -> Terminal.Gui.Drawing.Scheme!
 static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.Compose(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, string! gerund, System.TimeSpan elapsed, long? tokens = null, Orkeon.Cli.TerminalGui.Layout.TurnState? state = null, string? head = null) -> string!
+static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.ComposeApproval(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, Orkeon.Cli.Abstractions.Runners.PendingToolApproval! first, int waiting) -> string!
 static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.ComposeProgress(Orkeon.Cli.TerminalGui.Layout.GlyphSet! glyphs, string! label, double? ratio, string? message, System.TimeSpan elapsed, string? head = null) -> string!
 static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.FormatElapsed(System.TimeSpan elapsed) -> string!
 static Orkeon.Cli.TerminalGui.Layout.StatusLineFormatter.FormatTokens(long tokens) -> string!

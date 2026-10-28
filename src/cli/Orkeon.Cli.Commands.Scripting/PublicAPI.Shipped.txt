@@ -76,6 +76,8 @@ Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Fallback
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.FallbackCommandName.set -> void
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Limits.get -> Orkeon.Cli.Commands.Scripting.Configuration.CliScriptLimitsOptions!
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Limits.set -> void
+Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.MaxChainDepth.get -> int
+Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.MaxChainDepth.set -> void
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.MaxScripts.get -> int
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.MaxScripts.set -> void
 Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.ScriptCommandsConfiguration() -> void
@@ -94,26 +96,42 @@ Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandEnvelope.from.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandEnvelope.intent.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandEnvelope.payload.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandRegistrar
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.ChainDepthExceededException() -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.ChainDepthExceededException(int depth, int limit, string! command) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.ChainDepthExceededException(string! message) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.ChainDepthExceededException(string! message, System.Exception! innerException) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.Command.get -> string?
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.Depth.get -> int
+Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.Limit.get -> int
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.CommandCompletionFailedEventArgs(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance, string! error) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Error.get -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.CancellationToken.get -> System.Threading.CancellationToken
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Captured.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.CommandName.get -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Depth.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Dispose() -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope.Timeout.get -> System.TimeSpan?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null, string? promptLine = null, int parentDepth = 0, bool fromCompleted = false) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.Channel.get -> Orkeon.Application.Interfaces.Services.IAgentChannel!
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.CommandDispatchService(Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory! directory, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry! registry, Microsoft.Extensions.Logging.ILogger<Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService!>? logger = null, Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker? progress = null) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.CommandDispatchService(Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory! directory, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry! registry, Microsoft.Extensions.Logging.ILogger<Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService!>? logger = null, Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker? progress = null, int maxChainDepth = 8) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.Directory.get -> Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.PromptTurnTickets() -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.Registry.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.cancel(string! ticket) -> bool
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.get(string! ticket) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.list() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.list(Jint.Native.JsValue? filter) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.post(string! agent, string! intent, string! payload) -> string!
-Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work) -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.postWork(string! label, string! target, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!>!>! work, bool continueChain = false) -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.request(string! agent, string! intent, string! payload) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.AddTokens(long count) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.AddUsage(Orkeon.Application.Interfaces.Ports.CostUsageEvent! usage, decimal? cost) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.Cancel(string? reason = null) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.Complete(Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse! response) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.CorrelationId.get -> System.Guid
@@ -130,6 +148,10 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.State.get -> Orkeon.Cli.C
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.TargetAgent.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.Ticket.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.TokensUsed.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance.Usage.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs.CommandInstanceEventArgs(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance) -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs.Instance.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.<Clone>$() -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.Agent.get -> string?
@@ -147,13 +169,20 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Async = 1 -> Orkeon.C
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind.Sync = 0 -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKindExtensions
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.BeginWork() -> System.IDisposable!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.CommandInstanceRegistry() -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.CompletionFailed -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandCompletionFailedEventArgs!>?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.Count.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.Get(string! ticket) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.HasRunning.get -> bool
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceRegistered -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.InstanceTerminated -> System.EventHandler<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceEventArgs!>?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.List(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter? filter = null) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView!>!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.Register(string! name, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind kind, string! targetAgent, string! intent, System.Guid correlationId) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.ReportCompletionFailure(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance, string! error) -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.RetentionLimit.get -> int
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.RetentionLimit.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceRegistry.WorkSettled -> System.EventHandler?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState.Cancelled = 3 -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState.Done = 1 -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState
@@ -161,6 +190,25 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState.Failed = 2 -> Orkeon
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState.Rejected = 4 -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState.Running = 0 -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceStateExtensions
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Add(Orkeon.Application.Interfaces.Ports.CostUsageEvent! usage, decimal? cost) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheHitTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CacheWriteTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Calls.get -> int
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Calls.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CommandInstanceUsage() -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CompletionTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.CompletionTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Cost.get -> decimal?
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Cost.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.PromptTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.PromptTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.ReasoningTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.UnpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.UnpricedCalls.init -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView.completedAt.get -> string?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceView.correlationId.get -> string!
@@ -187,6 +235,8 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.agent.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.error.get -> string?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.intent.get -> string!
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.payload.get -> string!
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.get -> bool
+Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.streamed.init -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.success.get -> bool
 Orkeon.Cli.Commands.Scripting.Dispatch.Commands.DispatchBuiltinCommands
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor
@@ -204,7 +254,10 @@ Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Description.get -> strin
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Description.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Dispatch.get -> Jint.Native.JsValue?
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Dispatch.init -> void
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.EffectiveGroup.get -> string?
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Equals(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor? other) -> bool
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Group.get -> string?
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Group.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Handler.get -> Jint.Native.JsValue?
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Handler.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.HasArgsSchema.get -> bool
@@ -214,6 +267,8 @@ Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.MaxConcurrent.get -> int
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.MaxConcurrent.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Name.get -> string!
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.Name.init -> void
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.get -> string?
+Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceDirectory.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceVirtualPath.get -> string!
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.SourceVirtualPath.init -> void
 Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorCollector
@@ -279,6 +334,7 @@ Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.AliasEqualsName = 3 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidAlias = 2 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidDescription = 4 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
+Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidGroup = 5 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.InvalidName = 0 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure.NameIsBuiltin = 1 -> Orkeon.Cli.Commands.Scripting.Loading.ValidationFailure
 Orkeon.Cli.Commands.Scripting.Loading.ValidationResult
@@ -296,9 +352,12 @@ Orkeon.Cli.Commands.Scripting.Progress.InstanceAttributingUsageSink
 Orkeon.Cli.Commands.Scripting.Progress.InstanceAttributingUsageSink.InstanceAttributingUsageSink(Orkeon.Application.Interfaces.Ports.ICostBudgetManager? costManager = null) -> void
 Orkeon.Cli.Commands.Scripting.Progress.InstanceAttributingUsageSink.Record(Orkeon.Application.Interfaces.Ports.CostUsageEvent! usage) -> void
 Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver
+Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.Current.get -> (string? Model, Orkeon.Cli.Abstractions.ModelAvailability State)
 Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.LlmRetryProgressObserver(Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker! broker) -> void
 Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.OnCallSettled() -> void
+Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.OnCallSettled(Orkeon.Application.Interfaces.Ports.LlmCallSettlement! settlement) -> void
 Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.OnRetryScheduled(Orkeon.Application.Interfaces.Ports.LlmRetryEvent! retry) -> void
+Orkeon.Cli.Commands.Scripting.Progress.LlmRetryProgressObserver.Reset() -> void
 Orkeon.Cli.Commands.Scripting.Progress.ProgressAmbient
 Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker
 Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker.Clear() -> void
@@ -359,6 +418,7 @@ Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Description.get -> string!
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Group.get -> string?
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.Name.get -> string!
 Orkeon.Cli.Commands.Scripting.Registry.ScriptHelpCommand.ScriptHelpCommand(System.Func<System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand!>!>! scriptCommandsAccessor) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CommandActionResult
@@ -398,7 +458,6 @@ Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.write(string! text) 
 Orkeon.Cli.Commands.Scripting.Runtime.CommandRuntimeContext.writeLine(string! text) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue
 Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue.CompletionDrainQueue() -> void
-Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue.DrainAll() -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion>!
 Orkeon.Cli.Commands.Scripting.Runtime.CompletionDrainQueue.Enqueue(Jint.Native.JsValue? completed, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! instance) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.CrewRunOutput() -> void
@@ -408,6 +467,8 @@ Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.error.get -> string?
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.error.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.ok.get -> bool
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.ok.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.get -> bool
+Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.streamed.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.summary.get -> string?
 Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput.summary.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.DefaultScriptServiceWhitelist
@@ -430,6 +491,12 @@ Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion.Instance.get -> Orkeon.C
 Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion.Instance.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion.PendingCompletion() -> void
 Orkeon.Cli.Commands.Scripting.Runtime.PendingCompletion.PendingCompletion(Jint.Native.JsValue? Completed, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstance! Instance) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.allow(string! tool, string? argument = null, string? pattern = null) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.clear() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.deny(string! tool, string? argument = null, string? pattern = null) -> void
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.enabled.get -> bool
+Orkeon.Cli.Commands.Scripting.Runtime.PermissionRulesFacade.list() -> string![]!
 Orkeon.Cli.Commands.Scripting.Runtime.ProgressHandle
 Orkeon.Cli.Commands.Scripting.Runtime.ProgressHandle.ProgressHandle(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console, string! label, int? total, Orkeon.Cli.Commands.Scripting.Progress.ProgressBroker? broker = null) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ProgressHandle.advance(string? label = null) -> void
@@ -441,6 +508,7 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Aliases.get -> System.Collec
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Description.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Descriptor.get -> Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Group.get -> string?
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.Name.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.ScriptCommand(Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandBinding! binding, Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices? hostServices = null) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommand.SourceVirtualPath.get -> string!
@@ -468,11 +536,35 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.Progress.init -> voi
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.ScriptCommandServices() -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.Services.get -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceLocator?
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.Services.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.ScriptCommandUsage() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheHitTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cacheWriteTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.calls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.calls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.completionTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.completionTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cost.get -> double?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.cost.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.name.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.name.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.promptTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.promptTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.reasoningTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.state.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.state.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.ticket.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.ticket.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage.unpricedCalls.init -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.ScriptHostFacade(Orkeon.Scripting.ScriptHost! host, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Microsoft.Extensions.Options.IOptions<Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions!>! options, Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService? dispatch = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade!>? logger = null) -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.listCrews() -> string![]!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.runCrew(string! name, Jint.Native.JsValue? input = null) -> Orkeon.Cli.Commands.Scripting.Runtime.CrewRunOutput!
-Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.runCrewAsync(string! name, Jint.Native.JsValue? input = null) -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacade.runCrewAsync(string! name, Jint.Native.JsValue? input = null, Jint.Native.JsValue? options = null) -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.CrewDirectories.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.CrewDirectories.set -> void
@@ -481,6 +573,42 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.CrewFileName.set -
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.RunCrewTimeout.get -> System.TimeSpan
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.RunCrewTimeout.set -> void
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.ScriptHostFacadeOptions() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.ScriptModelUsage() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheHitTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cacheWriteTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.calls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.calls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.completionTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.completionTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cost.get -> double?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.cost.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.model.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.model.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.promptTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.promptTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.reasoningTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage.unpricedCalls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.ScriptPendingApproval() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.command.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.command.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.input.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.taskId.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.taskId.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval.tool.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApprovals
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApprovals.list() -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptPendingApproval![]!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.channel.get -> string!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.commit.get -> string?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.version.get -> string!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceLocator
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceLocator.get(string! name) -> object!
@@ -489,7 +617,37 @@ Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist.Add(string! name, System.Func<System.IServiceProvider!, object!>! resolver) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist.AddOptional(string! name, System.Func<System.IServiceProvider!, object?>! resolver) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist!
 Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist.ScriptServiceWhitelist() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptSessionUsage
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptSessionUsage.report() -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.ScriptUsageReport() -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.byCommand.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandUsage!>!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.byCommand.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.byModel.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Runtime.ScriptModelUsage!>!
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.byModel.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheHitTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cacheWriteTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.calls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.calls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.completionTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.completionTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cost.get -> double?
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.cost.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.promptTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.promptTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.reasoningTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.totalTokens.get -> long
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.totalTokens.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.unpricedCalls.get -> int
+Orkeon.Cli.Commands.Scripting.Runtime.ScriptUsageReport.unpricedCalls.init -> void
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.load(string! path) -> System.Threading.Tasks.Task<int>!
+Orkeon.Cli.Commands.Scripting.Runtime.SessionFacade.save(string? path = null) -> System.Threading.Tasks.Task<string!>!
 Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink
+Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.BeginTurn(string? label) -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink!
 Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.ConsoleLlmDeltaSink(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console) -> void
 Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.OnDelta(string! delta) -> void
 Orkeon.Cli.Commands.Scripting.Streaming.ConsoleLlmDeltaSink.OnTurnCompleted() -> void
@@ -503,12 +661,18 @@ const Orkeon.Cli.Commands.Scripting.Configuration.CliScriptLimitsOptions.Section
 const Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.SectionName = "Orkeon:Cli:ScriptCommands" -> string!
 const Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.MaxDescriptionLength = 200 -> int
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptHostFacadeOptions.SectionName = "Orkeon:Cli:ScriptHost" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.Unknown = "unknown" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Approvals = "approvals" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Commands = "commands" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.FileSystem = "fs" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Llm = "llm" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Logger = "logger" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Permissions = "permissions" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Runtime = "runtime" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.ScriptHost = "script-host" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Session = "session" -> string!
 const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Tools = "tools" -> string!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Usage = "usage" -> string!
 const Orkeon.Cli.Commands.Scripting.Telemetry.CliScriptingTags.CommandName = "orkeon.cli.command.name" -> string!
 const Orkeon.Cli.Commands.Scripting.Telemetry.CliScriptingTags.CommandSource = "orkeon.cli.command.source" -> string!
 override Orkeon.Cli.Commands.Scripting.Args.ArgSpec.Equals(object? obj) -> bool
@@ -540,6 +704,7 @@ override Orkeon.Cli.Commands.Scripting.Configuration.CliScriptLimitsOptions.ToSt
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.Equals(object? obj) -> bool
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.GetHashCode() -> int
 override Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.ToString() -> string!
+override Orkeon.Cli.Commands.Scripting.Dispatch.ChainDepthExceededException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.Equals(object? obj) -> bool
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.GetHashCode() -> int
 override Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.ToString() -> string!
@@ -601,18 +766,20 @@ static Orkeon.Cli.Commands.Scripting.Configuration.CliScriptLimitsOptions.operat
 static Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.operator !=(Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration? left, Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration.operator ==(Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration? left, Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration? right) -> bool
 static Orkeon.Cli.Commands.Scripting.DependencyInjection.ConsoleStreamingExtensions.AddLlmConsoleStreaming(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Cli.Commands.Scripting.DependencyInjection.ScriptingCliServiceCollectionExtensions.AddConsoleToolApproval(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Cli.Commands.Scripting.DependencyInjection.ScriptingCliServiceCollectionExtensions.AddScriptCommands(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Action<Orkeon.Cli.Commands.Scripting.Configuration.ScriptCommandsConfiguration!>? configure = null, System.Action<Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceWhitelist!>? configureWhitelist = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandRegistrar.Register(Orkeon.Scripting.Builders.JsAgent! agent, Jint.Engine! engine, System.Threading.SemaphoreSlim! engineLock, Orkeon.Application.Interfaces.Services.IAgentChannel! channel, Orkeon.Cli.Commands.Scripting.Dispatch.AgentCommandDirectory! directory, Microsoft.Extensions.Logging.ILogger? logger = null) -> System.IDisposable!
-static Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService.BeginCommand(string! commandName, System.Threading.CancellationToken ct, System.TimeSpan? timeout = null) -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchScope!
 static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.operator !=(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter? left, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.operator ==(Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter? left, Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKindExtensions.ToToken(this Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceKind kind) -> string!
 static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceStateExtensions.IsTerminal(this Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState state) -> bool
 static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceStateExtensions.ToToken(this Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceState state) -> string!
+static Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage.Empty.get -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceUsage!
 static Orkeon.Cli.Commands.Scripting.Dispatch.Commands.DispatchBuiltinCommands.Create(Orkeon.Cli.Commands.Scripting.Dispatch.CommandDispatchService! dispatch) -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>!
 static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.operator !=(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor? left, Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor.operator ==(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor? left, Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.GetShadowedDefaults(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor! descriptor) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.IsValidGroupName(string! group) -> bool
 static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.Validate(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor! descriptor) -> Orkeon.Cli.Commands.Scripting.Loading.ValidationResult
 static Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.ValidateGlobalUniqueness(System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor!>! descriptors) -> System.Collections.Generic.IReadOnlyList<(Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptor! Conflicting, string! Reason)>!
 static Orkeon.Cli.Commands.Scripting.Loading.CommandLoadResult.operator !=(Orkeon.Cli.Commands.Scripting.Loading.CommandLoadResult? left, Orkeon.Cli.Commands.Scripting.Loading.CommandLoadResult? right) -> bool
@@ -641,6 +808,8 @@ static Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandBinding.operator ==(Or
 static Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.Empty.get -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices!
 static Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.operator !=(Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices? left, Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices? right) -> bool
 static Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices.operator ==(Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices? left, Orkeon.Cli.Commands.Scripting.Runtime.ScriptCommandServices? right) -> bool
+static Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.FromAssembly(System.Reflection.Assembly? assembly, string? channel) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo!
+static Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo.FromInformationalVersion(string? informationalVersion, string? channel) -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptRuntimeInfo!
 static Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceLocator.Empty.get -> Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceLocator!
 static readonly Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter.All -> Orkeon.Cli.Commands.Scripting.Dispatch.CommandInstanceFilter!
 static readonly Orkeon.Cli.Commands.Scripting.Loading.CommandDescriptorValidator.ReservedNames -> System.Collections.Generic.IReadOnlySet<string!>!

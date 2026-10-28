@@ -8,6 +8,16 @@ Orkeon.Constants.Configuration.EnvironmentVariableEntry.ReadBy.get -> System.Col
 Orkeon.Constants.Configuration.EnvironmentVariableEntry.Value.get -> string!
 Orkeon.Constants.Configuration.EnvironmentVariableNames
 Orkeon.Constants.Configuration.OperatorMessages
+Orkeon.Constants.Configuration.SettingPlaceholderSetting
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.<Clone>$() -> Orkeon.Constants.Configuration.SettingPlaceholderSetting!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Correction.get -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Correction.init -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Deconstruct(out string! Path, out string! Correction) -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Equals(Orkeon.Constants.Configuration.SettingPlaceholderSetting? other) -> bool
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Path.get -> string!
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.Path.init -> void
+Orkeon.Constants.Configuration.SettingPlaceholderSetting.SettingPlaceholderSetting(string! Path, string! Correction) -> void
+Orkeon.Constants.Configuration.SettingPlaceholders
 Orkeon.Constants.Configuration.SettingsCategories
 Orkeon.Constants.Configuration.SettingsCategory
 Orkeon.Constants.Configuration.SettingsCategory.Id.get -> string!
@@ -15,8 +25,13 @@ Orkeon.Constants.Configuration.SettingsCategory.SettingsCategory(string! id, str
 Orkeon.Constants.Configuration.SettingsCategory.Title.get -> string!
 Orkeon.Constants.Configuration.SettingsSections
 const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionContextWindowTokens = "Orkeon:Cli:Session:ContextWindowTokens" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionPersist = "Orkeon:Cli:Session:Persist" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionSessionsDirectory = "Orkeon:Cli:Session:SessionsDirectory" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionStartScript = "Orkeon:Cli:Session:StartScript" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemInternalMounts = "Orkeon:FileSystem:InternalMounts" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemMounts = "Orkeon:FileSystem:Mounts" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemWorkingDirectory = "Orkeon:FileSystem:WorkingDirectory" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemWriteDirectory = "Orkeon:FileSystem:WriteDirectory" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmApiKeyEnvVar = "ApiKeyEnvVar" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmGrammar = "Grammar" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.LlmProfiles = "Profiles" -> string!
@@ -24,6 +39,7 @@ const Orkeon.Constants.Configuration.ConfigurationKeys.LlmSection = "Llm" -> str
 const Orkeon.Constants.Configuration.ConfigurationKeys.McpSection = "MCP" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.Rag = "Orkeon:Rag" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.ThinkingSection = "Thinking" -> string!
+const Orkeon.Constants.Configuration.ConfigurationKeys.ToolsDrive = "Orkeon:Tools:Drive" -> string!
 const Orkeon.Constants.Configuration.ConfigurationKeys.ToolsEmail = "Orkeon:Tools:Email" -> string!
 const Orkeon.Constants.Configuration.EnvironmentVariableNames.AllowExternalMounts = "ORKEON_ALLOW_EXTERNAL_MOUNTS" -> string!
 const Orkeon.Constants.Configuration.EnvironmentVariableNames.BraveApiKey = "BRAVE_API_KEY" -> string!
@@ -57,8 +73,19 @@ const Orkeon.Constants.Configuration.SettingsCategories.ScriptsAndConsole = "scr
 const Orkeon.Constants.Configuration.SettingsCategories.Security = "security" -> string!
 const Orkeon.Constants.Configuration.SettingsCategories.ServiceHostAndA2A = "service-host-and-a2a" -> string!
 const Orkeon.Constants.Configuration.SettingsCategories.Tools = "tools" -> string!
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.Equals(object? obj) -> bool
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.GetHashCode() -> int
+override Orkeon.Constants.Configuration.SettingPlaceholderSetting.ToString() -> string!
 static Orkeon.Constants.Configuration.EnvironmentVariableNames.NamingKeySuffixes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Configuration.EnvironmentVariableNames.ReadByName.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.EnvironmentVariableEntry!>!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlRefused(string! settingPath, string! address) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmBaseUrlSilent(string! settingPath, string! address) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.LlmVendorAnthropicPathRefused(string! settingPath, string! address, string! vendor) -> string!
+static Orkeon.Constants.Configuration.OperatorMessages.SettingPlaceholderRefused(string! settingPath, string! correction) -> string!
+static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator !=(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
+static Orkeon.Constants.Configuration.SettingPlaceholderSetting.operator ==(Orkeon.Constants.Configuration.SettingPlaceholderSetting? left, Orkeon.Constants.Configuration.SettingPlaceholderSetting? right) -> bool
+static Orkeon.Constants.Configuration.SettingPlaceholders.CorrectionFor(string! settingPath) -> string?
+static Orkeon.Constants.Configuration.SettingPlaceholders.Settings.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.SettingPlaceholderSetting!>!
 static Orkeon.Constants.Configuration.SettingsCategories.All.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Configuration.SettingsCategory!>!
 static Orkeon.Constants.Configuration.SettingsCategories.BySection.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 static Orkeon.Constants.Configuration.SettingsCategories.Of(string! sectionPath) -> string?

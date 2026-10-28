@@ -1,1 +1,111 @@
 #nullable enable
+Orkeon.Tools.Drive.Accounts.DriveRightsCheck
+Orkeon.Tools.Drive.Accounts.DriveRightsCheck.Check(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Drive.Administration.DriveAccountStatus!>! accounts) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Drive.Accounts.DriveRightsCheck.CheckAsync(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Tools.Drive.Accounts.DriveRightsCheck.DriveRightsCheck(Orkeon.Tools.Drive.Administration.DriveAccountAdministration! administration) -> void
+Orkeon.Tools.Drive.Administration.DriveAccountAdministration
+Orkeon.Tools.Drive.Administration.DriveAccountAdministration.CheckAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Drive.Administration.DriveCheckResult!>!
+Orkeon.Tools.Drive.Administration.DriveAccountAdministration.ListAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Drive.Administration.DriveAccountStatus!>!>!
+Orkeon.Tools.Drive.Administration.DriveAccountAdministration.LoginAsync(string! account, Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction! interaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Drive.Administration.DriveAccountAdministration.LogoutAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.<Clone>$() -> Orkeon.Tools.Drive.Administration.DriveAccountStatus!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowPublicLinks.get -> bool
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowPublicLinks.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowedRecipients.get -> int
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.AllowedRecipients.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.DriveAccountStatus() -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Equals(Orkeon.Tools.Drive.Administration.DriveAccountStatus? other) -> bool
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.IsDefault.get -> bool
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.IsDefault.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Name.get -> string!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Name.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Problem.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Problem.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Provider.get -> string!
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Provider.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Ready.get -> bool
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Ready.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Rights.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Rights.init -> void
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Root.get -> string?
+Orkeon.Tools.Drive.Administration.DriveAccountStatus.Root.init -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult
+Orkeon.Tools.Drive.Administration.DriveCheckResult.<Clone>$() -> Orkeon.Tools.Drive.Administration.DriveCheckResult!
+Orkeon.Tools.Drive.Administration.DriveCheckResult.Account.get -> string!
+Orkeon.Tools.Drive.Administration.DriveCheckResult.Account.init -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult.DriveCheckResult() -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult.Equals(Orkeon.Tools.Drive.Administration.DriveCheckResult? other) -> bool
+Orkeon.Tools.Drive.Administration.DriveCheckResult.Items.get -> int
+Orkeon.Tools.Drive.Administration.DriveCheckResult.Items.init -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult.More.get -> bool
+Orkeon.Tools.Drive.Administration.DriveCheckResult.More.init -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult.RootName.get -> string!
+Orkeon.Tools.Drive.Administration.DriveCheckResult.RootName.init -> void
+Orkeon.Tools.Drive.Administration.DriveCheckResult.RootPath.get -> string!
+Orkeon.Tools.Drive.Administration.DriveCheckResult.RootPath.init -> void
+Orkeon.Tools.Drive.Auth.DriveTokenSet
+Orkeon.Tools.Drive.Auth.DriveTokenSet.<Clone>$() -> Orkeon.Tools.Drive.Auth.DriveTokenSet!
+Orkeon.Tools.Drive.Auth.DriveTokenSet.AccessToken.get -> string!
+Orkeon.Tools.Drive.Auth.DriveTokenSet.AccessToken.init -> void
+Orkeon.Tools.Drive.Auth.DriveTokenSet.DriveTokenSet() -> void
+Orkeon.Tools.Drive.Auth.DriveTokenSet.Equals(Orkeon.Tools.Drive.Auth.DriveTokenSet? other) -> bool
+Orkeon.Tools.Drive.Auth.DriveTokenSet.ExpiresAt.get -> System.DateTimeOffset
+Orkeon.Tools.Drive.Auth.DriveTokenSet.ExpiresAt.init -> void
+Orkeon.Tools.Drive.Auth.DriveTokenSet.RefreshToken.get -> string?
+Orkeon.Tools.Drive.Auth.DriveTokenSet.RefreshToken.init -> void
+Orkeon.Tools.Drive.Auth.DriveTokenSet.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Drive.Auth.DriveTokenSet.Scopes.init -> void
+Orkeon.Tools.Drive.Auth.FileSystemDriveTokenStore
+Orkeon.Tools.Drive.Auth.FileSystemDriveTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Drive.Auth.FileSystemDriveTokenStore.FileSystemDriveTokenStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualDirectory) -> void
+Orkeon.Tools.Drive.Auth.FileSystemDriveTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Drive.Auth.DriveTokenSet?>!
+Orkeon.Tools.Drive.Auth.FileSystemDriveTokenStore.WriteAsync(string! key, Orkeon.Tools.Drive.Auth.DriveTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Drive.Auth.IDriveTokenStore
+Orkeon.Tools.Drive.Auth.IDriveTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Drive.Auth.IDriveTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Drive.Auth.DriveTokenSet?>!
+Orkeon.Tools.Drive.Auth.IDriveTokenStore.WriteAsync(string! key, Orkeon.Tools.Drive.Auth.DriveTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Drive.Configuration.DriveCredentialsLocation
+Orkeon.Tools.Drive.DependencyInjection.DriveToolsServiceCollectionExtensions
+Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.AuthenticationFailed = 12 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.Conflict = 10 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.CredentialMissing = 6 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.InvalidConfiguration = 2 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.InvalidRequest = 11 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.ItemNotFound = 9 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.LoginRequired = 5 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.NotConfigured = 0 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.RecipientNotAllowed = 7 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.RightDenied = 3 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.ServerError = 13 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.TooLarge = 8 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.UnknownAccount = 1 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveErrorCode.Unsupported = 4 -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveToolException
+Orkeon.Tools.Drive.DriveToolException.Code.get -> Orkeon.Tools.Drive.DriveErrorCode
+Orkeon.Tools.Drive.DriveToolException.DriveToolException() -> void
+Orkeon.Tools.Drive.DriveToolException.DriveToolException(Orkeon.Tools.Drive.DriveErrorCode code, string! message) -> void
+Orkeon.Tools.Drive.DriveToolException.DriveToolException(Orkeon.Tools.Drive.DriveErrorCode code, string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Drive.DriveToolException.DriveToolException(string! message) -> void
+Orkeon.Tools.Drive.DriveToolException.DriveToolException(string! message, System.Exception! innerException) -> void
+const Orkeon.Tools.Drive.Configuration.DriveCredentialsLocation.TokenSubdirectory = "drive" -> string!
+override Orkeon.Tools.Drive.Administration.DriveAccountStatus.Equals(object? obj) -> bool
+override Orkeon.Tools.Drive.Administration.DriveAccountStatus.GetHashCode() -> int
+override Orkeon.Tools.Drive.Administration.DriveAccountStatus.ToString() -> string!
+override Orkeon.Tools.Drive.Administration.DriveCheckResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Drive.Administration.DriveCheckResult.GetHashCode() -> int
+override Orkeon.Tools.Drive.Administration.DriveCheckResult.ToString() -> string!
+override Orkeon.Tools.Drive.Auth.DriveTokenSet.Equals(object? obj) -> bool
+override Orkeon.Tools.Drive.Auth.DriveTokenSet.GetHashCode() -> int
+override Orkeon.Tools.Drive.Auth.DriveTokenSet.ToString() -> string!
+static Orkeon.Tools.Drive.Administration.DriveAccountStatus.operator !=(Orkeon.Tools.Drive.Administration.DriveAccountStatus? left, Orkeon.Tools.Drive.Administration.DriveAccountStatus? right) -> bool
+static Orkeon.Tools.Drive.Administration.DriveAccountStatus.operator ==(Orkeon.Tools.Drive.Administration.DriveAccountStatus? left, Orkeon.Tools.Drive.Administration.DriveAccountStatus? right) -> bool
+static Orkeon.Tools.Drive.Administration.DriveCheckResult.operator !=(Orkeon.Tools.Drive.Administration.DriveCheckResult? left, Orkeon.Tools.Drive.Administration.DriveCheckResult? right) -> bool
+static Orkeon.Tools.Drive.Administration.DriveCheckResult.operator ==(Orkeon.Tools.Drive.Administration.DriveCheckResult? left, Orkeon.Tools.Drive.Administration.DriveCheckResult? right) -> bool
+static Orkeon.Tools.Drive.Auth.DriveTokenSet.operator !=(Orkeon.Tools.Drive.Auth.DriveTokenSet? left, Orkeon.Tools.Drive.Auth.DriveTokenSet? right) -> bool
+static Orkeon.Tools.Drive.Auth.DriveTokenSet.operator ==(Orkeon.Tools.Drive.Auth.DriveTokenSet? left, Orkeon.Tools.Drive.Auth.DriveTokenSet? right) -> bool
+static Orkeon.Tools.Drive.Configuration.DriveCredentialsLocation.ConfiguredDirectory(Microsoft.Extensions.Configuration.IConfiguration! driveSection) -> string?
+static Orkeon.Tools.Drive.Configuration.DriveCredentialsLocation.NeedsTokenStore(Microsoft.Extensions.Configuration.IConfiguration! driveSection) -> bool
+static Orkeon.Tools.Drive.DependencyInjection.DriveToolsServiceCollectionExtensions.AddOrkeonDriveTokenStore(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.FileSystem.IFileSystemService!>! fileSystem, string! virtualDirectory) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Drive.DependencyInjection.DriveToolsServiceCollectionExtensions.AddOrkeonDriveTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -1,8 +1,15 @@
 #nullable enable
+Orkeon.Constants.Protocol.DriveEventKinds
 Orkeon.Constants.Protocol.EmailEventKinds
 Orkeon.Constants.Protocol.RunEventErrorCodes
 Orkeon.Constants.Protocol.RunEventKinds
 Orkeon.Constants.Protocol.UseCaseEventKinds
+const Orkeon.Constants.Protocol.DriveEventKinds.CheckCompleted = "drive.check.completed" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginAuthorizationUrl = "drive.login.authorization_url" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginCompleted = "drive.login.completed" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginDeviceCode = "drive.login.device_code" -> string!
+const Orkeon.Constants.Protocol.DriveEventKinds.LoginRedirectRejected = "drive.login.redirect_rejected" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.CheckCompleted = "email.check.completed" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.Error = "error" -> string!
 const Orkeon.Constants.Protocol.EmailEventKinds.LoginAuthorizationUrl = "email.login.authorization_url" -> string!
@@ -35,6 +42,9 @@ const Orkeon.Constants.Protocol.UseCaseEventKinds.Query = "usecases.query" -> st
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Ready = "usecases.ready" -> string!
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Results = "usecases.results" -> string!
 const Orkeon.Constants.Protocol.UseCaseEventKinds.Sheet = "usecases.sheet" -> string!
+static Orkeon.Constants.Protocol.DriveEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.DriveEventKinds.Check.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.DriveEventKinds.Login.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Protocol.EmailEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Protocol.EmailEventKinds.Check.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Constants.Protocol.EmailEventKinds.Login.get -> System.Collections.Generic.IReadOnlyList<string!>!

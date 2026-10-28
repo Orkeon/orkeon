@@ -15,6 +15,8 @@ Orkeon.Cli.Abstractions.Commands.CommandResult
 Orkeon.Cli.Abstractions.Commands.CommandResult.<Clone>$() -> Orkeon.Cli.Abstractions.Commands.CommandResult!
 Orkeon.Cli.Abstractions.Commands.CommandResult.CommandResult() -> void
 Orkeon.Cli.Abstractions.Commands.CommandResult.Equals(Orkeon.Cli.Abstractions.Commands.CommandResult? other) -> bool
+Orkeon.Cli.Abstractions.Commands.CommandResult.Failed.get -> bool
+Orkeon.Cli.Abstractions.Commands.CommandResult.Failed.init -> void
 Orkeon.Cli.Abstractions.Commands.CommandResult.Message.get -> string?
 Orkeon.Cli.Abstractions.Commands.CommandResult.Message.init -> void
 Orkeon.Cli.Abstractions.Commands.CommandResult.ShouldExit.get -> bool
@@ -23,6 +25,7 @@ Orkeon.Cli.Abstractions.Commands.IInteractiveCommand
 Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Aliases.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Description.get -> string!
 Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.ExecuteAsync(Orkeon.Cli.Abstractions.Commands.CommandContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Group.get -> string?
 Orkeon.Cli.Abstractions.Commands.IInteractiveCommand.Name.get -> string!
 Orkeon.Cli.Abstractions.Console.ConsoleInputService
 Orkeon.Cli.Abstractions.Console.ConsoleInputService.ConsoleInputService(Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console) -> void
@@ -32,6 +35,7 @@ Orkeon.Cli.Abstractions.Console.ConsoleInputService.GetOptionalString(string! pr
 Orkeon.Cli.Abstractions.Console.ConsoleInputService.GetRequiredString(string! prompt) -> string!
 Orkeon.Cli.Abstractions.Console.ConsoleInputService.GetYesNo(string! prompt) -> bool
 Orkeon.Cli.Abstractions.Console.ConsoleInputService.WaitForKey(string! message = "Press any key to continue...") -> void
+Orkeon.Cli.Abstractions.Console.ConsoleThread
 Orkeon.Cli.Abstractions.Console.IConsoleAdapter
 Orkeon.Cli.Abstractions.Console.IConsoleAdapter.Clear() -> void
 Orkeon.Cli.Abstractions.Console.IConsoleAdapter.ReadKey(bool intercept = false) -> System.ConsoleKeyInfo
@@ -43,6 +47,10 @@ Orkeon.Cli.Abstractions.Console.IConsoleAdapter.WriteLine(string! text) -> void
 Orkeon.Cli.Abstractions.Console.IReplInputAssist
 Orkeon.Cli.Abstractions.Console.IReplInputAssist.CompleteCommand(string! prefix) -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Cli.Abstractions.Console.IReplInputAssist.CompletePath(string! prefix) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Cli.Abstractions.Console.IThreadedConsole
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.SeparatesThreads.get -> bool
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.WriteAttention(string? thread, string! text) -> void
+Orkeon.Cli.Abstractions.Console.IThreadedConsole.WriteLine(string? thread, string! text) -> void
 Orkeon.Cli.Abstractions.Console.LineEditing.ILineEditorConsole
 Orkeon.Cli.Abstractions.Console.LineEditing.ILineEditorConsole.GetCursor() -> (int Left, int Top)
 Orkeon.Cli.Abstractions.Console.LineEditing.ILineEditorConsole.ReadKey() -> System.ConsoleKeyInfo
@@ -87,15 +95,45 @@ Orkeon.Cli.Abstractions.Console.SystemConsoleAdapter.SystemConsoleAdapter() -> v
 Orkeon.Cli.Abstractions.Console.SystemConsoleAdapter.Write(string! text) -> void
 Orkeon.Cli.Abstractions.Console.SystemConsoleAdapter.WriteLine(string! text) -> void
 Orkeon.Cli.Abstractions.Logging.AmbientLoggerProvider
+Orkeon.Cli.Abstractions.ModelAvailability
+Orkeon.Cli.Abstractions.ModelAvailability.Available = 0 -> Orkeon.Cli.Abstractions.ModelAvailability
+Orkeon.Cli.Abstractions.ModelAvailability.Reconnecting = 1 -> Orkeon.Cli.Abstractions.ModelAvailability
+Orkeon.Cli.Abstractions.ModelAvailability.Unavailable = 2 -> Orkeon.Cli.Abstractions.ModelAvailability
 Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry
 Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry.Commands.get -> System.Collections.Generic.IEnumerable<Orkeon.Cli.Abstractions.Commands.IInteractiveCommand!>!
 Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry.Fallback.get -> Orkeon.Cli.Abstractions.Commands.IInteractiveCommand?
+Orkeon.Cli.Abstractions.Runners.CommandOutcome
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.<Clone>$() -> Orkeon.Cli.Abstractions.Runners.CommandOutcome!
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.CommandName.get -> string?
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.CommandName.init -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.CommandOutcome(string! Input, string? CommandName, Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind Kind, string? Message) -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Deconstruct(out string! Input, out string? CommandName, out Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind Kind, out string? Message) -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Equals(Orkeon.Cli.Abstractions.Runners.CommandOutcome? other) -> bool
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Input.get -> string!
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Input.init -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Kind.get -> Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Kind.init -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Message.get -> string?
+Orkeon.Cli.Abstractions.Runners.CommandOutcome.Message.init -> void
+Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind.Cancelled = 2 -> Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind.Failed = 1 -> Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind.Succeeded = 0 -> Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind.Unknown = 3 -> Orkeon.Cli.Abstractions.Runners.CommandOutcomeKind
+Orkeon.Cli.Abstractions.Runners.ICommandOutcomeObserver
+Orkeon.Cli.Abstractions.Runners.ICommandOutcomeObserver.OnCommandOutcome(Orkeon.Cli.Abstractions.Runners.CommandOutcome! outcome) -> void
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner.CurrentCommandName.get -> string?
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner.CurrentCommandStartedAtUtc.get -> System.DateTime?
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner.IsCommandRunning.get -> bool
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner.RequestCommandCancellation() -> void
 Orkeon.Cli.Abstractions.Runners.IInteractiveRunner.RunAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor.PromptOverride.get -> string?
+Orkeon.Cli.Abstractions.Runners.IReplLineInterceptor.TryConsume(string! line) -> bool
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.Pending.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Cli.Abstractions.Runners.PendingToolApproval!>!
+Orkeon.Cli.Abstractions.Runners.IToolApprovalWatch.PendingChanged -> System.EventHandler?
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.Console.get -> Orkeon.Cli.Abstractions.Console.IConsoleAdapter!
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.CurrentCommandName.get -> string?
@@ -108,9 +146,26 @@ Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.RequestCommandCancellation
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.RunAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.Services.get -> System.IServiceProvider!
 Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.Specific.get -> Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.<Clone>$() -> Orkeon.Cli.Abstractions.Runners.PendingToolApproval!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Arguments.get -> string!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Arguments.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Deconstruct(out string! ToolName, out string! Arguments, out string? Ticket, out string? TaskName) -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? other) -> bool
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.get -> long
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Id.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.PendingToolApproval(string! ToolName, string! Arguments, string? Ticket, string? TaskName) -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.TaskName.get -> string?
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.TaskName.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Ticket.get -> string?
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Ticket.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToolName.get -> string!
+Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToolName.init -> void
+Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput
 Orkeon.Cli.Abstractions.Runners.RunnerContext
 abstract Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.Banner.get -> string!
 abstract Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.Prompt.get -> string!
+const Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.MaxLength = 60 -> int
 override Orkeon.Cli.Abstractions.Commands.CommandContext.Equals(object? obj) -> bool
 override Orkeon.Cli.Abstractions.Commands.CommandContext.GetHashCode() -> int
 override Orkeon.Cli.Abstractions.Commands.CommandContext.ToString() -> string!
@@ -118,14 +173,23 @@ override Orkeon.Cli.Abstractions.Commands.CommandResult.Equals(object? obj) -> b
 override Orkeon.Cli.Abstractions.Commands.CommandResult.GetHashCode() -> int
 override Orkeon.Cli.Abstractions.Commands.CommandResult.ToString() -> string!
 override Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Runners.CommandOutcome.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Runners.CommandOutcome.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Runners.CommandOutcome.ToString() -> string!
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.Equals(object? obj) -> bool
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.GetHashCode() -> int
+override Orkeon.Cli.Abstractions.Runners.PendingToolApproval.ToString() -> string!
 static Orkeon.Cli.Abstractions.Commands.CommandContext.operator !=(Orkeon.Cli.Abstractions.Commands.CommandContext? left, Orkeon.Cli.Abstractions.Commands.CommandContext? right) -> bool
 static Orkeon.Cli.Abstractions.Commands.CommandContext.operator ==(Orkeon.Cli.Abstractions.Commands.CommandContext? left, Orkeon.Cli.Abstractions.Commands.CommandContext? right) -> bool
 static Orkeon.Cli.Abstractions.Commands.CommandResult.Continue() -> Orkeon.Cli.Abstractions.Commands.CommandResult!
 static Orkeon.Cli.Abstractions.Commands.CommandResult.Continue(string! message) -> Orkeon.Cli.Abstractions.Commands.CommandResult!
 static Orkeon.Cli.Abstractions.Commands.CommandResult.Exit() -> Orkeon.Cli.Abstractions.Commands.CommandResult!
 static Orkeon.Cli.Abstractions.Commands.CommandResult.Exit(string! farewell) -> Orkeon.Cli.Abstractions.Commands.CommandResult!
+static Orkeon.Cli.Abstractions.Commands.CommandResult.Fail(string! message) -> Orkeon.Cli.Abstractions.Commands.CommandResult!
 static Orkeon.Cli.Abstractions.Commands.CommandResult.operator !=(Orkeon.Cli.Abstractions.Commands.CommandResult? left, Orkeon.Cli.Abstractions.Commands.CommandResult? right) -> bool
 static Orkeon.Cli.Abstractions.Commands.CommandResult.operator ==(Orkeon.Cli.Abstractions.Commands.CommandResult? left, Orkeon.Cli.Abstractions.Commands.CommandResult? right) -> bool
+static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.get -> string?
+static Orkeon.Cli.Abstractions.Console.ConsoleThread.Current.set -> void
 static Orkeon.Cli.Abstractions.Console.ReplCompletion.CompleteLeft(string! left, Orkeon.Cli.Abstractions.Console.IReplInputAssist! assist) -> Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome?
 static Orkeon.Cli.Abstractions.Console.ReplCompletion.LongestCommonPrefix(System.Collections.Generic.IReadOnlyList<string!>! items) -> string!
 static Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome.operator !=(Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome left, Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome right) -> bool
@@ -133,8 +197,16 @@ static Orkeon.Cli.Abstractions.Console.ReplCompletionOutcome.operator ==(Orkeon.
 static Orkeon.Cli.Abstractions.Logging.AmbientLoggerProvider.Current.get -> Microsoft.Extensions.Logging.ILoggerProvider?
 static Orkeon.Cli.Abstractions.Logging.AmbientLoggerProvider.Reset() -> void
 static Orkeon.Cli.Abstractions.Logging.AmbientLoggerProvider.Set(Microsoft.Extensions.Logging.ILoggerProvider! provider) -> void
+static Orkeon.Cli.Abstractions.Runners.CommandOutcome.operator !=(Orkeon.Cli.Abstractions.Runners.CommandOutcome? left, Orkeon.Cli.Abstractions.Runners.CommandOutcome? right) -> bool
+static Orkeon.Cli.Abstractions.Runners.CommandOutcome.operator ==(Orkeon.Cli.Abstractions.Runners.CommandOutcome? left, Orkeon.Cli.Abstractions.Runners.CommandOutcome? right) -> bool
+static Orkeon.Cli.Abstractions.Runners.PendingToolApproval.operator !=(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? left, Orkeon.Cli.Abstractions.Runners.PendingToolApproval? right) -> bool
+static Orkeon.Cli.Abstractions.Runners.PendingToolApproval.operator ==(Orkeon.Cli.Abstractions.Runners.PendingToolApproval? left, Orkeon.Cli.Abstractions.Runners.PendingToolApproval? right) -> bool
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(Orkeon.Cli.Abstractions.Runners.PendingToolApproval! approval) -> string!
+static Orkeon.Cli.Abstractions.Runners.PendingToolApprovalInput.Summarize(string? arguments) -> string!
 static Orkeon.Cli.Abstractions.Runners.RunnerContext.Current.get -> Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry?
 static Orkeon.Cli.Abstractions.Runners.RunnerContext.Push(Orkeon.Cli.Abstractions.Registry.IInteractiveCommandRegistry! registry) -> System.IDisposable!
+virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnAfterCommandAsync(string! commandName, Orkeon.Cli.Abstractions.Commands.CommandResult! result, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnCommandOutcome(Orkeon.Cli.Abstractions.Runners.CommandOutcome! outcome) -> void
 virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnExitAsync(Orkeon.Cli.Abstractions.Commands.CommandResult? lastResult, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnStartAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 virtual Orkeon.Cli.Abstractions.Runners.InteractiveRunnerBase.OnUnknownCommandAsync(string! input, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
