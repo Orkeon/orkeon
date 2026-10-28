@@ -149,12 +149,13 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // event, and orphans still emitting task.completed after the strategy had returned.
         var run = new ParallelRun(new CrewRunOutcome(_lifecycle, cancellationToken));
         var outcome = run.Outcome;
+        List<DomainTask> tasks = [];
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
         // has to produce a terminal event like any other exit.
         var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
-        var tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
+        tasks = await LoadTasksAsync(crew, cancellationToken).ConfigureAwait(false);
 
         // Once, before any task: a decision task that could not answer fails the run at its door.
         var faults = DecisionPreflight.Check(tasks, _decisionRunner);
@@ -260,8 +261,11 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var domainResults = run.Results.Select(r => r.domainOutput).ToList();
         var totalTime = DateTime.UtcNow - startTime;
 
-        // The final output is the last task that ran, as in the sequential and graph runs.
-        var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
+        // The final output is the last task that ran in declared order (BR-04), as in the sequential
+        // and graph runs: a wave can hold a task declared before one that settled earlier.
+        var finalOutput = tasks
+            .Select(task => domainResults.LastOrDefault(result => result.TaskId is { } id && id == task.Id))
+            .LastOrDefault(result => result is not null)?.Output ?? string.Empty;
 
         if (outcome.HasFailures)
             LogParallelExecutionFailedForCrew(crew.Id, outcome.Failures.Count, outcome.Reason);
@@ -431,7 +435,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
-            AgentId: agent?.Id.ToString() ?? string.Empty,
+            AgentId: agent?.Id.ToString(),
             Content: rawOutput,
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
@@ -443,7 +447,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var snapshot = CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
-            AgentRole = agent?.Role.Value ?? string.Empty,
+            AgentRole = agent?.Role.Value ?? DecisionDispatch.Role,
             Success = result.Success,
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,

@@ -134,4 +134,17 @@ tasks:
         var intake = config.Tasks.Single(t => t.Key == "intake");
         Assert.Contains(intake.Id, config.Tasks.Single(t => t.Key == "triage").Dependencies);
     }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public async Task ShouldRefuseYaml_WhenWhenIsEmptyMapping()
+    {
+        var yaml = CrewYaml.Replace("    when:\n      triage: otherwise", "    when: {}", StringComparison.Ordinal);
+        Assert.NotEqual(CrewYaml, yaml);
+        var loader = new YamlCrewDefinitionLoader(new YamlDotNetSerializer(), new FakeFileSystemService(), NullLogger<YamlCrewDefinitionLoader>.Instance);
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => loader.LoadFromStringAsync(yaml, Ct));
+
+        Assert.Contains("Task 'other' when: is empty; name a decision task and its answers, or remove the key.", ex.Message, StringComparison.Ordinal);
+    }
 }

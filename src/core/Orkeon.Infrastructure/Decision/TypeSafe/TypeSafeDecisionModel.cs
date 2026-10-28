@@ -104,6 +104,8 @@ public sealed partial class TypeSafeDecisionModel : IDecisionModel
             sent.LongContext).ConfigureAwait(false);
 
         var decision = Deserialize<DecisionResponse>(response, "systemone");
+        if (decision.Answers is null || decision.Usage is null || string.IsNullOrEmpty(decision.Model))
+            throw new DecisionModelException("TypeSafe returned a body without answers, usage or model on /systemone.", null, isTransient: false);
         Meter(decision);
         return decision;
     }

@@ -8,6 +8,7 @@ using Orkeon.Domain.EventHub;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.Task.ValueObjects;
 
 namespace Orkeon.Infrastructure.Configuration;
@@ -455,7 +456,7 @@ public partial class YamlCrewExporter
     private static DecisionYamlConfig MapDecision(TaskDecision decision) => new()
     {
         Questions = decision.Questions.ToDictionary(q => q.Name, MapQuestion, StringComparer.Ordinal),
-        MinConfidence = decision.ConfidenceFloor,
+        MinConfidence = decision.ConfidenceFloor == DecisionLimits.DefaultConfidenceFloor ? null : decision.ConfidenceFloor,
         State = decision.StateFrom.Count > 0 ? new Collection<string>([.. decision.StateFrom]) : null,
         LongContext = decision.LongContext ? true : null,
         Fallback = decision.HasExplicitFallback ? new Dictionary<string, string>(decision.Fallback) : null,

@@ -9,6 +9,7 @@ using Orkeon.Domain.Agent;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Crew;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 using ITaskRepository = Orkeon.Domain.Task.ITaskRepository;
@@ -170,6 +171,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
             taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+            await DecisionPreflight.RefuseUnsupportedAsync(
+                ProcessType.Autonomous, taskIds, _taskRepository, cancellationToken).ConfigureAwait(false);
 
             for (; nextTask < taskIds.Count; nextTask++)
             {

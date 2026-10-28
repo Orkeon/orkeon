@@ -23,7 +23,8 @@ public static class ThresholdExpression
             if (trimmed.StartsWith(symbol, StringComparison.Ordinal))
             {
                 comparison = candidate;
-                return double.TryParse(trimmed[symbol.Length..].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+                return double.TryParse(trimmed[symbol.Length..].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+                    && double.IsFinite(value);
             }
         }
 

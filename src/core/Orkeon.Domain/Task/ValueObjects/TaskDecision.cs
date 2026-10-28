@@ -53,6 +53,8 @@ public sealed class TaskDecision
             question.Validate();
         if (questions.Select(q => q.Name).Distinct(StringComparer.Ordinal).Count() != questions.Count)
             throw new ArgumentException("Question names must be unique.", nameof(questions));
+        if (questions.Any(q => q.Name == DecisionOutcome.DefaultedKey))
+            throw new ArgumentException($"A question cannot be named '{DecisionOutcome.DefaultedKey}': the decision output reserves that key.", nameof(questions));
 
         var floor = confidenceFloor ?? DecisionLimits.DefaultConfidenceFloor;
         if (floor is < 0 or > 1)
@@ -103,10 +105,9 @@ public sealed class TaskDecision
         };
         return question switch
         {
-            ScoreQuestionSpec score => answer with
-            {
-                Score = score.Levels.ToList().IndexOf(chosen) / (double)Math.Max(1, score.Levels.Count - 1),
-            },
+            // The score the model answers is the weighted position on the levels (BR-03): the
+            // fallback answers the position of its level on that same scale.
+            ScoreQuestionSpec score => answer with { Score = score.Levels.ToList().IndexOf(chosen) },
             YesNoQuestionSpec => answer with { Probability = chosen == "yes" ? 1 : 0 },
             _ => answer,
         };

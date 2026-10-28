@@ -78,18 +78,19 @@ declare global {
     /** Decision contract of a task: the questions asked, the confidence floor and the fallbacks. */
     interface DecisionSpec {
         questions: Record<string, QuestionSpec>;
-        /** Answers below this confidence fall back to `fallback`. */
+        /** Option clauses of a `when` hold only at or above this confidence (default 0.5). */
         minConfidence?: number;
-        /** Names of the state keys the decision reads. */
+        /** Names of the tasks whose output is the decision's state (default: each dependency that ran). */
         state?: string[];
+        /** Ask the long-context model. */
         longContext?: boolean;
-        /** Question name to the option taken when the answer is not confident enough. */
+        /** Question name to the answer given when the decision circuit is off (`--no-decision`, `Orkeon:Decision:Enabled=false`, no model). */
         fallback?: Record<string, string>;
     }
 
     /** One question: a choice among described options, a score per label, or a yes/no ("noul") test. */
     type QuestionSpec =
-        | { choice: Record<string, string> }
+        | { choice: Record<string, string>; instructions?: string }
         | { score: string[]; instructions?: string }
         | { noul: string };
 

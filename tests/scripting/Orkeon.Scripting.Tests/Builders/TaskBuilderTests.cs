@@ -204,6 +204,21 @@ public sealed class TaskBuilderTests
         Assert.Contains("decision", message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public void ShouldRefuseScript_WhenDecisionStateNamesNoTaskOfTheCrew()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                state: ["ghost"],
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.Equal("Task 'triage' decision.state names 'ghost', which is no task of the crew.", message);
+    }
+
     private const string Q = "questions: { category: { choice: { bug: \"a defect\" } }, urgency: { score: [\"low\", \"high\"] } }";
 
     [Theory]

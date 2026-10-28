@@ -40,7 +40,8 @@ internal static class SettingsSampleFile
     /// <summary>
     /// The sections shown and never written, each with the reason the file gives: one key of
     /// <c>Llm</c> written, even at its default, and the host has a default model — it stops saying
-    /// that none is configured and stops running on the echo provider.
+    /// that none is configured and stops running on the echo provider; <c>Orkeon:TypeSafe</c>
+    /// present, even empty, and the host registers the TypeSafe decision model.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> ShownOnly { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -48,6 +49,9 @@ internal static class SettingsSampleFile
             [ConfigurationKeys.LlmSection] =
                 "Shown, not written: one key of this section written and the host has a default model. Left " +
                 "as it is, a host without a model says so and runs on the echo provider; `orkeon init` writes the section.",
+            [Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName] =
+                "Shown, not written: the section present, even empty, and the host registers the TypeSafe decision model, " +
+                "which turns the decision circuit on and needs an API key. Left as it is, decision tasks answer from their fallback.",
         };
 
     /// <summary>The file for <paramref name="catalog"/>: the sections at least one shipped binary reads.</summary>

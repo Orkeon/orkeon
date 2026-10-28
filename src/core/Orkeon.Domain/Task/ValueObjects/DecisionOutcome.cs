@@ -22,6 +22,9 @@ public sealed record DecisionAnswerValue
 /// <summary>The outcome of a decision task.</summary>
 public sealed record DecisionOutcome
 {
+    /// <summary>The key of the compact JSON that marks a defaulted outcome: no question takes that name.</summary>
+    public const string DefaultedKey = "defaulted";
+
     /// <summary>Gets the answers by question name.</summary>
     public required IReadOnlyDictionary<string, DecisionAnswerValue> Answers { get; init; }
 
@@ -51,7 +54,7 @@ public sealed record DecisionOutcome
         }
 
         if (IsDefaulted)
-            json["defaulted"] = true;
+            json[DefaultedKey] = true;
         return System.Text.Json.JsonSerializer.Serialize(json);
     }
 }

@@ -145,6 +145,46 @@ public sealed class ParallelConditionTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "BR-04")]
+    public async System.Threading.Tasks.Task ShouldTakeFinalOutputFromLastDeclaredTask_WhenWavesReorderTasks()
+    {
+        // Declared A, B (depends on A), C: the waves run [A, C] then [B], so B settles last.
+        var a = new CrewTaskBuilder().Description("A").ExpectedOutput("A").Build();
+        var b = new CrewTaskBuilder().Description("B").ExpectedOutput("B").DependsOn(a).Build();
+        var c = new CrewTaskBuilder().Description("C").ExpectedOutput("C").Build();
+        var (crew, strategy) = Build([a, b, c], DecisionCircuit.On);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        Assert.Equal(b.Id, _ran[^1]);
+        Assert.Equal("out-" + c.Id, output.Output);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-04")]
+    [Trait("BR", "UC-03")]
+    public async System.Threading.Tasks.Task ShouldListSkippedTaskAndDecisionRole_WhenParallelCrewCompletes()
+    {
+        var decide = DecisionTask("Decide", null);
+        var ran = Conditioned("Ran branch", decide, OneOf(decide, "a"));
+        var skipped = Conditioned("Skipped branch", decide, OneOf(decide, "b"));
+        var (crew, strategy) = Build([decide, ran, skipped], DecisionCircuit.On);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        var terminal = Assert.Single(_hook.Completions).Tasks;
+        var skippedSnapshot = Assert.Single(terminal, s => s.TaskId == skipped.Id.ToString());
+        Assert.True(skippedSnapshot.Skipped);
+        Assert.False(skippedSnapshot.Success);
+        var decided = Assert.Single(_hook.CompletedTasks, s => s.TaskId == decide.Id.ToString());
+        Assert.Equal("decision", decided.AgentRole);
+        var seen = Assert.Single(_contexts[ran.Id].PreviousOutputs, o => o.TaskId == decide.Id);
+        Assert.Null(seen.AgentId);
+    }
+
+    [Fact]
     [Trait("BR", "UC-03")]
     public async System.Threading.Tasks.Task ShouldFillDecisionFlagAndAnswers_WhenDecisionTaskCompleted()
     {

@@ -1,4 +1,6 @@
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Domain.Common;
+using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -34,6 +36,22 @@ internal static class DecisionPreflight
             .. DecisionTaskRules.CheckFallbacks(
                 [.. tasks.Select(t => new DecisionTaskDeclaration(NameOf(t), t.Decision, t.Condition, t.AssignedAgent is not null))])
         ];
+    }
+
+    /// <summary>
+    /// A process that runs no decision task refuses the crew before its first task, as the loaders
+    /// do (ADR-016): a decision task or a conditioned task reached at runtime, through the builder,
+    /// fails the run instead of running as a plain task.
+    /// </summary>
+    internal static async System.Threading.Tasks.Task RefuseUnsupportedAsync(
+        ProcessType process, IReadOnlyList<TaskId> taskIds, ITaskRepository repository, CancellationToken cancellationToken)
+    {
+        foreach (var taskId in taskIds)
+        {
+            var task = await repository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+            if (task is { IsDecision: true } or { Condition: not null })
+                throw new InvalidOperationException(DecisionTaskRules.UnsupportedProcessMessage(NameOf(task), process));
+        }
     }
 
     /// <summary>A conditioned task must depend on the decision task its condition names, else it could run before the answer.</summary>

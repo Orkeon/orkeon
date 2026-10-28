@@ -353,12 +353,12 @@ limites de conception, chacune dite plutôt que silencieuse.
 
 ### Inclusion conditionnelle
 
-Il n'y a pas de méthode de builder pour cela. `when(predicate)` était déclarée sur les trois
-builders et n'était honorée par aucun moteur — `JsCrewBuilder.when` et `JsTaskBuilder.when`
-jetaient l'argument, et le prédicat rangé par `JsAgentBuilder` n'était jamais lu, si bien que
-`.when(() => false)` incluait l'agent quand même. Elle a été retirée plutôt qu'implémentée :
-une méthode qui fait silencieusement l'inverse de ce qu'elle annonce vaut moins que pas de
-méthode du tout.
+La seule construction conditionnelle est `when(decisionTask, clauses)` sur un builder de tâche, qui
+exécute la tâche selon les réponses d'une tâche de décision à l'exécution (voir `decision(spec)`
+plus haut). Il n'y a pas de prédicat qui inclut ou exclut un agent ou une tâche à la construction du
+script : `when(predicate)` était déclarée sur les trois builders et n'était honorée par aucun moteur,
+si bien qu'elle a été retirée plutôt qu'implémentée, une méthode qui fait silencieusement l'inverse
+de ce qu'elle annonce valant moins que pas de méthode du tout.
 
 Gardez l'appel :
 

@@ -1578,8 +1578,34 @@ public static partial class RunnerHost
         // by McpStartup before the crew loads, since the runners never start the host.
         RegisterMcp(context, services);
 
+        // The decision models (ADR-015, ADR-016): TypeSafe when the settings configure it, and the
+        // decision profiles of Orkeon:Decision:Profiles.
+        RegisterDecisionModels(context, services);
+
         // The tool registry is AddOrkeonInfrastructure's default ToolRegistry, seeded from every
         // IBaseTool registered above (GAP-11): the runners need nothing of their own.
+    }
+
+    /// <summary>
+    /// The decision models of a shipped host (ADR-015, ADR-016). TypeSafe is registered when the
+    /// settings hold an <c>Orkeon:TypeSafe</c> section or <c>TYPESAFE_API_KEY</c> is set: the
+    /// decision circuit is then on, <c>orkeon run --no-decision</c> turns it off for a run, and a
+    /// decision task whose key is missing fails as any task does. Without either, no decision
+    /// model exists, the circuit is off and every decision task answers from its fallback. The
+    /// decision profiles of <c>Orkeon:Decision:Profiles</c> are registered either way, and fail
+    /// at their first use when no model is registered. <c>orkeon-repl</c> registers both the same way.
+    /// </summary>
+    /// <param name="context">The host builder context.</param>
+    /// <param name="services">The service collection.</param>
+    internal static void RegisterDecisionModels(HostBuilderContext context, IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(services);
+        var configured = context.Configuration.GetSection(Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeOptions.SectionName).Exists()
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(Orkeon.Constants.Llm.DecisionProviderDefaults.TypeSafeApiKeyVariable));
+        if (configured)
+            Orkeon.Infrastructure.Decision.TypeSafe.TypeSafeServiceCollectionExtensions.AddOrkeonTypeSafe(services, context.Configuration);
+        Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.AddOrkeonDecisionProfiles(services, context.Configuration);
     }
 
     /// <summary>

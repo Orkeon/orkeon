@@ -277,9 +277,11 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         IReadOnlyList<DomainTaskOutput> results,
         CrewGraphState state)
     {
-        var snapshots = new List<TaskExecutionSnapshot>(results.Count);
+        var snapshots = new List<TaskExecutionSnapshot>(results.Count + state.ConditionSkips.Count);
         for (var index = 0; index < results.Count; index++)
         {
+            // A task skipped by its condition was reported when it was skipped: listed here, in order.
+            snapshots.AddRange(state.ConditionSkips.Where(skip => skip.Position == index).Select(skip => skip.Snapshot));
             var result = results[index];
             var taskId = result.TaskId?.Value.ToString() ?? string.Empty;
             var usage = index < state.ResultUsage.Count ? state.ResultUsage[index] : default;
@@ -301,6 +303,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
         }
 
+        snapshots.AddRange(state.ConditionSkips.Where(skip => skip.Position >= results.Count).Select(skip => skip.Snapshot));
         return snapshots;
     }
 
@@ -392,7 +395,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         if (ConditionGate.ShouldRun(task, state.Outcome, state.CrewTasks) is { Run: false } notRun)
         {
             await state.Outcome.RecordConditionSkipAsync(task, notRun.Reason!).ConfigureAwait(false);
-            await _hooks.TaskCompletedAsync(CrewRunOutcome.SkippedSnapshot(task.Id, role, notRun.Reason!), ct).ConfigureAwait(false);
+            var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, role, notRun.Reason!);
+            // Reported now, and kept at its place for the terminal list, which the results alone would miss.
+            state.ConditionSkips.Add((state.DomainResults.Count, skippedSnapshot));
+            await _hooks.TaskCompletedAsync(skippedSnapshot, ct).ConfigureAwait(false);
             return state;
         }
 
@@ -464,7 +470,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
-            AgentId: agent?.Id.ToString() ?? string.Empty,
+            AgentId: agent?.Id.ToString(),
             Content: rawOutput,
             CompletedAt: DateTime.UtcNow,
             Success: executionResult.Success,
@@ -751,4 +757,7 @@ public sealed class CrewGraphState
 
     /// <summary>Skip reasons, keyed by the index of the skipped task's entry in <see cref="DomainResults"/>.</summary>
     internal Dictionary<int, string> SkipReasons { get; } = [];
+
+    /// <summary>The tasks skipped by their condition, which leave no result: their snapshot and the count of results when they were skipped.</summary>
+    internal List<(int Position, TaskExecutionSnapshot Snapshot)> ConditionSkips { get; } = [];
 }

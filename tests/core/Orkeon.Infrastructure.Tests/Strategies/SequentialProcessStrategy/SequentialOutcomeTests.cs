@@ -104,9 +104,12 @@ public sealed class SequentialOutcomeTests : IDisposable
         var stored = Assert.Single(output.TaskOutputs, o => o.Decision is not null);
         var decided = Assert.Single(_hook.Tasks, s => s.TaskId == decide.Id.ToString());
         Assert.True(decided.IsDecision);
+        Assert.Equal("decision", decided.AgentRole);
         Assert.NotNull(decided.DecisionAnswers);
         Assert.Equal(stored.Output, decided.DecisionAnswers);
         Assert.Contains("\"intent\"", decided.DecisionAnswers, StringComparison.Ordinal);
+        var seen = Assert.Single(_contexts[plain.Id].PreviousOutputs, o => o.TaskId == decide.Id);
+        Assert.Null(seen.AgentId);
         var plainSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == plain.Id.ToString());
         Assert.False(plainSnapshot.IsDecision);
         Assert.Null(plainSnapshot.DecisionAnswers);

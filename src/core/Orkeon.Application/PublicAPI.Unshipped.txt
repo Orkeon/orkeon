@@ -114,6 +114,11 @@ Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.get -> int
 Orkeon.Application.Decision.DTOs.DecisionUsage.InputTokens.init -> void
 Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.get -> int
 Orkeon.Application.Decision.DTOs.DecisionUsage.OutputTokens.init -> void
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Block = 1 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Continue = 0 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Escalate = 3 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
+Orkeon.Application.Decision.DTOs.DecisionVerdictKind.Route = 2 -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
 Orkeon.Application.Decision.DTOs.NoulAnswer
 Orkeon.Application.Decision.DTOs.NoulAnswer.Equals(Orkeon.Application.Decision.DTOs.NoulAnswer? other) -> bool
 Orkeon.Application.Decision.DTOs.NoulAnswer.Noul.get -> double
@@ -162,17 +167,12 @@ Orkeon.Application.Decision.DecisionVerdict
 Orkeon.Application.Decision.DecisionVerdict.<Clone>$() -> Orkeon.Application.Decision.DecisionVerdict!
 Orkeon.Application.Decision.DecisionVerdict.DecisionVerdict() -> void
 Orkeon.Application.Decision.DecisionVerdict.Equals(Orkeon.Application.Decision.DecisionVerdict? other) -> bool
-Orkeon.Application.Decision.DecisionVerdict.Kind.get -> Orkeon.Application.Decision.DecisionVerdictKind
+Orkeon.Application.Decision.DecisionVerdict.Kind.get -> Orkeon.Application.Decision.DTOs.DecisionVerdictKind
 Orkeon.Application.Decision.DecisionVerdict.Kind.init -> void
 Orkeon.Application.Decision.DecisionVerdict.Profile.get -> string?
 Orkeon.Application.Decision.DecisionVerdict.Profile.init -> void
 Orkeon.Application.Decision.DecisionVerdict.Reason.get -> string?
 Orkeon.Application.Decision.DecisionVerdict.Reason.init -> void
-Orkeon.Application.Decision.DecisionVerdictKind
-Orkeon.Application.Decision.DecisionVerdictKind.Block = 1 -> Orkeon.Application.Decision.DecisionVerdictKind
-Orkeon.Application.Decision.DecisionVerdictKind.Continue = 0 -> Orkeon.Application.Decision.DecisionVerdictKind
-Orkeon.Application.Decision.DecisionVerdictKind.Escalate = 3 -> Orkeon.Application.Decision.DecisionVerdictKind
-Orkeon.Application.Decision.DecisionVerdictKind.Route = 2 -> Orkeon.Application.Decision.DecisionVerdictKind
 Orkeon.Application.Interfaces.Ports.IDecisionModel
 Orkeon.Application.Interfaces.Ports.IDecisionModel.DecideAsync(Orkeon.Application.Decision.DTOs.DecisionRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Decision.DTOs.DecisionResponse!>!
 Orkeon.Application.Interfaces.Ports.IDecisionModel.ListModelsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Orkeon.Application.Decision.DTOs.DecisionModelDto!>!>!

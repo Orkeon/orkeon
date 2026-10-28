@@ -287,7 +287,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         await ReportEndAsync(run, CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
-            AgentRole = string.Empty,
+            AgentRole = DecisionRole,
             Success = result.Success,
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,

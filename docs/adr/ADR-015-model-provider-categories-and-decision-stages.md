@@ -25,9 +25,8 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
 1. **Model providers come in categories**: `Generation`, `Embedding`, `Reranking` and `Decision`
    (`ModelProviderCategory`). A category is a description, not a contract: each keeps its own
    interface, and there is no common base. `ModelProviderCatalog` lists every remote provider
-   with its categories, its key variable and its default endpoint; the documentation counts and
-   the doc-claims gate read it. A provider serving several categories (OpenAI, Ollama) appears
-   once.
+   with its categories, its key variable and its default endpoint. A provider serving several
+   categories (OpenAI, Ollama) appears once.
 2. **`Decision` has its own port**, `IDecisionModel` (`DecideAsync`, `ListModelsAsync`), with
    typed DTOs: polymorphic questions (`choice`, `score`, `noul`, `box`) and answers.
    `TypeSafeDecisionModel` is its first adapter, opt-in through `AddOrkeonTypeSafe`. The count of
@@ -41,7 +40,8 @@ categories. Jev fits none of these contracts: forcing it behind `ILlmProvider` w
 4. **A decision profile is an LLM profile.** It is declared under `Orkeon:Decision:Profiles`,
    registered through `AddOrkeonLlmProfile`, and a crew uses it with `llm: { profile: <name> }`.
    It may name LLM profiles only, never another decision profile, so no cycle can form; the host
-   refuses an unknown or circular target when it builds.
+   refuses a decision profile named as a target when it builds, and an LLM profile that does not
+   exist when the decision profile is first resolved.
 5. **When the decision model fails, the call goes on** with a warning (fail-open), unless the
    profile sets `FailClosed`, in which case it is blocked.
 6. **The other uses are secondary** and reuse the same port: the agent input guard

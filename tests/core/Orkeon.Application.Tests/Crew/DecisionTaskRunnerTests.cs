@@ -187,4 +187,52 @@ public sealed class DecisionTaskRunnerTests
         Assert.Equal("rate limited", result.Error);
         Assert.Null(result.Decision);
     }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public async System.Threading.Tasks.Task ShouldFailTaskNamingQuestion_WhenModelLeavesQuestionUnanswered()
+    {
+        _model.Respond = _ => new DecisionResponse { Model = "fake", Answers = ImmutableDictionary<string, DecisionAnswer>.Empty };
+
+        var result = await Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("The decision model answered no question 'q1'.", result.Error);
+        Assert.Null(result.Decision);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public async System.Threading.Tasks.Task ShouldFailTaskNamingQuestionAndKinds_WhenModelAnswersAnotherKind()
+    {
+        _model.Respond = _ => new DecisionResponse
+        {
+            Model = "fake",
+            Answers = ImmutableDictionary<string, DecisionAnswer>.Empty.Add("q1", new ScoreAnswer
+            {
+                Score = 1,
+                Confidence = 0.9,
+                Probabilities = ImmutableDictionary<string, double>.Empty,
+            }),
+        };
+
+        var result = await Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Error);
+        Assert.Contains("'q1'", result.Error, StringComparison.Ordinal);
+        Assert.Contains("score", result.Error, StringComparison.Ordinal);
+        Assert.Contains("choice", result.Error, StringComparison.Ordinal);
+        Assert.Null(result.Decision);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-06")]
+    public async System.Threading.Tasks.Task ShouldRethrow_WhenModelIsCancelled()
+    {
+        _model.Failure = new OperationCanceledException();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            Runner(DecisionCircuit.On).RunAsync(Decide(Of()), NoInputs, CancellationToken.None));
+    }
 }

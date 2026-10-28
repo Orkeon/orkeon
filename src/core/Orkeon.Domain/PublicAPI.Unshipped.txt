@@ -106,6 +106,7 @@ Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Statement.get -> string!
 Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Statement.init -> void
 Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.YesNoQuestionSpec() -> void
 abstract Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.DecisionQuestionSpec!
+const Orkeon.Domain.Task.ValueObjects.DecisionOutcome.DefaultedKey = "defaulted" -> string!
 override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.<Clone>$() -> Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec!
 override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Equals(object? obj) -> bool
 override Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.GetHashCode() -> int
@@ -142,6 +143,7 @@ override sealed Orkeon.Domain.Task.ValueObjects.YesNoQuestionSpec.Equals(Orkeon.
 static Orkeon.Domain.Task.DecisionTaskRules.AgentAndDecisionMessage(string! taskName) -> string!
 static Orkeon.Domain.Task.DecisionTaskRules.Check(Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Domain.Task.DecisionTaskRules.CheckFallbacks(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Task.ValueObjects.DecisionTaskDeclaration!>! tasks) -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Domain.Task.DecisionTaskRules.UnsupportedProcessMessage(string! taskName, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType! process) -> string!
 static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.Create(string! name, string! instructions, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! options) -> Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec!
 static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.operator !=(Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? right) -> bool
 static Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec.operator ==(Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? left, Orkeon.Domain.Task.ValueObjects.ChoiceQuestionSpec? right) -> bool

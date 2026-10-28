@@ -337,11 +337,11 @@ each of them stated rather than silent.
 
 ### Conditional inclusion
 
-There is no builder method for it. `when(predicate)` used to be declared on all three
-builders and was honoured by neither engine — `JsCrewBuilder.when` and `JsTaskBuilder.when`
-discarded the argument outright, and the predicate `JsAgentBuilder` stored was never read,
-so `.when(() => false)` included the agent anyway. It was removed rather than implemented:
-a method that silently does the opposite of what it says is worse than no method.
+The only conditional construct is `when(decisionTask, clauses)` on a task builder, which runs the
+task on a decision task's answers at runtime (see `decision(spec)` above). There is no predicate
+that includes or excludes an agent or a task when the script is built: `when(predicate)` used to be
+declared on all three builders and was honoured by neither engine, so it was removed rather than
+implemented, a method that silently does the opposite of what it says being worse than no method.
 
 Guard the call instead:
 

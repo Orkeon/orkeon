@@ -62,15 +62,55 @@ public class TaskConditionTests
     [Trait("BR", "BR-03")]
     public void ShouldCompareWeightedScore_WhenThresholdOnScore()
     {
-        var outcome = Outcome(("urgency", new DecisionAnswerValue { Score = 0.7, Confidence = 0.9 }));
+        // The score lies on the level positions 0..2 of [low, mid, high].
+        var outcome = Outcome(("urgency", new DecisionAnswerValue { Score = 1.4, Confidence = 0.9 }));
 
         TaskCondition On(ConditionComparison comparison, double value) =>
             TaskCondition.Create("decide", [ConditionClause.Threshold(Decision, "urgency", null, comparison, value)]);
 
-        Assert.True(On(ConditionComparison.GreaterOrEqual, 0.6).Holds(outcome, Decision));
-        Assert.False(On(ConditionComparison.Greater, 0.8).Holds(outcome, Decision));
-        Assert.True(On(ConditionComparison.Less, 0.8).Holds(outcome, Decision));
-        Assert.False(On(ConditionComparison.LessOrEqual, 0.6).Holds(outcome, Decision));
+        Assert.True(On(ConditionComparison.GreaterOrEqual, 1.2).Holds(outcome, Decision));
+        Assert.False(On(ConditionComparison.Greater, 1.6).Holds(outcome, Decision));
+        Assert.True(On(ConditionComparison.Less, 1.6).Holds(outcome, Decision));
+        Assert.False(On(ConditionComparison.LessOrEqual, 1.2).Holds(outcome, Decision));
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldAcceptThreshold_WhenScoreThresholdWithinLevelPositions()
+    {
+        var clause = ConditionClause.Threshold(Decision, "urgency", null, ConditionComparison.Greater, 1.5);
+
+        Assert.Equal(1.5, clause.Value);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-03")]
+    public void ShouldRefuseThreshold_WhenScoreThresholdAboveTopLevelPosition()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ConditionClause.Threshold(Decision, "urgency", null, ConditionComparison.Greater, 2.5));
+    }
+
+    [Theory]
+    [Trait("BR", "BR-03")]
+    [InlineData("urgency", null, double.NaN)]
+    [InlineData("urgency", null, double.PositiveInfinity)]
+    [InlineData("legal", null, double.NaN)]
+    [InlineData("intent", "a", double.NaN)]
+    public void ShouldRefuseThreshold_WhenValueNotFinite(string question, string? option, double value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ConditionClause.Threshold(Decision, question, option, ConditionComparison.Greater, value));
+    }
+
+    [Theory]
+    [Trait("BR", "BR-03")]
+    [InlineData(1.7, true)]
+    [InlineData(1.2, false)]
+    public void ShouldCompareScoreOnLevelPositions_WhenThresholdAboveOne(double score, bool expected)
+    {
+        var condition = TaskCondition.Create("decide", [ConditionClause.Threshold(Decision, "urgency", null, ConditionComparison.Greater, 1.5)]);
+        var outcome = Outcome(("urgency", new DecisionAnswerValue { Score = score, Confidence = 0.9 }));
+
+        Assert.Equal(expected, condition.Holds(outcome, Decision));
     }
 
     [Fact]

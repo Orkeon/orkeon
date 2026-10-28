@@ -1,3 +1,5 @@
+using Orkeon.Application.Decision.DTOs;
+
 namespace Orkeon.Application.Decision;
 
 /// <summary>

@@ -58,8 +58,9 @@ public sealed class DecisionTaskRunner
             var response = await _model!.DecideAsync(BuildRequest(decision, inputs), ct).ConfigureAwait(false);
             return Succeeded(ToOutcome(decision, response), started);
         }
-        catch (Exception ex) when (ex is DecisionModelException or OperationCanceledException)
+        catch (DecisionModelException ex)
         {
+            // Cancellation is not caught: the strategies record an interruption, never a failed task.
             LogFailed(_logger, ex.Message, null);
             return new TaskResult(false, string.Empty, null, [], Stopwatch.GetElapsedTime(started), ex.Message);
         }
@@ -100,29 +101,47 @@ public sealed class DecisionTaskRunner
 
     private static DecisionOutcome ToOutcome(TaskDecision decision, DecisionResponse response)
     {
+        // A question the model left unanswered, or answered with another kind, fails the task
+        // (BR-06): an empty answer would let the otherwise task run on nothing.
         var answers = new Dictionary<string, DecisionAnswerValue>();
         foreach (var question in decision.Questions)
         {
-            answers[question.Name] = response.Answers.TryGetValue(question.Name, out var answer)
-                ? ToValue(answer)
-                : new DecisionAnswerValue();
+            if (!response.Answers.TryGetValue(question.Name, out var answer))
+                throw new DecisionModelException($"The decision model answered no question '{question.Name}'.", null, isTransient: false);
+            answers[question.Name] = ToValue(question, answer);
         }
 
         return new DecisionOutcome { Answers = answers };
     }
 
-    private static DecisionAnswerValue ToValue(DecisionAnswer answer) => answer switch
+    private static DecisionAnswerValue ToValue(DecisionQuestionSpec question, DecisionAnswer answer) => (question, answer) switch
     {
-        ChoiceAnswer c => new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
-        ScoreAnswer s => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = s.Probabilities },
-        NoulAnswer n => new DecisionAnswerValue
+        (ChoiceQuestionSpec, ChoiceAnswer c) => new DecisionAnswerValue { Chosen = c.Choice, Confidence = c.Confidence, Probabilities = c.Probabilities },
+        (ScoreQuestionSpec, ScoreAnswer s) => new DecisionAnswerValue { Score = s.Score, Confidence = s.Confidence, Probabilities = s.Probabilities },
+        (YesNoQuestionSpec, NoulAnswer n) => new DecisionAnswerValue
         {
             Chosen = n.Noul >= 0.5 ? "yes" : "no",
             Probability = n.Noul,
             Confidence = Math.Max(n.Noul, 1 - n.Noul),
         },
-        BoxAnswer b => new DecisionAnswerValue { Confidence = b.Confidence ?? 0 },
-        _ => new DecisionAnswerValue(),
+        _ => throw new DecisionModelException(
+            $"The decision model answered question '{question.Name}' with a {KindOf(answer)} answer, not a {KindOf(question)} one.", null, isTransient: false),
+    };
+
+    private static string KindOf(DecisionAnswer answer) => answer switch
+    {
+        ChoiceAnswer => "choice",
+        ScoreAnswer => "score",
+        NoulAnswer => "noul",
+        BoxAnswer => "box",
+        _ => answer.GetType().Name,
+    };
+
+    private static string KindOf(DecisionQuestionSpec question) => question switch
+    {
+        ChoiceQuestionSpec => "choice",
+        ScoreQuestionSpec => "score",
+        _ => "noul",
     };
 
     private static TaskResult Succeeded(DecisionOutcome outcome, long started) =>

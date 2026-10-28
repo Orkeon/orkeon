@@ -25,19 +25,23 @@ A `DecisionRequest` carries:
 
 | Question | What you give | What you get back |
 |----------|---------------|-------------------|
-| `choice` | at least two named options, each with its description | the chosen option and the probability of each |
-| `score` | at least two levels of an ordered scale | the level and the probability of each |
-| `noul` | `criteria.true` and `criteria.false` | `noul`, the probability of true |
+| `choice` | one to 255 named options, each with its description | the chosen option and the probability of each |
+| `score` | one to ten levels of an ordered scale | the level and the probability of each |
+| `noul` | the statement; `criteria.true` and `criteria.false` are optional | `noul`, the probability of true |
 | `box` | images in `assets` | a box in one image |
 
 A `choice`, `score` or `box` answer also carries a `confidence`. A `DecisionRequestValidator` refuses an empty question
-set, a `choice` or `score` with fewer than two criteria, and a `box` without images.
+set, a `choice` of more than 255 options, a `score` of more than ten levels, and a `box` without images.
 
 ## TypeSafe
 
 ```csharp
 services.AddOrkeonTypeSafe(configuration);
 ```
+
+The three shipped binaries (`orkeon run`, `orkeon-host` and `orkeon-repl`) call it themselves when their
+settings hold an `Orkeon:TypeSafe` section or `TYPESAFE_API_KEY` is set, and `AddOrkeonDecisionProfiles`
+in every case; a host written in C# calls both.
 
 ```json
 {
@@ -57,7 +61,8 @@ services.AddOrkeonTypeSafe(configuration);
 - **`BaseUrl`** defaults to `https://api.typesafe.ai/v1`; requests go to `POST <BaseUrl>/systemone`
   and `GET <BaseUrl>/models`.
 - **Errors** become a `DecisionModelException`: a 422 cites the field at fault, a 401 names the
-  key variable, a 413 or 415 says what the request exceeded. A 429 or a 529 is retried with an
+  key variable, a 400 `max_tokens_exceeded` names the limit (and suggests `longContext` when the
+  request did not ask for it), a 413 or 415 says what the request exceeded. A 429 or a 529 is retried with an
   exponential backoff, up to `MaxRetries` times; each attempt has its own `TimeoutSeconds`.
 - **The danger-zone headers** are set from the request: `TypeSafe-Danger-Zone-Images` when it
   carries images or a `box` question, `TypeSafe-Danger-Zone-Long-Context` when `LongContext` is set.
@@ -199,6 +204,10 @@ A condition is evaluated once its decision task has answered. All the conditions
 hold for it to run; the clauses are listed in the
 [YAML reference](./yaml-schema.md#decision-tasks-and-conditions).
 
+- **Threshold scale.** A threshold on a yes-no question or on an option of a choice is a
+  probability in [0, 1]. A threshold on a score question is read on the positions of its levels, 0
+  for the first and n-1 for the last: `urgency: "> 1.5"` on `[low, medium, high]` holds when the
+  model's weighted score is above the middle level. A fallback level counts as its position.
 - **Skipped, not failed.** A task whose condition does not hold is skipped, with the reason: the
   condition and the answers that failed it. A task is also skipped when every task it depends on was
   skipped by a condition, and when the decision task it reads was itself skipped. The crew still
@@ -226,7 +235,8 @@ key is in no message.
 ### The decision circuit and the fallback
 
 The **decision circuit** says whether decision tasks ask the model. It is on when a decision model is
-configured and `Orkeon:Decision:Enabled` is `true` (its default), and off when:
+configured (in the shipped binaries, when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set) and
+`Orkeon:Decision:Enabled` is `true` (its default), and off when:
 
 - no decision model is configured;
 - `Orkeon:Decision:Enabled` is `false`;

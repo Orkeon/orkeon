@@ -73,6 +73,7 @@ internal static class SettingsCatalogBuilder
         ["Orkeon:Security:PermissionGate:Enabled"] = "true",
         ["Orkeon:Cli:ConsoleStreaming:Enabled"] = "true",
         ["Orkeon:Host:A2A:Enabled"] = "true",
+        ["Orkeon:TypeSafe:Model"] = "catalogue",
     };
 
     /// <summary>

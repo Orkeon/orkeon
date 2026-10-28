@@ -1,4 +1,4 @@
-namespace Orkeon.Application.Decision;
+namespace Orkeon.Application.Decision.DTOs;
 
 /// <summary>What a decision stage decided about a model call.</summary>
 public enum DecisionVerdictKind

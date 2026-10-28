@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-74 sections, 417 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (11) : [`Evaluation`](#evaluation), [`Orkeon:TypeSafe`](#orkeontypesafe), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+74 sections, 417 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (10) : [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -681,12 +681,13 @@ second appel n'enregistre aucun évaluateur deux fois).
 
 ### `Orkeon:TypeSafe`
 
-Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonTypeSafe(configuration)` : la clé,
+Le modèle de décision TypeSafe (Jev), lié par `AddOrkeonTypeSafe(configuration)`, que les trois
+binaires livrés appellent quand cette section est présente ou que `TYPESAFE_API_KEY` est définie : la clé,
 l'endpoint, le modèle par défaut, le délai et les nouvelles tentatives de chaque appel, et la garde
 d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
-**Lue par** : un hôte écrit en C# seulement, par `AddOrkeonTypeSafe()` — aucun binaire livré ne lit cette section.
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
@@ -705,7 +706,9 @@ d'entrée des agents (`Guard`). Voir [Modèles de décision](../architecture/dec
 
 ### `Orkeon:Decision`
 
-Les profils de décision, liés par `AddOrkeonDecisionProfiles(configuration)` : chaque profil
+`Enabled`, le circuit de décision des tâches de décision, est lié par `AddOrkeonInfrastructure()` ;
+les profils de décision (`Profiles`) par `AddOrkeonDecisionProfiles(configuration)`, que les trois
+binaires livrés appellent : chaque profil
 enveloppe un profil LLM (`Target`) dans des étapes qui bloquent, routent ou escaladent un appel.
 Une crew en utilise un comme tout profil, `llm: { profile: <nom> }`. Voir
 [Modèles de décision](../architecture/decision-models.md).

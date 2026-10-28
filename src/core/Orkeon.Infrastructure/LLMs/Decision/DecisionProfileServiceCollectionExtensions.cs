@@ -39,6 +39,12 @@ public static class DecisionProfileServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        // Called twice, registers nothing twice: the profiles are LLM profile registrations, and the
+        // registry refuses a name it already holds.
+        if (services.Any(d => d.ServiceType == typeof(DecisionProfilesMarker)))
+            return services;
+        services.AddSingleton(new DecisionProfilesMarker());
+
         services.AddOptions<DecisionProfilesOptions>()
             .Bind(configuration.GetSection(DecisionProfilesOptions.SectionName))
             .DeclareSettings(DecisionProfilesOptions.SectionName);
@@ -197,4 +203,7 @@ public static class DecisionProfileServiceCollectionExtensions
             loggerFactory.CreateLogger<DecisionLlmProvider>(),
             services.GetService<IAuditLogger>());
     }
+
+    /// <summary>Marks a service collection the profiles were added to.</summary>
+    private sealed class DecisionProfilesMarker;
 }

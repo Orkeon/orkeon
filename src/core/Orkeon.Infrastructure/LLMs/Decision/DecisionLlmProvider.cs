@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Decision;
+using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Security;

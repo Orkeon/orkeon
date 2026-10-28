@@ -10,6 +10,10 @@ public static class DecisionTaskRules
     public static string AgentAndDecisionMessage(string taskName) =>
         $"Task '{taskName}' declares both a decision and an agent: a decision task runs no agent, remove one of decision and agent.";
 
+    /// <summary>The refusal of a decision or a conditioned task in a process that does not run them.</summary>
+    public static string UnsupportedProcessMessage(string taskName, ProcessType process) =>
+        $"Task '{taskName}' declares a decision or a condition, which the {process} process does not support.";
+
     /// <summary>Checks the declarations, one message per fault.</summary>
     public static IReadOnlyList<string> Check(ProcessType process, IReadOnlyList<DecisionTaskDeclaration> tasks)
     {
@@ -24,7 +28,7 @@ public static class DecisionTaskRules
                 messages.Add(AgentAndDecisionMessage(task.Name));
 
             if (!supported && (task.Decision is not null || task.Condition is not null))
-                messages.Add($"Task '{task.Name}' declares a decision or a condition, which the {process} process does not support.");
+                messages.Add(UnsupportedProcessMessage(task.Name, process));
 
             if (task.Condition is { } condition)
                 CheckCondition(task.Name, condition, tasks, otherwiseSeen, messages);

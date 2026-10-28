@@ -194,7 +194,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 46 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-74 sections, 417 keys. Read by no shipped binary, only by a host written in C# (11): [`Evaluation`](#evaluation), [`Orkeon:TypeSafe`](#orkeontypesafe), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
+74 sections, 417 keys. Read by no shipped binary, only by a host written in C# (10): [`Evaluation`](#evaluation), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -643,12 +643,13 @@ second call registers no evaluator twice).
 
 ### `Orkeon:TypeSafe`
 
-The decision model TypeSafe (Jev), bound by `AddOrkeonTypeSafe(configuration)`: the key, the
+The decision model TypeSafe (Jev), bound by `AddOrkeonTypeSafe(configuration)`, which the three
+shipped binaries call when this section is present or `TYPESAFE_API_KEY` is set: the key, the
 endpoint, the default model, the timeout and retries of each call, and the agent input guard
 (`Guard`). See [Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:TypeSafe -->
-**Read by**: a host written in C# only, through `AddOrkeonTypeSafe()` — no shipped binary reads this section.
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -667,9 +668,11 @@ endpoint, the default model, the timeout and retries of each call, and the agent
 
 ### `Orkeon:Decision`
 
-The decision profiles, bound by `AddOrkeonDecisionProfiles(configuration)`: each profile wraps an
-LLM profile (`Target`) in stages that block, route or escalate a call. A crew uses one like any
-profile, `llm: { profile: <name> }`. See [Decision models](../architecture/decision-models.md).
+`Enabled`, the decision circuit of the decision tasks, is bound by `AddOrkeonInfrastructure()`; the
+decision profiles (`Profiles`) by `AddOrkeonDecisionProfiles(configuration)`, which the three shipped
+binaries call: each profile wraps an LLM profile (`Target`) in stages that block, route or escalate a
+call. A crew uses one like any profile, `llm: { profile: <name> }`. See
+[Decision models](../architecture/decision-models.md).
 
 <!-- settings:Orkeon:Decision -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

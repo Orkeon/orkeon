@@ -187,9 +187,13 @@ public static class JsCrewConfigurationAdapter
             condition = JsDecisionMapper.MapCondition(jsTask.name, whenTask, jsTask.WhenSpec!, target);
         }
 
+        // The state a decision reads names tasks of the crew, as the YAML loader holds it to.
+        var stateFrom = decisions.TryGetValue(jsTask.name, out var own) && jsTask.DecisionSpec is not null ? own.StateFrom : [];
+        foreach (var name in stateFrom.Where(name => jsTasks.All(t => t.name != name)))
+            throw new InvalidOperationException($"Task '{jsTask.name}' decision.state names '{name}', which is no task of the crew.");
+
         // The decision task and the tasks the decision reads its state from run before this task.
-        var needed = (condition is null ? [] : new[] { condition.DecisionTask })
-            .Concat(decisions.TryGetValue(jsTask.name, out var own) && jsTask.DecisionSpec is not null ? own.StateFrom : []);
+        var needed = (condition is null ? [] : new[] { condition.DecisionTask }).Concat(stateFrom);
         foreach (var other in needed.SelectMany(n => jsTasks.Where(t => t.name == n)))
         {
             if (taskMap.TryGetValue(other, out var neededId) && !deps.Contains(neededId))

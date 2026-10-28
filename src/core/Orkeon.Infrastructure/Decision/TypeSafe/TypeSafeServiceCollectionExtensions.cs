@@ -29,6 +29,11 @@ public static class TypeSafeServiceCollectionExtensions
         services.AddHttpClient();
         services.AddOptions<TypeSafeOptions>()
             .Bind(configuration.GetSection(TypeSafeOptions.SectionName))
+            .Validate(o => o.TimeoutSeconds > 0, $"{TypeSafeOptions.SectionName}:TimeoutSeconds: one second or more.")
+            .Validate(o => o.MaxRetries >= 0, $"{TypeSafeOptions.SectionName}:MaxRetries: zero or more.")
+            .Validate(o => o.BaseUrl.IsAbsoluteUri, $"{TypeSafeOptions.SectionName}:BaseUrl: an absolute URL.")
+            .Validate(o => o.Guard.BlockThreshold is >= 0 and <= 1 && o.Guard.WarnThreshold is >= 0 and <= 1,
+                $"{TypeSafeOptions.SectionName}:Guard:BlockThreshold and WarnThreshold: probabilities in [0, 1].")
             .DeclareSettings(TypeSafeOptions.SectionName);
         services.TryAddSingleton<TypeSafeDecisionModel>();
         services.TryAddSingleton<IDecisionModel>(sp => sp.GetRequiredService<TypeSafeDecisionModel>());

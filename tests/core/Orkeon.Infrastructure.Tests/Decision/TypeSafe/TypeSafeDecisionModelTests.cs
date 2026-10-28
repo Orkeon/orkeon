@@ -334,4 +334,75 @@ public class TypeSafeDecisionModelTests
 
         Assert.DoesNotContain(Key, ex.ToString(), StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("""{"model":"jev-1.14.0","answers":null,"usage":{"input_tokens":1,"output_tokens":0}}""")]
+    [InlineData("""{"model":"jev-1.14.0","answers":{},"usage":null}""")]
+    [InlineData("""{"model":"","answers":{},"usage":{"input_tokens":1,"output_tokens":0}}""")]
+    public async Task ShouldThrowANonTransientError_WhenTheBodyLacksAnswersUsageOrModel(string body)
+    {
+        using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
+        var model = Create(handler);
+
+        var ex = await Assert.ThrowsAsync<DecisionModelException>(() => model.DecideAsync(ChoiceRequest(), TestContext.Current.CancellationToken));
+
+        Assert.Equal("TypeSafe returned a body without answers, usage or model on /systemone.", ex.Message);
+        Assert.False(ex.IsTransient);
+        Assert.Null(ex.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Orkeon:TypeSafe:MaxRetries", "-1", "Orkeon:TypeSafe:MaxRetries")]
+    [InlineData("Orkeon:TypeSafe:TimeoutSeconds", "0", "Orkeon:TypeSafe:TimeoutSeconds")]
+    [InlineData("Orkeon:TypeSafe:BaseUrl", "api/v1", "Orkeon:TypeSafe:BaseUrl")]
+    [InlineData("Orkeon:TypeSafe:Guard:BlockThreshold", "1.5", "Orkeon:TypeSafe:Guard:BlockThreshold")]
+    [InlineData("Orkeon:TypeSafe:Guard:WarnThreshold", "-0.1", "WarnThreshold")]
+    public void ShouldRefuseTheOptionsNamingTheKey_WhenAValueIsOutOfRange(string key, string value, string named)
+    {
+        using var provider = BuildTypeSafe(new Dictionary<string, string?> { [key] = value });
+
+        var ex = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IOptions<TypeSafeOptions>>().Value);
+
+        Assert.Contains(named, ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldValidateTheOptions_WhenTheSectionIsWellFormed()
+    {
+        using var provider = BuildTypeSafe(new Dictionary<string, string?>
+        {
+            ["Orkeon:TypeSafe:Model"] = "jev-1.14.0",
+            ["Orkeon:TypeSafe:BaseUrl"] = "https://typesafe.example.test/v1/",
+            ["Orkeon:TypeSafe:TimeoutSeconds"] = "10",
+            ["Orkeon:TypeSafe:MaxRetries"] = "0",
+            ["Orkeon:TypeSafe:Guard:BlockThreshold"] = "1",
+            ["Orkeon:TypeSafe:Guard:WarnThreshold"] = "0",
+        });
+
+        var options = provider.GetRequiredService<IOptions<TypeSafeOptions>>().Value;
+
+        Assert.Equal(0, options.MaxRetries);
+        Assert.Equal(new Uri("https://typesafe.example.test/v1/"), options.BaseUrl);
+        Assert.Equal(1, options.Guard.BlockThreshold);
+    }
+
+    [Fact]
+    public void ShouldRegisterTheSystemOneDecideToolOnce_WhenAddOrkeonTypeSafeIsCalledTwice()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:TypeSafe:Model"] = "jev-1.14.0" })
+            .Build();
+        var services = new ServiceCollection().AddOrkeonTypeSafe(configuration).AddOrkeonTypeSafe(configuration);
+
+        var tool = Assert.Single(services, d => d.ServiceType == typeof(Orkeon.Domain.Tools.IBaseTool)
+            && d.ImplementationType == typeof(Orkeon.Infrastructure.Tools.SystemOneDecideTool));
+        Assert.Equal(ServiceLifetime.Singleton, tool.Lifetime);
+        Assert.Single(services, d => d.ServiceType == typeof(IDecisionModel));
+    }
+
+    private static ServiceProvider BuildTypeSafe(Dictionary<string, string?> values)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        return new ServiceCollection().AddLogging().AddOrkeonTypeSafe(configuration).BuildServiceProvider();
+    }
 }

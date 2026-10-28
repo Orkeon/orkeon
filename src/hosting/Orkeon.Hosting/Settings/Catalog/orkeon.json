@@ -42,6 +42,7 @@
     "Orkeon:Tools:GitHub",
     "Orkeon:Tools:ResultLimits",
     "Orkeon:Tools:Shell",
+    "Orkeon:TypeSafe",
     "PathSecurity",
     "RaggableTree",
     "RateLimiting",

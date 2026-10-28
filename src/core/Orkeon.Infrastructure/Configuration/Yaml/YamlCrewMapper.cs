@@ -221,7 +221,9 @@ public sealed partial class YamlCrewMapper
         var unknownDependencies = new List<string>();
         foreach (var kvp in tasks)
         {
-            var when = kvp.Value.When is { Count: > 0 } ? kvp.Value.When : null;
+            if (kvp.Value.When is { Count: 0 })
+                throw new InvalidOperationException($"Task '{kvp.Key}' when: is empty; name a decision task and its answers, or remove the key.");
+            var when = kvp.Value.When;
             var condition = when is null ? null : MapCondition(kvp.Key, when, decisions);
             var dependencyKeys = (kvp.Value.Dependencies ?? [])
                 .Concat(kvp.Value.Decision?.State ?? [])

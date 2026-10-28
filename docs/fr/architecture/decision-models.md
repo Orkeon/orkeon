@@ -25,19 +25,23 @@ Une `DecisionRequest` porte :
 
 | Question | Ce que vous donnez | Ce que vous recevez |
 |----------|--------------------|---------------------|
-| `choice` | au moins deux options nommées, chacune avec sa description | l'option choisie et la probabilité de chacune |
-| `score` | au moins deux niveaux d'une échelle ordonnée | le niveau et la probabilité de chacun |
-| `noul` | `criteria.true` et `criteria.false` | `noul`, la probabilité de vrai |
+| `choice` | une à 255 options nommées, chacune avec sa description | l'option choisie et la probabilité de chacune |
+| `score` | un à dix niveaux d'une échelle ordonnée | le niveau et la probabilité de chacun |
+| `noul` | l'énoncé ; `criteria.true` et `criteria.false` sont facultatifs | `noul`, la probabilité de vrai |
 | `box` | des images dans `assets` | une zone dans une image |
 
 Une réponse `choice`, `score` ou `box` porte aussi une `confidence`. Un `DecisionRequestValidator` refuse un jeu de questions
-vide, un `choice` ou un `score` de moins de deux critères, et une `box` sans images.
+vide, un `choice` de plus de 255 options, un `score` de plus de dix niveaux, et une `box` sans images.
 
 ## TypeSafe
 
 ```csharp
 services.AddOrkeonTypeSafe(configuration);
 ```
+
+Les trois binaires livrés (`orkeon run`, `orkeon-host` et `orkeon-repl`) l'appellent eux-mêmes quand
+leurs réglages portent une section `Orkeon:TypeSafe` ou que `TYPESAFE_API_KEY` est définie, et
+`AddOrkeonDecisionProfiles` dans tous les cas ; un hôte écrit en C# appelle les deux.
 
 ```json
 {
@@ -57,7 +61,8 @@ services.AddOrkeonTypeSafe(configuration);
 - **`BaseUrl`** vaut par défaut `https://api.typesafe.ai/v1` ; les requêtes vont vers
   `POST <BaseUrl>/systemone` et `GET <BaseUrl>/models`.
 - **Les erreurs** deviennent une `DecisionModelException` : un 422 cite le champ fautif, un 401
-  nomme la variable de clé, un 413 ou un 415 dit ce que la requête a dépassé. Un 429 ou un 529 est
+  nomme la variable de clé, un 400 `max_tokens_exceeded` nomme la limite (et suggère `longContext`
+  quand la requête ne l'a pas demandé), un 413 ou un 415 dit ce que la requête a dépassé. Un 429 ou un 529 est
   réessayé avec un backoff exponentiel, jusqu'à `MaxRetries` fois ; chaque tentative a son propre
   `TimeoutSeconds`.
 - **Les en-têtes « danger zone »** se posent selon la requête : `TypeSafe-Danger-Zone-Images`
@@ -205,6 +210,10 @@ Une condition est évaluée une fois sa tâche de décision répondue. Toutes le
 doivent valoir pour qu'elle tourne ; les clauses sont listées dans la
 [référence YAML](./yaml-schema.md#tâches-de-décision-et-conditions).
 
+- **Échelle des seuils.** Un seuil sur une question oui/non ou sur une option d'un choice est une
+  probabilité dans [0, 1]. Un seuil sur une question score se lit sur les positions de ses niveaux, 0
+  pour le premier et n-1 pour le dernier : `urgency: "> 1.5"` sur `[low, medium, high]` vaut quand le
+  score pondéré du modèle dépasse le niveau du milieu. Un niveau de repli compte pour sa position.
 - **Sautée, pas échouée.** Une tâche dont la condition ne vaut pas est sautée, avec la raison : la
   condition et les réponses qui l'ont fait échouer. Une tâche est aussi sautée quand toutes les tâches
   dont elle dépend ont été sautées par une condition, et quand la tâche de décision qu'elle lit a
@@ -232,7 +241,8 @@ pour une tâche échouée s'applique. La clé n'est dans aucun message.
 ### Le circuit de décision et le repli
 
 Le **circuit de décision** dit si les tâches de décision interrogent le modèle. Il est actif quand un
-modèle de décision est configuré et que `Orkeon:Decision:Enabled` vaut `true` (son défaut), et coupé
+modèle de décision est configuré (dans les binaires livrés, quand `Orkeon:TypeSafe` ou
+`TYPESAFE_API_KEY` est défini) et que `Orkeon:Decision:Enabled` vaut `true` (son défaut), et coupé
 quand :
 
 - aucun modèle de décision n'est configuré ;

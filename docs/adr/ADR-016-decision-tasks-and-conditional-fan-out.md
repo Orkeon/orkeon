@@ -29,9 +29,10 @@ the next task had to parse.
    decision the model cannot make is a failed task and follows the crew's existing rule.
 4. **Sequential, Parallel and Graph** run decision tasks. Hierarchical, Consensual and Autonomous
    do not run a task on the task it names: a crew that uses a decision task or a `when` with one
-   of them is refused on load.
-5. **The circuit can be off.** When no decision model is configured, or with `orkeon run
-   --no-decision`, a decision task makes no request and answers from its `fallback`; its
+   of them is refused on load, and a crew built in C# that reaches them fails before its first task.
+5. **The circuit can be off.** When no decision model is configured (the shipped binaries register
+   TypeSafe when `Orkeon:TypeSafe` or `TYPESAFE_API_KEY` is set), when `Orkeon:Decision:Enabled` is
+   `false`, or with `orkeon run --no-decision`, a decision task makes no request and answers from its `fallback`; its
    `task.completed` event carries `defaulted: true` and the conditions evaluate on that answer. A
    failing request is never turned into the fallback.
 6. **The run reports it.** `task.completed` carries `skipReason`, `defaulted`, `isDecision` and

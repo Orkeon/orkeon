@@ -64,8 +64,6 @@ public sealed class ConditionClause
     public static ConditionClause Threshold(TaskDecision decision, string question, string? option, ConditionComparison comparison, double value)
     {
         ArgumentNullException.ThrowIfNull(decision);
-        if (value is < 0 or > 1)
-            throw new ArgumentOutOfRangeException(nameof(value), "A threshold lies in [0, 1].");
         var spec = decision.Question(question)
             ?? throw new ArgumentException($"Unknown question '{question}'.", nameof(question));
         if (spec is ChoiceQuestionSpec choice)
@@ -77,6 +75,14 @@ public sealed class ConditionClause
         {
             throw new ArgumentException($"Question '{question}' has no options.", nameof(option));
         }
+
+        // A probability lies in [0, 1]; a score is the weighted position on the levels, from 0 to the
+        // last level (BR-03), the scale the model answers on and the fallback shares.
+        var top = spec is ScoreQuestionSpec score ? score.Levels.Count - 1 : 1;
+        if (!double.IsFinite(value) || value < 0 || value > top)
+            throw new ArgumentOutOfRangeException(nameof(value), spec is ScoreQuestionSpec
+                ? $"A threshold on the score '{question}' lies in [0, {top}], the positions of its levels."
+                : $"A threshold on '{question}' is a probability in [0, 1].");
 
         return new ConditionClause(question, [], option, comparison, value, true);
     }

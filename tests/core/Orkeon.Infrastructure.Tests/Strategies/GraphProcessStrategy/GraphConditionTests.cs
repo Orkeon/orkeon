@@ -150,6 +150,32 @@ public sealed class GraphConditionTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "BR-04")]
+    [Trait("BR", "UC-03")]
+    public async System.Threading.Tasks.Task ShouldListSkippedTaskAtDeclaredPosition_WhenGraphCrewCompletes()
+    {
+        var decide = DecisionTask("Decide", null);
+        var ran = Conditioned("Ran branch", decide, OneOf(decide, "a"));
+        var skipped = Conditioned("Skipped branch", decide, OneOf(decide, "b"));
+        var last = new CrewTaskBuilder().Description("Last").ExpectedOutput("Last").DependsOn(decide).Build();
+        var (crew, strategy) = Build([decide, ran, skipped, last], DecisionCircuit.On);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        var terminal = Assert.Single(_hook.Completions).Tasks;
+        Assert.Equal(
+            [decide.Id.ToString(), ran.Id.ToString(), skipped.Id.ToString(), last.Id.ToString()],
+            terminal.Select(s => s.TaskId));
+        var skippedSnapshot = terminal[2];
+        Assert.True(skippedSnapshot.Skipped);
+        Assert.False(skippedSnapshot.Success);
+        Assert.NotNull(skippedSnapshot.SkipReason);
+        var seen = Assert.Single(_contexts[last.Id].PreviousOutputs, o => o.TaskId == decide.Id);
+        Assert.Null(seen.AgentId);
+    }
+
+    [Fact]
     [Trait("BR", "UC-03")]
     public async System.Threading.Tasks.Task ShouldFillDecisionFlagAndAnswers_WhenDecisionTaskCompleted()
     {

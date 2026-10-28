@@ -112,4 +112,23 @@ public class DecisionProfileRegistrationTests
         Assert.Contains(expected, ex.Message, StringComparison.Ordinal);
         Assert.StartsWith("Orkeon:Decision:Profiles:", ex.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task ShouldRegisterNothingMore_WhenAddOrkeonDecisionProfilesIsCalledTwice()
+    {
+        var configuration = Configuration(Triage);
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IDecisionModel>(new FakeDecisionModel())
+            .AddOrkeonLlmProfile("cheap", _ => new StubLlmProvider { Name = "cheap" })
+            .AddOrkeonLlmProfile("strong", _ => new StubLlmProvider { Name = "strong" })
+            .AddOrkeonDecisionProfiles(configuration);
+        var once = services.Count;
+
+        services.AddOrkeonDecisionProfiles(configuration);
+
+        Assert.Equal(once, services.Count);
+        await using var container = services.BuildServiceProvider();
+        Assert.NotNull(container.GetRequiredService<ILlmProfileRegistry>().Resolve("triage").Provider);
+    }
 }

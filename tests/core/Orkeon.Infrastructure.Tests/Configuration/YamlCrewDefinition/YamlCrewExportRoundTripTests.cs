@@ -148,6 +148,38 @@ public partial class YamlCrewExportRoundTripTests
         CrewConfigurationProjection.AssertEqual(loaded, reloaded);
     }
 
+    [Fact]
+    [Trait("BR", "BR-02")]
+    public async Task ShouldOmitMinConfidence_WhenDecisionFloorIsTheDefault()
+    {
+        var crew = await _loader.LoadFromStringAsync(
+            """
+            name: floors
+            goal: Decide at the default floor
+            agents:
+              worker:
+                goal: Work
+            tasks:
+              triage:
+                description: Classify
+                expectedOutput: A class
+                decision:
+                  questions:
+                    escalate:
+                      noul: the change needs an escalation
+                  minConfidence: 0.5
+                  fallback:
+                    escalate: "no"
+            """,
+            TestContext.Current.CancellationToken);
+
+        var exported = _exporter.ExportToString(crew);
+
+        Assert.DoesNotContain("minConfidence", exported, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("min_confidence", exported, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("escalate", exported, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// An empty block is a declaration: <c>links: []</c> closes the EventHub door, where an absent block leaves the
     /// host's policy to decide. Each comes back as it was.
@@ -242,7 +274,7 @@ public partial class YamlCrewExportRoundTripTests
         var hierarchical = _serializer.Deserialize<CrewYamlConfig>(_exporter.ExportToString(await LoadWitnessAsync("hierarchical.yaml")));
 
         Assert.Equal(["researcher", "writer"], sequential.Agents!.Keys);
-        Assert.Equal(["collect", "report", "triage", "followup"], sequential.Tasks!.Keys);
+        Assert.Equal(["collect", "report", "triage", "followup", "escalation", "archive"], sequential.Tasks!.Keys);
         Assert.Equal("researcher", sequential.Tasks["collect"].Agent);
         Assert.Equal(["collect"], sequential.Tasks["report"].Dependencies!);
         Assert.Equal("lead", hierarchical.ManagerAgent);

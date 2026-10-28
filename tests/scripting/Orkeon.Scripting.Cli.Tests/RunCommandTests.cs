@@ -314,6 +314,45 @@ public sealed class RunCommandTests
         Assert.False(probe.Seen.Enabled);
     }
 
+    [Theory]
+    [Trait("BR", "UC-04")]
+    [InlineData("nd.ork.ts")]
+    [InlineData("crew.yaml")]
+    public async Task ShouldSwitchCircuitOff_WhenNoDecisionOptionIsGivenWithEvents(string target)
+    {
+        using var scratch = new ScriptScratch();
+        var path = target.EndsWith(".yaml", StringComparison.Ordinal)
+            ? scratch.WriteScript(target, """
+                name: nd-crew
+                agents:
+                  - name: a
+                    role: r
+                    goal: g
+                tasks:
+                  - name: t
+                    description: d
+                    agent: a
+                """)
+            : scratch.WriteScript(target, ResultOne);
+        var settings = scratch.WriteFile("appsettings.json", EnabledSettings);
+        using var console = new TestConsole();
+        var probe = new CircuitProbe();
+
+        // The run itself may fail later (no LLM): only the circuit the provider resolves is observed.
+        _ = await RunCommand.ExecuteAsync(console, new RunCommandOptions
+        {
+            ScriptPath = path,
+            SettingsPath = settings,
+            NoDecision = true,
+            Events = "jsonl",
+            AllowExternalMounts = true,
+            ConfigureTestServices = probe.Configure,
+        });
+
+        Assert.NotNull(probe.Seen);
+        Assert.False(probe.Seen.Enabled);
+    }
+
     private sealed class CircuitProbe
     {
         public DecisionCircuit? Seen { get; private set; }

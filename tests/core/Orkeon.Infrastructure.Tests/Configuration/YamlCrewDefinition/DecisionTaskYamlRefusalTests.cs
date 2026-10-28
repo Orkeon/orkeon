@@ -74,7 +74,7 @@ public sealed class DecisionTaskYamlRefusalTests
     public async Task ShouldRefuseYaml_WhenThresholdOutOfRangeOrFloorOutOfRange_NamingKey(string kind)
     {
         var yaml = kind == "threshold"
-            ? Crew("sequential", Triage + Sibling("refund", "      triage.urgency: \">= 1.5\""))
+            ? Crew("sequential", Triage + Sibling("refund", "      triage.urgency: \">= 2.5\""))
             : Crew("sequential", Triage.Replace("      fallback:", "      min_confidence: 2\n      fallback:"));
         var key = kind == "threshold" ? "'refund'" : "'triage'";
         var part = kind == "threshold" ? "when" : "decision";

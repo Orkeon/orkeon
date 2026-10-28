@@ -269,4 +269,32 @@ public class DecisionTaskTests
         Assert.Equal(2, Assert.IsType<ChoiceQuestionSpec>(decision.Question("r")).Options.Count);
         Assert.Equal(3, Assert.IsType<ScoreQuestionSpec>(decision.Question("s")).Levels.Count);
     }
+
+    [Theory]
+    [Trait("BR", "BR-03")]
+    [Trait("BR", "BR-12")]
+    [InlineData("low", 0.0)]
+    [InlineData("mid", 1.0)]
+    [InlineData("high", 2.0)]
+    public void ShouldAnswerLevelIndexAsScore_WhenFallbackOnScoreQuestion(string level, double expected)
+    {
+        var decision = TaskDecision.Create(
+            [ScoreQuestionSpec.Create("urgency", "Rate", ["low", "mid", "high"])],
+            fallback: new Dictionary<string, string> { ["urgency"] = level });
+
+        var answer = decision.FallbackOutcome().Answers["urgency"];
+
+        Assert.Equal(expected, answer.Score);
+        Assert.Equal(level, answer.Chosen);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public void ShouldRefuseDecision_WhenQuestionNamedDefaultedKey()
+    {
+        var ex = Assert.ThrowsAny<ArgumentException>(() =>
+            TaskDecision.Create([YesNoQuestionSpec.Create(DecisionOutcome.DefaultedKey, "Is it?")]));
+
+        Assert.Contains("'defaulted'", ex.Message);
+    }
 }

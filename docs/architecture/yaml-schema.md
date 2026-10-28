@@ -149,7 +149,7 @@ tasks:
       longContext: bool      # default: false — asks for the model's long context
       fallback: {<question>: string}  # Answers used without a request when the decision circuit is off
     when:                 # Runs the task only when a decision task answered as written (one decision task per when:)
-      <task>.<question>: [string] | ">= 0.7"  # An option list (choice), or a threshold (yes-no, score)
+      <task>.<question>: [string] | ">= 0.7"  # An option list (choice), or a threshold: a probability (yes-no) or a level position (score)
       <task>.<question>.<option>: ">= 0.25"   # The probability of one option of a choice
       <task>: otherwise                       # Alone: holds when no sibling condition on that task holds
 ```
@@ -261,11 +261,13 @@ written in one block and **all must hold**. The grammar:
 | Clause | Holds when |
 |---|---|
 | `<task>.<question>: [a, b]` | The question is a choice, the chosen option is one of the list and the confidence is at or above `minConfidence`. |
-| `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes) or a score (the model's score) and the comparison holds. The floor does not apply. |
+| `<task>.<question>: ">= 0.7"` | The question is a yes-no (its probability of a yes, in [0, 1]) or a score (the model's weighted score on the positions of the levels, 0 to n-1) and the comparison holds. The floor does not apply. |
 | `<task>.<question>.<option>: ">= 0.25"` | The probability of that option of a choice satisfies the comparison, even when the option is not the chosen one. The floor does not apply. |
 | `<task>: otherwise` | No sibling condition on that decision task holds, including when the confidence is under the floor. |
 
-A threshold is an operator (`>=`, `>`, `<=`, `<`) and a number in [0, 1], written as a quoted string.
+A threshold is an operator (`>=`, `>`, `<=`, `<`) and a number, written as a quoted string: a
+probability in [0, 1] on a yes-no or an option, a level position from 0 to the number of levels minus
+one on a score (`"> 1.5"` on `[low, medium, high]` is above the middle level).
 Several tasks whose conditions hold for the same decision all run (a fan-out); a task that depends on
 several branches runs when at least one of them ran. The decision task named by a `when:` is added to
 the task's `dependencies` when it is not there. A task whose condition does not hold, or whose every
@@ -273,7 +275,8 @@ dependency was skipped by a condition, is skipped: it leaves no output, and the 
 
 **Where it runs.** Decision tasks and `when:` are supported in `process: sequential`, `parallel` and
 `graph`. The other processes refuse them at load (`Task 'triage' declares a decision or a condition,
-which the Hierarchical process does not support.`).
+which the Hierarchical process does not support.`); a crew built in C# that reaches one of them fails
+before its first task with the same message.
 
 **What is refused at load.** A task is named by its declared key, the key of the YAML map, in every
 message, in the form `Task '<key>' <part> …` where the part is `decision`,
@@ -285,7 +288,8 @@ message, in the form `Task '<key>' <part> …` where the part is `decision`,
 - a question that declares more than one of `choice`, `score` and `noul`;
 - a fallback that names an unknown question, or an answer the question does not have;
 - a `when:` on a task that is not a decision task, or that names an unknown question or option, or
-  with a threshold outside [0, 1] or not written as an operator and a number;
+  with a threshold outside its range (a probability in [0, 1], a score position from 0 to n-1) or not
+  written as an operator and a finite number;
 - `otherwise` written beside other clauses, a second `otherwise` task on one decision task, an
   `otherwise` with no sibling condition on that decision task;
 - an option clause with a list on an option (`triage.category.bug: [bug]`), which takes a threshold

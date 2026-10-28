@@ -26,9 +26,8 @@ chaque vérification de capacité devrait l'exclure.
 1. **Les fournisseurs de modèles se rangent en catégories** : `Generation`, `Embedding`,
    `Reranking` et `Decision` (`ModelProviderCategory`). Une catégorie est une description, pas un
    contrat : chacune garde son interface, sans base commune. `ModelProviderCatalog` liste chaque
-   fournisseur distant avec ses catégories, sa variable de clé et son endpoint par défaut ; les
-   comptes de la documentation et le contrôle doc-claims le lisent. Un fournisseur qui sert
-   plusieurs catégories (OpenAI, Ollama) n'y figure qu'une fois.
+   fournisseur distant avec ses catégories, sa variable de clé et son endpoint par défaut. Un
+   fournisseur qui sert plusieurs catégories (OpenAI, Ollama) n'y figure qu'une fois.
 2. **`Decision` a son propre port**, `IDecisionModel` (`DecideAsync`, `ListModelsAsync`), avec des
    DTO typés : des questions polymorphes (`choice`, `score`, `noul`, `box`) et leurs réponses.
    `TypeSafeDecisionModel` en est le premier adaptateur, opt-in via `AddOrkeonTypeSafe`. Le compte
@@ -42,7 +41,8 @@ chaque vérification de capacité devrait l'exclure.
 4. **Un profil de décision est un profil LLM.** Il se déclare sous `Orkeon:Decision:Profiles`,
    s'enregistre via `AddOrkeonLlmProfile`, et une crew l'utilise avec `llm: { profile: <nom> }`.
    Il ne peut nommer que des profils LLM, jamais un autre profil de décision : aucun cycle ne peut
-   se former ; l'hôte refuse une cible inconnue ou circulaire à sa construction.
+   se former ; l'hôte refuse un profil de décision nommé comme cible à sa construction, et un
+   profil LLM qui n'existe pas à la première résolution du profil de décision.
 5. **Quand le modèle de décision échoue, l'appel continue** avec un avertissement (fail-open),
    sauf si le profil pose `FailClosed` : il est alors bloqué.
 6. **Les autres usages sont secondaires** et réutilisent le même port : la garde d'entrée des

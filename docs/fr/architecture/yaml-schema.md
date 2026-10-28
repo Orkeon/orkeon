@@ -152,7 +152,7 @@ tasks:
       longContext: bool      # défaut : false — demande le contexte long du modèle
       fallback: {<question>: string}  # Réponses utilisées sans requête quand le circuit de décision est coupé
     when:                 # Ne lance la tâche que si une tâche de décision a répondu comme écrit (une seule tâche de décision par when:)
-      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice), ou un seuil (oui/non, score)
+      <task>.<question>: [string] | ">= 0.7"  # Une liste d'options (choice), ou un seuil : une probabilité (oui/non) ou une position de niveau (score)
       <task>.<question>.<option>: ">= 0.25"   # La probabilité d'une option d'un choice
       <task>: otherwise                       # Seule : vaut quand aucune condition sœur sur cette tâche ne vaut
 ```
@@ -268,12 +268,14 @@ Plusieurs clauses s'écrivent dans un même bloc et **doivent toutes valoir**. L
 | Clause | Vaut quand |
 |---|---|
 | `<task>.<question>: [a, b]` | La question est un choice, l'option choisie est dans la liste et la confiance est au moins égale à `minConfidence`. |
-| `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui) ou un score (le score du modèle) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
+| `<task>.<question>: ">= 0.7"` | La question est un oui/non (sa probabilité d'un oui, dans [0, 1]) ou un score (le score pondéré du modèle sur les positions des niveaux, de 0 à n-1) et la comparaison vaut. Le seuil de confiance ne s'applique pas. |
 | `<task>.<question>.<option>: ">= 0.25"` | La probabilité de cette option d'un choice satisfait la comparaison, même si l'option n'est pas la choisie. Le seuil de confiance ne s'applique pas. |
 | `<task>: otherwise` | Aucune condition sœur sur cette tâche de décision ne vaut, y compris quand la confiance est sous le seuil. |
 
-Un seuil est un opérateur (`>=`, `>`, `<=`, `<`) et un nombre dans [0, 1], écrit comme une chaîne entre
-guillemets. Plusieurs tâches dont les conditions valent pour une même décision tournent toutes (un
+Un seuil est un opérateur (`>=`, `>`, `<=`, `<`) et un nombre, écrit comme une chaîne entre
+guillemets : une probabilité dans [0, 1] sur un oui/non ou une option, une position de niveau de 0 au
+nombre de niveaux moins un sur un score (`"> 1.5"` sur `[low, medium, high]` dépasse le niveau du
+milieu). Plusieurs tâches dont les conditions valent pour une même décision tournent toutes (un
 fan-out) ; une tâche qui dépend de plusieurs branches tourne quand au moins une d'elles a tourné. La
 tâche de décision nommée par un `when:` est ajoutée aux `dependencies` de la tâche si elle n'y est pas.
 Une tâche dont la condition ne vaut pas, ou dont toutes les dépendances ont été sautées par une
@@ -281,7 +283,8 @@ condition, est sautée : elle ne laisse aucune sortie, et la crew réussit quand
 
 **Où cela tourne.** Les tâches de décision et `when:` sont pris en charge avec `process: sequential`,
 `parallel` et `graph`. Les autres processus les refusent au chargement (`Task 'triage' declares a
-decision or a condition, which the Hierarchical process does not support.`).
+decision or a condition, which the Hierarchical process does not support.`) ; un équipage construit en
+C# qui les atteint échoue avant sa première tâche avec le même message.
 
 **Ce qui est refusé au chargement.** Une tâche est nommée par sa clé déclarée, la clé de la table YAML,
 dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie est `decision`,
@@ -293,7 +296,8 @@ dans tous les messages, sous la forme `Task '<clé>' <partie> …` où la partie
 - une question qui déclare plus d'un parmi `choice`, `score` et `noul` ;
 - un repli qui nomme une question inconnue, ou une réponse que la question n'a pas ;
 - un `when:` sur une tâche qui n'est pas une tâche de décision, ou qui nomme une question ou une option
-  inconnue, ou avec un seuil hors de [0, 1] ou qui n'est pas écrit comme un opérateur et un nombre ;
+  inconnue, ou avec un seuil hors de sa plage (une probabilité dans [0, 1], une position de score de 0 à
+  n-1) ou qui n'est pas écrit comme un opérateur et un nombre fini ;
 - `otherwise` écrit à côté d'autres clauses, une seconde tâche `otherwise` sur une même tâche de
   décision, un `otherwise` sans condition sœur sur cette tâche de décision ;
 - une clause d'option avec une liste (`triage.category.bug: [bug]`), qui n'accepte qu'une chaîne de

@@ -31,9 +31,11 @@ d'un modèle sans qu'un agent écrive un texte que la tâche suivante devait ana
    suit la règle existante de l'équipage.
 4. **Sequential, Parallel et Graph** exécutent les tâches de décision. Hierarchical, Consensual et
    Autonomous n'exécutent pas une tâche sur la tâche qu'elle nomme : un équipage qui emploie une
-   tâche de décision ou un `when` avec l'un d'eux est refusé au chargement.
-5. **Le circuit peut être coupé.** Sans modèle de décision configuré, ou avec `orkeon run
-   --no-decision`, une tâche de décision n'émet aucune requête et répond par son `fallback` ; son
+   tâche de décision ou un `when` avec l'un d'eux est refusé au chargement, et un équipage construit
+   en C# qui les atteint échoue avant sa première tâche.
+5. **Le circuit peut être coupé.** Sans modèle de décision configuré (les binaires livrés inscrivent
+   TypeSafe quand `Orkeon:TypeSafe` ou `TYPESAFE_API_KEY` est défini), quand `Orkeon:Decision:Enabled`
+   vaut `false`, ou avec `orkeon run --no-decision`, une tâche de décision n'émet aucune requête et répond par son `fallback` ; son
    événement `task.completed` porte `defaulted: true` et les conditions s'évaluent sur cette
    réponse. Une requête en échec n'est jamais transformée en repli.
 6. **Le run le rapporte.** `task.completed` porte `skipReason`, `defaulted`, `isDecision` et
