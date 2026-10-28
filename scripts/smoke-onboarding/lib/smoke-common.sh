@@ -288,9 +288,11 @@ smoke_step_studio_present() {
 # at the end of input, exit code 0 -- which is a start of the whole composition root
 # (host, settings, registrations), so a payload that lost an assembly, a native
 # library or its bundled runtime fails here and nowhere else in the smoke. No
-# terminal, no settings file and no network are needed. The `timeout` only turns a
-# console that waits for input after all into a named failure instead of a
-# workflow timeout.
+# terminal, no settings file and no network are needed, but a mount is: the REPL
+# refuses to start without one (exit 1, "At least one file system mount must be
+# configured"), as a runner does, so the run directory is mounted at /workspace as
+# a user mounts a project. The `timeout` only turns a console that waits for input
+# after all into a named failure instead of a workflow timeout.
 smoke_step_repl_present() {
   local bin_dir="$1" path="$1/orkeon-repl" ec
   smoke_log "orkeon-repl launcher ($bin_dir)"
@@ -302,7 +304,7 @@ smoke_step_repl_present() {
   fi
   smoke_pass "repl-launcher" "$path present and executable"
 
-  ( cd "$RUN_DIR" && timeout 120 "$path" --ui plain ) </dev/null \
+  ( cd "$RUN_DIR" && timeout 120 "$path" --ui plain --mount "$RUN_DIR:/workspace:rw" ) </dev/null \
     >"$LOG_DIR/orkeon-repl.start.out" 2>"$LOG_DIR/orkeon-repl.start.err"
   ec=$?
   if [[ $ec -ne 0 ]]; then
