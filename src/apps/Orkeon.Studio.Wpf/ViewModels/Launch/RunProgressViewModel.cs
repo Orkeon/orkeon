@@ -49,6 +49,18 @@ public sealed class RunTaskViewModel
     public string ToolCalls => Task.ToolCalls is { } calls
         ? _strings.Format(StudioStringKeys.RunProgressToolCalls, calls)
         : string.Empty;
+
+    /// <summary>Why the task was skipped, or an empty label when it was not (or the run did not say).</summary>
+    public string SkipReason => Task.Skipped && !string.IsNullOrEmpty(Task.SkipReason)
+        ? _strings.Format(StudioStringKeys.RunProgressSkipReason, Task.SkipReason)
+        : string.Empty;
+
+    /// <summary>"decision" or "decision (defaulted)" for a decision task, else an empty label.</summary>
+    public string DecisionLabel => !Task.IsDecision
+        ? string.Empty
+        : _strings[Task.Defaulted
+            ? StudioStringKeys.RunProgressDecisionDefaulted
+            : StudioStringKeys.RunProgressDecision];
 }
 
 /// <summary>One task the run has started and not yet finished, as the progress panel shows it (STUDIO-17).</summary>

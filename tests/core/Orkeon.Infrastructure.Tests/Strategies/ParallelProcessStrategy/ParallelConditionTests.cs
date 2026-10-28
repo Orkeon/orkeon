@@ -26,6 +26,7 @@ public sealed class ParallelConditionTests : IDisposable
     private readonly MockAgentExecutionService _executionService = new();
     private readonly MockMemoryScope _memoryScope = new();
     private readonly FakeDecisionModel _model = new();
+    private readonly MockCrewExecutionHook _hook = new();
     private readonly List<TaskId> _ran = [];
     private readonly Dictionary<TaskId, SimpleExecutionContext> _contexts = [];
     private readonly object _gate = new();
@@ -143,6 +144,28 @@ public sealed class ParallelConditionTests : IDisposable
         Assert.Equal("out-" + a.Id, output.Output);
     }
 
+    [Fact]
+    [Trait("BR", "UC-03")]
+    public async System.Threading.Tasks.Task ShouldFillDecisionFlagAndAnswers_WhenDecisionTaskCompleted()
+    {
+        var decide = DecisionTask("Decide", null);
+        var plain = new CrewTaskBuilder().Description("Plain").ExpectedOutput("Plain").Build();
+        var (crew, strategy) = Build([decide, plain], DecisionCircuit.On);
+
+        var output = await RunAsync(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        var stored = Assert.Single(output.TaskOutputs, o => o.Decision is not null);
+        var decided = Assert.Single(_hook.CompletedTasks, s => s.TaskId == decide.Id.ToString());
+        Assert.True(decided.IsDecision);
+        Assert.NotNull(decided.DecisionAnswers);
+        Assert.Equal(stored.Output, decided.DecisionAnswers);
+        Assert.Contains("\"intent\"", decided.DecisionAnswers, StringComparison.Ordinal);
+        var plainSnapshot = Assert.Single(_hook.CompletedTasks, s => s.TaskId == plain.Id.ToString());
+        Assert.False(plainSnapshot.IsDecision);
+        Assert.Null(plainSnapshot.DecisionAnswers);
+    }
+
     private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> RunAsync(ParallelProcessStrategy strategy, DomainCrew crew) =>
         strategy.ExecuteParallelAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -192,7 +215,7 @@ public sealed class ParallelConditionTests : IDisposable
         {
             DecisionRunner = runner,
         };
-        var strategy = new ParallelProcessStrategy(dependencies, NullLogger<ParallelProcessStrategy>.Instance);
+        var strategy = new ParallelProcessStrategy(dependencies, NullLogger<ParallelProcessStrategy>.Instance, _hook);
         return (builder.Build(), strategy);
     }
 }

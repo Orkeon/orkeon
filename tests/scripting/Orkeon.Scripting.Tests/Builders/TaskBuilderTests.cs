@@ -360,4 +360,38 @@ public sealed class TaskBuilderTests
 
         Assert.StartsWith("Task 'triage' decision", message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [Trait("BR", "BR-07")]
+    [InlineData("true")]
+    [InlineData("\"0.7\"")]
+    public void ShouldRefuseMinConfidence_WhenNotANumber(string value)
+    {
+        var message = Refusal($$"""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                minConfidence: {{value}},
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.StartsWith("Task 'triage' decision:", message, StringComparison.Ordinal);
+        Assert.Contains("minConfidence", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "BR-07")]
+    public void ShouldRefuseLongContext_WhenNotABool()
+    {
+        var message = Refusal("""
+            const triage = taskBuilder().name("triage").decision({
+                questions: { category: { choice: { bug: "a defect" } } },
+                longContext: "yes",
+            }).build();
+            const allTasks = [intake, triage];
+            """);
+
+        Assert.StartsWith("Task 'triage' decision:", message, StringComparison.Ordinal);
+        Assert.Contains("longContext", message, StringComparison.Ordinal);
+    }
 }

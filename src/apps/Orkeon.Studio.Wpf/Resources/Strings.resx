@@ -316,6 +316,9 @@
   <data name="Studio.Run.Validating" xml:space="preserve"><value>Validating…</value></data>
   <data name="Studio.Run.Running" xml:space="preserve"><value>Running…</value></data>
   <data name="Studio.Run.NothingYet" xml:space="preserve"><value>Nothing reported yet.</value></data>
+  <data name="Studio.Run.SkipReason" xml:space="preserve"><value>Skipped: {0}</value></data>
+  <data name="Studio.Run.Decision" xml:space="preserve"><value>decision</value></data>
+  <data name="Studio.Run.DecisionDefaulted" xml:space="preserve"><value>decision (defaulted)</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve"><value>{0} task(s) finished.</value></data>
   <data name="Studio.Run.TasksProgress" xml:space="preserve"><value>{0} task(s) finished, {1} in progress.</value></data>
   <data name="Studio.Run.TaskSince" xml:space="preserve"><value>since {0}</value></data>

@@ -284,7 +284,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         else
             await run.Outcome.RecordFailureAsync(task, DecisionRole, result.Error ?? result.LastError, result.EndedAt).ConfigureAwait(false);
 
-        await ReportEndAsync(run, new TaskExecutionSnapshot
+        await ReportEndAsync(run, CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
             AgentRole = string.Empty,
@@ -292,7 +292,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             Duration = result.ExecutionTime,
             CompletedAt = DateTimeOffset.UtcNow,
             Defaulted = result.Decision?.IsDefaulted ?? false,
-        }).ConfigureAwait(false);
+        }, domainOutput)).ConfigureAwait(false);
     }
 
     /// <summary>

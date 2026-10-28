@@ -33,9 +33,15 @@ internal static class JsDecisionMapper
         {
             return TaskDecision.Create(
                 questions,
-                map.TryGetValue("minConfidence", out var floor) && floor is not null ? Convert.ToDouble(floor, CultureInfo.InvariantCulture) : null,
+                map.TryGetValue("minConfidence", out var floor) && floor is not null
+                    ? IsNumber(floor)
+                        ? Convert.ToDouble(floor, CultureInfo.InvariantCulture)
+                        : throw new ArgumentException("minConfidence must be a number.")
+                    : null,
                 map.TryGetValue("state", out var state) ? Strings(state) : null,
-                map.TryGetValue("longContext", out var longContext) && longContext is true,
+                map.TryGetValue("longContext", out var longContext) && longContext is not null
+                    ? longContext is bool flag ? flag : throw new ArgumentException("longContext must be a bool.")
+                    : false,
                 map.TryGetValue("fallback", out var fallback) && AsMap(fallback) is { } answers
                     ? answers.ToDictionary(a => a.Key, a => Convert.ToString(a.Value, CultureInfo.InvariantCulture)!)
                     : null);
@@ -103,6 +109,9 @@ internal static class JsDecisionMapper
         ThresholdExpression.TryParse(text, out var comparison, out var number)
             ? ConditionClause.Threshold(decision, question, option, comparison, number)
             : throw new ArgumentException($"'{text}' is not a threshold such as '>= 0.7'.");
+
+    private static bool IsNumber(object value) =>
+        value is sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal;
 
     private static IDictionary<string, object?>? AsMap(object? value) => value as IDictionary<string, object?>;
 

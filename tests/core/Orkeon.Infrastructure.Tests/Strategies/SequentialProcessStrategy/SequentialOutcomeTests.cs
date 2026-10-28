@@ -90,6 +90,28 @@ public sealed class SequentialOutcomeTests : IDisposable
         Assert.False(answered.Defaulted);
     }
 
+    [Fact]
+    [Trait("BR", "UC-03")]
+    public async System.Threading.Tasks.Task ShouldFillDecisionFlagAndAnswers_WhenDecisionTaskCompleted()
+    {
+        var decide = DecisionTask("Decide");
+        var plain = new CrewTaskBuilder().Description("Plain").ExpectedOutput("Plain").Build();
+        var (crew, strategy) = Build([decide, plain], DecisionCircuit.On);
+
+        var output = await Run(strategy, crew);
+
+        Assert.True(output.Success, output.Error);
+        var stored = Assert.Single(output.TaskOutputs, o => o.Decision is not null);
+        var decided = Assert.Single(_hook.Tasks, s => s.TaskId == decide.Id.ToString());
+        Assert.True(decided.IsDecision);
+        Assert.NotNull(decided.DecisionAnswers);
+        Assert.Equal(stored.Output, decided.DecisionAnswers);
+        Assert.Contains("\"intent\"", decided.DecisionAnswers, StringComparison.Ordinal);
+        var plainSnapshot = Assert.Single(_hook.Tasks, s => s.TaskId == plain.Id.ToString());
+        Assert.False(plainSnapshot.IsDecision);
+        Assert.Null(plainSnapshot.DecisionAnswers);
+    }
+
     private static System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput> Run(SequentialProcessStrategy strategy, DomainCrew crew) =>
         strategy.ExecuteSequentialAsync(crew, cancellationToken: TestContext.Current.CancellationToken);
 

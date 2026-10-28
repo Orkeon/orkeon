@@ -285,7 +285,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             var usage = index < state.ResultUsage.Count ? state.ResultUsage[index] : default;
             var snapshot = state.SkipReasons.TryGetValue(index, out var skipReason)
                 ? CrewRunOutcome.SkippedSnapshot(result.TaskId!, "graph", skipReason)
-                : new TaskExecutionSnapshot
+                : CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
                 {
                     TaskId = taskId,
                     AgentRole = "graph",
@@ -296,7 +296,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     CacheHitTokens = usage.CacheHit,
                     CacheMissTokens = usage.CacheMiss,
                     Defaulted = result.TaskId is { } id && (state.Outcome.DecisionOf(id)?.IsDefaulted ?? false),
-                };
+                }, result);
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
         }

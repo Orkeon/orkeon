@@ -2798,5 +2798,9 @@ static Orkeon.Application.Crew.Execution.DecisionCircuit.operator ==(Orkeon.Appl
 static Orkeon.Application.Crew.Execution.DecisionCircuit.operator !=(Orkeon.Application.Crew.Execution.DecisionCircuit? left, Orkeon.Application.Crew.Execution.DecisionCircuit? right) -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.get -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.Defaulted.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.IsDecision.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.IsDecision.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionAnswers.get -> string?
+Orkeon.Application.Crew.TaskExecutionSnapshot.DecisionAnswers.init -> void
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.get -> bool
 Orkeon.Application.Interfaces.Services.CrewExecutionEvent.Defaulted.init -> void

@@ -189,6 +189,10 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 durationMs = (long)snapshot.Duration.TotalMilliseconds,
                 tokens = snapshot.TokensUsed,
                 toolCalls = snapshot.ToolCallCount,
+                skipReason = snapshot.SkipReason,
+                defaulted = snapshot.Defaulted,
+                isDecision = snapshot.IsDecision,
+                decision = snapshot.DecisionAnswers,
             });
 
         if (_inner is not null)

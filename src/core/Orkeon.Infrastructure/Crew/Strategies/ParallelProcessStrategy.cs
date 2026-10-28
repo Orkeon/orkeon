@@ -440,7 +440,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
         LogCompletedParallelExecutionOfTask(task.Id, result.Success);
 
-        var snapshot = new TaskExecutionSnapshot
+        var snapshot = CrewRunOutcome.WithDecision(new TaskExecutionSnapshot
         {
             TaskId = task.Id.Value.ToString(),
             AgentRole = agent?.Role.Value ?? string.Empty,
@@ -452,7 +452,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             CacheHitTokens = result.CacheHitTokens,
             CacheMissTokens = result.CacheMissTokens,
             Defaulted = result.Decision?.IsDefaulted ?? false,
-        };
+        }, domainOutput);
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 

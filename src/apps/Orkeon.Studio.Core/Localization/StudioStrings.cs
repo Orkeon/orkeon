@@ -1219,6 +1219,15 @@ public static class StudioStringKeys
     /// <summary>"Nothing reported yet."</summary>
     public const string RunProgressNothingYet = "Studio.Run.NothingYet";
 
+    /// <summary>"Skipped: {0}"</summary>
+    public const string RunProgressSkipReason = "Studio.Run.SkipReason";
+
+    /// <summary>"decision"</summary>
+    public const string RunProgressDecision = "Studio.Run.Decision";
+
+    /// <summary>"decision (defaulted)"</summary>
+    public const string RunProgressDecisionDefaulted = "Studio.Run.DecisionDefaulted";
+
     /// <summary>"{0} task(s) finished."</summary>
     public const string RunProgressTasksDone = "Studio.Run.TasksDone";
 
@@ -3279,6 +3288,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchValidating] = "Validating…",
         [StudioStringKeys.LaunchRunning] = "Running…",
         [StudioStringKeys.RunProgressNothingYet] = "Nothing reported yet.",
+        [StudioStringKeys.RunProgressSkipReason] = "Skipped: {0}",
+        [StudioStringKeys.RunProgressDecision] = "decision",
+        [StudioStringKeys.RunProgressDecisionDefaulted] = "decision (defaulted)",
         [StudioStringKeys.RunProgressTasksDone] = "{0} task(s) finished.",
         [StudioStringKeys.RunProgressTasksProgress] = "{0} task(s) finished, {1} in progress.",
         [StudioStringKeys.RunProgressTaskSince] = "since {0}",

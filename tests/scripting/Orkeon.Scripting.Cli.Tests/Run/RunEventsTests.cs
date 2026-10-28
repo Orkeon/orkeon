@@ -173,6 +173,67 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    [Trait("BR", "UC-03")]
+    public async Task ShouldEmitSkipReason_WhenTaskCompletedSkippedByCondition()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+        var byCondition = Snapshot("publish", "Writer", success: false) with
+        {
+            Skipped = true,
+            SkipReason = "condition 'review.approved' is false",
+        };
+        var byDependency = Snapshot("write", "Writer", success: false) with
+        {
+            Skipped = true,
+            SkipReason = "Task write (Writer) skipped: it depends on task score, which did not succeed",
+        };
+
+        await observer.OnTaskCompletedAsync(byCondition, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(byDependency, TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.Equal(2, events.Count);
+        Assert.Equal("condition 'review.approved' is false", events[0].GetProperty("skipReason").GetString());
+        Assert.Equal(
+            "Task write (Writer) skipped: it depends on task score, which did not succeed",
+            events[1].GetProperty("skipReason").GetString());
+    }
+
+    [Fact]
+    [Trait("BR", "UC-03")]
+    public async Task ShouldEmitDecisionAnswersAsOutput_WhenDecisionTaskCompleted()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+        var decision = Snapshot("review") with { IsDecision = true, DecisionAnswers = "{\"approved\":true}" };
+
+        await observer.OnTaskCompletedAsync(decision, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("collect"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("isDecision").GetBoolean());
+        Assert.Equal("{\"approved\":true}", events[0].GetProperty("decision").GetString());
+        Assert.False(events[1].TryGetProperty("isDecision", out var plain) && plain.GetBoolean());
+        Assert.False(events[1].TryGetProperty("decision", out var answers) && answers.ValueKind != JsonValueKind.Null);
+    }
+
+    [Fact]
+    [Trait("BR", "UC-03")]
+    [Trait("BR", "UC-04")]
+    public async Task ShouldEmitDefaultedMark_WhenDecisionTaskDefaulted()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+        var defaulted = Snapshot("review") with { IsDecision = true, Defaulted = true };
+        var answered = Snapshot("review2") with { IsDecision = true, Defaulted = false };
+
+        await observer.OnTaskCompletedAsync(defaulted, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(answered, TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.True(events[0].GetProperty("defaulted").GetBoolean());
+        Assert.False(events[1].GetProperty("defaulted").GetBoolean());
+    }
+
+    [Fact]
     public async Task The_observer_composes_with_the_hook_that_was_already_registered()
     {
         // The regression this test exists for: ICrewExecutionHook is a single service and

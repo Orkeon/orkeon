@@ -454,6 +454,12 @@ internal sealed class CrewRunOutcome
         return (domain, application);
     }
 
+    /// <summary>Marks the snapshot of a completed decision task: the flag and its answers (the compact-JSON output).</summary>
+    internal static TaskExecutionSnapshot WithDecision(TaskExecutionSnapshot snapshot, DomainTaskOutput output) =>
+        output.Decision is null
+            ? snapshot
+            : snapshot with { IsDecision = true, DecisionAnswers = output.RawOutput };
+
     /// <summary>The snapshot a skipped task reports: marked skipped, with its reason.</summary>
     internal static TaskExecutionSnapshot SkippedSnapshot(TaskId taskId, string agentRole, string reason) =>
         new()
