@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the `orkeon-runners` image builds again
+
+`Dockerfile.runners` copied the root `Directory.Build.props` but not the root
+`Directory.Build.targets`, which `src/Directory.Build.targets` imports since #195. The
+import resolved to an empty path, `dotnet publish` failed with `MSB4020` on both
+platforms, and the `v1.0.0-rc.6` run pushed no image to GHCR. The build stage now copies
+the file.
+
 ## [1.0.0-rc.6] - 2026-10-28
 
 The release candidate of the agent loop and the scriptable runtime. Since `1.0.0-rc.5`:
